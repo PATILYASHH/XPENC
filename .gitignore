@@ -43,3 +43,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Font cache downloaded by tool/generate_playstore_assets.py — not a source file
+/branding/fonts/
