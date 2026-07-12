@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/money.dart';
@@ -195,11 +193,13 @@ final themePresetProvider = Provider<ThemePreset>((ref) {
 
 // ── Message auto-capture ────────────────────────────────────────────────────
 
-/// SMS reading only exists on Android. Everywhere else capture no-ops.
-final messageSourceProvider = Provider<MessageSource>((ref) {
-  if (Platform.isAndroid) return const SmsSource();
-  return const NullMessageSource();
-});
+/// Capture is paused: the SMS source was removed in 1.1.0 because Google Play
+/// Protect blocks direct-download APKs that request SMS permissions. The
+/// pipeline behind this provider (parser, dedupe, Review Inbox) is intact —
+/// swap in a Play-compliant source here when capture returns.
+final messageSourceProvider = Provider<MessageSource>(
+  (ref) => const NullMessageSource(),
+);
 
 final captureServiceProvider = Provider<CaptureService>(
   (ref) => CaptureService(

@@ -14,7 +14,7 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-34c77b?labelColor=black)](CONTRIBUTING.md)
 
 **Offline-first personal finance for Android.**
-Income, expenses, transfers, budgets, dues and bank-SMS auto-capture —
+Income, expenses, transfers, budgets and dues —
 everything lives in a local SQLite database on your phone. Nothing is ever uploaded.
 
 [**🌐 Website**](https://getxpenc.vercel.app) · [**⬇️ Download APK**](https://github.com/PATILYASHH/XPENC/releases/latest) · [**🐛 Report a bug**](../../issues/new?template=bug_report.yml) · [**✨ Request a feature**](../../issues/new?template=feature_request.yml) · [**🏦 Add your bank**](../../issues/new?template=bank_support.yml)
@@ -48,7 +48,7 @@ adversarial audit that hardened it — is in [structure.md](structure.md).
 | 💳 **Honest accounts** | Cash / Bank / Card with real balances. Debit cards & UPI are *linked instruments* — they spend their bank's money, so rupees are never counted twice. Credit cards carry their own (negative = owed) balance. |
 | 🔁 **Income · Expense · Transfer** | Three transaction types, kept strictly apart. Transfers never pollute budgets or reports. |
 | 🎯 **Budgets** | Per-category with period windows, live progress, and once-per-period alerts at 80% and overspend. |
-| 📩 **Bank-SMS auto-capture** | Bank messages parsed **on-device** into review cards (amount · account · merchant). Approve to post. Learned rules can Auto-Approve — exact matches only, with an Undo that really reverses the money. |
+| 📩 **Bank-SMS auto-capture** — *coming soon* | Shipped in 1.0, paused in 1.1: the `READ_SMS` permission made Google Play Protect block direct APK installs. The on-device pipeline (parser · dedupe · review cards · Auto-Approve with real Undo) is intact and returns in a Play-compliant form. |
 | 👥 **Persons — dues & loans** | They-owe / I-owe with running balances, partial settlements, optional real account movement. |
 | 📅 **Calendar & cash reminders** | Day-wise in/out grid; EMI/bill reminders that post *nothing* until you confirm. |
 | 📊 **Insights** | Category pie, income vs expense, net-worth trend, per-account reports — one chart engine, many views. |
@@ -72,10 +72,10 @@ tested and gated by [GitHub Actions](.github/workflows/release.yml); the
 
 ## Privacy
 
-Bank SMS are read on-device, parsed on-device, and stored on-device. The app
-requests `READ_SMS` and deliberately **not** `RECEIVE_SMS`: it scans the inbox
-when you open it rather than running a background broadcast receiver. No message,
-transaction or balance ever leaves the phone. **There is no server.**
+Everything is stored on-device in the app's private SQLite database. Since
+1.1.0 the app requests **no SMS permission at all** — the only runtime
+permission is notifications. No transaction or balance ever leaves the phone.
+**There is no server.**
 See [SECURITY.md](SECURITY.md) for the vulnerability disclosure policy.
 
 ## Tech stack

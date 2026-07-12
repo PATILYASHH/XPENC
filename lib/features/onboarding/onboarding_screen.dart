@@ -343,7 +343,8 @@ class _CashStep extends StatelessWidget {
   }
 }
 
-/// Step 3 — optional bank so SMS can be matched. All fields may be left blank.
+/// Step 3 — optional bank account. All fields may be left blank. (The last-4
+/// digits also feed SMS matching when auto-capture returns.)
 class _BankStep extends StatelessWidget {
   const _BankStep({
     required this.nameController,
@@ -373,7 +374,7 @@ class _BankStep extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Add your bank so we can match your SMS.',
+            'Add the account your money actually sits in.',
             style: theme.textTheme.bodyLarge?.copyWith(
               color: cs.onSurfaceVariant,
               height: 1.4,

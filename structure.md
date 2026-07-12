@@ -279,13 +279,25 @@ Mechanism: a background worker (workmanager) runs a periodic budget/person-due c
 
 ## 8. Message Auto-Capture (SMS / Notifications)
 
+> **⏸️ STATUS (1.1.0, 2026-07-12): SMS capture is PAUSED in shipped builds.**
+> The "deferred" Play risk below bit earlier than expected — not via a Play
+> Store review but via **Google Play Protect**, which blocks direct-download
+> APKs that request SMS permissions. Users had to pause Play Protect just to
+> install the APK, which killed the download funnel. `READ_SMS`, the Kotlin
+> channel and Dart `SmsSource` were removed (`test/native_channel_test.dart`
+> guards the removal); `messageSourceProvider` ships `NullMessageSource`. The
+> entire pipeline below (parser, dedupe, Review Inbox, rules, tests) is intact
+> — exactly the swap this section's interface was designed for. Capture returns
+> via a Play-compliant source (`NotificationSource` is the candidate). The UI
+> presents it as "coming soon".
+
 **Goal:** the app reads incoming bank messages **on-device**, parses the transaction, and shows it as a card. When the user opens the app they see cards — **amount, time, account, merchant** — assign a category, and it posts to the ledger.
 
-### Constraint 1 — Play Store policy: ⏭️ DEFERRED, not a blocker
+### Constraint 1 — Play Store policy: ⏭️ ~~DEFERRED, not a blocker~~ → became the blocker (see STATUS above)
 
-**Decision (Yash):** message reading **stays in the app**. Play Store distribution is a later problem. Build now.
+**Decision (Yash, superseded):** message reading **stays in the app**. Play Store distribution is a later problem. Build now.
 
-*Recorded risk (not blocking):* Google's restricted-permissions policy does not generally permit `READ_SMS` for expense tracking. Revisit before publishing.
+*Recorded risk (came true in 1.1.0):* Google's restricted-permissions policy does not generally permit `READ_SMS` for expense tracking — and Play Protect enforces it on sideloaded APKs too.
 
 **As built:**
 

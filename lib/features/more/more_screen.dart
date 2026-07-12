@@ -90,7 +90,7 @@ class MoreScreen extends ConsumerWidget {
           Icons.sms_outlined,
           'Message Capture',
           route: '/more/capture',
-          subtitle: 'Banks, senders, auto-approve',
+          subtitle: 'Auto-capture — coming soon',
         ),
         _Item(
           Icons.settings_outlined,

@@ -22,15 +22,9 @@ const _amber = Color(0xFFB45309);
 class ReviewInboxScreen extends ConsumerWidget {
   const ReviewInboxScreen({super.key});
 
-  Future<void> _scan(BuildContext context, WidgetRef ref) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final result = await ref.read(captureServiceProvider).scan();
-    final text = result.didRun
-        ? 'Scanned ${result.scanned} · ${result.ingested} new · '
-            '${result.autoFilled} auto-filled'
-        : (result.reason ?? "Couldn't scan messages");
-    messenger.showSnackBar(SnackBar(content: Text(text)));
-  }
+  // The "Scan messages" action lived here until 1.1.0. With SMS capture
+  // paused (no source ships in this build) a scan can never find anything, so
+  // the button is gone rather than left to no-op.
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -38,16 +32,7 @@ class ReviewInboxScreen extends ConsumerWidget {
     final pendingAsync = ref.watch(allPendingProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Review Inbox'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Scan messages',
-            onPressed: () => _scan(context, ref),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Review Inbox')),
       body: pendingAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
@@ -156,8 +141,8 @@ class _EmptyInbox extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Bank messages are read on this device only. '
-                  'Nothing is ever uploaded.',
+                  'Bank-SMS auto-capture is coming soon — cards detected by '
+                  'earlier versions appear here until then.',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,

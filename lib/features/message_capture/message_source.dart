@@ -1,12 +1,16 @@
-import 'package:flutter/services.dart';
-
 import 'parser/bank_message.dart';
 
 /// Where captured messages come from.
 ///
 /// The parser, dedupe and review flow all sit behind this interface, so the
-/// capture layer is a swappable module: an SMS reader today, a
-/// `NotificationListenerService` later, with nothing downstream changing.
+/// capture layer is a swappable module: sources can come and go with nothing
+/// downstream changing.
+///
+/// There was an `SmsSource` here (READ_SMS via a platform channel). It was
+/// removed in 1.1.0 because Google Play Protect blocks direct-download APKs
+/// that request SMS permissions — users had to pause protection to install.
+/// Capture returns when a Play-compliant source lands (likely a
+/// `NotificationListenerService`); the old implementation is in git history.
 abstract interface class MessageSource {
   Future<bool> isSupported();
   Future<bool> hasPermission();
@@ -16,90 +20,8 @@ abstract interface class MessageSource {
   Future<List<RawMessage>> messagesSince(DateTime since);
 }
 
-/// Reads the SMS inbox on demand.
-///
-/// Deliberately **not** a background receiver. The spec is "when the user opens
-/// the app they see cards", so we scan on resume. That drops `RECEIVE_SMS`,
-/// removes background-service fragility, and still catches every message.
-class SmsSource implements MessageSource {
-  const SmsSource();
-
-  // Must match `MainActivity.CHANNEL` byte for byte. Deliberately not renamed
-  // with the app: the string is invisible to users, and no test covers the
-  // pairing (Dart tests use FakeMessageSource), so a cosmetic rename could kill
-  // SMS capture with nothing failing to warn us.
-  static const _channel = MethodChannel('money_manager/sms');
-
-  @override
-  Future<bool> isSupported() async {
-    try {
-      return await _channel.invokeMethod<bool>('isSupported') ?? false;
-    } on PlatformException {
-      return false;
-    } on MissingPluginException {
-      return false;
-    }
-  }
-
-  @override
-  Future<bool> hasPermission() async {
-    try {
-      return await _channel.invokeMethod<bool>('hasPermission') ?? false;
-    } on PlatformException {
-      return false;
-    } on MissingPluginException {
-      return false;
-    }
-  }
-
-  @override
-  Future<bool> requestPermission() async {
-    try {
-      return await _channel.invokeMethod<bool>('requestPermission') ?? false;
-    } on PlatformException {
-      return false;
-    } on MissingPluginException {
-      return false;
-    }
-  }
-
-  @override
-  Future<List<RawMessage>> messagesSince(DateTime since) async {
-    final List<Object?>? raw;
-    try {
-      raw = await _channel.invokeMethod<List<Object?>>(
-        'querySince',
-        {'since': since.millisecondsSinceEpoch},
-      );
-    } on PlatformException {
-      return const [];
-    } on MissingPluginException {
-      return const [];
-    }
-    if (raw == null) return const [];
-
-    final out = <RawMessage>[];
-    for (final item in raw) {
-      if (item is! Map) continue;
-      final body = item['body'];
-      final sender = item['sender'];
-      final ts = item['timestamp'];
-      if (body is! String || sender is! String || ts is! int) continue;
-      out.add(
-        RawMessage(
-          body: body,
-          sender: sender,
-          receivedAt: DateTime.fromMillisecondsSinceEpoch(ts),
-        ),
-      );
-    }
-    out.sort((a, b) => a.receivedAt.compareTo(b.receivedAt));
-    return out;
-  }
-}
-
-/// Used on desktop/tests, and as the graceful fallback when the platform
-/// channel is missing. Capture simply does nothing.
+/// The shipped source while capture is paused, and the graceful fallback on
+/// desktop. Capture simply does nothing.
 class NullMessageSource implements MessageSource {
   const NullMessageSource();
 

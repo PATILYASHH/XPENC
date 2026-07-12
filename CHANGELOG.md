@@ -8,6 +8,25 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-07-12
+
+### Changed
+- **Bank-SMS auto-capture is paused (coming back).** The `READ_SMS` permission
+  made Google Play Protect block direct APK installs — users had to pause
+  protection just to install the app. This build requests **no SMS permission
+  at all**, so it installs cleanly. The capture pipeline (parser, dedupe,
+  Review Inbox, learned rules) is intact behind the `MessageSource` interface
+  and will return in a Play-compliant form; cards detected by 1.0.x remain
+  reviewable.
+- The Message Capture screen now explains the pause instead of offering
+  controls; the app-wide **Notifications** toggle moved to Settings.
+- Onboarding no longer promises SMS matching when adding a bank.
+
+### Removed
+- `READ_SMS` permission, the Kotlin SMS platform channel, and the Dart
+  `SmsSource`. A regression test now fails the build if SMS permissions or
+  SMS code ever reappear silently.
+
 ## [1.0.0] — 2026-07-12
 
 First public release. 🎉
@@ -45,5 +64,6 @@ First public release. 🎉
 - `tool/verify_apk.sh` gates every shipped APK against the missing
   `libsqlite3.so` class of crash.
 
-[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/PATILYASHH/XPENC/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/PATILYASHH/XPENC/releases/tag/v1.0.0

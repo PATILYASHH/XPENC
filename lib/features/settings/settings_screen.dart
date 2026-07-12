@@ -19,7 +19,8 @@ class SettingsScreen extends ConsumerWidget {
 
     final settingsAsync = ref.watch(settingsProvider);
     // Never crash while settings are still loading — fall back to a safe default.
-    final autoApprove = settingsAsync.valueOrNull?.autoApprove ?? false;
+    final notificationsEnabled =
+        settingsAsync.valueOrNull?.notificationsEnabled ?? false;
     final preset = ref.watch(themePresetProvider);
 
     final trailingStyle =
@@ -64,22 +65,38 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
 
-          // ── Message capture ────────────────────────────────────────────────
-          _sectionLabel(context, 'Message Capture'),
+          // ── Notifications ──────────────────────────────────────────────────
+          _sectionLabel(context, 'Notifications'),
           Card(
             child: SwitchListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              secondary: const Icon(Icons.auto_mode_outlined),
-              title: const Text('Auto-Approve'),
+              secondary: const Icon(Icons.notifications_outlined),
+              title: const Text('Notifications'),
               subtitle: Text(
-                "Auto-fill and post transactions from banks you've categorised "
-                'before. Cards still appear so you can see what was filled.',
+                'Budget alerts and payment reminders.',
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: cs.onSurfaceVariant),
               ),
-              value: autoApprove,
-              // Feature lands in a later phase — read-only for now.
-              onChanged: null,
+              value: notificationsEnabled,
+              onChanged: (v) => _toggleNotifications(ref, v),
+            ),
+          ),
+
+          // ── Message capture ────────────────────────────────────────────────
+          _sectionLabel(context, 'Message Capture'),
+          Card(
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              leading: const Icon(Icons.sms_outlined),
+              title: const Text('Bank-SMS auto-capture'),
+              subtitle: Text(
+                'Coming soon — removed for now so the app installs without a '
+                'Play Protect block.',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: cs.onSurfaceVariant),
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => context.push('/more/capture'),
             ),
           ),
 
@@ -148,5 +165,12 @@ class SettingsScreen extends ConsumerWidget {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(const SnackBar(content: Text('Coming soon')));
+  }
+
+  Future<void> _toggleNotifications(WidgetRef ref, bool value) async {
+    await ref.read(dbProvider).setNotificationsEnabled(value);
+    if (value) {
+      await ref.read(notificationServiceProvider).requestPermission();
+    }
   }
 }

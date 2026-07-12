@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>XPENC — Money, tracked honestly.</title>
-  <meta name="description" content="XPENC is an offline-first personal finance app for Android. Income, expenses, budgets, dues and automatic bank-SMS capture — everything stays on your phone. No server, no sign-up, open source.">
+  <meta name="description" content="XPENC is an offline-first personal finance app for Android. Income, expenses, budgets, dues and insights — everything stays on your phone. No server, no sign-up, no SMS permission. Open source.">
   <meta name="theme-color" content="#000000">
 
   <link rel="icon" href="assets/favicon.ico" sizes="any">
@@ -15,7 +15,7 @@
   <!-- Open Graph / Twitter -->
   <meta property="og:type" content="website">
   <meta property="og:title" content="XPENC — Money, tracked honestly.">
-  <meta property="og:description" content="Offline-first personal finance for Android. Budgets, dues, bank-SMS auto-capture — all on-device. No server. No sign-up. Open source.">
+  <meta property="og:description" content="Offline-first personal finance for Android. Budgets, dues, insights — all on-device. No server. No sign-up. No SMS permission. Open source.">
   <meta property="og:url" content="https://getxpenc.vercel.app/">
   <meta property="og:image" content="https://getxpenc.vercel.app/assets/xpenc_icon_1024.png">
   <meta name="twitter:card" content="summary">
@@ -85,7 +85,41 @@
     .nav-links .btn { margin-left: 12px; }
     .gh-pill { display: inline-flex; align-items: center; gap: 7px; }
     .gh-pill .stars { font-variant-numeric: tabular-nums; color: var(--faint); font-size: 12px; }
-    @media (max-width: 780px) { .nav-links a:not(.btn) { display: none; } }
+
+    /* mobile nav — a real menu, not vanished links */
+    .nav-toggle {
+      display: none; background: none; border: 1px solid var(--border); color: var(--ink);
+      width: 40px; height: 40px; border-radius: 12px; cursor: pointer;
+      align-items: center; justify-content: center; flex: none;
+    }
+    .nav-toggle svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+    .nav-toggle .x { display: none; }
+    .mobile-menu {
+      display: none; flex-direction: column; gap: 2px;
+      padding: 10px 20px 18px;
+      background: rgba(5,5,6,.96);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+    .mobile-menu a { padding: 13px 8px; font-size: 15px; font-weight: 500; color: var(--muted); border-radius: 10px; }
+    .mobile-menu a:hover { color: var(--ink); background: rgba(255,255,255,.05); }
+    .mobile-menu .btn { margin-top: 10px; color: #000; justify-content: center; }
+    nav.open .mobile-menu { display: flex; }
+    nav.open { background: rgba(5,5,6,.96); border-bottom-color: var(--border); }
+    nav.open .nav-toggle .bars { display: none; }
+    nav.open .nav-toggle .x { display: block; }
+    @media (max-width: 780px) {
+      .nav-links { display: none; }
+      .nav-toggle { display: inline-flex; }
+    }
+
+    /* "coming soon" chip — used wherever a feature is honest about not shipping yet */
+    .soon {
+      display: inline-block; vertical-align: 2px; margin-left: 8px;
+      font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+      color: var(--ink); border: 1px solid var(--border-hi); border-radius: 999px;
+      padding: 3px 9px; white-space: nowrap;
+    }
 
     /* ================= buttons ================= */
     .btn {
@@ -321,12 +355,12 @@
     .tile .cap { color: var(--muted); font-size: 13.5px; margin-top: 12px; }
     .privacy-note {
       margin-top: 14px;
-      background: rgba(62,207,142,.04);
-      border: 1px solid rgba(62,207,142,.16);
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--border-hi);
       border-radius: var(--radius); padding: 26px 28px; color: var(--muted); font-size: 14px;
       display: flex; gap: 16px; align-items: flex-start;
     }
-    .privacy-note svg { width: 20px; height: 20px; flex: none; margin-top: 3px; stroke: var(--green); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .privacy-note svg { width: 20px; height: 20px; flex: none; margin-top: 3px; stroke: var(--ink); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
     .privacy-note b { color: var(--ink); }
 
     /* ================= invariant ================= */
@@ -444,6 +478,31 @@
     .reveal.d1 { transition-delay: .07s; } .reveal.d2 { transition-delay: .14s; }
     .reveal.d3 { transition-delay: .21s; } .reveal.d4 { transition-delay: .28s; }
 
+    /* ================= mobile refinements ================= */
+    @media (max-width: 780px) {
+      .wrap { padding: 0 20px; }
+      section { padding: 90px 0 0; }
+      .hero { padding: 104px 0 72px; }
+      #scene.on { opacity: .5; }          /* keep the 3D from fighting the copy */
+      .hero p.sub { font-size: 15.5px; margin: 22px 0 30px; }
+      .grid, .steps-grid, .tiles, ol.steps { margin-top: 40px; }
+      .invariant { padding: 44px 24px; margin-top: 40px; }
+      .dl-card { margin-top: 40px; gap: 32px; }
+      .qr-side { flex-wrap: wrap; text-align: center; }
+      .qr-caption { max-width: none; }
+      .cta-band { margin-top: 90px; padding: 80px 0 90px; }
+      .faq { margin-top: 40px; }
+      .scroll-hint { display: none; }
+    }
+    @media (max-width: 480px) {
+      .hero-ctas { flex-direction: column; align-items: stretch; }
+      .hero-ctas .btn { width: 100%; }
+      .dl-btns { flex-direction: column; }
+      .dl-btns .btn { width: 100%; }
+      .stat b { font-size: 21px; }
+      .stat span { font-size: 11.5px; }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation: none !important; transition: none !important; }
       .reveal { opacity: 1; transform: none; }
@@ -484,6 +543,18 @@
         </a>
         <a class="btn small" href="#download">Download</a>
       </div>
+      <button class="nav-toggle" id="nav-toggle" aria-label="Menu" aria-expanded="false" aria-controls="mobile-menu">
+        <svg class="bars" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        <svg class="x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="mobile-menu" id="mobile-menu">
+      <a href="#features">Features</a>
+      <a href="#product">App</a>
+      <a href="#privacy">Privacy</a>
+      <a href="#faq">FAQ</a>
+      <a href="https://github.com/PATILYASHH/XPENC" target="_blank" rel="noopener">GitHub</a>
+      <a class="btn" href="#download">Download</a>
     </div>
   </nav>
 
@@ -499,8 +570,9 @@
           <h1>Money, tracked<br><span class="dim">honestly.</span></h1>
           <p class="sub">
             XPENC is an offline-first personal finance app for Android.
-            Income, expenses, budgets, dues and automatic bank-SMS capture —
+            Income, expenses, budgets, dues and insights —
             <b>everything stays on your phone.</b> No server. No sign-up.
+            No SMS permission — it installs directly, no Play&nbsp;Protect fuss.
           </p>
           <div class="hero-ctas">
             <a class="btn" href="https://github.com/PATILYASHH/XPENC/releases/latest/download/xpenc-arm64-v8a.apk">
@@ -513,10 +585,10 @@
             </a>
           </div>
           <div class="hero-meta">
-            <span id="release-tag">v1.0.0</span><span class="sep"></span>
+            <span id="release-tag">v1.1.0</span><span class="sep"></span>
             <span>Android 7.0+</span><span class="sep"></span>
             <span>MIT License</span><span class="sep"></span>
-            <span>~20 MB</span>
+            <span>~22 MB</span>
           </div>
         </div>
         <div><!-- 3D icon renders in the canvas behind this column --></div>
@@ -530,7 +602,7 @@
     <div class="wrap strip-grid">
       <div class="stat"><b>100%</b><span>offline &amp; on-device</span></div>
       <div class="stat"><b>0</b><span>servers · trackers · ads</span></div>
-      <div class="stat"><b>116+</b><span>tests guarding the math</span></div>
+      <div class="stat"><b>164</b><span>tests guarding the math</span></div>
       <div class="stat"><b>MIT</b><span>free &amp; open source</span></div>
     </div>
   </div>
@@ -567,8 +639,8 @@
           </div>
           <div class="feature reveal d3">
             <div class="icon"><svg viewBox="0 0 24 24"><path d="M4 5h16v12H8l-4 4z"/><path d="M9 9h6"/></svg></div>
-            <h3>Bank-SMS auto-capture</h3>
-            <p>Bank messages parsed on your phone into review cards. Approve to post. Learned rules can auto-fill — and Undo really reverses the money.</p>
+            <h3>Bank-SMS auto-capture<span class="soon">Coming soon</span></h3>
+            <p>Paused for now: Google Play Protect blocks direct-download apps that read SMS. The on-device pipeline is already built and returns in a Play-compliant form.</p>
           </div>
           <div class="feature reveal">
             <div class="icon"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M17 8h5M19.5 5.5v5"/></svg></div>
@@ -605,7 +677,7 @@
             <ul class="checklist">
               <li><span class="tick"><svg viewBox="0 0 24 24"><polyline points="4 12 10 18 20 6"/></svg></span><span><b>Net worth at a glance</b> — the one number that can't lie, plus month in and out.</span></li>
               <li><span class="tick"><svg viewBox="0 0 24 24"><polyline points="4 12 10 18 20 6"/></svg></span><span><b>Day-wise transactions</b> — grouped with daily totals, filters and search.</span></li>
-              <li><span class="tick"><svg viewBox="0 0 24 24"><polyline points="4 12 10 18 20 6"/></svg></span><span><b>SMS review cards</b> — detected transactions wait at the top until you approve them.</span></li>
+              <li><span class="tick"><svg viewBox="0 0 24 24"><polyline points="4 12 10 18 20 6"/></svg></span><span><b>Cash reminders</b> — EMIs and bills on the calendar; nothing posts until you confirm, so nothing is ever booked twice.</span></li>
               <li><span class="tick"><svg viewBox="0 0 24 24"><polyline points="4 12 10 18 20 6"/></svg></span><span><b>Five-tab navigation</b> — Dashboard · Transactions · Add · Accounts · More.</span></li>
             </ul>
           </div>
@@ -662,8 +734,8 @@
             <p>Add Cash, your banks and cards with opening balances. Link debit cards and UPI to the bank they draw from — that's what keeps the math honest.</p>
           </div>
           <div class="step reveal d1">
-            <h3>Spend like you always do</h3>
-            <p>Bank SMS are parsed on-device into review cards: amount, account, merchant. Tap a category, approve, done. Manual entry takes seconds too.</p>
+            <h3>Log spends in seconds</h3>
+            <p>A big keypad, your accounts, a category grid — one screen, a few taps. Transfers and credit-card bill payments are first-class, not workarounds.</p>
           </div>
           <div class="step reveal d2">
             <h3>Trust the numbers</h3>
@@ -678,24 +750,26 @@
       <div class="wrap">
         <div class="section-head reveal">
           <div class="kicker">Privacy</div>
-          <h2>Your bank messages never leave your phone.</h2>
+          <h2>Your money data never leaves your phone.</h2>
           <p class="lead">
-            This is a money app that reads your bank SMS — so privacy is the whole trust story.
-            Everything is parsed and stored on-device, in a local SQLite database.
+            This is a money app — privacy is the whole trust story.
+            Everything lives on-device in a local SQLite database. There is no
+            account, no cloud, and nowhere to upload anything to.
           </p>
         </div>
         <div class="tiles">
           <div class="tile reveal"><div class="big">0</div><div class="cap">servers — there is no backend at all</div></div>
           <div class="tile reveal d1"><div class="big">0</div><div class="cap">analytics, trackers or ads</div></div>
-          <div class="tile reveal d2"><div class="big">0</div><div class="cap">accounts — no sign-up, no e-mail, no cloud</div></div>
+          <div class="tile reveal d2"><div class="big">0</div><div class="cap">SMS or contact permissions requested</div></div>
         </div>
         <div class="privacy-note reveal">
           <svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.6-7 10-4-1.4-7-5.5-7-10V6z"/><polyline points="9 12 11 14 15 10"/></svg>
           <div>
-            <b>Deliberately minimal permissions.</b> XPENC asks for <b>READ_SMS</b> and intentionally
-            <b>not</b> RECEIVE_SMS: it scans your inbox when you open the app instead of running a
-            background receiver. Decline the permission and everything still works with manual entry.
-            No message, transaction or balance is ever uploaded — there is nowhere to upload it to.
+            <b>One runtime permission: notifications.</b> Since v1.1.0 XPENC requests
+            <b>no SMS permission at all</b> — which is why it installs directly with no
+            Play&nbsp;Protect warning. Budget alerts and reminders are the only thing it
+            ever asks the system for. No transaction or balance is ever uploaded —
+            there is nowhere to upload it to.
           </div>
         </div>
       </div>
@@ -748,8 +822,8 @@
           </div>
         </div>
         <ol class="steps reveal">
-          <li><b>Download the APK</b> — your browser may warn about APK files; normal for apps outside the Play Store.</li>
-          <li><b>Open it and allow</b> "install unknown apps" for your browser when Android asks.</li>
+          <li><b>Download the APK</b> — since v1.1.0 XPENC requests no SMS permission, so Play&nbsp;Protect no longer blocks the install. No pausing protection, no workarounds.</li>
+          <li><b>Open it and allow</b> "install unknown apps" for your browser when Android asks — the standard step for any app outside the Play Store.</li>
           <li><b>Set up in a minute</b> — currency, accounts, opening balances. Done.</li>
         </ol>
       </div>
@@ -772,20 +846,20 @@
             <div class="a">In a local SQLite database inside the app's private storage on your phone. You can export a full JSON backup (and CSV) anytime and restore it on another device. Nothing is uploaded — there is no server to upload to.</div>
           </details>
           <details>
-            <summary>Why does it need SMS permission?<span class="chev"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></summary>
-            <div class="a">To auto-capture bank transaction messages so you don't have to type every expense. Parsing happens entirely on-device, and XPENC deliberately uses <code>READ_SMS</code> (scan when you open the app) instead of <code>RECEIVE_SMS</code> (background receiver). Decline it and the app works fully with manual entry.</div>
+            <summary>What happened to bank-SMS auto-capture?<span class="chev"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+            <div class="a">Version 1.0 read bank SMS on-device and turned them into review cards. But Google Play Protect blocks apps installed outside the Play Store that request SMS permissions — people had to pause their phone's protection just to install XPENC. Asking users to lower their security to install a money app is the wrong trade, so v1.1.0 removes the SMS permission entirely and installs cleanly. The whole capture pipeline (parser, dedupe, review inbox, learned rules) still exists in the codebase and <b>will return in a Play-compliant form</b>. Until then, manual entry takes a few seconds.</div>
+          </details>
+          <details>
+            <summary>Does the app read my SMS?<span class="chev"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+            <div class="a">No. Since v1.1.0 XPENC requests no SMS permission at all — the only runtime permission is notifications, for budget alerts and reminders. You can verify this in the <a href="https://github.com/PATILYASHH/XPENC/blob/master/android/app/src/main/AndroidManifest.xml" target="_blank" rel="noopener">open-source manifest</a>; a test in the repo fails the build if an SMS permission ever sneaks back in.</div>
           </details>
           <details>
             <summary>Why isn't it on the Play Store?<span class="chev"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></summary>
-            <div class="a">Google restricts SMS permissions for expense trackers, so the full-featured build ships as a direct APK from <a href="https://github.com/PATILYASHH/XPENC/releases" target="_blank" rel="noopener">GitHub Releases</a>, with SHA-256 checksums. A Play-compliant build is a stated eventual goal — the capture layer is architected to be swappable for exactly that reason.</div>
-          </details>
-          <details>
-            <summary>Which banks are supported for SMS capture?<span class="chev"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></summary>
-            <div class="a">India Post Payments Bank (IPPB) ships first; unknown senders still surface as cards you can map manually. Bank templates are config + regex — <a href="https://github.com/PATILYASHH/XPENC/blob/master/CONTRIBUTING.md" target="_blank" rel="noopener">adding your bank</a> is the project's favourite first contribution.</div>
+            <div class="a">It's a personal project distributed as a direct APK from <a href="https://github.com/PATILYASHH/XPENC/releases" target="_blank" rel="noopener">GitHub Releases</a> — every build is compiled, tested and checksummed by CI, and it now installs without any Play Protect friction. A Play Store listing is a stated eventual goal.</div>
           </details>
           <details>
             <summary>iOS?<span class="chev"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></summary>
-            <div class="a">The codebase is Flutter, so an iOS build is technically feasible — but iOS doesn't allow SMS reading, so auto-capture wouldn't exist there. Android first.</div>
+            <div class="a">The codebase is Flutter, so an iOS build is technically feasible. Android first — it's where the app is used and tested daily.</div>
           </details>
         </div>
       </div>
@@ -805,7 +879,7 @@
         <div class="oss">
           <div class="feature reveal">
             <h3>Engineering you can read</h3>
-            <p>A single Flutter codebase with a local-first data layer. 116+ tests guard the money invariants, and every APK is gated by a native-library verification script before it ships. The full design doc — including an adversarial audit that found and fixed 8 defects — lives in the repo.</p>
+            <p>A single Flutter codebase with a local-first data layer. 164 tests guard the money invariants, and every APK is gated by a native-library verification script before it ships. The full design doc — including an adversarial audit that found and fixed 8 defects — lives in the repo.</p>
             <div class="chips">
               <span class="chip">Flutter</span><span class="chip">Dart</span><span class="chip">Riverpod</span>
               <span class="chip">Drift · SQLite</span><span class="chip">Material 3</span>
@@ -814,7 +888,7 @@
           </div>
           <div class="feature reveal d1">
             <h3>Contributions welcome</h3>
-            <p>Good first issues: add an SMS template for your bank, improve parsing, or pick up a roadmap item. Read the contributing guide, open an issue, send a PR — CI runs the full suite on every pull request.</p>
+            <p>Good first issues: add an SMS template for your bank (ready for when auto-capture returns), improve the parser, or pick up a roadmap item. Read the contributing guide, open an issue, send a PR — CI runs the full suite on every pull request.</p>
             <div class="cta-row">
               <a class="btn small" href="https://github.com/PATILYASHH/XPENC/blob/master/CONTRIBUTING.md" target="_blank" rel="noopener">Contributing guide</a>
               <a class="btn small ghost" href="https://github.com/PATILYASHH/XPENC/issues" target="_blank" rel="noopener">Open an issue</a>
@@ -883,6 +957,16 @@
     const nav = document.getElementById('nav');
     const onScroll = () => nav.classList.toggle('scrolled', scrollY > 12);
     addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+    // mobile menu
+    const navToggle = document.getElementById('nav-toggle');
+    const setMenu = (open) => {
+      nav.classList.toggle('open', open);
+      navToggle.setAttribute('aria-expanded', String(open));
+    };
+    navToggle.addEventListener('click', () => setMenu(!nav.classList.contains('open')));
+    document.querySelectorAll('#mobile-menu a').forEach(a =>
+      a.addEventListener('click', () => setMenu(false)));
 
     // reveal on scroll
     const io = new IntersectionObserver((entries) => {

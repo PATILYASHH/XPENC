@@ -1,10 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- READ_SMS is used ONLY to detect bank transaction SMS on-device so the app
-         can surface review cards. Message contents are parsed locally and NOTHING
-         is ever uploaded off the device. We deliberately do NOT request RECEIVE_SMS:
-         the app scans the inbox on resume instead of listening for live broadcasts,
-         which needs one fewer (sensitive) permission. -->
-    <uses-permission android:name="android.permission.READ_SMS"/>
+    <!-- No SMS permissions — deliberately. READ_SMS made Google Play Protect
+         block direct APK installs (users had to pause protection to install),
+         so bank-SMS auto-capture is paused. The capture pipeline still exists
+         behind the MessageSource interface; do NOT re-add READ_SMS here without
+         re-testing sideload install on a Play-Protect-enabled device.
+         test/native_channel_test.dart fails the build if this returns. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <application

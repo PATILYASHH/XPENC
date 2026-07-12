@@ -2,36 +2,46 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// The Dart and Kotlin sides of the SMS bridge agree on the channel name only
-/// by convention — `SmsSource._channel` is a private string and
-/// `MainActivity.CHANNEL` lives in another language. Every other test in this
-/// repo injects a `FakeMessageSource`, so if the two ever drift apart nothing
-/// fails: SMS capture just silently returns nothing on a real phone.
+/// Guards the 1.1.0 decision to ship with **no SMS permission**.
 ///
-/// This test is what makes renaming the channel safe. It was written during the
-/// XPENC rebrand, when the temptation to rename `money_manager/sms` for
-/// cosmetic reasons was exactly the kind of change that would have shipped
-/// broken.
+/// Google Play Protect blocks direct-download APKs that request SMS
+/// permissions — users had to pause protection just to install XPENC. The
+/// permission and the `money_manager/sms` platform channel were removed, and
+/// nothing else in the repo would fail if someone quietly re-added them: the
+/// Dart tests inject a `FakeMessageSource`, so a manifest edit ships silently.
+///
+/// This file is what makes the removal stick. If capture returns, it must be
+/// through a Play-compliant source (e.g. a NotificationListenerService), and
+/// whoever lands it should update this test *deliberately* — after re-testing
+/// a sideload install on a Play-Protect-enabled device.
 void main() {
-  test('Dart and Kotlin declare the same SMS MethodChannel', () {
-    final dart = File('lib/features/message_capture/message_source.dart')
-        .readAsStringSync();
+  test('the manifest requests no SMS permissions', () {
+    final manifest =
+        File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+
+    expect(
+      manifest.contains('android.permission.READ_SMS'),
+      isFalse,
+      reason: 'READ_SMS is back in the manifest — Play Protect blocks '
+          'sideloaded installs that request it. See this test\'s doc comment.',
+    );
+    expect(
+      manifest.contains('android.permission.RECEIVE_SMS'),
+      isFalse,
+      reason: 'RECEIVE_SMS is even more restricted than READ_SMS.',
+    );
+  });
+
+  test('MainActivity carries no SMS code', () {
     final kotlin =
         File('android/app/src/main/kotlin/com/yash/xpenc/MainActivity.kt')
             .readAsStringSync();
 
-    final dartChannel =
-        RegExp(r"MethodChannel\(\s*'([^']+)'").firstMatch(dart)?.group(1);
-    final kotlinChannel =
-        RegExp(r'CHANNEL\s*=\s*"([^"]+)"').firstMatch(kotlin)?.group(1);
-
-    expect(dartChannel, isNotNull, reason: 'no MethodChannel found in Dart');
-    expect(kotlinChannel, isNotNull, reason: 'no CHANNEL found in Kotlin');
-    expect(
-      dartChannel,
-      kotlinChannel,
-      reason: 'SMS capture is dead: the platform channel names disagree',
-    );
+    // The old channel read the inbox via Telephony.Sms — its return would mean
+    // SMS code shipped again without the manifest permission (dead code at
+    // best, a Play Protect static-analysis flag at worst).
+    expect(kotlin.contains('Telephony'), isFalse);
+    expect(kotlin.contains('Manifest.permission'), isFalse);
   });
 
   test('Kotlin package matches its directory and the Gradle namespace', () {

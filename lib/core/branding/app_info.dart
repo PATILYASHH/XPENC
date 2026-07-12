@@ -15,12 +15,12 @@ class AppInfo {
 
   /// Shown under the wordmark on the About screen.
   static const description =
-      'Offline-first personal finance. Your ledger, budgets and bank messages '
-      'are parsed and stored on this device — nothing is ever uploaded.';
+      'Offline-first personal finance. Your ledger, budgets and dues live '
+      'on this device — nothing is ever uploaded.';
 
   // ── Version ────────────────────────────────────────────────────────────────
-  static const version = '1.0.0';
-  static const buildNumber = 1;
+  static const version = '1.1.0';
+  static const buildNumber = 2;
 
   /// `1.0.0 (build 1)` — the string a bug report should quote.
   static const versionLabel = '$version (build $buildNumber)';
