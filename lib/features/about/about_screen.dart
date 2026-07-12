@@ -78,7 +78,7 @@ class AboutScreen extends StatelessWidget {
                 ),
                 Divider(height: 1, indent: 60, color: cs.outline),
                 _LinkTile(
-                  icon: Icons.code_rounded,
+                  icon: Icons.alternate_email_rounded,
                   label: 'GitHub',
                   value: '@${AppInfo.githubHandle}',
                   url: AppInfo.githubUrl,
@@ -94,13 +94,45 @@ class AboutScreen extends StatelessWidget {
             ),
           ),
 
-          _sectionLabel(context, 'Source'),
+          _sectionLabel(context, 'Project'),
           Card(
-            child: _LinkTile(
-              icon: Icons.link_rounded,
-              label: 'Repository',
-              value: 'PATILYASHH/Money-Management',
-              url: AppInfo.repoUrl,
+            child: Column(
+              children: [
+                _LinkTile(
+                  icon: Icons.language_rounded,
+                  label: 'Website',
+                  value: 'getxpenc.vercel.app',
+                  url: AppInfo.websiteUrl,
+                ),
+                Divider(height: 1, indent: 60, color: cs.outline),
+                _LinkTile(
+                  icon: Icons.code_rounded,
+                  label: 'Source code',
+                  value: 'PATILYASHH/XPENC',
+                  url: AppInfo.repoUrl,
+                ),
+                Divider(height: 1, indent: 60, color: cs.outline),
+                _LinkTile(
+                  icon: Icons.system_update_alt_rounded,
+                  label: 'Latest release',
+                  value: 'APKs & release notes',
+                  url: AppInfo.releasesUrl,
+                ),
+                Divider(height: 1, indent: 60, color: cs.outline),
+                _LinkTile(
+                  icon: Icons.bug_report_outlined,
+                  label: 'Report a bug',
+                  value: 'Open an issue on GitHub',
+                  url: AppInfo.issuesUrl,
+                ),
+                Divider(height: 1, indent: 60, color: cs.outline),
+                _LinkTile(
+                  icon: Icons.gavel_rounded,
+                  label: AppInfo.licenseName,
+                  value: 'Free & open source',
+                  url: AppInfo.licenseUrl,
+                ),
+              ],
             ),
           ),
 

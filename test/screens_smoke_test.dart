@@ -228,6 +228,12 @@ void main() {
     expect(find.text('Version ${AppInfo.versionLabel}'), findsOneWidget);
     expect(find.text('@${AppInfo.githubHandle}'), findsOneWidget);
     expect(find.text('/in/${AppInfo.linkedinHandle}'), findsOneWidget);
+    // Project links — the source-code link once pointed at a repo that
+    // doesn't exist publicly; these keep the shipped links real. They sit
+    // below the fold at phone size, so bring them into the viewport first.
+    await tester.scrollUntilVisible(find.text('PATILYASHH/XPENC'), 240);
+    expect(find.text('getxpenc.vercel.app'), findsOneWidget);
+    expect(find.text('PATILYASHH/XPENC'), findsOneWidget);
     await unmount(tester);
   });
 

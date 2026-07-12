@@ -45,10 +45,21 @@ void main() {
     test('links point at the real profiles', () {
       expect(AppInfo.githubUrl, 'https://github.com/PATILYASHH');
       expect(AppInfo.linkedinUrl, 'https://www.linkedin.com/in/patilyasshh/');
+      // The public repo and website — a wrong link here ships to every phone.
+      expect(AppInfo.repoUrl, 'https://github.com/PATILYASHH/XPENC');
+      expect(AppInfo.websiteUrl, 'https://getxpenc.vercel.app');
     });
 
     test('every advertised link is an absolute https URL', () {
-      for (final url in [AppInfo.githubUrl, AppInfo.linkedinUrl, AppInfo.repoUrl]) {
+      for (final url in [
+        AppInfo.githubUrl,
+        AppInfo.linkedinUrl,
+        AppInfo.repoUrl,
+        AppInfo.websiteUrl,
+        AppInfo.issuesUrl,
+        AppInfo.releasesUrl,
+        AppInfo.licenseUrl,
+      ]) {
         final uri = Uri.parse(url);
         expect(uri.isAbsolute, isTrue, reason: '$url is not absolute');
         expect(uri.scheme, 'https', reason: '$url is not https');

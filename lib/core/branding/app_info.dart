@@ -35,8 +35,21 @@ class AppInfo {
   static const linkedinHandle = 'patilyasshh';
   static const linkedinUrl = 'https://www.linkedin.com/in/patilyasshh/';
 
+  // ── Project ────────────────────────────────────────────────────────────────
   /// Where this build's source lives.
-  static const repoUrl = 'https://github.com/PATILYASHH/Money-Management';
+  static const repoUrl = 'https://github.com/PATILYASHH/XPENC';
+
+  /// The project website — features, downloads, FAQ.
+  static const websiteUrl = 'https://getxpenc.vercel.app';
+
+  /// New issue with a template picker (bug / feature / bank support).
+  static const issuesUrl = '$repoUrl/issues/new/choose';
+
+  /// Latest published APKs + SHA-256 checksums.
+  static const releasesUrl = '$repoUrl/releases/latest';
+
+  static const licenseName = 'MIT License';
+  static const licenseUrl = '$repoUrl/blob/master/LICENSE';
 
   static const copyright = '© 2026 Yash Patil';
 }
