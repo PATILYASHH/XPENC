@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — XPENC</title>
+  <meta name="description" content="XPENC privacy policy: everything stays on your phone. No server, no accounts, no analytics, no ads. Release builds don't even request the INTERNET permission.">
+  <meta name="theme-color" content="#000000">
+
+  <link rel="icon" href="assets/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon_32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon_16.png">
+  <link rel="apple-touch-icon" href="assets/apple_touch_icon_180.png">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Privacy Policy — XPENC">
+  <meta property="og:description" content="Everything stays on your phone. No server, no accounts, no analytics, no ads.">
+  <meta property="og:url" content="https://getxpenc.vercel.app/privacy">
+  <meta property="og:image" content="https://getxpenc.vercel.app/assets/xpenc_icon_1024.png">
+  <meta name="twitter:card" content="summary">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #050506;
+      --panel: #0c0c0f;
+      --border: rgba(255,255,255,.08);
+      --ink: #f4f4f6;
+      --muted: #a2a2ac;
+      --faint: #62626c;
+      --green: #3ecf8e;
+      --font-display: "Space Grotesk", system-ui, sans-serif;
+      --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg); color: var(--ink);
+      font-family: var(--font-body); font-size: 15.5px; line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--faint); text-underline-offset: 3px; }
+    a:hover { text-decoration-color: var(--ink); }
+    ::selection { background: #fff; color: #000; }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 0 28px; }
+
+    nav {
+      border-bottom: 1px solid var(--border);
+      background: rgba(5,5,6,.78); backdrop-filter: blur(20px);
+      position: sticky; top: 0; z-index: 10;
+    }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+    .brand {
+      display: flex; align-items: center; gap: 11px; text-decoration: none;
+      font-family: var(--font-display); font-weight: 700; letter-spacing: .18em; font-size: 15px;
+    }
+    .brand img { width: 26px; height: 26px; border-radius: 7px; }
+    .nav-back { font-size: 13.5px; color: var(--muted); text-decoration: none; }
+    .nav-back:hover { color: var(--ink); }
+
+    header.doc { padding: 64px 0 8px; }
+    .kicker {
+      font-family: var(--font-display); font-size: 12px; font-weight: 600;
+      letter-spacing: .22em; text-transform: uppercase; color: var(--green);
+    }
+    h1 { font-family: var(--font-display); font-size: clamp(30px, 5vw, 42px); letter-spacing: -.02em; margin: 10px 0 14px; }
+    .meta { color: var(--muted); font-size: 14px; }
+    .meta b { color: var(--ink); font-weight: 600; }
+
+    main { padding: 28px 0 80px; }
+    h2 {
+      font-family: var(--font-display); font-size: 21px; letter-spacing: -.01em;
+      margin: 44px 0 12px; padding-top: 28px; border-top: 1px solid var(--border);
+    }
+    p, ul, ol, table { margin: 0 0 14px; color: var(--muted); }
+    strong { color: var(--ink); }
+    ul, ol { padding-left: 22px; }
+    li { margin-bottom: 6px; }
+    li::marker { color: var(--faint); }
+    code {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: .88em;
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 6px; padding: 1px 6px; color: var(--ink);
+    }
+    .callout {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+      padding: 18px 20px; margin: 18px 0 26px; color: var(--muted);
+    }
+    .callout strong { color: var(--green); }
+    .tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; overflow-x: auto; display: block; }
+    .tbl th, .tbl td { text-align: left; padding: 10px 14px; border: 1px solid var(--border); vertical-align: top; }
+    .tbl th { font-family: var(--font-display); font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); background: var(--panel); }
+
+    footer { border-top: 1px solid var(--border); padding: 34px 0 46px; color: var(--faint); font-size: 13.5px; }
+    .foot-bottom { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+    footer a { color: var(--faint); }
+    footer a:hover { color: var(--ink); }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">
+        <img src="assets/icon_192.png" alt="">
+        XPENC
+      </a>
+      <a class="nav-back" href="/">← getxpenc.vercel.app</a>
+    </div>
+  </nav>
+
+  <header class="doc">
+    <div class="wrap">
+      <div class="kicker">Privacy Policy</div>
+      <h1>Everything stays on your phone.</h1>
+      <p class="meta">
+        <b>Effective date:</b> 12 July 2026 &nbsp;·&nbsp;
+        <b>Applies to:</b> XPENC for Android (<code>com.yash.xpenc</code>), v1.1.0+ &nbsp;·&nbsp;
+        <b>Developer:</b> Yash Patil &nbsp;·&nbsp;
+        <b>Contact:</b> <a href="mailto:banafintech@gmail.com">banafintech@gmail.com</a>
+      </p>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap">
+
+      <div class="callout">
+        <strong>The short version:</strong> XPENC stores everything on your phone and
+        nothing anywhere else. The app has no server, no user accounts, no analytics, no
+        crash reporting, no ads, and no third-party SDKs that collect data. Release builds
+        do not request the <code>INTERNET</code> permission, so the app is technically
+        incapable of transmitting your data anywhere.
+      </div>
+
+      <h2>Data the app stores — on your device only</h2>
+      <p>When you use XPENC you create financial records:</p>
+      <ul>
+        <li>accounts and their balances (cash, bank, cards)</li>
+        <li>transactions (income, expenses, transfers) with amounts, dates, categories and notes</li>
+        <li>budgets and budget alerts</li>
+        <li>persons and dues/loans you record against them</li>
+        <li>reminders and calendar entries</li>
+        <li>app settings</li>
+      </ul>
+      <p>
+        All of this is stored in a private SQLite database inside the app's private storage
+        area, which Android sandboxes from other apps. It is <strong>never transmitted</strong>
+        to the developer or to any third party. The developer has no way to see, access, or
+        recover it.
+      </p>
+
+      <h2>Data the app collects or shares</h2>
+      <p>
+        <strong>None.</strong> XPENC collects no personal data, no financial data, no device
+        identifiers, no usage analytics, and no diagnostics. Nothing is shared with anyone,
+        because nothing ever leaves the device. The app's Google Play Data safety section
+        accordingly declares <em>no data collected, no data shared</em>.
+      </p>
+
+      <h2>Permissions</h2>
+      <table class="tbl">
+        <tr><th>Permission</th><th>Why the app requests it</th></tr>
+        <tr>
+          <td><code>POST_NOTIFICATIONS</code><br>(optional, asked at runtime)</td>
+          <td>To show budget alerts and the bill/EMI reminders you set. If you deny it, the
+              app works normally — you just get no notifications.</td>
+        </tr>
+        <tr>
+          <td><code>RECEIVE_BOOT_COMPLETED</code></td>
+          <td>To re-schedule your local reminders after the phone restarts.</td>
+        </tr>
+      </table>
+      <p>
+        XPENC requests <strong>no</strong> SMS, location, camera, microphone, contacts,
+        storage, or internet permission. (The final app package also contains
+        <code>VIBRATE</code> — a standard, install-time permission added by the
+        notifications library so notifications can vibrate — and an internal
+        Android-library permission scoped to the app itself. Neither gives access to any
+        of your data.)
+      </p>
+
+      <h2>Backups and exports</h2>
+      <ul>
+        <li>
+          <strong>In-app backup/export (JSON and CSV):</strong> created only when you tap the
+          button, and handed to the Android share sheet — you choose where the file goes
+          (your files, your email, your cloud drive). Exported files contain your financial
+          records in readable form, so treat them as sensitive. The developer never receives them.
+        </li>
+        <li>
+          <strong>Android system backup:</strong> like most Android apps, XPENC's data may be
+          included in your device's own backup (for example Google's device backup tied to
+          your Google account) if you have that enabled in Android settings. That backup is
+          operated by Android/Google under your device settings and Google's privacy policy,
+          not by XPENC.
+        </li>
+      </ul>
+
+      <h2>Data retention and deletion</h2>
+      <p>Your data stays on your device until <strong>you</strong> remove it. You can:</p>
+      <ol>
+        <li>delete individual records inside the app,</li>
+        <li>clear the app's data in Android settings (<em>Apps → XPENC → Storage → Clear data</em>), or</li>
+        <li>uninstall the app — Android deletes the app's private storage with it.</li>
+      </ol>
+      <p>There is no server-side copy to delete, and no "account" to close.</p>
+
+      <h2>Children</h2>
+      <p>
+        XPENC is a personal finance tool intended for adults. It is not directed at children
+        under 13, and it collects no data from anyone regardless of age.
+      </p>
+
+      <h2>The website</h2>
+      <p>
+        This website is a static page hosted on Vercel. It runs no analytics or trackers.
+        Like any web host, Vercel may keep standard access logs (IP address, user agent) to
+        operate the service — see
+        <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener">Vercel's privacy policy</a>.
+        The page loads fonts from Google Fonts, an optional 3D effect from the jsDelivr CDN,
+        and the latest release number from the GitHub API; those requests are made by your
+        <strong>browser when you visit the website</strong>, never by the Android app.
+      </p>
+
+      <h2>Open source</h2>
+      <p>
+        XPENC is open source under the MIT license. Every claim in this policy can be
+        verified by reading the code:
+        <a href="https://github.com/PATILYASHH/XPENC" target="_blank" rel="noopener">github.com/PATILYASHH/XPENC</a>.
+      </p>
+
+      <h2>Future features: bank-message capture</h2>
+      <p>
+        Version 1.0 offered on-device scanning of bank SMS to pre-fill transactions; it was
+        removed in version 1.1.0 and the current app requests no SMS permission. If this
+        feature returns, it will be announced in the release notes, this policy and the Play
+        Store Data safety section will be updated <strong>before</strong> release, and
+        processing will remain fully on-device.
+      </p>
+
+      <h2>Changes to this policy</h2>
+      <p>
+        Updates are published at this URL with a new effective date. Material changes will
+        also be called out in the
+        <a href="https://github.com/PATILYASHH/XPENC/blob/master/CHANGELOG.md" target="_blank" rel="noopener">changelog</a>
+        and release notes.
+      </p>
+
+      <h2>Contact</h2>
+      <ul>
+        <li>Email: <a href="mailto:banafintech@gmail.com">banafintech@gmail.com</a></li>
+        <li>Bug reports: <a href="https://github.com/PATILYASHH/XPENC/issues" target="_blank" rel="noopener">GitHub issues</a></li>
+        <li>Security vulnerabilities: <a href="https://github.com/PATILYASHH/XPENC/security" target="_blank" rel="noopener">private reporting</a></li>
+      </ul>
+
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap foot-bottom">
+      <span>© <span id="year">2026</span> Yash Patil</span>
+      <span><a href="/">Home</a> · <a href="https://github.com/PATILYASHH/XPENC" target="_blank" rel="noopener">GitHub</a></span>
+    </div>
+  </footer>
+
+  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+</body>
+</html>
