@@ -77,6 +77,7 @@ Everything is stored on-device in the app's private SQLite database. Since
 1.1.0 the app requests **no SMS permission at all** — the only runtime
 permission is notifications. No transaction or balance ever leaves the phone.
 **There is no server.**
+Full policy: [PRIVACY.md](PRIVACY.md) · live at [getxpenc.vercel.app/privacy](https://getxpenc.vercel.app/privacy).
 See [SECURITY.md](SECURITY.md) for the vulnerability disclosure policy.
 
 ## Tech stack
