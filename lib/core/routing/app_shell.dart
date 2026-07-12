@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../theme/app_colors.dart';
-
 /// `Dashboard · Transactions · ➕ · Accounts · More`
 ///
 /// The ➕ slot is not a tab — it pushes the Add Transaction route. Tabs map to
@@ -92,7 +90,7 @@ class AppShell extends StatelessWidget {
     return Expanded(
       child: Center(
         child: Material(
-          color: AppColors.accent,
+          color: Theme.of(context).colorScheme.secondary,
           shape: const CircleBorder(),
           child: InkWell(
             customBorder: const CircleBorder(),

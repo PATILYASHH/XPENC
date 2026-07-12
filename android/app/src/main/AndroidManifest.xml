@@ -1,8 +1,17 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- READ_SMS is used ONLY to detect bank transaction SMS on-device so the app
+         can surface review cards. Message contents are parsed locally and NOTHING
+         is ever uploaded off the device. We deliberately do NOT request RECEIVE_SMS:
+         the app scans the inbox on resume instead of listening for live broadcasts,
+         which needs one fewer (sensitive) permission. -->
+    <uses-permission android:name="android.permission.READ_SMS"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <application
-        android:label="money_manager"
+        android:label="@string/app_name"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round">
         <activity
             android:name=".MainActivity"
             android:exported="true"

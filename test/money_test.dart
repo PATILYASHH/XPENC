@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:money_manager/core/money.dart';
+import 'package:xpenc/core/money.dart';
 
 void main() {
   group('Money', () {

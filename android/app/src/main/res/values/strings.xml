@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The launcher label. This is the only place the user-facing app name is
+         defined on Android; the manifest points at it. -->
+    <string name="app_name">XPENC</string>
+</resources>

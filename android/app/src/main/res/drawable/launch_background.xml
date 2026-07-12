@@ -1,12 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Modify this file to customize your launch splash screen -->
+<!-- Light-mode splash: the XPENC mark on white. The dark variant lives in
+     res/drawable-night/. This window background is what the user looks at
+     between process start and Flutter's first frame, so it carries the brand
+     rather than a blank sheet.
+
+     The stock template also shipped a drawable-v21/ copy of this file. It has
+     been deleted: -v21 shadows drawable/ on every device this app supports, so
+     the themed splash would never have been drawn. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@android:color/white" />
 
-    <!-- You can insert your own image assets here -->
-    <!-- <item>
+    <item>
         <bitmap
             android:gravity="center"
-            android:src="@mipmap/launch_image" />
-    </item> -->
+            android:src="@drawable/splash_mark_on_light" />
+    </item>
 </layer-list>

@@ -6,11 +6,14 @@ plugins {
 }
 
 android {
-    namespace = "com.yash.money_manager"
+    namespace = "com.yash.xpenc"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // Required by flutter_local_notifications (uses java.time APIs on older
+        // Android). Without this, :app:checkDebugAarMetadata fails.
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -20,8 +23,11 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.yash.money_manager"
+        // The app's permanent identity on Android. Play Store listings are keyed
+        // on it, so it can never be changed after the first upload — and to a
+        // device a new applicationId is simply a different app, installed
+        // side by side, with its own empty private data directory.
+        applicationId = "com.yash.xpenc"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -37,6 +43,10 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }
 
 flutter {

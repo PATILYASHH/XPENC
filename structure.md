@@ -1,7 +1,53 @@
-# Money Manager — Structure & Plan
+# XPENC — Structure & Plan
 
-> Planning document only. No code yet. Everything about the app lives here.
+> Everything about the app lives here.
 > Personal daily money-tracking app: income, expenses, transfers, debts, budgets, alerts.
+> *(Formerly "Money Manager" — see §0 for what the rename did and did not touch.)*
+
+---
+
+## 0. Brand & identity
+
+| | |
+|---|---|
+| **Name** | **XPENC** — "Money, tracked honestly." |
+| **applicationId** | `com.yash.xpenc` *(was `com.yash.money_manager`)* |
+| **Developer** | Yash Patil · GitHub [@PATILYASHH](https://github.com/PATILYASHH) · [in/patilyasshh](https://www.linkedin.com/in/patilyasshh/) |
+| **Mark** | White "X" on a near-black squircle. Two stadium bars crossed at right angles; the ascending bar is punched out of the descending one by a thin **transparent** seam, so the strokes stay legible at 48 dp instead of merging into a blob. |
+| **Palette** | Monochrome. Ink `#FFFFFF`, tile `#17171A → #000000`. True black, AMOLED-friendly, matches the default `mono` theme. |
+
+**One definition, every asset.** `tool/generate_icons.py` rasterises the legacy
+launcher icons, the round icons, the adaptive foreground/background, the Android 13
+themed (monochrome) vector, both splash marks and the web favicons from a single
+`Geometry`. Adaptive framing is *derived* from the legacy one (`LEGACY.scaled(72/108)`)
+so the two come out optically identical rather than hand-matched. Re-run it after
+touching any constant. `lib/core/branding/brand_mark.dart` redraws the same geometry
+as a `CustomPainter` for in-app use — the numbers are duplicated across the Python/Dart
+boundary, and both files say so.
+
+### ⚠️ Renamed vs. deliberately NOT renamed
+
+The rename stopped at the skin. Three identifiers kept their old names because
+they are **keys, not branding** — each has a comment in-code saying so:
+
+| Identifier | Value | Why it survived |
+|---|---|---|
+| Drift database file | `money_manager` | A persistence key. No user sees it. Renaming it points the app at a fresh, empty DB and silently loses the ledger of anyone whose data directory carries over. |
+| `MethodChannel` | `money_manager/sms` | Must match `MainActivity.CHANNEL` byte for byte. **No test covers the pairing** — Dart tests use `FakeMessageSource` — so a cosmetic rename kills SMS capture with nothing failing to warn you. |
+| Backup `formatVersion` | *(unchanged)* | The backup format carries **no app-name magic string**; `importAll` validates `formatVersion` + the presence of `accounts`/`transactions`. Old "Money Manager" backups therefore restore into XPENC untouched. This is the migration path off the old `applicationId`. |
+
+> **The applicationId change is the one destructive act.** Android treats a new
+> `applicationId` as a different app: it installs *alongside* the old build with its
+> own empty private data directory. Nothing migrates. The recovery path is
+> **Backup & Restore** — export JSON from the old app, import it into XPENC.
+> After the first Play Store upload the id can never change again, which is why it
+> was done now.
+
+**Version display.** `AppInfo.version` / `AppInfo.buildNumber` are constants mirroring
+the pubspec's `version:` line, not a `package_info_plus` lookup — that plugin answers
+over a platform channel, so every widget test rendering About would need a mock.
+`test/branding_test.dart` parses `pubspec.yaml` and fails the build if they drift,
+which buys the same guarantee for no dependency and no mocking.
 
 ---
 
@@ -38,6 +84,10 @@ Four **separate** concepts. Apps that blur these end up with reports that lie.
   - **Expense** → decreases one account, tagged with an expense category.
   - **Transfer** → moves money account→account. **Not** income, **not** expense. Must never count in budgets or income/expense reports.
 - **Person (Due / Owe)** = a separate **Persons** section. Add a person by name, then log entries under them: **They owe** (you lent → they owe you) or **I owe** (you borrowed → you owe them). The app keeps each person's **running balance** and a total across everyone.
+  - **Lending really moves money.** Picking an account creates a real ledger row (`personOut` / `personIn`), so your balance changes and the movement appears in **Transactions** and the account's history. Money is never seen to vanish.
+  - It is still **never income or expense** — excluded from month totals, budgets and category spend. *Lending is not spending; being repaid is not earning.*
+  - The **transaction** is the source of truth for money; the **person entry** is the source of truth for who owes whom. `recalculateBalances()` reads only transactions, so a loan can never be double-counted.
+  - "Don't move money (just note it)" still exists, but is no longer the default.
 
 > **Invariant:** total net worth = sum of all account balances. A transfer keeps that total unchanged; income raises it; expense lowers it. If the numbers ever disobey this, it's a bug.
 
@@ -233,23 +283,33 @@ Mechanism: a background worker (workmanager) runs a periodic budget/person-due c
 
 ### Constraint 1 — Play Store policy: ⏭️ DEFERRED, not a blocker
 
-**Decision (Yash):** message reading **stays in the app**. Play Store distribution is a later problem, to be sorted then. Build now.
+**Decision (Yash):** message reading **stays in the app**. Play Store distribution is a later problem. Build now.
 
-*Recorded risk (not blocking):* Google's restricted-permissions policy does not generally permit `READ_SMS`/`RECEIVE_SMS` for expense tracking. Revisit before publishing.
+*Recorded risk (not blocking):* Google's restricted-permissions policy does not generally permit `READ_SMS` for expense tracking. Revisit before publishing.
 
-**We still build the source abstraction** — it costs ~nothing and keeps every option open:
+**As built:**
 
 ```
 MessageSource (interface)  →  { body, sender, timestamp }
-   ├── SmsSource            (BroadcastReceiver + READ_SMS)   ← primary, ships now
-   └── NotificationSource   (NotificationListenerService)    ← optional, drop-in later
+   ├── SmsSource            (MethodChannel → ContentResolver, READ_SMS)  ← ships now
+   ├── NullMessageSource    (non-Android: capture no-ops)
+   ├── FakeMessageSource    (drives the whole pipeline in tests)
+   └── NotificationSource   (NotificationListenerService)   ← drop-in later, Play-legal
               ↓
         same parser · same dedupe · same cards
 ```
 
-Keeping `SmsSource` behind an interface means the capture layer is a **swappable module**, so a future Play build can swap the source, strip the module, or do nothing — all without touching the parser, dedupe, or UI. Build flavors (`personal` / `play`) stay available if ever needed.
+**No background receiver, no `RECEIVE_SMS`.** The requirement is *"cards appear when the user opens
+the app"*, so we scan the inbox **on resume**, from a `lastMessageScanAt` watermark. One fewer
+permission, no background-service fragility, and re-scans are idempotent.
 
-**If `NotificationSource` is ever used, know its limits:** notifications can be dismissed before we read them, Android may truncate long text or group them into *"2 new messages"*, and a silenced SMS app yields nothing. Capture from both sources where available and dedupe across them (the same machinery UPI's double-SMS already forces us to build).
+Keeping `SmsSource` behind the interface means capture is a **swappable module** — a future Play
+build can swap the source or strip the module without touching parser, dedupe, or UI.
+
+**If `NotificationSource` is ever used, know its limits:** notifications can be dismissed before we
+read them, Android may truncate long text or group them into *"2 new messages"*, and a silenced SMS
+app yields nothing. Capture from both and dedupe across them — the same machinery UPI's double-SMS
+already forced us to build.
 
 ### ⚠️ Constraint 2 — "Credit" is overloaded
 
@@ -416,18 +476,31 @@ reminders (id, title, amount?, direction[pay|receive], due_date,
 
 | Phase | Deliverable | Done when |
 |---|---|---|
-| **0 · Setup** | Flutter project, folders, deps, theme, git init | App runs, blank themed shell, bottom nav |
-| **1 · Data** | Drift schema (accounts/categories/transactions), money type, seed categories, DAOs, repos, `recalculateBalances()` | Can create accounts + transactions; balances correct |
-| **2 · MVP UI** | Onboarding, Dashboard, Add transaction (income/expense/transfer), Transactions list, Accounts + transfer | **Shippable MVP** — track daily money end-to-end |
-| **3 · Budgets** | Budget model, spent calc, budgets screen, progress UI | Set a budget, see live progress |
-| **4 · Notifications** | Local notif service, budget threshold/overspend, person-due reminders, periodic worker | Get alerted at 80% / overspend |
-| **5 · Message Auto-Capture** | `MessageSource` abstraction, SMS receiver, IPPB parser template, dedupe, account matching, cards, merchant rules, **Auto-Approve** | Bank message arrives → card appears → assign category (or auto-filled) → posts correctly |
-| **6 · Persons** | Persons + entries model, screen, settlements, optional account linkage | Add a person, log I owe/they owe, running balance + net worth stay correct |
-| **7 · Calendar & Reminders** | Calendar grid (day-wise in/out), Cash Reminders + notifications, Mark-as-paid | Set "pay ₹5k on the 5th" → reminder fires → confirm → posts |
+| **0 · Setup** ✅ | Flutter project, folders, deps, theme, `Money` type, git init | ✅ Themed shell + bottom nav · analyze clean · APK builds (see TLS fix below) |
+| **1 · Data** ✅ | Drift schema (all 8 tables), `Money` paise type, seed, `recalculateBalances()` | ✅ 14 invariant tests pass — transfers net-zero, no debit-card double-count, lending ≠ expense |
+| **2 · MVP UI** ✅ | Dashboard, Add transaction (income/expense/transfer), Transactions list, Accounts + Add Account sheet | ✅ Shippable — track daily money end-to-end |
+| **3 · Budgets** ✅ | Budget model, spent calc, budgets screen, progress UI | ✅ Set a budget, see live progress |
+| **4 · Notifications** ✅ | `NotificationService`, budget threshold/overspend (once per period via `budget_alerts`), reminder scheduling, detected-txn ping | ✅ Alerts fire once, not on every purchase |
+| **5 · Message Auto-Capture** ✅ | `MessageSource` abstraction, Kotlin SMS channel, IPPB parser, dedupe, account matching, Review Inbox, merchant rules, **Auto-Approve** | ✅ 45 tests — UPI double-SMS never double-counts; Undo reverses the money |
+| **6 · Persons** ✅ | Persons + entries model, screen, settlements, optional account linkage | ✅ Add a person, log I owe/they owe, running balance + net worth stay correct |
+| **7 · Calendar & Reminders** ✅ | Calendar grid (day-wise in/out), Cash Reminders, Mark-as-paid | ✅ Reminders show on future dates; nothing posts without confirmation. *(notifications pending Phase 4)* |
 | **8 · Insights** | Charting layer → full graphical Dashboard, Stats, Account Reports | One chart engine, several views, no duplicated code |
 | **9 · Data + polish** | Download Data (CSV/JSON), Backup & Restore, theme refinement | Can export/restore; app feels finished |
-| **10 · Release** | Edge cases, tests, signed APK | Installable build for Yash + friends |
+| **8 · Data + polish** ✅ | Download Data (CSV/JSON), Backup & Restore, Categories, Onboarding, Tx/Account detail, edit transaction | ✅ Export, restore, edit — all tested |
+| **10 · Release** ✅ | Edge cases, 116 tests, signed APK, `verify_apk.sh` gate | ✅ `dist/money-manager-arm64.apk` |
 | **⏸ Parked** | **Auto Spend** (§9), app-lock, Play Store policy | Auto Spend superseded by Cash Reminders (§9.1) |
+
+### How to build + ship
+
+```bash
+rm -rf build/native_assets          # Flutter/Windows native-assets bug
+flutter test                        # 116 tests must pass
+flutter build apk --release --split-per-abi
+bash tool/verify_apk.sh build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+```
+`verify_apk.sh` **must pass** — it is the only thing standing between you and shipping another
+APK with no `libsqlite3.so`. Needs ~3 GB free disk; a Gradle release build fails with
+`java.io.IOException: There is not enough space on the disk` otherwise.
 
 Notes on ordering:
 - **Message capture at Phase 5** on purpose: manual entry is where money apps die, so auto-capture is what makes daily tracking stick. Needs Phase 2's accounts/categories to post into.
@@ -456,6 +529,28 @@ Notes on ordering:
 
 ---
 
+## 11.5 Audit — 8 defects found and fixed
+
+An adversarial audit (6 lenses × 3 independent skeptics per finding, skeptics defaulting to
+*refuted*) confirmed 8 defects and refuted 4. Each fix has a regression test in
+`test/bug_hunt_regression_test.dart`.
+
+| # | Defect | Why it mattered |
+|---|---|---|
+| 1 | **Auto-Approve substring merchant match** | A learned rule for `OLA` matched **`GOLA SNACKS`** and auto-booked it under Transport. Broke the promise *"Auto-Approve never guesses."* → now **exact match only**; a fuzzy `suggestMerchantRule` exists for hints and never auto-posts. |
+| 2 | **Budget alert lost for the whole month** | `checkBudgets()` fires from a provider listener *before* `notifications.init()`. It claimed the alert row, `_show()` silently no-opped, and the claim persisted → alert never fired again that period. → `checkBudgets` returns early when not ready, `_show` reports success, a failed show **releases** the claim, and `init()` re-runs the check. |
+| 3 | **`claimBudgetAlert` not atomic** | Check-then-insert across two statements, then `return true` unconditionally after `insertOrIgnore`. Two overlapping calls both "won" → the same alert buzzed twice. → wrapped in `transaction()`. |
+| 4 | **Restore destroyed the review inbox** | `importAll` deleted `pending_txns` + `budget_alerts`; `exportAll` never captured them. Restoring the app's *own* backup wiped un-reviewed capture cards and re-fired spent alerts. → export/import are now symmetric; older backups without those keys still restore. |
+| 5 | **UPI wallet double-SMS booked twice** | The bank SMS names `A/c XX1234`; the PhonePe SMS names no account and a different reference, so they never matched. → an amount+direction match where **either side lacks an account hint** is now flagged duplicate (flagged, never dropped — the card still shows with *"Not a duplicate"*, and a flagged card can never auto-approve). |
+| 6 | **Reminder due *today* never scheduled** | `dueDate` is midnight, so `fireAt` was already past and the reminder was dropped. → fires at 09:00, or `now + 1 min` if that has passed and the day hasn't. |
+| 7 | **Calendar cell overflow** | 42×53 dp cell, ~48 dp of content — no headroom for text scaling. → `Flexible` + `FittedBox(scaleDown)`. |
+| 8 | **Stats screen infinite rebuild loop** *(found by tests, not the audit)* | `netWorthTrendProvider` did `ref.watch(allTransactionsProvider)` **and** opened `db.watchTransactions()`. Drift re-emits to all listeners of a cached query on new subscription → recompute forever. The screen hung and never rendered. → plain `Provider`s composed from the stream providers. |
+
+**Refuted (correctly):** near-duplicates burying distinct payments (1/3); identical-body SMS in the
+same minute (0/3); `int.parse` on a route param crashing (0/3); CSV formula injection (0/3).
+
+---
+
 ## 12. Open questions (confirm before we build)
 
 - **Persons labels** — entry buttons "They owe" (they'll pay you) vs "I owe" (you'll pay them) — good wording?
@@ -481,6 +576,115 @@ Notes on ordering:
 
 ---
 
-*Status: **planning complete — Phase 0 in progress.***
+*Status: **Phase 0 complete.** Next: Phase 1 (data layer).*
 *Target: Android build with message capture on. Play Store policy revisited before publishing.*
 *Toolchain: Flutter 3.38.9 · Dart 3.10.8*
+
+### ✅ Resolved — Gradle `PKIX path building failed`
+
+**Symptom**
+```
+PKIX path building failed: unable to find valid certification path to requested target
+[!] Gradle threw an error while downloading artifacts from the network.
+```
+
+**Root cause.** Avast antivirus' **Web Shield HTTPS scanning** man-in-the-middles outbound TLS
+on this machine. It re-signs every artifact host (`dl.google.com`, `maven.google.com`,
+`services.gradle.org`, …) with its own self-signed root:
+
+```
+CN=Avast Web/Mail Shield Root, O=Avast Web/Mail Shield
+SHA1 32:1B:BE:C5:FF:D8:FF:FF:B8:3B:60:98:E4:CF:52:2B:79:47:AF:B2
+```
+
+Windows trusts that root (browsers work), but the **JDK keeps a separate truststore** that did
+not contain it. Gradle runs on the Android Studio JetBrains Runtime (**OpenJDK 21.0.8**), whose
+`cacerts` had 113 public CAs and no Avast root → handshake fails during dependency download,
+before any compilation. **Environment issue, not a code issue.**
+
+Note: this is *local* interception. Switching networks (phone hotspot) does **not** bypass it.
+
+**Fix applied** — imported the (already-Windows-trusted) Avast root into the JDK Gradle uses:
+
+```powershell
+# elevated PowerShell
+& "C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe" -importcert `
+  -alias avast-web-shield-root `
+  -file "C:\ProgramData\Avast Software\Avast\wscert.pem" `
+  -keystore "C:\Program Files\Android\Android Studio\jbr\lib\security\cacerts" `
+  -storepass changeit -noprompt
+```
+
+Truststore went 113 → 114 CAs. Backup of the original: `C:\Users\admin\backups\cacerts.jbr21.backup`
+
+**Undo:** `keytool -delete -alias avast-web-shield-root -keystore "...\jbr\lib\security\cacerts" -storepass changeit`
+
+**If it returns:** an Android Studio update can replace the JBR and reset `cacerts` — just re-import.
+Also confirm the target JDK with `flutter doctor -v` ("Java binary at:"); importing into the wrong
+JDK (e.g. Oracle's, which is what's on `PATH`) has zero effect.
+
+> ⛔ **Never "fix" this by disabling TLS verification** — `trustAllCerts`, `sslVerify=false`,
+> `-Dmaven.wagon.http.ssl.insecure=true`, or a downloaded `cacerts` from a forum. Those make the
+> machine accept *any* forged certificate, permanently. On a money app that reads bank messages,
+> that is the wrong trade forever. The correct move is to trust *one named CA you have verified* —
+> which is what was done here (the on-disk PEM's subject was matched against the live intercepting
+> issuer before importing).
+
+### Build gotchas already solved (don't re-discover these)
+
+| Problem | Fix |
+|---|---|
+| `dart run build_runner build` → *"'dart compile' does not support build hooks"* | Use **`dart run build_runner build --force-jit --delete-conflicting-outputs`**. build_runner AOT-compiles its build script; a dep ships native-asset hooks that `dart compile` can't handle. |
+| `flutter_local_notifications` → `:app:checkDebugAarMetadata` fails | **Core library desugaring** enabled in `android/app/build.gradle.kts` + `coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")`. |
+| Icons stored as codepoints break `--release` | Icons persist as **stable string keys** (`AppIcons.resolve`), never runtime `IconData`. Keeps icon tree-shaking working. |
+| Fixed the CA but Gradle still failed | A JVM reads `cacerts` **once at startup**. Kill stale daemons: `./gradlew --stop`. |
+| 2nd `flutter test` crashes: *"Cannot copy sqlite3.dll … already exists"* | Flutter/Windows native-assets bug. Run **`rm -rf build/native_assets`** before `flutter test`. |
+| Widget test hangs 10 min | Drift futures never resolve in `testWidgets`' fake-async zone. Do **all DB work inside `tester.runAsync`**. |
+| `pumpAndSettle` never returns | An indeterminate `CircularProgressIndicator` schedules frames forever. **Pump a bounded span** instead. |
+| Test fails `!timersPending` | Cancelling a Drift query stream schedules a 0ms timer. **Unmount the tree + `pump(Duration.zero)`** before the test ends. |
+| Layout overflows only on device | `flutter_test` defaults to an 800×600 landscape surface. Smoke tests set **360×800 dp** (`tester.view.physicalSize`). |
+| A screen hangs forever, never renders | **Never `ref.watch(xProvider)` and also open the same drift query inside the same provider.** Drift caches streams by query; subscribing re-emits to all listeners → infinite recompute. Compose from providers instead. Guarded by `test/reports_provider_test.dart`. |
+| `BoxConstraints forces an infinite width` | The theme sets `FilledButton minimumSize: Size.fromHeight(56)` = **infinite min width**. Fine in a Column; a **Row** gives non-flex children unbounded width and it throws. Override `minimumSize` or wrap in `Expanded`. |
+| `flutter_local_notifications` 22.x calls don't compile | v22 moved to **named params**: `initialize(settings:)`, `show(id:title:body:notificationDetails:)`, `cancel(id:)`, `zonedSchedule(id:scheduledDate:notificationDetails:androidScheduleMode:)`. |
+| Undo threw `FOREIGN KEY constraint failed` | `pending_txns.created_transaction_id` and `reminders.transaction_id` reference `transactions`. `deleteTransaction` now **clears those references first**. Caught by a test. |
+
+### 🔴 The crash that shipped — read this before touching `drift`
+
+**Symptom on device:** every screen stuck loading; a toast reading
+`Failed to load dynamic library 'libsqlite3.so': dlopen failed: library "libsqlite3.so" not found`.
+
+**Root cause.** `drift ≥ 2.32` requires `sqlite3 ^3.1.5`, which ships its Android native library
+**only via experimental native-assets build hooks**. The companion plugin at that version is
+`sqlite3_flutter_libs: 0.6.0+eol`, whose own pubspec says *"This dependency doesn't do anything."*
+`flutter build apk` never ran the hook — `build/native_assets/` had `windows/` but **no `android/`** —
+so the APK contained `libapp.so`, `libflutter.so`, `libdartjni.so` and **no `libsqlite3.so`**.
+
+**The fault line:**
+
+| | `sqlite3` | `sqlite3_flutter_libs` | Android `.so` bundled? |
+|---|---|---|---|
+| drift ≤ **2.31.0** / drift_flutter ≤ **0.2.8** | ^2.6.0 | **0.5.24 — a real Gradle plugin** | ✅ |
+| drift ≥ 2.32 / drift_flutter 0.3.0 | ^3.1.5 | 0.6.0 **+eol (no-op)** | ❌ hooks only |
+
+**Fix:** pinned to **drift 2.31.0 · drift_flutter 0.2.8 · sqlite3_flutter_libs 0.5.24**, plus an
+explicit `sqlite3_flutter_libs` dependency. **Do not bump drift past 2.31 until Flutter runs build
+hooks for Android release builds.**
+
+**Why no test caught it.** Every test overrides `dbProvider` with `NativeDatabase.memory()`, so the
+real `driftDatabase()` path was never exercised. Unit tests cannot see a missing `.so`.
+Two guards now exist:
+- **`bash tool/verify_apk.sh <apk>`** — fails the build if `libsqlite3.so` is absent for any ABI
+  that has `libflutter.so`. **Run this before shipping any APK.**
+- **`databaseReadyProvider`** — opens the DB at startup so a failure renders a real error screen
+  with the cause and a retry, instead of spinners forever.
+
+### Pinned versions & why
+
+| Package | Version | Note |
+|---|---|---|
+| `flutter_riverpod` | **2.6.1 (pinned)** | Riverpod **3.x pulls in `test`**, forcing `test ≥1.31.2` → Dart ≥3.11, which breaks `drift_dev` on Dart 3.10.8. 2.6.x is the stable line. **Do not bump without re-checking `drift_dev`.** |
+| `drift` / `drift_dev` | **2.31.0 (pinned)** | See the crash box above. 2.32+ loses the Android `libsqlite3.so`. |
+| `drift_flutter` | **0.2.8 (pinned)** | Last version on the plugin-based `sqlite3` 2.x. |
+| `sqlite3_flutter_libs` | **0.5.24 (pinned)** | The version that actually bundles the native library. |
+| `go_router` | 17.x | `StatefulShellRoute.indexedStack` for tab state. |
+| `fl_chart` · `flutter_local_notifications` · `timezone` · `intl` · `flutter_slidable` | latest | Per §4. |
