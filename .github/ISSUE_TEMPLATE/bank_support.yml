@@ -1,0 +1,50 @@
+name: 🏦 Bank SMS support
+description: Request auto-capture support for your bank (or contribute the template!)
+title: "bank: "
+labels: [bank-template, good first issue]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The most valuable contribution to XPENC. Bank templates are config + regex,
+        no app internals needed — see the "Adding a bank SMS template" section of
+        [CONTRIBUTING.md](https://github.com/PATILYASHH/XPENC/blob/master/CONTRIBUTING.md).
+
+        ⚠️ **Redact everything personal**: replace amounts, full account numbers,
+        names and reference numbers with `XX`. Keep the message structure intact.
+  - type: input
+    id: bank
+    attributes:
+      label: Bank name
+      placeholder: India Post Payments Bank
+    validations:
+      required: true
+  - type: input
+    id: senders
+    attributes:
+      label: SMS sender IDs
+      description: The sender shown in your SMS app (often like XX-IPBMSG)
+      placeholder: JD-IPBMSG, VM-IPBMSG
+    validations:
+      required: true
+  - type: textarea
+    id: debit
+    attributes:
+      label: Redacted debit (Money Out) samples
+      render: text
+      placeholder: "Rs.XX debited from A/c XX1234 on 01-01-26 to VPA xxxx@ybl. Ref 1234XX. Avl Bal Rs.XX"
+    validations:
+      required: true
+  - type: textarea
+    id: credit
+    attributes:
+      label: Redacted credit (Money In) samples
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: noise
+    attributes:
+      label: Other messages from the same sender (OTP, promos, balance-only)
+      description: So the parser can learn what to ignore.
+      render: text

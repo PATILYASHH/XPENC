@@ -1,0 +1,53 @@
+name: 🐛 Bug report
+description: Something is broken or the numbers are wrong
+title: "bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! **If the numbers are wrong** (net worth, budget spent,
+        double-counted transaction) that's the highest-priority class of bug — please
+        include the exact sequence of transactions that produced it.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, what happened instead?
+      placeholder: |
+        1. Added a transfer Cash → Bank of ₹500
+        2. Opened Dashboard
+        3. This-month expense increased by ₹500 (expected: unchanged)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: XPENC version
+      description: More → Settings → About, or the release tag you downloaded
+      placeholder: v1.0.0
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device & Android version
+      placeholder: Samsung M32 · Android 13
+    validations:
+      required: true
+  - type: textarea
+    id: sms
+    attributes:
+      label: If SMS-capture related — the redacted message
+      description: |
+        Replace account digits, amounts and names, KEEP the structure.
+        e.g. `Rs.XX debited from A/c XX1234 on 01-01-26 to VPA xxxx@ybl Ref 12345`
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and this is not a duplicate
+          required: true
+        - label: I am on the latest release

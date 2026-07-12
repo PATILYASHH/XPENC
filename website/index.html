@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XPENC — Money, tracked honestly.</title>
+  <meta name="description" content="XPENC is an offline-first personal finance app for Android. Income, expenses, budgets, dues and automatic bank-SMS capture — everything stays on your phone. No server, no sign-up, open source.">
+  <meta name="theme-color" content="#000000">
+
+  <link rel="icon" href="assets/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon_32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon_16.png">
+  <link rel="apple-touch-icon" href="assets/apple_touch_icon_180.png">
+
+  <!-- Open Graph / Twitter -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="XPENC — Money, tracked honestly.">
+  <meta property="og:description" content="Offline-first personal finance for Android. Budgets, dues, bank-SMS auto-capture — all on-device. No server. No sign-up. Open source.">
+  <meta property="og:url" content="https://getxpenc.vercel.app/">
+  <meta property="og:image" content="https://getxpenc.vercel.app/assets/xpenc_icon_1024.png">
+  <meta name="twitter:card" content="summary">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #050506;
+      --panel: #0c0c0f;
+      --panel-2: #121216;
+      --border: rgba(255,255,255,.08);
+      --border-hi: rgba(255,255,255,.18);
+      --ink: #f4f4f6;
+      --muted: #a2a2ac;
+      --faint: #62626c;
+      --green: #3ecf8e;
+      --red: #ff6b6b;
+      --radius: 22px;
+      --font-display: "Space Grotesk", system-ui, sans-serif;
+      --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-body);
+      font-size: 15.5px;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.65;
+      overflow-x: hidden;
+    }
+    /* film grain for depth */
+    body::after {
+      content: ""; position: fixed; inset: 0; z-index: 90; pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+      opacity: .035; mix-blend-mode: overlay;
+    }
+    a { color: inherit; text-decoration: none; }
+    img { max-width: 100%; }
+    ::selection { background: #fff; color: #000; }
+    .wrap { max-width: 1140px; margin: 0 auto; padding: 0 28px; }
+
+    h1, h2, h3, .display { font-family: var(--font-display); }
+
+    /* ================= nav ================= */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+      transition: background .3s ease, border-color .3s ease;
+      border-bottom: 1px solid transparent;
+    }
+    nav.scrolled {
+      background: rgba(5,5,6,.78);
+      backdrop-filter: blur(20px) saturate(1.4);
+      -webkit-backdrop-filter: blur(20px) saturate(1.4);
+      border-bottom-color: var(--border);
+    }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 68px; }
+    .brand { display: flex; align-items: center; gap: 11px; font-family: var(--font-display); font-weight: 700; letter-spacing: .18em; font-size: 15px; }
+    .brand svg { width: 30px; height: 30px; border-radius: 8px; }
+    .nav-links { display: flex; align-items: center; gap: 4px; font-size: 13.5px; font-weight: 500; color: var(--muted); }
+    .nav-links a:not(.btn) { padding: 8px 13px; border-radius: 999px; transition: color .2s, background .2s; }
+    .nav-links a:not(.btn):hover { color: var(--ink); background: rgba(255,255,255,.06); }
+    .nav-links .btn { margin-left: 12px; }
+    .gh-pill { display: inline-flex; align-items: center; gap: 7px; }
+    .gh-pill .stars { font-variant-numeric: tabular-nums; color: var(--faint); font-size: 12px; }
+    @media (max-width: 780px) { .nav-links a:not(.btn) { display: none; } }
+
+    /* ================= buttons ================= */
+    .btn {
+      position: relative;
+      display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+      background: var(--ink); color: #000;
+      font-weight: 600; font-size: 14.5px; font-family: var(--font-body);
+      padding: 14px 26px; border-radius: 14px;
+      transition: transform .18s ease, box-shadow .18s ease;
+      will-change: transform;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 14px 44px rgba(255,255,255,.18); }
+    .btn:active { transform: translateY(0); }
+    .btn:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+    .btn.small { padding: 9px 16px; font-size: 13px; border-radius: 11px; }
+    .btn.ghost {
+      background: rgba(255,255,255,.04); color: var(--ink);
+      border: 1px solid var(--border);
+    }
+    .btn.ghost:hover { border-color: var(--border-hi); background: rgba(255,255,255,.07); box-shadow: none; }
+    .btn svg { width: 16px; height: 16px; flex: none; }
+
+    /* ================= hero ================= */
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      min-height: 100svh;
+      display: flex; align-items: center;
+      padding: 120px 0 80px;
+      overflow: hidden;
+    }
+    #scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; transition: opacity 1.6s ease; }
+    #scene.on { opacity: 1; }
+    .hero-vignette {
+      position: absolute; inset: 0; pointer-events: none;
+      background:
+        radial-gradient(900px 540px at 74% 44%, rgba(120,130,160,.10), transparent 62%),
+        linear-gradient(180deg, rgba(5,5,6,.5), transparent 26%, transparent 62%, var(--bg) 97%);
+    }
+    .hero-content { position: relative; z-index: 2; width: 100%; }
+    .hero-grid { display: grid; grid-template-columns: 1.02fr .98fr; gap: 40px; align-items: center; }
+    @media (max-width: 880px) { .hero-grid { grid-template-columns: 1fr; } }
+
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 9px;
+      font-size: 11.5px; letter-spacing: .2em; text-transform: uppercase;
+      color: var(--muted); font-weight: 600;
+      border: 1px solid var(--border); border-radius: 999px; padding: 8px 16px;
+      background: rgba(255,255,255,.03); backdrop-filter: blur(8px);
+      margin-bottom: 30px;
+    }
+    .eyebrow .pulse { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2.4s infinite; }
+    @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(62,207,142,.55); } 50% { box-shadow: 0 0 0 7px rgba(62,207,142,0); } }
+
+    h1 {
+      font-size: clamp(44px, 6.2vw, 76px);
+      line-height: 1.02; letter-spacing: -.03em; font-weight: 700;
+    }
+    h1 .dim {
+      background: linear-gradient(180deg, #e8e8ee 0%, #4c4c58 100%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .hero p.sub { margin: 28px 0 38px; max-width: 31em; color: var(--muted); font-size: 17px; line-height: 1.7; }
+    .hero p.sub b { color: var(--ink); font-weight: 600; }
+    .hero-ctas { display: flex; flex-wrap: wrap; gap: 13px; align-items: center; }
+    .hero-meta { margin-top: 26px; font-size: 13px; color: var(--faint); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .hero-meta .sep { width: 3px; height: 3px; border-radius: 50%; background: var(--faint); }
+    .scroll-hint {
+      position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%);
+      z-index: 2; color: var(--faint); font-size: 10px; letter-spacing: .28em; text-transform: uppercase;
+      display: flex; flex-direction: column; align-items: center; gap: 9px;
+    }
+    .scroll-hint::after {
+      content: ""; width: 1px; height: 30px;
+      background: linear-gradient(180deg, var(--faint), transparent);
+      animation: drip 2.2s ease-in-out infinite;
+    }
+    @keyframes drip { 0% { transform: scaleY(0); transform-origin: top; } 50% { transform: scaleY(1); } 100% { transform: scaleY(0); transform-origin: bottom; } }
+
+    /* ================= trust strip ================= */
+    .strip { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: rgba(255,255,255,.015); }
+    .strip-grid { display: grid; grid-template-columns: repeat(4, 1fr); }
+    @media (max-width: 720px) { .strip-grid { grid-template-columns: repeat(2, 1fr); } }
+    .stat { padding: 30px 20px; text-align: center; }
+    .stat + .stat { border-left: 1px solid var(--border); }
+    @media (max-width: 720px) { .stat:nth-child(3) { border-left: 0; } .stat:nth-child(n+3) { border-top: 1px solid var(--border); } }
+    .stat b { display: block; font-family: var(--font-display); font-size: 26px; font-weight: 700; letter-spacing: -.01em; }
+    .stat span { font-size: 12.5px; color: var(--faint); letter-spacing: .04em; }
+
+    /* ================= sections ================= */
+    section { padding: 130px 0 0; position: relative; }
+    .kicker {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 11.5px; letter-spacing: .24em; text-transform: uppercase; color: var(--faint); font-weight: 600;
+    }
+    .kicker::before { content: ""; width: 22px; height: 1px; background: var(--faint); }
+    h2 { font-size: clamp(30px, 3.8vw, 46px); letter-spacing: -.025em; font-weight: 700; margin: 16px 0 16px; line-height: 1.08; }
+    .lead { color: var(--muted); max-width: 39em; font-size: 16.5px; }
+    .section-head { max-width: 720px; }
+    .section-head.center { margin: 0 auto; text-align: center; }
+    .section-head.center .kicker { justify-content: center; }
+    .section-head.center .kicker::before { display: none; }
+    .section-head.center .lead { margin: 0 auto; }
+
+    /* ================= features ================= */
+    .grid { margin-top: 56px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    @media (max-width: 1000px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 560px)  { .grid { grid-template-columns: 1fr; } }
+    .feature {
+      position: relative;
+      background: linear-gradient(180deg, rgba(255,255,255,.028), rgba(255,255,255,.008));
+      border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 28px 24px 26px;
+      transition: transform .25s cubic-bezier(.2,.8,.2,1), border-color .25s, background .25s;
+      overflow: hidden;
+    }
+    .feature::before {
+      content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+      background: radial-gradient(420px 200px at 50% -40%, rgba(255,255,255,.09), transparent 70%);
+      opacity: 0; transition: opacity .3s;
+    }
+    .feature:hover { transform: translateY(-5px); border-color: var(--border-hi); }
+    .feature:hover::before { opacity: 1; }
+    .feature .icon {
+      width: 44px; height: 44px; border-radius: 13px;
+      background: rgba(255,255,255,.05); border: 1px solid var(--border);
+      display: grid; place-items: center; margin-bottom: 18px;
+    }
+    .feature .icon svg { width: 21px; height: 21px; stroke: var(--ink); fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+    .feature h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; letter-spacing: -.01em; }
+    .feature p { font-size: 13.5px; color: var(--muted); line-height: 1.6; }
+
+    /* ================= product ================= */
+    .product-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 64px; align-items: center; margin-top: 30px; }
+    @media (max-width: 880px) { .product-grid { grid-template-columns: 1fr; } }
+    .checklist { list-style: none; display: flex; flex-direction: column; gap: 0; margin-top: 10px; }
+    .checklist li { display: flex; gap: 15px; color: var(--muted); font-size: 15px; padding: 17px 0; }
+    .checklist li + li { border-top: 1px solid var(--border); }
+    .checklist li b { color: var(--ink); font-weight: 600; }
+    .checklist .tick {
+      flex: 0 0 26px; height: 26px; border-radius: 9px; margin-top: 1px;
+      background: rgba(255,255,255,.05); border: 1px solid var(--border);
+      display: grid; place-items: center;
+    }
+    .checklist .tick svg { width: 12px; height: 12px; stroke: var(--ink); fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+
+    .phone-col { display: flex; justify-content: center; position: relative; }
+    .phone-glow {
+      position: absolute; inset: -40px -80px; pointer-events: none;
+      background: radial-gradient(closest-side, rgba(140,150,190,.13), transparent 72%);
+      filter: blur(6px);
+    }
+    .phone {
+      width: 300px; aspect-ratio: 9 / 19;
+      background: linear-gradient(160deg, #1a1a20, #060608 40%);
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 46px;
+      padding: 12px;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.12),
+        0 50px 130px rgba(0,0,0,.9),
+        0 0 90px rgba(120,130,170,.07);
+      animation: float 8s ease-in-out infinite;
+      position: relative;
+    }
+    @keyframes float { 0%,100% { transform: translateY(0) rotate(.5deg); } 50% { transform: translateY(-14px) rotate(-.5deg); } }
+    .screen {
+      background: #000; border-radius: 36px; height: 100%;
+      padding: 20px 17px 12px; display: flex; flex-direction: column; gap: 12px;
+      overflow: hidden; border: 1px solid rgba(255,255,255,.06);
+    }
+    .statusbar { display: flex; justify-content: space-between; font-size: 10px; color: var(--faint); font-variant-numeric: tabular-nums; }
+    .screen h4 { font-family: var(--font-display); font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
+    .card { background: #0e0e12; border: 1px solid rgba(255,255,255,.07); border-radius: 18px; padding: 14px 15px; }
+    .card .label { font-size: 10px; color: var(--faint); letter-spacing: .1em; text-transform: uppercase; font-weight: 600; }
+    .networth { font-family: var(--font-display); font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.01em; margin-top: 3px; }
+    .inout { display: flex; gap: 10px; }
+    .inout .card { flex: 1; padding: 11px 13px; }
+    .inout .amt { font-weight: 600; font-size: 14px; font-variant-numeric: tabular-nums; margin-top: 2px; }
+    .amt.in { color: var(--green); } .amt.out { color: var(--red); }
+    .bars { display: flex; align-items: flex-end; gap: 7px; height: 54px; padding-top: 8px; }
+    .bars i { flex: 1; background: #23232b; border-radius: 4px 4px 0 0; display: block; transform-origin: bottom; animation: grow 1.1s cubic-bezier(.2,.8,.2,1) both; }
+    .bars i:nth-child(odd) { background: #3d3d49; }
+    @keyframes grow { from { transform: scaleY(0); } }
+    .txn { display: flex; align-items: center; gap: 10px; padding: 8px 2px; }
+    .txn + .txn { border-top: 1px solid rgba(255,255,255,.05); }
+    .txn .dot { width: 27px; height: 27px; border-radius: 9px; background: #16161b; border: 1px solid rgba(255,255,255,.07); display: grid; place-items: center; font-size: 12px; }
+    .txn .name { flex: 1; font-size: 11.5px; color: #cfcfd6; font-weight: 500; }
+    .txn .val { font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .navbar { margin-top: auto; display: flex; justify-content: space-around; align-items: center; padding-top: 11px; border-top: 1px solid rgba(255,255,255,.05); }
+    .navbar span { width: 4.5px; height: 4.5px; border-radius: 50%; background: var(--faint); }
+    .navbar span.on { background: var(--ink); }
+    .navbar .plus { width: 34px; height: 34px; border-radius: 12px; background: var(--ink); color: #000; display: grid; place-items: center; font-size: 19px; font-weight: 600; line-height: 1; }
+    .stagger > * { animation: rise .7s cubic-bezier(.2,.8,.2,1) both; }
+    .stagger > *:nth-child(2) { animation-delay: .08s; }
+    .stagger > *:nth-child(3) { animation-delay: .16s; }
+    .stagger > *:nth-child(4) { animation-delay: .24s; }
+    .stagger > *:nth-child(5) { animation-delay: .32s; }
+    .stagger > *:nth-child(6) { animation-delay: .4s; }
+    @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+    /* ================= how it works ================= */
+    .steps-grid { margin-top: 56px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; counter-reset: step; }
+    @media (max-width: 880px) { .steps-grid { grid-template-columns: 1fr; } }
+    .step {
+      counter-increment: step;
+      background: linear-gradient(180deg, rgba(255,255,255,.028), rgba(255,255,255,.008));
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 30px 26px;
+      position: relative;
+    }
+    .step::before {
+      content: "0" counter(step);
+      font-family: var(--font-display); font-size: 13px; font-weight: 600; letter-spacing: .12em;
+      color: var(--faint);
+      display: inline-block; margin-bottom: 40px;
+      border: 1px solid var(--border); border-radius: 999px; padding: 5px 13px;
+    }
+    .step h3 { font-size: 17px; font-weight: 600; margin-bottom: 8px; letter-spacing: -.01em; }
+    .step p { font-size: 13.5px; color: var(--muted); }
+
+    /* ================= privacy ================= */
+    .tiles { margin-top: 56px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    @media (max-width: 720px) { .tiles { grid-template-columns: 1fr; } }
+    .tile {
+      background: linear-gradient(180deg, rgba(255,255,255,.028), rgba(255,255,255,.008));
+      border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 38px 28px; text-align: center;
+      transition: transform .25s ease, border-color .25s ease;
+    }
+    .tile:hover { transform: translateY(-4px); border-color: var(--border-hi); }
+    .tile .big { font-family: var(--font-display); font-size: 46px; font-weight: 700; letter-spacing: -.02em; line-height: 1; }
+    .tile .cap { color: var(--muted); font-size: 13.5px; margin-top: 12px; }
+    .privacy-note {
+      margin-top: 14px;
+      background: rgba(62,207,142,.04);
+      border: 1px solid rgba(62,207,142,.16);
+      border-radius: var(--radius); padding: 26px 28px; color: var(--muted); font-size: 14px;
+      display: flex; gap: 16px; align-items: flex-start;
+    }
+    .privacy-note svg { width: 20px; height: 20px; flex: none; margin-top: 3px; stroke: var(--green); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .privacy-note b { color: var(--ink); }
+
+    /* ================= invariant ================= */
+    .invariant {
+      margin-top: 56px;
+      background:
+        radial-gradient(640px 260px at 50% -10%, rgba(150,160,200,.09), transparent),
+        linear-gradient(180deg, var(--panel-2), var(--panel));
+      border: 1px solid var(--border); border-radius: 26px;
+      padding: 60px 40px; text-align: center;
+    }
+    .invariant .eq {
+      font-family: var(--font-display);
+      font-size: clamp(20px, 3.2vw, 32px); font-weight: 700; letter-spacing: -.01em;
+      font-variant-numeric: tabular-nums;
+    }
+    .invariant .eq span { color: var(--faint); font-weight: 500; padding: 0 10px; }
+    .invariant p { color: var(--muted); font-size: 14.5px; max-width: 44em; margin: 18px auto 0; }
+
+    /* ================= download ================= */
+    .dl-card {
+      margin-top: 56px;
+      background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.008));
+      border: 1px solid var(--border); border-radius: 26px;
+      padding: 48px 44px;
+      display: grid; grid-template-columns: 1.15fr .85fr; gap: 48px; align-items: center;
+    }
+    @media (max-width: 880px) { .dl-card { grid-template-columns: 1fr; padding: 36px 28px; } }
+    .dl-card h3 { font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
+    .dl-card .ver { color: var(--faint); font-size: 13px; margin-top: 6px; }
+    .dl-btns { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+    .dl-small { margin-top: 18px; font-size: 13px; color: var(--faint); }
+    .dl-small a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+    .dl-small a:hover { color: var(--ink); }
+    .qr-side { display: flex; gap: 26px; align-items: center; justify-content: center; }
+    .qr-box {
+      flex: none; width: 148px; height: 148px; border-radius: 20px;
+      background: rgba(255,255,255,.04); border: 1px solid var(--border);
+      display: grid; place-items: center; padding: 16px;
+    }
+    .qr-box img { width: 100%; image-rendering: pixelated; }
+    .qr-caption { font-size: 13px; color: var(--muted); max-width: 15em; }
+    .qr-caption b { color: var(--ink); display: block; margin-bottom: 4px; font-size: 14px; }
+    ol.steps { margin-top: 40px; list-style: none; counter-reset: s; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    @media (max-width: 880px) { ol.steps { grid-template-columns: 1fr; } }
+    ol.steps li { counter-increment: s; display: flex; gap: 14px; align-items: flex-start; color: var(--muted); font-size: 13.5px; }
+    ol.steps li::before {
+      content: counter(s);
+      flex: 0 0 28px; height: 28px; border-radius: 9px;
+      background: rgba(255,255,255,.05); border: 1px solid var(--border);
+      display: grid; place-items: center; font-weight: 600; color: var(--ink); font-size: 12.5px;
+    }
+    ol.steps b { color: var(--ink); }
+
+    /* ================= FAQ ================= */
+    .faq { margin: 56px auto 0; max-width: 760px; }
+    .faq details {
+      border-bottom: 1px solid var(--border);
+    }
+    .faq details:first-child { border-top: 1px solid var(--border); }
+    .faq summary {
+      cursor: pointer; list-style: none;
+      display: flex; justify-content: space-between; align-items: center; gap: 20px;
+      padding: 22px 4px; font-weight: 600; font-size: 15.5px;
+      transition: color .2s;
+    }
+    .faq summary::-webkit-details-marker { display: none; }
+    .faq summary:hover { color: #fff; }
+    .faq summary .chev { flex: none; width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 50%; display: grid; place-items: center; transition: transform .3s ease; }
+    .faq summary .chev svg { width: 11px; height: 11px; stroke: var(--muted); fill: none; stroke-width: 2; stroke-linecap: round; }
+    .faq details[open] summary .chev { transform: rotate(45deg); }
+    .faq .a { padding: 0 4px 24px; color: var(--muted); font-size: 14.5px; max-width: 60em; }
+    .faq .a a { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+
+    /* ================= open source ================= */
+    .oss { margin-top: 56px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 880px) { .oss { grid-template-columns: 1fr; } }
+    .oss .feature { padding: 34px 30px; display: flex; flex-direction: column; }
+    .oss .feature h3 { font-size: 19px; }
+    .oss .feature p { font-size: 14px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+    .chip { font-size: 12px; font-weight: 500; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 6px 13px; transition: border-color .2s, color .2s; }
+    .chip:hover { border-color: var(--border-hi); color: var(--ink); }
+    .oss .cta-row { margin-top: auto; padding-top: 26px; display: flex; gap: 11px; flex-wrap: wrap; }
+
+    /* ================= CTA band ================= */
+    .cta-band {
+      margin-top: 130px;
+      border-top: 1px solid var(--border);
+      background:
+        radial-gradient(700px 340px at 50% 115%, rgba(150,160,200,.12), transparent 70%);
+      padding: 110px 0 120px; text-align: center;
+    }
+    .cta-band .logo { width: 76px; height: 76px; border-radius: 20px; margin-bottom: 30px; box-shadow: 0 24px 80px rgba(255,255,255,.08); }
+    .cta-band h2 { margin-bottom: 14px; }
+    .cta-band p { color: var(--muted); max-width: 32em; margin: 0 auto 36px; }
+    .cta-band .hero-ctas { justify-content: center; }
+
+    /* ================= footer ================= */
+    footer { border-top: 1px solid var(--border); padding: 60px 0 46px; color: var(--faint); font-size: 13.5px; }
+    .foot-grid { display: grid; grid-template-columns: 1.6fr 1fr 1fr; gap: 40px; }
+    @media (max-width: 720px) { .foot-grid { grid-template-columns: 1fr; } }
+    .foot-brand p { margin-top: 14px; max-width: 26em; line-height: 1.6; }
+    .foot h5 { font-family: var(--font-display); font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; }
+    .foot ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .foot a:hover { color: var(--ink); }
+    .foot-bottom {
+      margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border);
+      display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-size: 12.5px;
+    }
+
+    /* ================= reveal ================= */
+    .reveal { opacity: 0; transform: translateY(26px); transition: opacity .8s ease, transform .8s cubic-bezier(.2,.8,.2,1); }
+    .reveal.visible { opacity: 1; transform: none; }
+    .reveal.d1 { transition-delay: .07s; } .reveal.d2 { transition-delay: .14s; }
+    .reveal.d3 { transition-delay: .21s; } .reveal.d4 { transition-delay: .28s; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+      .reveal { opacity: 1; transform: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- reusable 2D logo -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <g id="xpenc-mark">
+        <rect width="1024" height="1024" rx="230" fill="url(#tilegrad)"/>
+        <line x1="290.8" y1="290.8" x2="733.2" y2="733.2" stroke="#FFFFFF" stroke-width="131.1" stroke-linecap="round"/>
+        <line x1="290.8" y1="733.2" x2="733.2" y2="290.8" stroke="#000000" stroke-width="192.5" stroke-linecap="round"/>
+        <line x1="290.8" y1="733.2" x2="733.2" y2="290.8" stroke="#FFFFFF" stroke-width="131.1" stroke-linecap="round"/>
+      </g>
+      <linearGradient id="tilegrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#1c1c21"/>
+        <stop offset="1" stop-color="#000000"/>
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <nav id="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="#top">
+        <svg viewBox="0 0 1024 1024"><use href="#xpenc-mark"/></svg>
+        XPENC
+      </a>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#product">App</a>
+        <a href="#privacy">Privacy</a>
+        <a href="#faq">FAQ</a>
+        <a class="gh-pill" href="https://github.com/PATILYASHH/XPENC" target="_blank" rel="noopener">
+          GitHub <span class="stars" id="gh-stars"></span>
+        </a>
+        <a class="btn small" href="#download">Download</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ================= HERO ================= -->
+  <header class="hero" id="top">
+    <canvas id="scene" aria-hidden="true"></canvas>
+    <div class="hero-vignette"></div>
+
+    <div class="wrap hero-content">
+      <div class="hero-grid">
+        <div>
+          <span class="eyebrow"><span class="pulse"></span> Free · Open source · 100% offline</span>
+          <h1>Money, tracked<br><span class="dim">honestly.</span></h1>
+          <p class="sub">
+            XPENC is an offline-first personal finance app for Android.
+            Income, expenses, budgets, dues and automatic bank-SMS capture —
+            <b>everything stays on your phone.</b> No server. No sign-up.
+          </p>
+          <div class="hero-ctas">
+            <a class="btn" href="https://github.com/PATILYASHH/XPENC/releases/latest/download/xpenc-arm64-v8a.apk">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download for Android
+            </a>
+            <a class="btn ghost" href="https://github.com/PATILYASHH/XPENC" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55 0-.27-.01-1.17-.02-2.12-3.2.7-3.88-1.36-3.88-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.76 2.7 1.25 3.35.96.1-.75.4-1.25.72-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.78 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.42-2.7 5.39-5.27 5.68.41.35.78 1.05.78 2.12 0 1.53-.01 2.76-.01 3.14 0 .3.2.67.8.55A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/></svg>
+              View source
+            </a>
+          </div>
+          <div class="hero-meta">
+            <span id="release-tag">v1.0.0</span><span class="sep"></span>
+            <span>Android 7.0+</span><span class="sep"></span>
+            <span>MIT License</span><span class="sep"></span>
+            <span>~20 MB</span>
+          </div>
+        </div>
+        <div><!-- 3D icon renders in the canvas behind this column --></div>
+      </div>
+    </div>
+
+    <div class="scroll-hint">scroll</div>
+  </header>
+
+  <div class="strip">
+    <div class="wrap strip-grid">
+      <div class="stat"><b>100%</b><span>offline &amp; on-device</span></div>
+      <div class="stat"><b>0</b><span>servers · trackers · ads</span></div>
+      <div class="stat"><b>116+</b><span>tests guarding the math</span></div>
+      <div class="stat"><b>MIT</b><span>free &amp; open source</span></div>
+    </div>
+  </div>
+
+  <main>
+    <!-- ================= FEATURES ================= -->
+    <section id="features">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="kicker">Features</div>
+          <h2>Everything a daily money app needs.<br>Nothing that lies to you.</h2>
+          <p class="lead">
+            Most expense apps blur <em>where money sits</em> with <em>what it was for</em>,
+            count transfers as income, or book a UPI payment twice.
+            XPENC keeps the ledger as the single source of truth.
+          </p>
+        </div>
+
+        <div class="grid">
+          <div class="feature reveal">
+            <div class="icon"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/></svg></div>
+            <h3>Honest accounts</h3>
+            <p>Cash, banks and cards with real balances. Debit cards and UPI are linked to their bank — the same rupees are never counted twice.</p>
+          </div>
+          <div class="feature reveal d1">
+            <div class="icon"><svg viewBox="0 0 24 24"><path d="M7 17l-4-4 4-4"/><path d="M3 13h13"/><path d="M17 7l4 4-4 4"/><path d="M21 11H8"/></svg></div>
+            <h3>Income · Expense · Transfer</h3>
+            <p>Three transaction types, kept apart. A transfer between your own accounts is never income and never expense — so reports never lie.</p>
+          </div>
+          <div class="feature reveal d2">
+            <div class="icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 9 9"/></svg></div>
+            <h3>Budgets with alerts</h3>
+            <p>Per-category budgets with live progress. Get notified at 80% and when you overspend — once per period, not on every purchase.</p>
+          </div>
+          <div class="feature reveal d3">
+            <div class="icon"><svg viewBox="0 0 24 24"><path d="M4 5h16v12H8l-4 4z"/><path d="M9 9h6"/></svg></div>
+            <h3>Bank-SMS auto-capture</h3>
+            <p>Bank messages parsed on your phone into review cards. Approve to post. Learned rules can auto-fill — and Undo really reverses the money.</p>
+          </div>
+          <div class="feature reveal">
+            <div class="icon"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M17 8h5M19.5 5.5v5"/></svg></div>
+            <h3>Persons — dues &amp; loans</h3>
+            <p>Track who owes you and whom you owe, with running balances and settlements. Lending is not spending; being repaid is not earning.</p>
+          </div>
+          <div class="feature reveal d1">
+            <div class="icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/></svg></div>
+            <h3>Calendar &amp; reminders</h3>
+            <p>A month grid with day-wise in/out, plus reminders for EMIs and bills. Nothing ever posts without your confirmation.</p>
+          </div>
+          <div class="feature reveal d2">
+            <div class="icon"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></div>
+            <h3>Insights</h3>
+            <p>Spending by category, income vs expense over time, net-worth trend and per-account reports — one charting engine, many views.</p>
+          </div>
+          <div class="feature reveal d3">
+            <div class="icon"><svg viewBox="0 0 24 24"><path d="M12 3v12"/><polyline points="7 10 12 15 17 10"/><path d="M4 21h16"/><path d="M4 17v4M20 17v4"/></svg></div>
+            <h3>Backup &amp; export</h3>
+            <p>Full JSON backup and restore, plus CSV exports shaped for your accountant — or a straight import into Tally.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= PRODUCT ================= -->
+    <section id="product">
+      <div class="wrap">
+        <div class="product-grid">
+          <div class="reveal">
+            <div class="kicker">The app</div>
+            <h2>A dashboard that tells the truth.</h2>
+            <p class="lead">Minimal, monochrome, AMOLED-black. Material 3 with a One UI–inspired layout: big titles, round cards, controls where your thumb is.</p>
+            <ul class="checklist">
+              <li><span class="tick"><svg viewBox="0 0 24 24"><polyline points="4 12 10 18 20 6"/></svg></span><span><b>Net worth at a glance</b> — the one number that can't lie, plus month in and out.</span></li>
+              <li><span class="tick"><svg viewBox="0 0 24 24"><polyline points="4 12 10 18 20 6"/></svg></span><span><b>Day-wise transactions</b> — grouped with daily totals, filters and search.</span></li>
+              <li><span class="tick"><svg viewBox="0 0 24 24"><polyline points="4 12 10 18 20 6"/></svg></span><span><b>SMS review cards</b> — detected transactions wait at the top until you approve them.</span></li>
+              <li><span class="tick"><svg viewBox="0 0 24 24"><polyline points="4 12 10 18 20 6"/></svg></span><span><b>Five-tab navigation</b> — Dashboard · Transactions · Add · Accounts · More.</span></li>
+            </ul>
+          </div>
+          <div class="phone-col reveal d1">
+            <div class="phone-glow"></div>
+            <div class="phone" aria-hidden="true">
+              <div class="screen stagger">
+                <div class="statusbar"><span>9:41</span><span>▮▮▮</span></div>
+                <h4>Dashboard</h4>
+                <div class="card">
+                  <div class="label">Net worth</div>
+                  <div class="networth">₹<span class="count" data-to="184250">0</span>.00</div>
+                </div>
+                <div class="inout">
+                  <div class="card"><div class="label">In</div><div class="amt in">+₹42,000</div></div>
+                  <div class="card"><div class="label">Out</div><div class="amt out">−₹18,375</div></div>
+                </div>
+                <div class="card">
+                  <div class="label">This month</div>
+                  <div class="bars">
+                    <i style="height:34%; animation-delay:.55s"></i><i style="height:58%; animation-delay:.65s"></i>
+                    <i style="height:42%; animation-delay:.75s"></i><i style="height:78%; animation-delay:.85s"></i>
+                    <i style="height:52%; animation-delay:.95s"></i><i style="height:88%; animation-delay:1.05s"></i>
+                    <i style="height:64%; animation-delay:1.15s"></i>
+                  </div>
+                </div>
+                <div class="card" style="padding:8px 13px">
+                  <div class="txn"><div class="dot">🍜</div><div class="name">Food · Swiggy</div><div class="val" style="color:var(--red)">−₹240</div></div>
+                  <div class="txn"><div class="dot">💼</div><div class="name">Salary · IPPB</div><div class="val" style="color:var(--green)">+₹42,000</div></div>
+                  <div class="txn"><div class="dot">🔁</div><div class="name">Cash → Bank</div><div class="val" style="color:var(--muted)">₹5,000</div></div>
+                </div>
+                <div class="navbar">
+                  <span class="on"></span><span></span>
+                  <div class="plus">+</div>
+                  <span></span><span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= HOW IT WORKS ================= -->
+    <section id="how">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="kicker">How it works</div>
+          <h2>Honest in three steps.</h2>
+        </div>
+        <div class="steps-grid">
+          <div class="step reveal">
+            <h3>Set up your accounts</h3>
+            <p>Add Cash, your banks and cards with opening balances. Link debit cards and UPI to the bank they draw from — that's what keeps the math honest.</p>
+          </div>
+          <div class="step reveal d1">
+            <h3>Spend like you always do</h3>
+            <p>Bank SMS are parsed on-device into review cards: amount, account, merchant. Tap a category, approve, done. Manual entry takes seconds too.</p>
+          </div>
+          <div class="step reveal d2">
+            <h3>Trust the numbers</h3>
+            <p>Net worth, budgets, dues and trends — computed from one ledger where transfers never inflate income and nothing is ever counted twice.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= PRIVACY ================= -->
+    <section id="privacy">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="kicker">Privacy</div>
+          <h2>Your bank messages never leave your phone.</h2>
+          <p class="lead">
+            This is a money app that reads your bank SMS — so privacy is the whole trust story.
+            Everything is parsed and stored on-device, in a local SQLite database.
+          </p>
+        </div>
+        <div class="tiles">
+          <div class="tile reveal"><div class="big">0</div><div class="cap">servers — there is no backend at all</div></div>
+          <div class="tile reveal d1"><div class="big">0</div><div class="cap">analytics, trackers or ads</div></div>
+          <div class="tile reveal d2"><div class="big">0</div><div class="cap">accounts — no sign-up, no e-mail, no cloud</div></div>
+        </div>
+        <div class="privacy-note reveal">
+          <svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.6-7 10-4-1.4-7-5.5-7-10V6z"/><polyline points="9 12 11 14 15 10"/></svg>
+          <div>
+            <b>Deliberately minimal permissions.</b> XPENC asks for <b>READ_SMS</b> and intentionally
+            <b>not</b> RECEIVE_SMS: it scans your inbox when you open the app instead of running a
+            background receiver. Decline the permission and everything still works with manual entry.
+            No message, transaction or balance is ever uploaded — there is nowhere to upload it to.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= INVARIANT ================= -->
+    <section id="honest">
+      <div class="wrap">
+        <div class="section-head center reveal">
+          <div class="kicker">Honest math</div>
+          <h2>One invariant, enforced everywhere.</h2>
+        </div>
+        <div class="invariant reveal">
+          <div class="eq">Net worth <span>=</span> Σ account balances</div>
+          <p>
+            A transfer leaves it unchanged. Income raises it. Expense lowers it.
+            If the numbers ever disobey that, it's a bug — and the test suite treats it as one.
+            Amounts are stored as integer paise, never floating point, because floats corrupt money math.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= DOWNLOAD ================= -->
+    <section id="download">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="kicker">Download</div>
+          <h2>Get XPENC for Android.</h2>
+          <p class="lead">Free, open source, no store account needed. Every APK is built, tested and checksummed automatically by GitHub Actions from a tagged release.</p>
+        </div>
+        <div class="dl-card reveal">
+          <div>
+            <h3>XPENC for Android</h3>
+            <div class="ver"><span id="release-tag-2">Latest release</span> · arm64 recommended for phones from ~2017 onwards</div>
+            <div class="dl-btns">
+              <a class="btn" href="https://github.com/PATILYASHH/XPENC/releases/latest/download/xpenc-arm64-v8a.apk">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                APK · arm64-v8a
+              </a>
+              <a class="btn ghost" href="https://github.com/PATILYASHH/XPENC/releases/latest/download/xpenc-armeabi-v7a.apk">APK · armeabi-v7a</a>
+            </div>
+            <div class="dl-small">
+              Older device or unsure? See <a href="https://github.com/PATILYASHH/XPENC/releases/latest" target="_blank" rel="noopener">all builds &amp; SHA-256 checksums</a>.
+            </div>
+          </div>
+          <div class="qr-side">
+            <div class="qr-box"><img src="assets/qr_download.png" alt="QR code linking to the latest XPENC release" loading="lazy"></div>
+            <div class="qr-caption"><b>On your phone?</b> Scan to open the latest release and grab the APK directly.</div>
+          </div>
+        </div>
+        <ol class="steps reveal">
+          <li><b>Download the APK</b> — your browser may warn about APK files; normal for apps outside the Play Store.</li>
+          <li><b>Open it and allow</b> "install unknown apps" for your browser when Android asks.</li>
+          <li><b>Set up in a minute</b> — currency, accounts, opening balances. Done.</li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ================= FAQ ================= -->
+    <section id="faq">
+      <div class="wrap">
+        <div class="section-head center reveal">
+          <div class="kicker">FAQ</div>
+          <h2>Questions, answered honestly.</h2>
+        </div>
+        <div class="faq reveal">
+          <details>
+            <summary>Is XPENC really free? What's the catch?<span class="chev"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+            <div class="a">Free and MIT-licensed, forever. There is no catch to fund — no server bills, no analytics pipeline, no premium tier. It's a personal tool, built in the open.</div>
+          </details>
+          <details>
+            <summary>Where is my data stored?<span class="chev"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+            <div class="a">In a local SQLite database inside the app's private storage on your phone. You can export a full JSON backup (and CSV) anytime and restore it on another device. Nothing is uploaded — there is no server to upload to.</div>
+          </details>
+          <details>
+            <summary>Why does it need SMS permission?<span class="chev"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+            <div class="a">To auto-capture bank transaction messages so you don't have to type every expense. Parsing happens entirely on-device, and XPENC deliberately uses <code>READ_SMS</code> (scan when you open the app) instead of <code>RECEIVE_SMS</code> (background receiver). Decline it and the app works fully with manual entry.</div>
+          </details>
+          <details>
+            <summary>Why isn't it on the Play Store?<span class="chev"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+            <div class="a">Google restricts SMS permissions for expense trackers, so the full-featured build ships as a direct APK from <a href="https://github.com/PATILYASHH/XPENC/releases" target="_blank" rel="noopener">GitHub Releases</a>, with SHA-256 checksums. A Play-compliant build is a stated eventual goal — the capture layer is architected to be swappable for exactly that reason.</div>
+          </details>
+          <details>
+            <summary>Which banks are supported for SMS capture?<span class="chev"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+            <div class="a">India Post Payments Bank (IPPB) ships first; unknown senders still surface as cards you can map manually. Bank templates are config + regex — <a href="https://github.com/PATILYASHH/XPENC/blob/master/CONTRIBUTING.md" target="_blank" rel="noopener">adding your bank</a> is the project's favourite first contribution.</div>
+          </details>
+          <details>
+            <summary>iOS?<span class="chev"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+            <div class="a">The codebase is Flutter, so an iOS build is technically feasible — but iOS doesn't allow SMS reading, so auto-capture wouldn't exist there. Android first.</div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= OPEN SOURCE ================= -->
+    <section id="opensource">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="kicker">Open source</div>
+          <h2>Built in the open.</h2>
+          <p class="lead">
+            XPENC is MIT-licensed. The design doc, the data model, the audit trail of bugs
+            found and fixed — all of it is public.
+          </p>
+        </div>
+        <div class="oss">
+          <div class="feature reveal">
+            <h3>Engineering you can read</h3>
+            <p>A single Flutter codebase with a local-first data layer. 116+ tests guard the money invariants, and every APK is gated by a native-library verification script before it ships. The full design doc — including an adversarial audit that found and fixed 8 defects — lives in the repo.</p>
+            <div class="chips">
+              <span class="chip">Flutter</span><span class="chip">Dart</span><span class="chip">Riverpod</span>
+              <span class="chip">Drift · SQLite</span><span class="chip">Material 3</span>
+              <span class="chip">go_router</span><span class="chip">fl_chart</span>
+            </div>
+          </div>
+          <div class="feature reveal d1">
+            <h3>Contributions welcome</h3>
+            <p>Good first issues: add an SMS template for your bank, improve parsing, or pick up a roadmap item. Read the contributing guide, open an issue, send a PR — CI runs the full suite on every pull request.</p>
+            <div class="cta-row">
+              <a class="btn small" href="https://github.com/PATILYASHH/XPENC/blob/master/CONTRIBUTING.md" target="_blank" rel="noopener">Contributing guide</a>
+              <a class="btn small ghost" href="https://github.com/PATILYASHH/XPENC/issues" target="_blank" rel="noopener">Open an issue</a>
+              <a class="btn small ghost" href="https://github.com/PATILYASHH/XPENC/blob/master/structure.md" target="_blank" rel="noopener">Design doc</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= CTA ================= -->
+    <div class="cta-band">
+      <div class="wrap reveal">
+        <svg class="logo" viewBox="0 0 1024 1024"><use href="#xpenc-mark"/></svg>
+        <h2>Start tracking honestly.</h2>
+        <p>One APK, one minute of setup, zero accounts. Your money, your phone, your numbers — finally telling the truth.</p>
+        <div class="hero-ctas">
+          <a class="btn" href="https://github.com/PATILYASHH/XPENC/releases/latest/download/xpenc-arm64-v8a.apk">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download for Android
+          </a>
+          <a class="btn ghost" href="https://github.com/PATILYASHH/XPENC" target="_blank" rel="noopener">Star on GitHub</a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <div class="foot-grid foot">
+        <div class="foot-brand">
+          <a class="brand" href="#top" style="color:var(--ink)">
+            <svg viewBox="0 0 1024 1024" style="width:28px;height:28px;border-radius:7px"><use href="#xpenc-mark"/></svg>
+            XPENC
+          </a>
+          <p>Offline-first personal finance for Android. Money, tracked honestly — no server, no sign-up, no lies in the numbers.</p>
+        </div>
+        <div class="foot">
+          <h5>Product</h5>
+          <ul>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#download">Download</a></li>
+            <li><a href="https://github.com/PATILYASHH/XPENC/releases" target="_blank" rel="noopener">Releases</a></li>
+            <li><a href="https://github.com/PATILYASHH/XPENC/blob/master/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></li>
+          </ul>
+        </div>
+        <div class="foot">
+          <h5>Project</h5>
+          <ul>
+            <li><a href="https://github.com/PATILYASHH/XPENC" target="_blank" rel="noopener">GitHub</a></li>
+            <li><a href="https://github.com/PATILYASHH/XPENC/blob/master/CONTRIBUTING.md" target="_blank" rel="noopener">Contributing</a></li>
+            <li><a href="https://github.com/PATILYASHH/XPENC/blob/master/SECURITY.md" target="_blank" rel="noopener">Security</a></li>
+            <li><a href="https://github.com/PATILYASHH/XPENC/blob/master/LICENSE" target="_blank" rel="noopener">MIT License</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="foot-bottom">
+        <span>© <span id="year">2026</span> Yash Patil</span>
+        <span><a href="https://github.com/PATILYASHH" target="_blank" rel="noopener">@PATILYASHH</a> · <a href="https://www.linkedin.com/in/patilyasshh/" target="_blank" rel="noopener">LinkedIn</a></span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // nav background on scroll
+    const nav = document.getElementById('nav');
+    const onScroll = () => nav.classList.toggle('scrolled', scrollY > 12);
+    addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+    // reveal on scroll
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); }
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+    // count-up (phone mockup)
+    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const countIO = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        countIO.unobserve(e.target);
+        const el = e.target, to = +el.dataset.to;
+        if (reduceMotion) { el.textContent = to.toLocaleString('en-IN'); continue; }
+        const t0 = performance.now(), dur = 1400;
+        (function tick(t) {
+          const p = Math.min((t - t0) / dur, 1), eased = 1 - Math.pow(1 - p, 3);
+          el.textContent = Math.round(to * eased).toLocaleString('en-IN');
+          if (p < 1) requestAnimationFrame(tick);
+        })(t0);
+      }
+    }, { threshold: 0.4 });
+    document.querySelectorAll('.count').forEach(el => countIO.observe(el));
+
+    // latest release tag + stars (graceful fallbacks)
+    fetch('https://api.github.com/repos/PATILYASHH/XPENC/releases/latest')
+      .then(r => r.ok ? r.json() : null)
+      .then(rel => {
+        if (!rel || !rel.tag_name) return;
+        document.getElementById('release-tag').textContent = rel.tag_name;
+        document.getElementById('release-tag-2').textContent = rel.tag_name;
+      }).catch(() => {});
+    fetch('https://api.github.com/repos/PATILYASHH/XPENC')
+      .then(r => r.ok ? r.json() : null)
+      .then(repo => {
+        if (!repo || !(repo.stargazers_count > 0)) return;
+        document.getElementById('gh-stars').textContent = '★ ' + repo.stargazers_count;
+      }).catch(() => {});
+
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+
+  <!-- ================= Three.js hero ================= -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module">
+    // Progressive enhancement: if WebGL, the CDN or the browser can't do it,
+    // the page above is complete without the 3D layer.
+    try {
+      const THREE = await import('three');
+      const { RoundedBoxGeometry } = await import('three/addons/geometries/RoundedBoxGeometry.js');
+      const { RoomEnvironment } = await import('three/addons/environments/RoomEnvironment.js');
+
+      const canvas = document.getElementById('scene');
+      const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.15;
+
+      const scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x050506, 0.05);
+
+      const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+      camera.position.set(0, 0.4, 12);
+
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+      // ----- soft glow backdrop (separates the icon from the black bg) -----
+      const glowCanvas = document.createElement('canvas');
+      glowCanvas.width = glowCanvas.height = 256;
+      const g = glowCanvas.getContext('2d');
+      const grad = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+      grad.addColorStop(0, 'rgba(175,185,220,0.32)');
+      grad.addColorStop(0.45, 'rgba(120,130,170,0.10)');
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = grad; g.fillRect(0, 0, 256, 256);
+      const glow = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: new THREE.CanvasTexture(glowCanvas), transparent: true, depthWrite: false,
+      }));
+      glow.scale.setScalar(14);
+      glow.position.z = -3;
+      scene.add(glow);
+
+      // ----- the XPENC icon -----
+      const icon = new THREE.Group();
+      const tile = new THREE.Mesh(
+        new RoundedBoxGeometry(4.1, 4.1, 0.6, 6, 0.85),
+        new THREE.MeshStandardMaterial({ color: 0x17171d, metalness: 0.6, roughness: 0.32, envMapIntensity: 1.2 })
+      );
+      icon.add(tile);
+
+      const barMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.3, roughness: 0.22, envMapIntensity: 1.6 });
+      const bar = (rotZ, z) => {
+        const m = new THREE.Mesh(new THREE.CapsuleGeometry(0.31, 2.3, 8, 24), barMat);
+        m.rotation.z = rotZ;
+        m.position.z = z;
+        return m;
+      };
+      icon.add(bar(Math.PI / 4, 0.42));
+      icon.add(bar(-Math.PI / 4, 0.54));
+      scene.add(icon);
+
+      // ----- two inclined orbit rings of small coins -----
+      const coins = new THREE.Group();
+      const coinGeo = new THREE.CylinderGeometry(0.11, 0.11, 0.035, 18);
+      const coinMat = new THREE.MeshStandardMaterial({ color: 0xe8e8ee, metalness: 0.85, roughness: 0.25, envMapIntensity: 1.4 });
+      const RINGS = [
+        { n: 8, radius: 3.6, tilt: 0.35, speed: 0.16 },
+        { n: 6, radius: 4.4, tilt: -0.25, speed: -0.11 },
+      ];
+      for (const ring of RINGS) {
+        const grp = new THREE.Group();
+        grp.rotation.x = ring.tilt;
+        grp.userData.speed = ring.speed;
+        for (let i = 0; i < ring.n; i++) {
+          const c = new THREE.Mesh(coinGeo, coinMat);
+          c.userData.angle = (i / ring.n) * Math.PI * 2;
+          c.userData.radius = ring.radius;
+          c.userData.wobble = i * 1.7;
+          grp.add(c);
+        }
+        coins.add(grp);
+      }
+      scene.add(coins);
+
+      // ----- dotted floor grid, fading into fog -----
+      const gpts = [];
+      for (let x = -22; x <= 22; x += 1.1) for (let z = -16; z <= 4; z += 1.1) gpts.push(x, -3.6, z - 4);
+      const gridGeo = new THREE.BufferGeometry();
+      gridGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(gpts), 3));
+      scene.add(new THREE.Points(gridGeo, new THREE.PointsMaterial({
+        color: 0x9a9ab0, size: 0.035, transparent: true, opacity: 0.55,
+      })));
+
+      // ----- distant particles -----
+      const N = 500, pos = new Float32Array(N * 3);
+      for (let i = 0; i < N; i++) {
+        pos[i * 3] = (Math.random() - 0.5) * 44;
+        pos[i * 3 + 1] = (Math.random() - 0.2) * 22;
+        pos[i * 3 + 2] = -6 - Math.random() * 22;
+      }
+      const pGeo = new THREE.BufferGeometry();
+      pGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      const points = new THREE.Points(pGeo, new THREE.PointsMaterial({
+        color: 0xffffff, size: 0.04, sizeAttenuation: true, transparent: true, opacity: 0.5,
+      }));
+      scene.add(points);
+
+      // ----- lights -----
+      scene.add(new THREE.AmbientLight(0xffffff, 0.14));
+      const key = new THREE.DirectionalLight(0xffffff, 2.2);
+      key.position.set(4, 7, 8);
+      scene.add(key);
+      const rim = new THREE.DirectionalLight(0x9aa4cc, 1.0);
+      rim.position.set(-7, -2, -4);
+      scene.add(rim);
+
+      // ----- layout -----
+      function layout() {
+        const w = canvas.clientWidth || innerWidth, h = canvas.clientHeight || innerHeight;
+        renderer.setSize(w, h, false);
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        const wide = w / h > 1.05;
+        const x = wide ? 3.3 : 0;
+        icon.position.x = x; coins.position.x = x; glow.position.x = x;
+        const s = wide ? 0.92 : 0.6;
+        icon.scale.setScalar(s); coins.scale.setScalar(s);
+        glow.scale.setScalar(wide ? 14 : 10);
+      }
+      layout();
+      addEventListener('resize', layout);
+
+      // ----- interaction -----
+      const pointer = { x: 0, y: 0 };
+      addEventListener('pointermove', (e) => {
+        pointer.x = (e.clientX / innerWidth) * 2 - 1;
+        pointer.y = (e.clientY / innerHeight) * 2 - 1;
+      }, { passive: true });
+
+      let scrollT = 0;
+      addEventListener('scroll', () => { scrollT = Math.min(scrollY / innerHeight, 1.4); }, { passive: true });
+
+      let running = true;
+      new IntersectionObserver(([e]) => { running = e.isIntersecting; }, { threshold: 0 })
+        .observe(document.getElementById('top'));
+
+      const clock = new THREE.Clock();
+      function frame() {
+        requestAnimationFrame(frame);
+        if (!running || document.hidden) return;
+        const t = clock.getElapsedTime();
+
+        icon.rotation.y = -0.35 + Math.sin(t * 0.3) * 0.22 + pointer.x * 0.3 + scrollT * 1.4;
+        icon.rotation.x = 0.06 + Math.cos(t * 0.24) * 0.08 - pointer.y * 0.18 + scrollT * 0.35;
+        icon.position.y = 0.25 + Math.sin(t * 0.7) * 0.14 - scrollT * 2.4;
+        coins.position.y = icon.position.y;
+        glow.position.y = icon.position.y;
+
+        for (const ring of coins.children) {
+          ring.rotation.y = t * ring.userData.speed * 4;
+          for (const c of ring.children) {
+            const a = c.userData.angle;
+            c.position.set(Math.cos(a) * c.userData.radius, Math.sin(t * 0.7 + c.userData.wobble) * 0.16, Math.sin(a) * c.userData.radius * 0.5);
+            c.rotation.x = t * 0.6 + c.userData.wobble;
+            c.rotation.z = t * 0.4;
+          }
+        }
+
+        points.rotation.y = t * 0.01 + pointer.x * 0.015;
+        camera.position.x += (pointer.x * 0.5 - camera.position.x) * 0.04;
+        camera.position.y += (0.4 - pointer.y * 0.3 - camera.position.y) * 0.04;
+        camera.lookAt(icon.position.x * 0.62, 0.1, 0);
+
+        renderer.render(scene, camera);
+      }
+
+      if (reduce) {
+        icon.rotation.set(0.05, -0.4, 0);
+        renderer.render(scene, camera);
+      } else {
+        frame();
+      }
+      canvas.classList.add('on');
+    } catch (err) {
+      console.info('3D hero disabled:', err && err.message);
+    }
+  </script>
+</body>
+</html>

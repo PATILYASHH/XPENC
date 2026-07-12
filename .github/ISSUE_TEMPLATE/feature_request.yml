@@ -1,0 +1,32 @@
+name: ✨ Feature request
+description: Suggest an idea for XPENC
+title: "feat: "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check [structure.md](https://github.com/PATILYASHH/XPENC/blob/master/structure.md)
+        first — your idea may already be designed (e.g. Auto Spend is deliberately
+        parked, see §9) or on the roadmap.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the situation where you missed this feature.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    id: honesty
+    attributes:
+      label: Money-honesty check
+      description: |
+        XPENC's core rule: nothing may make the numbers lie (no double counting,
+        transfers are never income/expense, nothing posts without confirmation).
+        Does your feature interact with any of that? How?
