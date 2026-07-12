@@ -48,11 +48,28 @@ printf '%s\n' "$libs" | grep -q 'libflutter\.so' && ok "libflutter.so" || bad "l
 printf '%s\n' "$libs" | grep -q 'libapp\.so'     && ok "libapp.so"     || bad "libapp.so missing (not a release build?)"
 
 # 3. Permissions we rely on / deliberately avoid.
+# aapt is rarely on PATH — fall back to the newest build-tools in the SDK, so
+# this gate cannot silently skip (a skipped run once hid a stale check here).
+if ! command -v aapt2 >/dev/null 2>&1 && ! command -v aapt >/dev/null 2>&1; then
+  for sdk in "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}" \
+             "$HOME/AppData/Local/Android/Sdk" "$HOME/Android/Sdk" \
+             "$HOME/Library/Android/sdk"; do
+    [ -n "$sdk" ] && [ -d "$sdk/build-tools" ] || continue
+    latest=$(ls -1 "$sdk/build-tools" | sort -V | tail -n 1)
+    if [ -n "$latest" ]; then
+      PATH="$sdk/build-tools/$latest:$PATH"
+      break
+    fi
+  done
+fi
 if command -v aapt2 >/dev/null 2>&1 || command -v aapt >/dev/null 2>&1; then
   AAPT=$(command -v aapt2 || command -v aapt)
   perms=$("$AAPT" dump permissions "$APK" 2>/dev/null || true)
-  printf '%s' "$perms" | grep -q 'android.permission.READ_SMS' \
-    && ok "READ_SMS declared" || bad "READ_SMS missing -> message capture dead"
+  if printf '%s' "$perms" | grep -q 'android.permission.READ_SMS'; then
+    bad "READ_SMS declared -- paused in 1.1.0: Play Protect blocks sideloads and Play rejects it"
+  else
+    ok "READ_SMS absent (as designed since 1.1.0)"
+  fi
   if printf '%s' "$perms" | grep -q 'android.permission.RECEIVE_SMS'; then
     bad "RECEIVE_SMS declared -- we deliberately do not use a broadcast receiver"
   else
