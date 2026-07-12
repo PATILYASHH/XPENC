@@ -1,0 +1,1 @@
+Offline expense tracker — accounts, budgets, dues and insights, all on-device

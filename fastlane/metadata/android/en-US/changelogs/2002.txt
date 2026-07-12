@@ -1,0 +1,6 @@
+Bank-SMS auto-capture is paused: the READ_SMS permission made Google Play Protect block APK installs, so this build requests no SMS permission at all. The on-device capture pipeline stays intact and returns in a compliant form.
+
+• Message Capture screen now explains the pause
+• Notifications toggle moved to Settings
+• No SMS permission, Kotlin SMS channel removed
+• Regression test fails the build if SMS permissions ever reappear

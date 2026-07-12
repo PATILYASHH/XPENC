@@ -1,0 +1,20 @@
+<p><b>XPENC</b> is a personal finance app that keeps every rupee on your phone. There is no server, no account to create and no ads — your transactions live in a private database on your device and never leave it. Release builds do not even request the INTERNET permission, so transmitting your data is technically impossible.</p>
+
+<p><b>Honest numbers.</b> Most expense apps blur where money sits with what it was for. XPENC keeps them apart and enforces one rule everywhere: net worth equals the sum of your account balances. A transfer between your own accounts leaves it unchanged, income raises it, expense lowers it.</p>
+
+<ul>
+<li><b>Accounts</b> — Cash, Bank and Card with real balances. Debit cards and UPI are linked instruments that spend their bank's money, so a payment is never counted twice. Credit cards carry their own balance.</li>
+<li><b>Income, Expense, Transfer</b> — three transaction types kept strictly apart. Transfers never pollute budgets or reports.</li>
+<li><b>Budgets</b> — per-category budgets with period windows, live progress, and alerts at 80% and on overspend.</li>
+<li><b>Dues and loans</b> — track what people owe you and what you owe them, with partial settlements and running balances. Lending is not spending, so dues stay out of your budgets.</li>
+<li><b>Calendar</b> — a day-wise money-in / money-out grid, plus EMI and bill reminders that post nothing until you confirm them.</li>
+<li><b>Insights</b> — category breakdown, income vs expense, net-worth trend and per-account reports.</li>
+<li><b>Backup and export</b> — one-tap JSON backup and restore, plus CSV export shaped for accountants.</li>
+<li><b>True-black design</b> — a clean, monochrome Material 3 interface that is easy on AMOLED screens and on the eyes.</li>
+</ul>
+
+<p><b>Private by architecture.</b> Fully offline, no sign-up, no cloud, no analytics, no trackers, no ads. The only runtime permission is notifications, used for the budget alerts and reminders you set. Backups are files you create and keep — you decide where they go.</p>
+
+<p><b>Accurate by design.</b> All money math is done in whole paise, never floating point, so totals are always exact.</p>
+
+<p>XPENC is free software under the MIT license.</p>
