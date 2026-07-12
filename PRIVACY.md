@@ -3,7 +3,7 @@
 **Effective date:** 12 July 2026
 **Applies to:** XPENC for Android (package name `com.yash.xpenc`), version 1.1.0 and later
 **Developer:** Yash Patil (individual developer)
-**Contact:** banafintech@gmail.com
+**Contact:** patilyasshh@gmail.com
 
 This policy is published at <https://getxpenc.vercel.app/privacy> and mirrored in the
 app's source repository at <https://github.com/PATILYASHH/XPENC/blob/master/PRIVACY.md>.
@@ -86,9 +86,9 @@ The download website <https://getxpenc.vercel.app> is a static page hosted on
 Vercel. It runs no analytics or trackers. Like any web host, Vercel may keep
 standard access logs (IP address, user agent) to operate the service — see
 [Vercel's privacy policy](https://vercel.com/legal/privacy-policy). The page
-loads fonts from Google Fonts, an optional 3D effect from the jsDelivr CDN, and
-the latest release number from the GitHub API; those requests are made by your
-**browser when you visit the website**, never by the Android app.
+loads fonts from Google Fonts and the latest release number from the GitHub
+API; those requests are made by your **browser when you visit the website**,
+never by the Android app.
 
 ## Open source
 
@@ -114,6 +114,6 @@ release notes.
 
 Questions or concerns about privacy:
 
-- Email: **banafintech@gmail.com**
+- Email: **patilyasshh@gmail.com**
 - Bug reports: [GitHub issues](https://github.com/PATILYASHH/XPENC/issues)
 - Security vulnerabilities: [private reporting](https://github.com/PATILYASHH/XPENC/security) — see [SECURITY.md](SECURITY.md)
