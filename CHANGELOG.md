@@ -8,6 +8,29 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
+### Added
+- **F-Droid submission kit** — [docs/fdroid/](docs/fdroid/): inclusion-criteria
+  audit, draft fdroiddata build recipe, submission guide; plus in-repo
+  [fastlane metadata](fastlane/metadata/android/en-US/) (texts, per-versionCode
+  changelogs, icon, feature graphic) that F-Droid reads directly.
+- **Privacy policy** — [PRIVACY.md](PRIVACY.md), live at
+  [getxpenc.vercel.app/privacy](https://getxpenc.vercel.app/privacy) and linked
+  from the website footer.
+- **Play Store submission kit** — [docs/playstore/](docs/playstore/): store
+  listing copy, Data safety answers, content rating, declarations and a release
+  checklist, all verified against Google's July 2026 requirements.
+- `tool/generate_playstore_assets.py` — generates the 1024×500 Play feature
+  graphic from the same geometry as the launcher icons.
+- Release builds sign with the upload keystore when `android/key.properties`
+  exists, falling back to debug signing otherwise (so `flutter run --release`
+  still works for contributors).
+
+### Fixed
+- `tool/verify_apk.sh` had a stale, inverted check that **failed** the build
+  when `READ_SMS` was absent (the 1.0 rule). It now fails if any SMS permission
+  reappears — matching 1.1.0 and Play policy.
+- `SECURITY.md` no longer claims the app reads bank SMS.
+
 ## [1.1.0] — 2026-07-12
 
 ### Changed
