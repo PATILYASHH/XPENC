@@ -8,6 +8,13 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
+## [1.1.1] — 2026-07-13
+
+First release distributed on **Google Play** and **F-Droid**. No functional
+changes since 1.1.0 — the app still requests no SMS and no internet permission,
+runs no analytics, and shows no ads. This release adds the store metadata,
+signing and tooling needed to publish.
+
 ### Added
 - **F-Droid submission kit** — [docs/fdroid/](docs/fdroid/): inclusion-criteria
   audit, draft fdroiddata build recipe, submission guide; plus in-repo
@@ -30,6 +37,8 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   when `READ_SMS` was absent (the 1.0 rule). It now fails if any SMS permission
   reappears — matching 1.1.0 and Play policy.
 - `SECURITY.md` no longer claims the app reads bank SMS.
+- Phone screenshots for the store listings (padded to 2:1 so the same set is
+  valid on both Google Play and F-Droid).
 
 ## [1.1.0] — 2026-07-12
 

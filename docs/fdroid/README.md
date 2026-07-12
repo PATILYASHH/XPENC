@@ -49,11 +49,12 @@ Verified with aapt on the 1.1.0+2 build (1002 / 2002 / 4002). The recipe's
 
 ## How to submit (one-time)
 
-0. **Tag a new release first** (e.g. `v1.1.1`): F-Droid reads the fastlane
-   texts/images from the commit it builds, and the existing `v1.1.0` tag
-   predates them. Update the recipe's `commit:`, `versionName:`,
-   `versionCode:`s, `CurrentVersion` and `CurrentVersionCode` to the new tag
-   before submitting.
+0. **Tag `v1.1.1` first.** F-Droid reads the fastlane texts/images from the
+   commit it builds, and the existing `v1.1.0` tag predates them. The repo is
+   already prepared for this: `pubspec.yaml` is `1.1.1+3`, the fastlane
+   screenshots/changelogs are in place, and the recipe below is already set to
+   `commit: v1.1.1` with versionCodes `1003/2003/4003`. All that's left is
+   `git tag v1.1.1 && git push origin master v1.1.1`.
 1. Create a [GitLab](https://gitlab.com) account.
 2. Fork [fdroiddata](https://gitlab.com/fdroid/fdroiddata), branch `com.yash.xpenc`.
 3. Copy [`metadata-com.yash.xpenc.yml`](metadata-com.yash.xpenc.yml) to

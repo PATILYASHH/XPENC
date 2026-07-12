@@ -46,3 +46,6 @@ app.*.map.json
 
 # Font cache downloaded by tool/generate_playstore_assets.py — not a source file
 /branding/fonts/
+
+# Raw screenshot drops — the padded, store-ready copies live under fastlane/
+/Images/
