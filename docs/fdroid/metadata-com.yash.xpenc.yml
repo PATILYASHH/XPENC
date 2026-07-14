@@ -7,7 +7,8 @@
 #   base versionCode * 10 + ABI  (armeabi-v7a=1, arm64-v8a=2, x86_64=3).
 #   1.1.2+4 -> 41 / 42 / 43, verified with aapt. Encoded in VercodeOperation.
 # commit: uses the full hash (not a tag) per F-Droid review.
-# Flutter version is extracted from .github/workflows/release.yml at build time.
+# Flutter version is extracted (digit-anchored sed) from release.yml at build
+# time. No `rm:` — the project is Android-only (no ios/linux/macos/web/windows).
 
 Categories:
   - Finance Manager
@@ -32,14 +33,8 @@ Builds:
     output: build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
     srclibs:
       - flutter@stable
-    rm:
-      - ios
-      - linux
-      - macos
-      - web
-      - windows
     prebuild:
-      - flutterVersion=$(sed -n -E "s/.*flutter-version:\ '(.*)'/\1/p" .github/workflows/release.yml)
+      - flutterVersion=$(sed -n -E "s/.*flutter-version:\ '([0-9][^']*)'/\1/p" .github/workflows/release.yml)
       - '[[ $flutterVersion ]]'
       - git -C $$flutter$$ checkout -f $flutterVersion
       - export PUB_CACHE=$(pwd)/.pub-cache
@@ -57,14 +52,8 @@ Builds:
     output: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
     srclibs:
       - flutter@stable
-    rm:
-      - ios
-      - linux
-      - macos
-      - web
-      - windows
     prebuild:
-      - flutterVersion=$(sed -n -E "s/.*flutter-version:\ '(.*)'/\1/p" .github/workflows/release.yml)
+      - flutterVersion=$(sed -n -E "s/.*flutter-version:\ '([0-9][^']*)'/\1/p" .github/workflows/release.yml)
       - '[[ $flutterVersion ]]'
       - git -C $$flutter$$ checkout -f $flutterVersion
       - export PUB_CACHE=$(pwd)/.pub-cache
@@ -82,14 +71,8 @@ Builds:
     output: build/app/outputs/flutter-apk/app-x86_64-release.apk
     srclibs:
       - flutter@stable
-    rm:
-      - ios
-      - linux
-      - macos
-      - web
-      - windows
     prebuild:
-      - flutterVersion=$(sed -n -E "s/.*flutter-version:\ '(.*)'/\1/p" .github/workflows/release.yml)
+      - flutterVersion=$(sed -n -E "s/.*flutter-version:\ '([0-9][^']*)'/\1/p" .github/workflows/release.yml)
       - '[[ $flutterVersion ]]'
       - git -C $$flutter$$ checkout -f $flutterVersion
       - export PUB_CACHE=$(pwd)/.pub-cache
