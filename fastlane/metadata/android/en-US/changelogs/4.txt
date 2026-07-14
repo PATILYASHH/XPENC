@@ -1,0 +1,1 @@
+Packaging update for F-Droid — no functional changes since 1.1.1. Adjusts the per-ABI versionCode scheme and pins the Flutter version as requested in F-Droid review. Still fully offline with no SMS or internet permission.
