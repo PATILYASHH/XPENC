@@ -8,6 +8,24 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
+## [1.1.2] — 2026-07-14
+
+Packaging release for F-Droid, addressing the maintainer's review of the
+fdroiddata submission. **No functional changes** since 1.1.1.
+
+### Changed
+- **Per-ABI versionCode scheme** is now `base × 10 + ABI` (armeabi-v7a = 1,
+  arm64-v8a = 2, x86_64 = 3), overriding Flutter's default split offsets so the
+  codes match F-Droid's standard `VercodeOperation`. Set in
+  `android/app/build.gradle.kts`.
+- The Flutter version in `.github/workflows/release.yml` is single-quoted so the
+  F-Droid recipe can extract it and build with the same Flutter as CI.
+
+### Note for sideload users
+Because the versionCode scheme changed, installing 1.1.2 over a 1.1.1 APK from
+GitHub may require an uninstall/reinstall. Your data survives via
+**Backup → export** before, restore after.
+
 ## [1.1.1] — 2026-07-13
 
 First release distributed on **Google Play** and **F-Droid**. No functional

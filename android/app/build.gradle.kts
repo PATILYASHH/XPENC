@@ -1,5 +1,6 @@
 import java.util.Properties
 import java.io.FileInputStream
+import com.android.build.gradle.internal.api.ApkVariantOutputImpl
 
 plugins {
     id("com.android.application")
@@ -68,6 +69,23 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
+        }
+    }
+}
+
+// F-Droid Flutter versionCode scheme: base versionCode * 10 + ABI index
+// (armeabi-v7a=1, arm64-v8a=2, x86_64=3), overriding Flutter's default
+// split-per-abi offsets so the codes stay small and ordered and match the
+// VercodeOperation in the fdroiddata recipe. Requested in F-Droid review.
+val abiCodes = mapOf("armeabi-v7a" to 1, "arm64-v8a" to 2, "x86_64" to 3)
+android.applicationVariants.configureEach {
+    val variant = this
+    variant.outputs.forEach { output ->
+        val abiId = output.filters.find { it.filterType == "ABI" }?.identifier
+        val abiVersionCode = abiCodes[abiId]
+        if (abiVersionCode != null) {
+            (output as ApkVariantOutputImpl).versionCodeOverride =
+                variant.versionCode * 10 + abiVersionCode
         }
     }
 }

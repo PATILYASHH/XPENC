@@ -1,1 +1,0 @@
-First release on F-Droid and Google Play. Same app as 1.1.0 — fully offline, no SMS or internet permission, no ads, no trackers. This release only adds the store metadata and signing needed to publish.
