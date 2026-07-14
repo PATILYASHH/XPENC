@@ -51,6 +51,14 @@ android {
         versionName = flutter.versionName
     }
 
+    // The Android Gradle Plugin embeds a "Dependency metadata" signing block in
+    // every APK by default. F-Droid's scanner rejects it (opaque, non-auditable
+    // dependency info), so leave it out. No effect on the app itself.
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
+
     signingConfigs {
         if (hasReleaseKeystore) {
             create("release") {
