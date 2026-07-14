@@ -1,15 +1,16 @@
-# Draft fdroiddata recipe for XPENC.
-# To submit: copy this file to fdroiddata as metadata/com.yash.xpenc.yml
-# (gitlab.com/fdroid/fdroiddata) and open a merge request — see README.md
-# in this folder. Remove these header comments before submitting.
+# Reference copy of the fdroiddata recipe for XPENC — the live version is in
+# the fdroiddata MR (gitlab.com/fdroid/fdroiddata, metadata/com.yash.xpenc.yml).
+# Kept here so the repo documents its own F-Droid packaging. Verified with
+# `fdroid lint` + `fdroid rewritemeta` (canonical format, no diff).
 #
-# versionCode scheme: pubspec `version: X.Y.Z+N`; `flutter build apk
-# --split-per-abi` emits N+1000 (armeabi-v7a), N+2000 (arm64-v8a),
-# N+4000 (x86_64) — verified with aapt on the 1.1.0+2 build (1002/2002/4002),
-# so 1.1.1+3 gives 1003/2003/4003 as encoded below.
+# versionCode scheme (F-Droid standard for Flutter, set in build.gradle.kts):
+#   base versionCode * 10 + ABI  (armeabi-v7a=1, arm64-v8a=2, x86_64=3).
+#   1.1.2+4 -> 41 / 42 / 43, verified with aapt. Encoded in VercodeOperation.
+# commit: uses the full hash (not a tag) per F-Droid review.
+# Flutter version is extracted from .github/workflows/release.yml at build time.
 
 Categories:
-  - Money
+  - Finance Manager
 License: MIT
 AuthorName: Yash Patil
 AuthorEmail: patilyasshh@gmail.com
@@ -17,7 +18,7 @@ AuthorWebSite: https://github.com/PATILYASHH
 WebSite: https://getxpenc.vercel.app
 SourceCode: https://github.com/PATILYASHH/XPENC
 IssueTracker: https://github.com/PATILYASHH/XPENC/issues
-Changelog: https://github.com/PATILYASHH/XPENC/blob/master/CHANGELOG.md
+Changelog: https://github.com/PATILYASHH/XPENC/blob/HEAD/CHANGELOG.md
 
 AutoName: XPENC
 
@@ -25,12 +26,12 @@ RepoType: git
 Repo: https://github.com/PATILYASHH/XPENC.git
 
 Builds:
-  - versionName: 1.1.1
-    versionCode: 1003
-    commit: v1.1.1
+  - versionName: 1.1.2
+    versionCode: 41
+    commit: 4c2768a0b5d76e034790c8f7864a4e4f46d8a43a
     output: build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
     srclibs:
-      - flutter@3.38.9
+      - flutter@stable
     rm:
       - ios
       - linux
@@ -38,6 +39,9 @@ Builds:
       - web
       - windows
     prebuild:
+      - flutterVersion=$(sed -n -E "s/.*flutter-version:\ '(.*)'/\1/p" .github/workflows/release.yml)
+      - '[[ $flutterVersion ]]'
+      - git -C $$flutter$$ checkout -f $flutterVersion
       - export PUB_CACHE=$(pwd)/.pub-cache
       - $$flutter$$/bin/flutter config --no-analytics
       - $$flutter$$/bin/flutter pub get --enforce-lockfile
@@ -47,12 +51,12 @@ Builds:
       - export PUB_CACHE=$(pwd)/.pub-cache
       - $$flutter$$/bin/flutter build apk --release --split-per-abi --target-platform=android-arm
 
-  - versionName: 1.1.1
-    versionCode: 2003
-    commit: v1.1.1
+  - versionName: 1.1.2
+    versionCode: 42
+    commit: 4c2768a0b5d76e034790c8f7864a4e4f46d8a43a
     output: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
     srclibs:
-      - flutter@3.38.9
+      - flutter@stable
     rm:
       - ios
       - linux
@@ -60,6 +64,9 @@ Builds:
       - web
       - windows
     prebuild:
+      - flutterVersion=$(sed -n -E "s/.*flutter-version:\ '(.*)'/\1/p" .github/workflows/release.yml)
+      - '[[ $flutterVersion ]]'
+      - git -C $$flutter$$ checkout -f $flutterVersion
       - export PUB_CACHE=$(pwd)/.pub-cache
       - $$flutter$$/bin/flutter config --no-analytics
       - $$flutter$$/bin/flutter pub get --enforce-lockfile
@@ -69,12 +76,12 @@ Builds:
       - export PUB_CACHE=$(pwd)/.pub-cache
       - $$flutter$$/bin/flutter build apk --release --split-per-abi --target-platform=android-arm64
 
-  - versionName: 1.1.1
-    versionCode: 4003
-    commit: v1.1.1
+  - versionName: 1.1.2
+    versionCode: 43
+    commit: 4c2768a0b5d76e034790c8f7864a4e4f46d8a43a
     output: build/app/outputs/flutter-apk/app-x86_64-release.apk
     srclibs:
-      - flutter@3.38.9
+      - flutter@stable
     rm:
       - ios
       - linux
@@ -82,6 +89,9 @@ Builds:
       - web
       - windows
     prebuild:
+      - flutterVersion=$(sed -n -E "s/.*flutter-version:\ '(.*)'/\1/p" .github/workflows/release.yml)
+      - '[[ $flutterVersion ]]'
+      - git -C $$flutter$$ checkout -f $flutterVersion
       - export PUB_CACHE=$(pwd)/.pub-cache
       - $$flutter$$/bin/flutter config --no-analytics
       - $$flutter$$/bin/flutter pub get --enforce-lockfile
@@ -94,9 +104,9 @@ Builds:
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^v[0-9.]+$
 VercodeOperation:
-  - '%c + 1000'
-  - '%c + 2000'
-  - '%c + 4000'
+  - '%c * 10 + 1'
+  - '%c * 10 + 2'
+  - '%c * 10 + 3'
 UpdateCheckData: pubspec.yaml|version:\s.+\+(\d+)|.|version:\s(.+)\+
-CurrentVersion: 1.1.1
-CurrentVersionCode: 4003
+CurrentVersion: 1.1.2
+CurrentVersionCode: 43
