@@ -1,0 +1,1 @@
+Packaging fix for F-Droid — no functional changes. Excludes the Gradle "dependency metadata" signing block from the APK so it passes F-Droid's scanner. Still fully offline with no SMS or internet permission.

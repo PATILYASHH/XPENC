@@ -8,6 +8,17 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
+## [1.1.3] — 2026-07-14
+
+Packaging fix for F-Droid, from the fdroiddata review. **No functional
+changes** since 1.1.2.
+
+### Changed
+- The Android Gradle Plugin's **"Dependency metadata" signing block** is now
+  excluded from the APK (`dependenciesInfo { includeInApk = false }` in
+  `android/app/build.gradle.kts`). F-Droid's APK scanner rejects that block;
+  it has no effect on the app.
+
 ## [1.1.2] — 2026-07-14
 
 Packaging release for F-Droid, addressing the maintainer's review of the
