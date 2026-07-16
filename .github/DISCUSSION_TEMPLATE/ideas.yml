@@ -1,0 +1,43 @@
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Half-formed ideas belong here. Once an idea has a clear shape and someone
+        is ready to build it, it graduates to a
+        [feature request](https://github.com/PATILYASHH/XPENC/issues/new?template=feature_request.yml).
+
+        **Before you write:** XPENC is offline-first on purpose — no server, no
+        sign-up, no account, data never leaves the device. Ideas that need a
+        backend (cloud sync, shared budgets, web dashboard, "log in with…") are
+        out of scope, not because they're bad but because they'd cost the one
+        property the app is built around. See
+        [structure.md](https://github.com/PATILYASHH/XPENC/blob/master/structure.md)
+        for the reasoning.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What's the problem?
+      description: Describe the situation you hit, not the solution you have in mind.
+      placeholder: I split rent with a flatmate every month and re-enter the same due by hand.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: Rough is fine. Sketches, screenshots from other apps, anything.
+    validations:
+      required: true
+  - type: checkboxes
+    id: offline
+    attributes:
+      label: Offline-first check
+      options:
+        - label: This works with no server, no account, and no data leaving the device.
+          required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: How do you work around it today?
+      description: Existing workarounds are strong evidence the problem is real.
