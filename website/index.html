@@ -246,7 +246,14 @@
       display: flex; flex-direction: column; gap: 8px;
     }
     .dl-main h3 { font-size: 21px; }
-    .dl-main .for { color: var(--faint); font-size: 13.5px; margin-bottom: 18px; }
+    .dl-main .for { color: var(--faint); font-size: 13.5px; margin-bottom: 18px; max-width: 440px; }
+    .fdroid-tag {
+      align-self: flex-start; font-family: var(--font-display);
+      font-size: 10.5px; font-weight: 600; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--green);
+      border: 1px solid rgba(62,207,142,.35); border-radius: 999px;
+      padding: 3px 11px; margin-bottom: 10px;
+    }
     .dl-main .btn { align-self: flex-start; }
     .dl-alt { display: flex; flex-direction: column; gap: 14px; }
     .dl-row {
@@ -265,7 +272,7 @@
       background: var(--panel); border: 1px solid var(--border);
       border-radius: var(--radius); padding: 24px 28px; flex-wrap: wrap;
     }
-    .qr-card img { width: 96px; height: 96px; border-radius: 14px; background: #fff; padding: 6px; }
+    .qr-card img { width: 120px; height: 120px; border-radius: 14px; background: #fff; padding: 8px; border: 1px solid var(--border); flex: none; }
     .qr-card .t { font-weight: 600; margin-bottom: 4px; }
     .qr-card p { color: var(--faint); font-size: 13px; max-width: 460px; }
     .verify-note { margin-top: 18px; color: var(--faint); font-size: 13px; }
@@ -276,6 +283,81 @@
     }
     .verify-note a { text-decoration: underline; text-underline-offset: 3px; color: var(--muted); }
     .verify-note a:hover { color: var(--ink); }
+
+    /* ── availability badge ──────────────────────────────── */
+    .dl-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 12px; font-weight: 600; letter-spacing: .02em; color: var(--green);
+      border: 1px solid rgba(62,207,142,.3); background: rgba(62,207,142,.06);
+      border-radius: 999px; padding: 5px 13px; margin-bottom: 16px;
+    }
+    .dl-badge .live-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+      animation: pulse 2.4s ease-out infinite;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(62,207,142,.5); }
+      70% { box-shadow: 0 0 0 7px rgba(62,207,142,0); }
+      100% { box-shadow: 0 0 0 0 rgba(62,207,142,0); }
+    }
+
+    /* ── store channels + countdown ──────────────────────── */
+    .stores-head {
+      font-family: var(--font-display); font-size: 12px; font-weight: 600;
+      letter-spacing: .18em; text-transform: uppercase; color: var(--faint);
+      margin: 42px 0 16px;
+    }
+    .stores-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 720px) { .stores-grid { grid-template-columns: 1fr; } }
+    .store-card {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 26px 26px 24px;
+      display: flex; flex-direction: column; gap: 16px;
+      transition: border-color .2s ease, background .2s ease;
+    }
+    .store-card:hover { border-color: var(--border-hi); background: var(--panel-2); }
+    .store-head { display: flex; align-items: center; gap: 14px; }
+    .store-ic {
+      width: 46px; height: 46px; border-radius: 14px; flex: none;
+      background: rgba(255,255,255,.05); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center; color: var(--ink);
+    }
+    .store-name { font-family: var(--font-display); font-weight: 700; font-size: 17px; }
+    .store-status {
+      display: inline-flex; align-items: center; gap: 7px;
+      font-size: 12.5px; color: var(--muted); margin-top: 3px;
+    }
+    .store-status .soon-dot { width: 6px; height: 6px; border-radius: 50%; background: #f5b64a; flex: none; }
+    .store-desc { color: var(--muted); font-size: 13.5px; margin: -4px 0 0; }
+
+    .countdown { display: flex; gap: 8px; }
+    .cd-seg {
+      flex: 1; text-align: center; background: var(--panel-2);
+      border: 1px solid var(--border); border-radius: 14px; padding: 12px 4px 9px;
+    }
+    .cd-num {
+      display: block; font-family: var(--font-display); font-weight: 700;
+      font-size: clamp(22px, 5vw, 27px); line-height: 1;
+      font-variant-numeric: tabular-nums; color: var(--ink);
+    }
+    .cd-lbl {
+      display: block; margin-top: 6px; font-size: 9.5px; font-weight: 600;
+      letter-spacing: .12em; text-transform: uppercase; color: var(--faint);
+    }
+    .countdown.cd-live {
+      display: block; font-family: var(--font-display); font-weight: 600;
+      color: var(--green); font-size: 15px; padding: 6px 0;
+    }
+    .store-cta {
+      margin-top: auto; align-self: flex-start;
+      display: inline-flex; align-items: center; gap: 8px;
+      font-weight: 600; font-size: 14px; padding: 11px 20px; border-radius: 999px;
+      border: 1px solid var(--border-hi); color: var(--ink); transition: all .18s ease;
+    }
+    .store-cta:hover { border-color: rgba(255,255,255,.35); background: rgba(255,255,255,.04); }
+    .store-cta.disabled { color: var(--faint); border-color: var(--border); cursor: default; pointer-events: none; }
+    .store-cta.avail { color: var(--green); border-color: rgba(62,207,142,.3); }
+    .store-cta.avail:hover { background: rgba(62,207,142,.07); border-color: rgba(62,207,142,.5); }
 
     /* ── open source ─────────────────────────────────────── */
     .oss .btns { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 26px; }
@@ -328,14 +410,14 @@
           No server. No sign-up. No ads.
         </p>
         <div class="hero-ctas">
-          <a class="btn btn-primary" href="https://github.com/PATILYASHH/XPENC/releases/latest/download/xpenc-arm64-v8a.apk">
+          <a class="btn btn-primary" href="https://f-droid.org/packages/com.yash.xpenc/" target="_blank" rel="noopener">
+            Get it on F-Droid
+          </a>
+          <a class="btn btn-ghost" href="#download">
             Download APK
           </a>
-          <a class="btn btn-ghost" href="https://github.com/PATILYASHH/XPENC" target="_blank" rel="noopener">
-            View source
-          </a>
         </div>
-        <p class="hero-meta">Android 7.0+ · ~21 MB · MIT license</p>
+        <p class="hero-meta">Android 7.0+ · ~21 MB · MIT license · on F-Droid</p>
       </div>
 
       <div class="phone-col" aria-hidden="true">
@@ -471,13 +553,19 @@
         <h2>Get XPENC</h2>
         <p>Free APKs, built and gated by GitHub Actions on every release.</p>
       </div>
+      <span class="dl-badge"><span class="live-dot"></span>Direct download — available now</span>
       <div class="dl-grid">
         <div class="dl-main">
-          <h3>xpenc-arm64-v8a.apk</h3>
-          <div class="for">For most phones from ~2017 onwards — if unsure, pick this one.</div>
-          <a class="btn btn-primary" href="https://github.com/PATILYASHH/XPENC/releases/latest/download/xpenc-arm64-v8a.apk">Download for Android</a>
+          <span class="fdroid-tag">Recommended</span>
+          <h3>Get it on F-Droid</h3>
+          <div class="for">Automatic updates, and F-Droid builds XPENC from source themselves — you don't have to trust a binary. Picks the right version for your phone.</div>
+          <a class="btn btn-primary" href="https://f-droid.org/packages/com.yash.xpenc/" target="_blank" rel="noopener">Open F-Droid page</a>
         </div>
         <div class="dl-alt">
+          <a class="dl-row" href="https://github.com/PATILYASHH/XPENC/releases/latest/download/xpenc-arm64-v8a.apk">
+            <span><span class="n">arm64-v8a</span><br><span class="d">direct APK · most phones</span></span>
+            <span class="get">Download ↓</span>
+          </a>
           <a class="dl-row" href="https://github.com/PATILYASHH/XPENC/releases/latest/download/xpenc-armeabi-v7a.apk">
             <span><span class="n">armeabi-v7a</span><br><span class="d">older 32-bit phones</span></span>
             <span class="get">Download ↓</span>
@@ -488,11 +576,58 @@
           </a>
         </div>
       </div>
+
+      <!-- ── app-store channels (live countdowns) ── -->
+      <div class="stores-head">Also arriving on</div>
+      <div class="stores-grid">
+        <!-- Google Play -->
+        <div class="store-card" id="play-card">
+          <div class="store-head">
+            <span class="store-ic" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M4 2.6c-.3.2-.5.5-.5.9v17c0 .4.2.7.5.9l9.3-9.4L4 2.6zm10.9 6.8L6.2 1.8l11.4 6.5-2.7.9zm3.8 2.2 2.7 1.5c.7.4.7 1.4 0 1.8l-2.7 1.5-2.9-2.4 2.9-2.4zm-3.8 4.6 2.7.9-11.4 6.5 8.7-7.4z"/></svg>
+            </span>
+            <div>
+              <div class="store-name">Google Play</div>
+              <div class="store-status"><span class="soon-dot"></span>Coming soon</div>
+            </div>
+          </div>
+          <p class="store-desc">The Play Store build is in preparation. Estimated launch in:</p>
+          <div class="countdown" data-target="2026-09-14T18:00:00+05:30" data-live="Live on Google Play">
+            <div class="cd-seg"><span class="cd-num" data-u="d">--</span><span class="cd-lbl">days</span></div>
+            <div class="cd-seg"><span class="cd-num" data-u="h">--</span><span class="cd-lbl">hrs</span></div>
+            <div class="cd-seg"><span class="cd-num" data-u="m">--</span><span class="cd-lbl">min</span></div>
+            <div class="cd-seg"><span class="cd-num" data-u="s">--</span><span class="cd-lbl">sec</span></div>
+          </div>
+          <span class="store-cta disabled">On Play soon</span>
+        </div>
+
+        <!-- F-Droid -->
+        <div class="store-card" id="fdroid-card">
+          <div class="store-head">
+            <span class="store-ic" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8.6 3.1 7.7 1.6a.42.42 0 0 1 .72-.44l.92 1.5a5.6 5.6 0 0 1 5.32 0l.92-1.5a.42.42 0 0 1 .72.44l-.9 1.5A5.4 5.4 0 0 1 17.4 7.2H6.6a5.4 5.4 0 0 1 2-4.1zM10 5.4a.72.72 0 1 0 0-1.44.72.72 0 0 0 0 1.44zm4 0a.72.72 0 1 0 0-1.44.72.72 0 0 0 0 1.44zM6.6 8.6h10.8v7.6c0 .6-.5 1.1-1.1 1.1h-1.1v3a1.05 1.05 0 1 1-2.1 0v-3h-2.2v3a1.05 1.05 0 1 1-2.1 0v-3H7.7c-.6 0-1.1-.5-1.1-1.1V8.6zM4.55 9.15a1.05 1.05 0 0 1 2.1 0v4.7a1.05 1.05 0 1 1-2.1 0v-4.7zm12.8 0a1.05 1.05 0 0 1 2.1 0v4.7a1.05 1.05 0 1 1-2.1 0v-4.7z"/></svg>
+            </span>
+            <div>
+              <div class="store-name">F-Droid</div>
+              <div class="store-status"><span class="soon-dot"></span>Coming soon</div>
+            </div>
+          </div>
+          <p class="store-desc">Landing in the F-Droid catalogue in:</p>
+          <div class="countdown" data-target="2026-07-17T18:00:00+05:30" data-live="Live on F-Droid">
+            <div class="cd-seg"><span class="cd-num" data-u="d">--</span><span class="cd-lbl">days</span></div>
+            <div class="cd-seg"><span class="cd-num" data-u="h">--</span><span class="cd-lbl">hrs</span></div>
+            <div class="cd-seg"><span class="cd-num" data-u="m">--</span><span class="cd-lbl">min</span></div>
+            <div class="cd-seg"><span class="cd-num" data-u="s">--</span><span class="cd-lbl">sec</span></div>
+          </div>
+          <a class="store-cta avail" href="https://github.com/PATILYASHH/XPENC/releases/latest/download/xpenc-arm64-v8a.apk">Available now — download directly ↓</a>
+        </div>
+      </div>
+
       <div class="qr-card">
-        <img src="assets/qr_download.png" alt="QR code linking to the XPENC download">
+        <img src="assets/qr_download.png?v=2" width="120" height="120" alt="QR code linking to the XPENC download page">
         <div>
           <div class="t">On your phone already?</div>
-          <p>Scan to download directly, or grab any build from
+          <p>Scan to open the download page directly, or grab any build from
              <a href="https://github.com/PATILYASHH/XPENC/releases/latest" target="_blank" rel="noopener" style="text-decoration:underline;text-underline-offset:3px;">GitHub Releases</a>.</p>
         </div>
       </div>
@@ -571,6 +706,36 @@
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d && d.tag_name) document.getElementById('version').textContent = d.tag_name; })
       .catch(() => {});
+
+    // ── live store-availability countdowns ──
+    // Days auto-decrement; hours / minutes / seconds tick every second.
+    // Targets are fixed dates — edit data-target in the markup to reschedule.
+    (function () {
+      const pad = n => String(n).padStart(2, '0');
+      const clocks = document.querySelectorAll('.countdown');
+      const tick = () => {
+        const now = Date.now();
+        clocks.forEach(cd => {
+          if (cd.classList.contains('cd-live')) return;
+          let left = Math.floor((new Date(cd.dataset.target).getTime() - now) / 1000);
+          if (left <= 0) {
+            cd.classList.add('cd-live');
+            cd.textContent = cd.dataset.live || 'Available now';
+            const status = cd.closest('.store-card')?.querySelector('.store-status');
+            if (status) status.innerHTML = '<span class="soon-dot" style="background:var(--green)"></span>Available now';
+            return;
+          }
+          const d = Math.floor(left / 86400); left -= d * 86400;
+          const h = Math.floor(left / 3600);  left -= h * 3600;
+          const m = Math.floor(left / 60);
+          const s = left - m * 60;
+          const set = (u, v) => { const el = cd.querySelector('[data-u="' + u + '"]'); if (el) el.textContent = v; };
+          set('d', d); set('h', pad(h)); set('m', pad(m)); set('s', pad(s));
+        });
+      };
+      tick();
+      setInterval(tick, 1000);
+    })();
   </script>
 </body>
 </html>
