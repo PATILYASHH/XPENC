@@ -14,6 +14,7 @@
 [![Platform](https://img.shields.io/badge/platform-Android%207.0%2B-3DDC84?logo=android&logoColor=white&labelColor=black)](https://github.com/PATILYASHH/XPENC/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/PATILYASHH/XPENC/total?color=white&labelColor=black)](https://github.com/PATILYASHH/XPENC/releases)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-34c77b?labelColor=black)](CONTRIBUTING.md)
+[![Sponsor](https://img.shields.io/badge/Sponsor-PATILYASHH-ea4aaa?logo=githubsponsors&logoColor=white&labelColor=black)](https://github.com/sponsors/PATILYASHH)
 
 **Offline-first personal finance for Android.**
 Income, expenses, transfers, budgets and dues —
@@ -199,6 +200,17 @@ Contributions are very welcome — the highest-impact one is
 - 🤝 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 - 🔒 [SECURITY.md](SECURITY.md) — private vulnerability reporting
 - 📦 [CHANGELOG.md](CHANGELOG.md) · [docs/RELEASING.md](docs/RELEASING.md) — SemVer, `v*` tags, automated releases
+
+## Sponsor
+
+XPENC is free, open source, and has no ads, no trackers and no paid tier — and
+it stays that way. If it keeps your money honest, you can fund the work:
+
+[![Sponsor XPENC](https://img.shields.io/badge/♥%20Sponsor-PATILYASHH-ea4aaa?style=for-the-badge&logo=githubsponsors&logoColor=white&labelColor=black)](https://github.com/sponsors/PATILYASHH)
+
+Not in a position to sponsor? A ⭐, a bug report, or
+[an SMS template for your bank](../../issues/new?template=bank_support.yml)
+helps just as much.
 
 ## Developer
 
