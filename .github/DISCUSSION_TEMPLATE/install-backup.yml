@@ -1,0 +1,64 @@
+labels: [question]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Getting XPENC onto your phone, updating it, or moving your data.
+
+        **Read these first — they cover most of what lands here:**
+
+        - **Play Protect blocked the install.** Expected on a sideloaded APK.
+          XPENC requests no SMS permission since 1.1.0; the warning is about
+          the app being unsigned-by-Play, not about what it does. Install from
+          [F-Droid](https://f-droid.org/packages/com.yash.xpenc/) to avoid it
+          entirely.
+        - **Update refuses to install over an older APK.** Two different causes:
+          the F-Droid build and the GitHub APK are **signed with different keys**,
+          so neither will update over the other; and the per-ABI versionCode
+          scheme changed in 1.1.2. Either way the fix is the same — export a
+          backup, uninstall, reinstall, restore. See
+          [CHANGELOG](https://github.com/PATILYASHH/XPENC/blob/master/CHANGELOG.md).
+        - **Where does my data live?** On the device, only. There is no server
+          and no account, so there is nothing to recover from our side —
+          **Backup → export** is the only copy that survives an uninstall.
+  - type: dropdown
+    id: source
+    attributes:
+      label: Where did you install from?
+      options:
+        - F-Droid
+        - APK from GitHub Releases
+        - Built from source
+        - Somewhere else / not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: topic
+    attributes:
+      label: What's happening?
+      options:
+        - Install fails or is blocked
+        - Update won't install over the old version
+        - Backup / export
+        - Restore / import
+        - Moving to a new phone
+        - Something else
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      placeholder: "1.1.3"
+  - type: input
+    id: device
+    attributes:
+      label: Device & Android version
+      placeholder: Samsung M31 · Android 13
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: Exact error text or a screenshot beats a paraphrase.
+    validations:
+      required: true

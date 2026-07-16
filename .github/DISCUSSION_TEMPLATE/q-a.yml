@@ -1,0 +1,49 @@
+labels: [question]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Questions about **using** XPENC — budgets, dues, categories, the numbers.
+
+        > 🐛 **If a number is wrong** (net worth, budget spent, a double-counted
+        > transaction) that is a bug, not a question — please
+        > [open a bug report](https://github.com/PATILYASHH/XPENC/issues/new?template=bug_report.yml)
+        > instead so it doesn't get lost in a thread.
+        >
+        > 🛟 **Install, F-Droid, Play Protect or backup/restore trouble?** Use the
+        > **Install & backup** category — the answers there are already written down.
+
+        The design doc, [structure.md](https://github.com/PATILYASHH/XPENC/blob/master/structure.md),
+        answers most "why does it work this way" questions.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of XPENC?
+      options:
+        - Income & expenses
+        - Budgets
+        - Dues (money owed / lent)
+        - Categories & accounts
+        - Reports & net worth
+        - Bank SMS capture
+        - Something else
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Settings → About. Skip if you're asking in general.
+      placeholder: "1.1.3"
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+      description: What are you trying to do, and where does it get stuck?
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: What have you already tried?
+      description: Saves everyone a round trip.
