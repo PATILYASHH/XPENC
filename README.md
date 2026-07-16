@@ -5,6 +5,7 @@
 <br><br>
 
 
+[![F-Droid](https://img.shields.io/f-droid/v/com.yash.xpenc?label=F-Droid&logo=fdroid&logoColor=white&color=white&labelColor=black)](https://f-droid.org/packages/com.yash.xpenc/)
 [![Release](https://img.shields.io/github/v/release/PATILYASHH/XPENC?label=release&color=white&labelColor=black)](https://github.com/PATILYASHH/XPENC/releases/latest)
 [![CI](https://github.com/PATILYASHH/XPENC/actions/workflows/ci.yml/badge.svg)](https://github.com/PATILYASHH/XPENC/actions/workflows/ci.yml)
 [![Release APK](https://github.com/PATILYASHH/XPENC/actions/workflows/release.yml/badge.svg)](https://github.com/PATILYASHH/XPENC/actions/workflows/release.yml)
@@ -17,6 +18,8 @@
 **Offline-first personal finance for Android.**
 Income, expenses, transfers, budgets and dues —
 everything lives in a local SQLite database on your phone. Nothing is ever uploaded.
+
+[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid" height="70">](https://f-droid.org/packages/com.yash.xpenc/)
 
 [**🌐 Website**](https://getxpenc.vercel.app) · [**⬇️ Download APK**](https://github.com/PATILYASHH/XPENC/releases/latest) · [**🐛 Report a bug**](../../issues/new?template=bug_report.yml) · [**✨ Request a feature**](../../issues/new?template=feature_request.yml) · [**🏦 Add your bank**](../../issues/new?template=bank_support.yml)
 
@@ -58,8 +61,18 @@ adversarial audit that hardened it — is in [structure.md](structure.md).
 
 ## Download
 
-Grab the latest APK from [**Releases**](https://github.com/PATILYASHH/XPENC/releases/latest)
-or the [website](https://getxpenc.vercel.app#download):
+### F-Droid — recommended
+
+[**f-droid.org/packages/com.yash.xpenc**](https://f-droid.org/packages/com.yash.xpenc/)
+
+You get automatic updates, and F-Droid builds the app **from this source tree
+themselves** — nobody has to trust a binary I uploaded. The right ABI is picked
+for your phone automatically.
+
+### Direct APK
+
+Or grab it from [**Releases**](https://github.com/PATILYASHH/XPENC/releases/latest)
+/ the [website](https://getxpenc.vercel.app#download):
 
 | Your phone | Asset |
 |---|---|
@@ -70,6 +83,10 @@ or the [website](https://getxpenc.vercel.app#download):
 Every release ships `SHA256SUMS.txt` — verify your download. APKs are built,
 tested and gated by [GitHub Actions](.github/workflows/release.yml); the
 [release process](docs/RELEASING.md) is fully automated from a version tag.
+
+> **Switching between F-Droid and a direct APK?** They're signed with different
+> keys, so Android won't update one over the other. Migrate with
+> **Backup → export JSON**, uninstall, install from the new source, then restore.
 
 ## Privacy
 
