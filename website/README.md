@@ -44,3 +44,7 @@ npx serve website
   `python tool/generate_icons.py` and re-copy if the brand mark changes.
 - `privacy.html` mirrors `PRIVACY.md` at the repo root — update both together,
   and bump the effective date.
+- `sitemap.xml` lists every page by absolute URL — add new pages there when you
+  create them, or Search Console won't find them. `robots.txt` points at it.
+- The `google-site-verification` meta in `index.html` is what Search Console
+  checks — removing it un-verifies the property.
