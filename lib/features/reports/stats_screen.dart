@@ -237,7 +237,10 @@ class _CategorySection extends ConsumerWidget {
     return spendAsync.when(
       loading: () => const _SectionLoader(height: 220),
       error: (_, _) => const InlineErrorView(),
-      data: (spend) {
+      data: (rawSpend) {
+        // Group by top-level category: a parent's slice is the sum of its own
+        // spend and its subcategories'.
+        final spend = rollUpToParents(rawSpend, categories);
         final slices = <({String label, Money value, Color color})>[];
         spend.forEach((id, amount) {
           final cat = categories[id];
@@ -290,7 +293,11 @@ class _HighlightsSection extends ConsumerWidget {
           if (biggest == null || t.amount > biggest.amount) biggest = t;
           final id = t.categoryId;
           if (id != null) {
-            byCategory[id] = (byCategory[id] ?? const Money.zero()) + t.amount;
+            // Attribute to the top-level category so "Top category" names the
+            // parent, matching the pie above.
+            final top = topLevelCategoryId(categories, id);
+            byCategory[top] =
+                (byCategory[top] ?? const Money.zero()) + t.amount;
           }
         }
 

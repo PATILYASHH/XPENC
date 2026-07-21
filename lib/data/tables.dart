@@ -115,6 +115,17 @@ class Categories extends Table {
   TextColumn get iconKey => text().withLength(min: 1, max: 40)();
   BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+
+  /// A top-level category has a **null** parent. A subcategory points at its
+  /// parent, which is always itself top-level — the tree is exactly two deep.
+  /// A child always shares its parent's [kind].
+  ///
+  /// No schema-level foreign key on purpose: categories are archived, never
+  /// hard-deleted, so a parent can't vanish under a child. The parent's
+  /// existence, kind and single-level depth are all enforced in the DB layer
+  /// ([AppDatabase.addCategory] / [AppDatabase.updateCategory]); a stray id
+  /// from an old backup is treated as top-level rather than wedging a query.
+  IntColumn get parentId => integer().nullable()();
 }
 
 @DataClassName('TransactionRow')

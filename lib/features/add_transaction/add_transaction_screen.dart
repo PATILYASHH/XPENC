@@ -458,10 +458,16 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       ));
       tiles.add(const SizedBox(height: 12));
       final cat = categoryMap[_categoryId];
+      final parent =
+          cat?.parentId == null ? null : categoryMap[cat!.parentId];
       tiles.add(_pickerTile(
         icon: AppIcons.resolve(cat?.iconKey ?? 'other'),
         label: 'Category',
-        value: cat?.name ?? 'Select category',
+        value: cat == null
+            ? 'Select category'
+            : parent == null
+                ? cat.name
+                : '${parent.name} › ${cat.name}',
         selected: _categoryId != null,
         onTap: _pickCategory,
       ));
@@ -689,15 +695,29 @@ class _AccountPickerSheet extends ConsumerWidget {
 
 /// Bottom sheet: pick a category, as a grid of coloured chips. Only shown for
 /// income/expense — a transfer has no category.
-class _CategoryPickerSheet extends ConsumerWidget {
+///
+/// Two levels deep: the first grid is the top-level categories. Tapping one that
+/// has subcategories drills into a second grid of its children (with a "Use
+/// [parent]" chip to pick the parent directly); a childless one is picked on the
+/// spot. Popping returns the chosen category id.
+class _CategoryPickerSheet extends ConsumerStatefulWidget {
   const _CategoryPickerSheet({required this.kind});
 
   final CategoryKind kind;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_CategoryPickerSheet> createState() =>
+      _CategoryPickerSheetState();
+}
+
+class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
+  /// Non-null while drilled into a parent's subcategories.
+  int? _drillParentId;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final catsAsync = ref.watch(categoriesProvider(kind));
+    final catsAsync = ref.watch(categoriesProvider(widget.kind));
 
     return ConstrainedBox(
       constraints: BoxConstraints(
@@ -705,82 +725,187 @@ class _CategoryPickerSheet extends ConsumerWidget {
       ),
       child: SafeArea(
         top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-              child: Text(
-                kind == CategoryKind.income ? 'Income category' : 'Category',
-                style: theme.textTheme.titleLarge,
-              ),
+        child: catsAsync.when(
+          loading: () => const Padding(
+            padding: EdgeInsets.all(32),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (e, _) => Padding(
+            padding: const EdgeInsets.all(32),
+            child: Text(
+              'Could not load categories.\n$e',
+              style: theme.textTheme.bodyMedium,
             ),
-            Flexible(
-              child: catsAsync.when(
-                loading: () => const Padding(
-                  padding: EdgeInsets.all(32),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                error: (e, _) => Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Text(
-                    'Could not load categories.\n$e',
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                ),
-                data: (cats) {
-                  if (cats.isEmpty) {
-                    return Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Text(
-                        'No categories yet',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    );
-                  }
-                  return GridView.builder(
-                    shrinkWrap: true,
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 4,
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 12,
-                      childAspectRatio: 0.78,
-                    ),
-                    itemCount: cats.length,
-                    itemBuilder: (context, i) {
-                      final c = cats[i];
-                      return InkWell(
-                        borderRadius: BorderRadius.circular(16),
-                        onTap: () => Navigator.of(context).pop(c.id),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _iconCircle(c.iconKey, c.colorValue, size: 52),
-                            const SizedBox(height: 6),
-                            Flexible(
-                              child: Text(
-                                c.name,
-                                textAlign: TextAlign.center,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.bodySmall,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                },
+          ),
+          data: (cats) => _content(theme, cats),
+        ),
+      ),
+    );
+  }
+
+  Widget _content(ThemeData theme, List<CategoryRow> cats) {
+    if (cats.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(32),
+        child: Text(
+          'No categories yet',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      );
+    }
+
+    final childrenByParent = <int, List<CategoryRow>>{};
+    for (final c in cats) {
+      if (c.parentId != null) {
+        (childrenByParent[c.parentId!] ??= []).add(c);
+      }
+    }
+
+    final drillParent = _drillParentId == null
+        ? null
+        : cats.where((c) => c.id == _drillParentId).firstOrNull;
+
+    // The list of cells to render, and the header, depend on the level.
+    final Widget header;
+    final List<Widget> cells;
+    if (drillParent == null) {
+      header = Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+        child: Text(
+          widget.kind == CategoryKind.income ? 'Income category' : 'Category',
+          style: theme.textTheme.titleLarge,
+        ),
+      );
+      cells = [
+        for (final c in cats.where((c) => c.parentId == null))
+          _cell(
+            theme,
+            iconKey: c.iconKey,
+            colorValue: c.colorValue,
+            label: c.name,
+            hasChildren: (childrenByParent[c.id]?.isNotEmpty) ?? false,
+            onTap: () {
+              if ((childrenByParent[c.id]?.isNotEmpty) ?? false) {
+                setState(() => _drillParentId = c.id);
+              } else {
+                Navigator.of(context).pop(c.id);
+              }
+            },
+          ),
+      ];
+    } else {
+      header = Padding(
+        padding: const EdgeInsets.fromLTRB(4, 4, 20, 12),
+        child: Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.arrow_back),
+              tooltip: 'All categories',
+              onPressed: () => setState(() => _drillParentId = null),
+            ),
+            Expanded(
+              child: Text(
+                drillParent.name,
+                style: theme.textTheme.titleLarge,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
         ),
+      );
+      cells = [
+        // Pick the parent itself, not one of its children.
+        _cell(
+          theme,
+          iconKey: drillParent.iconKey,
+          colorValue: drillParent.colorValue,
+          label: 'All ${drillParent.name}',
+          onTap: () => Navigator.of(context).pop(drillParent.id),
+        ),
+        for (final c in childrenByParent[drillParent.id] ?? const [])
+          _cell(
+            theme,
+            iconKey: c.iconKey,
+            colorValue: c.colorValue,
+            label: c.name,
+            onTap: () => Navigator.of(context).pop(c.id),
+          ),
+      ];
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        header,
+        Flexible(
+          child: GridView.count(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            crossAxisCount: 4,
+            mainAxisSpacing: 16,
+            crossAxisSpacing: 12,
+            childAspectRatio: 0.78,
+            children: cells,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// One tappable category chip. A small dot marks a parent that opens into
+  /// subcategories rather than being picked directly.
+  Widget _cell(
+    ThemeData theme, {
+    required String iconKey,
+    required int colorValue,
+    required String label,
+    required VoidCallback onTap,
+    bool hasChildren = false,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              _iconCircle(iconKey, colorValue, size: 52),
+              if (hasChildren)
+                Positioned(
+                  right: -2,
+                  bottom: -2,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.more_horiz_rounded,
+                      size: 16,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Flexible(
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
+        ],
       ),
     );
   }

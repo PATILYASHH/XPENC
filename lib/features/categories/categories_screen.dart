@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -99,59 +100,103 @@ class _CategoryList extends ConsumerWidget {
           child: InlineErrorView(message: "Couldn't load categories"),
         ),
       ),
-      data: (categories) => ListView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 96),
-        children: [
-          if (categories.isEmpty)
-            _EmptyCategories(kind: kind)
-          else
-            Card(
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                children: [
-                  for (var i = 0; i < categories.length; i++) ...[
-                    if (i > 0)
-                      Divider(
-                        height: 1,
-                        indent: 60,
-                        color: theme.colorScheme.outline,
+      data: (categories) {
+        final rows = _flatten(categories);
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 96),
+          children: [
+            if (categories.isEmpty)
+              _EmptyCategories(kind: kind)
+            else
+              Card(
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    for (var i = 0; i < rows.length; i++) ...[
+                      if (i > 0)
+                        Divider(
+                          height: 1,
+                          indent: rows[i].isChild ? 72 : 60,
+                          color: theme.colorScheme.outline,
+                        ),
+                      _CategoryTile(
+                        category: rows[i].category,
+                        isChild: rows[i].isChild,
                       ),
-                    _CategoryTile(category: categories[i]),
+                    ],
                   ],
-                ],
+                ),
+              ),
+            const SizedBox(height: 20),
+            Text(
+              'Group related categories under a parent — a subcategory rolls its '
+              'spending up into its parent. Categories are archived, never '
+              'deleted, so past reports stay intact.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-          const SizedBox(height: 20),
-          Text(
-            'Categories are archived, never deleted — deleting one would '
-            'break every past report that used it.',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
+          ],
+        );
+      },
     );
   }
 }
 
-/// A single category row: coloured icon badge, name, edit + archive actions.
+/// A row in the rendered list: a category plus whether it sits under a parent.
+typedef _CategoryEntry = ({CategoryRow category, bool isChild});
+
+/// Order a flat category list into `parent, its children…, next parent…`.
+/// A child whose parent isn't in the list (an old backup, a mid-archive state)
+/// falls back to rendering as top-level rather than vanishing.
+List<_CategoryEntry> _flatten(List<CategoryRow> categories) {
+  final parents = categories.where((c) => c.parentId == null).toList();
+  final parentIds = {for (final p in parents) p.id};
+  final childrenByParent = <int, List<CategoryRow>>{};
+  final orphans = <CategoryRow>[];
+  for (final c in categories) {
+    if (c.parentId == null) continue;
+    if (parentIds.contains(c.parentId)) {
+      (childrenByParent[c.parentId!] ??= []).add(c);
+    } else {
+      orphans.add(c);
+    }
+  }
+
+  final out = <_CategoryEntry>[];
+  for (final p in parents) {
+    out.add((category: p, isChild: false));
+    for (final child in childrenByParent[p.id] ?? const []) {
+      out.add((category: child, isChild: true));
+    }
+  }
+  for (final o in orphans) {
+    out.add((category: o, isChild: false));
+  }
+  return out;
+}
+
+/// A single category row: coloured icon badge, name, and its actions. A parent
+/// also offers "add subcategory"; a child is indented and wears a smaller badge
+/// so the hierarchy reads at a glance.
 class _CategoryTile extends ConsumerWidget {
-  const _CategoryTile({required this.category});
+  const _CategoryTile({required this.category, this.isChild = false});
 
   final CategoryRow category;
+  final bool isChild;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final color = Color(category.colorValue);
+    final badge = isChild ? 30.0 : 40.0;
 
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      contentPadding: EdgeInsets.only(left: isChild ? 32 : 16, right: 4),
       leading: Container(
-        width: 40,
-        height: 40,
+        width: badge,
+        height: badge,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.15),
@@ -160,7 +205,7 @@ class _CategoryTile extends ConsumerWidget {
         child: Icon(
           AppIcons.resolve(category.iconKey),
           color: color,
-          size: 22,
+          size: isChild ? 17 : 22,
         ),
       ),
       title: Text(
@@ -172,9 +217,21 @@ class _CategoryTile extends ConsumerWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (!isChild)
+            IconButton(
+              icon: const Icon(Icons.add),
+              tooltip: 'Add subcategory',
+              visualDensity: VisualDensity.compact,
+              onPressed: () => _openCategoryEditor(
+                context,
+                kind: category.kind,
+                initialParentId: category.id,
+              ),
+            ),
           IconButton(
             icon: const Icon(Icons.edit_outlined),
             tooltip: 'Edit',
+            visualDensity: VisualDensity.compact,
             onPressed: () => _openCategoryEditor(
               context,
               kind: category.kind,
@@ -184,6 +241,7 @@ class _CategoryTile extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.archive_outlined),
             tooltip: 'Archive',
+            visualDensity: VisualDensity.compact,
             onPressed: () => _confirmArchive(context, ref, category),
           ),
         ],
@@ -226,11 +284,13 @@ class _EmptyCategories extends StatelessWidget {
   }
 }
 
-/// Opens the create/edit editor sheet.
+/// Opens the create/edit editor sheet. [initialParentId] preselects a parent
+/// when adding a subcategory from a parent row.
 Future<void> _openCategoryEditor(
   BuildContext context, {
   required CategoryKind kind,
   CategoryRow? existing,
+  int? initialParentId,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -240,7 +300,11 @@ Future<void> _openCategoryEditor(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
-    builder: (_) => _CategoryEditorSheet(kind: kind, existing: existing),
+    builder: (_) => _CategoryEditorSheet(
+      kind: kind,
+      existing: existing,
+      initialParentId: initialParentId,
+    ),
   );
 }
 
@@ -255,20 +319,25 @@ Future<void> _confirmArchive(
   final messenger = ScaffoldMessenger.of(context);
 
   final count = await db.countTransactionsForCategory(category.id);
+  final childCount = await db.countChildCategories(category.id);
   if (!context.mounted) return;
+
+  final usage = count > 0
+      ? '$count transactions use this category. They keep it — '
+          'archiving only hides the category from new entries. '
+          'Nothing is deleted.'
+      : "This category isn't used yet. It will be hidden from new "
+          'entries.';
+  final cascade = childCount > 0
+      ? '\n\nIts $childCount ${childCount == 1 ? 'subcategory' : 'subcategories'} '
+          'will be archived too.'
+      : '';
 
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
       title: Text('Archive "${category.name}"?'),
-      content: Text(
-        count > 0
-            ? '$count transactions use this category. They keep it — '
-                'archiving only hides the category from new entries. '
-                'Nothing is deleted.'
-            : "This category isn't used yet. It will be hidden from new "
-                'entries.',
-      ),
+      content: Text('$usage$cascade'),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -290,12 +359,19 @@ Future<void> _confirmArchive(
   );
 }
 
-/// Create or edit a category: name, colour, icon.
+/// Create or edit a category: name, parent, colour, icon.
 class _CategoryEditorSheet extends ConsumerStatefulWidget {
-  const _CategoryEditorSheet({required this.kind, this.existing});
+  const _CategoryEditorSheet({
+    required this.kind,
+    this.existing,
+    this.initialParentId,
+  });
 
   final CategoryKind kind;
   final CategoryRow? existing;
+
+  /// Preselected parent when adding a subcategory from a parent row.
+  final int? initialParentId;
 
   @override
   ConsumerState<_CategoryEditorSheet> createState() =>
@@ -306,6 +382,7 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
   late final TextEditingController _nameController;
   late int _colorValue;
   late String _iconKey;
+  late int? _parentId;
   bool _submitting = false;
 
   bool get _isEdit => widget.existing != null;
@@ -317,6 +394,7 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
     _nameController = TextEditingController(text: existing?.name ?? '');
     _colorValue = existing?.colorValue ?? _presetColors.first;
     _iconKey = existing?.iconKey ?? AppIcons.allKeys.first;
+    _parentId = existing?.parentId ?? widget.initialParentId;
   }
 
   @override
@@ -347,6 +425,7 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
           name: name,
           colorValue: _colorValue,
           iconKey: _iconKey,
+          parentId: Value(_parentId),
         );
       } else {
         await db.addCategory(
@@ -354,6 +433,7 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
           kind: widget.kind,
           colorValue: _colorValue,
           iconKey: _iconKey,
+          parentId: _parentId,
         );
       }
       if (!mounted) return;
@@ -403,6 +483,7 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
               onSubmitted: (_) => _save(),
             ),
             const SizedBox(height: 20),
+            _buildParentField(theme),
             _fieldLabel(theme, 'Colour'),
             const SizedBox(height: 12),
             Wrap(
@@ -433,6 +514,79 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// A dropdown to nest this category under a top-level one. A category that
+  /// already has subcategories can't itself become a child (the tree is only
+  /// two deep), so it shows a fixed note instead.
+  Widget _buildParentField(ThemeData theme) {
+    final all = ref.watch(categoriesProvider(widget.kind)).valueOrNull ?? [];
+    final editingId = widget.existing?.id;
+    final hasChildren =
+        editingId != null && all.any((c) => c.parentId == editingId);
+
+    Widget wrap(Widget child) => Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: child,
+        );
+
+    if (hasChildren) {
+      return wrap(
+        InputDecorator(
+          decoration: const InputDecoration(labelText: 'Parent category'),
+          child: Text(
+            'Top-level — it has subcategories',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Candidate parents: every live top-level category of this kind, minus the
+    // category being edited (nothing parents itself).
+    final parents = all
+        .where((c) => c.parentId == null && c.id != editingId)
+        .toList();
+    final ids = {for (final p in parents) p.id};
+    // Guard the dropdown's contract that its value matches one of its items.
+    final value = _parentId != null && ids.contains(_parentId) ? _parentId : null;
+
+    return wrap(
+      DropdownButtonFormField<int?>(
+        initialValue: value,
+        isExpanded: true,
+        decoration: const InputDecoration(
+          labelText: 'Parent category',
+          helperText: 'Optional — nest this under another category',
+        ),
+        items: [
+          const DropdownMenuItem<int?>(
+            value: null,
+            child: Text('None (top-level)'),
+          ),
+          for (final p in parents)
+            DropdownMenuItem<int?>(
+              value: p.id,
+              child: Row(
+                children: [
+                  Icon(
+                    AppIcons.resolve(p.iconKey),
+                    size: 18,
+                    color: Color(p.colorValue),
+                  ),
+                  const SizedBox(width: 10),
+                  Flexible(
+                    child: Text(p.name, overflow: TextOverflow.ellipsis),
+                  ),
+                ],
+              ),
+            ),
+        ],
+        onChanged: (v) => setState(() => _parentId = v),
       ),
     );
   }

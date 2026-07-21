@@ -26,6 +26,7 @@ class DashboardScreen extends ConsumerWidget {
     _NetWorthCard(),
     _ThisMonthCard(),
     _AccountsStrip(),
+    _PersonsSection(),
     _BudgetsSection(),
     _SpendByCategorySection(),
     _RecentSection(),
@@ -762,6 +763,232 @@ class _AccountCard extends StatelessWidget {
   }
 }
 
+// ── 3½. People: dues & owes ───────────────────────────────────────────────
+
+/// Who owes you and who you owe, at a glance. Lending is **not** an expense —
+/// the money is still yours, just held by someone else. Shows the two headline
+/// figures over the people with an outstanding balance. Hidden entirely when
+/// nothing is owed either way, so a user who never lends never sees it.
+class _PersonsSection extends ConsumerWidget {
+  const _PersonsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final persons = ref.watch(personsProvider).valueOrNull;
+    final balances = ref.watch(personBalancesProvider).valueOrNull;
+    final totals = ref.watch(personTotalsProvider);
+
+    // Wait for both streams before deciding to hide — otherwise the section
+    // would flicker in and out as they land one after the other.
+    if (persons == null || balances == null) return const SizedBox.shrink();
+
+    // Only people with something outstanding, biggest balance first. A settled
+    // person is off the books; the dashboard is for what still needs settling.
+    Money balanceOf(PersonRow p) => balances[p.id] ?? const Money.zero();
+    final outstanding = persons.where((p) => !balanceOf(p).isZero).toList()
+      ..sort((a, b) =>
+          balanceOf(b).paise.abs().compareTo(balanceOf(a).paise.abs()));
+
+    if (outstanding.isEmpty) return const SizedBox.shrink();
+
+    final top = outstanding.take(4).toList();
+    final extra = outstanding.length - top.length;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SectionHeader(
+            'People',
+            trailing: TextButton(
+              onPressed: () => context.push('/more/persons'),
+              child: const Text('See all'),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Card(
+              margin: EdgeInsets.zero,
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                children: [
+                  _DuesOwesRow(youGet: totals.youGet, youPay: totals.youPay),
+                  Divider(height: 1, color: theme.colorScheme.outline),
+                  for (var i = 0; i < top.length; i++) ...[
+                    if (i > 0)
+                      const Divider(height: 1, indent: 64, endIndent: 16),
+                    _PersonDuesTile(person: top[i], balance: balanceOf(top[i])),
+                  ],
+                  if (extra > 0)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton(
+                          onPressed: () => context.push('/more/persons'),
+                          child: Text('$extra more'),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The two headline figures side by side: what you'll collect, what you'll pay.
+/// Both are shown positive; colour carries the direction.
+class _DuesOwesRow extends StatelessWidget {
+  const _DuesOwesRow({required this.youGet, required this.youPay});
+
+  final Money youGet;
+  final Money youPay;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: _column(theme, "You'll get", youGet, AppColors.income,
+                Icons.south_west_rounded),
+          ),
+          Container(width: 1, height: 40, color: theme.colorScheme.outline),
+          Expanded(
+            child: _column(theme, "You'll pay", youPay, AppColors.expense,
+                Icons.north_east_rounded),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _column(ThemeData theme, String label, Money amount, Color color,
+      IconData icon) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 13, color: color),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: MoneyText(
+            amount,
+            color: color,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// One person on the dashboard: `+` owes you (green) · `-` you owe (red).
+/// A settled person is filtered out upstream, so there is no zero case here.
+class _PersonDuesTile extends StatelessWidget {
+  const _PersonDuesTile({required this.person, required this.balance});
+
+  final PersonRow person;
+  final Money balance;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final owesYou = balance.isPositive;
+    final color = owesYou ? AppColors.income : AppColors.expense;
+    final status = owesYou ? 'Owes you' : 'You owe';
+    final statusIcon =
+        owesYou ? Icons.south_west_rounded : Icons.north_east_rounded;
+
+    return ListTile(
+      onTap: () => context.push('/more/persons/${person.id}'),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      leading: CircleAvatar(
+        radius: 18,
+        backgroundColor: theme.colorScheme.surfaceContainerHighest,
+        foregroundColor: theme.colorScheme.onSurface,
+        child: Text(
+          _initials(person.name),
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
+      ),
+      title: Text(
+        person.name,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+      ),
+      subtitle: Row(
+        children: [
+          Icon(statusIcon, size: 13, color: color),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              status,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(color: color),
+            ),
+          ),
+        ],
+      ),
+      // A lakh-sized balance must shrink, not shove the name off the row.
+      trailing: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 120),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerRight,
+          child: MoneyText(
+            balance.abs,
+            color: color,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Two-letter initials from a name, e.g. "Rahul Kumar" -> "RK".
+String _initials(String name) {
+  final parts = name
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((p) => p.isNotEmpty)
+      .toList();
+  if (parts.isEmpty) return '?';
+  if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+  return (parts.first.substring(0, 1) + parts.last.substring(0, 1))
+      .toUpperCase();
+}
+
 // ── 4. Budgets ────────────────────────────────────────────────────────────
 
 class _BudgetsSection extends ConsumerWidget {
@@ -948,7 +1175,10 @@ class _SpendByCategorySection extends ConsumerWidget {
     final cats = ref.watch(categoryMapProvider);
 
     return spendAsync.when(
-      data: (map) {
+      data: (rawMap) {
+        // Roll each subcategory's spend up into its parent, so the breakdown is
+        // by top-level category — the level a glance wants.
+        final map = rollUpToParents(rawMap, cats);
         final entries = map.entries.where((e) => e.value.isPositive).toList()
           ..sort((a, b) => b.value.compareTo(a.value));
         if (entries.isEmpty) return const SizedBox.shrink();

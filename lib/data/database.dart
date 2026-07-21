@@ -33,7 +33,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'money_manager'));
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -60,6 +60,11 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 4) {
             await m.addColumn(settings, settings.themeName);
+          }
+          if (from < 5) {
+            // Additive and nullable: every existing category becomes a
+            // top-level one (parentId stays null). Nothing to backfill.
+            await m.addColumn(categories, categories.parentId);
           }
         },
         beforeOpen: (details) async {
@@ -1155,36 +1160,98 @@ class AppDatabase extends _$AppDatabase {
     required CategoryKind kind,
     required int colorValue,
     required String iconKey,
-  }) =>
-      into(categories).insert(
-        CategoriesCompanion.insert(
-          name: name,
-          kind: kind,
-          colorValue: colorValue,
-          iconKey: iconKey,
-        ),
-      );
+    int? parentId,
+  }) async {
+    if (parentId != null) {
+      await _assertValidParent(parentId, kind);
+    }
+    return into(categories).insert(
+      CategoriesCompanion.insert(
+        name: name,
+        kind: kind,
+        colorValue: colorValue,
+        iconKey: iconKey,
+        parentId: Value(parentId),
+      ),
+    );
+  }
 
+  /// [parentId] follows drift's `Value` convention: absent leaves the parent
+  /// untouched, `Value(null)` promotes the category to top-level, `Value(x)`
+  /// nests it under x. A move is validated exactly like a fresh nesting.
   Future<void> updateCategory({
     required int id,
     String? name,
     int? colorValue,
     String? iconKey,
-  }) =>
-      (update(categories)..where((c) => c.id.equals(id))).write(
-        CategoriesCompanion(
-          name: name == null ? const Value.absent() : Value(name),
-          colorValue:
-              colorValue == null ? const Value.absent() : Value(colorValue),
-          iconKey: iconKey == null ? const Value.absent() : Value(iconKey),
-        ),
+    Value<int?> parentId = const Value.absent(),
+  }) async {
+    if (parentId.present && parentId.value != null) {
+      final target = parentId.value!;
+      if (target == id) {
+        throw ArgumentError("A category can't be its own parent.");
+      }
+      final self = await categoryById(id);
+      if (self == null) throw ArgumentError('That category no longer exists.');
+      await _assertValidParent(target, self.kind);
+      // Two levels only: a category that already has children can't itself
+      // become a child, or the tree would grow a third tier.
+      if (await countChildCategories(id) > 0) {
+        throw ArgumentError(
+          'This category has subcategories, so it must stay top-level. '
+          'Move or remove its subcategories first.',
+        );
+      }
+    }
+    await (update(categories)..where((c) => c.id.equals(id))).write(
+      CategoriesCompanion(
+        name: name == null ? const Value.absent() : Value(name),
+        colorValue:
+            colorValue == null ? const Value.absent() : Value(colorValue),
+        iconKey: iconKey == null ? const Value.absent() : Value(iconKey),
+        parentId: parentId,
+      ),
+    );
+  }
+
+  /// A parent must exist, be live, share the child's [kind], and itself be
+  /// top-level. Throws [ArgumentError] with a user-facing message otherwise —
+  /// the editor sheet surfaces it verbatim.
+  Future<void> _assertValidParent(int parentId, CategoryKind kind) async {
+    final parent = await categoryById(parentId);
+    if (parent == null || parent.isArchived) {
+      throw ArgumentError('That parent category is unavailable.');
+    }
+    if (parent.kind != kind) {
+      throw ArgumentError(
+        'A subcategory must match its parent — both income or both expense.',
       );
+    }
+    if (parent.parentId != null) {
+      throw ArgumentError(
+        "You can't nest under a subcategory. Pick a top-level category.",
+      );
+    }
+  }
+
+  /// How many live subcategories sit under [id].
+  Future<int> countChildCategories(int id) async {
+    final rows = await (select(categories)
+          ..where((c) => c.parentId.equals(id) & c.isArchived.equals(false)))
+        .get();
+    return rows.length;
+  }
 
   /// Archive, never delete: deleting a category orphans every past transaction
-  /// that referenced it and silently breaks old reports.
-  Future<void> archiveCategory(int id) =>
-      (update(categories)..where((c) => c.id.equals(id)))
-          .write(const CategoriesCompanion(isArchived: Value(true)));
+  /// that referenced it and silently breaks old reports. Archiving a parent
+  /// cascades to its subcategories so none is left stranded under a hidden
+  /// parent — done in one transaction so the tree never lands half-archived.
+  Future<void> archiveCategory(int id) => transaction(() async {
+        await (update(categories)..where((c) => c.id.equals(id)))
+            .write(const CategoriesCompanion(isArchived: Value(true)));
+        await (update(categories)..where((c) => c.parentId.equals(id)))
+            .write(const CategoriesCompanion(isArchived: Value(true)));
+      });
 
   Future<int> countTransactionsForCategory(int categoryId) async {
     final rows = await (select(transactions)
