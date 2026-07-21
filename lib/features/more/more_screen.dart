@@ -76,7 +76,7 @@ class MoreScreen extends ConsumerWidget {
           Icons.backup_outlined,
           'Backup & Restore',
           route: '/more/backup',
-          subtitle: 'Local backup file',
+          subtitle: 'Back up, import & move to a new phone',
         ),
       ]),
       _Group('Setup', [

@@ -91,7 +91,7 @@ class BackupService {
     if (f.existsSync()) await f.delete();
   }
 
-  /// Replaces the entire ledger with the contents of [path].
+  /// Replaces the entire ledger with the contents of the file at [path].
   ///
   /// Throws [ArgumentError] if the file isn't an XPENC backup, and any
   /// database error rolls the whole restore back — see `AppDatabase.importAll`.
@@ -100,10 +100,19 @@ class BackupService {
     if (!file.existsSync()) {
       throw ArgumentError('That backup no longer exists.');
     }
+    await restoreFromContent(await file.readAsString());
+  }
 
+  /// Replaces the entire ledger with a backup's raw JSON [content].
+  ///
+  /// This is the path an *imported* file takes — one the app never wrote, e.g.
+  /// a backup carried over from another phone. The same validation and
+  /// all-or-nothing transaction apply, so a wrong or corrupt file changes
+  /// nothing. Throws [ArgumentError] with a user-facing message on bad input.
+  Future<void> restoreFromContent(String content) async {
     final Object? decoded;
     try {
-      decoded = jsonDecode(await file.readAsString());
+      decoded = jsonDecode(content);
     } on FormatException {
       throw ArgumentError('That file is not valid JSON.');
     }
