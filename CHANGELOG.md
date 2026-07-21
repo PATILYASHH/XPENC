@@ -8,6 +8,47 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-07-21
+
+The first **feature** release since 1.1.0 — subcategories, money you're owed on
+the dashboard, any world currency, and one-tap import to move to a new phone.
+Fully backward compatible: the database migrates itself in place, so updating
+over an existing install keeps every account, transaction and setting.
+
+### Added
+- **Subcategories** — categories can now nest one level deep (e.g. *Food →
+  Groceries, Restaurants*). A subcategory's spending rolls up into its parent
+  across the dashboard, Stats and reports, and a budget set on a parent covers
+  its whole subtree. Manage them in **More → Categories**; pick them while
+  adding a transaction by drilling into a parent.
+- **Dues & owes on the dashboard** — a new **People** section shows what you'll
+  get and what you'll pay, over the people who still owe you or whom you owe.
+- **All world currencies** — choose from ~90 currencies (Bangladeshi Taka
+  included) in **Settings → Currency**. Amounts reformat everywhere instantly.
+  A **Show currency symbol** switch renders plain numbers for any currency
+  whose symbol isn't carried.
+- **Import a backup file** — **More → Backup & Restore → Import from file**
+  loads a backup the app didn't write, so you can move your whole ledger from
+  one phone to another: export on the old phone, send the file across, import
+  on the new one. A safety copy of current data is saved before every import.
+
+### Changed
+- **Spending breakdowns group by top-level category.** With subcategories in
+  play, the dashboard *Spending* card and the Stats pie now attribute a child's
+  spend to its parent.
+- `share_plus` pinned to `^12.0.2` so it shares `win32 ^5` with the new
+  `file_picker` dependency. No behavioural change.
+
+### Upgrade notes
+- **No reinstall needed.** The schema migrates automatically (v4 → v6, additive
+  columns only). Existing categories become top-level; currency stays INR with
+  its symbol shown until you change it.
+- **Export a backup first anyway** (**More → Download Data → Export JSON**). If
+  you install a build signed with a *different* key than the one on your phone,
+  Android forces an uninstall, which wipes data — import the backup afterwards.
+- See the [Upgrade Guide](wiki/Upgrade-Guide.md) and
+  [Release Notes](wiki/Release-Notes-1.2.0.md) for the full walkthrough.
+
 ## [1.1.3] — 2026-07-14
 
 Packaging fix for F-Droid, from the fdroiddata review. **No functional
@@ -125,6 +166,10 @@ First public release. 🎉
 - `tool/verify_apk.sh` gates every shipped APK against the missing
   `libsqlite3.so` class of crash.
 
-[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/PATILYASHH/XPENC/compare/v1.1.3...v1.2.0
+[1.1.3]: https://github.com/PATILYASHH/XPENC/compare/v1.1.2...v1.1.3
+[1.1.2]: https://github.com/PATILYASHH/XPENC/compare/v1.1.1...v1.1.2
+[1.1.1]: https://github.com/PATILYASHH/XPENC/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/PATILYASHH/XPENC/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/PATILYASHH/XPENC/releases/tag/v1.0.0
