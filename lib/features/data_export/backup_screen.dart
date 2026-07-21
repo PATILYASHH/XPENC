@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -39,6 +41,113 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text("Couldn't back up: $e")));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Import a backup file the app didn't write — the other half of moving data
+  /// between phones. Picks any `.json`, then follows the same guarded restore
+  /// as an on-device backup: confirm, snapshot the current data, then replace.
+  Future<void> _importFromFile() async {
+    if (_busy) return;
+    final messenger = ScaffoldMessenger.of(context);
+
+    final FilePickerResult? picked;
+    try {
+      // Deliberately not filtering by extension: some Android file managers
+      // grey out `.json` under a custom filter, which would make a real backup
+      // unpickable. restoreFromContent is the real gate — it rejects anything
+      // that isn't an XPENC backup with a clear message.
+      picked = await FilePicker.platform.pickFiles(withData: true);
+    } catch (e) {
+      if (!mounted) return;
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text("Couldn't open a file: $e")));
+      return;
+    }
+    if (picked == null || picked.files.isEmpty) return; // cancelled
+
+    final file = picked.files.single;
+    // Prefer the in-memory bytes (withData); fall back to reading the path.
+    String content;
+    try {
+      if (file.bytes != null) {
+        content = utf8.decode(file.bytes!);
+      } else if (file.path != null) {
+        content = await File(file.path!).readAsString();
+      } else {
+        throw const FormatException('empty selection');
+      }
+    } catch (_) {
+      if (!mounted) return;
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text("Couldn't read that file.")),
+        );
+      return;
+    }
+
+    if (!mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Import this file?'),
+        content: Text(
+          'Importing "${file.name}" replaces ALL current data on this phone — '
+          'every account, transaction, budget and person — with its contents. '
+          'A safety copy of your current data is saved first, so this can be '
+          'undone by restoring that copy.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(dialogContext).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Replace everything'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || confirmed != true) return;
+
+    final service = ref.read(backupServiceProvider);
+    setState(() => _busy = true);
+    try {
+      await service.createBackup(); // safety copy first
+      await service.restoreFromContent(content);
+      if (!mounted) return;
+      ref.invalidate(backupListProvider);
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Imported. A safety copy of your previous data was saved.',
+            ),
+          ),
+        );
+    } on ArgumentError catch (e) {
+      if (!mounted) return;
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text('${e.message} Nothing was changed.')),
+        );
+    } catch (e) {
+      if (!mounted) return;
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text("Couldn't import: $e Nothing was changed.")),
+        );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -192,9 +301,17 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
                     label: const Text('Back up now'),
                   ),
                   const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : _importFromFile,
+                    icon: const Icon(Icons.file_open_outlined),
+                    label: const Text('Import from file'),
+                  ),
+                  const SizedBox(height: 12),
                   Text(
-                    'Backups are stored inside this app. Export a JSON copy if '
-                    'you want it off the phone.',
+                    'Moving to a new phone? Export a backup here (or from '
+                    'Download Data), send the file across, then use Import from '
+                    'file on the new phone. On-device backups survive edits but '
+                    'not an uninstall — keep an exported copy for real safety.',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: cs.onSurfaceVariant,
                       height: 1.4,

@@ -49,7 +49,10 @@ dependencies:
   flutter_slidable: ^4.0.3
   sqlite3_flutter_libs: 0.5.24
   path_provider: ^2.1.6
-  share_plus: ^13.2.0
+  # Pinned below 13 so it shares win32 ^5 with file_picker (13 needs win32 ^6).
+  share_plus: ^12.0.2
+  # Import a backup file from anywhere on the device (transfer between phones).
+  file_picker: ^8.1.6
   # Opens the developer's GitHub / LinkedIn from the About screen.
   url_launcher: ^6.3.2
 
