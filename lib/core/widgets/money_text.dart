@@ -1,8 +1,36 @@
 import 'package:flutter/material.dart';
 
 import '../../data/tables.dart';
+import '../currency.dart';
 import '../money.dart';
 import '../theme/app_colors.dart';
+
+/// Broadcasts the active currency down the tree so every [MoneyText] rebuilds
+/// the instant it changes — even a screen kept alive in the background. The
+/// numbers themselves come from [MoneyFormat], which the app keeps configured
+/// to match; this scope only exists to notify dependents.
+class CurrencyScope extends InheritedWidget {
+  const CurrencyScope({
+    required this.currency,
+    required this.showSymbol,
+    required super.child,
+    super.key,
+  });
+
+  final Currency currency;
+  final bool showSymbol;
+
+  /// Establishes a dependency so the caller rebuilds on a currency change.
+  /// Absent in bare widget tests, where the [MoneyFormat] default stands in.
+  static void depend(BuildContext context) {
+    context.dependOnInheritedWidgetOfExactType<CurrencyScope>();
+  }
+
+  @override
+  bool updateShouldNotify(CurrencyScope oldWidget) =>
+      currency.code != oldWidget.currency.code ||
+      showSymbol != oldWidget.showSymbol;
+}
 
 /// Colour only ever *means* something: money in is green, money out is red,
 /// a transfer is neither — and a person movement is neither either.
@@ -58,6 +86,9 @@ class MoneyText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Rebuild whenever the currency setting changes — [MoneyFormat] is already
+    // reconfigured by then, so the new symbol/grouping lands immediately.
+    CurrencyScope.depend(context);
     final text = compact
         ? MoneyFormat.compact(amount)
         : signed

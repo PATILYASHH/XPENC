@@ -4435,6 +4435,20 @@ class $SettingsTable extends Settings
     requiredDuringInsert: false,
     defaultValue: const Constant('system'),
   );
+  static const VerificationMeta _showCurrencySymbolMeta =
+      const VerificationMeta('showCurrencySymbol');
+  @override
+  late final GeneratedColumn<bool> showCurrencySymbol = GeneratedColumn<bool>(
+    'show_currency_symbol',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("show_currency_symbol" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -4446,6 +4460,7 @@ class $SettingsTable extends Settings
     lastMessageScanAt,
     notificationsEnabled,
     themeName,
+    showCurrencySymbol,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4528,6 +4543,15 @@ class $SettingsTable extends Settings
         themeName.isAcceptableOrUnknown(data['theme_name']!, _themeNameMeta),
       );
     }
+    if (data.containsKey('show_currency_symbol')) {
+      context.handle(
+        _showCurrencySymbolMeta,
+        showCurrencySymbol.isAcceptableOrUnknown(
+          data['show_currency_symbol']!,
+          _showCurrencySymbolMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -4573,6 +4597,10 @@ class $SettingsTable extends Settings
         DriftSqlType.string,
         data['${effectivePrefix}theme_name'],
       )!,
+      showCurrencySymbol: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}show_currency_symbol'],
+      )!,
     );
   }
 
@@ -4600,6 +4628,11 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// A `ThemePreset.name`. Stored as text rather than an enum index, so
   /// reordering the enum can never silently repaint someone's app.
   final String themeName;
+
+  /// When false, amounts render as bare numbers — the escape hatch for a
+  /// currency whose symbol we don't carry. [currencyCode] still governs grouping
+  /// and decimals.
+  final bool showCurrencySymbol;
   const SettingRow({
     required this.id,
     required this.currencyCode,
@@ -4610,6 +4643,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     this.lastMessageScanAt,
     required this.notificationsEnabled,
     required this.themeName,
+    required this.showCurrencySymbol,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4625,6 +4659,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     }
     map['notifications_enabled'] = Variable<bool>(notificationsEnabled);
     map['theme_name'] = Variable<String>(themeName);
+    map['show_currency_symbol'] = Variable<bool>(showCurrencySymbol);
     return map;
   }
 
@@ -4641,6 +4676,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           : Value(lastMessageScanAt),
       notificationsEnabled: Value(notificationsEnabled),
       themeName: Value(themeName),
+      showCurrencySymbol: Value(showCurrencySymbol),
     );
   }
 
@@ -4665,6 +4701,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
         json['notificationsEnabled'],
       ),
       themeName: serializer.fromJson<String>(json['themeName']),
+      showCurrencySymbol: serializer.fromJson<bool>(
+        json['showCurrencySymbol'],
+      ),
     );
   }
   @override
@@ -4680,6 +4719,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'lastMessageScanAt': serializer.toJson<DateTime?>(lastMessageScanAt),
       'notificationsEnabled': serializer.toJson<bool>(notificationsEnabled),
       'themeName': serializer.toJson<String>(themeName),
+      'showCurrencySymbol': serializer.toJson<bool>(showCurrencySymbol),
     };
   }
 
@@ -4693,6 +4733,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     Value<DateTime?> lastMessageScanAt = const Value.absent(),
     bool? notificationsEnabled,
     String? themeName,
+    bool? showCurrencySymbol,
   }) => SettingRow(
     id: id ?? this.id,
     currencyCode: currencyCode ?? this.currencyCode,
@@ -4705,6 +4746,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
         : this.lastMessageScanAt,
     notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
     themeName: themeName ?? this.themeName,
+    showCurrencySymbol: showCurrencySymbol ?? this.showCurrencySymbol,
   );
   SettingRow copyWithCompanion(SettingsCompanion data) {
     return SettingRow(
@@ -4729,6 +4771,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ? data.notificationsEnabled.value
           : this.notificationsEnabled,
       themeName: data.themeName.present ? data.themeName.value : this.themeName,
+      showCurrencySymbol: data.showCurrencySymbol.present
+          ? data.showCurrencySymbol.value
+          : this.showCurrencySymbol,
     );
   }
 
@@ -4743,7 +4788,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('messageCaptureEnabled: $messageCaptureEnabled, ')
           ..write('lastMessageScanAt: $lastMessageScanAt, ')
           ..write('notificationsEnabled: $notificationsEnabled, ')
-          ..write('themeName: $themeName')
+          ..write('themeName: $themeName, ')
+          ..write('showCurrencySymbol: $showCurrencySymbol')
           ..write(')'))
         .toString();
   }
@@ -4759,6 +4805,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     lastMessageScanAt,
     notificationsEnabled,
     themeName,
+    showCurrencySymbol,
   );
   @override
   bool operator ==(Object other) =>
@@ -4772,7 +4819,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.messageCaptureEnabled == this.messageCaptureEnabled &&
           other.lastMessageScanAt == this.lastMessageScanAt &&
           other.notificationsEnabled == this.notificationsEnabled &&
-          other.themeName == this.themeName);
+          other.themeName == this.themeName &&
+          other.showCurrencySymbol == this.showCurrencySymbol);
 }
 
 class SettingsCompanion extends UpdateCompanion<SettingRow> {
@@ -4785,6 +4833,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<DateTime?> lastMessageScanAt;
   final Value<bool> notificationsEnabled;
   final Value<String> themeName;
+  final Value<bool> showCurrencySymbol;
   const SettingsCompanion({
     this.id = const Value.absent(),
     this.currencyCode = const Value.absent(),
@@ -4795,6 +4844,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.lastMessageScanAt = const Value.absent(),
     this.notificationsEnabled = const Value.absent(),
     this.themeName = const Value.absent(),
+    this.showCurrencySymbol = const Value.absent(),
   });
   SettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -4806,6 +4856,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.lastMessageScanAt = const Value.absent(),
     this.notificationsEnabled = const Value.absent(),
     this.themeName = const Value.absent(),
+    this.showCurrencySymbol = const Value.absent(),
   });
   static Insertable<SettingRow> custom({
     Expression<int>? id,
@@ -4817,6 +4868,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<DateTime>? lastMessageScanAt,
     Expression<bool>? notificationsEnabled,
     Expression<String>? themeName,
+    Expression<bool>? showCurrencySymbol,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -4830,6 +4882,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       if (notificationsEnabled != null)
         'notifications_enabled': notificationsEnabled,
       if (themeName != null) 'theme_name': themeName,
+      if (showCurrencySymbol != null)
+        'show_currency_symbol': showCurrencySymbol,
     });
   }
 
@@ -4843,6 +4897,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<DateTime?>? lastMessageScanAt,
     Value<bool>? notificationsEnabled,
     Value<String>? themeName,
+    Value<bool>? showCurrencySymbol,
   }) {
     return SettingsCompanion(
       id: id ?? this.id,
@@ -4855,6 +4910,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       lastMessageScanAt: lastMessageScanAt ?? this.lastMessageScanAt,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       themeName: themeName ?? this.themeName,
+      showCurrencySymbol: showCurrencySymbol ?? this.showCurrencySymbol,
     );
   }
 
@@ -4890,6 +4946,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     if (themeName.present) {
       map['theme_name'] = Variable<String>(themeName.value);
     }
+    if (showCurrencySymbol.present) {
+      map['show_currency_symbol'] = Variable<bool>(showCurrencySymbol.value);
+    }
     return map;
   }
 
@@ -4904,7 +4963,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('messageCaptureEnabled: $messageCaptureEnabled, ')
           ..write('lastMessageScanAt: $lastMessageScanAt, ')
           ..write('notificationsEnabled: $notificationsEnabled, ')
-          ..write('themeName: $themeName')
+          ..write('themeName: $themeName, ')
+          ..write('showCurrencySymbol: $showCurrencySymbol')
           ..write(')'))
         .toString();
   }

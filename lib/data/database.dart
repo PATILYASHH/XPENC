@@ -33,7 +33,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'money_manager'));
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -65,6 +65,10 @@ class AppDatabase extends _$AppDatabase {
             // Additive and nullable: every existing category becomes a
             // top-level one (parentId stays null). Nothing to backfill.
             await m.addColumn(categories, categories.parentId);
+          }
+          if (from < 6) {
+            // Defaults true, so existing users keep seeing their symbol.
+            await m.addColumn(settings, settings.showCurrencySymbol);
           }
         },
         beforeOpen: (details) async {
@@ -1090,6 +1094,14 @@ class AppDatabase extends _$AppDatabase {
   /// so a bad write degrades to the default rather than bricking the app.
   Future<void> setThemeName(String name) =>
       update(settings).write(SettingsCompanion(themeName: Value(name)));
+
+  /// An ISO 4217 code. An unknown code degrades to the default on read
+  /// ([currencyForCode]), so a bad write can never brick the app.
+  Future<void> setCurrencyCode(String code) =>
+      update(settings).write(SettingsCompanion(currencyCode: Value(code)));
+
+  Future<void> setShowCurrencySymbol(bool show) => update(settings)
+      .write(SettingsCompanion(showCurrencySymbol: Value(show)));
 
   Future<SettingRow> getSettings() => select(settings).getSingle();
 
