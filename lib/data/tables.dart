@@ -262,6 +262,12 @@ class Settings extends Table {
   TextColumn get themeName =>
       text().withLength(min: 1, max: 30).withDefault(const Constant('system'))();
 
+  /// When false, amounts render as bare numbers — the escape hatch for a
+  /// currency whose symbol we don't carry. [currencyCode] still governs grouping
+  /// and decimals.
+  BoolColumn get showCurrencySymbol =>
+      boolean().withDefault(const Constant(true))();
+
   @override
   Set<Column> get primaryKey => {id};
 }

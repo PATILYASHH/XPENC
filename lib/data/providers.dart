@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/currency.dart';
 import '../core/money.dart';
 import '../core/notifications/notification_service.dart';
 import '../core/theme/theme_preset.dart';
@@ -220,6 +221,18 @@ final settingsProvider = StreamProvider<SettingRow>(
 final themePresetProvider = Provider<ThemePreset>((ref) {
   final name = ref.watch(settingsProvider).valueOrNull?.themeName;
   return ThemePreset.fromName(name);
+});
+
+/// The currency the user picked. An unknown code degrades to the default, so a
+/// bad setting never blanks out every amount in the app.
+final currencyProvider = Provider<Currency>((ref) {
+  final code = ref.watch(settingsProvider).valueOrNull?.currencyCode;
+  return currencyForCode(code);
+});
+
+/// Whether to draw the currency symbol. Defaults to shown while settings load.
+final showCurrencySymbolProvider = Provider<bool>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.showCurrencySymbol ?? true;
 });
 
 // ── Message auto-capture ────────────────────────────────────────────────────

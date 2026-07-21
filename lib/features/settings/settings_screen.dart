@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/branding/app_info.dart';
 import '../../core/branding/brand_mark.dart';
 import '../../data/providers.dart';
+import 'currency_picker_sheet.dart';
 import 'theme_picker_sheet.dart';
 
 /// App preferences. Most rows are placeholders for later phases; "Recalculate
@@ -22,6 +23,8 @@ class SettingsScreen extends ConsumerWidget {
     final notificationsEnabled =
         settingsAsync.valueOrNull?.notificationsEnabled ?? false;
     final preset = ref.watch(themePresetProvider);
+    final currency = ref.watch(currencyProvider);
+    final showSymbol = ref.watch(showCurrencySymbolProvider);
 
     final trailingStyle =
         theme.textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant);
@@ -38,10 +41,36 @@ class SettingsScreen extends ConsumerWidget {
               children: [
                 ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  leading: const Icon(Icons.currency_rupee_rounded),
+                  leading: const Icon(Icons.payments_outlined),
                   title: const Text('Currency'),
-                  trailing: Text('₹ INR', style: trailingStyle),
-                  onTap: () => _soon(context),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('${currency.symbol} ${currency.code}',
+                          style: trailingStyle),
+                      const SizedBox(width: 4),
+                      Icon(Icons.chevron_right_rounded,
+                          color: cs.onSurfaceVariant),
+                    ],
+                  ),
+                  onTap: () => CurrencyPickerSheet.show(context, ref),
+                ),
+                Divider(height: 1, indent: 60, color: cs.outline),
+                SwitchListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  secondary: const Icon(Icons.attach_money_rounded),
+                  title: const Text('Show currency symbol'),
+                  subtitle: Text(
+                    showSymbol
+                        ? 'Amounts show ${currency.symbol}'
+                        : 'Amounts show plain numbers — use this if your '
+                            'currency symbol is missing',
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                  value: showSymbol,
+                  onChanged: (v) =>
+                      ref.read(dbProvider).setShowCurrencySymbol(v),
                 ),
                 Divider(height: 1, indent: 60, color: cs.outline),
                 ListTile(
@@ -159,12 +188,6 @@ class SettingsScreen extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  void _soon(BuildContext context) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Coming soon')));
   }
 
   Future<void> _toggleNotifications(WidgetRef ref, bool value) async {

@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/branding/app_info.dart';
+import 'core/money.dart';
 import 'core/routing/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/error_view.dart';
+import 'core/widgets/money_text.dart';
 import 'data/providers.dart';
 
 class XpencApp extends ConsumerStatefulWidget {
@@ -97,6 +99,13 @@ class _XpencAppState extends ConsumerState<XpencApp>
     final ready = ref.watch(databaseReadyProvider);
     final preset = ref.watch(themePresetProvider);
 
+    // Point the global formatters at the chosen currency before anything paints,
+    // and broadcast it via CurrencyScope so every amount reformats the instant
+    // it changes — even a screen kept alive on another tab.
+    final currency = ref.watch(currencyProvider);
+    final showSymbol = ref.watch(showCurrencySymbolProvider);
+    MoneyFormat.configure(currency: currency, showSymbol: showSymbol);
+
     return MaterialApp.router(
       title: AppInfo.name,
       debugShowCheckedModeBanner: false,
@@ -107,13 +116,17 @@ class _XpencAppState extends ConsumerState<XpencApp>
       themeMode: preset.mode,
       routerConfig: appRouter,
       // A failed database must never look like "still loading".
-      builder: (context, child) => switch (ready) {
-        AsyncError(:final error) => _FatalError(
-            error: error,
-            onRetry: () => ref.invalidate(databaseReadyProvider),
-          ),
-        _ => child ?? const SizedBox.shrink(),
-      },
+      builder: (context, child) => CurrencyScope(
+        currency: currency,
+        showSymbol: showSymbol,
+        child: switch (ready) {
+          AsyncError(:final error) => _FatalError(
+              error: error,
+              onRetry: () => ref.invalidate(databaseReadyProvider),
+            ),
+          _ => child ?? const SizedBox.shrink(),
+        },
+      ),
     );
   }
 }
