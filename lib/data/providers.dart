@@ -54,6 +54,29 @@ final categoryMapProvider = Provider<Map<int, CategoryRow>>((ref) {
   return {for (final c in [...income, ...expense]) c.id: c};
 });
 
+/// A category's top-level ancestor. The tree is two deep, so a child resolves
+/// to its parent and a parent (or an unknown id) resolves to itself. Used to
+/// roll subcategory spend up into the parent it belongs to.
+int topLevelCategoryId(Map<int, CategoryRow> byId, int id) {
+  final parent = byId[id]?.parentId;
+  return parent ?? id;
+}
+
+/// Re-keys a per-category map onto top-level parents, summing children into the
+/// parent they roll up under. A spend map keyed by leaf category becomes a spend
+/// map keyed by parent — the shape the dashboard and reports show.
+Map<int, Money> rollUpToParents(
+  Map<int, Money> byCategory,
+  Map<int, CategoryRow> byId,
+) {
+  final out = <int, Money>{};
+  byCategory.forEach((id, amount) {
+    final top = topLevelCategoryId(byId, id);
+    out[top] = (out[top] ?? const Money.zero()) + amount;
+  });
+  return out;
+}
+
 final accountMapProvider = Provider<Map<int, AccountRow>>((ref) {
   final accounts = ref.watch(accountsProvider).valueOrNull ?? [];
   return {for (final a in accounts) a.id: a};
@@ -113,7 +136,15 @@ final budgetProgressProvider = Provider<List<BudgetProgress>>((ref) {
   for (final b in budgets) {
     final cat = cats[b.categoryId];
     if (cat == null) continue;
-    final spent = spend[b.categoryId] ?? const Money.zero();
+    // A budget on a parent covers its whole subtree: the category's own spend
+    // plus every live child's. A budget on a child (or a childless category)
+    // is just its own line.
+    var spent = spend[b.categoryId] ?? const Money.zero();
+    for (final c in cats.values) {
+      if (c.parentId == b.categoryId) {
+        spent += spend[c.id] ?? const Money.zero();
+      }
+    }
     final fraction =
         b.amount.isZero ? 0.0 : spent.paise / b.amount.paise;
     out.add((
