@@ -36,6 +36,13 @@ class NotificationService {
     importance: Importance.defaultImportance,
   );
 
+  static const _autoChannel = AndroidNotificationChannel(
+    'auto',
+    'Auto expenses & income',
+    description: 'Warns ahead of an auto-post, and confirms once one lands.',
+    importance: Importance.high,
+  );
+
   Future<void> init() async {
     if (_ready) return;
     try {
@@ -56,6 +63,7 @@ class NotificationService {
         await android.createNotificationChannel(_budgetChannel);
         await android.createNotificationChannel(_reminderChannel);
         await android.createNotificationChannel(_captureChannel);
+        await android.createNotificationChannel(_autoChannel);
       }
       _ready = true;
     } catch (e, s) {
@@ -281,6 +289,87 @@ class NotificationService {
       count == 1 ? '1 transaction detected' : '$count transactions detected',
       'Open the app to review and categorise.',
       _captureChannel,
+    );
+  }
+
+  // ── Recurring rules (Auto) ────────────────────────────────────────────────
+
+  /// Reschedules the "coming up" alert for every active rule. Safe to call on
+  /// every app start/resume, and right after [AppDatabase.runDueRecurringRules]
+  /// advances each rule's `nextDueDate` — this always reads that fresh value,
+  /// so it never warns about an occurrence that already posted.
+  Future<void> syncRecurringNotifications() async {
+    if (!_ready) return;
+    final settings = await _db.getSettings();
+    final rules = await _db.watchRecurringRules().first;
+
+    for (final r in rules) {
+      await _cancel(_recurringId(r.id));
+      if (!settings.notificationsEnabled || !r.isActive) continue;
+
+      final fireAt = _recurringFireTimeFor(r);
+      if (fireAt == null) continue;
+
+      final account = await _db.watchAccount(r.accountId).first;
+      final accountName = account?.name ?? 'your account';
+      final isExpense = r.kind == CategoryKind.expense;
+      final title = isExpense ? '${r.name}: auto-pay coming up' : '${r.name}: expected soon';
+      final body = isExpense
+          ? '${MoneyFormat.symbol(r.amount)} will be auto-deducted from '
+              '$accountName on ${_dayLabel(r.nextDueDate)}. Keep that much ready.'
+          : '${MoneyFormat.symbol(r.amount)} is expected in $accountName '
+              'on ${_dayLabel(r.nextDueDate)}.';
+
+      try {
+        await _plugin.zonedSchedule(
+          id: _recurringId(r.id),
+          title: title,
+          body: body,
+          scheduledDate: tz.TZDateTime.from(fireAt, tz.local),
+          notificationDetails: _details(_autoChannel),
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        );
+      } catch (e) {
+        debugPrint('recurring rule schedule failed: $e');
+      }
+    }
+  }
+
+  /// Mirrors [_fireTimeFor]: a same-day rule (or one whose warning window has
+  /// already passed) still fires shortly rather than silently never firing.
+  static DateTime? _recurringFireTimeFor(RecurringRuleRow r) {
+    final now = DateTime.now();
+    final day = r.nextDueDate.subtract(Duration(days: r.notifyDaysBefore));
+    final at = DateTime(day.year, day.month, day.day, _reminderHour);
+
+    if (at.isAfter(now)) return at;
+
+    final endOfDueDay = DateTime(
+      r.nextDueDate.year,
+      r.nextDueDate.month,
+      r.nextDueDate.day,
+      23,
+      59,
+    );
+    if (endOfDueDay.isAfter(now)) {
+      return now.add(const Duration(minutes: 1));
+    }
+    return null; // the next run of runDueRecurringRules will post it instead
+  }
+
+  static int _recurringId(int id) => 600000 + id;
+
+  /// One-shot confirmation after [AppDatabase.runDueRecurringRules] posts
+  /// something — nothing about "auto" should ever land in the ledger silently.
+  Future<void> notifyAutoPosted(int count) async {
+    if (count <= 0) return;
+    final settings = await _db.getSettings();
+    if (!settings.notificationsEnabled) return;
+    await _show(
+      500000,
+      count == 1 ? '1 auto-transaction posted' : '$count auto-transactions posted',
+      'Open Auto to review what was posted.',
+      _autoChannel,
     );
   }
 }

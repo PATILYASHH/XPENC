@@ -255,7 +255,7 @@ class _PersonTile extends StatelessWidget {
           ),
         ),
       ),
-      onTap: () => context.push('/more/persons/${person.id}'),
+      onTap: () => context.push('/person/${person.id}'),
     );
   }
 }

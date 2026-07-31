@@ -82,7 +82,16 @@ class _AccountDetailView extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(account.name)),
+      appBar: AppBar(
+        title: Text(account.name),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            tooltip: 'Download statement',
+            onPressed: () => _downloadStatement(context, ref, account),
+          ),
+        ],
+      ),
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
@@ -160,7 +169,7 @@ class _AccountDetailView extends ConsumerWidget {
           final rows = groups[day]!;
           var net = const Money.zero();
           for (final tx in rows) {
-            net += _movementFor(tx, ownIds);
+            net += accountMovement(tx, ownIds);
           }
           children.add(_DayHeader(day: day, net: net));
           for (final tx in rows) {
@@ -379,7 +388,7 @@ class _HistoryRow extends StatelessWidget {
         isTransfer ? 'Transfer' : (category?.name ?? 'Uncategorised');
 
     // Signed movement: negative = money out of this account, positive = in.
-    final movement = _movementFor(tx, ownIds);
+    final movement = accountMovement(tx, ownIds);
 
     final String? subtitle = _subtitle(isTransfer);
 
@@ -418,21 +427,6 @@ class _HistoryRow extends StatelessWidget {
 
 // ── Direction ─────────────────────────────────────────────────────────────
 
-/// Money movement for a transaction relative to the account in view.
-///
-/// - income    → `+amount`  (money in)
-/// - expense   → `-amount`  (money out)
-/// - personIn  → `+amount`  (a person handed money to you)
-/// - personOut → `-amount`  (you handed money to a person)
-/// - transfer  → `-amount` when this account (or a debit card on it) is the
-///   source, otherwise `+amount` because it is the destination.
-Money _movementFor(TransactionRow tx, Set<int> ownIds) => switch (tx.type) {
-      TxType.income || TxType.personIn => tx.amount,
-      TxType.expense || TxType.personOut => -tx.amount,
-      TxType.transfer =>
-        ownIds.contains(tx.accountId) ? -tx.amount : tx.amount,
-    };
-
 String _typeLabel(AccountType type) => switch (type) {
       AccountType.cash => 'Cash',
       AccountType.bank => 'Bank',
@@ -446,4 +440,109 @@ String _dayLabel(DateTime day) {
   if (diff == 0) return 'Today';
   if (diff == 1) return 'Yesterday';
   return DateFormat('EEE, d MMM').format(day);
+}
+
+// ── Statement download ───────────────────────────────────────────────────────
+
+Future<void> _downloadStatement(
+  BuildContext context,
+  WidgetRef ref,
+  AccountRow account,
+) async {
+  final range = await _pickStatementRange(context);
+  if (range == null || !context.mounted) return;
+
+  final messenger = ScaffoldMessenger.of(context);
+  final service = ref.read(backupServiceProvider);
+  messenger
+    ..hideCurrentSnackBar()
+    ..showSnackBar(const SnackBar(content: Text('Generating statement...')));
+  try {
+    final file = await service.writeAccountStatementPdf(
+      account: account,
+      start: range.start,
+      end: range.end,
+    );
+    await service.share(file, subject: '${account.name} statement');
+    if (!context.mounted) return;
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text('Exported ${file.uri.pathSegments.last}')));
+  } catch (e) {
+    if (!context.mounted) return;
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text("Couldn't generate statement: $e")));
+  }
+}
+
+/// This month / Last month / a custom range picked via the platform's
+/// built-in range picker.
+Future<DateTimeRange?> _pickStatementRange(BuildContext context) async {
+  final now = DateTime.now();
+  final choice = await showModalBottomSheet<String>(
+    context: context,
+    showDragHandle: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+    ),
+    builder: (sheetContext) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Statement period',
+                style: Theme.of(sheetContext)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.calendar_today_outlined),
+            title: const Text('This month'),
+            onTap: () => Navigator.of(sheetContext).pop('this'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.calendar_view_month_outlined),
+            title: const Text('Last month'),
+            onTap: () => Navigator.of(sheetContext).pop('last'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.date_range_outlined),
+            title: const Text('Custom range'),
+            onTap: () => Navigator.of(sheetContext).pop('custom'),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    ),
+  );
+  if (choice == null) return null;
+
+  switch (choice) {
+    case 'this':
+      return DateTimeRange(
+        start: DateTime(now.year, now.month),
+        end: DateTime(now.year, now.month + 1).subtract(const Duration(days: 1)),
+      );
+    case 'last':
+      return DateTimeRange(
+        start: DateTime(now.year, now.month - 1),
+        end: DateTime(now.year, now.month).subtract(const Duration(days: 1)),
+      );
+    default:
+      if (!context.mounted) return null;
+      return showDateRangePicker(
+        context: context,
+        firstDate: DateTime(2020),
+        lastDate: now,
+        initialDateRange: DateTimeRange(start: DateTime(now.year, now.month), end: now),
+      );
+  }
 }

@@ -20,7 +20,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # `AppInfo.version` / `AppInfo.buildNumber` mirror this line so the About screen
 # can show it without pulling in a platform plugin. `test/branding_test.dart`
 # parses this file and fails if the two ever disagree.
-version: 1.2.0+6
+version: 1.2.1+7
 
 environment:
   sdk: ^3.10.8
@@ -55,6 +55,9 @@ dependencies:
   file_picker: ^8.1.6
   # Opens the developer's GitHub / LinkedIn from the About screen.
   url_launcher: ^6.3.2
+  # Builds account/budget statement PDFs, entirely on-device — no network font
+  # fetch, so statements stick to plain ASCII text (see statement_pdf.dart).
+  pdf: ^3.11.3
 
 dev_dependencies:
   flutter_test:

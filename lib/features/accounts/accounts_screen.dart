@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/app_icons.dart';
 import '../../core/money.dart';
@@ -251,7 +252,8 @@ class _AccountTile extends ConsumerWidget {
       ),
       subtitle: subtitle,
       trailing: trailing,
-      onLongPress: () => _confirmArchive(context, ref),
+      onTap: () => context.push('/account/${account.id}'),
+      onLongPress: () => _showActions(context, ref),
     );
   }
 
@@ -276,6 +278,58 @@ class _AccountTile extends ConsumerWidget {
         color: theme.colorScheme.onSurfaceVariant,
       ),
     );
+  }
+
+  /// Hold-to-act: a sheet offering Archive (reversible, hides it) or Remove
+  /// (permanent, only works when nothing points at it).
+  Future<void> _showActions(BuildContext context, WidgetRef ref) async {
+    final theme = Theme.of(context);
+    final action = await showModalBottomSheet<_AccountAction>(
+      context: context,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  account.name,
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.archive_outlined),
+              title: const Text('Archive'),
+              subtitle: const Text('Hide it. History stays intact.'),
+              onTap: () =>
+                  Navigator.of(sheetContext).pop(_AccountAction.archive),
+            ),
+            ListTile(
+              leading: Icon(Icons.delete_outline, color: theme.colorScheme.error),
+              title: Text('Remove', style: TextStyle(color: theme.colorScheme.error)),
+              subtitle: const Text('Delete permanently — only if unused.'),
+              onTap: () =>
+                  Navigator.of(sheetContext).pop(_AccountAction.remove),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (action == null || !context.mounted) return;
+    if (action == _AccountAction.archive) {
+      await _confirmArchive(context, ref);
+    } else {
+      await _confirmRemove(context, ref);
+    }
   }
 
   Future<void> _confirmArchive(BuildContext context, WidgetRef ref) async {
@@ -310,7 +364,56 @@ class _AccountTile extends ConsumerWidget {
       ..hideCurrentSnackBar()
       ..showSnackBar(const SnackBar(content: Text('Account archived')));
   }
+
+  /// Unlike archiving, this can't be undone — [AppDatabase.deleteAccount]
+  /// refuses (with a clear reason) whenever anything still points at the
+  /// account, so this only ever succeeds on one with no history.
+  Future<void> _confirmRemove(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Remove "${account.name}"?'),
+        content: const Text(
+          "This permanently deletes the account — it can't be undone. It "
+          'only works if the account has no transaction history; otherwise '
+          'archive it instead.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await ref.read(dbProvider).deleteAccount(account.id);
+    } on ArgumentError catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+          content: Text(e.message?.toString() ?? "Can't remove this account"),
+        ));
+      return;
+    }
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Account removed')));
+  }
 }
+
+enum _AccountAction { archive, remove }
 
 /// A small outlined chip marking a debit card as an instrument of its bank.
 class _LinkedChip extends StatelessWidget {

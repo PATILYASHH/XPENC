@@ -31,7 +31,16 @@ class BudgetsScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Budgets')),
+      appBar: AppBar(
+        title: const Text('Budgets'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            tooltip: 'Download budget statement',
+            onPressed: () => _downloadBudgetStatement(context, ref),
+          ),
+        ],
+      ),
       body: categoriesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
@@ -96,6 +105,45 @@ class BudgetsScreen extends ConsumerWidget {
       isScrollControlled: true,
       builder: (_) => _BudgetSheet(category: category, existing: existing),
     );
+  }
+
+  Future<void> _downloadBudgetStatement(BuildContext context, WidgetRef ref) async {
+    final month = await _pickStatementMonth(context);
+    if (month == null || !context.mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final service = ref.read(backupServiceProvider);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Generating statement...')));
+    try {
+      final file = await service.writeBudgetStatementPdf(month);
+      await service.share(file, subject: 'Budget statement');
+      if (!context.mounted) return;
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text('Exported ${file.uri.pathSegments.last}')));
+    } catch (e) {
+      if (!context.mounted) return;
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text("Couldn't generate statement: $e")));
+    }
+  }
+
+  /// A day picker stands in for a month picker — only the year/month of
+  /// whatever day is picked is used.
+  Future<DateTime?> _pickStatementMonth(BuildContext context) async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: DateTime(2020),
+      lastDate: now,
+      helpText: 'Pick any day in the month to statement',
+    );
+    if (picked == null) return null;
+    return DateTime(picked.year, picked.month);
   }
 }
 

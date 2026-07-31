@@ -209,6 +209,18 @@ final openRemindersProvider = Provider<List<ReminderRow>>((ref) {
   return all.where((r) => r.status == ReminderStatus.open).toList();
 });
 
+// ── Recurring rules (Auto) ──────────────────────────────────────────────────
+
+final recurringRulesProvider = StreamProvider<List<RecurringRuleRow>>(
+  (ref) => ref.watch(dbProvider).watchRecurringRules(),
+);
+
+/// For naming the rule behind a transaction's [TransactionRow.recurringRuleId].
+final recurringRuleMapProvider = Provider<Map<int, RecurringRuleRow>>((ref) {
+  final rules = ref.watch(recurringRulesProvider).valueOrNull ?? const [];
+  return {for (final r in rules) r.id: r};
+});
+
 // ── Settings ────────────────────────────────────────────────────────────────
 
 final settingsProvider = StreamProvider<SettingRow>(
@@ -302,6 +314,69 @@ final accountByIdProvider = StreamProvider.family<AccountRow?, int>(
 final transactionByIdProvider = StreamProvider.family<TransactionRow?, int>(
   (ref, id) => ref.watch(dbProvider).watchTransaction(id),
 );
+
+// ── Payees ──────────────────────────────────────────────────────────────────
+//
+// A payee is free text on an expense, not its own table (see Transactions.payee
+// in tables.dart) — these all derive their view by grouping that column out of
+// transactions already being watched elsewhere. Compose, don't re-subscribe.
+
+/// Distinct payee names used on past expenses, most recently paid first — the
+/// source for autocomplete suggestions on the add/edit screen.
+final payeeSuggestionsProvider = Provider<List<String>>((ref) {
+  final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
+  final lastPaid = <String, DateTime>{};
+  for (final t in txs) {
+    final p = t.payee;
+    if (t.type != TxType.expense || p == null || p.isEmpty) continue;
+    final seen = lastPaid[p];
+    if (seen == null || t.date.isAfter(seen)) lastPaid[p] = t.date;
+  }
+  return lastPaid.keys.toList()
+    ..sort((a, b) => lastPaid[b]!.compareTo(lastPaid[a]!));
+});
+
+/// One payee's spend: total, how many payments, and when they were last paid.
+typedef PayeeSummary = ({
+  String payee,
+  Money total,
+  int count,
+  DateTime lastPaid,
+});
+
+/// Every payee named on an expense, ranked by total spent — the Payees hub.
+final payeeSummariesProvider = Provider<List<PayeeSummary>>((ref) {
+  final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
+  final totals = <String, Money>{};
+  final counts = <String, int>{};
+  final lastPaid = <String, DateTime>{};
+  for (final t in txs) {
+    final p = t.payee;
+    if (t.type != TxType.expense || p == null || p.isEmpty) continue;
+    totals[p] = (totals[p] ?? const Money.zero()) + t.amount;
+    counts[p] = (counts[p] ?? 0) + 1;
+    final seen = lastPaid[p];
+    if (seen == null || t.date.isAfter(seen)) lastPaid[p] = t.date;
+  }
+  final out = [
+    for (final name in totals.keys)
+      (
+        payee: name,
+        total: totals[name]!,
+        count: counts[name]!,
+        lastPaid: lastPaid[name]!,
+      ),
+  ]..sort((a, b) => b.total.paise.compareTo(a.total.paise));
+  return out;
+});
+
+/// One payee's expense history, newest first.
+final payeeTransactionsProvider =
+    Provider.family<List<TransactionRow>, String>((ref, payee) {
+  final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
+  return txs.where((t) => t.type == TxType.expense && t.payee == payee).toList()
+    ..sort((a, b) => b.date.compareTo(a.date));
+});
 
 // ── Export / Backup ─────────────────────────────────────────────────────────
 

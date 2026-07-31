@@ -38,24 +38,42 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   DateTime _date = DateTime.now();
 
   final _noteController = TextEditingController();
+  final _noteFocus = FocusNode();
+
+  /// Expense only — who got paid. Free text with autocomplete, never read for
+  /// any other transaction type.
+  final _payeeController = TextEditingController();
+  final _payeeFocus = FocusNode();
 
   /// True while an existing transaction is being fetched for editing.
   bool _loading = false;
 
   bool get _isEditing => widget.transactionId != null;
 
+  /// The on-screen keypad and the system keyboard must never both be up —
+  /// they'd fight over the same strip of screen and hide whatever the user
+  /// just typed. The keypad only shows while neither text field has focus.
+  bool get _textFieldFocused => _noteFocus.hasFocus || _payeeFocus.hasFocus;
+
   @override
   void initState() {
     super.initState();
+    _noteFocus.addListener(_onFieldFocusChanged);
+    _payeeFocus.addListener(_onFieldFocusChanged);
     if (_isEditing) {
       _loading = true;
       WidgetsBinding.instance.addPostFrameCallback((_) => _loadForEdit());
     }
   }
 
+  void _onFieldFocusChanged() => setState(() {});
+
   @override
   void dispose() {
     _noteController.dispose();
+    _noteFocus.dispose();
+    _payeeController.dispose();
+    _payeeFocus.dispose();
     super.dispose();
   }
 
@@ -64,8 +82,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
 
-    final row =
-        await ref.read(dbProvider).transactionById(widget.transactionId!);
+    final row = await ref
+        .read(dbProvider)
+        .transactionById(widget.transactionId!);
     if (!mounted) return;
 
     if (row == null) {
@@ -82,9 +101,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     if (row.type.isPersonMovement) {
       navigator.pop();
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Edit this from the person\'s page.'),
-        ),
+        const SnackBar(content: Text('Edit this from the person\'s page.')),
       );
       return;
     }
@@ -97,6 +114,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       _categoryId = row.categoryId;
       _date = row.date;
       _noteController.text = row.note ?? '';
+      _payeeController.text = row.payee ?? '';
       _loading = false;
     });
   }
@@ -175,8 +193,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   }
 
   Future<void> _pickCategory() async {
-    final kind =
-        _type == TxType.income ? CategoryKind.income : CategoryKind.expense;
+    final kind = _type == TxType.income
+        ? CategoryKind.income
+        : CategoryKind.expense;
     final selected = await showModalBottomSheet<int>(
       context: context,
       isScrollControlled: true,
@@ -214,9 +233,11 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     if (_accountId == null) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text(_type == TxType.transfer
-              ? 'Choose the account to transfer from'
-              : 'Choose an account'),
+          content: Text(
+            _type == TxType.transfer
+                ? 'Choose the account to transfer from'
+                : 'Choose an account',
+          ),
         ),
       );
       return;
@@ -244,9 +265,15 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     }
 
     final note = _noteController.text.trim();
+    final payeeText = _payeeController.text.trim();
+    final payee = _type == TxType.expense && payeeText.isNotEmpty
+        ? payeeText
+        : null;
     try {
       if (_isEditing) {
-        await ref.read(dbProvider).updateTransaction(
+        await ref
+            .read(dbProvider)
+            .updateTransaction(
               id: widget.transactionId!,
               type: _type,
               amount: amount,
@@ -255,9 +282,12 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               categoryId: _type == TxType.transfer ? null : _categoryId,
               date: _date,
               note: note.isEmpty ? null : note,
+              payee: payee,
             );
       } else {
-        await ref.read(dbProvider).addTransaction(
+        await ref
+            .read(dbProvider)
+            .addTransaction(
               type: _type,
               amount: amount,
               accountId: _accountId!,
@@ -265,6 +295,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               categoryId: _type == TxType.transfer ? null : _categoryId,
               date: _date,
               note: note.isEmpty ? null : note,
+              payee: payee,
             );
       }
     } on ArgumentError catch (e) {
@@ -353,74 +384,78 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                     tooltip: 'Delete',
                     onPressed: _confirmDelete,
                   ),
-                TextButton(
-                  onPressed: _save,
-                  child: const Text('Save'),
-                ),
+                TextButton(onPressed: _save, child: const Text('Save')),
               ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: SegmentedButton<TxType>(
-                        segments: const [
-                          ButtonSegment(
-                            value: TxType.expense,
-                            label: Text('Expense'),
-                          ),
-                          ButtonSegment(
-                            value: TxType.income,
-                            label: Text('Income'),
-                          ),
-                          ButtonSegment(
-                            value: TxType.transfer,
-                            label: Text('Transfer'),
-                          ),
-                        ],
-                        selected: {_type},
-                        showSelectedIcon: false,
-                        onSelectionChanged: (s) => setState(() {
-                          _type = s.first;
-                          // category is meaningless on type change
-                          _categoryId = null;
-                          if (_type != TxType.transfer) _toAccountId = null;
-                        }),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        MoneyFormat.symbol(amount),
-                        style: theme.textTheme.displayMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: colorForTxType(_type),
-                          fontFeatures: kTabularFigures,
+              child: GestureDetector(
+                // Tapping anywhere that isn't Note/Payee drops their focus, so
+                // the system keyboard closes and the amount keypad returns —
+                // the two must never be on screen at once (see _textFieldFocused).
+                behavior: HitTestBehavior.opaque,
+                onTap: () => FocusScope.of(context).unfocus(),
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: SegmentedButton<TxType>(
+                          segments: const [
+                            ButtonSegment(
+                              value: TxType.expense,
+                              label: Text('Expense'),
+                            ),
+                            ButtonSegment(
+                              value: TxType.income,
+                              label: Text('Income'),
+                            ),
+                            ButtonSegment(
+                              value: TxType.transfer,
+                              label: Text('Transfer'),
+                            ),
+                          ],
+                          selected: {_type},
+                          showSelectedIcon: false,
+                          onSelectionChanged: (s) => setState(() {
+                            _type = s.first;
+                            // category is meaningless on type change
+                            _categoryId = null;
+                            if (_type != TxType.transfer) _toAccountId = null;
+                          }),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: _buildPickers(accountMap, categoryMap),
+                    const SizedBox(height: 24),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          MoneyFormat.symbol(amount),
+                          style: theme.textTheme.displayMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: colorForTxType(_type),
+                            fontFeatures: kTabularFigures,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                  _buildKeypad(theme),
-                ],
+                    const SizedBox(height: 20),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: _buildPickers(accountMap, categoryMap),
+                        ),
+                      ),
+                    ),
+                    if (!_textFieldFocused) _buildKeypad(theme),
+                  ],
+                ),
               ),
             ),
     );
@@ -433,54 +468,67 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final tiles = <Widget>[];
 
     if (_type == TxType.transfer) {
-      tiles.add(_pickerTile(
-        icon: AppIcons.resolve('bank'),
-        label: 'From account',
-        value: accountMap[_accountId]?.name ?? 'Select account',
-        selected: _accountId != null,
-        onTap: () => _pickAccount(isFrom: true),
-      ));
+      tiles.add(
+        _pickerTile(
+          icon: AppIcons.resolve('bank'),
+          label: 'From account',
+          value: accountMap[_accountId]?.name ?? 'Select account',
+          selected: _accountId != null,
+          onTap: () => _pickAccount(isFrom: true),
+        ),
+      );
       tiles.add(const SizedBox(height: 12));
-      tiles.add(_pickerTile(
-        icon: AppIcons.resolve('transfer'),
-        label: 'To account',
-        value: accountMap[_toAccountId]?.name ?? 'Select account',
-        selected: _toAccountId != null,
-        onTap: () => _pickAccount(isFrom: false),
-      ));
+      tiles.add(
+        _pickerTile(
+          icon: AppIcons.resolve('transfer'),
+          label: 'To account',
+          value: accountMap[_toAccountId]?.name ?? 'Select account',
+          selected: _toAccountId != null,
+          onTap: () => _pickAccount(isFrom: false),
+        ),
+      );
     } else {
-      tiles.add(_pickerTile(
-        icon: AppIcons.resolve('wallet'),
-        label: _type == TxType.income ? 'Deposit to' : 'Paid via',
-        value: accountMap[_accountId]?.name ?? 'Select account',
-        selected: _accountId != null,
-        onTap: () => _pickAccount(isFrom: true),
-      ));
+      tiles.add(
+        _pickerTile(
+          icon: AppIcons.resolve('wallet'),
+          label: _type == TxType.income ? 'Deposit to' : 'Paid via',
+          value: accountMap[_accountId]?.name ?? 'Select account',
+          selected: _accountId != null,
+          onTap: () => _pickAccount(isFrom: true),
+        ),
+      );
       tiles.add(const SizedBox(height: 12));
       final cat = categoryMap[_categoryId];
-      final parent =
-          cat?.parentId == null ? null : categoryMap[cat!.parentId];
-      tiles.add(_pickerTile(
-        icon: AppIcons.resolve(cat?.iconKey ?? 'other'),
-        label: 'Category',
-        value: cat == null
-            ? 'Select category'
-            : parent == null
-                ? cat.name
-                : '${parent.name} › ${cat.name}',
-        selected: _categoryId != null,
-        onTap: _pickCategory,
-      ));
+      final parent = cat?.parentId == null ? null : categoryMap[cat!.parentId];
+      tiles.add(
+        _pickerTile(
+          icon: AppIcons.resolve(cat?.iconKey ?? 'other'),
+          label: 'Category',
+          value: cat == null
+              ? 'Select category'
+              : parent == null
+              ? cat.name
+              : '${parent.name} › ${cat.name}',
+          selected: _categoryId != null,
+          onTap: _pickCategory,
+        ),
+      );
     }
 
     tiles.add(const SizedBox(height: 12));
-    tiles.add(_pickerTile(
-      icon: Icons.event_outlined,
-      label: 'Date',
-      value: DateFormat('d MMM yyyy').format(_date),
-      selected: true,
-      onTap: _pickDate,
-    ));
+    tiles.add(
+      _pickerTile(
+        icon: Icons.event_outlined,
+        label: 'Date',
+        value: DateFormat('d MMM yyyy').format(_date),
+        selected: true,
+        onTap: _pickDate,
+      ),
+    );
+    if (_type == TxType.expense) {
+      tiles.add(const SizedBox(height: 12));
+      tiles.add(_payeeCard());
+    }
     tiles.add(const SizedBox(height: 12));
     tiles.add(_noteCard());
     return tiles;
@@ -527,6 +575,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: TextField(
           controller: _noteController,
+          focusNode: _noteFocus,
           textCapitalization: TextCapitalization.sentences,
           decoration: InputDecoration(
             hintText: 'Note (optional)',
@@ -536,6 +585,44 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  /// Expense only. Free text with autocomplete drawn from payees used before —
+  /// optional, so leaving it blank is a normal, unremarkable choice.
+  Widget _payeeCard() {
+    final theme = Theme.of(context);
+    final suggestions = ref.watch(payeeSuggestionsProvider);
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Autocomplete<String>(
+          textEditingController: _payeeController,
+          focusNode: _payeeFocus,
+          optionsBuilder: (value) {
+            final q = value.text.trim().toLowerCase();
+            if (q.isEmpty) return const Iterable<String>.empty();
+            return suggestions.where((s) => s.toLowerCase().contains(q));
+          },
+          fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
+            return TextField(
+              controller: controller,
+              focusNode: focusNode,
+              textCapitalization: TextCapitalization.words,
+              decoration: InputDecoration(
+                hintText: 'Payee (optional) — who did you pay?',
+                border: InputBorder.none,
+                icon: Icon(
+                  Icons.storefront_outlined,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -593,10 +680,7 @@ Widget _iconCircle(String iconKey, int colorValue, {double size = 40}) {
   return Container(
     width: size,
     height: size,
-    decoration: BoxDecoration(
-      color: Color(colorValue),
-      shape: BoxShape.circle,
-    ),
+    decoration: BoxDecoration(color: Color(colorValue), shape: BoxShape.circle),
     child: Icon(
       AppIcons.resolve(iconKey),
       color: Colors.white,
@@ -648,8 +732,9 @@ class _AccountPickerSheet extends ConsumerWidget {
                   ),
                 ),
                 data: (accounts) {
-                  final list =
-                      accounts.where((a) => a.id != excludeId).toList();
+                  final list = accounts
+                      .where((a) => a.id != excludeId)
+                      .toList();
                   if (list.isEmpty) {
                     return Padding(
                       padding: const EdgeInsets.all(32),
@@ -677,8 +762,9 @@ class _AccountPickerSheet extends ConsumerWidget {
                         subtitle: isDebitCard
                             ? Text('Draws from ${linkedName ?? 'linked bank'}')
                             : null,
-                        trailing:
-                            isDebitCard ? null : BalanceText(a.currentBalance),
+                        trailing: isDebitCard
+                            ? null
+                            : BalanceText(a.currentBalance),
                         onTap: () => Navigator.of(context).pop(a.id),
                       );
                     },

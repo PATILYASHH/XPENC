@@ -5,6 +5,7 @@ import '../../features/about/about_screen.dart';
 import '../../features/accounts/account_detail_screen.dart';
 import '../../features/accounts/accounts_screen.dart';
 import '../../features/add_transaction/add_transaction_screen.dart';
+import '../../features/auto/auto_screen.dart';
 import '../../features/budgets/budgets_screen.dart';
 import '../../features/calendar/calendar_screen.dart';
 import '../../features/categories/categories_screen.dart';
@@ -15,6 +16,8 @@ import '../../features/message_capture/message_capture_screen.dart';
 import '../../features/message_capture/review_inbox_screen.dart';
 import '../../features/more/more_screen.dart';
 import '../../features/onboarding/onboarding_screen.dart';
+import '../../features/payees/payee_detail_screen.dart';
+import '../../features/payees/payees_screen.dart';
 import '../../features/persons/person_detail_screen.dart';
 import '../../features/persons/persons_screen.dart';
 import '../../features/reports/account_reports_screen.dart';
@@ -55,8 +58,8 @@ final appRouter = GoRouter(
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/accounts',
-              builder: (_, _) => const AccountsScreen(),
+              path: '/persons',
+              builder: (_, _) => const PersonsScreen(),
             ),
           ],
         ),
@@ -117,15 +120,27 @@ final appRouter = GoRouter(
                   builder: (_, _) => const BackupScreen(),
                 ),
                 GoRoute(
-                  path: 'persons',
+                  path: 'auto',
                   parentNavigatorKey: _rootKey,
-                  builder: (_, _) => const PersonsScreen(),
+                  builder: (_, _) => const AutoScreen(),
+                ),
+                GoRoute(
+                  path: 'accounts',
+                  parentNavigatorKey: _rootKey,
+                  builder: (_, _) => const AccountsScreen(),
+                ),
+                GoRoute(
+                  path: 'payees',
+                  parentNavigatorKey: _rootKey,
+                  builder: (_, _) => const PayeesScreen(),
                   routes: [
                     GoRoute(
-                      path: ':id',
+                      path: ':name',
                       parentNavigatorKey: _rootKey,
-                      builder: (_, state) => PersonDetailScreen(
-                        personId: int.parse(state.pathParameters['id']!),
+                      builder: (_, state) => PayeeDetailScreen(
+                        payee: Uri.decodeComponent(
+                          state.pathParameters['name']!,
+                        ),
                       ),
                     ),
                   ],
@@ -177,6 +192,14 @@ final appRouter = GoRouter(
       parentNavigatorKey: _rootKey,
       builder: (_, state) => AccountDetailScreen(
         accountId: int.parse(state.pathParameters['id']!),
+      ),
+    ),
+
+    GoRoute(
+      path: '/person/:id',
+      parentNavigatorKey: _rootKey,
+      builder: (_, state) => PersonDetailScreen(
+        personId: int.parse(state.pathParameters['id']!),
       ),
     ),
   ],

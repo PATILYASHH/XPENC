@@ -24,13 +24,22 @@ class MoreScreen extends ConsumerWidget {
     final budgetSubtitleColor =
         overCount > 0 ? AppColors.expense : cs.onSurfaceVariant;
 
-    final totals = ref.watch(personTotalsProvider);
-    final personsSubtitle =
-        "You'll get ${MoneyFormat.compact(totals.youGet)} · "
-        "You'll pay ${MoneyFormat.compact(totals.youPay)}";
+    final netWorth = ref.watch(netWorthProvider).valueOrNull ?? const Money.zero();
+
+    final rules = ref.watch(recurringRulesProvider).valueOrNull ?? const [];
+    final activeRuleCount = rules.where((r) => r.isActive).length;
+    final autoSubtitle = activeRuleCount == 0
+        ? 'Automate a fixed expense or income'
+        : '$activeRuleCount active';
 
     final groups = <_Group>[
       _Group('Money', [
+        _Item(
+          Icons.account_balance_wallet_outlined,
+          'Accounts',
+          route: '/more/accounts',
+          subtitle: 'Total money: ${MoneyFormat.compact(netWorth)}',
+        ),
         _Item(
           Icons.donut_large_rounded,
           'Budgets',
@@ -39,10 +48,16 @@ class MoreScreen extends ConsumerWidget {
           subtitleColor: budgetSubtitleColor,
         ),
         _Item(
-          Icons.people_alt_outlined,
-          'Persons',
-          route: '/more/persons',
-          subtitle: personsSubtitle,
+          Icons.autorenew_rounded,
+          'Auto',
+          route: '/more/auto',
+          subtitle: autoSubtitle,
+        ),
+        _Item(
+          Icons.storefront_outlined,
+          'Payees',
+          route: '/more/payees',
+          subtitle: 'Who you pay, and how much',
         ),
       ]),
       _Group('Insights', [
