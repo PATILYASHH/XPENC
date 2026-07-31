@@ -114,10 +114,13 @@ class _TransactionView extends ConsumerWidget {
     final theme = Theme.of(context);
     final categoryMap = ref.watch(categoryMapProvider);
     final accountMap = ref.watch(accountMapProvider);
+    final recurringRuleMap = ref.watch(recurringRuleMapProvider);
     final t = transaction;
 
     final note = t.note?.trim();
     final noteText = (note == null || note.isEmpty) ? '—' : note;
+    final rule =
+        t.recurringRuleId == null ? null : recurringRuleMap[t.recurringRuleId];
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
@@ -149,6 +152,24 @@ class _TransactionView extends ConsumerWidget {
                   'Account',
                   _accountValue(context, t, accountMap),
                 ),
+                if (t.type == TxType.expense) ...[
+                  _divider(theme),
+                  _detailRow(
+                    context,
+                    'Payee',
+                    _valueText(context, t.payee?.trim().isNotEmpty == true
+                        ? t.payee!.trim()
+                        : '—'),
+                  ),
+                ],
+                if (rule != null) ...[
+                  _divider(theme),
+                  _detailRow(
+                    context,
+                    'Auto',
+                    _valueText(context, 'Posted by "${rule.name}"'),
+                  ),
+                ],
                 _divider(theme),
                 _detailRow(context, 'Note', _valueText(context, noteText)),
                 _divider(theme),

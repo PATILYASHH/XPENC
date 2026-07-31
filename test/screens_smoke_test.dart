@@ -210,6 +210,8 @@ void main() {
     await pump(tester, const MoreScreen());
     expect(tester.takeException(), isNull);
     expect(find.text('Stats'), findsOneWidget);
+    // Sits below the fold at phone size — bring it into the viewport first.
+    await tester.scrollUntilVisible(find.text('Backup & Restore'), 240);
     expect(find.text('Backup & Restore'), findsOneWidget);
     await unmount(tester);
   });

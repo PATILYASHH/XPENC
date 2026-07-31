@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-/// `Dashboard · Transactions · ➕ · Accounts · More`
+/// `Dashboard · Transactions · ➕ · Persons · More`
 ///
 /// The ➕ slot is not a tab — it pushes the Add Transaction route. Tabs map to
 /// shell branches 0,1,2,3 while sitting at bar slots 0,1,3,4.
@@ -15,8 +15,8 @@ class AppShell extends StatelessWidget {
         'Dashboard'),
     _TabSpec(1, Icons.receipt_long_outlined, Icons.receipt_long_rounded,
         'Transactions'),
-    _TabSpec(2, Icons.account_balance_wallet_outlined,
-        Icons.account_balance_wallet_rounded, 'Accounts'),
+    _TabSpec(
+        2, Icons.people_alt_outlined, Icons.people_alt_rounded, 'Persons'),
     _TabSpec(3, Icons.grid_view_outlined, Icons.grid_view_rounded, 'More'),
   ];
 

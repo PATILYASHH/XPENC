@@ -29,7 +29,7 @@ No anti-features apply (no NonFreeNet, no NonFreeDep, no Ads, no Tracking).
 | App texts (title, summary, description) | `fastlane/metadata/android/en-US/*.txt` | F-Droid reads these **from this repo** at the tagged commit |
 | Per-release changelogs | `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt` | F-Droid "What's new" |
 | Icon + feature graphic | `fastlane/metadata/android/en-US/images/` | F-Droid app page |
-| Screenshots | `…/images/phoneScreenshots/` | ❌ still to capture (same set as Play) |
+| Screenshots | `…/images/phoneScreenshots/` | ✅ 5 designed 1920×1080 banners (same set as Play and the website gallery) |
 | Build recipe (draft) | [`metadata-com.yash.xpenc.yml`](metadata-com.yash.xpenc.yml) | copied into the **fdroiddata** repo, not this one |
 
 ## versionCode contract (important)

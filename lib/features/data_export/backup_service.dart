@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../data/database.dart';
+import 'statement_pdf.dart';
 
 /// A backup file sitting on disk.
 class BackupFile {
@@ -144,6 +145,47 @@ class BackupService {
       const JsonEncoder.withIndent('  ').convert(dump),
       flush: true,
     );
+    return file;
+  }
+
+  /// A bank/cash statement for one account, [start] to [end] inclusive.
+  Future<File> writeAccountStatementPdf({
+    required AccountRow account,
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    final statement = await _db.accountStatement(
+      accountId: account.id,
+      start: start,
+      end: end,
+    );
+    final bytes = await buildAccountStatementPdf(
+      account: account,
+      statement: statement,
+      start: start,
+      end: end,
+    );
+    final dir = await getApplicationDocumentsDirectory();
+    final safeName = account.name
+        .replaceAll(RegExp(r'[^A-Za-z0-9]+'), '-')
+        .toLowerCase();
+    final file = File(
+      '${dir.path}/xpenc-statement-$safeName-${_stamp(DateTime.now())}.pdf',
+    );
+    await file.writeAsBytes(bytes, flush: true);
+    return file;
+  }
+
+  /// Planned vs. actual for every budgeted category in [month].
+  Future<File> writeBudgetStatementPdf(DateTime month) async {
+    final lines = await _db.budgetStatement(month);
+    final bytes = await buildBudgetStatementPdf(month: month, lines: lines);
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File(
+      '${dir.path}/xpenc-budget-statement-${month.year}-'
+      '${_two(month.month)}.pdf',
+    );
+    await file.writeAsBytes(bytes, flush: true);
     return file;
   }
 

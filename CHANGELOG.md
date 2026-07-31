@@ -8,6 +8,43 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
+## [1.2.1] — 2026-07-30
+
+Full backward compatible: the database migrates itself in place (v6 → v8,
+additive columns and one new table), so updating over an existing install
+keeps every account, transaction and setting.
+
+### Added
+- **Payee** — record who an expense was paid to, with autocomplete drawn from
+  past entries. Searchable/visible on the Transactions list and transaction
+  detail. A new **Payees** hub (**More → Payees**) lists everyone you've paid,
+  ranked by total spent, with a tap-through history and a rename action that
+  merges two spellings of the same payee into one.
+- **Auto** (recurring payments) — a new **Auto** hub (**More → Auto**) for
+  fixed expenses and income that post themselves on a schedule (daily,
+  weekly, or monthly on a chosen day), with no confirmation step. Notifies a
+  configurable number of days ahead of the balance an auto-payment will need.
+  Missed occurrences (app closed for a few days) are backfilled with their
+  correct historical dates the next time the app opens. A rule can be paused
+  or deleted without touching transactions it already posted.
+- **Account removal** — holding an account now offers **Archive** (reversible,
+  hides it) or **Remove** (permanent). Removal only succeeds on an account
+  nothing has touched yet — one with no transaction history, no debit card
+  drawing from it, and no reminder, merchant rule or Auto rule naming it;
+  anything used must be archived instead.
+- **Statements** — download a PDF from any account's detail screen (This
+  month / Last month / a custom range) shaped like a bank statement: opening
+  balance, a dated Debit/Credit/Balance table, closing balance. The Budgets
+  screen can similarly download a per-month budget statement (Budgeted /
+  Spent / Remaining per category). Both go through the same local-file →
+  share-sheet flow as the existing CSV/JSON export — nothing leaves the
+  device unless you choose to send it.
+
+### Upgrade notes
+- **No reinstall needed.** The schema migrates automatically (v6 → v8,
+  additive only). Existing transactions simply have no payee and no
+  recurring-rule link until you use the new features.
+
 ## [1.2.0] — 2026-07-21
 
 The first **feature** release since 1.1.0 — subcategories, money you're owed on
@@ -166,7 +203,8 @@ First public release. 🎉
 - `tool/verify_apk.sh` gates every shipped APK against the missing
   `libsqlite3.so` class of crash.
 
-[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/PATILYASHH/XPENC/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/PATILYASHH/XPENC/compare/v1.1.3...v1.2.0
 [1.1.3]: https://github.com/PATILYASHH/XPENC/compare/v1.1.2...v1.1.3
 [1.1.2]: https://github.com/PATILYASHH/XPENC/compare/v1.1.1...v1.1.2

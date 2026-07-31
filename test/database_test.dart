@@ -281,6 +281,57 @@ void main() {
     });
   });
 
+  group('deleteAccount — permanent, so it is guarded', () {
+    test('removes an account nothing has touched', () async {
+      final bank = await db.addAccount(
+        name: 'Unused Bank',
+        type: AccountType.bank,
+        colorValue: 0,
+        iconKey: 'bank',
+        openingBalance: Money.fromRupees(100),
+      );
+
+      await db.deleteAccount(bank);
+
+      final accounts = await db.watchAccounts().first;
+      expect(accounts.any((a) => a.id == bank), isFalse);
+    });
+
+    test('refuses an account with transaction history', () async {
+      final cash = await cashId();
+      await db.addTransaction(
+        type: TxType.expense,
+        amount: Money.fromRupees(10),
+        accountId: cash,
+        categoryId: await expenseCategory('Food'),
+        date: DateTime(2026, 7, 9),
+      );
+
+      expect(() => db.deleteAccount(cash), throwsArgumentError);
+    });
+
+    test('refuses a bank a debit card still draws from', () async {
+      final bank = await db.addAccount(
+        name: 'IPPB',
+        type: AccountType.bank,
+        colorValue: 0,
+        iconKey: 'bank',
+        openingBalance: Money.fromRupees(1000),
+      );
+      await db.addAccount(
+        name: 'IPPB Debit Card',
+        type: AccountType.card,
+        cardKind: CardKind.debit,
+        linkedAccountId: bank,
+        colorValue: 0,
+        iconKey: 'card',
+        openingBalance: const Money.zero(),
+      );
+
+      expect(() => db.deleteAccount(bank), throwsArgumentError);
+    });
+  });
+
   group('persons — lending is not spending', () {
     test('lending cash lowers the account but is not an expense', () async {
       final cash = await cashId();
@@ -333,6 +384,448 @@ void main() {
 
       expect(await db.watchPersonBalance(ram).first, const Money.zero());
       expect(await balanceOf(cash), const Money.zero());
+    });
+  });
+
+  group('payee — expense only, free text', () {
+    test('round-trips on add and update', () async {
+      final cash = await cashId();
+      final id = await db.addTransaction(
+        type: TxType.expense,
+        amount: Money.fromRupees(50),
+        accountId: cash,
+        categoryId: await expenseCategory('Food'),
+        date: DateTime(2026, 7, 9),
+        payee: 'Swiggy',
+      );
+      expect((await db.transactionById(id))?.payee, 'Swiggy');
+
+      await db.updateTransaction(
+        id: id,
+        type: TxType.expense,
+        amount: Money.fromRupees(50),
+        accountId: cash,
+        categoryId: await expenseCategory('Food'),
+        date: DateTime(2026, 7, 9),
+        payee: 'Zomato',
+      );
+      expect((await db.transactionById(id))?.payee, 'Zomato');
+    });
+
+    test('rejects a payee on anything but an expense', () async {
+      final cash = await cashId();
+      final salary = await incomeCategory('Salary');
+      expect(
+        () => db.addTransaction(
+          type: TxType.income,
+          amount: Money.fromRupees(10),
+          accountId: cash,
+          categoryId: salary,
+          date: DateTime(2026, 7, 9),
+          payee: 'Someone',
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('renamePayee renames every matching transaction', () async {
+      final cash = await cashId();
+      final food = await expenseCategory('Food');
+      final a = await db.addTransaction(
+        type: TxType.expense,
+        amount: Money.fromRupees(10),
+        accountId: cash,
+        categoryId: food,
+        date: DateTime(2026, 7, 9),
+        payee: 'amazon',
+      );
+      final b = await db.addTransaction(
+        type: TxType.expense,
+        amount: Money.fromRupees(20),
+        accountId: cash,
+        categoryId: food,
+        date: DateTime(2026, 7, 10),
+        payee: 'amazon',
+      );
+
+      await db.renamePayee(from: 'amazon', to: 'Amazon');
+
+      expect((await db.transactionById(a))?.payee, 'Amazon');
+      expect((await db.transactionById(b))?.payee, 'Amazon');
+    });
+
+    test('renaming to an existing payee merges the two', () async {
+      final cash = await cashId();
+      final food = await expenseCategory('Food');
+      final a = await db.addTransaction(
+        type: TxType.expense,
+        amount: Money.fromRupees(10),
+        accountId: cash,
+        categoryId: food,
+        date: DateTime(2026, 7, 9),
+        payee: 'Amazon',
+      );
+      final b = await db.addTransaction(
+        type: TxType.expense,
+        amount: Money.fromRupees(20),
+        accountId: cash,
+        categoryId: food,
+        date: DateTime(2026, 7, 10),
+        payee: 'amazon',
+      );
+
+      await db.renamePayee(from: 'amazon', to: 'Amazon');
+
+      expect((await db.transactionById(a))?.payee, 'Amazon');
+      expect((await db.transactionById(b))?.payee, 'Amazon');
+    });
+
+    test('rejects renaming to an empty name', () async {
+      expect(
+        () => db.renamePayee(from: 'Amazon', to: '   '),
+        throwsArgumentError,
+      );
+    });
+  });
+
+  group('recurring rules — Auto', () {
+    test('daily rule backfills every missed day up to today', () async {
+      final cash = await cashId();
+      final food = await expenseCategory('Food');
+      final today = DateTime(2026, 7, 20);
+      final start = today.subtract(const Duration(days: 3));
+
+      final ruleId = await db.addRecurringRule(
+        name: 'Coffee',
+        kind: CategoryKind.expense,
+        amount: Money.fromRupees(50),
+        accountId: cash,
+        categoryId: food,
+        frequency: RecurringFrequency.daily,
+        startsOn: start,
+      );
+
+      final posted = await db.runDueRecurringRules(now: today);
+      // start, start+1, start+2, today — 4 days inclusive.
+      expect(posted, 4);
+      expect(await balanceOf(cash), Money.fromRupees(-200));
+
+      final rule =
+          (await db.watchRecurringRules().first).firstWhere((r) => r.id == ruleId);
+      expect(rule.nextDueDate, today.add(const Duration(days: 1)));
+
+      // Nothing left due — a second run the same day posts nothing more.
+      expect(await db.runDueRecurringRules(now: today), 0);
+    });
+
+    test('weekly rule advances by exactly 7 days', () async {
+      final cash = await cashId();
+      final food = await expenseCategory('Food');
+      final start = DateTime(2026, 7, 6); // a Monday
+      final today = start;
+
+      await db.addRecurringRule(
+        name: 'Groceries',
+        kind: CategoryKind.expense,
+        amount: Money.fromRupees(500),
+        accountId: cash,
+        categoryId: food,
+        frequency: RecurringFrequency.weekly,
+        startsOn: start,
+      );
+
+      await db.runDueRecurringRules(now: today);
+      final rule = (await db.watchRecurringRules().first).single;
+      expect(rule.nextDueDate, start.add(const Duration(days: 7)));
+    });
+
+    test('monthly rule snaps to month-end, then returns to the target day',
+        () async {
+      final cash = await cashId();
+      final food = await expenseCategory('Food');
+      final jan31 = DateTime(2026, 1, 31);
+
+      await db.addRecurringRule(
+        name: 'Rent',
+        kind: CategoryKind.expense,
+        amount: Money.fromRupees(10000),
+        accountId: cash,
+        categoryId: food,
+        frequency: RecurringFrequency.monthly,
+        startsOn: jan31,
+      );
+
+      // Catch up through Jan 31 — 2026 is not a leap year, so Feb has 28 days.
+      await db.runDueRecurringRules(now: jan31);
+      var rule = (await db.watchRecurringRules().first).single;
+      expect(rule.nextDueDate, DateTime(2026, 2, 28), reason: 'Feb has no 31st');
+
+      // Catch up through the snapped Feb date — March has a 31st again.
+      await db.runDueRecurringRules(now: DateTime(2026, 2, 28));
+      rule = (await db.watchRecurringRules().first).single;
+      expect(rule.nextDueDate, DateTime(2026, 3, 31),
+          reason: 'March returns to the original target day, not stuck at 28');
+    });
+
+    test('a paused rule is skipped', () async {
+      final cash = await cashId();
+      final food = await expenseCategory('Food');
+      final today = DateTime(2026, 7, 20);
+
+      final ruleId = await db.addRecurringRule(
+        name: 'Gym',
+        kind: CategoryKind.expense,
+        amount: Money.fromRupees(1000),
+        accountId: cash,
+        categoryId: food,
+        frequency: RecurringFrequency.daily,
+        startsOn: today,
+      );
+      await db.setRecurringActive(ruleId, false);
+
+      expect(await db.runDueRecurringRules(now: today), 0);
+      expect(await balanceOf(cash), const Money.zero());
+    });
+
+    test('income rule adds to the account instead of subtracting', () async {
+      final cash = await cashId();
+      final salary = await incomeCategory('Salary');
+      final today = DateTime(2026, 7, 1);
+
+      await db.addRecurringRule(
+        name: 'Salary',
+        kind: CategoryKind.income,
+        amount: Money.fromRupees(50000),
+        accountId: cash,
+        categoryId: salary,
+        frequency: RecurringFrequency.monthly,
+        startsOn: today,
+      );
+
+      await db.runDueRecurringRules(now: today);
+      expect(await balanceOf(cash), Money.fromRupees(50000));
+    });
+
+    test('rejects a payee on an income rule', () async {
+      final cash = await cashId();
+      final salary = await incomeCategory('Salary');
+      expect(
+        () => db.addRecurringRule(
+          name: 'Salary',
+          kind: CategoryKind.income,
+          amount: Money.fromRupees(1000),
+          accountId: cash,
+          categoryId: salary,
+          payee: 'Someone',
+          frequency: RecurringFrequency.monthly,
+          startsOn: DateTime(2026, 7, 1),
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('rejects a category whose kind does not match the rule', () async {
+      final cash = await cashId();
+      final food = await expenseCategory('Food');
+      expect(
+        () => db.addRecurringRule(
+          name: 'Salary',
+          kind: CategoryKind.income,
+          amount: Money.fromRupees(1000),
+          accountId: cash,
+          categoryId: food,
+          frequency: RecurringFrequency.monthly,
+          startsOn: DateTime(2026, 7, 1),
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('deleting a rule keeps its posted transactions but clears the link',
+        () async {
+      final cash = await cashId();
+      final food = await expenseCategory('Food');
+      final today = DateTime(2026, 7, 20);
+
+      final ruleId = await db.addRecurringRule(
+        name: 'Coffee',
+        kind: CategoryKind.expense,
+        amount: Money.fromRupees(50),
+        accountId: cash,
+        categoryId: food,
+        frequency: RecurringFrequency.daily,
+        startsOn: today,
+      );
+      await db.runDueRecurringRules(now: today);
+
+      await db.deleteRecurringRule(ruleId);
+
+      final txs = await db.watchTransactions().first;
+      expect(txs, hasLength(1));
+      expect(txs.single.recurringRuleId, isNull);
+      expect(await balanceOf(cash), Money.fromRupees(-50),
+          reason: 'deleting the rule must not touch already-posted money');
+    });
+
+    test('deleteAccount refuses an account an active rule draws from',
+        () async {
+      final bank = await db.addAccount(
+        name: 'IPPB',
+        type: AccountType.bank,
+        colorValue: 0,
+        iconKey: 'bank',
+        openingBalance: Money.fromRupees(1000),
+      );
+      final salary = await incomeCategory('Salary');
+      await db.addRecurringRule(
+        name: 'Salary',
+        kind: CategoryKind.income,
+        amount: Money.fromRupees(1000),
+        accountId: bank,
+        categoryId: salary,
+        frequency: RecurringFrequency.monthly,
+        startsOn: DateTime(2026, 7, 1),
+      );
+
+      expect(() => db.deleteAccount(bank), throwsArgumentError);
+    });
+  });
+
+  group('accountStatement', () {
+    test('opening balance carries forward, running balance accumulates',
+        () async {
+      final cash = await cashId();
+      final food = await expenseCategory('Food');
+      final salary = await incomeCategory('Salary');
+
+      // Before the statement period — folds into the opening balance only.
+      await db.addTransaction(
+        type: TxType.income,
+        amount: Money.fromRupees(1000),
+        accountId: cash,
+        categoryId: salary,
+        date: DateTime(2026, 6, 15),
+      );
+      await db.addTransaction(
+        type: TxType.expense,
+        amount: Money.fromRupees(200),
+        accountId: cash,
+        categoryId: food,
+        date: DateTime(2026, 7, 5),
+      );
+      await db.addTransaction(
+        type: TxType.income,
+        amount: Money.fromRupees(300),
+        accountId: cash,
+        categoryId: salary,
+        date: DateTime(2026, 7, 10),
+      );
+
+      final statement = await db.accountStatement(
+        accountId: cash,
+        start: DateTime(2026, 7, 1),
+        end: DateTime(2026, 7, 31),
+      );
+
+      expect(statement.openingBalance, Money.fromRupees(1000));
+      expect(statement.lines, hasLength(2));
+      expect(statement.lines[0].debit, Money.fromRupees(200));
+      expect(statement.lines[0].credit, const Money.zero());
+      expect(statement.lines[0].balance, Money.fromRupees(800));
+      expect(statement.lines[1].credit, Money.fromRupees(300));
+      expect(statement.lines[1].balance, Money.fromRupees(1100));
+      expect(statement.closingBalance, Money.fromRupees(1100));
+    });
+
+    test(
+        'a transfer is a debit on the source and a credit on the destination',
+        () async {
+      final cash = await cashId();
+      final bank = await db.addAccount(
+        name: 'IPPB',
+        type: AccountType.bank,
+        colorValue: 0,
+        iconKey: 'bank',
+        openingBalance: Money.fromRupees(500),
+      );
+      await db.addTransaction(
+        type: TxType.transfer,
+        amount: Money.fromRupees(100),
+        accountId: cash,
+        toAccountId: bank,
+        date: DateTime(2026, 7, 10),
+      );
+
+      final range = (start: DateTime(2026, 7, 1), end: DateTime(2026, 7, 31));
+      final cashStatement = await db.accountStatement(
+        accountId: cash,
+        start: range.start,
+        end: range.end,
+      );
+      expect(cashStatement.lines.single.debit, Money.fromRupees(100));
+      expect(cashStatement.lines.single.credit, const Money.zero());
+
+      final bankStatement = await db.accountStatement(
+        accountId: bank,
+        start: range.start,
+        end: range.end,
+      );
+      expect(bankStatement.openingBalance, Money.fromRupees(500));
+      expect(bankStatement.lines.single.credit, Money.fromRupees(100));
+      expect(bankStatement.closingBalance, Money.fromRupees(600));
+    });
+
+    test('an empty range reports opening equal to closing with no lines',
+        () async {
+      final cash = await cashId();
+      final statement = await db.accountStatement(
+        accountId: cash,
+        start: DateTime(2026, 1, 1),
+        end: DateTime(2026, 1, 31),
+      );
+      expect(statement.lines, isEmpty);
+      expect(statement.openingBalance, statement.closingBalance);
+    });
+  });
+
+  group('budgetStatement', () {
+    test("rolls a subcategory's spend up into its parent's line", () async {
+      final cash = await cashId();
+      final food = await expenseCategory('Food');
+      final groceries = await db.addCategory(
+        name: 'Groceries',
+        kind: CategoryKind.expense,
+        colorValue: 0,
+        iconKey: 'food',
+        parentId: food,
+      );
+      await db.upsertBudget(categoryId: food, amount: Money.fromRupees(5000));
+
+      await db.addTransaction(
+        type: TxType.expense,
+        amount: Money.fromRupees(300),
+        accountId: cash,
+        categoryId: food,
+        date: DateTime(2026, 7, 5),
+      );
+      await db.addTransaction(
+        type: TxType.expense,
+        amount: Money.fromRupees(200),
+        accountId: cash,
+        categoryId: groceries,
+        date: DateTime(2026, 7, 12),
+      );
+
+      final lines = await db.budgetStatement(DateTime(2026, 7, 1));
+      final line = lines.firstWhere((l) => l.category.id == food);
+      expect(line.budgeted, Money.fromRupees(5000));
+      expect(line.spent, Money.fromRupees(500),
+          reason: 'parent + child spend combined');
+    });
+
+    test('a category with no budget does not appear', () async {
+      final lines = await db.budgetStatement(DateTime(2026, 7, 1));
+      expect(lines, isEmpty);
     });
   });
 

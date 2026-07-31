@@ -8,6 +8,47 @@ import 'tables.dart';
 
 part 'database.g.dart';
 
+/// Money movement for a transaction relative to one particular account (or an
+/// "own" family of accounts — that account plus any debit card drawing on it).
+///
+/// - income    → `+amount`  (money in)
+/// - expense   → `-amount`  (money out)
+/// - personIn  → `+amount`  (a person handed money to you)
+/// - personOut → `-amount`  (you handed money to a person)
+/// - transfer  → `-amount` when this account (or a debit card on it) is the
+///   source, otherwise `+amount` because it is the destination.
+Money accountMovement(TransactionRow tx, Set<int> ownIds) => switch (tx.type) {
+      TxType.income || TxType.personIn => tx.amount,
+      TxType.expense || TxType.personOut => -tx.amount,
+      TxType.transfer =>
+        ownIds.contains(tx.accountId) ? -tx.amount : tx.amount,
+    };
+
+/// One priced row of an account statement, already carrying the running
+/// balance *after* it posted.
+typedef StatementLine = ({
+  int transactionId,
+  DateTime date,
+  String description,
+  Money debit,
+  Money credit,
+  Money balance,
+});
+
+/// Everything needed to render one account's statement for a period.
+typedef AccountStatement = ({
+  Money openingBalance,
+  List<StatementLine> lines,
+  Money closingBalance,
+});
+
+/// One category's planned-vs-actual line for a budget statement.
+typedef BudgetStatementLine = ({
+  CategoryRow category,
+  Money budgeted,
+  Money spent,
+});
+
 @DriftDatabase(
   tables: [
     Accounts,
@@ -22,6 +63,7 @@ part 'database.g.dart';
     MerchantRules,
     SenderRules,
     BudgetAlerts,
+    RecurringRules,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -33,7 +75,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'money_manager'));
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -69,6 +111,15 @@ class AppDatabase extends _$AppDatabase {
           if (from < 6) {
             // Defaults true, so existing users keep seeing their symbol.
             await m.addColumn(settings, settings.showCurrencySymbol);
+          }
+          if (from < 7) {
+            // Additive and nullable: every existing transaction just has no
+            // payee. Nothing to backfill.
+            await m.addColumn(transactions, transactions.payee);
+          }
+          if (from < 8) {
+            await m.createTable(recurringRules);
+            await m.addColumn(transactions, transactions.recurringRuleId);
           }
         },
         beforeOpen: (details) async {
@@ -255,12 +306,20 @@ class AppDatabase extends _$AppDatabase {
     int? toAccountId,
     int? categoryId,
     int? personId,
+    String? payee,
+    int? recurringRuleId,
   }) {
     if (!amount.isPositive) {
       throw ArgumentError('Amount must be positive; direction comes from type.');
     }
     if (!type.isPersonMovement && personId != null) {
       throw ArgumentError('Only a person movement names a person.');
+    }
+    if (type != TxType.expense && payee != null) {
+      throw ArgumentError('Only an expense names a payee.');
+    }
+    if (!type.isIncomeOrExpense && recurringRuleId != null) {
+      throw ArgumentError('Only income or expense can come from a rule.');
     }
     switch (type) {
       case TxType.transfer:
@@ -307,6 +366,8 @@ class AppDatabase extends _$AppDatabase {
     int? personId,
     required DateTime date,
     String? note,
+    String? payee,
+    int? recurringRuleId,
   }) {
     _validateTx(
       type: type,
@@ -315,6 +376,8 @@ class AppDatabase extends _$AppDatabase {
       toAccountId: toAccountId,
       categoryId: categoryId,
       personId: personId,
+      payee: payee,
+      recurringRuleId: recurringRuleId,
     );
 
     return transaction(() async {
@@ -328,6 +391,8 @@ class AppDatabase extends _$AppDatabase {
           personId: Value(personId),
           date: date,
           note: Value(note),
+          payee: Value(payee),
+          recurringRuleId: Value(recurringRuleId),
         ),
       );
       final row = await (select(transactions)..where((t) => t.id.equals(id)))
@@ -380,6 +445,7 @@ class AppDatabase extends _$AppDatabase {
     int? personId,
     required DateTime date,
     String? note,
+    String? payee,
   }) {
     _validateTx(
       type: type,
@@ -388,6 +454,7 @@ class AppDatabase extends _$AppDatabase {
       toAccountId: toAccountId,
       categoryId: categoryId,
       personId: personId,
+      payee: payee,
     );
 
     return transaction(() async {
@@ -405,6 +472,7 @@ class AppDatabase extends _$AppDatabase {
           personId: Value(personId),
           date: Value(date),
           note: Value(note),
+          payee: Value(payee),
           updatedAt: Value(DateTime.now()),
         ),
       );
@@ -413,6 +481,17 @@ class AppDatabase extends _$AppDatabase {
           .getSingle();
       await _applyTxEffect(fresh, reverse: false);
     });
+  }
+
+  /// Renames every expense that named [from] to [to] instead. If [to] already
+  /// names another payee, this merges the two — they simply share a name.
+  Future<void> renamePayee({required String from, required String to}) {
+    final trimmed = to.trim();
+    if (trimmed.isEmpty) {
+      throw ArgumentError('Payee name cannot be empty.');
+    }
+    return (update(transactions)..where((t) => t.payee.equals(from)))
+        .write(TransactionsCompanion(payee: Value(trimmed)));
   }
 
   // ── Persons ───────────────────────────────────────────────────────────────
@@ -692,6 +771,60 @@ class AppDatabase extends _$AppDatabase {
       (update(accounts)..where((a) => a.id.equals(id)))
           .write(const AccountsCompanion(isArchived: Value(true)));
 
+  /// [accountId] as either side of the move — matches every FK reference a
+  /// transaction can hold to an account.
+  Future<int> countTransactionsForAccount(int accountId) async {
+    final rows = await (select(transactions)
+          ..where((t) =>
+              t.accountId.equals(accountId) | t.toAccountId.equals(accountId)))
+        .get();
+    return rows.length;
+  }
+
+  /// Archive, never delete, an account anything still points at: deleting one
+  /// with transaction history would orphan every row that named it, exactly
+  /// like [archiveCategory] above. Removal only ever succeeds on an account
+  /// nothing has touched yet — no transaction, no debit card drawing from it,
+  /// no reminder or merchant rule naming it.
+  Future<void> deleteAccount(int id) async {
+    final linkedCard = await (select(accounts)
+          ..where((a) => a.linkedAccountId.equals(id)))
+        .getSingleOrNull();
+    if (linkedCard != null) {
+      throw ArgumentError(
+        '"${linkedCard.name}" draws from this account. Remove that card '
+        'first.',
+      );
+    }
+    if (await countTransactionsForAccount(id) > 0) {
+      throw ArgumentError(
+        'This account has transaction history — archive it instead.',
+      );
+    }
+    final reminder = await (select(reminders)
+          ..where((r) => r.accountId.equals(id)))
+        .getSingleOrNull();
+    if (reminder != null) {
+      throw ArgumentError('A reminder still points at this account.');
+    }
+    final rule = await (select(merchantRules)
+          ..where((r) => r.accountId.equals(id)))
+        .getSingleOrNull();
+    if (rule != null) {
+      throw ArgumentError('A merchant rule still points at this account.');
+    }
+    final recurring = await (select(recurringRules)
+          ..where((r) => r.accountId.equals(id)))
+        .getSingleOrNull();
+    if (recurring != null) {
+      throw ArgumentError(
+        '"${recurring.name}" auto-posts from this account. Delete that rule '
+        'first.',
+      );
+    }
+    await (delete(accounts)..where((a) => a.id.equals(id))).go();
+  }
+
   // ── Persons CRUD ──────────────────────────────────────────────────────────
 
   Future<int> addPerson(String name, {String? contact, String? note}) =>
@@ -783,6 +916,213 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> deleteReminder(int id) =>
       (delete(reminders)..where((r) => r.id.equals(id))).go();
+
+  // ── Recurring rules (Auto) ────────────────────────────────────────────────
+
+  void _validateRecurringRule({
+    required Money amount,
+    required CategoryKind kind,
+    required CategoryRow category,
+    required RecurringFrequency frequency,
+    int? dayOfMonth,
+    String? payee,
+  }) {
+    if (!amount.isPositive) {
+      throw ArgumentError('Amount must be positive.');
+    }
+    if (category.kind != kind) {
+      throw ArgumentError(
+        'That category is ${category.kind == CategoryKind.income ? 'an income' : 'an expense'} '
+        'category — pick one that matches.',
+      );
+    }
+    if (kind != CategoryKind.expense && payee != null) {
+      throw ArgumentError('Only an expense names a payee.');
+    }
+    if (frequency == RecurringFrequency.monthly) {
+      if (dayOfMonth == null || dayOfMonth < 1 || dayOfMonth > 31) {
+        throw ArgumentError('A monthly rule needs a day of the month (1–31).');
+      }
+    } else if (dayOfMonth != null) {
+      throw ArgumentError('Only a monthly rule pins a day of the month.');
+    }
+  }
+
+  Future<int> addRecurringRule({
+    required String name,
+    required CategoryKind kind,
+    required Money amount,
+    required int accountId,
+    required int categoryId,
+    String? payee,
+    required RecurringFrequency frequency,
+    required DateTime startsOn,
+    int notifyDaysBefore = 3,
+  }) async {
+    final category = await categoryById(categoryId);
+    if (category == null) throw ArgumentError('That category no longer exists.');
+    final dayOfMonth =
+        frequency == RecurringFrequency.monthly ? startsOn.day : null;
+    _validateRecurringRule(
+      amount: amount,
+      kind: kind,
+      category: category,
+      frequency: frequency,
+      dayOfMonth: dayOfMonth,
+      payee: payee,
+    );
+
+    return into(recurringRules).insert(
+      RecurringRulesCompanion.insert(
+        name: name,
+        kind: kind,
+        amount: amount,
+        accountId: accountId,
+        categoryId: categoryId,
+        payee: Value(payee),
+        frequency: frequency,
+        dayOfMonth: Value(dayOfMonth),
+        nextDueDate: DateTime(startsOn.year, startsOn.month, startsOn.day),
+        notifyDaysBefore: Value(notifyDaysBefore),
+      ),
+    );
+  }
+
+  Future<void> updateRecurringRule({
+    required int id,
+    required String name,
+    required CategoryKind kind,
+    required Money amount,
+    required int accountId,
+    required int categoryId,
+    String? payee,
+    required RecurringFrequency frequency,
+    required DateTime nextDueDate,
+    int notifyDaysBefore = 3,
+  }) async {
+    final category = await categoryById(categoryId);
+    if (category == null) throw ArgumentError('That category no longer exists.');
+    final dayOfMonth =
+        frequency == RecurringFrequency.monthly ? nextDueDate.day : null;
+    _validateRecurringRule(
+      amount: amount,
+      kind: kind,
+      category: category,
+      frequency: frequency,
+      dayOfMonth: dayOfMonth,
+      payee: payee,
+    );
+
+    await (update(recurringRules)..where((r) => r.id.equals(id))).write(
+      RecurringRulesCompanion(
+        name: Value(name),
+        kind: Value(kind),
+        amount: Value(amount),
+        accountId: Value(accountId),
+        categoryId: Value(categoryId),
+        payee: Value(payee),
+        frequency: Value(frequency),
+        dayOfMonth: Value(dayOfMonth),
+        nextDueDate: Value(
+          DateTime(nextDueDate.year, nextDueDate.month, nextDueDate.day),
+        ),
+        notifyDaysBefore: Value(notifyDaysBefore),
+      ),
+    );
+  }
+
+  Future<void> setRecurringActive(int id, bool active) =>
+      (update(recurringRules)..where((r) => r.id.equals(id)))
+          .write(RecurringRulesCompanion(isActive: Value(active)));
+
+  /// The rule itself is gone, but a transaction it already posted is a real
+  /// ledger row and stays — it just loses the breadcrumb back to its rule,
+  /// the same way deleting a transaction clears a reminder's back-reference.
+  Future<void> deleteRecurringRule(int id) => transaction(() async {
+        await (update(transactions)..where((t) => t.recurringRuleId.equals(id)))
+            .write(const TransactionsCompanion(recurringRuleId: Value(null)));
+        await (delete(recurringRules)..where((r) => r.id.equals(id))).go();
+      });
+
+  Stream<List<RecurringRuleRow>> watchRecurringRules() =>
+      (select(recurringRules)
+            ..orderBy([(r) => OrderingTerm(expression: r.nextDueDate)]))
+          .watch();
+
+  /// The occurrence after [from], for a rule whose target day is
+  /// [dayOfMonth] (monthly only). Short months snap to their last day, but
+  /// the *next* month's occurrence still targets the original [dayOfMonth]
+  /// rather than whatever day the snap landed on — so a rule for the 31st
+  /// posts on Feb 28 and then still on Mar 31, never drifting to the 28th
+  /// forever.
+  static DateTime _nextOccurrence(
+    RecurringFrequency frequency,
+    DateTime from, {
+    int? dayOfMonth,
+  }) {
+    switch (frequency) {
+      case RecurringFrequency.daily:
+        return DateTime(from.year, from.month, from.day + 1);
+      case RecurringFrequency.weekly:
+        return DateTime(from.year, from.month, from.day + 7);
+      case RecurringFrequency.monthly:
+        var year = from.year;
+        var month = from.month + 1;
+        if (month > 12) {
+          month = 1;
+          year++;
+        }
+        final lastDayOfMonth = DateTime(year, month + 1, 0).day;
+        final day = dayOfMonth! > lastDayOfMonth ? lastDayOfMonth : dayOfMonth;
+        return DateTime(year, month, day);
+    }
+  }
+
+  /// Posts every occurrence of every active rule whose [RecurringRuleRow.nextDueDate]
+  /// has arrived, backfilling one occurrence at a time — each with its own
+  /// correct historical date — until each rule's schedule is caught up to
+  /// today. Safe to call on every app open/resume; a rule with nothing due
+  /// costs one query and does nothing further.
+  ///
+  /// Returns how many transactions were posted, so the caller knows whether
+  /// to tell the user anything happened.
+  ///
+  /// [now] exists so tests can pin "today" instead of racing the wall clock —
+  /// real callers never pass it.
+  Future<int> runDueRecurringRules({DateTime? now}) async {
+    final today = now ?? DateTime.now();
+    final endOfToday = DateTime(today.year, today.month, today.day, 23, 59, 59);
+    final due = await (select(recurringRules)
+          ..where((r) =>
+              r.isActive.equals(true) & r.nextDueDate.isSmallerOrEqualValue(endOfToday)))
+        .get();
+    if (due.isEmpty) return 0;
+
+    var posted = 0;
+    for (final rule in due) {
+      await transaction(() async {
+        var next = rule.nextDueDate;
+        while (!next.isAfter(endOfToday)) {
+          await addTransaction(
+            type: rule.kind == CategoryKind.expense
+                ? TxType.expense
+                : TxType.income,
+            amount: rule.amount,
+            accountId: rule.accountId,
+            categoryId: rule.categoryId,
+            date: next,
+            payee: rule.kind == CategoryKind.expense ? rule.payee : null,
+            recurringRuleId: rule.id,
+          );
+          posted++;
+          next = _nextOccurrence(rule.frequency, next, dayOfMonth: rule.dayOfMonth);
+        }
+        await (update(recurringRules)..where((r) => r.id.equals(rule.id)))
+            .write(RecurringRulesCompanion(nextDueDate: Value(next)));
+      });
+    }
+    return posted;
+  }
 
   // ── Message auto-capture ──────────────────────────────────────────────────
 
@@ -1289,6 +1629,113 @@ class AppDatabase extends _$AppDatabase {
             (t) => OrderingTerm(expression: t.id, mode: OrderingMode.desc),
           ]))
         .watch();
+  }
+
+  /// Statement lines for [accountId] between [start] and [end] inclusive
+  /// (both calendar days), with [AccountStatement.openingBalance] carried in
+  /// from everything that happened before [start] — exactly what a paper
+  /// bank statement shows above its first row.
+  Future<AccountStatement> accountStatement({
+    required int accountId,
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    final account =
+        await (select(accounts)..where((a) => a.id.equals(accountId))).getSingle();
+    final allAccounts = await select(accounts).get();
+    final accountsById = {for (final a in allAccounts) a.id: a};
+    final categoriesById = {for (final c in await select(categories).get()) c.id: c};
+    final personsById = {for (final p in await select(persons).get()) p.id: p};
+    final ownIds = <int>{
+      accountId,
+      for (final a in allAccounts)
+        if (a.linkedAccountId == accountId) a.id,
+    };
+
+    final endOfEnd = DateTime(end.year, end.month, end.day, 23, 59, 59, 999);
+    final all = await (select(transactions)
+          ..where((t) =>
+              (t.accountId.isIn(ownIds) | t.toAccountId.isIn(ownIds)) &
+              t.date.isSmallerOrEqualValue(endOfEnd))
+          ..orderBy([
+            (t) => OrderingTerm(expression: t.date),
+            (t) => OrderingTerm(expression: t.id),
+          ]))
+        .get();
+
+    String describe(TransactionRow t) {
+      switch (t.type) {
+        case TxType.transfer:
+          final out = ownIds.contains(t.accountId);
+          final otherId = out ? t.toAccountId : t.accountId;
+          final other = otherId == null ? null : accountsById[otherId]?.name;
+          return out ? 'Transfer to ${other ?? '-'}' : 'Transfer from ${other ?? '-'}';
+        case TxType.personOut:
+        case TxType.personIn:
+          final person = t.personId == null ? null : personsById[t.personId]?.name;
+          return t.type == TxType.personOut
+              ? 'Given to ${person ?? 'person'}'
+              : 'Received from ${person ?? 'person'}';
+        case TxType.income:
+        case TxType.expense:
+          final category = t.categoryId == null ? null : categoriesById[t.categoryId];
+          final base = category?.name ?? 'Uncategorised';
+          final payee = t.payee?.trim();
+          return (t.type == TxType.expense && payee != null && payee.isNotEmpty)
+              ? '$base - $payee'
+              : base;
+      }
+    }
+
+    var running = account.openingBalance;
+    Money? openingBalance;
+    final lines = <StatementLine>[];
+    for (final t in all) {
+      final movement = accountMovement(t, ownIds);
+      running += movement;
+      if (t.date.isBefore(start)) continue;
+      openingBalance ??= running - movement;
+      lines.add((
+        transactionId: t.id,
+        date: t.date,
+        description: describe(t),
+        debit: movement.isNegative ? movement.abs : const Money.zero(),
+        credit: movement.isPositive ? movement : const Money.zero(),
+        balance: running,
+      ));
+    }
+    openingBalance ??= running; // nothing fell inside the range
+
+    return (openingBalance: openingBalance, lines: lines, closingBalance: running);
+  }
+
+  /// Planned vs. actual for every budgeted category in [month] — a subcategory
+  /// budget rolls up under its own line; a parent's budget rolls its
+  /// children's spend into it, exactly like [budgetProgressProvider] shows on
+  /// screen (duplicated here rather than shared, since that provider is a
+  /// Riverpod composition this data-only layer must not depend on).
+  Future<List<BudgetStatementLine>> budgetStatement(DateTime month) async {
+    final start = DateTime(month.year, month.month);
+    final end = DateTime(month.year, month.month + 1)
+        .subtract(const Duration(milliseconds: 1));
+    final budgetRows = await select(budgets).get();
+    final categoriesById = {for (final c in await select(categories).get()) c.id: c};
+    final spend = await watchSpendByCategory(start, end).first;
+
+    final out = <BudgetStatementLine>[];
+    for (final b in budgetRows) {
+      final category = categoriesById[b.categoryId];
+      if (category == null) continue;
+      var spent = spend[b.categoryId] ?? const Money.zero();
+      for (final c in categoriesById.values) {
+        if (c.parentId == b.categoryId) {
+          spent += spend[c.id] ?? const Money.zero();
+        }
+      }
+      out.add((category: category, budgeted: b.amount, spent: spent));
+    }
+    out.sort((a, b) => a.category.name.compareTo(b.category.name));
+    return out;
   }
 
   // ── Export / Import ───────────────────────────────────────────────────────

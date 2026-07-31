@@ -227,6 +227,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           tx.toAccountId == null ? null : accountMap[tx.toAccountId];
       final haystack = [
         tx.note ?? '',
+        tx.payee ?? '',
         cat?.name ?? '',
         account?.name ?? '',
         toAccount?.name ?? '',
@@ -532,6 +533,8 @@ class _TxCard extends StatelessWidget {
     final note = tx.note?.trim();
     // The auto-generated note repeats the title; don't say it twice.
     final showNote = note != null && note.isNotEmpty && !isPerson;
+    final payee = tx.payee?.trim();
+    final showPayee = payee != null && payee.isNotEmpty;
 
     // Money that left the account reads negative so its sign matches its
     // colour; transfers stay as stored (they render without a sign).
@@ -590,19 +593,31 @@ class _TxCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
+                          Row(
+                            children: [
+                              if (tx.recurringRuleId != null) ...[
+                                Icon(Icons.autorenew_rounded,
+                                    size: 13, color: cs.onSurfaceVariant),
+                                const SizedBox(width: 4),
+                              ],
+                              Flexible(
+                                child: Text(
+                                  title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodyLarge?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 3),
                           _Meta(
                             isTransfer: isTransfer,
                             account: account,
                             toAccount: toAccount,
+                            payee: showPayee ? payee : null,
                             note: showNote ? note : null,
                           ),
                         ],
@@ -659,12 +674,14 @@ class _Meta extends StatelessWidget {
     required this.isTransfer,
     required this.account,
     required this.toAccount,
+    required this.payee,
     required this.note,
   });
 
   final bool isTransfer;
   final AccountRow? account;
   final AccountRow? toAccount;
+  final String? payee;
   final String? note;
 
   @override
@@ -693,6 +710,19 @@ class _Meta extends StatelessWidget {
             style: style,
           ),
         ),
+        if (payee != null) ...[
+          const SizedBox(width: 6),
+          Icon(Icons.storefront_outlined, size: 13, color: cs.onSurfaceVariant),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              payee!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: style,
+            ),
+          ),
+        ],
         if (note != null) ...[
           const SizedBox(width: 6),
           Icon(Icons.sticky_note_2_outlined, size: 13, color: cs.onSurfaceVariant),
@@ -817,7 +847,7 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
                   textInputAction: TextInputAction.search,
                   decoration: InputDecoration(
                     isDense: true,
-                    hintText: 'Search note, category or account',
+                    hintText: 'Search note, payee, category or account',
                     prefixIcon: const Icon(Icons.search_rounded),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),

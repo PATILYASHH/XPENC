@@ -50,7 +50,20 @@ class _XpencAppState extends ConsumerState<XpencApp>
     // now, so run it once here — the claim table keeps it to one alert.
     await notifications.checkBudgets();
 
+    await _runRecurring();
     await _scanMessages();
+  }
+
+  /// Posts anything due, then reschedules the "coming up" alerts against
+  /// whatever `nextDueDate` each rule now has. There is no background
+  /// service — like message capture, this only ever runs while the app is
+  /// open, so it also runs again on every resume, not just cold start.
+  Future<void> _runRecurring() async {
+    final posted = await ref.read(dbProvider).runDueRecurringRules();
+    if (!mounted) return;
+    final notifications = ref.read(notificationServiceProvider);
+    await notifications.syncRecurringNotifications();
+    if (posted > 0) await notifications.notifyAutoPosted(posted);
   }
 
   /// Send a first-time user through onboarding before anything else.
@@ -70,6 +83,7 @@ class _XpencAppState extends ConsumerState<XpencApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      _runRecurring();
       _scanMessages();
     }
   }

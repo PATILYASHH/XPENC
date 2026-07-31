@@ -648,7 +648,7 @@ class _AccountsStrip extends ConsumerWidget {
               _SectionHeader(
                 'Accounts',
                 trailing: TextButton(
-                  onPressed: () => context.push('/accounts'),
+                  onPressed: () => context.push('/more/accounts'),
                   child: const Text('See all'),
                 ),
               ),
@@ -803,7 +803,7 @@ class _PersonsSection extends ConsumerWidget {
           _SectionHeader(
             'People',
             trailing: TextButton(
-              onPressed: () => context.push('/more/persons'),
+              onPressed: () => context.push('/persons'),
               child: const Text('See all'),
             ),
           ),
@@ -827,7 +827,7 @@ class _PersonsSection extends ConsumerWidget {
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: TextButton(
-                          onPressed: () => context.push('/more/persons'),
+                          onPressed: () => context.push('/persons'),
                           child: Text('$extra more'),
                         ),
                       ),
@@ -926,7 +926,7 @@ class _PersonDuesTile extends StatelessWidget {
         owesYou ? Icons.south_west_rounded : Icons.north_east_rounded;
 
     return ListTile(
-      onTap: () => context.push('/more/persons/${person.id}'),
+      onTap: () => context.push('/person/${person.id}'),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       leading: CircleAvatar(
         radius: 18,

@@ -59,6 +59,13 @@ enum PendingStatus { pending, autoFilled, approved, dismissed, duplicate }
 /// Which budget alert already fired this period, so we never spam.
 enum AlertLevel { threshold, overspent }
 
+/// How often a recurring rule fires. Weekly/monthly need no separate
+/// "which day" field — the day is implied by whatever date the rule's
+/// `nextDueDate` already carries; only monthly additionally pins
+/// [RecurringRules.dayOfMonth] so a short month can snap back to the
+/// intended day the following month instead of drifting.
+enum RecurringFrequency { daily, weekly, monthly }
+
 // ─── Converters ─────────────────────────────────────────────────────────────
 
 /// Money crosses the DB boundary as an integer number of paise. Never a double.
@@ -152,6 +159,17 @@ class Transactions extends Table {
 
   DateTimeColumn get date => dateTime()();
   TextColumn get note => text().nullable()();
+
+  /// Expense only — who got paid. Free text (not a foreign key) so it never
+  /// needs a management screen of its own; the Payees hub derives its list by
+  /// grouping this column instead of owning a separate table.
+  TextColumn get payee => text().withLength(min: 1, max: 80).nullable()();
+
+  /// Set when [AppDatabase.runDueRecurringRules] auto-posted this row, so the
+  /// Auto hub and the Transactions list can trace it back to its rule.
+  IntColumn get recurringRuleId =>
+      integer().nullable().references(RecurringRules, #id)();
+
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
@@ -233,6 +251,43 @@ class Reminders extends Table {
   /// Set once "Mark as paid" posts the real transaction.
   IntColumn get transactionId =>
       integer().nullable().references(Transactions, #id)();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// A fixed income or expense that posts itself, on a schedule, with no
+/// confirmation step — unlike a [Reminders] row, which never posts on its own.
+/// [AppDatabase.runDueRecurringRules] is the only thing that ever writes a
+/// [Transactions] row from this table.
+@DataClassName('RecurringRuleRow')
+class RecurringRules extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text().withLength(min: 1, max: 60)();
+
+  /// Reuses [CategoryKind] rather than a bespoke enum — a rule is exactly as
+  /// income-or-expense as the category it posts under.
+  TextColumn get kind => textEnum<CategoryKind>()();
+
+  IntColumn get amount => integer().map(const MoneyConverter())();
+  IntColumn get accountId => integer().references(Accounts, #id)();
+  IntColumn get categoryId => integer().references(Categories, #id)();
+
+  /// Expense only — same free-text field as [Transactions.payee].
+  TextColumn get payee => text().withLength(min: 1, max: 80).nullable()();
+
+  TextColumn get frequency => textEnum<RecurringFrequency>()();
+
+  /// Monthly only. Captured once from whichever "starts on" date is chosen —
+  /// not re-derived from [nextDueDate] each time, so a month too short for it
+  /// (see [nextDueDate]) still remembers the day to snap back to.
+  IntColumn get dayOfMonth => integer().nullable()();
+
+  /// The next occurrence still to be posted. A catch-up run advances this one
+  /// occurrence at a time until it lands in the future, backfilling every
+  /// missed date on the way — it never sits stale behind the present.
+  DateTimeColumn get nextDueDate => dateTime()();
+
+  IntColumn get notifyDaysBefore => integer().withDefault(const Constant(3))();
+  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
