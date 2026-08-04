@@ -18,8 +18,8 @@ class PersonsScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final personsAsync = ref.watch(personsProvider);
     final totals = ref.watch(personTotalsProvider);
-    final balances = ref.watch(personBalancesProvider).valueOrNull ??
-        const <int, Money>{};
+    final balances =
+        ref.watch(personBalancesProvider).valueOrNull ?? const <int, Money>{};
 
     return Scaffold(
       body: CustomScrollView(
@@ -28,6 +28,11 @@ class PersonsScreen extends ConsumerWidget {
             title: const Text('Persons'),
             expandedHeight: 132,
             actions: [
+              IconButton(
+                icon: const Icon(Icons.inventory_2_outlined),
+                tooltip: 'Archived people',
+                onPressed: () => context.push('/persons/archived'),
+              ),
               IconButton(
                 icon: const Icon(Icons.person_add_alt_1_outlined),
                 tooltip: 'Add person',
@@ -74,8 +79,8 @@ class PersonsScreen extends ConsumerWidget {
                             ),
                           _PersonTile(
                             person: persons[i],
-                            balance: balances[persons[i].id] ??
-                                const Money.zero(),
+                            balance:
+                                balances[persons[i].id] ?? const Money.zero(),
                           ),
                         ],
                       ],
@@ -117,11 +122,7 @@ class _TotalsHeader extends StatelessWidget {
                   Icons.south_west_rounded,
                 ),
               ),
-              Container(
-                width: 1,
-                height: 46,
-                color: theme.colorScheme.outline,
-              ),
+              Container(width: 1, height: 46, color: theme.colorScheme.outline),
               Expanded(
                 child: _totalColumn(
                   theme,
@@ -179,14 +180,14 @@ class _TotalsHeader extends StatelessWidget {
 
 /// One person row. Balance sign decides the story:
 /// `+` owes you (green) · `-` you owe (red) · `0` settled (muted).
-class _PersonTile extends StatelessWidget {
+class _PersonTile extends ConsumerWidget {
   const _PersonTile({required this.person, required this.balance});
 
   final PersonRow person;
   final Money balance;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
     final Money shown;
@@ -256,9 +257,152 @@ class _PersonTile extends StatelessWidget {
         ),
       ),
       onTap: () => context.push('/person/${person.id}'),
+      onLongPress: () => _showActions(context, ref),
     );
   }
+
+  /// Hold-to-act: a sheet offering Archive (reversible, hides them) or Remove
+  /// (permanent, only works when they have no lend/borrow history).
+  Future<void> _showActions(BuildContext context, WidgetRef ref) async {
+    final theme = Theme.of(context);
+    final action = await showModalBottomSheet<_PersonAction>(
+      context: context,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  person.name,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.archive_outlined),
+              title: const Text('Archive'),
+              subtitle: const Text('Hide them. History stays intact.'),
+              onTap: () =>
+                  Navigator.of(sheetContext).pop(_PersonAction.archive),
+            ),
+            ListTile(
+              leading: Icon(
+                Icons.delete_outline,
+                color: theme.colorScheme.error,
+              ),
+              title: Text(
+                'Remove',
+                style: TextStyle(color: theme.colorScheme.error),
+              ),
+              subtitle: const Text('Delete permanently — only if unused.'),
+              onTap: () => Navigator.of(sheetContext).pop(_PersonAction.remove),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (action == null || !context.mounted) return;
+    if (action == _PersonAction.archive) {
+      await _confirmArchive(context, ref);
+    } else {
+      await _confirmRemove(context, ref);
+    }
+  }
+
+  Future<void> _confirmArchive(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Archive person?'),
+        content: Text(
+          '"${person.name}" will be hidden from your people. '
+          'Their history stays intact.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            child: const Text('Archive'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    await ref.read(dbProvider).archivePerson(person.id);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Person archived')));
+  }
+
+  /// Unlike archiving, this can't be undone — [AppDatabase.deletePerson]
+  /// refuses (with a clear reason) whenever they still have lend/borrow
+  /// history, so this only ever succeeds on someone with none.
+  Future<void> _confirmRemove(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Remove "${person.name}"?'),
+        content: const Text(
+          "This permanently deletes the person — it can't be undone. It "
+          'only works if they have no lend/borrow history; otherwise '
+          'archive them instead.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await ref.read(dbProvider).deletePerson(person.id);
+    } on ArgumentError catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(e.message?.toString() ?? "Can't remove this person"),
+          ),
+        );
+      return;
+    }
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Person removed')));
+  }
 }
+
+enum _PersonAction { archive, remove }
 
 class _EmptyPersons extends StatelessWidget {
   const _EmptyPersons();
@@ -336,8 +480,7 @@ Future<void> _addPersonDialog(BuildContext context, WidgetRef ref) async {
           labelText: 'Name',
           hintText: 'e.g. Rahul',
         ),
-        onSubmitted: (value) =>
-            Navigator.of(dialogContext).pop(value.trim()),
+        onSubmitted: (value) => Navigator.of(dialogContext).pop(value.trim()),
       ),
       actions: [
         TextButton(

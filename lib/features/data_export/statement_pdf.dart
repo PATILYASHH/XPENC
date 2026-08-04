@@ -49,7 +49,13 @@ Future<Uint8List> buildAccountStatementPdf({
           )
         else
           pw.TableHelper.fromTextArray(
-            headers: const ['Date', 'Description', 'Debit', 'Credit', 'Balance'],
+            headers: const [
+              'Date',
+              'Description',
+              'Debit',
+              'Credit',
+              'Balance',
+            ],
             data: [
               for (final line in statement.lines)
                 [
@@ -67,7 +73,10 @@ Future<Uint8List> buildAccountStatementPdf({
               3: pw.Alignment.centerRight,
               4: pw.Alignment.centerRight,
             },
-            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+            headerStyle: pw.TextStyle(
+              fontWeight: pw.FontWeight.bold,
+              fontSize: 10,
+            ),
             cellStyle: const pw.TextStyle(fontSize: 9),
             border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
             headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
@@ -126,7 +135,10 @@ Future<Uint8List> buildBudgetStatementPdf({
               2: pw.Alignment.centerRight,
               3: pw.Alignment.centerRight,
             },
-            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+            headerStyle: pw.TextStyle(
+              fontWeight: pw.FontWeight.bold,
+              fontSize: 10,
+            ),
             cellStyle: const pw.TextStyle(fontSize: 9),
             border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
             headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
@@ -152,43 +164,49 @@ Future<Uint8List> buildBudgetStatementPdf({
 // ── Shared layout helpers ────────────────────────────────────────────────────
 
 pw.Widget _pageHeader(String title) => pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Text(
-          AppInfo.name,
-          style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
-        ),
-        pw.SizedBox(height: 2),
-        pw.Text(title, style: const pw.TextStyle(fontSize: 13, color: PdfColors.grey700)),
-        pw.SizedBox(height: 4),
-        pw.Text(
-          'Generated ${_dateLabel(DateTime.now())}',
-          style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
-        ),
-        pw.SizedBox(height: 14),
-      ],
-    );
+  crossAxisAlignment: pw.CrossAxisAlignment.start,
+  children: [
+    pw.Text(
+      AppInfo.name,
+      style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+    ),
+    pw.SizedBox(height: 2),
+    pw.Text(
+      title,
+      style: const pw.TextStyle(fontSize: 13, color: PdfColors.grey700),
+    ),
+    pw.SizedBox(height: 4),
+    pw.Text(
+      'Generated ${_dateLabel(DateTime.now())}',
+      style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
+    ),
+    pw.SizedBox(height: 14),
+  ],
+);
 
 pw.Widget _pageFooter(pw.Context context) => pw.Align(
-      alignment: pw.Alignment.centerRight,
-      child: pw.Text(
-        'Page ${context.pageNumber} of ${context.pagesCount}',
-        style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
-      ),
-    );
+  alignment: pw.Alignment.centerRight,
+  child: pw.Text(
+    'Page ${context.pageNumber} of ${context.pagesCount}',
+    style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
+  ),
+);
 
 pw.Widget _kv(String label, String value) => pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(vertical: 2),
-      child: pw.Row(
-        children: [
-          pw.SizedBox(
-            width: 110,
-            child: pw.Text(label, style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
-          ),
-          pw.Text(value, style: const pw.TextStyle(fontSize: 10)),
-        ],
+  padding: const pw.EdgeInsets.symmetric(vertical: 2),
+  child: pw.Row(
+    children: [
+      pw.SizedBox(
+        width: 110,
+        child: pw.Text(
+          label,
+          style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+        ),
       ),
-    );
+      pw.Text(value, style: const pw.TextStyle(fontSize: 10)),
+    ],
+  ),
+);
 
 String _remainingLabel(Money remaining) => remaining.isNegative
     ? 'Over by ${MoneyFormat.bare(remaining.abs)}'
@@ -199,10 +217,11 @@ String _dateLabel(DateTime d) => DateFormat('d MMM yyyy').format(d);
 String _monthLabel(DateTime d) => DateFormat('MMMM yyyy').format(d);
 
 String _accountTypeLabel(AccountType type) => switch (type) {
-      AccountType.cash => 'Cash',
-      AccountType.bank => 'Bank',
-      AccountType.card => 'Card',
-    };
+  AccountType.cash => 'Cash',
+  AccountType.bank => 'Bank',
+  AccountType.card => 'Card',
+  AccountType.payLater => 'Pay later',
+};
 
 /// "HDFC ...1234" — whichever parts the account carries.
 String? _bankLine(AccountRow a) {

@@ -27,6 +27,11 @@ class AccountsScreen extends ConsumerWidget {
             expandedHeight: 132,
             actions: [
               IconButton(
+                tooltip: 'Archived accounts',
+                icon: const Icon(Icons.inventory_2_outlined),
+                onPressed: () => context.push('/more/accounts/archived'),
+              ),
+              IconButton(
                 tooltip: 'Add account',
                 icon: const Icon(Icons.add_rounded),
                 onPressed: () => showAddAccountSheet(context),
@@ -51,8 +56,8 @@ class AccountsScreen extends ConsumerWidget {
                   child: Text(
                     'Could not load your accounts.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ),
@@ -73,6 +78,9 @@ class AccountsScreen extends ConsumerWidget {
     final cash = accounts.where((a) => a.type == AccountType.cash).toList();
     final banks = accounts.where((a) => a.type == AccountType.bank).toList();
     final cards = accounts.where((a) => a.type == AccountType.card).toList();
+    final payLater = accounts
+        .where((a) => a.type == AccountType.payLater)
+        .toList();
 
     final out = <Widget>[];
     void addGroup(String title, List<AccountRow> rows) {
@@ -85,6 +93,7 @@ class AccountsScreen extends ConsumerWidget {
     addGroup('Cash', cash);
     addGroup('Bank', banks);
     addGroup('Cards', cards);
+    addGroup('Pay later', payLater);
     return out;
   }
 
@@ -120,7 +129,11 @@ class AccountsScreen extends ConsumerWidget {
             children: [
               for (var i = 0; i < rows.length; i++) ...[
                 if (i > 0)
-                  Divider(height: 1, indent: 70, color: theme.colorScheme.outline),
+                  Divider(
+                    height: 1,
+                    indent: 70,
+                    color: theme.colorScheme.outline,
+                  ),
                 _AccountTile(account: rows[i], accountMap: accountMap),
               ],
             ],
@@ -139,7 +152,8 @@ class _TotalMoneyCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final netWorth = ref.watch(netWorthProvider).valueOrNull ?? const Money.zero();
+    final netWorth =
+        ref.watch(netWorthProvider).valueOrNull ?? const Money.zero();
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
@@ -174,8 +188,11 @@ class _TotalMoneyCard extends ConsumerWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.info_outline_rounded,
-                      size: 16, color: theme.colorScheme.onSurfaceVariant),
+                  Icon(
+                    Icons.info_outline_rounded,
+                    size: 16,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -207,6 +224,8 @@ class _AccountTile extends ConsumerWidget {
   bool get _isDebitCard => account.linkedAccountId != null;
   bool get _isCreditCard =>
       account.type == AccountType.card && account.cardKind == CardKind.credit;
+  bool get _isPayLater => account.type == AccountType.payLater;
+  bool get _owesLikeCredit => _isCreditCard || _isPayLater;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -219,14 +238,16 @@ class _AccountTile extends ConsumerWidget {
       final bank = accountMap[account.linkedAccountId];
       subtitle = _subtitle(theme, 'Draws from ${bank?.name ?? 'bank'}');
       trailing = _LinkedChip();
-    } else if (_isCreditCard) {
+    } else if (_owesLikeCredit) {
       subtitle = _subtitle(
         theme,
         account.currentBalance.isNegative ? 'Outstanding' : 'Paid off',
       );
       trailing = BalanceText(
         account.currentBalance,
-        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+        style: theme.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
       );
     } else {
       final parts = <String>[];
@@ -239,7 +260,9 @@ class _AccountTile extends ConsumerWidget {
       subtitle = parts.isEmpty ? null : _subtitle(theme, parts.join('   '));
       trailing = BalanceText(
         account.currentBalance,
-        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+        style: theme.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
       );
     }
 
@@ -300,8 +323,9 @@ class _AccountTile extends ConsumerWidget {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   account.name,
-                  style: theme.textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w700),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
@@ -313,8 +337,14 @@ class _AccountTile extends ConsumerWidget {
                   Navigator.of(sheetContext).pop(_AccountAction.archive),
             ),
             ListTile(
-              leading: Icon(Icons.delete_outline, color: theme.colorScheme.error),
-              title: Text('Remove', style: TextStyle(color: theme.colorScheme.error)),
+              leading: Icon(
+                Icons.delete_outline,
+                color: theme.colorScheme.error,
+              ),
+              title: Text(
+                'Remove',
+                style: TextStyle(color: theme.colorScheme.error),
+              ),
               subtitle: const Text('Delete permanently — only if unused.'),
               onTap: () =>
                   Navigator.of(sheetContext).pop(_AccountAction.remove),
@@ -401,9 +431,11 @@ class _AccountTile extends ConsumerWidget {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(
-          content: Text(e.message?.toString() ?? "Can't remove this account"),
-        ));
+        ..showSnackBar(
+          SnackBar(
+            content: Text(e.message?.toString() ?? "Can't remove this account"),
+          ),
+        );
       return;
     }
     if (!context.mounted) return;

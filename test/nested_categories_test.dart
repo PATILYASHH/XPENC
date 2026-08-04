@@ -17,18 +17,18 @@ void main() {
   tearDown(() => db.close());
 
   Future<int> addExpenseParent(String name) => db.addCategory(
-        name: name,
-        kind: CategoryKind.expense,
-        colorValue: 0xFF000000,
-        iconKey: 'other',
-      );
+    name: name,
+    kind: CategoryKind.expense,
+    colorValue: 0xFF000000,
+    iconKey: 'other',
+  );
 
   Future<int> addIncomeParent(String name) => db.addCategory(
-        name: name,
-        kind: CategoryKind.income,
-        colorValue: 0xFF000000,
-        iconKey: 'other',
-      );
+    name: name,
+    kind: CategoryKind.income,
+    colorValue: 0xFF000000,
+    iconKey: 'other',
+  );
 
   Future<CategoryRow> categoryById(int id) async =>
       (await db.watchAllCategories().first).firstWhere((c) => c.id == id);
@@ -155,21 +155,23 @@ void main() {
       );
     });
 
-    test('leaving parentId absent does not disturb the existing parent',
-        () async {
-      final food = await addExpenseParent('Food');
-      final groceries = await db.addCategory(
-        name: 'Groceries',
-        kind: CategoryKind.expense,
-        colorValue: 0xFF000000,
-        iconKey: 'other',
-        parentId: food,
-      );
-      await db.updateCategory(id: groceries, name: 'Grocery');
-      final row = await categoryById(groceries);
-      expect(row.name, 'Grocery');
-      expect(row.parentId, food);
-    });
+    test(
+      'leaving parentId absent does not disturb the existing parent',
+      () async {
+        final food = await addExpenseParent('Food');
+        final groceries = await db.addCategory(
+          name: 'Groceries',
+          kind: CategoryKind.expense,
+          colorValue: 0xFF000000,
+          iconKey: 'other',
+          parentId: food,
+        );
+        await db.updateCategory(id: groceries, name: 'Grocery');
+        final row = await categoryById(groceries);
+        expect(row.name, 'Grocery');
+        expect(row.parentId, food);
+      },
+    );
   });
 
   group('archiving', () {
@@ -203,7 +205,9 @@ void main() {
       );
       final rent = await addExpenseParent('Rent');
 
-      final byId = {for (final c in await db.watchAllCategories().first) c.id: c};
+      final byId = {
+        for (final c in await db.watchAllCategories().first) c.id: c,
+      };
       final rolled = rollUpToParents({
         groceries: Money.fromRupees(300),
         food: Money.fromRupees(50),
@@ -216,18 +220,18 @@ void main() {
     });
 
     test('an unknown id resolves to itself', () {
-      final rolled = rollUpToParents(
-        {42: Money.fromRupees(10)},
-        const <int, CategoryRow>{},
-      );
+      final rolled = rollUpToParents({
+        42: Money.fromRupees(10),
+      }, const <int, CategoryRow>{});
       expect(rolled[42], Money.fromRupees(10));
     });
   });
 
   group('budget rollup', () {
     test('a budget on a parent counts its children\'s spend', () async {
-      final container =
-          ProviderContainer(overrides: [dbProvider.overrideWithValue(db)]);
+      final container = ProviderContainer(
+        overrides: [dbProvider.overrideWithValue(db)],
+      );
       addTearDown(container.dispose);
 
       final food = await addExpenseParent('Food');
@@ -257,6 +261,102 @@ void main() {
       final progress = container.read(budgetProgressProvider);
       final foodProgress = progress.firstWhere((p) => p.category.id == food);
       expect(foodProgress.spent, Money.fromRupees(400));
+    });
+  });
+
+  group('budget parent/child cap', () {
+    test("a child's budget can't exceed its budgeted parent's", () async {
+      final food = await addExpenseParent('Food');
+      final groceries = await db.addCategory(
+        name: 'Groceries',
+        kind: CategoryKind.expense,
+        colorValue: 0xFF000000,
+        iconKey: 'other',
+        parentId: food,
+      );
+      await db.upsertBudget(categoryId: food, amount: Money.fromRupees(1000));
+
+      expect(
+        () => db.upsertBudget(
+          categoryId: groceries,
+          amount: Money.fromRupees(1001),
+        ),
+        throwsArgumentError,
+      );
+      // Exactly the parent's amount is fine.
+      await db.upsertBudget(
+        categoryId: groceries,
+        amount: Money.fromRupees(1000),
+      );
+    });
+
+    test('a child budget is unconstrained while its parent has none', () async {
+      final food = await addExpenseParent('Food');
+      final groceries = await db.addCategory(
+        name: 'Groceries',
+        kind: CategoryKind.expense,
+        colorValue: 0xFF000000,
+        iconKey: 'other',
+        parentId: food,
+      );
+
+      await db.upsertBudget(
+        categoryId: groceries,
+        amount: Money.fromRupees(5000),
+      );
+      final budgets = await db.watchBudgets().first;
+      expect(budgets.single.amount, Money.fromRupees(5000));
+    });
+
+    test(
+      "shrinking a parent's budget below an existing child's is rejected",
+      () async {
+        final food = await addExpenseParent('Food');
+        final groceries = await db.addCategory(
+          name: 'Groceries',
+          kind: CategoryKind.expense,
+          colorValue: 0xFF000000,
+          iconKey: 'other',
+          parentId: food,
+        );
+        await db.upsertBudget(categoryId: food, amount: Money.fromRupees(1000));
+        await db.upsertBudget(
+          categoryId: groceries,
+          amount: Money.fromRupees(800),
+        );
+
+        expect(
+          () =>
+              db.upsertBudget(categoryId: food, amount: Money.fromRupees(500)),
+          throwsArgumentError,
+        );
+        // Raising the parent back above the child is fine.
+        await db.upsertBudget(categoryId: food, amount: Money.fromRupees(900));
+      },
+    );
+
+    test('an archived child no longer constrains its parent', () async {
+      final food = await addExpenseParent('Food');
+      final groceries = await db.addCategory(
+        name: 'Groceries',
+        kind: CategoryKind.expense,
+        colorValue: 0xFF000000,
+        iconKey: 'other',
+        parentId: food,
+      );
+      await db.upsertBudget(
+        categoryId: groceries,
+        amount: Money.fromRupees(800),
+      );
+      await db.archiveCategory(groceries);
+
+      // Would have been rejected while `groceries` was live.
+      await db.upsertBudget(categoryId: food, amount: Money.fromRupees(500));
+      final budgets = await db.watchBudgets().first;
+      expect(
+        budgets.firstWhere((b) => b.categoryId == food).amount,
+        Money.fromRupees(500),
+      );
     });
   });
 }

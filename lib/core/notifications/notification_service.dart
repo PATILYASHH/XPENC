@@ -43,6 +43,15 @@ class NotificationService {
     importance: Importance.high,
   );
 
+  static const _expenseNudgeChannel = AndroidNotificationChannel(
+    'expense_nudge',
+    'Daily expense reminder',
+    description:
+        "A daily nudge to log today's spending — not tied to any "
+        'specific bill.',
+    importance: Importance.defaultImportance,
+  );
+
   Future<void> init() async {
     if (_ready) return;
     try {
@@ -57,13 +66,16 @@ class NotificationService {
         ),
       );
 
-      final android = _plugin.resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>();
+      final android = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
       if (android != null) {
         await android.createNotificationChannel(_budgetChannel);
         await android.createNotificationChannel(_reminderChannel);
         await android.createNotificationChannel(_captureChannel);
         await android.createNotificationChannel(_autoChannel);
+        await android.createNotificationChannel(_expenseNudgeChannel);
       }
       _ready = true;
     } catch (e, s) {
@@ -74,8 +86,10 @@ class NotificationService {
 
   /// Android 13+ requires an explicit runtime grant.
   Future<bool> requestPermission() async {
-    final android = _plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     if (android == null) return false;
     return await android.requestNotificationsPermission() ?? false;
   }
@@ -94,8 +108,12 @@ class NotificationService {
   /// Returns whether the notification was actually delivered. Callers that
   /// "claim" a one-shot alert must release the claim when this returns false,
   /// or the alert is lost for the rest of the period.
-  Future<bool> _show(int id, String title, String body,
-      AndroidNotificationChannel channel) async {
+  Future<bool> _show(
+    int id,
+    String title,
+    String body,
+    AndroidNotificationChannel channel,
+  ) async {
     if (!_ready) return false;
     try {
       await _plugin.show(
@@ -129,8 +147,10 @@ class NotificationService {
 
     final now = DateTime.now();
     final start = DateTime(now.year, now.month);
-    final end = DateTime(now.year, now.month + 1)
-        .subtract(const Duration(milliseconds: 1));
+    final end = DateTime(
+      now.year,
+      now.month + 1,
+    ).subtract(const Duration(milliseconds: 1));
     final periodKey = AppDatabase.periodKeyOf(now);
 
     final budgets = await _db.watchBudgets().first;
@@ -152,7 +172,8 @@ class NotificationService {
           level: AlertLevel.overspent,
           id: 100000 + b.categoryId,
           title: 'Overspent on ${category.name}',
-          body: 'You have spent ${MoneyFormat.symbol(spent)} of '
+          body:
+              'You have spent ${MoneyFormat.symbol(spent)} of '
               '${MoneyFormat.symbol(b.amount)}.',
         );
       } else if (pct >= b.alertThresholdPct / 100) {
@@ -162,7 +183,8 @@ class NotificationService {
           level: AlertLevel.threshold,
           id: 200000 + b.categoryId,
           title: '${category.name} budget almost used',
-          body: '${(pct * 100).round()}% of ${MoneyFormat.symbol(b.amount)} spent.',
+          body:
+              '${(pct * 100).round()}% of ${MoneyFormat.symbol(b.amount)} spent.',
         );
       }
     }
@@ -212,15 +234,17 @@ class NotificationService {
       final fireAt = _fireTimeFor(r);
       if (fireAt == null) continue;
 
-      final amount =
-          r.amount == null ? '' : ' — ${MoneyFormat.symbol(r.amount!)}';
+      final amount = r.amount == null
+          ? ''
+          : ' — ${MoneyFormat.symbol(r.amount!)}';
       final verb = r.direction == ReminderDirection.pay ? 'Pay' : 'Collect';
 
       try {
         await _plugin.zonedSchedule(
           id: _reminderId(r.id),
           title: '$verb: ${r.title}',
-          body: 'Due ${_dayLabel(r.dueDate)}$amount. Nothing has been posted — '
+          body:
+              'Due ${_dayLabel(r.dueDate)}$amount. Nothing has been posted — '
               'confirm it in the app.',
           scheduledDate: tz.TZDateTime.from(fireAt, tz.local),
           notificationDetails: _details(_reminderChannel),
@@ -270,10 +294,13 @@ class NotificationService {
   Future<void> _cancel(int id) async {
     try {
       await _plugin.cancel(id: id);
-    } catch (_) {/* already gone */}
+    } catch (_) {
+      /* already gone */
+    }
   }
 
-  Future<void> cancelReminder(int reminderId) => _cancel(_reminderId(reminderId));
+  Future<void> cancelReminder(int reminderId) =>
+      _cancel(_reminderId(reminderId));
 
   static String _dayLabel(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}-${d.month.toString().padLeft(2, '0')}-${d.year}';
@@ -313,12 +340,14 @@ class NotificationService {
       final account = await _db.watchAccount(r.accountId).first;
       final accountName = account?.name ?? 'your account';
       final isExpense = r.kind == CategoryKind.expense;
-      final title = isExpense ? '${r.name}: auto-pay coming up' : '${r.name}: expected soon';
+      final title = isExpense
+          ? '${r.name}: auto-pay coming up'
+          : '${r.name}: expected soon';
       final body = isExpense
           ? '${MoneyFormat.symbol(r.amount)} will be auto-deducted from '
-              '$accountName on ${_dayLabel(r.nextDueDate)}. Keep that much ready.'
+                '$accountName on ${_dayLabel(r.nextDueDate)}. Keep that much ready.'
           : '${MoneyFormat.symbol(r.amount)} is expected in $accountName '
-              'on ${_dayLabel(r.nextDueDate)}.';
+                'on ${_dayLabel(r.nextDueDate)}.';
 
       try {
         await _plugin.zonedSchedule(
@@ -367,9 +396,55 @@ class NotificationService {
     if (!settings.notificationsEnabled) return;
     await _show(
       500000,
-      count == 1 ? '1 auto-transaction posted' : '$count auto-transactions posted',
+      count == 1
+          ? '1 auto-transaction posted'
+          : '$count auto-transactions posted',
       'Open Auto to review what was posted.',
       _autoChannel,
     );
+  }
+
+  // ── Expense reminder ─────────────────────────────────────────────────────
+
+  static const _expenseNudgeId = 700000;
+
+  /// A daily repeat at the chosen wall-clock time — [DateTimeComponents.time]
+  /// is what makes `zonedSchedule` re-fire every day instead of once. Safe to
+  /// call on every app start/resume, same as the other `sync*` methods.
+  Future<void> syncExpenseReminder() async {
+    if (!_ready) return;
+    await _cancel(_expenseNudgeId);
+
+    final settings = await _db.getSettings();
+    if (!settings.notificationsEnabled || !settings.expenseReminderEnabled) {
+      return;
+    }
+
+    final now = tz.TZDateTime.now(tz.local);
+    var fireAt = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      settings.expenseReminderHour,
+      settings.expenseReminderMinute,
+    );
+    if (fireAt.isBefore(now)) {
+      fireAt = fireAt.add(const Duration(days: 1));
+    }
+
+    try {
+      await _plugin.zonedSchedule(
+        id: _expenseNudgeId,
+        title: 'Log today\'s spending',
+        body: "A minute now beats reconstructing it from memory later.",
+        scheduledDate: fireAt,
+        notificationDetails: _details(_expenseNudgeChannel),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time,
+      );
+    } catch (e) {
+      debugPrint('expense reminder schedule failed: $e');
+    }
   }
 }

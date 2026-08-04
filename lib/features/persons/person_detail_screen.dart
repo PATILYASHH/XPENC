@@ -22,9 +22,8 @@ class PersonDetailScreen extends ConsumerWidget {
     final personsAsync = ref.watch(personsProvider);
 
     return personsAsync.when(
-      loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      ),
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (error, _) => Scaffold(
         appBar: AppBar(title: const Text('Person')),
         body: const Center(child: Text('Something went wrong')),
@@ -52,19 +51,18 @@ class PersonDetailScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final balance =
         ref.watch(personBalancesProvider).valueOrNull?[person.id] ??
-            const Money.zero();
+        const Money.zero();
     final entriesAsync = ref.watch(personEntriesProvider(person.id));
     final accountMap = ref.watch(accountMapProvider);
 
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          SliverAppBar.large(
-            title: Text(person.name),
-            expandedHeight: 132,
-          ),
+          SliverAppBar.large(title: Text(person.name), expandedHeight: 132),
           SliverToBoxAdapter(child: _BalanceHero(balance: balance)),
-          SliverToBoxAdapter(child: _ActionButtons(personId: person.id)),
+          SliverToBoxAdapter(
+            child: _ActionButtons(personId: person.id, balance: balance),
+          ),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 14, 24, 6),
@@ -105,12 +103,13 @@ class PersonDetailScreen extends ConsumerWidget {
                   ),
                 );
               }
-              final sorted = [...entries]..sort((a, b) {
-                final byDate = b.date.compareTo(a.date);
-                return byDate != 0
-                    ? byDate
-                    : b.createdAt.compareTo(a.createdAt);
-              });
+              final sorted = [...entries]
+                ..sort((a, b) {
+                  final byDate = b.date.compareTo(a.date);
+                  return byDate != 0
+                      ? byDate
+                      : b.createdAt.compareTo(a.createdAt);
+                });
               return SliverPadding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
                 sliver: SliverList.builder(
@@ -188,49 +187,73 @@ class _BalanceHero extends StatelessWidget {
   }
 }
 
-/// 'They owe' (green) and 'I owe' (red) open the entry sheet in that direction.
-class _ActionButtons extends StatelessWidget {
-  const _ActionButtons({required this.personId});
+/// 'They owe' (green) and 'I owe' (red) open the entry sheet in that
+/// direction. "Mark as repaid" — a third, distinct entry point rather than
+/// overloading 'I owe' — only shows when there's a balance to repay and the
+/// setting is on (see [countRepaymentsAsIncomeProvider]).
+class _ActionButtons extends ConsumerWidget {
+  const _ActionButtons({required this.personId, required this.balance});
 
   final int personId;
+  final Money balance;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final offerRepayment =
+        ref.watch(countRepaymentsAsIncomeProvider) && balance.isPositive;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            child: FilledButton.tonal(
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.income.withValues(alpha: 0.14),
-                foregroundColor: AppColors.income,
-                padding: const EdgeInsets.symmetric(vertical: 14),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.tonal(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.income.withValues(alpha: 0.14),
+                    foregroundColor: AppColors.income,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  onPressed: () => _showEntrySheet(
+                    context,
+                    personId,
+                    PersonDirection.theyOwe,
+                  ),
+                  child: const Text('They owe'),
+                ),
               ),
-              onPressed: () => _showEntrySheet(
-                context,
-                personId,
-                PersonDirection.theyOwe,
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton.tonal(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.expense.withValues(alpha: 0.14),
+                    foregroundColor: AppColors.expense,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  onPressed: () =>
+                      _showEntrySheet(context, personId, PersonDirection.iOwe),
+                  child: const Text('I owe'),
+                ),
               ),
-              child: const Text('They owe'),
-            ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: FilledButton.tonal(
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.expense.withValues(alpha: 0.14),
-                foregroundColor: AppColors.expense,
-                padding: const EdgeInsets.symmetric(vertical: 14),
+          if (offerRepayment) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _showEntrySheet(
+                  context,
+                  personId,
+                  PersonDirection.iOwe,
+                  isRepayment: true,
+                ),
+                icon: const Icon(Icons.paid_outlined, size: 18),
+                label: const Text('Mark as repaid'),
               ),
-              onPressed: () => _showEntrySheet(
-                context,
-                personId,
-                PersonDirection.iOwe,
-              ),
-              child: const Text('I owe'),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -249,17 +272,29 @@ class _EntryRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final theyOwe = entry.direction == PersonDirection.theyOwe;
-    final color = theyOwe ? AppColors.expense : AppColors.income;
-    final icon =
-        theyOwe ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded;
+    final isRepayment = entry.categoryId != null;
+    final color = isRepayment
+        ? AppColors.income
+        : (theyOwe ? AppColors.expense : AppColors.income);
+    final icon = isRepayment
+        ? Icons.paid_outlined
+        : (theyOwe ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded);
 
     final note = entry.note?.trim();
     final title = (note != null && note.isNotEmpty)
         ? note
         : (theyOwe ? 'You gave' : 'You received');
 
+    final categoryName = isRepayment
+        ? ref.watch(categoryMapProvider)[entry.categoryId]?.name
+        : null;
+
     final dateStr = DateFormat('d MMM yyyy').format(entry.date);
-    final subtitle = accountName == null ? dateStr : '$dateStr · $accountName';
+    final subtitle = [
+      dateStr,
+      ?accountName,
+      if (categoryName != null) 'Repaid · $categoryName',
+    ].join(' · ');
 
     return Slidable(
       key: ValueKey(entry.id),
@@ -278,6 +313,13 @@ class _EntryRow extends ConsumerWidget {
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        onTap: () => _showEntrySheet(
+          context,
+          entry.personId,
+          entry.direction,
+          isRepayment: isRepayment,
+          existing: entry,
+        ),
         leading: CircleAvatar(
           backgroundColor: color.withValues(alpha: 0.14),
           foregroundColor: color,
@@ -320,46 +362,84 @@ class _EntryRow extends ConsumerWidget {
 void _showEntrySheet(
   BuildContext context,
   int personId,
-  PersonDirection direction,
-) {
+  PersonDirection direction, {
+  bool isRepayment = false,
+  PersonEntryRow? existing,
+}) {
   showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
-    builder: (_) => _EntrySheet(personId: personId, direction: direction),
+    builder: (_) => _EntrySheet(
+      personId: personId,
+      direction: direction,
+      isRepayment: isRepayment,
+      existing: existing,
+    ),
   );
 }
 
-/// Add a lend/borrow (or a repayment in the opposite direction).
+/// Add a lend/borrow (or a repayment in the opposite direction — or, with
+/// [isRepayment], a repayment explicitly counted as income). With
+/// [existing] set, edits that entry in place instead of creating a new one —
+/// the direction and repayment flag stay fixed to what the entry already
+/// was; only amount, date, note, account and (for a repayment) category
+/// can change.
 class _EntrySheet extends ConsumerStatefulWidget {
-  const _EntrySheet({required this.personId, required this.direction});
+  const _EntrySheet({
+    required this.personId,
+    required this.direction,
+    this.isRepayment = false,
+    this.existing,
+  });
 
   final int personId;
   final PersonDirection direction;
+  final bool isRepayment;
+  final PersonEntryRow? existing;
 
   @override
   ConsumerState<_EntrySheet> createState() => _EntrySheetState();
 }
 
 class _EntrySheetState extends ConsumerState<_EntrySheet> {
-  final _amountController = TextEditingController();
-  final _noteController = TextEditingController();
-  DateTime _date = DateTime.now();
-  DateTime? _dueDate;
+  late final _amountController = TextEditingController(
+    text: widget.existing == null
+        ? ''
+        : MoneyFormat.bare(widget.existing!.amount),
+  );
+  late final _noteController = TextEditingController(
+    text: widget.existing?.note ?? '',
+  );
+  late DateTime _date = widget.existing?.date ?? DateTime.now();
+  late DateTime? _dueDate = widget.existing?.dueDate;
+
   /// `null` == "don't move money", the exception rather than the default.
   int? _accountId;
+
+  /// Required only when [_EntrySheet.isRepayment] is true.
+  late int? _repaymentCategoryId = widget.existing?.categoryId;
   bool _accountInitialised = false;
   String? _amountError;
   bool _saving = false;
 
+  bool get _isEdit => widget.existing != null;
   bool get _theyOwe => widget.direction == PersonDirection.theyOwe;
 
-  /// Preselect a real account the first time we know what accounts exist.
-  ///
-  /// This used to default to "None (just track it)", so logging "Ram owes me
-  /// 500" left every balance untouched and the money silently never moved.
+  /// Preselect an account the first time we know what accounts exist:
+  /// editing starts from whatever the entry already had (including `null` —
+  /// "don't move money" is a real, deliberate choice, not left unset);
+  /// creating a new entry defaults to a real account. That default used to
+  /// be "None (just track it)", so logging "Ram owes me 500" left every
+  /// balance untouched and the money silently never moved.
   void _initAccount(List<AccountRow> accounts) {
-    if (_accountInitialised || accounts.isEmpty) return;
+    if (_accountInitialised) return;
+    if (_isEdit) {
+      _accountInitialised = true;
+      _accountId = widget.existing!.accountId;
+      return;
+    }
+    if (accounts.isEmpty) return;
     _accountInitialised = true;
     // A debit card draws from its bank; either works, but prefer a real holder.
     final holder = accounts.firstWhere(
@@ -403,27 +483,62 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     final note = _noteController.text.trim();
+    if (widget.isRepayment && _repaymentCategoryId == null) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Choose a category for this income')),
+      );
+      return;
+    }
+    if (widget.isRepayment && _accountId == null) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('A repayment counted as income must move money'),
+        ),
+      );
+      return;
+    }
     setState(() {
       _amountError = null;
       _saving = true;
     });
     try {
-      await ref.read(dbProvider).addPersonEntry(
-            personId: widget.personId,
-            direction: widget.direction,
-            amount: amount,
-            date: _date,
-            dueDate: _dueDate,
-            accountId: _accountId,
-            note: note.isEmpty ? null : note,
-          );
+      final db = ref.read(dbProvider);
+      if (_isEdit) {
+        await db.updatePersonEntry(
+          id: widget.existing!.id,
+          direction: widget.direction,
+          amount: amount,
+          date: _date,
+          dueDate: _dueDate,
+          accountId: _accountId,
+          note: note.isEmpty ? null : note,
+          categoryId: widget.isRepayment ? _repaymentCategoryId : null,
+        );
+      } else {
+        await db.addPersonEntry(
+          personId: widget.personId,
+          direction: widget.direction,
+          amount: amount,
+          date: _date,
+          dueDate: _dueDate,
+          accountId: _accountId,
+          note: note.isEmpty ? null : note,
+          categoryId: widget.isRepayment ? _repaymentCategoryId : null,
+        );
+      }
       navigator.pop();
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(
           SnackBar(
             content: Text(
-              _theyOwe ? 'Saved — they owe you' : 'Saved — you owe them',
+              _isEdit
+                  ? 'Entry updated'
+                  : widget.isRepayment
+                  ? 'Saved as income'
+                  : _theyOwe
+                  ? 'Saved — they owe you'
+                  : 'Saved — you owe them',
             ),
           ),
         );
@@ -443,8 +558,29 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
     _initAccount(accounts);
     final accent = _theyOwe ? AppColors.income : AppColors.expense;
 
+    // Editing an old entry can point at an account archived since — the
+    // dropdown's live list never includes those, and a value with no
+    // matching item crashes DropdownButtonFormField. Splice it back in
+    // (labelled) rather than silently dropping which account it was.
+    var dropdownAccounts = accounts;
+    if (_isEdit &&
+        _accountId != null &&
+        !accounts.any((a) => a.id == _accountId)) {
+      final archivedAccounts =
+          ref.watch(archivedAccountsProvider).valueOrNull ??
+          const <AccountRow>[];
+      for (final a in archivedAccounts) {
+        if (a.id == _accountId) {
+          dropdownAccounts = [...accounts, a];
+          break;
+        }
+      }
+    }
+
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
@@ -464,7 +600,13 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
               ),
               const SizedBox(height: 16),
               Text(
-                _theyOwe ? 'They owe you' : 'You owe them',
+                _isEdit
+                    ? 'Edit entry'
+                    : widget.isRepayment
+                    ? 'Mark as repaid'
+                    : _theyOwe
+                    ? 'They owe you'
+                    : 'You owe them',
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: accent,
@@ -472,7 +614,10 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
               ),
               const SizedBox(height: 4),
               Text(
-                _theyOwe
+                widget.isRepayment
+                    ? 'Counts toward your income, under the category you '
+                          'choose below.'
+                    : _theyOwe
                     ? 'You gave money out. Their balance goes up.'
                     : 'You received money. Their balance goes down.',
                 style: theme.textTheme.bodySmall?.copyWith(
@@ -483,8 +628,9 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
               TextField(
                 controller: _amountController,
                 autofocus: true,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 decoration: InputDecoration(
                   labelText: 'Amount',
                   prefixText: '₹ ',
@@ -511,7 +657,10 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () => _pickDate(due: true),
-                      icon: const Icon(Icons.event_available_outlined, size: 18),
+                      icon: const Icon(
+                        Icons.event_available_outlined,
+                        size: 18,
+                      ),
                       label: Text(
                         _dueDate == null
                             ? 'Due date'
@@ -547,15 +696,20 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
                   border: OutlineInputBorder(),
                 ),
                 items: [
-                  for (final a in accounts)
+                  for (final a in dropdownAccounts)
                     DropdownMenuItem<int?>(
                       value: a.id,
-                      child: Text(a.name),
+                      child: Text(
+                        a.isArchived ? '${a.name} (archived)' : a.name,
+                      ),
                     ),
-                  const DropdownMenuItem<int?>(
-                    value: null,
-                    child: Text("Don't move money (just note it)"),
-                  ),
+                  // A repayment counted as income must move real money — see
+                  // the validation in `_save`.
+                  if (!widget.isRepayment)
+                    const DropdownMenuItem<int?>(
+                      value: null,
+                      child: Text("Don't move money (just note it)"),
+                    ),
                 ],
                 onChanged: (value) => setState(() => _accountId = value),
               ),
@@ -563,13 +717,24 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
               Text(
                 _accountId == null
                     ? 'No money will move. This only records who owes whom.'
-                    : 'This amount will leave or enter that account and appear '
-                        "in Transactions. Lending still isn't an expense — it's "
-                        'your money, just held by someone else.',
+                    : widget.isRepayment
+                    ? 'This amount enters that account and posts as '
+                          'income under the category below.'
+                    : 'This amount will leave or enter that account and '
+                          "appear in Transactions. Lending still isn't an "
+                          'expense — it\'s your money, just held by '
+                          'someone else.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
+              if (widget.isRepayment) ...[
+                const SizedBox(height: 14),
+                _RepaymentCategoryField(
+                  categoryId: _repaymentCategoryId,
+                  onChanged: (id) => setState(() => _repaymentCategoryId = id),
+                ),
+              ],
               const SizedBox(height: 18),
               FilledButton(
                 style: FilledButton.styleFrom(
@@ -593,6 +758,42 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Income category picker for a repayment marked to count as income. A plain
+/// dropdown, not the grid sheet Add/Edit Transaction uses — this form is
+/// already a dropdown-heavy sheet, and there's only ever one field to pick.
+class _RepaymentCategoryField extends ConsumerWidget {
+  const _RepaymentCategoryField({
+    required this.categoryId,
+    required this.onChanged,
+  });
+
+  final int? categoryId;
+  final ValueChanged<int?> onChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final categories =
+        ref.watch(categoriesProvider(CategoryKind.income)).valueOrNull ??
+        const <CategoryRow>[];
+    final ids = {for (final c in categories) c.id};
+    final value = ids.contains(categoryId) ? categoryId : null;
+
+    return DropdownButtonFormField<int?>(
+      initialValue: value,
+      isExpanded: true,
+      decoration: const InputDecoration(
+        labelText: 'Category',
+        border: OutlineInputBorder(),
+      ),
+      items: [
+        for (final c in categories)
+          DropdownMenuItem<int?>(value: c.id, child: Text(c.name)),
+      ],
+      onChanged: onChanged,
     );
   }
 }

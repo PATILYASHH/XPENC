@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dark-mode counterpart to values/colors_widget.xml. -->
+<resources>
+    <color name="widget_background">#0E0E10</color>
+    <color name="widget_text_primary">#FFFFFF</color>
+    <color name="widget_text_secondary">#9CA3AF</color>
+    <color name="widget_chip_background">#242427</color>
+    <color name="widget_chip_text">#FFFFFF</color>
+</resources>

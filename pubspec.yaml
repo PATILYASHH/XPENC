@@ -58,6 +58,14 @@ dependencies:
   # Builds account/budget statement PDFs, entirely on-device — no network font
   # fetch, so statements stick to plain ASCII text (see statement_pdf.dart).
   pdf: ^3.11.3
+  # Biometric unlock for the passcode lock screen (Settings > Security).
+  local_auth: ^3.0.2
+  # Hashes the passcode before it ever touches disk — never stored in plain
+  # text (see core/security/passcode.dart).
+  crypto: ^3.0.7
+  # Bridges data to the Android home-screen widget (see android/…/widget) and
+  # routes a tap on it back into the app.
+  home_widget: ^0.9.3
 
 dev_dependencies:
   flutter_test:

@@ -4,8 +4,14 @@ import '../core/money.dart';
 
 // ─── Enums ──────────────────────────────────────────────────────────────────
 
-/// Where money sits. Only Cash, Bank and *credit* Card hold a real balance.
-enum AccountType { cash, bank, card }
+/// Where money sits. Only Cash, Bank, *credit* Card and Pay-later hold a real
+/// balance.
+///
+/// [payLater] is a BNPL-style credit line (Simpl, LazyPay, Amazon Pay Later,
+/// …): spending it goes negative exactly like a credit card, and a payment
+/// posts as a transfer into it — but it is never a physical card, so it gets
+/// its own type rather than a third [CardKind].
+enum AccountType { cash, bank, card, payLater }
 
 /// A credit card is its own (liability) account. A debit card is an instrument
 /// linked to a bank — it never holds its own balance.
@@ -25,8 +31,7 @@ enum TxType { income, expense, transfer, personOut, personIn }
 
 extension TxTypeX on TxType {
   /// Only these two ever count toward income, expense, budgets and reports.
-  bool get isIncomeOrExpense =>
-      this == TxType.income || this == TxType.expense;
+  bool get isIncomeOrExpense => this == TxType.income || this == TxType.expense;
 
   bool get isPersonMovement =>
       this == TxType.personOut || this == TxType.personIn;
@@ -147,8 +152,7 @@ class Transactions extends Table {
   IntColumn get accountId => integer().references(Accounts, #id)();
 
   /// transfer only → destination.
-  IntColumn get toAccountId =>
-      integer().nullable().references(Accounts, #id)();
+  IntColumn get toAccountId => integer().nullable().references(Accounts, #id)();
 
   /// income/expense only. Null for transfers and person movements, by definition.
   IntColumn get categoryId =>
@@ -170,6 +174,12 @@ class Transactions extends Table {
   IntColumn get recurringRuleId =>
       integer().nullable().references(RecurringRules, #id)();
 
+  /// Absolute path to a receipt photo copied into the app's own documents
+  /// directory (see `receipt_storage.dart`) — never a path the app doesn't
+  /// own, so nothing depends on a picked file surviving where it was picked
+  /// from. Null means no receipt attached.
+  TextColumn get imagePath => text().nullable()();
+
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
@@ -181,13 +191,14 @@ class Budgets extends Table {
   IntColumn get amount => integer().map(const MoneyConverter())();
   TextColumn get period => textEnum<BudgetPeriod>()();
   DateTimeColumn get startDate => dateTime()();
-  IntColumn get alertThresholdPct => integer().withDefault(const Constant(80))();
+  IntColumn get alertThresholdPct =>
+      integer().withDefault(const Constant(80))();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
 
   @override
   List<Set<Column>> get uniqueKeys => [
-        {categoryId},
-      ];
+    {categoryId},
+  ];
 }
 
 @DataClassName('PersonRow')
@@ -225,6 +236,15 @@ class PersonEntries extends Table {
   /// Set when [accountId] is set — the ledger row that moved the money.
   IntColumn get transactionId =>
       integer().nullable().references(Transactions, #id)();
+
+  /// Set only on a **repayment** — an [PersonDirection.iOwe] entry the user
+  /// chose to count as income (see [Settings.countRepaymentsAsIncome]).
+  /// When set, [transactionId] points at a real [TxType.income] row instead
+  /// of the usual [TxType.personIn], so it counts in every income total the
+  /// ordinary way. Null for every other entry — lending and borrowing are
+  /// never income or expense.
+  IntColumn get categoryId =>
+      integer().nullable().references(Categories, #id)();
 
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
@@ -314,14 +334,42 @@ class Settings extends Table {
 
   /// A `ThemePreset.name`. Stored as text rather than an enum index, so
   /// reordering the enum can never silently repaint someone's app.
-  TextColumn get themeName =>
-      text().withLength(min: 1, max: 30).withDefault(const Constant('system'))();
+  TextColumn get themeName => text()
+      .withLength(min: 1, max: 30)
+      .withDefault(const Constant('system'))();
 
   /// When false, amounts render as bare numbers — the escape hatch for a
   /// currency whose symbol we don't carry. [currencyCode] still governs grouping
   /// and decimals.
   BoolColumn get showCurrencySymbol =>
       boolean().withDefault(const Constant(true))();
+
+  /// When true, [PersonDetailScreen] offers "Mark as repaid" — a repayment
+  /// entry that posts as real income (with a chosen category) instead of the
+  /// usual [TxType.personIn], so it counts toward income totals and reports.
+  /// Off by default: lending/borrowing stays out of income/expense unless
+  /// asked for.
+  BoolColumn get countRepaymentsAsIncome =>
+      boolean().withDefault(const Constant(false))();
+
+  /// A salted SHA-256 hash — never the passcode itself. Null means no
+  /// passcode is set, the default, and the app never locks.
+  TextColumn get passcodeHash => text().nullable()();
+  TextColumn get passcodeSalt => text().nullable()();
+
+  /// Only ever offered as a shortcut once [passcodeHash] is set — the PIN
+  /// stays the fallback whenever biometrics fail or aren't enrolled.
+  BoolColumn get biometricEnabled =>
+      boolean().withDefault(const Constant(false))();
+
+  /// A daily nudge — "log today's spending" — distinct from [Reminders],
+  /// which are always for one specific planned payment.
+  BoolColumn get expenseReminderEnabled =>
+      boolean().withDefault(const Constant(false))();
+  IntColumn get expenseReminderHour =>
+      integer().withDefault(const Constant(20))();
+  IntColumn get expenseReminderMinute =>
+      integer().withDefault(const Constant(0))();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -369,8 +417,8 @@ class PendingTxns extends Table {
 
   @override
   List<Set<Column>> get uniqueKeys => [
-        {dedupeKey},
-      ];
+    {dedupeKey},
+  ];
 }
 
 /// Learned "this merchant means this category" mappings. Auto-Approve only ever
@@ -386,8 +434,8 @@ class MerchantRules extends Table {
 
   @override
   List<Set<Column>> get uniqueKeys => [
-        {matchPattern},
-      ];
+    {matchPattern},
+  ];
 }
 
 /// Which SMS sender IDs belong to which bank.
@@ -400,8 +448,94 @@ class SenderRules extends Table {
 
   @override
   List<Set<Column>> get uniqueKeys => [
-        {senderPattern},
-      ];
+    {senderPattern},
+  ];
+}
+
+/// A short, user-defined label (e.g. "Work trip", "Tax deductible") that can
+/// be pinned to any number of transactions, cutting across category and
+/// account — unlike a category, a transaction can carry several at once.
+@DataClassName('TagRow')
+class Tags extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text().withLength(min: 1, max: 30)();
+  IntColumn get colorValue => integer()();
+
+  @override
+  List<Set<Column>> get uniqueKeys => [
+    {name},
+  ];
+}
+
+/// Many-to-many join: which tags sit on which transaction.
+@DataClassName('TransactionTagRow')
+class TransactionTags extends Table {
+  IntColumn get transactionId => integer().references(Transactions, #id)();
+  IntColumn get tagId => integer().references(Tags, #id)();
+
+  @override
+  Set<Column> get primaryKey => {transactionId, tagId};
+}
+
+/// One named shopping list (e.g. "Weekly groceries", "Diwali"). A user can
+/// keep any number of these side by side — see [ShoppingItems].
+@DataClassName('ShoppingListRow')
+class ShoppingLists extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text().withLength(min: 1, max: 60)();
+  IntColumn get colorValue => integer()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// One item on a [ShoppingLists] list. Deliberately not linked to the
+/// ledger: checking an item off doesn't post anything, it's just a plan for a
+/// transaction someone adds separately when they actually buy it.
+@DataClassName('ShoppingItemRow')
+class ShoppingItems extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  /// Nullable only because SQLite can't add a NOT NULL column to a table
+  /// that already has rows without a default — every item made before named
+  /// lists existed gets backfilled onto one default list during the v17
+  /// migration, and every item from then on always gets one at insert time
+  /// (see AppDatabase.addShoppingItem). Never actually null in practice.
+  IntColumn get listId => integer().nullable().references(ShoppingLists, #id)();
+
+  TextColumn get name => text().withLength(min: 1, max: 120)();
+  IntColumn get estimatedAmount =>
+      integer().map(const MoneyConverter()).nullable()();
+  BoolColumn get isChecked => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// A savings target linked to a real account. Progress is never a separate
+/// number to keep in sync — it's read live from the linked account's balance,
+/// so "contributing" is just an ordinary transfer or deposit into that
+/// account through the normal Add Transaction flow. No parallel ledger, no
+/// double-counting, nothing that can drift from the real money.
+@DataClassName('SavingsGoalRow')
+class SavingsGoals extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text().withLength(min: 1, max: 60)();
+  IntColumn get targetAmount => integer().map(const MoneyConverter())();
+  DateTimeColumn get targetDate => dateTime().nullable()();
+  IntColumn get accountId => integer().references(Accounts, #id)();
+  IntColumn get colorValue => integer()();
+  TextColumn get iconKey => text().withLength(min: 1, max: 40)();
+  BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// One category's slice of a split expense. A transaction with 2+ rows here
+/// is "split" — its own [Transactions.categoryId] is null, exactly like a
+/// transfer has none, because there is no single category left to name. The
+/// row amounts must sum to the parent transaction's [Transactions.amount].
+@DataClassName('TransactionSplitRow')
+class TransactionSplits extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get transactionId => integer().references(Transactions, #id)();
+  IntColumn get categoryId => integer().references(Categories, #id)();
+  IntColumn get amount => integer().map(const MoneyConverter())();
 }
 
 /// One row per (category, period, level) so an alert fires at most once.
@@ -417,6 +551,6 @@ class BudgetAlerts extends Table {
 
   @override
   List<Set<Column>> get uniqueKeys => [
-        {categoryId, periodKey, level},
-      ];
+    {categoryId, periodKey, level},
+  ];
 }

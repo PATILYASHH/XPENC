@@ -19,12 +19,15 @@ class MoreScreen extends ConsumerWidget {
     // ── Live badges ──────────────────────────────────────────────────────────
     final progress = ref.watch(budgetProgressProvider);
     final overCount = progress.where((p) => p.overspent).length;
-    final budgetSubtitle =
-        overCount > 0 ? '$overCount over budget' : '${progress.length} active';
-    final budgetSubtitleColor =
-        overCount > 0 ? AppColors.expense : cs.onSurfaceVariant;
+    final budgetSubtitle = overCount > 0
+        ? '$overCount over budget'
+        : '${progress.length} active';
+    final budgetSubtitleColor = overCount > 0
+        ? AppColors.expense
+        : cs.onSurfaceVariant;
 
-    final netWorth = ref.watch(netWorthProvider).valueOrNull ?? const Money.zero();
+    final netWorth =
+        ref.watch(netWorthProvider).valueOrNull ?? const Money.zero();
 
     final rules = ref.watch(recurringRulesProvider).valueOrNull ?? const [];
     final activeRuleCount = rules.where((r) => r.isActive).length;
@@ -58,6 +61,18 @@ class MoreScreen extends ConsumerWidget {
           'Payees',
           route: '/more/payees',
           subtitle: 'Who you pay, and how much',
+        ),
+        _Item(
+          Icons.savings_outlined,
+          'Savings Goals',
+          route: '/more/savings',
+          subtitle: 'Track progress toward a target',
+        ),
+        _Item(
+          Icons.checklist_outlined,
+          'Shopping List',
+          route: '/more/shopping',
+          subtitle: 'Plan what to buy',
         ),
       ]),
       _Group('Insights', [
@@ -100,6 +115,12 @@ class MoreScreen extends ConsumerWidget {
           'Categories',
           route: '/more/categories',
           subtitle: 'Income & expense categories',
+        ),
+        _Item(
+          Icons.sell_outlined,
+          'Tags',
+          route: '/more/tags',
+          subtitle: 'Label transactions, cutting across category',
         ),
         _Item(
           Icons.sms_outlined,
@@ -184,8 +205,9 @@ class _MoreTile extends StatelessWidget {
       ),
       subtitle: Text(
         item.subtitle,
-        style: theme.textTheme.bodySmall
-            ?.copyWith(color: item.subtitleColor ?? cs.onSurfaceVariant),
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: item.subtitleColor ?? cs.onSurfaceVariant,
+        ),
       ),
       trailing: const Icon(Icons.chevron_right_rounded),
       onTap: () => context.push(item.route),

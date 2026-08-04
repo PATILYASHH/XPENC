@@ -27,6 +27,7 @@ class DashboardScreen extends ConsumerWidget {
     _ThisMonthCard(),
     _AccountsStrip(),
     _PersonsSection(),
+    _UpcomingSection(),
     _BudgetsSection(),
     _SpendByCategorySection(),
     _RecentSection(),
@@ -275,8 +276,8 @@ class _NetWorthCard extends ConsumerWidget {
     final tint = !trendReady || delta.isZero
         ? theme.colorScheme.onSurfaceVariant
         : delta.isNegative
-            ? AppColors.expense
-            : AppColors.income;
+        ? AppColors.expense
+        : AppColors.income;
 
     return Padding(
       padding: _sectionPad,
@@ -333,7 +334,8 @@ class _NetWorthCard extends ConsumerWidget {
                     for (final point in trend) point.value.paise.toDouble(),
                   ],
                   color: tint,
-                  background: theme.cardTheme.color ?? theme.colorScheme.surface,
+                  background:
+                      theme.cardTheme.color ?? theme.colorScheme.surface,
                 )
               else
                 const SizedBox(height: 22),
@@ -407,8 +409,10 @@ class _ThisMonthCardState extends ConsumerState<_ThisMonthCard> {
   void _step(int months) {
     setState(() => _direction = months);
     final m = ref.read(selectedMonthProvider);
-    ref.read(selectedMonthProvider.notifier).state =
-        DateTime(m.year, m.month + months);
+    ref.read(selectedMonthProvider.notifier).state = DateTime(
+      m.year,
+      m.month + months,
+    );
   }
 
   @override
@@ -604,8 +608,8 @@ class _NetLine extends StatelessWidget {
     final color = net.isZero
         ? theme.colorScheme.onSurfaceVariant
         : net.isNegative
-            ? AppColors.expense
-            : AppColors.income;
+        ? AppColors.expense
+        : AppColors.income;
 
     return Row(
       children: [
@@ -668,14 +672,10 @@ class _AccountsStrip extends ConsumerWidget {
           ),
         );
       },
-      loading: () => const Padding(
-        padding: _sectionPad,
-        child: _InlineLoader(),
-      ),
-      error: (_, _) => const Padding(
-        padding: _sectionPad,
-        child: _InlineError(),
-      ),
+      loading: () =>
+          const Padding(padding: _sectionPad, child: _InlineLoader()),
+      error: (_, _) =>
+          const Padding(padding: _sectionPad, child: _InlineError()),
     );
   }
 }
@@ -787,8 +787,9 @@ class _PersonsSection extends ConsumerWidget {
     // person is off the books; the dashboard is for what still needs settling.
     Money balanceOf(PersonRow p) => balances[p.id] ?? const Money.zero();
     final outstanding = persons.where((p) => !balanceOf(p).isZero).toList()
-      ..sort((a, b) =>
-          balanceOf(b).paise.abs().compareTo(balanceOf(a).paise.abs()));
+      ..sort(
+        (a, b) => balanceOf(b).paise.abs().compareTo(balanceOf(a).paise.abs()),
+      );
 
     if (outstanding.isEmpty) return const SizedBox.shrink();
 
@@ -858,21 +859,36 @@ class _DuesOwesRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: _column(theme, "You'll get", youGet, AppColors.income,
-                Icons.south_west_rounded),
+            child: _column(
+              theme,
+              "You'll get",
+              youGet,
+              AppColors.income,
+              Icons.south_west_rounded,
+            ),
           ),
           Container(width: 1, height: 40, color: theme.colorScheme.outline),
           Expanded(
-            child: _column(theme, "You'll pay", youPay, AppColors.expense,
-                Icons.north_east_rounded),
+            child: _column(
+              theme,
+              "You'll pay",
+              youPay,
+              AppColors.expense,
+              Icons.north_east_rounded,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _column(ThemeData theme, String label, Money amount, Color color,
-      IconData icon) {
+  Widget _column(
+    ThemeData theme,
+    String label,
+    Money amount,
+    Color color,
+    IconData icon,
+  ) {
     return Column(
       children: [
         Row(
@@ -922,8 +938,9 @@ class _PersonDuesTile extends StatelessWidget {
     final owesYou = balance.isPositive;
     final color = owesYou ? AppColors.income : AppColors.expense;
     final status = owesYou ? 'Owes you' : 'You owe';
-    final statusIcon =
-        owesYou ? Icons.south_west_rounded : Icons.north_east_rounded;
+    final statusIcon = owesYou
+        ? Icons.south_west_rounded
+        : Icons.north_east_rounded;
 
     return ListTile(
       onTap: () => context.push('/person/${person.id}'),
@@ -987,6 +1004,127 @@ String _initials(String name) {
   if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
   return (parts.first.substring(0, 1) + parts.last.substring(0, 1))
       .toUpperCase();
+}
+
+// ── 3.5 Upcoming ─────────────────────────────────────────────────────────
+
+/// Cash reminders and Auto rules due within the next two weeks, nearest
+/// first — a glance at what needs money soon, before it's due.
+class _UpcomingSection extends ConsumerWidget {
+  const _UpcomingSection();
+
+  static const _windowDays = 14;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final items = ref.watch(upcomingPaymentsProvider(_windowDays));
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    final top = items.take(5).toList();
+    final extra = items.length - top.length;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SectionHeader(
+            'Upcoming',
+            trailing: TextButton(
+              onPressed: () => context.push('/more/calendar'),
+              child: const Text('See all'),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Card(
+              margin: EdgeInsets.zero,
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                children: [
+                  for (var i = 0; i < top.length; i++) ...[
+                    if (i > 0)
+                      const Divider(height: 1, indent: 64, endIndent: 16),
+                    _UpcomingTile(item: top[i]),
+                  ],
+                  if (extra > 0)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton(
+                          onPressed: () => context.push('/more/calendar'),
+                          child: Text('$extra more'),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UpcomingTile extends StatelessWidget {
+  const _UpcomingTile({required this.item});
+
+  final UpcomingItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = item.isOutgoing ? AppColors.expense : AppColors.income;
+    final icon = item.isReminder
+        ? Icons.notifications_outlined
+        : Icons.autorenew_rounded;
+
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      onTap: () =>
+          context.push(item.isReminder ? '/more/calendar' : '/more/auto'),
+      leading: CircleAvatar(
+        backgroundColor: color.withValues(alpha: 0.14),
+        foregroundColor: color,
+        child: Icon(icon, size: 18),
+      ),
+      title: Text(
+        item.title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+      ),
+      subtitle: Text(
+        _dueLabel(item.date),
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+      trailing: item.amount == null
+          ? null
+          : MoneyText(
+              item.isOutgoing ? -item.amount! : item.amount!,
+              signed: true,
+              color: color,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+    );
+  }
+
+  String _dueLabel(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(date.year, date.month, date.day);
+    final diff = day.difference(today).inDays;
+    if (diff < 0) return 'Overdue';
+    if (diff == 0) return 'Today';
+    if (diff == 1) return 'Tomorrow';
+    return DateFormat('EEE, d MMM').format(date);
+  }
 }
 
 // ── 4. Budgets ────────────────────────────────────────────────────────────
@@ -1060,7 +1198,9 @@ class _SetBudgetCard extends StatelessWidget {
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: theme.colorScheme.secondary.withValues(alpha: 0.12),
+                      color: theme.colorScheme.secondary.withValues(
+                        alpha: 0.12,
+                      ),
                     ),
                     child: Icon(
                       Icons.pie_chart_outline_rounded,
@@ -1113,8 +1253,8 @@ class _BudgetRow extends StatelessWidget {
     final barColor = progress.overspent
         ? AppColors.expense
         : progress.nearingLimit
-            ? Colors.amber
-            : theme.colorScheme.secondary;
+        ? Colors.amber
+        : theme.colorScheme.secondary;
 
     final left = progress.budget.amount - progress.spent;
 
@@ -1233,14 +1373,10 @@ class _SpendByCategorySection extends ConsumerWidget {
           ),
         );
       },
-      loading: () => const Padding(
-        padding: _sectionPad,
-        child: _InlineLoader(),
-      ),
-      error: (_, _) => const Padding(
-        padding: _sectionPad,
-        child: _InlineError(),
-      ),
+      loading: () =>
+          const Padding(padding: _sectionPad, child: _InlineLoader()),
+      error: (_, _) =>
+          const Padding(padding: _sectionPad, child: _InlineError()),
     );
   }
 }
@@ -1318,6 +1454,7 @@ class _RecentSection extends ConsumerWidget {
     final cats = ref.watch(categoryMapProvider);
     final accounts = ref.watch(accountMapProvider);
     final persons = ref.watch(personMapProvider);
+    final splitsByTx = ref.watch(transactionSplitsByTxProvider);
 
     return recent.when(
       data: (list) {
@@ -1355,6 +1492,7 @@ class _RecentSection extends ConsumerWidget {
                           person: top[i].personId == null
                               ? null
                               : persons[top[i].personId],
+                          isSplit: splitsByTx[top[i].id]?.isNotEmpty ?? false,
                         ),
                       ],
                     ],
@@ -1365,14 +1503,10 @@ class _RecentSection extends ConsumerWidget {
           ),
         );
       },
-      loading: () => const Padding(
-        padding: _sectionPad,
-        child: _InlineLoader(),
-      ),
-      error: (_, _) => const Padding(
-        padding: _sectionPad,
-        child: _InlineError(),
-      ),
+      loading: () =>
+          const Padding(padding: _sectionPad, child: _InlineLoader()),
+      error: (_, _) =>
+          const Padding(padding: _sectionPad, child: _InlineError()),
     );
   }
 }
@@ -1383,12 +1517,18 @@ class _TxRow extends StatelessWidget {
     required this.category,
     required this.account,
     required this.person,
+    this.isSplit = false,
   });
 
   final TransactionRow tx;
   final CategoryRow? category;
   final AccountRow? account;
   final PersonRow? person;
+
+  /// True for a split expense — see [TransactionSplits]. It has no [category]
+  /// of its own, so it needs its own icon and label rather than falling into
+  /// the "Uncategorised" nudge below.
+  final bool isSplit;
 
   @override
   Widget build(BuildContext context) {
@@ -1400,17 +1540,23 @@ class _TxRow extends StatelessWidget {
     // or a person movement has no category, and falls back to its own glyph.
     final iconColor = hasCategory
         ? Color(category!.colorValue)
+        : isSplit
+        ? theme.colorScheme.secondary
         : colorForTxType(tx.type);
     final icon = hasCategory
         ? AppIcons.resolve(category!.iconKey)
+        : isSplit
+        ? Icons.call_split_rounded
         : iconForTxType(tx.type);
     // An income or expense with no category says so, because that is a nudge to
     // fix it. A transfer or person movement has nothing to categorise.
     final title = hasCategory
         ? category!.name
+        : isSplit
+        ? 'Split'
         : (tx.type == TxType.income || tx.type == TxType.expense)
-            ? 'Uncategorised'
-            : labelForTxType(tx.type, personName: person?.name);
+        ? 'Uncategorised'
+        : labelForTxType(tx.type, personName: person?.name);
 
     final subtitle =
         '${account?.name ?? 'Account'} · ${DateFormat('d MMM').format(tx.date)}';
@@ -1452,18 +1598,37 @@ class _TxRow extends StatelessWidget {
       fontWeight: FontWeight.w700,
     );
     return switch (tx.type) {
-      TxType.income => MoneyText(tx.amount,
-          signed: true, color: AppColors.income, style: style),
-      TxType.expense => MoneyText(-tx.amount,
-          signed: true, color: AppColors.expense, style: style),
-      TxType.transfer =>
-        MoneyText(tx.amount, color: AppColors.transfer, style: style),
+      TxType.income => MoneyText(
+        tx.amount,
+        signed: true,
+        color: AppColors.income,
+        style: style,
+      ),
+      TxType.expense => MoneyText(
+        -tx.amount,
+        signed: true,
+        color: AppColors.expense,
+        style: style,
+      ),
+      TxType.transfer => MoneyText(
+        tx.amount,
+        color: AppColors.transfer,
+        style: style,
+      ),
       // Money really left/entered the account, so it is signed — but purple,
       // because lending is not spending and repayment is not income.
-      TxType.personOut => MoneyText(-tx.amount,
-          signed: true, color: AppColors.person, style: style),
-      TxType.personIn => MoneyText(tx.amount,
-          signed: true, color: AppColors.person, style: style),
+      TxType.personOut => MoneyText(
+        -tx.amount,
+        signed: true,
+        color: AppColors.person,
+        style: style,
+      ),
+      TxType.personIn => MoneyText(
+        tx.amount,
+        signed: true,
+        color: AppColors.person,
+        style: style,
+      ),
     };
   }
 }

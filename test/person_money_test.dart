@@ -20,8 +20,9 @@ void main() {
   Future<int> catId(CategoryKind k, String n) async =>
       (await db.watchCategories(k).first).firstWhere((c) => c.name == n).id;
 
-  Future<Money> balance(int id) async =>
-      (await db.watchAccounts().first).firstWhere((a) => a.id == id).currentBalance;
+  Future<Money> balance(int id) async => (await db.watchAccounts().first)
+      .firstWhere((a) => a.id == id)
+      .currentBalance;
 
   Future<void> seedCash(Money amount) async {
     await db.addTransaction(
@@ -80,10 +81,16 @@ void main() {
       );
 
       expect(await balance(cash), Money.fromRupees(5000));
-      expect(await db.watchPersonBalance(ram).first, Money.fromRupees(500),
-          reason: 'the debt is still recorded');
-      expect(await db.watchTransactions().first, hasLength(1),
-          reason: 'no ledger row without an account');
+      expect(
+        await db.watchPersonBalance(ram).first,
+        Money.fromRupees(500),
+        reason: 'the debt is still recorded',
+      );
+      expect(
+        await db.watchTransactions().first,
+        hasLength(1),
+        reason: 'no ledger row without an account',
+      );
     });
   });
 
@@ -152,15 +159,17 @@ void main() {
 
       final totals = await db.watchMonthTotals(DateTime(2026, 7)).first;
       expect(totals.income, Money.fromRupees(5000), reason: 'only the salary');
-      expect(totals.expense, const Money.zero(),
-          reason: 'lending is not spending');
+      expect(
+        totals.expense,
+        const Money.zero(),
+        reason: 'lending is not spending',
+      );
     });
 
     test('budgets never see person movements', () async {
       final cash = await cashId();
       final start = DateTime(2026, 7);
-      final end =
-          DateTime(2026, 8).subtract(const Duration(milliseconds: 1));
+      final end = DateTime(2026, 8).subtract(const Duration(milliseconds: 1));
 
       final ram = await db.addPerson('Ram');
       await db.addPersonEntry(
@@ -195,8 +204,11 @@ void main() {
 
       expect(await balance(cash), Money.fromRupees(5000));
       expect(await db.watchPersonBalance(ram).first, const Money.zero());
-      expect(await db.watchTransactions().first, hasLength(1),
-          reason: 'only the salary remains');
+      expect(
+        await db.watchTransactions().first,
+        hasLength(1),
+        reason: 'only the salary remains',
+      );
     });
 
     test('the ledger row cannot be deleted on its own', () async {
@@ -212,8 +224,11 @@ void main() {
       final tx = (await db.watchTransactions().first).single;
 
       await expectLater(db.deleteTransaction(tx.id), throwsArgumentError);
-      expect(await balance(cash), Money.fromRupees(-500),
-          reason: 'nothing was reversed');
+      expect(
+        await balance(cash),
+        Money.fromRupees(-500),
+        reason: 'nothing was reversed',
+      );
     });
   });
 
@@ -242,8 +257,11 @@ void main() {
       expect(await balance(cash), Money.fromRupees(5000));
 
       final totals = await db.watchMonthTotals(DateTime(2026, 7)).first;
-      expect(totals.income, Money.fromRupees(5000),
-          reason: 'being repaid is not earning');
+      expect(
+        totals.income,
+        Money.fromRupees(5000),
+        reason: 'being repaid is not earning',
+      );
       expect(totals.expense, const Money.zero());
     });
   });
@@ -289,8 +307,10 @@ void main() {
 
       expect(await fresh.watchNetWorth().first, Money.fromRupees(4500));
       final people = await fresh.watchPersons().first;
-      expect(await fresh.watchPersonBalance(people.single.id).first,
-          Money.fromRupees(500));
+      expect(
+        await fresh.watchPersonBalance(people.single.id).first,
+        Money.fromRupees(500),
+      );
       final txs = await fresh.watchTransactions().first;
       expect(txs.where((t) => t.type == TxType.personOut), hasLength(1));
     });
@@ -322,6 +342,140 @@ void main() {
         ),
         throwsArgumentError,
       );
+    });
+  });
+
+  group('editing an entry', () {
+    test(
+      'changing the amount reverses the old movement and applies the new one',
+      () async {
+        final cash = await cashId();
+        await seedCash(Money.fromRupees(5000));
+        final ram = await db.addPerson('Ram');
+
+        final entryId = await db.addPersonEntry(
+          personId: ram,
+          direction: PersonDirection.theyOwe,
+          amount: Money.fromRupees(500),
+          date: DateTime(2026, 7, 5),
+          accountId: cash,
+        );
+        expect(await balance(cash), Money.fromRupees(4500));
+
+        await db.updatePersonEntry(
+          id: entryId,
+          direction: PersonDirection.theyOwe,
+          amount: Money.fromRupees(800),
+          date: DateTime(2026, 7, 5),
+          accountId: cash,
+        );
+
+        // Only ever one ledger row for this entry, and the balance reflects
+        // the new amount, not both old and new stacked on top of each other.
+        expect(await balance(cash), Money.fromRupees(4200));
+        expect(await db.watchPersonBalance(ram).first, Money.fromRupees(800));
+        final txs = (await db.watchTransactions().first)
+            .where((t) => t.type == TxType.personOut)
+            .toList();
+        expect(txs, hasLength(1));
+        expect(txs.single.amount, Money.fromRupees(800));
+
+        final entry = (await db.watchPersonEntries(ram).first).single;
+        expect(entry.transactionId, txs.single.id);
+      },
+    );
+
+    test(
+      'switching from "just note it" to moving money creates a ledger row',
+      () async {
+        final cash = await cashId();
+        await seedCash(Money.fromRupees(5000));
+        final ram = await db.addPerson('Ram');
+
+        final entryId = await db.addPersonEntry(
+          personId: ram,
+          direction: PersonDirection.theyOwe,
+          amount: Money.fromRupees(500),
+          date: DateTime(2026, 7, 5),
+        );
+        expect(await balance(cash), Money.fromRupees(5000));
+        expect(
+          await db.watchTransactions().first,
+          hasLength(1),
+        ); // just the seed
+
+        await db.updatePersonEntry(
+          id: entryId,
+          direction: PersonDirection.theyOwe,
+          amount: Money.fromRupees(500),
+          date: DateTime(2026, 7, 5),
+          accountId: cash,
+        );
+
+        expect(await balance(cash), Money.fromRupees(4500));
+        final txs = await db.watchTransactions().first;
+        expect(txs.where((t) => t.type == TxType.personOut), hasLength(1));
+      },
+    );
+
+    test(
+      'switching to "just note it" reverses the money and drops the link',
+      () async {
+        final cash = await cashId();
+        await seedCash(Money.fromRupees(5000));
+        final ram = await db.addPerson('Ram');
+
+        final entryId = await db.addPersonEntry(
+          personId: ram,
+          direction: PersonDirection.theyOwe,
+          amount: Money.fromRupees(500),
+          date: DateTime(2026, 7, 5),
+          accountId: cash,
+        );
+        expect(await balance(cash), Money.fromRupees(4500));
+
+        await db.updatePersonEntry(
+          id: entryId,
+          direction: PersonDirection.theyOwe,
+          amount: Money.fromRupees(500),
+          date: DateTime(2026, 7, 5),
+          accountId: null,
+        );
+
+        expect(await balance(cash), Money.fromRupees(5000));
+        expect(await db.watchPersonBalance(ram).first, Money.fromRupees(500));
+        final entry = (await db.watchPersonEntries(ram).first).single;
+        expect(entry.transactionId, isNull);
+        expect(
+          await db.watchTransactions().first,
+          hasLength(1),
+        ); // just the seed
+      },
+    );
+
+    test('id and creation order survive an edit', () async {
+      final cash = await cashId();
+      final ram = await db.addPerson('Ram');
+      final entryId = await db.addPersonEntry(
+        personId: ram,
+        direction: PersonDirection.theyOwe,
+        amount: Money.fromRupees(500),
+        date: DateTime(2026, 7, 5),
+        accountId: cash,
+      );
+
+      await db.updatePersonEntry(
+        id: entryId,
+        direction: PersonDirection.theyOwe,
+        amount: Money.fromRupees(500),
+        date: DateTime(2026, 7, 5),
+        accountId: cash,
+        note: 'Edited note',
+      );
+
+      final entry = (await db.watchPersonEntries(ram).first).single;
+      expect(entry.id, entryId);
+      expect(entry.note, 'Edited note');
     });
   });
 }

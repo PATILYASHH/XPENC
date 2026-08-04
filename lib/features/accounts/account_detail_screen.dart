@@ -71,8 +71,7 @@ class _AccountDetailView extends ConsumerWidget {
     final txAsync = ref.watch(accountTransactionsProvider(account.id));
 
     final isDebitCard = account.linkedAccountId != null;
-    final linkedBank =
-        isDebitCard ? accountMap[account.linkedAccountId] : null;
+    final linkedBank = isDebitCard ? accountMap[account.linkedAccountId] : null;
 
     // Instruments that spend on *this* account: the account itself, plus any
     // debit card that draws from it. Money leaving any of these is money out.
@@ -201,8 +200,9 @@ class _HeaderCard extends StatelessWidget {
 
   bool get _isDebitCard => account.linkedAccountId != null;
   bool get _isCreditCard =>
-      account.type == AccountType.card &&
-      account.cardKind == CardKind.credit;
+      account.type == AccountType.card && account.cardKind == CardKind.credit;
+  bool get _isPayLater => account.type == AccountType.payLater;
+  bool get _owesLikeCredit => _isCreditCard || _isPayLater;
 
   @override
   Widget build(BuildContext context) {
@@ -217,10 +217,11 @@ class _HeaderCard extends StatelessWidget {
     final String contextLine;
     final Color contextColor;
     if (_isDebitCard) {
-      contextLine = 'This card has no balance of its own. It spends from '
+      contextLine =
+          'This card has no balance of its own. It spends from '
           '${linkedBank?.name ?? 'its linked bank'}.';
       contextColor = cs.onSurfaceVariant;
-    } else if (_isCreditCard) {
+    } else if (_owesLikeCredit) {
       if (account.currentBalance.isNegative) {
         contextLine = 'Outstanding — you owe this';
         contextColor = AppColors.expense;
@@ -268,7 +269,9 @@ class _HeaderCard extends StatelessWidget {
               const SizedBox(height: 6),
               Text(
                 contextLine,
-                style: theme.textTheme.bodyMedium?.copyWith(color: contextColor),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: contextColor,
+                ),
               ),
               const SizedBox(height: 16),
               Wrap(spacing: 8, runSpacing: 8, children: chips),
@@ -327,8 +330,8 @@ class _DayHeader extends StatelessWidget {
     final Color netColor = net.isPositive
         ? AppColors.income
         : net.isNegative
-            ? AppColors.expense
-            : theme.colorScheme.onSurfaceVariant;
+        ? AppColors.expense
+        : theme.colorScheme.onSurfaceVariant;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
@@ -347,8 +350,9 @@ class _DayHeader extends StatelessWidget {
             net,
             signed: true,
             color: netColor,
-            style:
-                theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -379,13 +383,12 @@ class _HistoryRow extends StatelessWidget {
     final Color accent = isTransfer
         ? AppColors.transfer
         : (category != null
-            ? Color(category.colorValue)
-            : theme.colorScheme.onSurfaceVariant);
+              ? Color(category.colorValue)
+              : theme.colorScheme.onSurfaceVariant);
     final IconData icon = isTransfer
         ? Icons.swap_horiz_rounded
         : AppIcons.resolve(category?.iconKey ?? 'other');
-    final title =
-        isTransfer ? 'Transfer' : (category?.name ?? 'Uncategorised');
+    final title = isTransfer ? 'Transfer' : (category?.name ?? 'Uncategorised');
 
     // Signed movement: negative = money out of this account, positive = in.
     final movement = accountMovement(tx, ownIds);
@@ -407,7 +410,9 @@ class _HistoryRow extends StatelessWidget {
         movement,
         signed: true,
         color: colorForTxType(tx.type),
-        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        style: theme.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
@@ -418,7 +423,9 @@ class _HistoryRow extends StatelessWidget {
       final out = ownIds.contains(tx.accountId);
       final otherId = out ? tx.toAccountId : tx.accountId;
       final other = otherId == null ? null : accountMap[otherId];
-      final base = out ? 'To ${other?.name ?? '—'}' : 'From ${other?.name ?? '—'}';
+      final base = out
+          ? 'To ${other?.name ?? '—'}'
+          : 'From ${other?.name ?? '—'}';
       return (note != null && note.isNotEmpty) ? '$base · $note' : base;
     }
     return (note != null && note.isNotEmpty) ? note : null;
@@ -428,10 +435,11 @@ class _HistoryRow extends StatelessWidget {
 // ── Direction ─────────────────────────────────────────────────────────────
 
 String _typeLabel(AccountType type) => switch (type) {
-      AccountType.cash => 'Cash',
-      AccountType.bank => 'Bank',
-      AccountType.card => 'Card',
-    };
+  AccountType.cash => 'Cash',
+  AccountType.bank => 'Bank',
+  AccountType.card => 'Card',
+  AccountType.payLater => 'Pay later',
+};
 
 String _dayLabel(DateTime day) {
   final now = DateTime.now();
@@ -467,12 +475,16 @@ Future<void> _downloadStatement(
     if (!context.mounted) return;
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('Exported ${file.uri.pathSegments.last}')));
+      ..showSnackBar(
+        SnackBar(content: Text('Exported ${file.uri.pathSegments.last}')),
+      );
   } catch (e) {
     if (!context.mounted) return;
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text("Couldn't generate statement: $e")));
+      ..showSnackBar(
+        SnackBar(content: Text("Couldn't generate statement: $e")),
+      );
   }
 }
 
@@ -496,10 +508,9 @@ Future<DateTimeRange?> _pickStatementRange(BuildContext context) async {
               alignment: Alignment.centerLeft,
               child: Text(
                 'Statement period',
-                style: Theme.of(sheetContext)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w700),
+                style: Theme.of(
+                  sheetContext,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
               ),
             ),
           ),
@@ -529,7 +540,10 @@ Future<DateTimeRange?> _pickStatementRange(BuildContext context) async {
     case 'this':
       return DateTimeRange(
         start: DateTime(now.year, now.month),
-        end: DateTime(now.year, now.month + 1).subtract(const Duration(days: 1)),
+        end: DateTime(
+          now.year,
+          now.month + 1,
+        ).subtract(const Duration(days: 1)),
       );
     case 'last':
       return DateTimeRange(
@@ -542,7 +556,10 @@ Future<DateTimeRange?> _pickStatementRange(BuildContext context) async {
         context: context,
         firstDate: DateTime(2020),
         lastDate: now,
-        initialDateRange: DateTimeRange(start: DateTime(now.year, now.month), end: now),
+        initialDateRange: DateTimeRange(
+          start: DateTime(now.year, now.month),
+          end: now,
+        ),
       );
   }
 }

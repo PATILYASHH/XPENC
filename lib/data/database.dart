@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
 import '../core/money.dart';
+import '../core/security/passcode.dart';
 import '../features/message_capture/parser/bank_message.dart';
 import '../features/message_capture/parser/message_parser.dart';
 import 'tables.dart';
@@ -18,11 +21,10 @@ part 'database.g.dart';
 /// - transfer  → `-amount` when this account (or a debit card on it) is the
 ///   source, otherwise `+amount` because it is the destination.
 Money accountMovement(TransactionRow tx, Set<int> ownIds) => switch (tx.type) {
-      TxType.income || TxType.personIn => tx.amount,
-      TxType.expense || TxType.personOut => -tx.amount,
-      TxType.transfer =>
-        ownIds.contains(tx.accountId) ? -tx.amount : tx.amount,
-    };
+  TxType.income || TxType.personIn => tx.amount,
+  TxType.expense || TxType.personOut => -tx.amount,
+  TxType.transfer => ownIds.contains(tx.accountId) ? -tx.amount : tx.amount,
+};
 
 /// One priced row of an account statement, already carrying the running
 /// balance *after* it posted.
@@ -64,6 +66,12 @@ typedef BudgetStatementLine = ({
     SenderRules,
     BudgetAlerts,
     RecurringRules,
+    Tags,
+    TransactionTags,
+    TransactionSplits,
+    SavingsGoals,
+    ShoppingLists,
+    ShoppingItems,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -72,69 +80,108 @@ class AppDatabase extends _$AppDatabase {
   // point the app at a fresh, empty database — silently losing the ledger of
   // anyone whose data directory carries over.
   AppDatabase([QueryExecutor? executor])
-      : super(executor ?? driftDatabase(name: 'money_manager'));
+    : super(executor ?? driftDatabase(name: 'money_manager'));
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) async {
-          await m.createAll();
-          await _seed();
-          await _seedSenderRules();
-        },
-        onUpgrade: (m, from, to) async {
-          if (from < 2) {
-            await m.createTable(pendingTxns);
-            await m.createTable(merchantRules);
-            await m.createTable(senderRules);
-            await m.createTable(budgetAlerts);
-            await m.addColumn(settings, settings.messageCaptureEnabled);
-            await m.addColumn(settings, settings.lastMessageScanAt);
-            await m.addColumn(settings, settings.notificationsEnabled);
-            await _seedSenderRules();
-          }
-          if (from < 3) {
-            await m.addColumn(transactions, transactions.personId);
-            await m.addColumn(personEntries, personEntries.transactionId);
-            await backfillPersonTransactions();
-          }
-          if (from < 4) {
-            await m.addColumn(settings, settings.themeName);
-          }
-          if (from < 5) {
-            // Additive and nullable: every existing category becomes a
-            // top-level one (parentId stays null). Nothing to backfill.
-            await m.addColumn(categories, categories.parentId);
-          }
-          if (from < 6) {
-            // Defaults true, so existing users keep seeing their symbol.
-            await m.addColumn(settings, settings.showCurrencySymbol);
-          }
-          if (from < 7) {
-            // Additive and nullable: every existing transaction just has no
-            // payee. Nothing to backfill.
-            await m.addColumn(transactions, transactions.payee);
-          }
-          if (from < 8) {
-            await m.createTable(recurringRules);
-            await m.addColumn(transactions, transactions.recurringRuleId);
-          }
-        },
-        beforeOpen: (details) async {
-          await customStatement('PRAGMA foreign_keys = ON');
-          final hasSettings = await select(settings).get();
-          if (hasSettings.isEmpty) {
-            await into(settings).insert(const SettingsCompanion());
-          }
-          // Safety net. `recalculateBalances` now reads only `transactions`, so
-          // an entry left without its ledger row (a migration that died halfway,
-          // an old backup restored) would quietly stop affecting the balance.
-          // This is a no-op once everything is linked.
-          await backfillPersonTransactions();
-        },
-      );
+    onCreate: (m) async {
+      await m.createAll();
+      await _seed();
+      await _seedSenderRules();
+    },
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.createTable(pendingTxns);
+        await m.createTable(merchantRules);
+        await m.createTable(senderRules);
+        await m.createTable(budgetAlerts);
+        await m.addColumn(settings, settings.messageCaptureEnabled);
+        await m.addColumn(settings, settings.lastMessageScanAt);
+        await m.addColumn(settings, settings.notificationsEnabled);
+        await _seedSenderRules();
+      }
+      if (from < 3) {
+        await m.addColumn(transactions, transactions.personId);
+        await m.addColumn(personEntries, personEntries.transactionId);
+        await backfillPersonTransactions();
+      }
+      if (from < 4) {
+        await m.addColumn(settings, settings.themeName);
+      }
+      if (from < 5) {
+        // Additive and nullable: every existing category becomes a
+        // top-level one (parentId stays null). Nothing to backfill.
+        await m.addColumn(categories, categories.parentId);
+      }
+      if (from < 6) {
+        // Defaults true, so existing users keep seeing their symbol.
+        await m.addColumn(settings, settings.showCurrencySymbol);
+      }
+      if (from < 7) {
+        // Additive and nullable: every existing transaction just has no
+        // payee. Nothing to backfill.
+        await m.addColumn(transactions, transactions.payee);
+      }
+      if (from < 8) {
+        await m.createTable(recurringRules);
+        await m.addColumn(transactions, transactions.recurringRuleId);
+      }
+      if (from < 9) {
+        await m.createTable(tags);
+        await m.createTable(transactionTags);
+      }
+      if (from < 10) {
+        await m.createTable(transactionSplits);
+      }
+      if (from < 11) {
+        await m.addColumn(transactions, transactions.imagePath);
+      }
+      if (from < 12) {
+        await m.addColumn(personEntries, personEntries.categoryId);
+        await m.addColumn(settings, settings.countRepaymentsAsIncome);
+      }
+      if (from < 13) {
+        await m.createTable(savingsGoals);
+      }
+      if (from < 14) {
+        await m.addColumn(settings, settings.passcodeHash);
+        await m.addColumn(settings, settings.passcodeSalt);
+        await m.addColumn(settings, settings.biometricEnabled);
+      }
+      if (from < 15) {
+        await m.addColumn(settings, settings.expenseReminderEnabled);
+        await m.addColumn(settings, settings.expenseReminderHour);
+        await m.addColumn(settings, settings.expenseReminderMinute);
+      }
+      if (from < 16) {
+        await m.createTable(shoppingItems);
+      }
+      if (from < 17) {
+        await m.createTable(shoppingLists);
+        await m.addColumn(shoppingItems, shoppingItems.listId);
+        await backfillShoppingListIds();
+      }
+    },
+    beforeOpen: (details) async {
+      await customStatement('PRAGMA foreign_keys = ON');
+      final hasSettings = await select(settings).get();
+      if (hasSettings.isEmpty) {
+        await into(settings).insert(const SettingsCompanion());
+      }
+      // Safety net. `recalculateBalances` now reads only `transactions`, so
+      // an entry left without its ledger row (a migration that died halfway,
+      // an old backup restored) would quietly stop affecting the balance.
+      // This is a no-op once everything is linked.
+      await backfillPersonTransactions();
+      // Same idea: an old backup restored after this update has no
+      // `listId` to import (see `importAll`), which reintroduces the
+      // exact orphaned shape the v17 migration repairs.
+      await backfillShoppingListIds();
+    },
+  );
 
   /// v2 → v3: person entries used to poke the account balance directly, with no
   /// ledger row. Give each one that moved money a real `personOut`/`personIn`
@@ -147,15 +194,15 @@ class AppDatabase extends _$AppDatabase {
   /// orphaned by a half-finished migration is repaired rather than silently
   /// dropped out of `recalculateBalances`, which now reads only `transactions`.
   Future<int> backfillPersonTransactions() async {
-    final entries = await (select(personEntries)
-          ..where((e) => e.accountId.isNotNull() & e.transactionId.isNull()))
-        .get();
+    final entries = await (select(
+      personEntries,
+    )..where((e) => e.accountId.isNotNull() & e.transactionId.isNull())).get();
     if (entries.isEmpty) return 0;
 
     for (final e in entries) {
-      final person =
-          await (select(persons)..where((p) => p.id.equals(e.personId)))
-              .getSingleOrNull();
+      final person = await (select(
+        persons,
+      )..where((p) => p.id.equals(e.personId))).getSingleOrNull();
 
       final txId = await into(transactions).insert(
         TransactionsCompanion.insert(
@@ -166,15 +213,18 @@ class AppDatabase extends _$AppDatabase {
           accountId: e.accountId!,
           personId: Value(e.personId),
           date: e.date,
-          note: Value(e.note ??
-              (e.direction == PersonDirection.theyOwe
-                  ? 'Gave to ${person?.name ?? 'person'}'
-                  : 'Received from ${person?.name ?? 'person'}')),
+          note: Value(
+            e.note ??
+                (e.direction == PersonDirection.theyOwe
+                    ? 'Gave to ${person?.name ?? 'person'}'
+                    : 'Received from ${person?.name ?? 'person'}'),
+          ),
         ),
       );
 
-      await (update(personEntries)..where((x) => x.id.equals(e.id)))
-          .write(PersonEntriesCompanion(transactionId: Value(txId)));
+      await (update(personEntries)..where((x) => x.id.equals(e.id))).write(
+        PersonEntriesCompanion(transactionId: Value(txId)),
+      );
     }
 
     // The cache was built from the old two-ledger maths. Rebuild it from the
@@ -183,13 +233,36 @@ class AppDatabase extends _$AppDatabase {
     return entries.length;
   }
 
+  /// v16 -> v17: a shopping item made before named lists existed has no
+  /// list. Moves every orphaned item onto one newly-created default list, so
+  /// nothing already on a user's list vanishes.
+  ///
+  /// **Idempotent** (a second call finds nothing orphaned and does nothing),
+  /// and also run on every open (see `beforeOpen`) for the same reason
+  /// [backfillPersonTransactions] is: a backup taken before this update has
+  /// no `listId` to import, which reintroduces this exact orphaned shape.
+  Future<int> backfillShoppingListIds() async {
+    final orphaned = await (select(
+      shoppingItems,
+    )..where((i) => i.listId.isNull())).get();
+    if (orphaned.isEmpty) return 0;
+
+    final defaultListId = await into(shoppingLists).insert(
+      ShoppingListsCompanion.insert(
+        name: 'Shopping List',
+        colorValue: 0xFF16A34A,
+      ),
+    );
+    await (update(shoppingItems)..where((i) => i.listId.isNull())).write(
+      ShoppingItemsCompanion(listId: Value(defaultListId)),
+    );
+    return orphaned.length;
+  }
+
   Future<void> _seedSenderRules() async {
     for (final r in kSeedSenderRules) {
       await into(senderRules).insert(
-        SenderRulesCompanion.insert(
-          senderPattern: r.pattern,
-          bankName: r.bank,
-        ),
+        SenderRulesCompanion.insert(senderPattern: r.pattern, bankName: r.bank),
         mode: InsertMode.insertOrIgnore,
       );
     }
@@ -264,8 +337,9 @@ class AppDatabase extends _$AppDatabase {
   /// from the bank they are linked to. Resolve to the account that actually
   /// holds the money, so `Bank + Debit Card` can never double-count.
   Future<int> _balanceTarget(int accountId) async {
-    final row = await (select(accounts)..where((a) => a.id.equals(accountId)))
-        .getSingle();
+    final row = await (select(
+      accounts,
+    )..where((a) => a.id.equals(accountId))).getSingle();
     return row.linkedAccountId ?? row.id;
   }
 
@@ -310,7 +384,9 @@ class AppDatabase extends _$AppDatabase {
     int? recurringRuleId,
   }) {
     if (!amount.isPositive) {
-      throw ArgumentError('Amount must be positive; direction comes from type.');
+      throw ArgumentError(
+        'Amount must be positive; direction comes from type.',
+      );
     }
     if (!type.isPersonMovement && personId != null) {
       throw ArgumentError('Only a person movement names a person.');
@@ -357,6 +433,19 @@ class AppDatabase extends _$AppDatabase {
 
   // ── Transactions ──────────────────────────────────────────────────────────
 
+  /// Best-effort: a receipt photo missing from disk (moved, already gone, a
+  /// restored backup pointing at a path that never existed on this device) is
+  /// never a reason to fail the transaction write it's attached to.
+  Future<void> _deleteReceiptFile(String? path) async {
+    if (path == null) return;
+    try {
+      final file = File(path);
+      if (await file.exists()) await file.delete();
+    } catch (_) {
+      // Ignored — see above.
+    }
+  }
+
   Future<int> addTransaction({
     required TxType type,
     required Money amount,
@@ -368,6 +457,7 @@ class AppDatabase extends _$AppDatabase {
     String? note,
     String? payee,
     int? recurringRuleId,
+    String? imagePath,
   }) {
     _validateTx(
       type: type,
@@ -393,10 +483,12 @@ class AppDatabase extends _$AppDatabase {
           note: Value(note),
           payee: Value(payee),
           recurringRuleId: Value(recurringRuleId),
+          imagePath: Value(imagePath),
         ),
       );
-      final row = await (select(transactions)..where((t) => t.id.equals(id)))
-          .getSingle();
+      final row = await (select(
+        transactions,
+      )..where((t) => t.id.equals(id))).getSingle();
       await _applyTxEffect(row, reverse: false);
       return id;
     });
@@ -404,16 +496,17 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> deleteTransaction(int id) {
     return transaction(() async {
-      final row = await (select(transactions)..where((t) => t.id.equals(id)))
-          .getSingle();
+      final row = await (select(
+        transactions,
+      )..where((t) => t.id.equals(id))).getSingle();
 
       // A person movement belongs to that person's ledger. Deleting only the
       // money row would reverse the balance while still claiming the debt was
       // settled. Refuse, and send the user to the person instead.
       // (`deletePersonEntry` removes its entry first, so it never trips this.)
-      final owner = await (select(personEntries)
-            ..where((e) => e.transactionId.equals(id)))
-          .getSingleOrNull();
+      final owner = await (select(
+        personEntries,
+      )..where((e) => e.transactionId.equals(id))).getSingleOrNull();
       if (owner != null) {
         throw ArgumentError(
           'This belongs to a person. Delete it from their page instead.',
@@ -425,11 +518,22 @@ class AppDatabase extends _$AppDatabase {
       // Other rows point at this transaction. Clear those references first or
       // the foreign key constraint fires and the delete throws — leaving the
       // money reversed but the row still there.
-      await (update(reminders)..where((r) => r.transactionId.equals(id)))
-          .write(const RemindersCompanion(transactionId: Value(null)));
+      await (update(reminders)..where((r) => r.transactionId.equals(id))).write(
+        const RemindersCompanion(transactionId: Value(null)),
+      );
       await (update(pendingTxns)
             ..where((t) => t.createdTransactionId.equals(id)))
           .write(const PendingTxnsCompanion(createdTransactionId: Value(null)));
+      // A tag link (or split line) is meaningless without its transaction —
+      // drop the rows outright rather than nulling a reference, unlike the
+      // two updates above.
+      await (delete(
+        transactionTags,
+      )..where((t) => t.transactionId.equals(id))).go();
+      await (delete(
+        transactionSplits,
+      )..where((s) => s.transactionId.equals(id))).go();
+      await _deleteReceiptFile(row.imagePath);
 
       await (delete(transactions)..where((t) => t.id.equals(id))).go();
     });
@@ -446,6 +550,7 @@ class AppDatabase extends _$AppDatabase {
     required DateTime date,
     String? note,
     String? payee,
+    String? imagePath,
   }) {
     _validateTx(
       type: type,
@@ -458,9 +563,16 @@ class AppDatabase extends _$AppDatabase {
     );
 
     return transaction(() async {
-      final old = await (select(transactions)..where((t) => t.id.equals(id)))
-          .getSingle();
+      final old = await (select(
+        transactions,
+      )..where((t) => t.id.equals(id))).getSingle();
       await _applyTxEffect(old, reverse: true);
+      // The caller always hands over the complete intended receipt, same as
+      // note/payee — a changed or removed one leaves the old file orphaned
+      // unless it's cleaned up here.
+      if (old.imagePath != null && old.imagePath != imagePath) {
+        await _deleteReceiptFile(old.imagePath);
+      }
 
       await (update(transactions)..where((t) => t.id.equals(id))).write(
         TransactionsCompanion(
@@ -472,13 +584,15 @@ class AppDatabase extends _$AppDatabase {
           personId: Value(personId),
           date: Value(date),
           note: Value(note),
+          imagePath: Value(imagePath),
           payee: Value(payee),
           updatedAt: Value(DateTime.now()),
         ),
       );
 
-      final fresh = await (select(transactions)..where((t) => t.id.equals(id)))
-          .getSingle();
+      final fresh = await (select(
+        transactions,
+      )..where((t) => t.id.equals(id))).getSingle();
       await _applyTxEffect(fresh, reverse: false);
     });
   }
@@ -490,9 +604,220 @@ class AppDatabase extends _$AppDatabase {
     if (trimmed.isEmpty) {
       throw ArgumentError('Payee name cannot be empty.');
     }
-    return (update(transactions)..where((t) => t.payee.equals(from)))
-        .write(TransactionsCompanion(payee: Value(trimmed)));
+    return (update(transactions)..where((t) => t.payee.equals(from))).write(
+      TransactionsCompanion(payee: Value(trimmed)),
+    );
   }
+
+  // ── Tags ──────────────────────────────────────────────────────────────────
+
+  Stream<List<TagRow>> watchTags() => (select(
+    tags,
+  )..orderBy([(t) => OrderingTerm(expression: t.name)])).watch();
+
+  Future<int> addTag({required String name, required int colorValue}) => into(
+    tags,
+  ).insert(TagsCompanion.insert(name: name, colorValue: colorValue));
+
+  Future<void> updateTag({
+    required int id,
+    required String name,
+    required int colorValue,
+  }) => (update(tags)..where((t) => t.id.equals(id))).write(
+    TagsCompanion(name: Value(name), colorValue: Value(colorValue)),
+  );
+
+  /// A tag is never "in use" the way an account or category is — dropping it
+  /// just untags whatever carried it, nothing about those transactions
+  /// changes. So, unlike categories/accounts/persons, this is a hard delete
+  /// with no archive step.
+  Future<void> deleteTag(int id) => transaction(() async {
+    await (delete(transactionTags)..where((t) => t.tagId.equals(id))).go();
+    await (delete(tags)..where((t) => t.id.equals(id))).go();
+  });
+
+  /// Every tag link, across every transaction — composed with [watchTags] by
+  /// the provider layer to build a `transactionId -> tags` map without a
+  /// query per row.
+  Stream<List<TransactionTagRow>> watchAllTransactionTags() =>
+      select(transactionTags).watch();
+
+  Future<List<int>> tagIdsForTransaction(int transactionId) async {
+    final rows = await (select(
+      transactionTags,
+    )..where((t) => t.transactionId.equals(transactionId))).get();
+    return rows.map((r) => r.tagId).toList();
+  }
+
+  /// Replaces every tag on [transactionId] with exactly [tagIds] — the whole
+  /// set is rewritten each save rather than diffed, since the picker always
+  /// hands over the complete selection.
+  Future<void> setTransactionTags(int transactionId, Set<int> tagIds) {
+    return transaction(() async {
+      await (delete(
+        transactionTags,
+      )..where((t) => t.transactionId.equals(transactionId))).go();
+      for (final tagId in tagIds) {
+        await into(transactionTags).insert(
+          TransactionTagsCompanion.insert(
+            transactionId: transactionId,
+            tagId: tagId,
+          ),
+        );
+      }
+    });
+  }
+
+  // ── Savings goals ────────────────────────────────────────────────────────
+
+  Stream<List<SavingsGoalRow>> watchSavingsGoals() =>
+      (select(savingsGoals)
+            ..where((g) => g.isArchived.equals(false))
+            ..orderBy([(g) => OrderingTerm(expression: g.createdAt)]))
+          .watch();
+
+  Stream<SavingsGoalRow?> watchSavingsGoal(int id) =>
+      (select(savingsGoals)..where((g) => g.id.equals(id))).watchSingleOrNull();
+
+  Future<int> addSavingsGoal({
+    required String name,
+    required Money targetAmount,
+    required int accountId,
+    DateTime? targetDate,
+    required int colorValue,
+    required String iconKey,
+  }) {
+    if (!targetAmount.isPositive) {
+      throw ArgumentError('Target amount must be greater than zero.');
+    }
+    return into(savingsGoals).insert(
+      SavingsGoalsCompanion.insert(
+        name: name,
+        targetAmount: targetAmount,
+        accountId: accountId,
+        targetDate: Value(targetDate),
+        colorValue: colorValue,
+        iconKey: iconKey,
+      ),
+    );
+  }
+
+  Future<void> updateSavingsGoal({
+    required int id,
+    required String name,
+    required Money targetAmount,
+    required int accountId,
+    DateTime? targetDate,
+    required int colorValue,
+    required String iconKey,
+  }) {
+    if (!targetAmount.isPositive) {
+      throw ArgumentError('Target amount must be greater than zero.');
+    }
+    return (update(savingsGoals)..where((g) => g.id.equals(id))).write(
+      SavingsGoalsCompanion(
+        name: Value(name),
+        targetAmount: Value(targetAmount),
+        accountId: Value(accountId),
+        targetDate: Value(targetDate),
+        colorValue: Value(colorValue),
+        iconKey: Value(iconKey),
+      ),
+    );
+  }
+
+  Future<void> archiveSavingsGoal(int id) =>
+      (update(savingsGoals)..where((g) => g.id.equals(id))).write(
+        const SavingsGoalsCompanion(isArchived: Value(true)),
+      );
+
+  Future<void> deleteSavingsGoal(int id) =>
+      (delete(savingsGoals)..where((g) => g.id.equals(id))).go();
+
+  // ── Shopping lists ───────────────────────────────────────────────────────
+
+  Stream<List<ShoppingListRow>> watchShoppingLists() => (select(
+    shoppingLists,
+  )..orderBy([(l) => OrderingTerm(expression: l.createdAt)])).watch();
+
+  Future<int> addShoppingList({
+    required String name,
+    required int colorValue,
+  }) => into(
+    shoppingLists,
+  ).insert(ShoppingListsCompanion.insert(name: name, colorValue: colorValue));
+
+  Future<void> updateShoppingList({
+    required int id,
+    required String name,
+    required int colorValue,
+  }) => (update(shoppingLists)..where((l) => l.id.equals(id))).write(
+    ShoppingListsCompanion(name: Value(name), colorValue: Value(colorValue)),
+  );
+
+  /// Deletes the list and everything on it. A shopping list has no ledger
+  /// meaning to preserve the way a category or account does, so unlike
+  /// those, this is a hard delete straight through.
+  Future<void> deleteShoppingList(int id) => transaction(() async {
+    await (delete(shoppingItems)..where((i) => i.listId.equals(id))).go();
+    await (delete(shoppingLists)..where((l) => l.id.equals(id))).go();
+  });
+
+  // ── Shopping list items ──────────────────────────────────────────────────
+
+  Stream<List<ShoppingItemRow>> watchShoppingItems(int listId) =>
+      (select(shoppingItems)
+            ..where((i) => i.listId.equals(listId))
+            ..orderBy([
+              (i) => OrderingTerm(expression: i.isChecked),
+              (i) => OrderingTerm(
+                expression: i.createdAt,
+                mode: OrderingMode.desc,
+              ),
+            ]))
+          .watch();
+
+  /// Every item across every list, for the lists overview's item counts —
+  /// grouping happens client-side rather than with N separate queries.
+  Stream<List<ShoppingItemRow>> watchAllShoppingItems() =>
+      select(shoppingItems).watch();
+
+  Future<int> addShoppingItem({
+    required int listId,
+    required String name,
+    Money? estimatedAmount,
+  }) => into(shoppingItems).insert(
+    ShoppingItemsCompanion.insert(
+      listId: Value(listId),
+      name: name,
+      estimatedAmount: Value(estimatedAmount),
+    ),
+  );
+
+  Future<void> updateShoppingItem({
+    required int id,
+    required String name,
+    Money? estimatedAmount,
+  }) => (update(shoppingItems)..where((i) => i.id.equals(id))).write(
+    ShoppingItemsCompanion(
+      name: Value(name),
+      estimatedAmount: Value(estimatedAmount),
+    ),
+  );
+
+  Future<void> setShoppingItemChecked(int id, bool checked) =>
+      (update(shoppingItems)..where((i) => i.id.equals(id))).write(
+        ShoppingItemsCompanion(isChecked: Value(checked)),
+      );
+
+  Future<void> deleteShoppingItem(int id) =>
+      (delete(shoppingItems)..where((i) => i.id.equals(id))).go();
+
+  /// Clears every checked-off item on one list — the usual "done, empty the
+  /// list" action once a shopping trip is over.
+  Future<void> clearCheckedShoppingItems(int listId) => (delete(
+    shoppingItems,
+  )..where((i) => i.listId.equals(listId) & i.isChecked.equals(true))).go();
 
   // ── Persons ───────────────────────────────────────────────────────────────
 
@@ -505,6 +830,13 @@ class AppDatabase extends _$AppDatabase {
   /// vanish. It still never counts as income or expense: lending is not
   /// spending, and being repaid is not earning.
   ///
+  /// [categoryId] is the one deliberate exception — "Mark as repaid" (see
+  /// [Settings.countRepaymentsAsIncome]). Only valid on an `iOwe` entry that
+  /// moves real money: the linked row posts as ordinary [TxType.income] under
+  /// that category instead of [TxType.personIn], so the repayment counts in
+  /// every income total the normal way. Every other entry keeps `categoryId`
+  /// null, exactly as before.
+  ///
   /// With no [accountId] the entry only records who owes whom, and no balance
   /// changes.
   Future<int> addPersonEntry({
@@ -515,25 +847,42 @@ class AppDatabase extends _$AppDatabase {
     DateTime? dueDate,
     int? accountId,
     String? note,
+    int? categoryId,
   }) {
     if (!amount.isPositive) {
       throw ArgumentError('Amount must be positive.');
     }
+    if (categoryId != null) {
+      if (direction != PersonDirection.iOwe) {
+        throw ArgumentError('Only a repayment can be counted as income.');
+      }
+      if (accountId == null) {
+        throw ArgumentError('A repayment counted as income must move money.');
+      }
+    }
     return transaction(() async {
       int? txId;
       if (accountId != null) {
-        final person = await (select(persons)..where((p) => p.id.equals(personId)))
-            .getSingleOrNull();
+        final person = await (select(
+          persons,
+        )..where((p) => p.id.equals(personId))).getSingleOrNull();
+        final asRepaymentIncome =
+            categoryId != null && direction == PersonDirection.iOwe;
         txId = await addTransaction(
-          // theyOwe -> you gave money away.  iOwe -> money came to you.
-          type: direction == PersonDirection.theyOwe
+          // theyOwe -> you gave money away. iOwe -> money came to you, either
+          // as a fresh loan or (marked) a repayment counted as income.
+          type: asRepaymentIncome
+              ? TxType.income
+              : direction == PersonDirection.theyOwe
               ? TxType.personOut
               : TxType.personIn,
           amount: amount,
           accountId: accountId,
+          categoryId: asRepaymentIncome ? categoryId : null,
           personId: personId,
           date: date,
-          note: note ??
+          note:
+              note ??
               (direction == PersonDirection.theyOwe
                   ? 'Gave to ${person?.name ?? 'person'}'
                   : 'Received from ${person?.name ?? 'person'}'),
@@ -550,6 +899,7 @@ class AppDatabase extends _$AppDatabase {
           accountId: Value(accountId),
           transactionId: Value(txId),
           note: Value(note),
+          categoryId: Value(categoryId),
         ),
       );
     });
@@ -557,8 +907,9 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> deletePersonEntry(int id) {
     return transaction(() async {
-      final row = await (select(personEntries)..where((e) => e.id.equals(id)))
-          .getSingle();
+      final row = await (select(
+        personEntries,
+      )..where((e) => e.id.equals(id))).getSingle();
       // Drop the entry first: it references the transaction we are about to
       // delete, and the foreign key would reject the delete.
       await (delete(personEntries)..where((e) => e.id.equals(id))).go();
@@ -569,11 +920,96 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
+  /// Edits an existing entry in place, keeping its id and history position.
+  ///
+  /// Whatever ledger row it was linked to is always rebuilt from scratch
+  /// rather than patched — the direction, account and repayment flag can all
+  /// change between calls, which can also change the linked row's *type*
+  /// (`personOut` ↔ `personIn` ↔ `income`), so patching in place would need
+  /// to duplicate every rule [addPersonEntry] already encodes. Same
+  /// validation as [addPersonEntry].
+  Future<void> updatePersonEntry({
+    required int id,
+    required PersonDirection direction,
+    required Money amount,
+    required DateTime date,
+    DateTime? dueDate,
+    int? accountId,
+    String? note,
+    int? categoryId,
+  }) {
+    if (!amount.isPositive) {
+      throw ArgumentError('Amount must be positive.');
+    }
+    if (categoryId != null) {
+      if (direction != PersonDirection.iOwe) {
+        throw ArgumentError('Only a repayment can be counted as income.');
+      }
+      if (accountId == null) {
+        throw ArgumentError('A repayment counted as income must move money.');
+      }
+    }
+    return transaction(() async {
+      final existing = await (select(
+        personEntries,
+      )..where((e) => e.id.equals(id))).getSingle();
+
+      // Detach before deleting: deleteTransaction refuses to delete a
+      // transaction a person entry still points to (see deleteTransaction).
+      if (existing.transactionId != null) {
+        final oldTxId = existing.transactionId!;
+        await (update(personEntries)..where((e) => e.id.equals(id))).write(
+          const PersonEntriesCompanion(transactionId: Value(null)),
+        );
+        await deleteTransaction(oldTxId);
+      }
+
+      int? txId;
+      if (accountId != null) {
+        final person = await (select(
+          persons,
+        )..where((p) => p.id.equals(existing.personId))).getSingleOrNull();
+        final asRepaymentIncome =
+            categoryId != null && direction == PersonDirection.iOwe;
+        txId = await addTransaction(
+          type: asRepaymentIncome
+              ? TxType.income
+              : direction == PersonDirection.theyOwe
+              ? TxType.personOut
+              : TxType.personIn,
+          amount: amount,
+          accountId: accountId,
+          categoryId: asRepaymentIncome ? categoryId : null,
+          personId: existing.personId,
+          date: date,
+          note:
+              note ??
+              (direction == PersonDirection.theyOwe
+                  ? 'Gave to ${person?.name ?? 'person'}'
+                  : 'Received from ${person?.name ?? 'person'}'),
+        );
+      }
+
+      await (update(personEntries)..where((e) => e.id.equals(id))).write(
+        PersonEntriesCompanion(
+          direction: Value(direction),
+          amount: Value(amount),
+          date: Value(date),
+          dueDate: Value(dueDate),
+          accountId: Value(accountId),
+          transactionId: Value(txId),
+          note: Value(note),
+          categoryId: Value(categoryId),
+        ),
+      );
+    });
+  }
+
   /// `+` they owe you, `-` you owe them.
   Stream<Money> watchPersonBalance(int personId) {
-    return (select(personEntries)..where((e) => e.personId.equals(personId)))
-        .watch()
-        .map(_netOf);
+    return (select(
+      personEntries,
+    )..where((e) => e.personId.equals(personId))).watch().map(_netOf);
   }
 
   Stream<Map<int, Money>> watchAllPersonBalances() {
@@ -587,11 +1023,11 @@ class AppDatabase extends _$AppDatabase {
   }
 
   static Money _netOf(List<PersonEntryRow> rows) => rows.fold(
-        const Money.zero(),
-        (sum, e) => e.direction == PersonDirection.theyOwe
-            ? sum + e.amount
-            : sum - e.amount,
-      );
+    const Money.zero(),
+    (sum, e) => e.direction == PersonDirection.theyOwe
+        ? sum + e.amount
+        : sum - e.amount,
+  );
 
   // ── Repair ────────────────────────────────────────────────────────────────
 
@@ -634,8 +1070,9 @@ class AppDatabase extends _$AppDatabase {
         final value = a.linkedAccountId == null
             ? (running[a.id] ?? const Money.zero())
             : const Money.zero(); // instruments hold nothing
-        await (update(accounts)..where((x) => x.id.equals(a.id)))
-            .write(AccountsCompanion(currentBalance: Value(value)));
+        await (update(accounts)..where((x) => x.id.equals(a.id))).write(
+          AccountsCompanion(currentBalance: Value(value)),
+        );
       }
     });
   }
@@ -643,29 +1080,30 @@ class AppDatabase extends _$AppDatabase {
   // ── Queries ───────────────────────────────────────────────────────────────
 
   Stream<List<AccountRow>> watchAccounts() =>
-      (select(accounts)..where((a) => a.isArchived.equals(false))
+      (select(accounts)
+            ..where((a) => a.isArchived.equals(false))
             ..orderBy([(a) => OrderingTerm(expression: a.sortOrder)]))
           .watch();
 
   /// Accounts that actually hold money. Debit cards / UPI excluded.
   Stream<List<AccountRow>> watchBalanceHoldingAccounts() =>
       (select(accounts)
-            ..where((a) =>
-                a.isArchived.equals(false) & a.linkedAccountId.isNull())
+            ..where(
+              (a) => a.isArchived.equals(false) & a.linkedAccountId.isNull(),
+            )
             ..orderBy([(a) => OrderingTerm(expression: a.sortOrder)]))
           .watch();
 
   /// Total money = Cash + Bank + Credit Card. Instruments never double-count.
   Stream<Money> watchNetWorth() => watchBalanceHoldingAccounts().map(
-        (rows) => rows.fold(
-          const Money.zero(),
-          (sum, a) => sum + a.currentBalance,
-        ),
-      );
+    (rows) => rows.fold(const Money.zero(), (sum, a) => sum + a.currentBalance),
+  );
 
   Stream<List<CategoryRow>> watchCategories(CategoryKind kind) =>
       (select(categories)
-            ..where((c) => c.kind.equalsValue(kind) & c.isArchived.equals(false))
+            ..where(
+              (c) => c.kind.equalsValue(kind) & c.isArchived.equals(false),
+            )
             ..orderBy([(c) => OrderingTerm(expression: c.sortOrder)]))
           .watch();
 
@@ -695,8 +1133,10 @@ class AppDatabase extends _$AppDatabase {
   /// move your own money between your own accounts.
   Stream<({Money income, Money expense})> watchMonthTotals(DateTime month) {
     final start = DateTime(month.year, month.month);
-    final end = DateTime(month.year, month.month + 1)
-        .subtract(const Duration(milliseconds: 1));
+    final end = DateTime(
+      month.year,
+      month.month + 1,
+    ).subtract(const Duration(milliseconds: 1));
     return watchTransactionsBetween(start, end).map((rows) {
       var income = const Money.zero();
       var expense = const Money.zero();
@@ -708,22 +1148,103 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
+  /// One-shot income/expense/category-breakdown snapshot for an arbitrary
+  /// range — the data behind the Income & Expense Report PDF. [watchMonthTotals]
+  /// stays calendar-month-only because Dashboard needs exactly that; a report
+  /// covers whatever period the Stats screen is showing (month or year).
+  Future<({Money income, Money expense, Map<int, Money> expenseByCategory})>
+  reportTotals(DateTime start, DateTime end) async {
+    final rows = await watchTransactionsBetween(start, end).first;
+    var income = const Money.zero();
+    var expense = const Money.zero();
+    for (final t in rows) {
+      if (t.type == TxType.income) income += t.amount;
+      if (t.type == TxType.expense) expense += t.amount;
+    }
+    final expenseByCategory = await watchSpendByCategory(start, end).first;
+    return (
+      income: income,
+      expense: expense,
+      expenseByCategory: expenseByCategory,
+    );
+  }
+
   /// Spend per category for a period. Transfers excluded; expenses only.
+  /// A split expense (see [TransactionSplits]) has no [Transactions.categoryId]
+  /// of its own — its amount is attributed per split line instead, so it
+  /// still counts correctly toward budgets and every category breakdown.
   Stream<Map<int, Money>> watchSpendByCategory(DateTime start, DateTime end) =>
-      watchTransactionsBetween(start, end).map((rows) {
+      watchTransactionsBetween(start, end).asyncMap((rows) async {
         final out = <int, Money>{};
         for (final t in rows) {
-          if (t.type != TxType.expense || t.categoryId == null) continue;
-          out[t.categoryId!] =
-              (out[t.categoryId!] ?? const Money.zero()) + t.amount;
+          if (t.type != TxType.expense) continue;
+          if (t.categoryId != null) {
+            out[t.categoryId!] =
+                (out[t.categoryId!] ?? const Money.zero()) + t.amount;
+            continue;
+          }
+          for (final s in await splitsForTransaction(t.id)) {
+            out[s.categoryId] =
+                (out[s.categoryId] ?? const Money.zero()) + s.amount;
+          }
         }
         return out;
       });
 
+  // ── Split expenses ───────────────────────────────────────────────────────
+
+  Future<List<TransactionSplitRow>> splitsForTransaction(int transactionId) =>
+      (select(
+        transactionSplits,
+      )..where((s) => s.transactionId.equals(transactionId))).get();
+
+  Stream<List<TransactionSplitRow>> watchAllTransactionSplits() =>
+      select(transactionSplits).watch();
+
+  /// Replaces every split line on [transactionId] with exactly [splits] — the
+  /// whole set is rewritten each save, same as [setTransactionTags]. An empty
+  /// list just clears the splits (the transaction reverts to a single,
+  /// ordinary category chosen elsewhere). A non-empty list must sum to the
+  /// transaction's own [Transactions.amount], or the split would silently
+  /// invent or lose money in every category breakdown that reads it.
+  Future<void> setTransactionSplits(
+    int transactionId,
+    List<({int categoryId, Money amount})> splits,
+  ) {
+    return transaction(() async {
+      if (splits.isNotEmpty) {
+        final tx = await (select(
+          transactions,
+        )..where((t) => t.id.equals(transactionId))).getSingle();
+        final sum = splits.fold(const Money.zero(), (s, e) => s + e.amount);
+        if (sum != tx.amount) {
+          throw ArgumentError(
+            'Split amounts (${sum.paise}) must add up to the transaction '
+            'total (${tx.amount.paise}).',
+          );
+        }
+      }
+      await (delete(
+        transactionSplits,
+      )..where((s) => s.transactionId.equals(transactionId))).go();
+      for (final s in splits) {
+        await into(transactionSplits).insert(
+          TransactionSplitsCompanion.insert(
+            transactionId: transactionId,
+            categoryId: s.categoryId,
+            amount: s.amount,
+          ),
+        );
+      }
+    });
+  }
+
   Stream<SettingRow> watchSettings() => select(settings).watchSingle();
 
   Future<void> markOnboarded() async {
-    await update(settings).write(const SettingsCompanion(onboarded: Value(true)));
+    await update(
+      settings,
+    ).write(const SettingsCompanion(onboarded: Value(true)));
   }
 
   // ── Accounts CRUD ─────────────────────────────────────────────────────────
@@ -748,8 +1269,9 @@ class AppDatabase extends _$AppDatabase {
       );
     }
     // An instrument (debit card) holds no balance of its own.
-    final opening =
-        linkedAccountId == null ? openingBalance : const Money.zero();
+    final opening = linkedAccountId == null
+        ? openingBalance
+        : const Money.zero();
 
     return into(accounts).insert(
       AccountsCompanion.insert(
@@ -768,16 +1290,31 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> archiveAccount(int id) =>
-      (update(accounts)..where((a) => a.id.equals(id)))
-          .write(const AccountsCompanion(isArchived: Value(true)));
+      (update(accounts)..where((a) => a.id.equals(id))).write(
+        const AccountsCompanion(isArchived: Value(true)),
+      );
+
+  Future<void> unarchiveAccount(int id) =>
+      (update(accounts)..where((a) => a.id.equals(id))).write(
+        const AccountsCompanion(isArchived: Value(false)),
+      );
+
+  Stream<List<AccountRow>> watchArchivedAccounts() =>
+      (select(accounts)
+            ..where((a) => a.isArchived.equals(true))
+            ..orderBy([(a) => OrderingTerm(expression: a.sortOrder)]))
+          .watch();
 
   /// [accountId] as either side of the move — matches every FK reference a
   /// transaction can hold to an account.
   Future<int> countTransactionsForAccount(int accountId) async {
-    final rows = await (select(transactions)
-          ..where((t) =>
-              t.accountId.equals(accountId) | t.toAccountId.equals(accountId)))
-        .get();
+    final rows =
+        await (select(transactions)..where(
+              (t) =>
+                  t.accountId.equals(accountId) |
+                  t.toAccountId.equals(accountId),
+            ))
+            .get();
     return rows.length;
   }
 
@@ -787,9 +1324,9 @@ class AppDatabase extends _$AppDatabase {
   /// nothing has touched yet — no transaction, no debit card drawing from it,
   /// no reminder or merchant rule naming it.
   Future<void> deleteAccount(int id) async {
-    final linkedCard = await (select(accounts)
-          ..where((a) => a.linkedAccountId.equals(id)))
-        .getSingleOrNull();
+    final linkedCard = await (select(
+      accounts,
+    )..where((a) => a.linkedAccountId.equals(id))).getSingleOrNull();
     if (linkedCard != null) {
       throw ArgumentError(
         '"${linkedCard.name}" draws from this account. Remove that card '
@@ -801,25 +1338,34 @@ class AppDatabase extends _$AppDatabase {
         'This account has transaction history — archive it instead.',
       );
     }
-    final reminder = await (select(reminders)
-          ..where((r) => r.accountId.equals(id)))
-        .getSingleOrNull();
+    final reminder = await (select(
+      reminders,
+    )..where((r) => r.accountId.equals(id))).getSingleOrNull();
     if (reminder != null) {
       throw ArgumentError('A reminder still points at this account.');
     }
-    final rule = await (select(merchantRules)
-          ..where((r) => r.accountId.equals(id)))
-        .getSingleOrNull();
+    final rule = await (select(
+      merchantRules,
+    )..where((r) => r.accountId.equals(id))).getSingleOrNull();
     if (rule != null) {
       throw ArgumentError('A merchant rule still points at this account.');
     }
-    final recurring = await (select(recurringRules)
-          ..where((r) => r.accountId.equals(id)))
-        .getSingleOrNull();
+    final recurring = await (select(
+      recurringRules,
+    )..where((r) => r.accountId.equals(id))).getSingleOrNull();
     if (recurring != null) {
       throw ArgumentError(
         '"${recurring.name}" auto-posts from this account. Delete that rule '
         'first.',
+      );
+    }
+    final goal = await (select(
+      savingsGoals,
+    )..where((g) => g.accountId.equals(id))).getSingleOrNull();
+    if (goal != null) {
+      throw ArgumentError(
+        '"${goal.name}" tracks progress from this account. Delete or '
+        're-link that goal first.',
       );
     }
     await (delete(accounts)..where((a) => a.id.equals(id))).go();
@@ -839,6 +1385,44 @@ class AppDatabase extends _$AppDatabase {
   Stream<List<PersonRow>> watchPersons() =>
       (select(persons)..where((p) => p.isArchived.equals(false))).watch();
 
+  Stream<List<PersonRow>> watchArchivedPersons() =>
+      (select(persons)..where((p) => p.isArchived.equals(true))).watch();
+
+  Future<void> archivePerson(int id) =>
+      (update(persons)..where((p) => p.id.equals(id))).write(
+        const PersonsCompanion(isArchived: Value(true)),
+      );
+
+  Future<void> unarchivePerson(int id) =>
+      (update(persons)..where((p) => p.id.equals(id))).write(
+        const PersonsCompanion(isArchived: Value(false)),
+      );
+
+  Future<int> countEntriesForPerson(int personId) async {
+    final rows = await (select(
+      personEntries,
+    )..where((e) => e.personId.equals(personId))).get();
+    return rows.length;
+  }
+
+  /// Mirrors [deleteAccount]: only ever succeeds on a person nothing has
+  /// touched yet — no lend/borrow history, no reminder naming them. Anything
+  /// used must be archived instead.
+  Future<void> deletePerson(int id) async {
+    if (await countEntriesForPerson(id) > 0) {
+      throw ArgumentError(
+        'This person has lend/borrow history — archive them instead.',
+      );
+    }
+    final reminder = await (select(
+      reminders,
+    )..where((r) => r.personId.equals(id))).getSingleOrNull();
+    if (reminder != null) {
+      throw ArgumentError('A reminder still points at this person.');
+    }
+    await (delete(persons)..where((p) => p.id.equals(id))).go();
+  }
+
   Stream<List<PersonEntryRow>> watchAllPersonEntries() =>
       select(personEntries).watch();
 
@@ -852,21 +1436,78 @@ class AppDatabase extends _$AppDatabase {
 
   // ── Budgets ───────────────────────────────────────────────────────────────
 
+  /// A subcategory's budget can never exceed its parent's — the parent is
+  /// meant to cap the whole subtree, so a child budgeted higher than that cap
+  /// would make the cap meaningless. Checked both ways: setting a child's
+  /// budget above its (budgeted) parent's is rejected, and so is shrinking a
+  /// parent's budget below a child's that's already set.
   Future<void> upsertBudget({
     required int categoryId,
     required Money amount,
     BudgetPeriod period = BudgetPeriod.monthly,
     int alertThresholdPct = 80,
-  }) =>
-      into(budgets).insertOnConflictUpdate(
-        BudgetsCompanion.insert(
-          categoryId: categoryId,
-          amount: amount,
-          period: period,
-          startDate: DateTime(DateTime.now().year, DateTime.now().month),
-          alertThresholdPct: Value(alertThresholdPct),
-        ),
-      );
+  }) async {
+    final category = await categoryById(categoryId);
+    if (category == null) {
+      throw ArgumentError('That category no longer exists.');
+    }
+    if (category.parentId != null) {
+      final parentBudget =
+          await (select(budgets)
+                ..where((b) => b.categoryId.equals(category.parentId!)))
+              .getSingleOrNull();
+      if (parentBudget != null && amount > parentBudget.amount) {
+        throw ArgumentError(
+          "A subcategory's budget can't be more than its parent's "
+          '(${MoneyFormat.symbol(parentBudget.amount)}).',
+        );
+      }
+    } else {
+      final children =
+          await (select(categories)..where(
+                (c) =>
+                    c.parentId.equals(categoryId) & c.isArchived.equals(false),
+              ))
+              .get();
+      if (children.isNotEmpty) {
+        final childIds = children.map((c) => c.id).toSet();
+        final childBudgets = await (select(
+          budgets,
+        )..where((b) => b.categoryId.isIn(childIds))).get();
+        for (final childBudget in childBudgets) {
+          if (childBudget.amount > amount) {
+            final childCategory = children.firstWhere(
+              (c) => c.id == childBudget.categoryId,
+            );
+            throw ArgumentError(
+              '${childCategory.name} is already budgeted '
+              '${MoneyFormat.symbol(childBudget.amount)} — lower that first, '
+              'or set this to at least that much.',
+            );
+          }
+        }
+      }
+    }
+
+    final entry = BudgetsCompanion.insert(
+      categoryId: categoryId,
+      amount: amount,
+      period: period,
+      startDate: DateTime(DateTime.now().year, DateTime.now().month),
+      alertThresholdPct: Value(alertThresholdPct),
+    );
+    // `insertOnConflictUpdate` targets only the primary key (`id`) by
+    // default, never `categoryId` — but `id` is always fresh here (the
+    // companion never carries one), so it never conflicts and the *real*
+    // unique constraint (one budget per category) would raise a raw
+    // uncaught SqliteException on every edit of an existing budget instead
+    // of updating it. Naming the conflict target explicitly is what makes
+    // this an actual upsert.
+    await into(budgets).insert(
+      entry,
+      onConflict: DoUpdate((_) => entry, target: [budgets.categoryId]),
+    );
+  }
 
   Future<void> deleteBudget(int categoryId) =>
       (delete(budgets)..where((b) => b.categoryId.equals(categoryId))).go();
@@ -886,33 +1527,34 @@ class AppDatabase extends _$AppDatabase {
     int? personId,
     ReminderRepeat repeat = ReminderRepeat.none,
     int notifyDaysBefore = 0,
-  }) =>
-      into(reminders).insert(
-        RemindersCompanion.insert(
-          title: title,
-          amount: Value(amount),
-          direction: direction,
-          dueDate: dueDate,
-          accountId: Value(accountId),
-          categoryId: Value(categoryId),
-          personId: Value(personId),
-          repeat: Value(repeat),
-          notifyDaysBefore: Value(notifyDaysBefore),
-        ),
-      );
+  }) => into(reminders).insert(
+    RemindersCompanion.insert(
+      title: title,
+      amount: Value(amount),
+      direction: direction,
+      dueDate: dueDate,
+      accountId: Value(accountId),
+      categoryId: Value(categoryId),
+      personId: Value(personId),
+      repeat: Value(repeat),
+      notifyDaysBefore: Value(notifyDaysBefore),
+    ),
+  );
 
-  Stream<List<ReminderRow>> watchReminders() =>
-      (select(reminders)..orderBy([(r) => OrderingTerm(expression: r.dueDate)]))
-          .watch();
+  Stream<List<ReminderRow>> watchReminders() => (select(
+    reminders,
+  )..orderBy([(r) => OrderingTerm(expression: r.dueDate)])).watch();
 
-  Future<void> setReminderStatus(int id, ReminderStatus status,
-          {int? transactionId}) =>
-      (update(reminders)..where((r) => r.id.equals(id))).write(
-        RemindersCompanion(
-          status: Value(status),
-          transactionId: Value(transactionId),
-        ),
-      );
+  Future<void> setReminderStatus(
+    int id,
+    ReminderStatus status, {
+    int? transactionId,
+  }) => (update(reminders)..where((r) => r.id.equals(id))).write(
+    RemindersCompanion(
+      status: Value(status),
+      transactionId: Value(transactionId),
+    ),
+  );
 
   Future<void> deleteReminder(int id) =>
       (delete(reminders)..where((r) => r.id.equals(id))).go();
@@ -960,9 +1602,11 @@ class AppDatabase extends _$AppDatabase {
     int notifyDaysBefore = 3,
   }) async {
     final category = await categoryById(categoryId);
-    if (category == null) throw ArgumentError('That category no longer exists.');
-    final dayOfMonth =
-        frequency == RecurringFrequency.monthly ? startsOn.day : null;
+    if (category == null)
+      throw ArgumentError('That category no longer exists.');
+    final dayOfMonth = frequency == RecurringFrequency.monthly
+        ? startsOn.day
+        : null;
     _validateRecurringRule(
       amount: amount,
       kind: kind,
@@ -1001,9 +1645,11 @@ class AppDatabase extends _$AppDatabase {
     int notifyDaysBefore = 3,
   }) async {
     final category = await categoryById(categoryId);
-    if (category == null) throw ArgumentError('That category no longer exists.');
-    final dayOfMonth =
-        frequency == RecurringFrequency.monthly ? nextDueDate.day : null;
+    if (category == null)
+      throw ArgumentError('That category no longer exists.');
+    final dayOfMonth = frequency == RecurringFrequency.monthly
+        ? nextDueDate.day
+        : null;
     _validateRecurringRule(
       amount: amount,
       kind: kind,
@@ -1032,22 +1678,22 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> setRecurringActive(int id, bool active) =>
-      (update(recurringRules)..where((r) => r.id.equals(id)))
-          .write(RecurringRulesCompanion(isActive: Value(active)));
+      (update(recurringRules)..where((r) => r.id.equals(id))).write(
+        RecurringRulesCompanion(isActive: Value(active)),
+      );
 
   /// The rule itself is gone, but a transaction it already posted is a real
   /// ledger row and stays — it just loses the breadcrumb back to its rule,
   /// the same way deleting a transaction clears a reminder's back-reference.
   Future<void> deleteRecurringRule(int id) => transaction(() async {
-        await (update(transactions)..where((t) => t.recurringRuleId.equals(id)))
-            .write(const TransactionsCompanion(recurringRuleId: Value(null)));
-        await (delete(recurringRules)..where((r) => r.id.equals(id))).go();
-      });
+    await (update(transactions)..where((t) => t.recurringRuleId.equals(id)))
+        .write(const TransactionsCompanion(recurringRuleId: Value(null)));
+    await (delete(recurringRules)..where((r) => r.id.equals(id))).go();
+  });
 
-  Stream<List<RecurringRuleRow>> watchRecurringRules() =>
-      (select(recurringRules)
-            ..orderBy([(r) => OrderingTerm(expression: r.nextDueDate)]))
-          .watch();
+  Stream<List<RecurringRuleRow>> watchRecurringRules() => (select(
+    recurringRules,
+  )..orderBy([(r) => OrderingTerm(expression: r.nextDueDate)])).watch();
 
   /// The occurrence after [from], for a rule whose target day is
   /// [dayOfMonth] (monthly only). Short months snap to their last day, but
@@ -1092,10 +1738,13 @@ class AppDatabase extends _$AppDatabase {
   Future<int> runDueRecurringRules({DateTime? now}) async {
     final today = now ?? DateTime.now();
     final endOfToday = DateTime(today.year, today.month, today.day, 23, 59, 59);
-    final due = await (select(recurringRules)
-          ..where((r) =>
-              r.isActive.equals(true) & r.nextDueDate.isSmallerOrEqualValue(endOfToday)))
-        .get();
+    final due =
+        await (select(recurringRules)..where(
+              (r) =>
+                  r.isActive.equals(true) &
+                  r.nextDueDate.isSmallerOrEqualValue(endOfToday),
+            ))
+            .get();
     if (due.isEmpty) return 0;
 
     var posted = 0;
@@ -1115,7 +1764,11 @@ class AppDatabase extends _$AppDatabase {
             recurringRuleId: rule.id,
           );
           posted++;
-          next = _nextOccurrence(rule.frequency, next, dayOfMonth: rule.dayOfMonth);
+          next = _nextOccurrence(
+            rule.frequency,
+            next,
+            dayOfMonth: rule.dayOfMonth,
+          );
         }
         await (update(recurringRules)..where((r) => r.id.equals(rule.id)))
             .write(RecurringRulesCompanion(nextDueDate: Value(next)));
@@ -1141,6 +1794,18 @@ class AppDatabase extends _$AppDatabase {
     );
     final body = m.body.replaceAll(RegExp(r'\s+'), ' ').trim().toLowerCase();
     return '${m.sender.toUpperCase()}|${minute.toIso8601String()}|${body.hashCode}';
+  }
+
+  /// True whenever a [PersonEntries] row is the one that posted this
+  /// transaction — a `personOut`/`personIn` movement always is, and so is a
+  /// repayment marked to count as income (see [addPersonEntry]), even though
+  /// its own [TransactionRow.type] reads as ordinary [TxType.income]. Editing
+  /// either directly here would desync the person's ledger from the money.
+  Future<bool> isPersonLinkedTransaction(int transactionId) async {
+    final owner = await (select(
+      personEntries,
+    )..where((e) => e.transactionId.equals(transactionId))).getSingleOrNull();
+    return owner != null;
   }
 
   Future<TransactionRow?> transactionById(int id) =>
@@ -1169,11 +1834,13 @@ class AppDatabase extends _$AppDatabase {
     final from = at.subtract(_nearDuplicateWindow);
     final to = at.add(_nearDuplicateWindow);
 
-    final rows = await (select(pendingTxns)
-          ..where((t) =>
-              t.receivedAt.isBetweenValues(from, to) &
-              t.status.equalsValue(PendingStatus.dismissed).not()))
-        .get();
+    final rows =
+        await (select(pendingTxns)..where(
+              (t) =>
+                  t.receivedAt.isBetweenValues(from, to) &
+                  t.status.equalsValue(PendingStatus.dismissed).not(),
+            ))
+            .get();
 
     for (final r in rows) {
       if (r.parsedAmount != p.amount) continue;
@@ -1201,9 +1868,9 @@ class AppDatabase extends _$AppDatabase {
   Future<int?> ingestMessage(RawMessage msg, ParsedMessage parsed) {
     return transaction(() async {
       final key = dedupeKeyFor(msg);
-      final seen = await (select(pendingTxns)
-            ..where((t) => t.dedupeKey.equals(key)))
-          .getSingleOrNull();
+      final seen = await (select(
+        pendingTxns,
+      )..where((t) => t.dedupeKey.equals(key))).getSingleOrNull();
       if (seen != null) return null;
 
       final matched = parsed.accountHint == null
@@ -1251,8 +1918,9 @@ class AppDatabase extends _$AppDatabase {
     bool learnMerchantRule = false,
   }) {
     return transaction(() async {
-      final p = await (select(pendingTxns)..where((t) => t.id.equals(pendingId)))
-          .getSingle();
+      final p = await (select(
+        pendingTxns,
+      )..where((t) => t.id.equals(pendingId))).getSingle();
       if (p.parsedAmount == null || p.parsedDirection == null) {
         throw ArgumentError('This message has no amount or direction to post.');
       }
@@ -1294,8 +1962,9 @@ class AppDatabase extends _$AppDatabase {
   /// Undo must **reverse the posted transaction**, not merely hide the card.
   Future<void> undoPending(int pendingId) {
     return transaction(() async {
-      final p = await (select(pendingTxns)..where((t) => t.id.equals(pendingId)))
-          .getSingle();
+      final p = await (select(
+        pendingTxns,
+      )..where((t) => t.id.equals(pendingId))).getSingle();
       final txId = p.createdTransactionId;
 
       // `deleteTransaction` clears this reference itself, but drop it here too
@@ -1313,24 +1982,32 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> setPendingStatus(int id, PendingStatus status) =>
-      (update(pendingTxns)..where((t) => t.id.equals(id)))
-          .write(PendingTxnsCompanion(status: Value(status)));
+      (update(pendingTxns)..where((t) => t.id.equals(id))).write(
+        PendingTxnsCompanion(status: Value(status)),
+      );
 
   /// Cards the user should see: awaiting a category, or auto-filled for info.
-  Stream<List<PendingTxnRow>> watchPendingCards() => (select(pendingTxns)
-        ..where((t) =>
-            t.status.equalsValue(PendingStatus.pending) |
-            t.status.equalsValue(PendingStatus.autoFilled))
-        ..orderBy([
-          (t) => OrderingTerm(expression: t.receivedAt, mode: OrderingMode.desc),
-        ]))
-      .watch();
+  Stream<List<PendingTxnRow>> watchPendingCards() =>
+      (select(pendingTxns)
+            ..where(
+              (t) =>
+                  t.status.equalsValue(PendingStatus.pending) |
+                  t.status.equalsValue(PendingStatus.autoFilled),
+            )
+            ..orderBy([
+              (t) => OrderingTerm(
+                expression: t.receivedAt,
+                mode: OrderingMode.desc,
+              ),
+            ]))
+          .watch();
 
-  Stream<List<PendingTxnRow>> watchAllPendingTxns() => (select(pendingTxns)
-        ..orderBy([
-          (t) => OrderingTerm(expression: t.receivedAt, mode: OrderingMode.desc),
-        ]))
-      .watch();
+  Stream<List<PendingTxnRow>> watchAllPendingTxns() =>
+      (select(pendingTxns)..orderBy([
+            (t) =>
+                OrderingTerm(expression: t.receivedAt, mode: OrderingMode.desc),
+          ]))
+          .watch();
 
   // ── Merchant rules (what Auto-Approve is allowed to fire from) ────────────
 
@@ -1379,9 +2056,9 @@ class AppDatabase extends _$AppDatabase {
     required int categoryId,
     int? accountId,
   }) async {
-    final existing = await (select(merchantRules)
-          ..where((r) => r.matchPattern.equals(pattern)))
-        .getSingleOrNull();
+    final existing = await (select(
+      merchantRules,
+    )..where((r) => r.matchPattern.equals(pattern))).getSingleOrNull();
 
     if (existing == null) {
       await into(merchantRules).insert(
@@ -1393,8 +2070,9 @@ class AppDatabase extends _$AppDatabase {
         ),
       );
     } else {
-      await (update(merchantRules)..where((r) => r.id.equals(existing.id)))
-          .write(
+      await (update(
+        merchantRules,
+      )..where((r) => r.id.equals(existing.id))).write(
         MerchantRulesCompanion(
           categoryId: Value(categoryId),
           accountId: Value(accountId),
@@ -1413,19 +2091,22 @@ class AppDatabase extends _$AppDatabase {
   Stream<List<SenderRuleRow>> watchSenderRules() => select(senderRules).watch();
 
   Future<void> setSenderRuleEnabled(int id, bool enabled) =>
-      (update(senderRules)..where((r) => r.id.equals(id)))
-          .write(SenderRulesCompanion(enabled: Value(enabled)));
+      (update(senderRules)..where((r) => r.id.equals(id))).write(
+        SenderRulesCompanion(enabled: Value(enabled)),
+      );
 
   // ── Settings for capture ─────────────────────────────────────────────────
 
-  Future<void> setMessageCaptureEnabled(bool enabled) => update(settings)
-      .write(SettingsCompanion(messageCaptureEnabled: Value(enabled)));
+  Future<void> setMessageCaptureEnabled(bool enabled) => update(
+    settings,
+  ).write(SettingsCompanion(messageCaptureEnabled: Value(enabled)));
 
   Future<void> setAutoApprove(bool enabled) =>
       update(settings).write(SettingsCompanion(autoApprove: Value(enabled)));
 
-  Future<void> setNotificationsEnabled(bool enabled) => update(settings)
-      .write(SettingsCompanion(notificationsEnabled: Value(enabled)));
+  Future<void> setNotificationsEnabled(bool enabled) => update(
+    settings,
+  ).write(SettingsCompanion(notificationsEnabled: Value(enabled)));
 
   Future<void> setLastMessageScanAt(DateTime at) =>
       update(settings).write(SettingsCompanion(lastMessageScanAt: Value(at)));
@@ -1440,8 +2121,65 @@ class AppDatabase extends _$AppDatabase {
   Future<void> setCurrencyCode(String code) =>
       update(settings).write(SettingsCompanion(currencyCode: Value(code)));
 
-  Future<void> setShowCurrencySymbol(bool show) => update(settings)
-      .write(SettingsCompanion(showCurrencySymbol: Value(show)));
+  Future<void> setShowCurrencySymbol(bool show) => update(
+    settings,
+  ).write(SettingsCompanion(showCurrencySymbol: Value(show)));
+
+  Future<void> setCountRepaymentsAsIncome(bool value) => update(
+    settings,
+  ).write(SettingsCompanion(countRepaymentsAsIncome: Value(value)));
+
+  // ── Passcode ──────────────────────────────────────────────────────────────
+
+  Future<void> setPasscode(String pin) {
+    final salt = Passcode.generateSalt();
+    return update(settings).write(
+      SettingsCompanion(
+        passcodeHash: Value(Passcode.hash(pin, salt)),
+        passcodeSalt: Value(salt),
+      ),
+    );
+  }
+
+  /// Clears the passcode and, since it's meaningless without one, biometric
+  /// unlock along with it.
+  Future<void> clearPasscode() => update(settings).write(
+    const SettingsCompanion(
+      passcodeHash: Value(null),
+      passcodeSalt: Value(null),
+      biometricEnabled: Value(false),
+    ),
+  );
+
+  Future<bool> verifyPasscode(String pin) async {
+    final row = await getSettings();
+    final hash = row.passcodeHash;
+    final salt = row.passcodeSalt;
+    if (hash == null || salt == null) return false;
+    return Passcode.verify(pin, salt, hash);
+  }
+
+  /// A no-op when no passcode is set — see the doc on [Settings.biometricEnabled].
+  Future<void> setBiometricEnabled(bool value) async {
+    if (value && (await getSettings()).passcodeHash == null) return;
+    await update(
+      settings,
+    ).write(SettingsCompanion(biometricEnabled: Value(value)));
+  }
+
+  // ── Expense reminder ─────────────────────────────────────────────────────
+
+  Future<void> setExpenseReminder({
+    required bool enabled,
+    required int hour,
+    required int minute,
+  }) => update(settings).write(
+    SettingsCompanion(
+      expenseReminderEnabled: Value(enabled),
+      expenseReminderHour: Value(hour),
+      expenseReminderMinute: Value(minute),
+    ),
+  );
 
   Future<SettingRow> getSettings() => select(settings).getSingle();
 
@@ -1464,12 +2202,14 @@ class AppDatabase extends _$AppDatabase {
     required AlertLevel level,
   }) {
     return transaction(() async {
-      final existing = await (select(budgetAlerts)
-            ..where((a) =>
-                a.categoryId.equals(categoryId) &
-                a.periodKey.equals(periodKey) &
-                a.level.equalsValue(level)))
-          .getSingleOrNull();
+      final existing =
+          await (select(budgetAlerts)..where(
+                (a) =>
+                    a.categoryId.equals(categoryId) &
+                    a.periodKey.equals(periodKey) &
+                    a.level.equalsValue(level),
+              ))
+              .getSingleOrNull();
       if (existing != null) return false;
 
       // A plain insert, not insertOrIgnore: inside the transaction the unique
@@ -1493,19 +2233,21 @@ class AppDatabase extends _$AppDatabase {
     required String periodKey,
     required AlertLevel level,
   }) =>
-      (delete(budgetAlerts)
-            ..where((a) =>
+      (delete(budgetAlerts)..where(
+            (a) =>
                 a.categoryId.equals(categoryId) &
                 a.periodKey.equals(periodKey) &
-                a.level.equalsValue(level)))
+                a.level.equalsValue(level),
+          ))
           .go();
 
   // ── Categories CRUD ───────────────────────────────────────────────────────
 
-  Stream<List<CategoryRow>> watchAllCategories() => (select(categories)
-        ..where((c) => c.isArchived.equals(false))
-        ..orderBy([(c) => OrderingTerm(expression: c.sortOrder)]))
-      .watch();
+  Stream<List<CategoryRow>> watchAllCategories() =>
+      (select(categories)
+            ..where((c) => c.isArchived.equals(false))
+            ..orderBy([(c) => OrderingTerm(expression: c.sortOrder)]))
+          .watch();
 
   Future<int> addCategory({
     required String name,
@@ -1558,8 +2300,9 @@ class AppDatabase extends _$AppDatabase {
     await (update(categories)..where((c) => c.id.equals(id))).write(
       CategoriesCompanion(
         name: name == null ? const Value.absent() : Value(name),
-        colorValue:
-            colorValue == null ? const Value.absent() : Value(colorValue),
+        colorValue: colorValue == null
+            ? const Value.absent()
+            : Value(colorValue),
         iconKey: iconKey == null ? const Value.absent() : Value(iconKey),
         parentId: parentId,
       ),
@@ -1588,9 +2331,9 @@ class AppDatabase extends _$AppDatabase {
 
   /// How many live subcategories sit under [id].
   Future<int> countChildCategories(int id) async {
-    final rows = await (select(categories)
-          ..where((c) => c.parentId.equals(id) & c.isArchived.equals(false)))
-        .get();
+    final rows = await (select(
+      categories,
+    )..where((c) => c.parentId.equals(id) & c.isArchived.equals(false))).get();
     return rows.length;
   }
 
@@ -1599,16 +2342,18 @@ class AppDatabase extends _$AppDatabase {
   /// cascades to its subcategories so none is left stranded under a hidden
   /// parent — done in one transaction so the tree never lands half-archived.
   Future<void> archiveCategory(int id) => transaction(() async {
-        await (update(categories)..where((c) => c.id.equals(id)))
-            .write(const CategoriesCompanion(isArchived: Value(true)));
-        await (update(categories)..where((c) => c.parentId.equals(id)))
-            .write(const CategoriesCompanion(isArchived: Value(true)));
-      });
+    await (update(categories)..where((c) => c.id.equals(id))).write(
+      const CategoriesCompanion(isArchived: Value(true)),
+    );
+    await (update(categories)..where((c) => c.parentId.equals(id))).write(
+      const CategoriesCompanion(isArchived: Value(true)),
+    );
+  });
 
   Future<int> countTransactionsForCategory(int categoryId) async {
-    final rows = await (select(transactions)
-          ..where((t) => t.categoryId.equals(categoryId)))
-        .get();
+    final rows = await (select(
+      transactions,
+    )..where((t) => t.categoryId.equals(categoryId))).get();
     return rows.length;
   }
 
@@ -1616,10 +2361,12 @@ class AppDatabase extends _$AppDatabase {
 
   /// Every transaction touching this account, including transfers in *and* out,
   /// and anything paid via a debit card linked to it.
-  Stream<List<TransactionRow>> watchTransactionsForAccount(int accountId) async* {
-    final instruments = await (select(accounts)
-          ..where((a) => a.linkedAccountId.equals(accountId)))
-        .get();
+  Stream<List<TransactionRow>> watchTransactionsForAccount(
+    int accountId,
+  ) async* {
+    final instruments = await (select(
+      accounts,
+    )..where((a) => a.linkedAccountId.equals(accountId))).get();
     final ids = <int>{accountId, ...instruments.map((a) => a.id)};
 
     yield* (select(transactions)
@@ -1640,11 +2387,14 @@ class AppDatabase extends _$AppDatabase {
     required DateTime start,
     required DateTime end,
   }) async {
-    final account =
-        await (select(accounts)..where((a) => a.id.equals(accountId))).getSingle();
+    final account = await (select(
+      accounts,
+    )..where((a) => a.id.equals(accountId))).getSingle();
     final allAccounts = await select(accounts).get();
     final accountsById = {for (final a in allAccounts) a.id: a};
-    final categoriesById = {for (final c in await select(categories).get()) c.id: c};
+    final categoriesById = {
+      for (final c in await select(categories).get()) c.id: c,
+    };
     final personsById = {for (final p in await select(persons).get()) p.id: p};
     final ownIds = <int>{
       accountId,
@@ -1653,15 +2403,18 @@ class AppDatabase extends _$AppDatabase {
     };
 
     final endOfEnd = DateTime(end.year, end.month, end.day, 23, 59, 59, 999);
-    final all = await (select(transactions)
-          ..where((t) =>
-              (t.accountId.isIn(ownIds) | t.toAccountId.isIn(ownIds)) &
-              t.date.isSmallerOrEqualValue(endOfEnd))
-          ..orderBy([
-            (t) => OrderingTerm(expression: t.date),
-            (t) => OrderingTerm(expression: t.id),
-          ]))
-        .get();
+    final all =
+        await (select(transactions)
+              ..where(
+                (t) =>
+                    (t.accountId.isIn(ownIds) | t.toAccountId.isIn(ownIds)) &
+                    t.date.isSmallerOrEqualValue(endOfEnd),
+              )
+              ..orderBy([
+                (t) => OrderingTerm(expression: t.date),
+                (t) => OrderingTerm(expression: t.id),
+              ]))
+            .get();
 
     String describe(TransactionRow t) {
       switch (t.type) {
@@ -1669,16 +2422,22 @@ class AppDatabase extends _$AppDatabase {
           final out = ownIds.contains(t.accountId);
           final otherId = out ? t.toAccountId : t.accountId;
           final other = otherId == null ? null : accountsById[otherId]?.name;
-          return out ? 'Transfer to ${other ?? '-'}' : 'Transfer from ${other ?? '-'}';
+          return out
+              ? 'Transfer to ${other ?? '-'}'
+              : 'Transfer from ${other ?? '-'}';
         case TxType.personOut:
         case TxType.personIn:
-          final person = t.personId == null ? null : personsById[t.personId]?.name;
+          final person = t.personId == null
+              ? null
+              : personsById[t.personId]?.name;
           return t.type == TxType.personOut
               ? 'Given to ${person ?? 'person'}'
               : 'Received from ${person ?? 'person'}';
         case TxType.income:
         case TxType.expense:
-          final category = t.categoryId == null ? null : categoriesById[t.categoryId];
+          final category = t.categoryId == null
+              ? null
+              : categoriesById[t.categoryId];
           final base = category?.name ?? 'Uncategorised';
           final payee = t.payee?.trim();
           return (t.type == TxType.expense && payee != null && payee.isNotEmpty)
@@ -1706,7 +2465,11 @@ class AppDatabase extends _$AppDatabase {
     }
     openingBalance ??= running; // nothing fell inside the range
 
-    return (openingBalance: openingBalance, lines: lines, closingBalance: running);
+    return (
+      openingBalance: openingBalance,
+      lines: lines,
+      closingBalance: running,
+    );
   }
 
   /// Planned vs. actual for every budgeted category in [month] — a subcategory
@@ -1716,10 +2479,14 @@ class AppDatabase extends _$AppDatabase {
   /// Riverpod composition this data-only layer must not depend on).
   Future<List<BudgetStatementLine>> budgetStatement(DateTime month) async {
     final start = DateTime(month.year, month.month);
-    final end = DateTime(month.year, month.month + 1)
-        .subtract(const Duration(milliseconds: 1));
+    final end = DateTime(
+      month.year,
+      month.month + 1,
+    ).subtract(const Duration(milliseconds: 1));
     final budgetRows = await select(budgets).get();
-    final categoriesById = {for (final c in await select(categories).get()) c.id: c};
+    final categoriesById = {
+      for (final c in await select(categories).get()) c.id: c,
+    };
     final spend = await watchSpendByCategory(start, end).first;
 
     final out = <BudgetStatementLine>[];
@@ -1756,7 +2523,8 @@ class AppDatabase extends _$AppDatabase {
     if (type == DriftSqlType.dateTime) {
       if (value is String) return DateTime.parse(value);
       // Tolerate an older backup that stored raw unix seconds.
-      if (value is int) return DateTime.fromMillisecondsSinceEpoch(value * 1000);
+      if (value is int)
+        return DateTime.fromMillisecondsSinceEpoch(value * 1000);
     }
     if (type == DriftSqlType.bool && value is int) return value != 0;
     if (type == DriftSqlType.double && value is int) return value.toDouble();
@@ -1783,6 +2551,14 @@ class AppDatabase extends _$AppDatabase {
       'reminders': (await select(reminders).get()).map(m).toList(),
       'merchantRules': (await select(merchantRules).get()).map(m).toList(),
       'senderRules': (await select(senderRules).get()).map(m).toList(),
+      'tags': (await select(tags).get()).map(m).toList(),
+      'transactionTags': (await select(transactionTags).get()).map(m).toList(),
+      'transactionSplits': (await select(
+        transactionSplits,
+      ).get()).map(m).toList(),
+      'savingsGoals': (await select(savingsGoals).get()).map(m).toList(),
+      'shoppingLists': (await select(shoppingLists).get()).map(m).toList(),
+      'shoppingItems': (await select(shoppingItems).get()).map(m).toList(),
       // `importAll` clears these two, so they MUST be exported. Otherwise
       // restoring the app's own backup silently wipes un-reviewed capture cards
       // and resets the budget-alert dedupe (re-firing alerts already seen).
@@ -1816,8 +2592,15 @@ class AppDatabase extends _$AppDatabase {
 
     // A backup carries a *ledger*, not the look of the phone it was taken on.
     // Restoring your data onto a new device must not repaint that device, so
-    // the theme is read before the wipe and put back after the load.
-    final localTheme = (await select(settings).getSingleOrNull())?.themeName;
+    // the theme is read before the wipe and put back after the load. The
+    // passcode gets the same treatment for a sharper reason: a backup taken
+    // before one was ever set would otherwise silently turn the lock off by
+    // importing a null hash over it.
+    final localSettings = await select(settings).getSingleOrNull();
+    final localTheme = localSettings?.themeName;
+    final localPasscodeHash = localSettings?.passcodeHash;
+    final localPasscodeSalt = localSettings?.passcodeSalt;
+    final localBiometricEnabled = localSettings?.biometricEnabled ?? false;
 
     // Foreign keys stay ON throughout (SQLite ignores the `foreign_keys` pragma
     // inside a transaction anyway). That is deliberate: a backup pointing at a
@@ -1831,11 +2614,20 @@ class AppDatabase extends _$AppDatabase {
       await delete(reminders).go();
       await delete(personEntries).go();
       await delete(budgets).go();
+      // Both reference transactions/categories, so they go before either.
+      await delete(transactionSplits).go();
+      await delete(transactionTags).go();
+      // References accounts, so it goes before that delete too.
+      await delete(savingsGoals).go();
       await delete(transactions).go();
       await delete(persons).go();
       await delete(categories).go();
       await delete(accounts).go();
       await delete(senderRules).go();
+      await delete(tags).go();
+      // Items reference lists, so they go first.
+      await delete(shoppingItems).go();
+      await delete(shoppingLists).go();
       await delete(settings).go();
 
       Future<void> load<T extends Table, D>(
@@ -1862,6 +2654,9 @@ class AppDatabase extends _$AppDatabase {
       await load(accounts, 'accounts');
       await load(categories, 'categories');
       await load(persons, 'persons');
+      await load(tags, 'tags');
+      await load(savingsGoals, 'savingsGoals');
+      await load(shoppingLists, 'shoppingLists');
       await load(transactions, 'transactions');
       await load(budgets, 'budgets');
       await load(personEntries, 'personEntries');
@@ -1872,12 +2667,22 @@ class AppDatabase extends _$AppDatabase {
       // An older backup simply has no rows for them — `rows()` yields nothing.
       await load(pendingTxns, 'pendingTxns');
       await load(budgetAlerts, 'budgetAlerts');
+      // Both reference transactions/categories/tags, so they come after all
+      // three are loaded.
+      await load(transactionTags, 'transactionTags');
+      await load(transactionSplits, 'transactionSplits');
+      await load(shoppingItems, 'shoppingItems');
       await load(settings, 'settings');
 
       if (localTheme != null) {
-        await update(settings).write(SettingsCompanion(
-          themeName: Value(localTheme),
-        ));
+        await update(settings).write(
+          SettingsCompanion(
+            themeName: Value(localTheme),
+            passcodeHash: Value(localPasscodeHash),
+            passcodeSalt: Value(localPasscodeSalt),
+            biometricEnabled: Value(localBiometricEnabled),
+          ),
+        );
       }
     });
 
@@ -1891,18 +2696,16 @@ class AppDatabase extends _$AppDatabase {
 
   /// Accountant / Tally friendly. Amounts as plain decimal rupees.
   Future<String> transactionsCsv() async {
-    final txs = await (select(transactions)
-          ..orderBy([(t) => OrderingTerm(expression: t.date)]))
-        .get();
+    final txs = await (select(
+      transactions,
+    )..orderBy([(t) => OrderingTerm(expression: t.date)])).get();
     final accs = {for (final a in await select(accounts).get()) a.id: a.name};
     final cats = {for (final c in await select(categories).get()) c.id: c.name};
     final ppl = {for (final p in await select(persons).get()) p.id: p.name};
 
     String esc(String? s) {
       final v = s ?? '';
-      return v.contains(RegExp('[",\n]'))
-          ? '"${v.replaceAll('"', '""')}"'
-          : v;
+      return v.contains(RegExp('[",\n]')) ? '"${v.replaceAll('"', '""')}"' : v;
     }
 
     final b = StringBuffer(
@@ -1910,7 +2713,8 @@ class AppDatabase extends _$AppDatabase {
     );
     for (final t in txs) {
       final d = t.date;
-      final date = '${d.year}-${d.month.toString().padLeft(2, '0')}-'
+      final date =
+          '${d.year}-${d.month.toString().padLeft(2, '0')}-'
           '${d.day.toString().padLeft(2, '0')}';
       b
         ..write(date)

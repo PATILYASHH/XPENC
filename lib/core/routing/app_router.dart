@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/tables.dart';
 import '../../features/about/about_screen.dart';
 import '../../features/accounts/account_detail_screen.dart';
 import '../../features/accounts/accounts_screen.dart';
+import '../../features/accounts/archived_accounts_screen.dart';
 import '../../features/add_transaction/add_transaction_screen.dart';
 import '../../features/auto/auto_screen.dart';
 import '../../features/budgets/budgets_screen.dart';
@@ -18,11 +20,18 @@ import '../../features/more/more_screen.dart';
 import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/payees/payee_detail_screen.dart';
 import '../../features/payees/payees_screen.dart';
+import '../../features/persons/archived_persons_screen.dart';
 import '../../features/persons/person_detail_screen.dart';
 import '../../features/persons/persons_screen.dart';
 import '../../features/reports/account_reports_screen.dart';
 import '../../features/reports/stats_screen.dart';
+import '../../features/savings/savings_goal_detail_screen.dart';
+import '../../features/savings/savings_goals_screen.dart';
+import '../../features/security/set_passcode_screen.dart';
 import '../../features/settings/settings_screen.dart';
+import '../../features/shopping/shopping_list_screen.dart';
+import '../../features/shopping/shopping_lists_screen.dart';
+import '../../features/tags/tags_screen.dart';
 import '../../features/transactions/transaction_detail_screen.dart';
 import '../../features/transactions/transactions_screen.dart';
 import 'app_shell.dart';
@@ -57,10 +66,7 @@ final appRouter = GoRouter(
         ),
         StatefulShellBranch(
           routes: [
-            GoRoute(
-              path: '/persons',
-              builder: (_, _) => const PersonsScreen(),
-            ),
+            GoRoute(path: '/persons', builder: (_, _) => const PersonsScreen()),
           ],
         ),
         StatefulShellBranch(
@@ -83,6 +89,16 @@ final appRouter = GoRouter(
                   path: 'settings',
                   parentNavigatorKey: _rootKey,
                   builder: (_, _) => const SettingsScreen(),
+                  routes: [
+                    GoRoute(
+                      path: 'passcode',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, state) => SetPasscodeScreen(
+                        isRemoving:
+                            state.uri.queryParameters['remove'] == 'true',
+                      ),
+                    ),
+                  ],
                 ),
                 GoRoute(
                   path: 'about',
@@ -98,6 +114,11 @@ final appRouter = GoRouter(
                   path: 'categories',
                   parentNavigatorKey: _rootKey,
                   builder: (_, _) => const CategoriesScreen(),
+                ),
+                GoRoute(
+                  path: 'tags',
+                  parentNavigatorKey: _rootKey,
+                  builder: (_, _) => const TagsScreen(),
                 ),
                 GoRoute(
                   path: 'stats',
@@ -125,9 +146,44 @@ final appRouter = GoRouter(
                   builder: (_, _) => const AutoScreen(),
                 ),
                 GoRoute(
+                  path: 'shopping',
+                  parentNavigatorKey: _rootKey,
+                  builder: (_, _) => const ShoppingListsScreen(),
+                  routes: [
+                    GoRoute(
+                      path: ':id',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, state) => ShoppingListScreen(
+                        listId: int.parse(state.pathParameters['id']!),
+                      ),
+                    ),
+                  ],
+                ),
+                GoRoute(
+                  path: 'savings',
+                  parentNavigatorKey: _rootKey,
+                  builder: (_, _) => const SavingsGoalsScreen(),
+                  routes: [
+                    GoRoute(
+                      path: ':id',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, state) => SavingsGoalDetailScreen(
+                        goalId: int.parse(state.pathParameters['id']!),
+                      ),
+                    ),
+                  ],
+                ),
+                GoRoute(
                   path: 'accounts',
                   parentNavigatorKey: _rootKey,
                   builder: (_, _) => const AccountsScreen(),
+                  routes: [
+                    GoRoute(
+                      path: 'archived',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const ArchivedAccountsScreen(),
+                    ),
+                  ],
                 ),
                 GoRoute(
                   path: 'payees',
@@ -166,8 +222,14 @@ final appRouter = GoRouter(
       parentNavigatorKey: _rootKey,
       builder: (_, state) {
         final id = state.uri.queryParameters['id'];
+        final type = switch (state.uri.queryParameters['type']) {
+          'expense' => TxType.expense,
+          'income' => TxType.income,
+          _ => null,
+        };
         return AddTransactionScreen(
           transactionId: id == null ? null : int.tryParse(id),
+          initialType: type,
         );
       },
     ),
@@ -198,9 +260,14 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/person/:id',
       parentNavigatorKey: _rootKey,
-      builder: (_, state) => PersonDetailScreen(
-        personId: int.parse(state.pathParameters['id']!),
-      ),
+      builder: (_, state) =>
+          PersonDetailScreen(personId: int.parse(state.pathParameters['id']!)),
+    ),
+
+    GoRoute(
+      path: '/persons/archived',
+      parentNavigatorKey: _rootKey,
+      builder: (_, _) => const ArchivedPersonsScreen(),
     ),
   ],
 );
