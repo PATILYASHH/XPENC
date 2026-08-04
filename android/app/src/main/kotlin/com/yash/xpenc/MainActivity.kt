@@ -1,6 +1,6 @@
 package com.yash.xpenc
 
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 
 /**
  * Host activity for the XPENC Flutter app.
@@ -17,5 +17,9 @@ import io.flutter.embedding.android.FlutterActivity
  * still sits behind the `MessageSource` interface. When capture returns in a
  * Play-compliant form (e.g. a NotificationListenerService source), implement a
  * new source there; the git history of this file has the old channel code.
+ *
+ * Extends FlutterFragmentActivity (not FlutterActivity) because the passcode
+ * lock's biometric unlock (`local_auth`) needs a FragmentActivity to host the
+ * system biometric prompt.
  */
-class MainActivity : FlutterActivity()
+class MainActivity : FlutterFragmentActivity()

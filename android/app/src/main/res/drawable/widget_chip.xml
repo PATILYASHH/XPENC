@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The pill-shaped tap target behind each "+ Expense" / "+ Income" shortcut. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="@color/widget_chip_background"/>
+    <corners android:radius="999dp"/>
+</shape>

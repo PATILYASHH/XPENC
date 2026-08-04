@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/currency.dart';
+import '../core/home_widget/home_widget_service.dart';
 import '../core/money.dart';
 import '../core/notifications/notification_service.dart';
 import '../core/theme/theme_preset.dart';
@@ -32,6 +33,10 @@ final accountsProvider = StreamProvider<List<AccountRow>>(
   (ref) => ref.watch(dbProvider).watchAccounts(),
 );
 
+final archivedAccountsProvider = StreamProvider<List<AccountRow>>(
+  (ref) => ref.watch(dbProvider).watchArchivedAccounts(),
+);
+
 /// Accounts that hold money. Debit cards / UPI instruments excluded.
 final balanceAccountsProvider = StreamProvider<List<AccountRow>>(
   (ref) => ref.watch(dbProvider).watchBalanceHoldingAccounts(),
@@ -45,14 +50,18 @@ final netWorthProvider = StreamProvider<Money>(
 
 final categoriesProvider =
     StreamProvider.family<List<CategoryRow>, CategoryKind>(
-  (ref, kind) => ref.watch(dbProvider).watchCategories(kind),
-);
+      (ref, kind) => ref.watch(dbProvider).watchCategories(kind),
+    );
 
 /// Every category, keyed by id — for resolving names/icons on list rows.
 final categoryMapProvider = Provider<Map<int, CategoryRow>>((ref) {
-  final income = ref.watch(categoriesProvider(CategoryKind.income)).valueOrNull ?? [];
-  final expense = ref.watch(categoriesProvider(CategoryKind.expense)).valueOrNull ?? [];
-  return {for (final c in [...income, ...expense]) c.id: c};
+  final income =
+      ref.watch(categoriesProvider(CategoryKind.income)).valueOrNull ?? [];
+  final expense =
+      ref.watch(categoriesProvider(CategoryKind.expense)).valueOrNull ?? [];
+  return {
+    for (final c in [...income, ...expense]) c.id: c,
+  };
 });
 
 /// A category's top-level ancestor. The tree is two deep, so a child resolves
@@ -98,17 +107,52 @@ final selectedMonthProvider = StateProvider<DateTime>(
   (ref) => DateTime(DateTime.now().year, DateTime.now().month),
 );
 
-final monthTotalsProvider =
-    StreamProvider<({Money income, Money expense})>((ref) {
+final monthTotalsProvider = StreamProvider<({Money income, Money expense})>((
+  ref,
+) {
   final month = ref.watch(selectedMonthProvider);
   return ref.watch(dbProvider).watchMonthTotals(month);
+});
+
+/// Stats-screen only: false shows one month (the existing, shared
+/// [selectedMonthProvider] behaviour Dashboard and Budgets also depend on),
+/// true shows the whole calendar year of [selectedMonthProvider]'s year.
+/// Deliberately local to Stats — [spendByCategoryProvider] below stays
+/// month-only so nothing else silently starts aggregating a year.
+final statsShowYearProvider = StateProvider<bool>((ref) => false);
+
+/// Same split-aware category aggregation as [spendByCategoryProvider], for a
+/// whole calendar year instead of one month — composed locally so the
+/// shared, month-scoped provider never has to know "year" exists.
+final yearSpendByCategoryProvider = Provider.family<Map<int, Money>, int>((
+  ref,
+  year,
+) {
+  final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
+  final splitsByTx = ref.watch(transactionSplitsByTxProvider);
+  final out = <int, Money>{};
+  for (final t in txs) {
+    if (t.type != TxType.expense || t.date.year != year) continue;
+    if (t.categoryId != null) {
+      out[t.categoryId!] =
+          (out[t.categoryId!] ?? const Money.zero()) + t.amount;
+    } else {
+      for (final s in splitsByTx[t.id] ?? const []) {
+        out[s.categoryId] =
+            (out[s.categoryId] ?? const Money.zero()) + s.amount;
+      }
+    }
+  }
+  return out;
 });
 
 final spendByCategoryProvider = StreamProvider<Map<int, Money>>((ref) {
   final month = ref.watch(selectedMonthProvider);
   final start = DateTime(month.year, month.month);
-  final end = DateTime(month.year, month.month + 1)
-      .subtract(const Duration(milliseconds: 1));
+  final end = DateTime(
+    month.year,
+    month.month + 1,
+  ).subtract(const Duration(milliseconds: 1));
   return ref.watch(dbProvider).watchSpendByCategory(start, end);
 });
 
@@ -146,16 +190,14 @@ final budgetProgressProvider = Provider<List<BudgetProgress>>((ref) {
         spent += spend[c.id] ?? const Money.zero();
       }
     }
-    final fraction =
-        b.amount.isZero ? 0.0 : spent.paise / b.amount.paise;
+    final fraction = b.amount.isZero ? 0.0 : spent.paise / b.amount.paise;
     out.add((
       budget: b,
       category: cat,
       spent: spent,
       fraction: fraction,
       overspent: fraction > 1.0,
-      nearingLimit:
-          fraction >= b.alertThresholdPct / 100 && fraction <= 1.0,
+      nearingLimit: fraction >= b.alertThresholdPct / 100 && fraction <= 1.0,
     ));
   }
   out.sort((a, b) => b.fraction.compareTo(a.fraction));
@@ -168,6 +210,10 @@ final personsProvider = StreamProvider<List<PersonRow>>(
   (ref) => ref.watch(dbProvider).watchPersons(),
 );
 
+final archivedPersonsProvider = StreamProvider<List<PersonRow>>(
+  (ref) => ref.watch(dbProvider).watchArchivedPersons(),
+);
+
 final personBalancesProvider = StreamProvider<Map<int, Money>>(
   (ref) => ref.watch(dbProvider).watchAllPersonBalances(),
 );
@@ -178,8 +224,7 @@ final personMapProvider = Provider<Map<int, PersonRow>>((ref) {
   return {for (final p in people) p.id: p};
 });
 
-final personEntriesProvider =
-    StreamProvider.family<List<PersonEntryRow>, int>(
+final personEntriesProvider = StreamProvider.family<List<PersonEntryRow>, int>(
   (ref, personId) => ref.watch(dbProvider).watchPersonEntries(personId),
 );
 
@@ -207,6 +252,55 @@ final remindersProvider = StreamProvider<List<ReminderRow>>(
 final openRemindersProvider = Provider<List<ReminderRow>>((ref) {
   final all = ref.watch(remindersProvider).valueOrNull ?? [];
   return all.where((r) => r.status == ReminderStatus.open).toList();
+});
+
+/// One row in the dashboard's "Upcoming" strip — a cash reminder or an Auto
+/// rule's next occurrence, whichever comes first.
+typedef UpcomingItem = ({
+  DateTime date,
+  String title,
+  Money? amount,
+  bool isOutgoing,
+  bool isReminder,
+  int id,
+});
+
+/// Every open reminder and active Auto rule due within [days], nearest first.
+/// Composed from providers already watched elsewhere — see the "compose,
+/// don't resubscribe" note on [monthlyTotalsProvider].
+final upcomingPaymentsProvider = Provider.family<List<UpcomingItem>, int>((
+  ref,
+  days,
+) {
+  final reminders = ref.watch(openRemindersProvider);
+  final rules = ref.watch(recurringRulesProvider).valueOrNull ?? const [];
+  final windowEnd = DateTime.now()
+      .add(Duration(days: days))
+      .add(const Duration(days: 1));
+
+  final items = <UpcomingItem>[
+    for (final r in reminders)
+      if (r.dueDate.isBefore(windowEnd))
+        (
+          date: r.dueDate,
+          title: r.title,
+          amount: r.amount,
+          isOutgoing: r.direction == ReminderDirection.pay,
+          isReminder: true,
+          id: r.id,
+        ),
+    for (final r in rules)
+      if (r.isActive && r.nextDueDate.isBefore(windowEnd))
+        (
+          date: r.nextDueDate,
+          title: r.name,
+          amount: r.amount,
+          isOutgoing: r.kind == CategoryKind.expense,
+          isReminder: false,
+          id: r.id,
+        ),
+  ]..sort((a, b) => a.date.compareTo(b.date));
+  return items;
 });
 
 // ── Recurring rules (Auto) ──────────────────────────────────────────────────
@@ -245,6 +339,36 @@ final currencyProvider = Provider<Currency>((ref) {
 /// Whether to draw the currency symbol. Defaults to shown while settings load.
 final showCurrencySymbolProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.showCurrencySymbol ?? true;
+});
+
+/// Whether "Mark as repaid" (Persons) is offered at all. Off by default —
+/// lending/borrowing stays out of income/expense unless asked for.
+final countRepaymentsAsIncomeProvider = Provider<bool>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.countRepaymentsAsIncome ??
+      false;
+});
+
+/// Whether a passcode is set at all — the switch the app-lock gate checks on
+/// every launch and resume.
+final hasPasscodeProvider = Provider<bool>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.passcodeHash != null;
+});
+
+final biometricEnabledProvider = Provider<bool>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.biometricEnabled ?? false;
+});
+
+/// A daily nudge to log spending — hour/minute in the user's local wall
+/// clock, defaulting to 8 PM.
+typedef ExpenseReminderSettings = ({bool enabled, int hour, int minute});
+
+final expenseReminderProvider = Provider<ExpenseReminderSettings>((ref) {
+  final row = ref.watch(settingsProvider).valueOrNull;
+  return (
+    enabled: row?.expenseReminderEnabled ?? false,
+    hour: row?.expenseReminderHour ?? 20,
+    minute: row?.expenseReminderMinute ?? 0,
+  );
 });
 
 // ── Message auto-capture ────────────────────────────────────────────────────
@@ -291,6 +415,10 @@ final notificationServiceProvider = Provider<NotificationService>(
   (ref) => NotificationService(ref.watch(dbProvider)),
 );
 
+final homeWidgetServiceProvider = Provider<HomeWidgetService>(
+  (ref) => const HomeWidgetService(),
+);
+
 // ── Categories management ───────────────────────────────────────────────────
 
 final allCategoriesProvider = StreamProvider<List<CategoryRow>>(
@@ -303,9 +431,9 @@ final allCategoriesProvider = StreamProvider<List<CategoryRow>>(
 /// anything paid via a debit card linked to it.
 final accountTransactionsProvider =
     StreamProvider.family<List<TransactionRow>, int>(
-  (ref, accountId) =>
-      ref.watch(dbProvider).watchTransactionsForAccount(accountId),
-);
+      (ref, accountId) =>
+          ref.watch(dbProvider).watchTransactionsForAccount(accountId),
+    );
 
 final accountByIdProvider = StreamProvider.family<AccountRow?, int>(
   (ref, id) => ref.watch(dbProvider).watchAccount(id),
@@ -314,6 +442,146 @@ final accountByIdProvider = StreamProvider.family<AccountRow?, int>(
 final transactionByIdProvider = StreamProvider.family<TransactionRow?, int>(
   (ref, id) => ref.watch(dbProvider).watchTransaction(id),
 );
+
+// ── Shopping lists ──────────────────────────────────────────────────────────
+
+final shoppingListsProvider = StreamProvider<List<ShoppingListRow>>(
+  (ref) => ref.watch(dbProvider).watchShoppingLists(),
+);
+
+final shoppingItemsProvider = StreamProvider.family<List<ShoppingItemRow>, int>(
+  (ref, listId) => ref.watch(dbProvider).watchShoppingItems(listId),
+);
+
+final allShoppingItemsProvider = StreamProvider<List<ShoppingItemRow>>(
+  (ref) => ref.watch(dbProvider).watchAllShoppingItems(),
+);
+
+/// Item counts per list, for the lists overview — how many total and how
+/// many already checked off.
+typedef ShoppingListSummary = ({int total, int checked});
+
+final shoppingListSummaryProvider = Provider<Map<int, ShoppingListSummary>>((
+  ref,
+) {
+  final items = ref.watch(allShoppingItemsProvider).valueOrNull ?? const [];
+  final out = <int, ({int total, int checked})>{};
+  for (final item in items) {
+    final listId = item.listId;
+    if (listId == null) continue;
+    final current = out[listId] ?? (total: 0, checked: 0);
+    out[listId] = (
+      total: current.total + 1,
+      checked: current.checked + (item.isChecked ? 1 : 0),
+    );
+  }
+  return out;
+});
+
+// ── Savings goals ───────────────────────────────────────────────────────────
+
+final savingsGoalsProvider = StreamProvider<List<SavingsGoalRow>>(
+  (ref) => ref.watch(dbProvider).watchSavingsGoals(),
+);
+
+final savingsGoalProvider = StreamProvider.family<SavingsGoalRow?, int>(
+  (ref, id) => ref.watch(dbProvider).watchSavingsGoal(id),
+);
+
+/// A goal joined with the live balance of the account it tracks — progress is
+/// never stored, only ever read from the ledger through that account.
+typedef SavingsGoalProgress = ({
+  SavingsGoalRow goal,
+  AccountRow? account,
+  Money saved,
+  double fraction,
+  bool reached,
+});
+
+final savingsGoalProgressListProvider = Provider<List<SavingsGoalProgress>>((
+  ref,
+) {
+  final goals = ref.watch(savingsGoalsProvider).valueOrNull ?? const [];
+  final accountMap = ref.watch(accountMapProvider);
+  return [for (final g in goals) _progressOf(g, accountMap)];
+});
+
+final savingsGoalProgressProvider = Provider.family<SavingsGoalProgress?, int>((
+  ref,
+  id,
+) {
+  final goal = ref.watch(savingsGoalProvider(id)).valueOrNull;
+  if (goal == null) return null;
+  final accountMap = ref.watch(accountMapProvider);
+  return _progressOf(goal, accountMap);
+});
+
+SavingsGoalProgress _progressOf(
+  SavingsGoalRow goal,
+  Map<int, AccountRow> accountMap,
+) {
+  final account = accountMap[goal.accountId];
+  final saved = account?.currentBalance ?? const Money.zero();
+  final fraction = goal.targetAmount.isZero
+      ? 0.0
+      : saved.paise / goal.targetAmount.paise;
+  return (
+    goal: goal,
+    account: account,
+    saved: saved,
+    fraction: fraction.clamp(0.0, 1.0),
+    reached: saved.paise >= goal.targetAmount.paise,
+  );
+}
+
+// ── Tags ────────────────────────────────────────────────────────────────────
+
+final tagsProvider = StreamProvider<List<TagRow>>(
+  (ref) => ref.watch(dbProvider).watchTags(),
+);
+
+final tagMapProvider = Provider<Map<int, TagRow>>((ref) {
+  final tags = ref.watch(tagsProvider).valueOrNull ?? const [];
+  return {for (final t in tags) t.id: t};
+});
+
+final _transactionTagLinksProvider = StreamProvider<List<TransactionTagRow>>(
+  (ref) => ref.watch(dbProvider).watchAllTransactionTags(),
+);
+
+/// Every transaction's tags, keyed by transaction id — composed from the raw
+/// links plus the tag map so list/detail rows never issue a query per row.
+final transactionTagsByTxProvider = Provider<Map<int, List<TagRow>>>((ref) {
+  final links = ref.watch(_transactionTagLinksProvider).valueOrNull ?? const [];
+  final tagMap = ref.watch(tagMapProvider);
+  final out = <int, List<TagRow>>{};
+  for (final link in links) {
+    final tag = tagMap[link.tagId];
+    if (tag == null) continue;
+    (out[link.transactionId] ??= []).add(tag);
+  }
+  return out;
+});
+
+// ── Split expenses ──────────────────────────────────────────────────────────
+
+final _transactionSplitLinksProvider =
+    StreamProvider<List<TransactionSplitRow>>(
+      (ref) => ref.watch(dbProvider).watchAllTransactionSplits(),
+    );
+
+/// Every transaction's split lines, keyed by transaction id — same
+/// compose-don't-resubscribe shape as [transactionTagsByTxProvider].
+final transactionSplitsByTxProvider =
+    Provider<Map<int, List<TransactionSplitRow>>>((ref) {
+      final links =
+          ref.watch(_transactionSplitLinksProvider).valueOrNull ?? const [];
+      final out = <int, List<TransactionSplitRow>>{};
+      for (final s in links) {
+        (out[s.transactionId] ??= []).add(s);
+      }
+      return out;
+    });
 
 // ── Payees ──────────────────────────────────────────────────────────────────
 //
@@ -371,12 +639,15 @@ final payeeSummariesProvider = Provider<List<PayeeSummary>>((ref) {
 });
 
 /// One payee's expense history, newest first.
-final payeeTransactionsProvider =
-    Provider.family<List<TransactionRow>, String>((ref, payee) {
-  final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
-  return txs.where((t) => t.type == TxType.expense && t.payee == payee).toList()
-    ..sort((a, b) => b.date.compareTo(a.date));
-});
+final payeeTransactionsProvider = Provider.family<List<TransactionRow>, String>(
+  (ref, payee) {
+    final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
+    return txs
+        .where((t) => t.type == TxType.expense && t.payee == payee)
+        .toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+  },
+);
 
 // ── Export / Backup ─────────────────────────────────────────────────────────
 
@@ -405,61 +676,65 @@ final allPersonEntriesProvider = StreamProvider<List<PersonEntryRow>>(
 /// Net worth at the end of each of the last N months, oldest first.
 /// Rebuilt from the ledger, so it obeys every rule the ledger obeys.
 final netWorthTrendProvider =
-    Provider.family<List<({DateTime month, Money value})>, int>(
-  (ref, months) {
-    final accounts = ref.watch(balanceAccountsProvider).valueOrNull ?? const [];
-    final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
-    final entries = ref.watch(allPersonEntriesProvider).valueOrNull ?? const [];
+    Provider.family<List<({DateTime month, Money value})>, int>((ref, months) {
+      final accounts =
+          ref.watch(balanceAccountsProvider).valueOrNull ?? const [];
+      final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
+      final entries =
+          ref.watch(allPersonEntriesProvider).valueOrNull ?? const [];
 
-    final opening = accounts.fold(
-      const Money.zero(),
-      (sum, a) => sum + a.openingBalance,
-    );
+      final opening = accounts.fold(
+        const Money.zero(),
+        (sum, a) => sum + a.openingBalance,
+      );
 
-    final now = DateTime.now();
-    final out = <({DateTime month, Money value})>[];
+      final now = DateTime.now();
+      final out = <({DateTime month, Money value})>[];
 
-    for (var i = months - 1; i >= 0; i--) {
-      // Last millisecond of the month `i` months back. DateTime normalises the
-      // month overflow/underflow, so December and January need no special case.
-      final end = DateTime(now.year, now.month - i + 1)
-          .subtract(const Duration(milliseconds: 1));
-      var total = opening;
+      for (var i = months - 1; i >= 0; i--) {
+        // Last millisecond of the month `i` months back. DateTime normalises the
+        // month overflow/underflow, so December and January need no special case.
+        final end = DateTime(
+          now.year,
+          now.month - i + 1,
+        ).subtract(const Duration(milliseconds: 1));
+        var total = opening;
 
-      for (final t in txs) {
-        if (t.date.isAfter(end)) continue;
-        // A transfer moves money between our own accounts: net zero.
-        if (t.type == TxType.income) total += t.amount;
-        if (t.type == TxType.expense) total -= t.amount;
+        for (final t in txs) {
+          if (t.date.isAfter(end)) continue;
+          // A transfer moves money between our own accounts: net zero.
+          if (t.type == TxType.income) total += t.amount;
+          if (t.type == TxType.expense) total -= t.amount;
+        }
+        for (final e in entries) {
+          if (e.accountId == null || e.date.isAfter(end)) continue;
+          // theyOwe = money left us; iOwe = money came to us.
+          total += e.direction == PersonDirection.theyOwe
+              ? -e.amount
+              : e.amount;
+        }
+        out.add((month: DateTime(end.year, end.month), value: total));
       }
-      for (final e in entries) {
-        if (e.accountId == null || e.date.isAfter(end)) continue;
-        // theyOwe = money left us; iOwe = money came to us.
-        total += e.direction == PersonDirection.theyOwe ? -e.amount : e.amount;
-      }
-      out.add((month: DateTime(end.year, end.month), value: total));
-    }
-    return out;
-  },
-);
+      return out;
+    });
 
 /// Income and expense per month for the last N months, oldest first.
-final monthlyTotalsProvider = Provider.family<
-    List<({DateTime month, Money income, Money expense})>, int>(
-  (ref, months) {
-    final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
-    final now = DateTime.now();
+final monthlyTotalsProvider =
+    Provider.family<List<({DateTime month, Money income, Money expense})>, int>(
+      (ref, months) {
+        final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
+        final now = DateTime.now();
 
-    return List.generate(months, (i) {
-      final m = DateTime(now.year, now.month - (months - 1 - i));
-      var income = const Money.zero();
-      var expense = const Money.zero();
-      for (final t in txs) {
-        if (t.date.year != m.year || t.date.month != m.month) continue;
-        if (t.type == TxType.income) income += t.amount;
-        if (t.type == TxType.expense) expense += t.amount;
-      }
-      return (month: m, income: income, expense: expense);
-    });
-  },
-);
+        return List.generate(months, (i) {
+          final m = DateTime(now.year, now.month - (months - 1 - i));
+          var income = const Money.zero();
+          var expense = const Money.zero();
+          for (final t in txs) {
+            if (t.date.year != m.year || t.date.month != m.month) continue;
+            if (t.type == TxType.income) income += t.amount;
+            if (t.type == TxType.expense) expense += t.amount;
+          }
+          return (month: m, income: income, expense: expense);
+        });
+      },
+    );

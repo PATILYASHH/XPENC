@@ -5,11 +5,17 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../data/database.dart';
+import 'report_pdf.dart';
 import 'statement_pdf.dart';
 
 /// A backup file sitting on disk.
 class BackupFile {
-  const BackupFile({required this.path, required this.name, required this.size, required this.modified});
+  const BackupFile({
+    required this.path,
+    required this.name,
+    required this.size,
+    required this.modified,
+  });
 
   final String path;
   final String name;
@@ -76,12 +82,14 @@ class BackupService {
     final out = <BackupFile>[];
     for (final f in files) {
       final stat = f.statSync();
-      out.add(BackupFile(
-        path: f.path,
-        name: f.uri.pathSegments.last,
-        size: stat.size,
-        modified: stat.modified,
-      ));
+      out.add(
+        BackupFile(
+          path: f.path,
+          name: f.uri.pathSegments.last,
+          size: stat.size,
+          modified: stat.modified,
+        ),
+      );
     }
     out.sort((a, b) => b.modified.compareTo(a.modified));
     return out;
@@ -172,6 +180,29 @@ class BackupService {
     final file = File(
       '${dir.path}/xpenc-statement-$safeName-${_stamp(DateTime.now())}.pdf',
     );
+    await file.writeAsBytes(bytes, flush: true);
+    return file;
+  }
+
+  /// Income & Expense Report for an arbitrary range — whatever period the
+  /// Stats screen is showing (a month or a calendar year).
+  Future<File> writeIncomeExpenseReportPdf({
+    required DateTime start,
+    required DateTime end,
+    required String periodLabel,
+    required String fileSuffix,
+    required Map<int, CategoryRow> categories,
+  }) async {
+    final totals = await _db.reportTotals(start, end);
+    final bytes = await buildIncomeExpenseReportPdf(
+      periodLabel: periodLabel,
+      income: totals.income,
+      expense: totals.expense,
+      expenseByCategory: totals.expenseByCategory,
+      categories: categories,
+    );
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File('${dir.path}/xpenc-report-$fileSuffix.pdf');
     await file.writeAsBytes(bytes, flush: true);
     return file;
   }

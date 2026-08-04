@@ -1,13 +1,49 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/app_icons.dart';
 import '../../core/money.dart';
+import '../../core/theme/app_colors.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import 'receipt_storage.dart';
+
+/// One editable row of a split expense: which category, and how much of the
+/// total it takes. Holds its own controller so [TextField]s keep their
+/// identity (and cursor position) across rebuilds.
+class _SplitEntry {
+  _SplitEntry({
+    this.categoryId,
+    String amountText = '',
+    VoidCallback? onFocusChange,
+  }) : amountController = TextEditingController(text: amountText),
+       focusNode = FocusNode() {
+    if (onFocusChange != null) focusNode.addListener(onFocusChange);
+  }
+
+  int? categoryId;
+  final TextEditingController amountController;
+
+  /// Tracked so the on-screen keypad hides while this row's system keyboard
+  /// is up — see [_AddTransactionScreenState._textFieldFocused]. Without
+  /// this, focusing a split amount brought up the system keyboard *on top
+  /// of* the still-visible custom keypad.
+  final FocusNode focusNode;
+
+  Money get amount =>
+      Money.tryParse(amountController.text) ?? const Money.zero();
+
+  void dispose() {
+    amountController.dispose();
+    focusNode.dispose();
+  }
+}
 
 /// The ➕ route. Expense / Income / Transfer.
 ///
@@ -17,9 +53,14 @@ import '../../data/tables.dart';
 /// With a [transactionId] the screen edits that existing transaction instead
 /// of creating a new one.
 class AddTransactionScreen extends ConsumerStatefulWidget {
-  const AddTransactionScreen({this.transactionId, super.key});
+  const AddTransactionScreen({this.transactionId, this.initialType, super.key});
 
   final int? transactionId;
+
+  /// Preselects Expense or Income — used by the home-screen widget's "+
+  /// Expense" / "+ Income" shortcuts to skip the type-picker step. Ignored
+  /// when [transactionId] is set, since editing loads its own type.
+  final TxType? initialType;
 
   @override
   ConsumerState<AddTransactionScreen> createState() =>
@@ -27,7 +68,7 @@ class AddTransactionScreen extends ConsumerStatefulWidget {
 }
 
 class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
-  TxType _type = TxType.expense;
+  late TxType _type;
 
   /// Raw rupee text as typed on the keypad: digits + at most one '.'.
   String _buffer = '';
@@ -45,19 +86,50 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   final _payeeController = TextEditingController();
   final _payeeFocus = FocusNode();
 
+  /// Cuts across category/account — any transaction type can carry tags.
+  Set<int> _tagIds = {};
+
+  /// Expense only — one expense, several categories, instead of one.
+  bool _isSplit = false;
+  final List<_SplitEntry> _splitRows = [];
+
+  /// The receipt path that will be saved — an existing one loaded for
+  /// editing, a freshly picked one, or null.
+  String? _imagePath;
+
+  /// Set only when [_imagePath] was picked *this session* and not yet saved —
+  /// so `dispose()` can clean it up if the screen is left without saving,
+  /// rather than leaking a copy nothing will ever reference.
+  String? _unsavedPickedPath;
+
   /// True while an existing transaction is being fetched for editing.
   bool _loading = false;
 
   bool get _isEditing => widget.transactionId != null;
 
+  /// Split only ever applies to an expense — [_isSplit] can be stale after a
+  /// type switch (kept around so toggling back doesn't lose entered rows).
+  bool get _isSplitting => _type == TxType.expense && _isSplit;
+
   /// The on-screen keypad and the system keyboard must never both be up —
   /// they'd fight over the same strip of screen and hide whatever the user
-  /// just typed. The keypad only shows while neither text field has focus.
-  bool get _textFieldFocused => _noteFocus.hasFocus || _payeeFocus.hasFocus;
+  /// just typed. The keypad only shows while no text field has focus,
+  /// including a split row's amount field.
+  bool get _textFieldFocused =>
+      _noteFocus.hasFocus ||
+      _payeeFocus.hasFocus ||
+      _splitRows.any((r) => r.focusNode.hasFocus);
 
   @override
   void initState() {
     super.initState();
+    // Only expense/income are ever meaningful here — anything else (or
+    // nothing) falls back to the screen's own default.
+    final initial = widget.initialType;
+    _type =
+        (!_isEditing && (initial == TxType.expense || initial == TxType.income))
+        ? initial!
+        : TxType.expense;
     _noteFocus.addListener(_onFieldFocusChanged);
     _payeeFocus.addListener(_onFieldFocusChanged);
     if (_isEditing) {
@@ -68,12 +140,22 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
   void _onFieldFocusChanged() => setState(() {});
 
+  static void _deleteQuietly(String path) {
+    File(path).delete().ignore();
+  }
+
   @override
   void dispose() {
     _noteController.dispose();
     _noteFocus.dispose();
     _payeeController.dispose();
     _payeeFocus.dispose();
+    for (final row in _splitRows) {
+      row.dispose();
+    }
+    // Best-effort: leaving without saving shouldn't leak the copy made on
+    // pick. Fire-and-forget — nothing in this widget survives to await it.
+    if (_unsavedPickedPath != null) _deleteQuietly(_unsavedPickedPath!);
     super.dispose();
   }
 
@@ -82,9 +164,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
 
-    final row = await ref
-        .read(dbProvider)
-        .transactionById(widget.transactionId!);
+    final db = ref.read(dbProvider);
+    final row = await db.transactionById(widget.transactionId!);
+    final tagIds = await db.tagIdsForTransaction(widget.transactionId!);
+    final splits = await db.splitsForTransaction(widget.transactionId!);
     if (!mounted) return;
 
     if (row == null) {
@@ -97,8 +180,15 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
     // This screen only offers Expense / Income / Transfer. A person movement
     // has no segment, and `SegmentedButton` asserts that its selected value is
-    // one of its segments — assigning it here would crash the screen.
-    if (row.type.isPersonMovement) {
+    // one of its segments — assigning it here would crash the screen. A
+    // repayment marked to count as income reads as ordinary `TxType.income`,
+    // so it needs its own check — see `isPersonLinkedTransaction`.
+    final isPersonLinked =
+        row.type.isPersonMovement ||
+        (row.type.isIncomeOrExpense &&
+            await db.isPersonLinkedTransaction(row.id));
+    if (!mounted) return;
+    if (isPersonLinked) {
       navigator.pop();
       messenger.showSnackBar(
         const SnackBar(content: Text('Edit this from the person\'s page.')),
@@ -115,6 +205,18 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       _date = row.date;
       _noteController.text = row.note ?? '';
       _payeeController.text = row.payee ?? '';
+      _tagIds = tagIds.toSet();
+      _imagePath = row.imagePath;
+      _isSplit = splits.isNotEmpty;
+      for (final s in splits) {
+        _splitRows.add(
+          _SplitEntry(
+            categoryId: s.categoryId,
+            amountText: _bufferFromMoney(s.amount),
+            onFocusChange: _onFieldFocusChanged,
+          ),
+        );
+      }
       _loading = false;
     });
   }
@@ -217,6 +319,275 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     setState(() => _date = picked);
   }
 
+  // ── Receipt photo ────────────────────────────────────────────────────────
+
+  Future<void> _pickReceipt() async {
+    final path = await ReceiptStorage.pickAndStore();
+    if (path == null || !mounted) return;
+    // Replacing an already-picked-this-session file before ever saving —
+    // that earlier copy is now unreferenced.
+    final previous = _unsavedPickedPath;
+    setState(() {
+      _imagePath = path;
+      _unsavedPickedPath = path;
+    });
+    if (previous != null) _deleteQuietly(previous);
+  }
+
+  void _removeReceipt() {
+    final previous = _unsavedPickedPath;
+    setState(() {
+      _imagePath = null;
+      _unsavedPickedPath = null;
+    });
+    if (previous != null) _deleteQuietly(previous);
+  }
+
+  /// AppBar shortcut — filled once a receipt is attached. Tapping when empty
+  /// opens the picker directly; tapping when attached opens a small preview
+  /// sheet with replace/remove, instead of a card buried in the field list.
+  Widget _receiptAction(ThemeData theme) {
+    final attached = _imagePath != null;
+    return IconButton(
+      icon: Icon(
+        attached ? Icons.receipt_long_rounded : Icons.receipt_long_outlined,
+        color: attached ? theme.colorScheme.primary : null,
+      ),
+      tooltip: attached ? 'Receipt attached' : 'Attach receipt',
+      onPressed: attached ? _openReceiptSheet : _pickReceipt,
+    );
+  }
+
+  Future<void> _openReceiptSheet() async {
+    final path = _imagePath;
+    if (path == null) return;
+    final theme = Theme.of(context);
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Image.file(
+                File(path),
+                height: 220,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => Container(
+                  height: 220,
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  child: Icon(
+                    Icons.broken_image_outlined,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.of(sheetContext).pop();
+                      _pickReceipt();
+                    },
+                    icon: const Icon(Icons.swap_horiz_rounded),
+                    label: const Text('Replace'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.expense,
+                    ),
+                    onPressed: () {
+                      Navigator.of(sheetContext).pop();
+                      _removeReceipt();
+                    },
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('Remove'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Split expenses ────────────────────────────────────────────────────────
+
+  Future<void> _pickSplitCategory(int index) async {
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => const _CategoryPickerSheet(kind: CategoryKind.expense),
+    );
+    if (selected == null || !mounted) return;
+    setState(() => _splitRows[index].categoryId = selected);
+  }
+
+  Widget _splitToggleTile() {
+    final theme = Theme.of(context);
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: SwitchListTile(
+        value: _isSplit,
+        onChanged: (v) => setState(() {
+          _isSplit = v;
+          while (v && _splitRows.length < 2) {
+            _splitRows.add(_SplitEntry(onFocusChange: _onFieldFocusChanged));
+          }
+        }),
+        secondary: Icon(
+          Icons.call_split_rounded,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+        title: const Text('Split into categories'),
+        subtitle: _isSplit
+            ? null
+            : const Text('One expense, more than one category'),
+      ),
+    );
+  }
+
+  Widget _splitEditorCard(Map<int, CategoryRow> categoryMap) {
+    final theme = Theme.of(context);
+    final sum = _splitRows.fold(const Money.zero(), (s, r) => s + r.amount);
+    final remaining = _amount - sum;
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < _splitRows.length; i++) ...[
+              if (i > 0) const SizedBox(height: 10),
+              _splitRowTile(i, categoryMap),
+            ],
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => setState(
+                  () => _splitRows.add(
+                    _SplitEntry(onFocusChange: _onFieldFocusChanged),
+                  ),
+                ),
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('Add category'),
+              ),
+            ),
+            const Divider(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Remaining',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                MoneyText(
+                  remaining,
+                  signed: true,
+                  color: remaining.isZero
+                      ? AppColors.income
+                      : AppColors.expense,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _splitRowTile(int index, Map<int, CategoryRow> categoryMap) {
+    final theme = Theme.of(context);
+    final row = _splitRows[index];
+    final cat = categoryMap[row.categoryId];
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _pickSplitCategory(index),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            decoration: BoxDecoration(
+              border: Border.all(color: theme.colorScheme.outline),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  AppIcons.resolve(cat?.iconKey ?? 'other'),
+                  size: 18,
+                  color: cat != null
+                      ? Color(cat.colorValue)
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 6),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 84),
+                  child: Text(
+                    cat?.name ?? 'Category',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: TextField(
+            controller: row.amountController,
+            focusNode: row.focusNode,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+            ],
+            decoration: const InputDecoration(
+              isDense: true,
+              prefixText: '₹ ',
+              hintText: '0.00',
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.close_rounded, size: 18),
+          tooltip: 'Remove',
+          onPressed: _splitRows.length <= 1
+              ? null
+              : () => setState(() {
+                  _splitRows.removeAt(index).dispose();
+                }),
+        ),
+      ],
+    );
+  }
+
   // ── Save ──────────────────────────────────────────────────────────────────
 
   Future<void> _save() async {
@@ -257,6 +628,34 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         );
         return;
       }
+    } else if (_isSplitting) {
+      if (_splitRows.any((r) => r.categoryId == null)) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Choose a category for every split')),
+        );
+        return;
+      }
+      if (_splitRows.any((r) => !r.amount.isPositive)) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Every split needs an amount greater than zero'),
+          ),
+        );
+        return;
+      }
+      final sum = _splitRows.fold(const Money.zero(), (s, r) => s + r.amount);
+      if (sum != amount) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              sum < amount
+                  ? 'Splits are short by ${MoneyFormat.symbol(amount - sum)}'
+                  : 'Splits are over by ${MoneyFormat.symbol(sum - amount)}',
+            ),
+          ),
+        );
+        return;
+      }
     } else if (_categoryId == null) {
       messenger.showSnackBar(
         const SnackBar(content: Text('Choose a category')),
@@ -269,35 +668,54 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final payee = _type == TxType.expense && payeeText.isNotEmpty
         ? payeeText
         : null;
+    // A split expense has no single category of its own — see
+    // AppDatabase.setTransactionSplits.
+    final categoryId = (_type == TxType.transfer || _isSplitting)
+        ? null
+        : _categoryId;
     try {
+      final db = ref.read(dbProvider);
+      int id;
       if (_isEditing) {
-        await ref
-            .read(dbProvider)
-            .updateTransaction(
-              id: widget.transactionId!,
-              type: _type,
-              amount: amount,
-              accountId: _accountId!,
-              toAccountId: _type == TxType.transfer ? _toAccountId : null,
-              categoryId: _type == TxType.transfer ? null : _categoryId,
-              date: _date,
-              note: note.isEmpty ? null : note,
-              payee: payee,
-            );
+        id = widget.transactionId!;
+        await db.updateTransaction(
+          id: id,
+          type: _type,
+          amount: amount,
+          accountId: _accountId!,
+          toAccountId: _type == TxType.transfer ? _toAccountId : null,
+          categoryId: categoryId,
+          date: _date,
+          note: note.isEmpty ? null : note,
+          payee: payee,
+          imagePath: _imagePath,
+        );
       } else {
-        await ref
-            .read(dbProvider)
-            .addTransaction(
-              type: _type,
-              amount: amount,
-              accountId: _accountId!,
-              toAccountId: _type == TxType.transfer ? _toAccountId : null,
-              categoryId: _type == TxType.transfer ? null : _categoryId,
-              date: _date,
-              note: note.isEmpty ? null : note,
-              payee: payee,
-            );
+        id = await db.addTransaction(
+          type: _type,
+          amount: amount,
+          accountId: _accountId!,
+          toAccountId: _type == TxType.transfer ? _toAccountId : null,
+          categoryId: categoryId,
+          date: _date,
+          note: note.isEmpty ? null : note,
+          payee: payee,
+          imagePath: _imagePath,
+        );
       }
+      // The receipt (if any) is now referenced by a saved row — no longer an
+      // orphan `dispose()` needs to clean up.
+      _unsavedPickedPath = null;
+      await db.setTransactionTags(id, _tagIds);
+      await db.setTransactionSplits(
+        id,
+        _isSplitting
+            ? [
+                for (final r in _splitRows)
+                  (categoryId: r.categoryId!, amount: r.amount),
+              ]
+            : const [],
+      );
     } on ArgumentError catch (e) {
       messenger.showSnackBar(
         SnackBar(
@@ -375,9 +793,15 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         title: Text(_isEditing ? 'Edit' : 'Add'),
+        // Tags and receipt live here, not buried at the bottom of the
+        // scrollable field list, so they stay reachable in one tap no matter
+        // how far the user has scrolled or whether the keypad is covering
+        // the rest of the screen.
         actions: _loading
             ? null
             : [
+                _tagsAction(theme),
+                _receiptAction(theme),
                 if (_isEditing)
                   IconButton(
                     icon: const Icon(Icons.delete_outline),
@@ -424,6 +848,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                             // category is meaningless on type change
                             _categoryId = null;
                             if (_type != TxType.transfer) _toAccountId = null;
+                            // Split is expense-only.
+                            if (_type != TxType.expense) {
+                              _isSplit = false;
+                            }
                           }),
                         ),
                       ),
@@ -443,6 +871,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                         ),
                       ),
                     ),
+                    _selectedTagsChips(),
                     const SizedBox(height: 20),
                     Expanded(
                       child: SingleChildScrollView(
@@ -498,21 +927,31 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         ),
       );
       tiles.add(const SizedBox(height: 12));
-      final cat = categoryMap[_categoryId];
-      final parent = cat?.parentId == null ? null : categoryMap[cat!.parentId];
-      tiles.add(
-        _pickerTile(
-          icon: AppIcons.resolve(cat?.iconKey ?? 'other'),
-          label: 'Category',
-          value: cat == null
-              ? 'Select category'
-              : parent == null
-              ? cat.name
-              : '${parent.name} › ${cat.name}',
-          selected: _categoryId != null,
-          onTap: _pickCategory,
-        ),
-      );
+      if (_type == TxType.expense) {
+        tiles.add(_splitToggleTile());
+        tiles.add(const SizedBox(height: 12));
+      }
+      if (_isSplitting) {
+        tiles.add(_splitEditorCard(categoryMap));
+      } else {
+        final cat = categoryMap[_categoryId];
+        final parent = cat?.parentId == null
+            ? null
+            : categoryMap[cat!.parentId];
+        tiles.add(
+          _pickerTile(
+            icon: AppIcons.resolve(cat?.iconKey ?? 'other'),
+            label: 'Category',
+            value: cat == null
+                ? 'Select category'
+                : parent == null
+                ? cat.name
+                : '${parent.name} › ${cat.name}',
+            selected: _categoryId != null,
+            onTap: _pickCategory,
+          ),
+        );
+      }
     }
 
     tiles.add(const SizedBox(height: 12));
@@ -626,6 +1065,68 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         ),
       ),
     );
+  }
+
+  /// AppBar shortcut — badged with the count once any tag is picked. Cuts
+  /// across category/account and opens the same multi-select sheet as before.
+  Widget _tagsAction(ThemeData theme) {
+    final count = _tagIds.length;
+    return IconButton(
+      icon: Badge(
+        isLabelVisible: count > 0,
+        label: Text('$count'),
+        child: Icon(count > 0 ? Icons.sell_rounded : Icons.sell_outlined),
+      ),
+      tooltip: 'Tags',
+      onPressed: _pickTags,
+    );
+  }
+
+  /// Picked tags shown as chips right under the amount — visible at a glance
+  /// without opening the picker sheet again, and without eating space in the
+  /// scrollable field list below.
+  Widget _selectedTagsChips() {
+    final tagMap = ref.watch(tagMapProvider);
+    final selected = [
+      for (final id in _tagIds)
+        if (tagMap[id] != null) tagMap[id]!,
+    ]..sort((a, b) => a.name.compareTo(b.name));
+    if (selected.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final tag in selected)
+            InkWell(
+              onTap: _pickTags,
+              borderRadius: BorderRadius.circular(20),
+              child: Chip(
+                label: Text(tag.name),
+                backgroundColor: Color(tag.colorValue).withValues(alpha: 0.15),
+                labelStyle: TextStyle(color: Color(tag.colorValue)),
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                side: BorderSide.none,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickTags() async {
+    final result = await showModalBottomSheet<Set<int>>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => _TagPickerSheet(initiallySelected: _tagIds),
+    );
+    if (result == null || !mounted) return;
+    setState(() => _tagIds = result);
   }
 
   Widget _buildKeypad(ThemeData theme) {
@@ -992,6 +1493,115 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Bottom sheet: pick any number of tags as toggleable filter chips. New tags
+/// are created from **More → Tags**, not from here — this sheet only selects.
+class _TagPickerSheet extends ConsumerStatefulWidget {
+  const _TagPickerSheet({required this.initiallySelected});
+
+  final Set<int> initiallySelected;
+
+  @override
+  ConsumerState<_TagPickerSheet> createState() => _TagPickerSheetState();
+}
+
+class _TagPickerSheetState extends ConsumerState<_TagPickerSheet> {
+  final Set<int> _selected = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _selected.addAll(widget.initiallySelected);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final tagsAsync = ref.watch(tagsProvider);
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.7,
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text('Tags', style: theme.textTheme.titleLarge),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(_selected),
+                    child: const Text('Done'),
+                  ),
+                ],
+              ),
+            ),
+            Flexible(
+              child: tagsAsync.when(
+                loading: () => const Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                error: (e, _) => Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Text(
+                    'Could not load tags.\n$e',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+                data: (tags) {
+                  if (tags.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Text(
+                        'No tags yet — add one from More → Tags.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    );
+                  }
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    child: Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        for (final tag in tags)
+                          FilterChip(
+                            label: Text(tag.name),
+                            selected: _selected.contains(tag.id),
+                            selectedColor: Color(
+                              tag.colorValue,
+                            ).withValues(alpha: 0.22),
+                            checkmarkColor: Color(tag.colorValue),
+                            onSelected: (v) => setState(() {
+                              if (v) {
+                                _selected.add(tag.id);
+                              } else {
+                                _selected.remove(tag.id);
+                              }
+                            }),
+                          ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

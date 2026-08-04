@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/app_icons.dart';
+import '../../core/money.dart';
 import '../../core/widgets/error_view.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
@@ -45,8 +48,7 @@ class TransactionDetailScreen extends ConsumerWidget {
           title: 'Something went wrong',
           message: "Couldn't load this transaction.",
           detail: '$e',
-          onRetry: () =>
-              ref.invalidate(transactionByIdProvider(transactionId)),
+          onRetry: () => ref.invalidate(transactionByIdProvider(transactionId)),
         ),
         data: (t) {
           if (t == null) {
@@ -115,12 +117,17 @@ class _TransactionView extends ConsumerWidget {
     final categoryMap = ref.watch(categoryMapProvider);
     final accountMap = ref.watch(accountMapProvider);
     final recurringRuleMap = ref.watch(recurringRuleMapProvider);
+    final tags =
+        ref.watch(transactionTagsByTxProvider)[transaction.id] ?? const [];
+    final splits =
+        ref.watch(transactionSplitsByTxProvider)[transaction.id] ?? const [];
     final t = transaction;
 
     final note = t.note?.trim();
     final noteText = (note == null || note.isEmpty) ? '—' : note;
-    final rule =
-        t.recurringRuleId == null ? null : recurringRuleMap[t.recurringRuleId];
+    final rule = t.recurringRuleId == null
+        ? null
+        : recurringRuleMap[t.recurringRuleId];
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
@@ -143,8 +150,10 @@ class _TransactionView extends ConsumerWidget {
                 _divider(theme),
                 _detailRow(
                   context,
-                  'Category',
-                  _categoryValue(context, t, categoryMap),
+                  splits.isEmpty ? 'Category' : 'Split into',
+                  splits.isEmpty
+                      ? _categoryValue(context, t, categoryMap)
+                      : _splitCategoryValue(context, splits, categoryMap),
                 ),
                 _divider(theme),
                 _detailRow(
@@ -157,9 +166,12 @@ class _TransactionView extends ConsumerWidget {
                   _detailRow(
                     context,
                     'Payee',
-                    _valueText(context, t.payee?.trim().isNotEmpty == true
-                        ? t.payee!.trim()
-                        : '—'),
+                    _valueText(
+                      context,
+                      t.payee?.trim().isNotEmpty == true
+                          ? t.payee!.trim()
+                          : '—',
+                    ),
                   ),
                 ],
                 if (rule != null) ...[
@@ -169,6 +181,10 @@ class _TransactionView extends ConsumerWidget {
                     'Auto',
                     _valueText(context, 'Posted by "${rule.name}"'),
                   ),
+                ],
+                if (tags.isNotEmpty) ...[
+                  _divider(theme),
+                  _detailRow(context, 'Tags', _tagsValue(context, tags)),
                 ],
                 _divider(theme),
                 _detailRow(context, 'Note', _valueText(context, noteText)),
@@ -185,7 +201,101 @@ class _TransactionView extends ConsumerWidget {
             ),
           ),
         ),
+        if (t.imagePath != null) ...[
+          const SizedBox(height: 20),
+          _ReceiptCard(path: t.imagePath!),
+        ],
       ],
+    );
+  }
+}
+
+/// Thumbnail of the attached receipt; tapping opens it full-screen, pinch to
+/// zoom. A file that's vanished from disk (moved, a restored backup pointing
+/// at a path this device never had) degrades to a plain message instead of
+/// crashing the screen.
+class _ReceiptCard extends StatelessWidget {
+  const _ReceiptCard({required this.path});
+
+  final String path;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => _openFullScreen(context),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.receipt_long_outlined,
+                    size: 18,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Receipt',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 220),
+              child: Image.file(
+                File(path),
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Text(
+                    "This receipt's file is missing from the device.",
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openFullScreen(BuildContext context) {
+    Navigator.of(context).push(
+      PageRouteBuilder<void>(
+        opaque: false,
+        barrierColor: Colors.black,
+        pageBuilder: (context, _, _) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            iconTheme: const IconThemeData(color: Colors.white),
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              child: Image.file(
+                File(path),
+                errorBuilder: (_, _, _) => const Icon(
+                  Icons.broken_image_outlined,
+                  color: Colors.white54,
+                  size: 64,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -207,8 +317,8 @@ class _Hero extends StatelessWidget {
     // colour; transfers render without a sign at all.
     final displayAmount =
         (t.type == TxType.expense || t.type == TxType.personOut)
-            ? -t.amount
-            : t.amount;
+        ? -t.amount
+        : t.amount;
 
     final (String label, IconData icon) = switch (t.type) {
       TxType.income => ('Income', Icons.arrow_downward_rounded),
@@ -287,6 +397,56 @@ Widget _valueText(BuildContext context, String text) {
   );
 }
 
+/// One row per split line: category name, icon, and its own slice of the
+/// total — right-aligned like every other detail value.
+Widget _splitCategoryValue(
+  BuildContext context,
+  List<TransactionSplitRow> splits,
+  Map<int, CategoryRow> categoryMap,
+) {
+  final theme = Theme.of(context);
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.end,
+    children: [
+      for (var i = 0; i < splits.length; i++) ...[
+        if (i > 0) const SizedBox(height: 6),
+        Builder(
+          builder: (context) {
+            final category = categoryMap[splits[i].categoryId];
+            final color = category != null
+                ? Color(category.colorValue)
+                : theme.colorScheme.onSurfaceVariant;
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  MoneyFormat.symbol(splits[i].amount),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  AppIcons.resolve(category?.iconKey ?? 'other'),
+                  size: 16,
+                  color: color,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  category?.name ?? 'Uncategorised',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ],
+    ],
+  );
+}
+
 /// Category name + coloured icon. Transfers show "—" and a muted note, because
 /// a transfer never has a category.
 Widget _categoryValue(
@@ -323,7 +483,11 @@ Widget _categoryValue(
     mainAxisSize: MainAxisSize.min,
     mainAxisAlignment: MainAxisAlignment.end,
     children: [
-      Icon(AppIcons.resolve(category?.iconKey ?? 'other'), size: 18, color: color),
+      Icon(
+        AppIcons.resolve(category?.iconKey ?? 'other'),
+        size: 18,
+        color: color,
+      ),
       const SizedBox(width: 8),
       Flexible(
         child: Text(
@@ -336,6 +500,33 @@ Widget _categoryValue(
           ),
         ),
       ),
+    ],
+  );
+}
+
+/// Right-aligned wrap of coloured tag chips.
+Widget _tagsValue(BuildContext context, List<TagRow> tags) {
+  final theme = Theme.of(context);
+  return Wrap(
+    alignment: WrapAlignment.end,
+    spacing: 6,
+    runSpacing: 6,
+    children: [
+      for (final tag in tags)
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+          decoration: BoxDecoration(
+            color: Color(tag.colorValue).withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            tag.name,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: Color(tag.colorValue),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
     ],
   );
 }
@@ -354,8 +545,7 @@ Widget _accountValue(
   final text = switch (t.type) {
     TxType.income => 'Deposited to $acctName',
     TxType.expense => 'Paid via $acctName',
-    TxType.transfer =>
-      '$acctName → ${accountMap[t.toAccountId]?.name ?? '—'}',
+    TxType.transfer => '$acctName → ${accountMap[t.toAccountId]?.name ?? '—'}',
     TxType.personOut => 'Given from $acctName',
     TxType.personIn => 'Received into $acctName',
   };

@@ -15,6 +15,7 @@ class AppIcons {
     'card': Icons.credit_card_outlined,
     'wallet': Icons.account_balance_wallet_outlined,
     'savings': Icons.savings_outlined,
+    'pay_later': Icons.shopping_cart_checkout_outlined,
 
     // income
     'salary': Icons.work_outline_rounded,

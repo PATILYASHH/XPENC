@@ -25,9 +25,14 @@ class SettingsScreen extends ConsumerWidget {
     final preset = ref.watch(themePresetProvider);
     final currency = ref.watch(currencyProvider);
     final showSymbol = ref.watch(showCurrencySymbolProvider);
+    final countRepaymentsAsIncome = ref.watch(countRepaymentsAsIncomeProvider);
+    final hasPasscode = ref.watch(hasPasscodeProvider);
+    final biometricEnabled = ref.watch(biometricEnabledProvider);
+    final expenseReminder = ref.watch(expenseReminderProvider);
 
-    final trailingStyle =
-        theme.textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant);
+    final trailingStyle = theme.textTheme.bodyMedium?.copyWith(
+      color: cs.onSurfaceVariant,
+    );
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -46,11 +51,15 @@ class SettingsScreen extends ConsumerWidget {
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('${currency.symbol} ${currency.code}',
-                          style: trailingStyle),
+                      Text(
+                        '${currency.symbol} ${currency.code}',
+                        style: trailingStyle,
+                      ),
                       const SizedBox(width: 4),
-                      Icon(Icons.chevron_right_rounded,
-                          color: cs.onSurfaceVariant),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: cs.onSurfaceVariant,
+                      ),
                     ],
                   ),
                   onTap: () => CurrencyPickerSheet.show(context, ref),
@@ -64,9 +73,10 @@ class SettingsScreen extends ConsumerWidget {
                     showSymbol
                         ? 'Amounts show ${currency.symbol}'
                         : 'Amounts show plain numbers — use this if your '
-                            'currency symbol is missing',
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: cs.onSurfaceVariant),
+                              'currency symbol is missing',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
                   ),
                   value: showSymbol,
                   onChanged: (v) =>
@@ -94,6 +104,83 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
 
+          // ── Persons ────────────────────────────────────────────────────────
+          _sectionLabel(context, 'Persons'),
+          Card(
+            child: SwitchListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              secondary: const Icon(Icons.handshake_outlined),
+              title: const Text('Count repayments as income'),
+              subtitle: Text(
+                'Offers "Mark as repaid" on a person\'s page — a repayment '
+                'posts as income under a category you choose, instead of '
+                'staying off income/expense like lending normally does.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+              value: countRepaymentsAsIncome,
+              onChanged: (v) =>
+                  ref.read(dbProvider).setCountRepaymentsAsIncome(v),
+            ),
+          ),
+
+          // ── Security ───────────────────────────────────────────────────────
+          _sectionLabel(context, 'Security'),
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  leading: const Icon(Icons.lock_outline_rounded),
+                  title: Text(hasPasscode ? 'Change passcode' : 'Set passcode'),
+                  subtitle: Text(
+                    hasPasscode
+                        ? 'A PIN is required to open the app'
+                        : 'Require a PIN to open the app',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  trailing: Icon(
+                    Icons.chevron_right_rounded,
+                    color: cs.onSurfaceVariant,
+                  ),
+                  onTap: () => context.push('/more/settings/passcode'),
+                ),
+                if (hasPasscode) ...[
+                  Divider(height: 1, indent: 60, color: cs.outline),
+                  SwitchListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    secondary: const Icon(Icons.fingerprint_rounded),
+                    title: const Text('Biometric unlock'),
+                    subtitle: Text(
+                      'Use your fingerprint or face instead of the PIN — the '
+                      'PIN always still works',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    value: biometricEnabled,
+                    onChanged: (v) =>
+                        ref.read(dbProvider).setBiometricEnabled(v),
+                  ),
+                  Divider(height: 1, indent: 60, color: cs.outline),
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    leading: Icon(Icons.lock_open_outlined, color: cs.error),
+                    title: Text(
+                      'Remove passcode',
+                      style: TextStyle(color: cs.error),
+                    ),
+                    onTap: () =>
+                        context.push('/more/settings/passcode?remove=true'),
+                  ),
+                ],
+              ],
+            ),
+          ),
+
           // ── Notifications ──────────────────────────────────────────────────
           _sectionLabel(context, 'Notifications'),
           Card(
@@ -103,11 +190,66 @@ class SettingsScreen extends ConsumerWidget {
               title: const Text('Notifications'),
               subtitle: Text(
                 'Budget alerts and payment reminders.',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: cs.onSurfaceVariant),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
               ),
               value: notificationsEnabled,
               onChanged: (v) => _toggleNotifications(ref, v),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  secondary: const Icon(Icons.edit_note_rounded),
+                  title: const Text('Daily expense reminder'),
+                  subtitle: Text(
+                    expenseReminder.enabled
+                        ? "A daily nudge at ${_timeLabel(expenseReminder.hour, expenseReminder.minute)} to log today's spending"
+                        : "Not tied to any bill — just a nudge to log today's spending",
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  value: expenseReminder.enabled,
+                  onChanged: (v) => _setExpenseReminder(
+                    ref,
+                    enabled: v,
+                    hour: expenseReminder.hour,
+                    minute: expenseReminder.minute,
+                  ),
+                ),
+                if (expenseReminder.enabled) ...[
+                  Divider(height: 1, indent: 60, color: cs.outline),
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    leading: const Icon(Icons.schedule_outlined),
+                    title: const Text('Time'),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _timeLabel(
+                            expenseReminder.hour,
+                            expenseReminder.minute,
+                          ),
+                          style: trailingStyle,
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ],
+                    ),
+                    onTap: () =>
+                        _pickExpenseReminderTime(context, ref, expenseReminder),
+                  ),
+                ],
+              ],
             ),
           ),
 
@@ -121,8 +263,9 @@ class SettingsScreen extends ConsumerWidget {
               subtitle: Text(
                 'Coming soon — removed for now so the app installs without a '
                 'Play Protect block.',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: cs.onSurfaceVariant),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
               ),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => context.push('/more/capture'),
@@ -138,8 +281,9 @@ class SettingsScreen extends ConsumerWidget {
               title: const Text('Recalculate balances'),
               subtitle: Text(
                 'Rebuild every balance from the ledger. Safe to run any time.',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: cs.onSurfaceVariant),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
               ),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () async {
@@ -163,8 +307,9 @@ class SettingsScreen extends ConsumerWidget {
               title: const Text('${AppInfo.name} · ${AppInfo.version}'),
               subtitle: Text(
                 'Developer, links and build info',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: cs.onSurfaceVariant),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
               ),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => context.push('/more/about'),
@@ -195,5 +340,41 @@ class SettingsScreen extends ConsumerWidget {
     if (value) {
       await ref.read(notificationServiceProvider).requestPermission();
     }
+  }
+
+  Future<void> _setExpenseReminder(
+    WidgetRef ref, {
+    required bool enabled,
+    required int hour,
+    required int minute,
+  }) async {
+    await ref
+        .read(dbProvider)
+        .setExpenseReminder(enabled: enabled, hour: hour, minute: minute);
+    await ref.read(notificationServiceProvider).syncExpenseReminder();
+  }
+
+  Future<void> _pickExpenseReminderTime(
+    BuildContext context,
+    WidgetRef ref,
+    ExpenseReminderSettings current,
+  ) async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: current.hour, minute: current.minute),
+    );
+    if (picked == null) return;
+    await _setExpenseReminder(
+      ref,
+      enabled: true,
+      hour: picked.hour,
+      minute: picked.minute,
+    );
+  }
+
+  String _timeLabel(int hour, int minute) {
+    final period = hour < 12 ? 'AM' : 'PM';
+    final h = hour % 12 == 0 ? 12 : hour % 12;
+    return '$h:${minute.toString().padLeft(2, '0')} $period';
   }
 }

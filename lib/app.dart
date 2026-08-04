@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/branding/app_info.dart';
+import 'core/branding/brand_mark.dart';
 import 'core/money.dart';
 import 'core/routing/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/error_view.dart';
 import 'core/widgets/money_text.dart';
 import 'data/providers.dart';
+import 'features/security/lock_screen.dart';
 
 class XpencApp extends ConsumerStatefulWidget {
   const XpencApp({super.key});
@@ -18,6 +20,12 @@ class XpencApp extends ConsumerStatefulWidget {
 
 class _XpencAppState extends ConsumerState<XpencApp>
     with WidgetsBindingObserver {
+  /// Whether the current build has seen a real settings row yet — until it
+  /// has, we don't know if a passcode is set, so a neutral splash shows
+  /// instead of risking a flash of real data before the lock engages.
+  bool _passcodeKnown = false;
+  bool _locked = false;
+
   @override
   void initState() {
     super.initState();
@@ -41,9 +49,18 @@ class _XpencAppState extends ConsumerState<XpencApp>
     await _gateOnboarding();
     if (!mounted) return;
 
+    final homeWidget = ref.read(homeWidgetServiceProvider);
+    homeWidget.init();
+    final netWorth = await ref.read(netWorthProvider.future).catchError((_) {
+      return const Money.zero();
+    });
+    if (!mounted) return;
+    await homeWidget.updateBalance(netWorth);
+
     final notifications = ref.read(notificationServiceProvider);
     await notifications.init();
     await notifications.syncReminders();
+    await notifications.syncExpenseReminder();
 
     // `checkBudgets` no-ops before `init()` completes (it must not claim an
     // alert it cannot deliver). The ledger listener may already have fired by
@@ -86,6 +103,15 @@ class _XpencAppState extends ConsumerState<XpencApp>
       _runRecurring();
       _scanMessages();
     }
+    // Immediate re-lock, no grace period — the safer default for a finance
+    // app. `_passcodeKnown` guards a launch race: if the very first
+    // backgrounding somehow lands before the initial settings read, there is
+    // nothing yet to decide with.
+    if (state == AppLifecycleState.paused && _passcodeKnown) {
+      final hasPasscode =
+          ref.read(settingsProvider).valueOrNull?.passcodeHash != null;
+      if (hasPasscode) setState(() => _locked = true);
+    }
   }
 
   Future<void> _scanMessages() async {
@@ -109,9 +135,25 @@ class _XpencAppState extends ConsumerState<XpencApp>
         ref.read(notificationServiceProvider).checkBudgets();
       }
     });
+    // Keeps the home-screen widget's balance live while the app is open —
+    // it has no other way to learn the ledger changed.
+    ref.listen(netWorthProvider, (_, next) {
+      if (next.hasValue) {
+        ref.read(homeWidgetServiceProvider).updateBalance(next.value!);
+      }
+    });
 
     final ready = ref.watch(databaseReadyProvider);
     final preset = ref.watch(themePresetProvider);
+
+    // Derived once per app run, the instant settings first loads — not with
+    // `setState`, since `ref.watch` below already schedules the rebuild that
+    // picks this up; see the doc on `_passcodeKnown`.
+    final settingsRow = ref.watch(settingsProvider).valueOrNull;
+    if (settingsRow != null && !_passcodeKnown) {
+      _passcodeKnown = true;
+      _locked = settingsRow.passcodeHash != null;
+    }
 
     // Point the global formatters at the chosen currency before anything paints,
     // and broadcast it via CurrencyScope so every amount reformats the instant
@@ -135,13 +177,44 @@ class _XpencAppState extends ConsumerState<XpencApp>
         showSymbol: showSymbol,
         child: switch (ready) {
           AsyncError(:final error) => _FatalError(
-              error: error,
-              onRetry: () => ref.invalidate(databaseReadyProvider),
-            ),
+            error: error,
+            onRetry: () => ref.invalidate(databaseReadyProvider),
+          ),
+          // The router's subtree stays mounted underneath even while locked —
+          // only stacked, opaque `LockScreen` sits on top of it — or every
+          // relock (immediate, on every backgrounding) would silently drop
+          // whatever the user was in the middle of doing: a half-typed
+          // transaction, a scroll position, anything not yet saved.
+          AsyncData() =>
+            !_passcodeKnown
+                ? const _LaunchSplash()
+                : Stack(
+                    children: [
+                      ?child,
+                      if (_locked)
+                        Positioned.fill(
+                          child: LockScreen(
+                            onUnlocked: () => setState(() => _locked = false),
+                          ),
+                        ),
+                    ],
+                  ),
           _ => child ?? const SizedBox.shrink(),
         },
       ),
     );
+  }
+}
+
+/// The instant between the database opening and settings' first emission —
+/// too short to be a real loading screen, just long enough that showing real
+/// content here risks a flash of data before a passcode lock can engage.
+class _LaunchSplash extends StatelessWidget {
+  const _LaunchSplash();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(body: Center(child: BrandMark(size: 56)));
   }
 }
 

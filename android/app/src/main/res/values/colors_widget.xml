@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Light-mode colours for the home-screen Balance widget. RemoteViews can't
+     follow the in-app Material theme (it isn't Compose), so these are fixed
+     brand colours instead — see BrandMark's own light/dark inversion for the
+     same idea applied in-app. -->
+<resources>
+    <color name="widget_background">#FFFFFF</color>
+    <color name="widget_text_primary">#0E0E10</color>
+    <color name="widget_text_secondary">#6B7280</color>
+    <color name="widget_chip_background">#F1F1F3</color>
+    <color name="widget_chip_text">#0E0E10</color>
+</resources>

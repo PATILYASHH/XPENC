@@ -21,7 +21,14 @@ const _presetColors = <int>[
   0xFFEC4899,
 ];
 
-const _iconKeys = <String>['cash', 'bank', 'card', 'wallet', 'savings'];
+const _iconKeys = <String>[
+  'cash',
+  'bank',
+  'card',
+  'wallet',
+  'savings',
+  'pay_later',
+];
 
 /// Opens the "add account" bottom sheet.
 Future<void> showAddAccountSheet(BuildContext context) {
@@ -71,6 +78,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
   bool get _isCard => _type == AccountType.card;
   bool get _isDebitCard => _isCard && _cardKind == CardKind.debit;
   bool get _isCreditCard => _isCard && _cardKind == CardKind.credit;
+  bool get _isPayLater => _type == AccountType.payLater;
 
   void _showError(String message) {
     ScaffoldMessenger.of(context)
@@ -114,21 +122,25 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
       linkedAccountId = _linkedAccountId;
     }
 
-    // Opening balance. Debit cards hold none. A credit card's "outstanding" is
-    // money you owe, so it is stored negative.
+    // Opening balance. Debit cards hold none. A credit card's or pay-later
+    // account's "outstanding" is money you owe, so it is stored negative.
     Money openingBalance;
     if (_isDebitCard) {
       openingBalance = const Money.zero();
-    } else if (_isCreditCard) {
-      final parsed = Money.tryParse(_amountController.text) ?? const Money.zero();
+    } else if (_isCreditCard || _isPayLater) {
+      final parsed =
+          Money.tryParse(_amountController.text) ?? const Money.zero();
       openingBalance = -parsed.abs;
     } else {
-      openingBalance = Money.tryParse(_amountController.text) ?? const Money.zero();
+      openingBalance =
+          Money.tryParse(_amountController.text) ?? const Money.zero();
     }
 
     setState(() => _submitting = true);
     try {
-      await ref.read(dbProvider).addAccount(
+      await ref
+          .read(dbProvider)
+          .addAccount(
             name: name,
             type: _type,
             cardKind: _isCard ? _cardKind : null,
@@ -172,8 +184,9 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
           children: [
             Text(
               'Add account',
-              style: theme.textTheme.headlineSmall
-                  ?.copyWith(fontWeight: FontWeight.w700),
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
             const SizedBox(height: 20),
 
@@ -195,6 +208,10 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
                 ButtonSegment(value: AccountType.cash, label: Text('Cash')),
                 ButtonSegment(value: AccountType.bank, label: Text('Bank')),
                 ButtonSegment(value: AccountType.card, label: Text('Card')),
+                ButtonSegment(
+                  value: AccountType.payLater,
+                  label: Text('Pay later'),
+                ),
               ],
               selected: {_type},
               showSelectedIcon: false,
@@ -204,6 +221,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
                   AccountType.cash => 'cash',
                   AccountType.bank => 'bank',
                   AccountType.card => 'card',
+                  AccountType.payLater => 'pay_later',
                 };
               }),
             ),
@@ -288,6 +306,20 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
           if (_isDebitCard) ..._debitCardFields(theme, banks),
           const SizedBox(height: 4),
         ];
+
+      case AccountType.payLater:
+        return [
+          _infoTile(
+            theme,
+            'A pay-later account (Simpl, LazyPay, Amazon Pay Later, …) holds '
+            'its own balance, just like a credit card. Spending makes it '
+            'negative (what you owe); paying it off is a Transfer from your '
+            'bank.',
+          ),
+          const SizedBox(height: 16),
+          _amountField(label: 'Outstanding (optional)'),
+          const SizedBox(height: 20),
+        ];
     }
   }
 
@@ -317,7 +349,9 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
           padding: const EdgeInsets.only(bottom: 16),
           child: Text(
             'Add a bank account first, then link the debit card to it.',
-            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.error,
+            ),
           ),
         )
       else
@@ -343,9 +377,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
     return TextField(
       controller: _amountController,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-      ],
+      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
       decoration: InputDecoration(
         labelText: label,
         prefixText: '₹ ',
@@ -389,8 +421,11 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.info_outline_rounded,
-              size: 20, color: theme.colorScheme.onSurfaceVariant),
+          Icon(
+            Icons.info_outline_rounded,
+            size: 20,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -437,15 +472,21 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
         height: 52,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? theme.colorScheme.onSurface : theme.colorScheme.surface,
+          color: selected
+              ? theme.colorScheme.onSurface
+              : theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: selected ? theme.colorScheme.onSurface : theme.colorScheme.outline,
+            color: selected
+                ? theme.colorScheme.onSurface
+                : theme.colorScheme.outline,
           ),
         ),
         child: Icon(
           AppIcons.resolve(key),
-          color: selected ? theme.colorScheme.surface : theme.colorScheme.onSurfaceVariant,
+          color: selected
+              ? theme.colorScheme.surface
+              : theme.colorScheme.onSurfaceVariant,
         ),
       ),
     );

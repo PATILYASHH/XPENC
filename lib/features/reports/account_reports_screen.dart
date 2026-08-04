@@ -142,10 +142,8 @@ class _BalanceSplitCard extends ConsumerWidget {
     ThemeData theme,
     List<AccountRow> list,
   ) {
-    final positive =
-        list.where((a) => a.currentBalance.isPositive).toList();
-    final negative =
-        list.where((a) => a.currentBalance.isNegative).toList();
+    final positive = list.where((a) => a.currentBalance.isPositive).toList();
+    final negative = list.where((a) => a.currentBalance.isNegative).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -345,8 +343,7 @@ class _AccountRow extends StatelessWidget {
 
   bool get _isDebitCard => account.linkedAccountId != null;
   bool get _isCreditCard =>
-      account.type == AccountType.card &&
-      account.cardKind == CardKind.credit;
+      account.type == AccountType.card && account.cardKind == CardKind.credit;
 
   @override
   Widget build(BuildContext context) {
@@ -360,8 +357,7 @@ class _AccountRow extends StatelessWidget {
       subtitle = 'Draws from ${bank?.name ?? 'bank'}';
       trailing = const _LinkedChip();
     } else if (_isCreditCard) {
-      subtitle =
-          account.currentBalance.isNegative ? 'Outstanding' : 'Paid off';
+      subtitle = account.currentBalance.isNegative ? 'Outstanding' : 'Paid off';
       trailing = BalanceText(
         account.currentBalance,
         style: theme.textTheme.titleMedium?.copyWith(
@@ -392,7 +388,11 @@ class _AccountRow extends StatelessWidget {
             color: color.withValues(alpha: 0.14),
             shape: BoxShape.circle,
           ),
-          child: Icon(AppIcons.resolve(account.iconKey), color: color, size: 22),
+          child: Icon(
+            AppIcons.resolve(account.iconKey),
+            color: color,
+            size: 22,
+          ),
         ),
         title: Text(
           account.name,
@@ -438,7 +438,8 @@ class _LinkedChip extends StatelessWidget {
 }
 
 String _typeLabel(AccountType type) => switch (type) {
-      AccountType.cash => 'Cash',
-      AccountType.bank => 'Bank',
-      AccountType.card => 'Card',
-    };
+  AccountType.cash => 'Cash',
+  AccountType.bank => 'Bank',
+  AccountType.card => 'Card',
+  AccountType.payLater => 'Pay later',
+};

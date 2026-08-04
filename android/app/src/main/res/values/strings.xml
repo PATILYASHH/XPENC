@@ -3,4 +3,10 @@
     <!-- The launcher label. This is the only place the user-facing app name is
          defined on Android; the manifest points at it. -->
     <string name="app_name">XPENC</string>
+
+    <!-- Balance home-screen widget. -->
+    <string name="widget_total_balance">Total balance</string>
+    <string name="widget_add_expense">+ Expense</string>
+    <string name="widget_add_income">+ Income</string>
+    <string name="widget_description">Your total balance, with one-tap shortcuts to log an expense or income.</string>
 </resources>
