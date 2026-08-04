@@ -1602,8 +1602,9 @@ class AppDatabase extends _$AppDatabase {
     int notifyDaysBefore = 3,
   }) async {
     final category = await categoryById(categoryId);
-    if (category == null)
+    if (category == null) {
       throw ArgumentError('That category no longer exists.');
+    }
     final dayOfMonth = frequency == RecurringFrequency.monthly
         ? startsOn.day
         : null;
@@ -1645,8 +1646,9 @@ class AppDatabase extends _$AppDatabase {
     int notifyDaysBefore = 3,
   }) async {
     final category = await categoryById(categoryId);
-    if (category == null)
+    if (category == null) {
       throw ArgumentError('That category no longer exists.');
+    }
     final dayOfMonth = frequency == RecurringFrequency.monthly
         ? nextDueDate.day
         : null;
@@ -2523,8 +2525,9 @@ class AppDatabase extends _$AppDatabase {
     if (type == DriftSqlType.dateTime) {
       if (value is String) return DateTime.parse(value);
       // Tolerate an older backup that stored raw unix seconds.
-      if (value is int)
+      if (value is int) {
         return DateTime.fromMillisecondsSinceEpoch(value * 1000);
+      }
     }
     if (type == DriftSqlType.bool && value is int) return value != 0;
     if (type == DriftSqlType.double && value is int) return value.toDouble();
