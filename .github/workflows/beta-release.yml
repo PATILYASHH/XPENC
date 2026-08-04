@@ -1,0 +1,111 @@
+# Publishes a beta build on every push to BETA.
+#
+# Unlike release.yml (which fires on a version tag and publishes a permanent,
+# versioned release), this fires on the BETA branch itself and republishes a
+# single rolling pre-release, tagged `beta`, so there is always exactly one
+# "current beta" download link — each push replaces the previous build's
+# assets rather than piling up a new release every time.
+#
+# Signing follows the same fallback as release.yml: if android/key.properties
+# isn't present (no release keystore configured), the build falls back to
+# debug signing. That's fine for a sideloaded beta APK.
+
+name: Beta Release APK
+
+on:
+  push:
+    branches: [BETA]
+    paths-ignore:
+      - "website/**"
+      - "**.md"
+      - "docs/**"
+  workflow_dispatch:
+
+concurrency:
+  group: beta-release
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  beta-release:
+    name: Build, verify & publish beta
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install sqlite3
+        run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.38.9"
+          cache: true
+
+      - name: Pub get
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test
+
+      - name: Build release APKs
+        run: flutter build apk --release --split-per-abi
+
+      - name: Rename to beta asset names
+        run: |
+          mkdir -p release
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk   release/xpenc-beta-arm64-v8a.apk
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk release/xpenc-beta-armeabi-v7a.apk
+          cp build/app/outputs/flutter-apk/app-x86_64-release.apk      release/xpenc-beta-x86_64.apk
+
+      - name: Verify APKs (libsqlite3.so gate)
+        run: |
+          for apk in release/*.apk; do
+            bash tool/verify_apk.sh "$apk"
+          done
+
+      - name: Checksums
+        working-directory: release
+        run: sha256sum *.apk > SHA256SUMS.txt && cat SHA256SUMS.txt
+
+      - name: Short SHA
+        id: sha
+        run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Publish beta pre-release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: beta
+          name: "Beta build (${{ steps.sha.outputs.short }})"
+          prerelease: true
+          target_commitish: ${{ github.sha }}
+          files: |
+            release/xpenc-beta-arm64-v8a.apk
+            release/xpenc-beta-armeabi-v7a.apk
+            release/xpenc-beta-x86_64.apk
+            release/SHA256SUMS.txt
+          generate_release_notes: false
+          body: |
+            **Beta build — built automatically from the `BETA` branch, commit ${{ steps.sha.outputs.short }}.**
+
+            This is a work-in-progress build, not a stable release. Things can be broken.
+            This link always points at the latest beta — every push to `BETA` replaces it.
+
+            | Your phone | Download |
+            |---|---|
+            | Most phones (2017+) | `xpenc-beta-arm64-v8a.apk` |
+            | Older 32-bit phones | `xpenc-beta-armeabi-v7a.apk` |
+            | Emulators | `xpenc-beta-x86_64.apk` |
+
+            Verify your download against `SHA256SUMS.txt`.
+            For the stable release, see the [latest release](https://github.com/PATILYASHH/XPENC/releases/latest) instead.
