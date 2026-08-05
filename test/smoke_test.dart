@@ -140,6 +140,26 @@ void main() {
     await unmount(tester);
   });
 
+  testWidgets(
+      'Accounts shows a Prepaid Balance account in its own group, with a '
+      'positive balance', (tester) async {
+    await tester.runAsync(() async {
+      await db.addAccount(
+        name: 'Canteen Fob',
+        type: AccountType.prepaidBalance,
+        colorValue: 0xFF16A34A,
+        iconKey: 'prepaid_balance',
+        openingBalance: Money.fromRupees(500),
+      );
+    });
+
+    await pump(tester, const AccountsScreen());
+    expect(tester.takeException(), isNull);
+    expect(find.text('PREPAID BALANCE'), findsOneWidget);
+    expect(find.text('Canteen Fob'), findsOneWidget);
+    await unmount(tester);
+  });
+
   testWidgets('Transactions renders empty, then with a row', (tester) async {
     await pump(tester, const TransactionsScreen());
     expect(tester.takeException(), isNull);

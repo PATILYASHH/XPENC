@@ -28,6 +28,7 @@ const _iconKeys = <String>[
   'wallet',
   'savings',
   'pay_later',
+  'prepaid_balance',
 ];
 
 /// Opens the "add account" bottom sheet.
@@ -212,6 +213,10 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
                   value: AccountType.payLater,
                   label: Text('Pay later'),
                 ),
+                ButtonSegment(
+                  value: AccountType.prepaidBalance,
+                  label: Text('Prepaid'),
+                ),
               ],
               selected: {_type},
               showSelectedIcon: false,
@@ -222,6 +227,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
                   AccountType.bank => 'bank',
                   AccountType.card => 'card',
                   AccountType.payLater => 'pay_later',
+                  AccountType.prepaidBalance => 'prepaid_balance',
                 };
               }),
             ),
@@ -318,6 +324,19 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
           ),
           const SizedBox(height: 16),
           _amountField(label: 'Outstanding (optional)'),
+          const SizedBox(height: 20),
+        ];
+
+      case AccountType.prepaidBalance:
+        return [
+          _infoTile(
+            theme,
+            'A prepaid balance (a canteen key fob, gift card, transit card, '
+            '…) holds money you already loaded onto it. Spending draws it '
+            'down, just like Cash.',
+          ),
+          const SizedBox(height: 16),
+          _amountField(label: 'Starting balance'),
           const SizedBox(height: 20),
         ];
     }

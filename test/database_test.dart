@@ -281,6 +281,79 @@ void main() {
     });
   });
 
+  group('prepaid balance — a normal spending account', () {
+    test('starting balance loads positive and counts toward net worth',
+        () async {
+      final fob = await db.addAccount(
+        name: 'Canteen Fob',
+        type: AccountType.prepaidBalance,
+        colorValue: 0,
+        iconKey: 'prepaid_balance',
+        openingBalance: Money.fromRupees(500),
+      );
+
+      expect(await balanceOf(fob), Money.fromRupees(500),
+          reason: 'unlike Pay-later/credit card, this is not a liability');
+      expect(await netWorth(), Money.fromRupees(500));
+    });
+
+    test('an expense reduces its balance and net worth, exactly like Cash',
+        () async {
+      final fob = await db.addAccount(
+        name: 'Canteen Fob',
+        type: AccountType.prepaidBalance,
+        colorValue: 0,
+        iconKey: 'prepaid_balance',
+        openingBalance: Money.fromRupees(500),
+      );
+
+      await db.addTransaction(
+        type: TxType.expense,
+        amount: Money.fromRupees(120),
+        accountId: fob,
+        categoryId: await expenseCategory('Food'),
+        date: DateTime(2026, 7, 8),
+      );
+
+      expect(await balanceOf(fob), Money.fromRupees(380));
+      expect(await netWorth(), Money.fromRupees(380));
+    });
+
+    test('a transfer can top it up, and a transfer stays net-zero', () async {
+      final cash = await cashId();
+      await db.addTransaction(
+        type: TxType.income,
+        amount: Money.fromRupees(1000),
+        accountId: cash,
+        categoryId: await incomeCategory('Salary'),
+        date: DateTime(2026, 7, 1),
+      );
+      final fob = await db.addAccount(
+        name: 'Canteen Fob',
+        type: AccountType.prepaidBalance,
+        colorValue: 0,
+        iconKey: 'prepaid_balance',
+        openingBalance: const Money.zero(),
+      );
+
+      await db.addTransaction(
+        type: TxType.transfer,
+        amount: Money.fromRupees(200),
+        accountId: cash,
+        toAccountId: fob,
+        date: DateTime(2026, 7, 2),
+      );
+
+      expect(await balanceOf(fob), Money.fromRupees(200));
+      expect(await balanceOf(cash), Money.fromRupees(800));
+      expect(
+        await netWorth(),
+        Money.fromRupees(1000),
+        reason: 'a transfer moves money between own accounts, net worth unchanged',
+      );
+    });
+  });
+
   group('deleteAccount — permanent, so it is guarded', () {
     test('removes an account nothing has touched', () async {
       final bank = await db.addAccount(

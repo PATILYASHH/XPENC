@@ -439,6 +439,7 @@ String _typeLabel(AccountType type) => switch (type) {
   AccountType.bank => 'Bank',
   AccountType.card => 'Card',
   AccountType.payLater => 'Pay later',
+  AccountType.prepaidBalance => 'Prepaid Balance',
 };
 
 String _dayLabel(DateTime day) {
