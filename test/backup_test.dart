@@ -93,6 +93,15 @@ void main() {
       direction: ReminderDirection.pay,
       dueDate: DateTime(2026, 8, 5),
     );
+    await db.addRecurringRule(
+      name: 'Netflix',
+      kind: CategoryKind.expense,
+      amount: Money.fromRupees(649),
+      accountId: card,
+      categoryId: await catId(CategoryKind.expense, 'Entertainment'),
+      frequency: RecurringFrequency.monthly,
+      startsOn: DateTime(2026, 7, 10),
+    );
   }
 
   group('export', () {
@@ -108,6 +117,7 @@ void main() {
       expect(dump['personEntries'], hasLength(1));
       expect(dump['budgets'], hasLength(1));
       expect(dump['reminders'], hasLength(1));
+      expect(dump['recurringRules'], hasLength(1));
 
       final tx = (dump['transactions'] as List)
           .cast<Map<String, Object?>>()
@@ -154,6 +164,11 @@ void main() {
       // The credit card must still be a liability.
       final card = accs.firstWhere((a) => a.name == 'Yes Bank Credit Card');
       expect(card.currentBalance, Money.fromRupees(-1234.56));
+
+      final rules = await fresh.watchRecurringRules().first;
+      expect(rules, hasLength(1));
+      expect(rules.single.name, 'Netflix');
+      expect(rules.single.amount, Money.fromRupees(649));
     });
 
     test('restoring twice is idempotent (no duplicated rows)', () async {

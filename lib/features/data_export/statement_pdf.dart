@@ -96,9 +96,17 @@ Future<Uint8List> buildBudgetStatementPdf({
 }) async {
   final doc = pw.Document(title: 'Budget statement ${_monthLabel(month)}');
 
+  // A child's budget is a sub-allocation within its parent's cap, and a
+  // budgeted parent's `spent` already rolls up every child's — when the
+  // parent is budgeted too, counting the child's line again would double
+  // both totals (Food 2000 + Junk food 1000 + Dinner 1000 must read as
+  // 2000, not 4000).
+  final budgetedCategoryIds = {for (final l in lines) l.category.id};
   var totalBudgeted = const Money.zero();
   var totalSpent = const Money.zero();
   for (final l in lines) {
+    final parentId = l.category.parentId;
+    if (parentId != null && budgetedCategoryIds.contains(parentId)) continue;
     totalBudgeted += l.budgeted;
     totalSpent += l.spent;
   }
