@@ -8,6 +8,85 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-08-05
+
+Full backward compatible: the database migrates itself in place (v8 → v18,
+additive columns and five new tables), so updating over an existing install
+keeps every account, transaction and setting.
+
+### Added
+- **Passcode lock** — **Settings → Security**: a 4–6 digit PIN gates the app
+  on open, with an optional biometric (fingerprint/face) unlock on top. A
+  backup taken before a passcode existed never silently turns the lock off
+  on restore — the passcode is device-local and survives a backup/restore
+  untouched.
+- **Home screen widget** — an Android widget showing net worth at a glance,
+  updated whenever the ledger changes; tapping it opens the app.
+- **Savings goals** — a new **Goals** hub for saving toward a target amount,
+  with progress and a running history of contributions.
+- **Tags** — free-form labels on any transaction, beyond category. A **Tags**
+  shortcut sits in the Add Transaction app bar (always visible, not buried
+  below the keypad) with an autocomplete drawn from tags already used.
+- **Receipt attachments** — attach a photo to any transaction from the same
+  always-visible app-bar shortcut. Picked through the system file picker, not
+  the camera, so no new permission is needed; the image is copied into the
+  app's own storage immediately.
+- **Shopping lists** — shopping is now shopping *lists*: named, colour-coded
+  lists instead of one flat list. Existing items migrate onto a default list
+  automatically.
+- **Archived Accounts / Archived Persons** — dedicated screens (**More →
+  Accounts/Persons → Archived**) to review and unarchive anything archived
+  earlier, instead of it just disappearing.
+- **Prepaid Balance account type** — for a canteen key fob, gift card or
+  transit card: money you already loaded onto it. Unlike Pay-later, it is
+  **not** a liability — spending it draws down a real balance, exactly like
+  Cash or Bank.
+- **Durable, automatic backups** — backups now live in the public
+  `Download/BACKUP XPENC` folder (via Android's MediaStore), so they survive
+  the app being uninstalled — no storage permission needed. An optional
+  schedule (daily / monthly / custom) runs opportunistically on app open,
+  with configurable retention. "Find existing backups" recovers the on-device
+  index after a reinstall with one folder-picker consent.
+- **Clear all data** — **Settings → Clear all data** wipes the ledger back to
+  the same defaults a new install gets (after an automatic safety backup).
+  Preferences and backup history are left alone.
+- **Income & Expense Report PDF** — download a period summary (category
+  breakdown plus the same headline numbers Stats shows) from the Stats
+  screen, alongside the existing per-account and per-budget statement PDFs.
+- **Editable person ledger entries** — tap an entry on a person's ledger to
+  edit it (direction, account, amount, date), instead of only delete-and-redo.
+- **Budget parent/child cap** — a subcategory's budget can no longer exceed
+  its parent's, in either direction (raising a child above its parent, or
+  shrinking a parent below an existing child). The Budgets screen threads
+  subcategories under their parent, indented with a connecting line.
+
+### Changed
+- Tags and Receipt moved to always-visible app-bar shortcuts on Add
+  Transaction, instead of cards buried at the bottom of a scrollable list —
+  every feature now stays reachable without scrolling past the keypad.
+
+### Fixed
+- The on-screen numpad no longer overlaps the system keyboard when entering a
+  split expense's per-category amount.
+- Editing any existing budget no longer crashes — `upsertBudget`'s
+  insert-on-conflict only ever targeted the primary key, so the real
+  constraint (one budget per category) raised an uncaught database error
+  instead of updating the row.
+- **Budget totals no longer double-count a parent and its children.** A
+  subcategory's budget is a sub-allocation within its parent's cap, not
+  additional spend — Food ₹2,000 with Junk food ₹1,000 and Dinner ₹1,000
+  now reads ₹2,000 budgeted, not ₹4,000. Fixed in both the Budgets screen's
+  "This month" summary and the budget statement PDF.
+- **Backup/restore no longer drops Recurring Rules.** The Auto (recurring
+  payments/income) feature was missing from the backup format entirely, so
+  restoring a backup silently deleted every recurring rule. It now round-trips
+  like everything else.
+
+### Upgrade notes
+- **No reinstall needed.** The schema migrates automatically (v8 → v18,
+  additive only). Existing data is untouched; new features start empty
+  (no tags, no goals, no passcode, auto-backup off) until you use them.
+
 ## [1.2.1] — 2026-07-30
 
 Full backward compatible: the database migrates itself in place (v6 → v8,
@@ -203,7 +282,8 @@ First public release. 🎉
 - `tool/verify_apk.sh` gates every shipped APK against the missing
   `libsqlite3.so` class of crash.
 
-[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.2.1...HEAD
+[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/PATILYASHH/XPENC/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/PATILYASHH/XPENC/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/PATILYASHH/XPENC/compare/v1.1.3...v1.2.0
 [1.1.3]: https://github.com/PATILYASHH/XPENC/compare/v1.1.2...v1.1.3
