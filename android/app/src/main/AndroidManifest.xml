@@ -7,6 +7,17 @@
          test/native_channel_test.dart fails the build if this returns. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <!-- Backups (see backup_service.dart) only ever touch files this app itself
+         wrote into the public Download/BACKUP XPENC folder via MediaStore, which
+         needs no runtime permission on Android 10+ (scoped storage already lets
+         an app manage its own MediaStore entries). These two are capped to old
+         SDKs on purpose — only pre-scoped-storage devices need them at all, and
+         declaring them unconditionally is exactly the kind of "why does a finance
+         app want this" flag Play review looks for. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29"/>
     <application
         android:label="@string/app_name"
         android:name="${applicationName}"

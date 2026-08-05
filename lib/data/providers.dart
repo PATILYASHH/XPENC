@@ -655,9 +655,36 @@ final backupServiceProvider = Provider<BackupService>(
   (ref) => BackupService(ref.watch(dbProvider)),
 );
 
-final backupListProvider = FutureProvider<List<BackupFile>>(
-  (ref) => ref.watch(backupServiceProvider).listBackups(),
+/// The live list of known backups. Reads `AppDatabase.watchBackupRecords`
+/// directly (a real stream) rather than `BackupService.listBackups` (a
+/// one-shot snapshot), so the screen updates itself after every backup or
+/// delete with no explicit `ref.invalidate` needed.
+final backupRecordsProvider = StreamProvider<List<BackupRecordRow>>(
+  (ref) => ref.watch(dbProvider).watchBackupRecords(),
 );
+
+/// Auto-backup schedule + retention, straight off [Settings] — a safe
+/// default (off) while settings are still loading.
+typedef AutoBackupSettings = ({
+  bool enabled,
+  AutoBackupFrequency frequency,
+  int customDays,
+  int customHours,
+  int retentionDays,
+  DateTime? lastAutoBackupAt,
+});
+
+final autoBackupSettingsProvider = Provider<AutoBackupSettings>((ref) {
+  final s = ref.watch(settingsProvider).valueOrNull;
+  return (
+    enabled: s?.autoBackupEnabled ?? false,
+    frequency: s?.autoBackupFrequency ?? AutoBackupFrequency.daily,
+    customDays: s?.autoBackupCustomDays ?? 0,
+    customHours: s?.autoBackupCustomHours ?? 0,
+    retentionDays: s?.backupRetentionDays ?? 180,
+    lastAutoBackupAt: s?.lastAutoBackupAt,
+  );
+});
 
 // ── Reports ─────────────────────────────────────────────────────────────────
 

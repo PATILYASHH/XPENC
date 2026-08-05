@@ -66,6 +66,10 @@ dependencies:
   # Bridges data to the Android home-screen widget (see android/…/widget) and
   # routes a tap on it back into the app.
   home_widget: ^0.9.3
+  # Writes backups to the public Download/BACKUP XPENC folder via MediaStore —
+  # no storage permission needed, and survives the app being uninstalled
+  # (see backup_service.dart).
+  media_store_plus: ^0.1.3
 
 dev_dependencies:
   flutter_test:

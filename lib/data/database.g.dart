@@ -5572,6 +5572,79 @@ class $SettingsTable extends Settings
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _autoBackupEnabledMeta = const VerificationMeta(
+    'autoBackupEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> autoBackupEnabled = GeneratedColumn<bool>(
+    'auto_backup_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("auto_backup_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<AutoBackupFrequency, String>
+  autoBackupFrequency =
+      GeneratedColumn<String>(
+        'auto_backup_frequency',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('daily'),
+      ).withConverter<AutoBackupFrequency>(
+        $SettingsTable.$converterautoBackupFrequency,
+      );
+  static const VerificationMeta _autoBackupCustomDaysMeta =
+      const VerificationMeta('autoBackupCustomDays');
+  @override
+  late final GeneratedColumn<int> autoBackupCustomDays = GeneratedColumn<int>(
+    'auto_backup_custom_days',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _autoBackupCustomHoursMeta =
+      const VerificationMeta('autoBackupCustomHours');
+  @override
+  late final GeneratedColumn<int> autoBackupCustomHours = GeneratedColumn<int>(
+    'auto_backup_custom_hours',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastAutoBackupAtMeta = const VerificationMeta(
+    'lastAutoBackupAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastAutoBackupAt =
+      GeneratedColumn<DateTime>(
+        'last_auto_backup_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _backupRetentionDaysMeta =
+      const VerificationMeta('backupRetentionDays');
+  @override
+  late final GeneratedColumn<int> backupRetentionDays = GeneratedColumn<int>(
+    'backup_retention_days',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(180),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -5591,6 +5664,12 @@ class $SettingsTable extends Settings
     expenseReminderEnabled,
     expenseReminderHour,
     expenseReminderMinute,
+    autoBackupEnabled,
+    autoBackupFrequency,
+    autoBackupCustomDays,
+    autoBackupCustomHours,
+    lastAutoBackupAt,
+    backupRetentionDays,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -5745,6 +5824,51 @@ class $SettingsTable extends Settings
         ),
       );
     }
+    if (data.containsKey('auto_backup_enabled')) {
+      context.handle(
+        _autoBackupEnabledMeta,
+        autoBackupEnabled.isAcceptableOrUnknown(
+          data['auto_backup_enabled']!,
+          _autoBackupEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('auto_backup_custom_days')) {
+      context.handle(
+        _autoBackupCustomDaysMeta,
+        autoBackupCustomDays.isAcceptableOrUnknown(
+          data['auto_backup_custom_days']!,
+          _autoBackupCustomDaysMeta,
+        ),
+      );
+    }
+    if (data.containsKey('auto_backup_custom_hours')) {
+      context.handle(
+        _autoBackupCustomHoursMeta,
+        autoBackupCustomHours.isAcceptableOrUnknown(
+          data['auto_backup_custom_hours']!,
+          _autoBackupCustomHoursMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_auto_backup_at')) {
+      context.handle(
+        _lastAutoBackupAtMeta,
+        lastAutoBackupAt.isAcceptableOrUnknown(
+          data['last_auto_backup_at']!,
+          _lastAutoBackupAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('backup_retention_days')) {
+      context.handle(
+        _backupRetentionDaysMeta,
+        backupRetentionDays.isAcceptableOrUnknown(
+          data['backup_retention_days']!,
+          _backupRetentionDaysMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -5822,6 +5946,32 @@ class $SettingsTable extends Settings
         DriftSqlType.int,
         data['${effectivePrefix}expense_reminder_minute'],
       )!,
+      autoBackupEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}auto_backup_enabled'],
+      )!,
+      autoBackupFrequency: $SettingsTable.$converterautoBackupFrequency.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}auto_backup_frequency'],
+        )!,
+      ),
+      autoBackupCustomDays: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}auto_backup_custom_days'],
+      )!,
+      autoBackupCustomHours: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}auto_backup_custom_hours'],
+      )!,
+      lastAutoBackupAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_auto_backup_at'],
+      ),
+      backupRetentionDays: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}backup_retention_days'],
+      )!,
     );
   }
 
@@ -5829,6 +5979,11 @@ class $SettingsTable extends Settings
   $SettingsTable createAlias(String alias) {
     return $SettingsTable(attachedDatabase, alias);
   }
+
+  static JsonTypeConverter2<AutoBackupFrequency, String, String>
+  $converterautoBackupFrequency = const EnumNameConverter<AutoBackupFrequency>(
+    AutoBackupFrequency.values,
+  );
 }
 
 class SettingRow extends DataClass implements Insertable<SettingRow> {
@@ -5876,6 +6031,28 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   final bool expenseReminderEnabled;
   final int expenseReminderHour;
   final int expenseReminderMinute;
+
+  /// Whether XPENC creates a backup on its own schedule, with no "Back up
+  /// now" tap needed. Off by default.
+  final bool autoBackupEnabled;
+
+  /// How often, when [autoBackupEnabled]. `custom` uses
+  /// [autoBackupCustomDays] + [autoBackupCustomHours] instead of a fixed
+  /// cadence.
+  final AutoBackupFrequency autoBackupFrequency;
+  final int autoBackupCustomDays;
+  final int autoBackupCustomHours;
+
+  /// When the last *automatic* backup ran — the due-date anchor. A manual
+  /// "Back up now" never touches this, so it can't push an automatic backup
+  /// later than the schedule promises.
+  final DateTime? lastAutoBackupAt;
+
+  /// How many days a backup is kept before automatic cleanup removes it.
+  /// `0` means "keep forever". Must be at least as long as the auto-backup
+  /// interval (see `AppDatabase.setAutoBackupSettings`) — otherwise cleanup
+  /// could delete a backup before the next one exists to replace it.
+  final int backupRetentionDays;
   const SettingRow({
     required this.id,
     required this.currencyCode,
@@ -5894,6 +6071,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     required this.expenseReminderEnabled,
     required this.expenseReminderHour,
     required this.expenseReminderMinute,
+    required this.autoBackupEnabled,
+    required this.autoBackupFrequency,
+    required this.autoBackupCustomDays,
+    required this.autoBackupCustomHours,
+    this.lastAutoBackupAt,
+    required this.backupRetentionDays,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5921,6 +6104,18 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     map['expense_reminder_enabled'] = Variable<bool>(expenseReminderEnabled);
     map['expense_reminder_hour'] = Variable<int>(expenseReminderHour);
     map['expense_reminder_minute'] = Variable<int>(expenseReminderMinute);
+    map['auto_backup_enabled'] = Variable<bool>(autoBackupEnabled);
+    {
+      map['auto_backup_frequency'] = Variable<String>(
+        $SettingsTable.$converterautoBackupFrequency.toSql(autoBackupFrequency),
+      );
+    }
+    map['auto_backup_custom_days'] = Variable<int>(autoBackupCustomDays);
+    map['auto_backup_custom_hours'] = Variable<int>(autoBackupCustomHours);
+    if (!nullToAbsent || lastAutoBackupAt != null) {
+      map['last_auto_backup_at'] = Variable<DateTime>(lastAutoBackupAt);
+    }
+    map['backup_retention_days'] = Variable<int>(backupRetentionDays);
     return map;
   }
 
@@ -5949,6 +6144,14 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       expenseReminderEnabled: Value(expenseReminderEnabled),
       expenseReminderHour: Value(expenseReminderHour),
       expenseReminderMinute: Value(expenseReminderMinute),
+      autoBackupEnabled: Value(autoBackupEnabled),
+      autoBackupFrequency: Value(autoBackupFrequency),
+      autoBackupCustomDays: Value(autoBackupCustomDays),
+      autoBackupCustomHours: Value(autoBackupCustomHours),
+      lastAutoBackupAt: lastAutoBackupAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastAutoBackupAt),
+      backupRetentionDays: Value(backupRetentionDays),
     );
   }
 
@@ -5989,6 +6192,21 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       expenseReminderMinute: serializer.fromJson<int>(
         json['expenseReminderMinute'],
       ),
+      autoBackupEnabled: serializer.fromJson<bool>(json['autoBackupEnabled']),
+      autoBackupFrequency: $SettingsTable.$converterautoBackupFrequency
+          .fromJson(serializer.fromJson<String>(json['autoBackupFrequency'])),
+      autoBackupCustomDays: serializer.fromJson<int>(
+        json['autoBackupCustomDays'],
+      ),
+      autoBackupCustomHours: serializer.fromJson<int>(
+        json['autoBackupCustomHours'],
+      ),
+      lastAutoBackupAt: serializer.fromJson<DateTime?>(
+        json['lastAutoBackupAt'],
+      ),
+      backupRetentionDays: serializer.fromJson<int>(
+        json['backupRetentionDays'],
+      ),
     );
   }
   @override
@@ -6014,6 +6232,16 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'expenseReminderEnabled': serializer.toJson<bool>(expenseReminderEnabled),
       'expenseReminderHour': serializer.toJson<int>(expenseReminderHour),
       'expenseReminderMinute': serializer.toJson<int>(expenseReminderMinute),
+      'autoBackupEnabled': serializer.toJson<bool>(autoBackupEnabled),
+      'autoBackupFrequency': serializer.toJson<String>(
+        $SettingsTable.$converterautoBackupFrequency.toJson(
+          autoBackupFrequency,
+        ),
+      ),
+      'autoBackupCustomDays': serializer.toJson<int>(autoBackupCustomDays),
+      'autoBackupCustomHours': serializer.toJson<int>(autoBackupCustomHours),
+      'lastAutoBackupAt': serializer.toJson<DateTime?>(lastAutoBackupAt),
+      'backupRetentionDays': serializer.toJson<int>(backupRetentionDays),
     };
   }
 
@@ -6035,6 +6263,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     bool? expenseReminderEnabled,
     int? expenseReminderHour,
     int? expenseReminderMinute,
+    bool? autoBackupEnabled,
+    AutoBackupFrequency? autoBackupFrequency,
+    int? autoBackupCustomDays,
+    int? autoBackupCustomHours,
+    Value<DateTime?> lastAutoBackupAt = const Value.absent(),
+    int? backupRetentionDays,
   }) => SettingRow(
     id: id ?? this.id,
     currencyCode: currencyCode ?? this.currencyCode,
@@ -6057,6 +6291,14 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
         expenseReminderEnabled ?? this.expenseReminderEnabled,
     expenseReminderHour: expenseReminderHour ?? this.expenseReminderHour,
     expenseReminderMinute: expenseReminderMinute ?? this.expenseReminderMinute,
+    autoBackupEnabled: autoBackupEnabled ?? this.autoBackupEnabled,
+    autoBackupFrequency: autoBackupFrequency ?? this.autoBackupFrequency,
+    autoBackupCustomDays: autoBackupCustomDays ?? this.autoBackupCustomDays,
+    autoBackupCustomHours: autoBackupCustomHours ?? this.autoBackupCustomHours,
+    lastAutoBackupAt: lastAutoBackupAt.present
+        ? lastAutoBackupAt.value
+        : this.lastAutoBackupAt,
+    backupRetentionDays: backupRetentionDays ?? this.backupRetentionDays,
   );
   SettingRow copyWithCompanion(SettingsCompanion data) {
     return SettingRow(
@@ -6105,6 +6347,24 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       expenseReminderMinute: data.expenseReminderMinute.present
           ? data.expenseReminderMinute.value
           : this.expenseReminderMinute,
+      autoBackupEnabled: data.autoBackupEnabled.present
+          ? data.autoBackupEnabled.value
+          : this.autoBackupEnabled,
+      autoBackupFrequency: data.autoBackupFrequency.present
+          ? data.autoBackupFrequency.value
+          : this.autoBackupFrequency,
+      autoBackupCustomDays: data.autoBackupCustomDays.present
+          ? data.autoBackupCustomDays.value
+          : this.autoBackupCustomDays,
+      autoBackupCustomHours: data.autoBackupCustomHours.present
+          ? data.autoBackupCustomHours.value
+          : this.autoBackupCustomHours,
+      lastAutoBackupAt: data.lastAutoBackupAt.present
+          ? data.lastAutoBackupAt.value
+          : this.lastAutoBackupAt,
+      backupRetentionDays: data.backupRetentionDays.present
+          ? data.backupRetentionDays.value
+          : this.backupRetentionDays,
     );
   }
 
@@ -6127,13 +6387,19 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('biometricEnabled: $biometricEnabled, ')
           ..write('expenseReminderEnabled: $expenseReminderEnabled, ')
           ..write('expenseReminderHour: $expenseReminderHour, ')
-          ..write('expenseReminderMinute: $expenseReminderMinute')
+          ..write('expenseReminderMinute: $expenseReminderMinute, ')
+          ..write('autoBackupEnabled: $autoBackupEnabled, ')
+          ..write('autoBackupFrequency: $autoBackupFrequency, ')
+          ..write('autoBackupCustomDays: $autoBackupCustomDays, ')
+          ..write('autoBackupCustomHours: $autoBackupCustomHours, ')
+          ..write('lastAutoBackupAt: $lastAutoBackupAt, ')
+          ..write('backupRetentionDays: $backupRetentionDays')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     currencyCode,
     budgetStartDay,
@@ -6151,7 +6417,13 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     expenseReminderEnabled,
     expenseReminderHour,
     expenseReminderMinute,
-  );
+    autoBackupEnabled,
+    autoBackupFrequency,
+    autoBackupCustomDays,
+    autoBackupCustomHours,
+    lastAutoBackupAt,
+    backupRetentionDays,
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -6172,7 +6444,13 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.biometricEnabled == this.biometricEnabled &&
           other.expenseReminderEnabled == this.expenseReminderEnabled &&
           other.expenseReminderHour == this.expenseReminderHour &&
-          other.expenseReminderMinute == this.expenseReminderMinute);
+          other.expenseReminderMinute == this.expenseReminderMinute &&
+          other.autoBackupEnabled == this.autoBackupEnabled &&
+          other.autoBackupFrequency == this.autoBackupFrequency &&
+          other.autoBackupCustomDays == this.autoBackupCustomDays &&
+          other.autoBackupCustomHours == this.autoBackupCustomHours &&
+          other.lastAutoBackupAt == this.lastAutoBackupAt &&
+          other.backupRetentionDays == this.backupRetentionDays);
 }
 
 class SettingsCompanion extends UpdateCompanion<SettingRow> {
@@ -6193,6 +6471,12 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<bool> expenseReminderEnabled;
   final Value<int> expenseReminderHour;
   final Value<int> expenseReminderMinute;
+  final Value<bool> autoBackupEnabled;
+  final Value<AutoBackupFrequency> autoBackupFrequency;
+  final Value<int> autoBackupCustomDays;
+  final Value<int> autoBackupCustomHours;
+  final Value<DateTime?> lastAutoBackupAt;
+  final Value<int> backupRetentionDays;
   const SettingsCompanion({
     this.id = const Value.absent(),
     this.currencyCode = const Value.absent(),
@@ -6211,6 +6495,12 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.expenseReminderEnabled = const Value.absent(),
     this.expenseReminderHour = const Value.absent(),
     this.expenseReminderMinute = const Value.absent(),
+    this.autoBackupEnabled = const Value.absent(),
+    this.autoBackupFrequency = const Value.absent(),
+    this.autoBackupCustomDays = const Value.absent(),
+    this.autoBackupCustomHours = const Value.absent(),
+    this.lastAutoBackupAt = const Value.absent(),
+    this.backupRetentionDays = const Value.absent(),
   });
   SettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -6230,6 +6520,12 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.expenseReminderEnabled = const Value.absent(),
     this.expenseReminderHour = const Value.absent(),
     this.expenseReminderMinute = const Value.absent(),
+    this.autoBackupEnabled = const Value.absent(),
+    this.autoBackupFrequency = const Value.absent(),
+    this.autoBackupCustomDays = const Value.absent(),
+    this.autoBackupCustomHours = const Value.absent(),
+    this.lastAutoBackupAt = const Value.absent(),
+    this.backupRetentionDays = const Value.absent(),
   });
   static Insertable<SettingRow> custom({
     Expression<int>? id,
@@ -6249,6 +6545,12 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<bool>? expenseReminderEnabled,
     Expression<int>? expenseReminderHour,
     Expression<int>? expenseReminderMinute,
+    Expression<bool>? autoBackupEnabled,
+    Expression<String>? autoBackupFrequency,
+    Expression<int>? autoBackupCustomDays,
+    Expression<int>? autoBackupCustomHours,
+    Expression<DateTime>? lastAutoBackupAt,
+    Expression<int>? backupRetentionDays,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -6275,6 +6577,16 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
         'expense_reminder_hour': expenseReminderHour,
       if (expenseReminderMinute != null)
         'expense_reminder_minute': expenseReminderMinute,
+      if (autoBackupEnabled != null) 'auto_backup_enabled': autoBackupEnabled,
+      if (autoBackupFrequency != null)
+        'auto_backup_frequency': autoBackupFrequency,
+      if (autoBackupCustomDays != null)
+        'auto_backup_custom_days': autoBackupCustomDays,
+      if (autoBackupCustomHours != null)
+        'auto_backup_custom_hours': autoBackupCustomHours,
+      if (lastAutoBackupAt != null) 'last_auto_backup_at': lastAutoBackupAt,
+      if (backupRetentionDays != null)
+        'backup_retention_days': backupRetentionDays,
     });
   }
 
@@ -6296,6 +6608,12 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<bool>? expenseReminderEnabled,
     Value<int>? expenseReminderHour,
     Value<int>? expenseReminderMinute,
+    Value<bool>? autoBackupEnabled,
+    Value<AutoBackupFrequency>? autoBackupFrequency,
+    Value<int>? autoBackupCustomDays,
+    Value<int>? autoBackupCustomHours,
+    Value<DateTime?>? lastAutoBackupAt,
+    Value<int>? backupRetentionDays,
   }) {
     return SettingsCompanion(
       id: id ?? this.id,
@@ -6319,6 +6637,13 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       expenseReminderHour: expenseReminderHour ?? this.expenseReminderHour,
       expenseReminderMinute:
           expenseReminderMinute ?? this.expenseReminderMinute,
+      autoBackupEnabled: autoBackupEnabled ?? this.autoBackupEnabled,
+      autoBackupFrequency: autoBackupFrequency ?? this.autoBackupFrequency,
+      autoBackupCustomDays: autoBackupCustomDays ?? this.autoBackupCustomDays,
+      autoBackupCustomHours:
+          autoBackupCustomHours ?? this.autoBackupCustomHours,
+      lastAutoBackupAt: lastAutoBackupAt ?? this.lastAutoBackupAt,
+      backupRetentionDays: backupRetentionDays ?? this.backupRetentionDays,
     );
   }
 
@@ -6384,6 +6709,32 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
         expenseReminderMinute.value,
       );
     }
+    if (autoBackupEnabled.present) {
+      map['auto_backup_enabled'] = Variable<bool>(autoBackupEnabled.value);
+    }
+    if (autoBackupFrequency.present) {
+      map['auto_backup_frequency'] = Variable<String>(
+        $SettingsTable.$converterautoBackupFrequency.toSql(
+          autoBackupFrequency.value,
+        ),
+      );
+    }
+    if (autoBackupCustomDays.present) {
+      map['auto_backup_custom_days'] = Variable<int>(
+        autoBackupCustomDays.value,
+      );
+    }
+    if (autoBackupCustomHours.present) {
+      map['auto_backup_custom_hours'] = Variable<int>(
+        autoBackupCustomHours.value,
+      );
+    }
+    if (lastAutoBackupAt.present) {
+      map['last_auto_backup_at'] = Variable<DateTime>(lastAutoBackupAt.value);
+    }
+    if (backupRetentionDays.present) {
+      map['backup_retention_days'] = Variable<int>(backupRetentionDays.value);
+    }
     return map;
   }
 
@@ -6406,7 +6757,13 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('biometricEnabled: $biometricEnabled, ')
           ..write('expenseReminderEnabled: $expenseReminderEnabled, ')
           ..write('expenseReminderHour: $expenseReminderHour, ')
-          ..write('expenseReminderMinute: $expenseReminderMinute')
+          ..write('expenseReminderMinute: $expenseReminderMinute, ')
+          ..write('autoBackupEnabled: $autoBackupEnabled, ')
+          ..write('autoBackupFrequency: $autoBackupFrequency, ')
+          ..write('autoBackupCustomDays: $autoBackupCustomDays, ')
+          ..write('autoBackupCustomHours: $autoBackupCustomHours, ')
+          ..write('lastAutoBackupAt: $lastAutoBackupAt, ')
+          ..write('backupRetentionDays: $backupRetentionDays')
           ..write(')'))
         .toString();
   }
@@ -10686,6 +11043,361 @@ class ShoppingItemsCompanion extends UpdateCompanion<ShoppingItemRow> {
   }
 }
 
+class $BackupRecordsTable extends BackupRecords
+    with TableInfo<$BackupRecordsTable, BackupRecordRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BackupRecordsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _fileNameMeta = const VerificationMeta(
+    'fileName',
+  );
+  @override
+  late final GeneratedColumn<String> fileName = GeneratedColumn<String>(
+    'file_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _uriMeta = const VerificationMeta('uri');
+  @override
+  late final GeneratedColumn<String> uri = GeneratedColumn<String>(
+    'uri',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sizeBytesMeta = const VerificationMeta(
+    'sizeBytes',
+  );
+  @override
+  late final GeneratedColumn<int> sizeBytes = GeneratedColumn<int>(
+    'size_bytes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    fileName,
+    uri,
+    sizeBytes,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'backup_records';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BackupRecordRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('file_name')) {
+      context.handle(
+        _fileNameMeta,
+        fileName.isAcceptableOrUnknown(data['file_name']!, _fileNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_fileNameMeta);
+    }
+    if (data.containsKey('uri')) {
+      context.handle(
+        _uriMeta,
+        uri.isAcceptableOrUnknown(data['uri']!, _uriMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uriMeta);
+    }
+    if (data.containsKey('size_bytes')) {
+      context.handle(
+        _sizeBytesMeta,
+        sizeBytes.isAcceptableOrUnknown(data['size_bytes']!, _sizeBytesMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {fileName},
+  ];
+  @override
+  BackupRecordRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BackupRecordRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      fileName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}file_name'],
+      )!,
+      uri: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uri'],
+      )!,
+      sizeBytes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}size_bytes'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $BackupRecordsTable createAlias(String alias) {
+    return $BackupRecordsTable(attachedDatabase, alias);
+  }
+}
+
+class BackupRecordRow extends DataClass implements Insertable<BackupRecordRow> {
+  final int id;
+  final String fileName;
+
+  /// A MediaStore `content://` URI — the only reliable handle once a file is
+  /// written, since scoped storage never promises a stable filesystem path.
+  final String uri;
+  final int sizeBytes;
+  final DateTime createdAt;
+  const BackupRecordRow({
+    required this.id,
+    required this.fileName,
+    required this.uri,
+    required this.sizeBytes,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['file_name'] = Variable<String>(fileName);
+    map['uri'] = Variable<String>(uri);
+    map['size_bytes'] = Variable<int>(sizeBytes);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  BackupRecordsCompanion toCompanion(bool nullToAbsent) {
+    return BackupRecordsCompanion(
+      id: Value(id),
+      fileName: Value(fileName),
+      uri: Value(uri),
+      sizeBytes: Value(sizeBytes),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory BackupRecordRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BackupRecordRow(
+      id: serializer.fromJson<int>(json['id']),
+      fileName: serializer.fromJson<String>(json['fileName']),
+      uri: serializer.fromJson<String>(json['uri']),
+      sizeBytes: serializer.fromJson<int>(json['sizeBytes']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'fileName': serializer.toJson<String>(fileName),
+      'uri': serializer.toJson<String>(uri),
+      'sizeBytes': serializer.toJson<int>(sizeBytes),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  BackupRecordRow copyWith({
+    int? id,
+    String? fileName,
+    String? uri,
+    int? sizeBytes,
+    DateTime? createdAt,
+  }) => BackupRecordRow(
+    id: id ?? this.id,
+    fileName: fileName ?? this.fileName,
+    uri: uri ?? this.uri,
+    sizeBytes: sizeBytes ?? this.sizeBytes,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  BackupRecordRow copyWithCompanion(BackupRecordsCompanion data) {
+    return BackupRecordRow(
+      id: data.id.present ? data.id.value : this.id,
+      fileName: data.fileName.present ? data.fileName.value : this.fileName,
+      uri: data.uri.present ? data.uri.value : this.uri,
+      sizeBytes: data.sizeBytes.present ? data.sizeBytes.value : this.sizeBytes,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BackupRecordRow(')
+          ..write('id: $id, ')
+          ..write('fileName: $fileName, ')
+          ..write('uri: $uri, ')
+          ..write('sizeBytes: $sizeBytes, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, fileName, uri, sizeBytes, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BackupRecordRow &&
+          other.id == this.id &&
+          other.fileName == this.fileName &&
+          other.uri == this.uri &&
+          other.sizeBytes == this.sizeBytes &&
+          other.createdAt == this.createdAt);
+}
+
+class BackupRecordsCompanion extends UpdateCompanion<BackupRecordRow> {
+  final Value<int> id;
+  final Value<String> fileName;
+  final Value<String> uri;
+  final Value<int> sizeBytes;
+  final Value<DateTime> createdAt;
+  const BackupRecordsCompanion({
+    this.id = const Value.absent(),
+    this.fileName = const Value.absent(),
+    this.uri = const Value.absent(),
+    this.sizeBytes = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  BackupRecordsCompanion.insert({
+    this.id = const Value.absent(),
+    required String fileName,
+    required String uri,
+    this.sizeBytes = const Value.absent(),
+    required DateTime createdAt,
+  }) : fileName = Value(fileName),
+       uri = Value(uri),
+       createdAt = Value(createdAt);
+  static Insertable<BackupRecordRow> custom({
+    Expression<int>? id,
+    Expression<String>? fileName,
+    Expression<String>? uri,
+    Expression<int>? sizeBytes,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (fileName != null) 'file_name': fileName,
+      if (uri != null) 'uri': uri,
+      if (sizeBytes != null) 'size_bytes': sizeBytes,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  BackupRecordsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? fileName,
+    Value<String>? uri,
+    Value<int>? sizeBytes,
+    Value<DateTime>? createdAt,
+  }) {
+    return BackupRecordsCompanion(
+      id: id ?? this.id,
+      fileName: fileName ?? this.fileName,
+      uri: uri ?? this.uri,
+      sizeBytes: sizeBytes ?? this.sizeBytes,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (fileName.present) {
+      map['file_name'] = Variable<String>(fileName.value);
+    }
+    if (uri.present) {
+      map['uri'] = Variable<String>(uri.value);
+    }
+    if (sizeBytes.present) {
+      map['size_bytes'] = Variable<int>(sizeBytes.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BackupRecordsCompanion(')
+          ..write('id: $id, ')
+          ..write('fileName: $fileName, ')
+          ..write('uri: $uri, ')
+          ..write('sizeBytes: $sizeBytes, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -10711,6 +11423,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SavingsGoalsTable savingsGoals = $SavingsGoalsTable(this);
   late final $ShoppingListsTable shoppingLists = $ShoppingListsTable(this);
   late final $ShoppingItemsTable shoppingItems = $ShoppingItemsTable(this);
+  late final $BackupRecordsTable backupRecords = $BackupRecordsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -10735,6 +11448,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     savingsGoals,
     shoppingLists,
     shoppingItems,
+    backupRecords,
   ];
 }
 
@@ -17250,6 +17964,12 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<bool> expenseReminderEnabled,
       Value<int> expenseReminderHour,
       Value<int> expenseReminderMinute,
+      Value<bool> autoBackupEnabled,
+      Value<AutoBackupFrequency> autoBackupFrequency,
+      Value<int> autoBackupCustomDays,
+      Value<int> autoBackupCustomHours,
+      Value<DateTime?> lastAutoBackupAt,
+      Value<int> backupRetentionDays,
     });
 typedef $$SettingsTableUpdateCompanionBuilder =
     SettingsCompanion Function({
@@ -17270,6 +17990,12 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<bool> expenseReminderEnabled,
       Value<int> expenseReminderHour,
       Value<int> expenseReminderMinute,
+      Value<bool> autoBackupEnabled,
+      Value<AutoBackupFrequency> autoBackupFrequency,
+      Value<int> autoBackupCustomDays,
+      Value<int> autoBackupCustomHours,
+      Value<DateTime?> lastAutoBackupAt,
+      Value<int> backupRetentionDays,
     });
 
 class $$SettingsTableFilterComposer
@@ -17363,6 +18089,41 @@ class $$SettingsTableFilterComposer
 
   ColumnFilters<int> get expenseReminderMinute => $composableBuilder(
     column: $table.expenseReminderMinute,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get autoBackupEnabled => $composableBuilder(
+    column: $table.autoBackupEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<
+    AutoBackupFrequency,
+    AutoBackupFrequency,
+    String
+  >
+  get autoBackupFrequency => $composableBuilder(
+    column: $table.autoBackupFrequency,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<int> get autoBackupCustomDays => $composableBuilder(
+    column: $table.autoBackupCustomDays,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get autoBackupCustomHours => $composableBuilder(
+    column: $table.autoBackupCustomHours,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastAutoBackupAt => $composableBuilder(
+    column: $table.lastAutoBackupAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get backupRetentionDays => $composableBuilder(
+    column: $table.backupRetentionDays,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -17460,6 +18221,36 @@ class $$SettingsTableOrderingComposer
     column: $table.expenseReminderMinute,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get autoBackupEnabled => $composableBuilder(
+    column: $table.autoBackupEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get autoBackupFrequency => $composableBuilder(
+    column: $table.autoBackupFrequency,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get autoBackupCustomDays => $composableBuilder(
+    column: $table.autoBackupCustomDays,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get autoBackupCustomHours => $composableBuilder(
+    column: $table.autoBackupCustomHours,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastAutoBackupAt => $composableBuilder(
+    column: $table.lastAutoBackupAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get backupRetentionDays => $composableBuilder(
+    column: $table.backupRetentionDays,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SettingsTableAnnotationComposer
@@ -17549,6 +18340,37 @@ class $$SettingsTableAnnotationComposer
     column: $table.expenseReminderMinute,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get autoBackupEnabled => $composableBuilder(
+    column: $table.autoBackupEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<AutoBackupFrequency, String>
+  get autoBackupFrequency => $composableBuilder(
+    column: $table.autoBackupFrequency,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get autoBackupCustomDays => $composableBuilder(
+    column: $table.autoBackupCustomDays,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get autoBackupCustomHours => $composableBuilder(
+    column: $table.autoBackupCustomHours,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastAutoBackupAt => $composableBuilder(
+    column: $table.lastAutoBackupAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get backupRetentionDays => $composableBuilder(
+    column: $table.backupRetentionDays,
+    builder: (column) => column,
+  );
 }
 
 class $$SettingsTableTableManager
@@ -17599,6 +18421,13 @@ class $$SettingsTableTableManager
                 Value<bool> expenseReminderEnabled = const Value.absent(),
                 Value<int> expenseReminderHour = const Value.absent(),
                 Value<int> expenseReminderMinute = const Value.absent(),
+                Value<bool> autoBackupEnabled = const Value.absent(),
+                Value<AutoBackupFrequency> autoBackupFrequency =
+                    const Value.absent(),
+                Value<int> autoBackupCustomDays = const Value.absent(),
+                Value<int> autoBackupCustomHours = const Value.absent(),
+                Value<DateTime?> lastAutoBackupAt = const Value.absent(),
+                Value<int> backupRetentionDays = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
                 currencyCode: currencyCode,
@@ -17617,6 +18446,12 @@ class $$SettingsTableTableManager
                 expenseReminderEnabled: expenseReminderEnabled,
                 expenseReminderHour: expenseReminderHour,
                 expenseReminderMinute: expenseReminderMinute,
+                autoBackupEnabled: autoBackupEnabled,
+                autoBackupFrequency: autoBackupFrequency,
+                autoBackupCustomDays: autoBackupCustomDays,
+                autoBackupCustomHours: autoBackupCustomHours,
+                lastAutoBackupAt: lastAutoBackupAt,
+                backupRetentionDays: backupRetentionDays,
               ),
           createCompanionCallback:
               ({
@@ -17637,6 +18472,13 @@ class $$SettingsTableTableManager
                 Value<bool> expenseReminderEnabled = const Value.absent(),
                 Value<int> expenseReminderHour = const Value.absent(),
                 Value<int> expenseReminderMinute = const Value.absent(),
+                Value<bool> autoBackupEnabled = const Value.absent(),
+                Value<AutoBackupFrequency> autoBackupFrequency =
+                    const Value.absent(),
+                Value<int> autoBackupCustomDays = const Value.absent(),
+                Value<int> autoBackupCustomHours = const Value.absent(),
+                Value<DateTime?> lastAutoBackupAt = const Value.absent(),
+                Value<int> backupRetentionDays = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
                 currencyCode: currencyCode,
@@ -17655,6 +18497,12 @@ class $$SettingsTableTableManager
                 expenseReminderEnabled: expenseReminderEnabled,
                 expenseReminderHour: expenseReminderHour,
                 expenseReminderMinute: expenseReminderMinute,
+                autoBackupEnabled: autoBackupEnabled,
+                autoBackupFrequency: autoBackupFrequency,
+                autoBackupCustomDays: autoBackupCustomDays,
+                autoBackupCustomHours: autoBackupCustomHours,
+                lastAutoBackupAt: lastAutoBackupAt,
+                backupRetentionDays: backupRetentionDays,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -21336,6 +22184,200 @@ typedef $$ShoppingItemsTableProcessedTableManager =
       ShoppingItemRow,
       PrefetchHooks Function({bool listId})
     >;
+typedef $$BackupRecordsTableCreateCompanionBuilder =
+    BackupRecordsCompanion Function({
+      Value<int> id,
+      required String fileName,
+      required String uri,
+      Value<int> sizeBytes,
+      required DateTime createdAt,
+    });
+typedef $$BackupRecordsTableUpdateCompanionBuilder =
+    BackupRecordsCompanion Function({
+      Value<int> id,
+      Value<String> fileName,
+      Value<String> uri,
+      Value<int> sizeBytes,
+      Value<DateTime> createdAt,
+    });
+
+class $$BackupRecordsTableFilterComposer
+    extends Composer<_$AppDatabase, $BackupRecordsTable> {
+  $$BackupRecordsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fileName => $composableBuilder(
+    column: $table.fileName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get uri => $composableBuilder(
+    column: $table.uri,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sizeBytes => $composableBuilder(
+    column: $table.sizeBytes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$BackupRecordsTableOrderingComposer
+    extends Composer<_$AppDatabase, $BackupRecordsTable> {
+  $$BackupRecordsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fileName => $composableBuilder(
+    column: $table.fileName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get uri => $composableBuilder(
+    column: $table.uri,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sizeBytes => $composableBuilder(
+    column: $table.sizeBytes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$BackupRecordsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BackupRecordsTable> {
+  $$BackupRecordsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get fileName =>
+      $composableBuilder(column: $table.fileName, builder: (column) => column);
+
+  GeneratedColumn<String> get uri =>
+      $composableBuilder(column: $table.uri, builder: (column) => column);
+
+  GeneratedColumn<int> get sizeBytes =>
+      $composableBuilder(column: $table.sizeBytes, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$BackupRecordsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $BackupRecordsTable,
+          BackupRecordRow,
+          $$BackupRecordsTableFilterComposer,
+          $$BackupRecordsTableOrderingComposer,
+          $$BackupRecordsTableAnnotationComposer,
+          $$BackupRecordsTableCreateCompanionBuilder,
+          $$BackupRecordsTableUpdateCompanionBuilder,
+          (
+            BackupRecordRow,
+            BaseReferences<_$AppDatabase, $BackupRecordsTable, BackupRecordRow>,
+          ),
+          BackupRecordRow,
+          PrefetchHooks Function()
+        > {
+  $$BackupRecordsTableTableManager(_$AppDatabase db, $BackupRecordsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BackupRecordsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BackupRecordsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$BackupRecordsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> fileName = const Value.absent(),
+                Value<String> uri = const Value.absent(),
+                Value<int> sizeBytes = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => BackupRecordsCompanion(
+                id: id,
+                fileName: fileName,
+                uri: uri,
+                sizeBytes: sizeBytes,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String fileName,
+                required String uri,
+                Value<int> sizeBytes = const Value.absent(),
+                required DateTime createdAt,
+              }) => BackupRecordsCompanion.insert(
+                id: id,
+                fileName: fileName,
+                uri: uri,
+                sizeBytes: sizeBytes,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$BackupRecordsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $BackupRecordsTable,
+      BackupRecordRow,
+      $$BackupRecordsTableFilterComposer,
+      $$BackupRecordsTableOrderingComposer,
+      $$BackupRecordsTableAnnotationComposer,
+      $$BackupRecordsTableCreateCompanionBuilder,
+      $$BackupRecordsTableUpdateCompanionBuilder,
+      (
+        BackupRecordRow,
+        BaseReferences<_$AppDatabase, $BackupRecordsTable, BackupRecordRow>,
+      ),
+      BackupRecordRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -21377,4 +22419,6 @@ class $AppDatabaseManager {
       $$ShoppingListsTableTableManager(_db, _db.shoppingLists);
   $$ShoppingItemsTableTableManager get shoppingItems =>
       $$ShoppingItemsTableTableManager(_db, _db.shoppingItems);
+  $$BackupRecordsTableTableManager get backupRecords =>
+      $$BackupRecordsTableTableManager(_db, _db.backupRecords);
 }

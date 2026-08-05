@@ -69,6 +69,7 @@ class _XpencAppState extends ConsumerState<XpencApp>
 
     await _runRecurring();
     await _scanMessages();
+    await _runAutoBackup();
   }
 
   /// Posts anything due, then reschedules the "coming up" alerts against
@@ -102,6 +103,7 @@ class _XpencAppState extends ConsumerState<XpencApp>
     if (state == AppLifecycleState.resumed) {
       _runRecurring();
       _scanMessages();
+      _runAutoBackup();
     }
     // Immediate re-lock, no grace period — the safer default for a finance
     // app. `_passcodeKnown` guards a launch race: if the very first
@@ -112,6 +114,16 @@ class _XpencAppState extends ConsumerState<XpencApp>
           ref.read(settingsProvider).valueOrNull?.passcodeHash != null;
       if (hasPasscode) setState(() => _locked = true);
     }
+  }
+
+  /// One-time move of pre-existing backups into the new durable folder, then
+  /// a due-backup check. Like recurring rules and message capture, there is
+  /// no background service — this only ever runs while the app is open, so
+  /// it also runs again on every resume, not just cold start.
+  Future<void> _runAutoBackup() async {
+    final service = ref.read(backupServiceProvider);
+    await service.migrateLegacyBackups();
+    await service.runAutoBackupIfDue();
   }
 
   Future<void> _scanMessages() async {
