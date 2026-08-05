@@ -26,6 +26,35 @@ Money accountMovement(TransactionRow tx, Set<int> ownIds) => switch (tx.type) {
   TxType.transfer => ownIds.contains(tx.accountId) ? -tx.amount : tx.amount,
 };
 
+/// The gap between automatic backups for a given schedule. `monthly` is
+/// approximated as 30 days — good enough for "about once a month" without
+/// pulling in calendar-month arithmetic for what is, after all, just a
+/// safety copy, not a bill due date.
+Duration autoBackupInterval({
+  required AutoBackupFrequency frequency,
+  int customDays = 0,
+  int customHours = 0,
+}) => switch (frequency) {
+  AutoBackupFrequency.daily => const Duration(days: 1),
+  AutoBackupFrequency.monthly => const Duration(days: 30),
+  AutoBackupFrequency.custom => Duration(days: customDays, hours: customHours),
+};
+
+/// Whether an automatic backup is due, given the schedule in [settings] and
+/// the current time [now]. Pure — no I/O — so every combination of
+/// frequency and elapsed time is trivial to test without a database.
+bool isAutoBackupDue(SettingRow settings, DateTime now) {
+  if (!settings.autoBackupEnabled) return false;
+  final last = settings.lastAutoBackupAt;
+  if (last == null) return true; // never run — due immediately
+  final interval = autoBackupInterval(
+    frequency: settings.autoBackupFrequency,
+    customDays: settings.autoBackupCustomDays,
+    customHours: settings.autoBackupCustomHours,
+  );
+  return !now.isBefore(last.add(interval));
+}
+
 /// One priced row of an account statement, already carrying the running
 /// balance *after* it posted.
 typedef StatementLine = ({
@@ -72,6 +101,7 @@ typedef BudgetStatementLine = ({
     SavingsGoals,
     ShoppingLists,
     ShoppingItems,
+    BackupRecords,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -83,7 +113,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'money_manager'));
 
   @override
-  int get schemaVersion => 17;
+  int get schemaVersion => 18;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -163,6 +193,15 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(shoppingLists);
         await m.addColumn(shoppingItems, shoppingItems.listId);
         await backfillShoppingListIds();
+      }
+      if (from < 18) {
+        await m.createTable(backupRecords);
+        await m.addColumn(settings, settings.autoBackupEnabled);
+        await m.addColumn(settings, settings.autoBackupFrequency);
+        await m.addColumn(settings, settings.autoBackupCustomDays);
+        await m.addColumn(settings, settings.autoBackupCustomHours);
+        await m.addColumn(settings, settings.lastAutoBackupAt);
+        await m.addColumn(settings, settings.backupRetentionDays);
       }
     },
     beforeOpen: (details) async {
@@ -272,7 +311,14 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> _seed() async {
     await into(settings).insert(const SettingsCompanion());
+    await _seedDefaultAccountsAndCategories();
+  }
 
+  /// Just the starting ledger shape — one Cash account plus the default
+  /// category set — shared by [_seed] (brand-new database) and
+  /// [clearAllData] (an existing database wiped back to a fresh start), so
+  /// neither can drift from the other.
+  Future<void> _seedDefaultAccountsAndCategories() async {
     // Only Cash is seeded. The user adds their own Bank/Card accounts.
     await into(accounts).insert(
       AccountsCompanion.insert(
@@ -330,6 +376,44 @@ class AppDatabase extends _$AppDatabase {
       );
     }
   }
+
+  /// Wipes every account, transaction, category, budget, person and
+  /// everything else that makes up the ledger, then reseeds the same
+  /// defaults a brand-new install gets — a fresh start without an actual
+  /// reinstall.
+  ///
+  /// Preferences (currency, theme, passcode, notification and backup
+  /// settings) are left alone — this resets the *data*, not the app around
+  /// it. Bank-sender seed rules ([senderRules]) are static reference data,
+  /// not user data, and stay too. Backup records are also left alone: they
+  /// describe files still sitting in `Download/BACKUP XPENC` on the device,
+  /// which this method never touches — forgetting about them here would just
+  /// orphan them.
+  ///
+  /// Deletes go children-before-parents, the same order [importAll] already
+  /// established, so foreign keys never reject a delete partway through.
+  Future<void> clearAllData() => transaction(() async {
+        await delete(budgetAlerts).go();
+        await delete(pendingTxns).go();
+        await delete(merchantRules).go();
+        await delete(reminders).go();
+        await delete(personEntries).go();
+        await delete(budgets).go();
+        await delete(transactionSplits).go();
+        await delete(transactionTags).go();
+        await delete(savingsGoals).go();
+        await delete(shoppingItems).go();
+        await delete(shoppingLists).go();
+        // transactions references accounts/categories/persons/recurringRules,
+        // so it must go before all four.
+        await delete(transactions).go();
+        await delete(recurringRules).go();
+        await delete(persons).go();
+        await delete(categories).go();
+        await delete(accounts).go();
+        await delete(tags).go();
+        await _seedDefaultAccountsAndCategories();
+      });
 
   // ── Balance mechanics ─────────────────────────────────────────────────────
 
@@ -2184,6 +2268,115 @@ class AppDatabase extends _$AppDatabase {
   );
 
   Future<SettingRow> getSettings() => select(settings).getSingle();
+
+  // ── Backups ───────────────────────────────────────────────────────────────
+
+  /// Turns automatic backups on/off and sets their schedule and retention.
+  ///
+  /// [retentionDays] must be at least as long as the interval implied by
+  /// [frequency] (and [customDays]/[customHours] when `frequency` is
+  /// [AutoBackupFrequency.custom]) — otherwise cleanup could delete a backup
+  /// before the next one exists to replace it, silently leaving zero backups
+  /// on disk. `0` means "keep forever" and always satisfies this.
+  Future<void> setAutoBackupSettings({
+    required bool enabled,
+    required AutoBackupFrequency frequency,
+    int customDays = 0,
+    int customHours = 0,
+    required int retentionDays,
+  }) async {
+    if (frequency == AutoBackupFrequency.custom &&
+        customDays <= 0 &&
+        customHours <= 0) {
+      throw ArgumentError('Set a custom interval of at least 1 hour.');
+    }
+    if (retentionDays < 0) {
+      throw ArgumentError('Retention days cannot be negative.');
+    }
+    final interval = autoBackupInterval(
+      frequency: frequency,
+      customDays: customDays,
+      customHours: customHours,
+    );
+    if (retentionDays != 0 && Duration(days: retentionDays) < interval) {
+      throw ArgumentError(
+        "Keep-backups-for can't be shorter than how often backups run.",
+      );
+    }
+    await update(settings).write(
+      SettingsCompanion(
+        autoBackupEnabled: Value(enabled),
+        autoBackupFrequency: Value(frequency),
+        autoBackupCustomDays: Value(customDays),
+        autoBackupCustomHours: Value(customHours),
+        backupRetentionDays: Value(retentionDays),
+      ),
+    );
+  }
+
+  Future<void> setLastAutoBackupAt(DateTime when) =>
+      update(settings).write(SettingsCompanion(lastAutoBackupAt: Value(when)));
+
+  /// Whether an automatic backup should run right now, per the current
+  /// schedule — see [isAutoBackupDue] for the actual (pure, testable) rule.
+  Future<bool> checkAutoBackupDue() async {
+    final s = await getSettings();
+    return isAutoBackupDue(s, DateTime.now());
+  }
+
+  /// Records a backup [BackupService] just wrote (or updates it, if writing
+  /// the same day's file again replaced an existing one) — an upsert on
+  /// [fileName], the one thing that's actually unique here.
+  ///
+  /// `insertOnConflictUpdate` targets only the primary key by default, never
+  /// a declared `uniqueKeys` column — the exact bug already found and fixed
+  /// in `upsertBudget`. Naming the conflict target explicitly avoids it here
+  /// too.
+  Future<void> upsertBackupRecord({
+    required String fileName,
+    required String uri,
+    required int sizeBytes,
+    required DateTime createdAt,
+  }) async {
+    final entry = BackupRecordsCompanion.insert(
+      fileName: fileName,
+      uri: uri,
+      sizeBytes: Value(sizeBytes),
+      createdAt: createdAt,
+    );
+    await into(backupRecords).insert(
+      entry,
+      onConflict: DoUpdate((_) => entry, target: [backupRecords.fileName]),
+    );
+  }
+
+  Future<void> deleteBackupRecordByName(String fileName) =>
+      (delete(backupRecords)..where((b) => b.fileName.equals(fileName))).go();
+
+  Future<BackupRecordRow?> backupRecordByName(String fileName) =>
+      (select(
+        backupRecords,
+      )..where((b) => b.fileName.equals(fileName))).getSingleOrNull();
+
+  Stream<List<BackupRecordRow>> watchBackupRecords() => (select(
+    backupRecords,
+  )..orderBy([
+      (b) => OrderingTerm(expression: b.createdAt, mode: OrderingMode.desc),
+    ])).watch();
+
+  /// Records older than the current retention window — what
+  /// `BackupService.cleanupOldBackups` should delete next. Always empty when
+  /// retention is `0` ("keep forever").
+  Future<List<BackupRecordRow>> staleBackupRecords({DateTime? now}) async {
+    final s = await getSettings();
+    if (s.backupRetentionDays <= 0) return const [];
+    final cutoff = (now ?? DateTime.now()).subtract(
+      Duration(days: s.backupRetentionDays),
+    );
+    return (select(
+      backupRecords,
+    )..where((b) => b.createdAt.isSmallerThanValue(cutoff))).get();
+  }
 
   // ── Budget alerts (fire once per period) ─────────────────────────────────
 

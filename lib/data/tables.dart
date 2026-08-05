@@ -71,6 +71,11 @@ enum AlertLevel { threshold, overspent }
 /// intended day the following month instead of drifting.
 enum RecurringFrequency { daily, weekly, monthly }
 
+/// How often automatic backups run. `custom` ignores the fixed cadences and
+/// uses [Settings.autoBackupCustomDays] + [Settings.autoBackupCustomHours]
+/// instead.
+enum AutoBackupFrequency { daily, monthly, custom }
+
 // ─── Converters ─────────────────────────────────────────────────────────────
 
 /// Money crosses the DB boundary as an integer number of paise. Never a double.
@@ -371,6 +376,34 @@ class Settings extends Table {
   IntColumn get expenseReminderMinute =>
       integer().withDefault(const Constant(0))();
 
+  /// Whether XPENC creates a backup on its own schedule, with no "Back up
+  /// now" tap needed. Off by default.
+  BoolColumn get autoBackupEnabled =>
+      boolean().withDefault(const Constant(false))();
+
+  /// How often, when [autoBackupEnabled]. `custom` uses
+  /// [autoBackupCustomDays] + [autoBackupCustomHours] instead of a fixed
+  /// cadence.
+  TextColumn get autoBackupFrequency =>
+      textEnum<AutoBackupFrequency>().withDefault(const Constant('daily'))();
+
+  IntColumn get autoBackupCustomDays =>
+      integer().withDefault(const Constant(0))();
+  IntColumn get autoBackupCustomHours =>
+      integer().withDefault(const Constant(0))();
+
+  /// When the last *automatic* backup ran — the due-date anchor. A manual
+  /// "Back up now" never touches this, so it can't push an automatic backup
+  /// later than the schedule promises.
+  DateTimeColumn get lastAutoBackupAt => dateTime().nullable()();
+
+  /// How many days a backup is kept before automatic cleanup removes it.
+  /// `0` means "keep forever". Must be at least as long as the auto-backup
+  /// interval (see `AppDatabase.setAutoBackupSettings`) — otherwise cleanup
+  /// could delete a backup before the next one exists to replace it.
+  IntColumn get backupRetentionDays =>
+      integer().withDefault(const Constant(180))();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -552,5 +585,32 @@ class BudgetAlerts extends Table {
   @override
   List<Set<Column>> get uniqueKeys => [
     {categoryId, periodKey, level},
+  ];
+}
+
+/// One backup file XPENC knows about, living in the public
+/// `Download/BACKUP XPENC` folder on the device (see `BackupService`).
+///
+/// Android's scoped storage has no "list every file in a folder I created"
+/// call without a fresh, user-granted SAF permission — so this table *is*
+/// the listing every screen reads from. `BackupService.saveBackup` keeps it
+/// in sync as backups are written or deleted; `BackupService.resyncFromDevice`
+/// rebuilds it from scratch by asking the user to grant folder access once
+/// (e.g. after a reinstall, when this table starts out empty but the files
+/// on disk still exist).
+@DataClassName('BackupRecordRow')
+class BackupRecords extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get fileName => text()();
+
+  /// A MediaStore `content://` URI — the only reliable handle once a file is
+  /// written, since scoped storage never promises a stable filesystem path.
+  TextColumn get uri => text()();
+  IntColumn get sizeBytes => integer().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  List<Set<Column>> get uniqueKeys => [
+    {fileName},
   ];
 }
