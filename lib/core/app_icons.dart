@@ -37,11 +37,13 @@ class AppIcons {
     'emi': Icons.account_balance_wallet_outlined,
     'education': Icons.school_outlined,
     'travel': Icons.flight_outlined,
+    'invest': Icons.bar_chart_rounded,
 
     // misc
     'transfer': Icons.swap_horiz_rounded,
     'person': Icons.person_outline_rounded,
     'other': Icons.more_horiz_rounded,
+    'exchange': Icons.currency_exchange_rounded,
   };
 
   static const fallback = Icons.circle_outlined;
