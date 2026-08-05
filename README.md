@@ -51,14 +51,19 @@ adversarial audit that hardened it — is in [structure.md](structure.md).
 
 | | |
 |---|---|
-| 💳 **Honest accounts** | Cash / Bank / Card with real balances. Debit cards & UPI are *linked instruments* — they spend their bank's money, so rupees are never counted twice. Credit cards carry their own (negative = owed) balance. |
+| 💳 **Honest accounts** | Cash / Bank / Card / Prepaid balance (fob, gift or transit card) with real balances. Debit cards & UPI are *linked instruments* — they spend their bank's money, so rupees are never counted twice. Credit cards carry their own (negative = owed) balance. |
 | 🔁 **Income · Expense · Transfer** | Three transaction types, kept strictly apart. Transfers never pollute budgets or reports. |
-| 🎯 **Budgets** | Per-category with period windows, live progress, and once-per-period alerts at 80% and overspend. |
+| 🎯 **Budgets** | Per-category with period windows, live progress, once-per-period alerts at 80% and overspend, and a subcategory cap that can never exceed its parent's. |
+| 🏷️ **Tags & receipts** | Free-form tags beyond category, plus a photo receipt attached to any transaction — both one tap away in the app bar while adding a transaction. |
+| 🐷 **Savings goals** | Save toward a target amount with running progress and a contribution history. |
+| 🛍️ **Shopping lists** | Named, colour-coded lists, not one flat list. |
+| 🔒 **Passcode lock** | An optional PIN gate on app open, with biometric unlock (fingerprint/face) on top. |
+| 📱 **Home screen widget** | Net worth at a glance on the Android home screen, live-updated with the ledger. |
 | 📩 **Bank-SMS auto-capture** — *coming soon* | Shipped in 1.0, paused in 1.1: the `READ_SMS` permission made Google Play Protect block direct APK installs. The on-device pipeline (parser · dedupe · review cards · Auto-Approve with real Undo) is intact and returns in a Play-compliant form. |
-| 👥 **Persons — dues & loans** | They-owe / I-owe with running balances, partial settlements, optional real account movement. |
+| 👥 **Persons — dues & loans** | They-owe / I-owe with running balances, partial settlements, optional real account movement, editable ledger entries. |
 | 📅 **Calendar & cash reminders** | Day-wise in/out grid; EMI/bill reminders that post *nothing* until you confirm. |
-| 📊 **Insights** | Category pie, income vs expense, net-worth trend, per-account reports — one chart engine, many views. |
-| 💾 **Backup & export** | Symmetric JSON backup/restore + CSV shaped for accountants / Tally. |
+| 📊 **Insights** | Category pie, income vs expense, net-worth trend, per-account reports, and a downloadable Income & Expense PDF report — one chart engine, many views. |
+| 💾 **Backup & export** | Symmetric JSON backup/restore + CSV shaped for accountants / Tally. Backups land in the public `Download/BACKUP XPENC` folder so they survive an uninstall, with an optional automatic schedule and retention. |
 | 🖤 **Monochrome UI** | Material 3, One UI–inspired, true-black AMOLED dark theme. |
 
 ## Download
