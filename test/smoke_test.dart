@@ -190,6 +190,37 @@ void main() {
     await unmount(tester);
   });
 
+  testWidgets(
+      'Budgets summary does not double-count a subcategory already covered '
+      "by its parent's budget", (tester) async {
+    await tester.runAsync(() async {
+      final food = await categoryId(CategoryKind.expense, 'Food');
+      final junkFood = await db.addCategory(
+        name: 'Junk food',
+        kind: CategoryKind.expense,
+        colorValue: 0xFF000000,
+        iconKey: 'other',
+        parentId: food,
+      );
+      await db.upsertBudget(categoryId: food, amount: Money.fromRupees(2000));
+      await db.upsertBudget(
+        categoryId: junkFood,
+        amount: Money.fromRupees(1000),
+      );
+    });
+
+    await pump(tester, const BudgetsScreen());
+    expect(tester.takeException(), isNull);
+    // Food (2000) already covers Junk food's (1000) sub-allocation — the
+    // "This month" summary must read 2000, never 3000.
+    expect(find.text(MoneyFormat.symbol(Money.fromRupees(2000))), findsOneWidget);
+    expect(
+      find.text(MoneyFormat.symbol(Money.fromRupees(3000))),
+      findsNothing,
+    );
+    await unmount(tester);
+  });
+
   testWidgets('Persons renders empty state', (tester) async {
     await pump(tester, const PersonsScreen());
     expect(tester.takeException(), isNull);

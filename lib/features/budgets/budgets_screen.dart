@@ -52,6 +52,13 @@ class BudgetsScreen extends ConsumerWidget {
     var totalBudgeted = const Money.zero();
     var totalSpent = const Money.zero();
     for (final p in progress) {
+      // A child's budget is a sub-allocation within its parent's cap, and a
+      // budgeted parent's `spent` already rolls up every child's — when the
+      // parent is budgeted too, counting the child's line again would double
+      // both figures (Food 2000 + Junk food 1000 + Dinner 1000 must read as
+      // 2000, not 4000).
+      final parentId = p.category.parentId;
+      if (parentId != null && progressById.containsKey(parentId)) continue;
       totalBudgeted += p.budget.amount;
       totalSpent += p.spent;
     }

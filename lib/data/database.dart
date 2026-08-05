@@ -2740,6 +2740,7 @@ class AppDatabase extends _$AppDatabase {
       'exportedAt': DateTime.now().toIso8601String(),
       'accounts': (await select(accounts).get()).map(m).toList(),
       'categories': (await select(categories).get()).map(m).toList(),
+      'recurringRules': (await select(recurringRules).get()).map(m).toList(),
       'transactions': (await select(transactions).get()).map(m).toList(),
       'budgets': (await select(budgets).get()).map(m).toList(),
       'persons': (await select(persons).get()).map(m).toList(),
@@ -2816,6 +2817,9 @@ class AppDatabase extends _$AppDatabase {
       // References accounts, so it goes before that delete too.
       await delete(savingsGoals).go();
       await delete(transactions).go();
+      // References accounts/categories, and transactions.recurringRuleId
+      // references it back — so it goes after that delete, before these.
+      await delete(recurringRules).go();
       await delete(persons).go();
       await delete(categories).go();
       await delete(accounts).go();
@@ -2853,6 +2857,9 @@ class AppDatabase extends _$AppDatabase {
       await load(tags, 'tags');
       await load(savingsGoals, 'savingsGoals');
       await load(shoppingLists, 'shoppingLists');
+      // Before `transactions`, whose `recurringRuleId` references it — and an
+      // older backup simply has no rows for it, so `rows()` yields nothing.
+      await load(recurringRules, 'recurringRules');
       await load(transactions, 'transactions');
       await load(budgets, 'budgets');
       await load(personEntries, 'personEntries');
