@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>XPENC — Money, tracked honestly.</title>
-  <meta name="description" content="XPENC is an offline-first personal finance app for Android. Income, expenses, budgets, dues and insights — everything stays on your phone. No server, no sign-up, no SMS permission. Open source.">
+  <meta name="description" content="XPENC is an offline-first personal finance app for Android. Income, expenses, budgets, goals, dues and insights — everything stays on your phone. No server, no sign-up, no SMS permission. Open source.">
   <meta name="theme-color" content="#ffffff">
   <meta name="google-site-verification" content="WAS2f7jnX5YxUBIXxbid23arE0_KYn75v_7I45wmETI">
 
@@ -16,7 +16,7 @@
   <!-- Open Graph / Twitter -->
   <meta property="og:type" content="website">
   <meta property="og:title" content="XPENC — Money, tracked honestly.">
-  <meta property="og:description" content="Offline-first personal finance for Android. Budgets, dues, insights — all on-device. No server. No sign-up. No SMS permission. Open source.">
+  <meta property="og:description" content="Offline-first personal finance for Android. Budgets, goals, dues, insights — all on-device. No server. No sign-up. No SMS permission. Open source.">
   <meta property="og:url" content="https://getxpenc.vercel.app/">
   <meta property="og:image" content="https://getxpenc.vercel.app/assets/og_cover.jpg">
   <meta property="og:image:width" content="1200">
@@ -348,6 +348,8 @@
     .f6 { --c: var(--cyan);   --tint: var(--cyan-50); }
     .f7 { --c: var(--indigo); --tint: var(--indigo-50); }
     .f8 { --c: var(--teal);   --tint: var(--teal-50); }
+    .f9 { --c: var(--pink);   --tint: var(--pink-50); }
+    .f10 { --c: var(--blurple); --tint: var(--blurple-50); }
 
     /* ── soft band ───────────────────────────────────────── */
     .band-soft {
@@ -631,11 +633,11 @@
     <div class="blobs" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i></div>
     <div class="wrap hero-grid">
       <div>
-        <span class="version-pill"><span class="live-dot"></span><b id="version">v1.2.0</b>&nbsp;· free &amp; open source</span>
+        <span class="version-pill"><span class="live-dot"></span><b id="version">v1.3.0</b>&nbsp;· free &amp; open source</span>
         <h1>Money, tracked <span class="grad">honestly.</span></h1>
         <p class="sub">
-          Offline-first personal finance for Android. Income, expenses, budgets and
-          dues — everything lives in a database <strong>on your phone</strong>.
+          Offline-first personal finance for Android. Income, expenses, budgets,
+          goals and dues — everything lives in a database <strong>on your phone</strong>.
           No server. No sign-up. No ads.
         </p>
         <div class="hero-ctas">
@@ -744,17 +746,17 @@
         <div class="feat f1">
           <div class="fi"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="2.5" y="5" width="19" height="14" rx="3"/><path d="M2.5 9.5h19"/></svg></div>
           <h3>Honest accounts</h3>
-          <p>Cash, Bank &amp; Card with real balances. UPI and debit cards spend their bank's money — a payment is never counted twice.</p>
+          <p>Cash, Bank, Card &amp; Prepaid balance (a canteen fob or gift card) with real balances. UPI and debit cards spend their bank's money — a payment is never counted twice.</p>
         </div>
         <div class="feat f2">
           <div class="fi"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v13M7 4L4 7m3-3l3 3"/><path d="M17 20V7m0 13l3-3m-3 3l-3-3"/></svg></div>
           <h3>Income · Expense · Transfer</h3>
-          <p>Three transaction types kept strictly apart. Transfers never pollute budgets or reports.</p>
+          <p>Three transaction types kept strictly apart. Tag anything and attach a receipt photo. Transfers never pollute budgets or reports.</p>
         </div>
         <div class="feat f3">
           <div class="fi"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="9" opacity=".3"/><path d="M12 3a9 9 0 0 1 8.4 5.7"/><path d="M12 8v4l2.5 2.5"/></svg></div>
           <h3>Budgets that speak up</h3>
-          <p>Per-category budgets with period windows, live progress, and alerts at 80% and on overspend.</p>
+          <p>Per-category budgets with period windows, live progress, and alerts at 80% and on overspend. A subcategory's cap can never exceed its parent's.</p>
         </div>
         <div class="feat f4">
           <div class="fi"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="8.5" cy="8" r="3.2"/><path d="M2.8 19c.7-3 3-4.6 5.7-4.6s5 1.6 5.7 4.6"/><circle cx="16.8" cy="9" r="2.6"/><path d="M15.5 14.7c2.6-.4 5 1 5.7 3.8"/></svg></div>
@@ -774,12 +776,22 @@
         <div class="feat f7">
           <div class="fi"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10m0 0l-3.5-3.5M12 13l3.5-3.5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></div>
           <h3>Backup &amp; export</h3>
-          <p>One-tap JSON backup and restore, plus CSV export shaped for accountants and Tally.</p>
+          <p>Auto-backups land in your Downloads folder on a schedule, so they survive an uninstall. Plus PDF statements/reports and CSV export for accountants and Tally.</p>
         </div>
         <div class="feat f8">
           <div class="fi"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.5L3 21l2-5.6A8.5 8.5 0 1 1 21 11.5z"/></svg></div>
           <h3>Bank-SMS capture<span class="soon">soon</span></h3>
           <p>Paused in 1.1 for Play compliance. The on-device pipeline — parser, dedupe, review cards, undo — is ready and waiting.</p>
+        </div>
+        <div class="feat f9">
+          <div class="fi"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg></div>
+          <h3>Passcode lock</h3>
+          <p>An optional PIN gates the app on open, with fingerprint or face unlock on top — your ledger stays yours even if your phone doesn't.</p>
+        </div>
+        <div class="feat f10">
+          <div class="fi"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.2"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg></div>
+          <h3>Savings goals</h3>
+          <p>Save toward a target with running progress and a contribution history — plus named shopping lists and a home-screen net-worth widget.</p>
         </div>
       </div>
     </div>
