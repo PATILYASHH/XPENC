@@ -4,14 +4,21 @@ import '../core/money.dart';
 
 // ─── Enums ──────────────────────────────────────────────────────────────────
 
-/// Where money sits. Only Cash, Bank, *credit* Card and Pay-later hold a real
-/// balance.
+/// Where money sits. Only Cash, Bank, *credit* Card, Pay-later and Prepaid
+/// Balance hold a real balance.
 ///
 /// [payLater] is a BNPL-style credit line (Simpl, LazyPay, Amazon Pay Later,
 /// …): spending it goes negative exactly like a credit card, and a payment
 /// posts as a transfer into it — but it is never a physical card, so it gets
 /// its own type rather than a third [CardKind].
-enum AccountType { cash, bank, card, payLater }
+///
+/// [prepaidBalance] is a closed-loop stored-value instrument (a canteen key
+/// fob, a gift card, a transit card, …): unlike [payLater] it is **not** a
+/// liability — spending it draws down a real balance you already loaded,
+/// exactly like [cash] or [bank]. It gets its own type only so it can carry
+/// its own icon/label; every balance and net-worth code path treats it
+/// identically to [cash]/[bank] with no special-casing.
+enum AccountType { cash, bank, card, payLater, prepaidBalance }
 
 /// A credit card is its own (liability) account. A debit card is an instrument
 /// linked to a bank — it never holds its own balance.

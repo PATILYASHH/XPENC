@@ -81,6 +81,9 @@ class AccountsScreen extends ConsumerWidget {
     final payLater = accounts
         .where((a) => a.type == AccountType.payLater)
         .toList();
+    final prepaidBalance = accounts
+        .where((a) => a.type == AccountType.prepaidBalance)
+        .toList();
 
     final out = <Widget>[];
     void addGroup(String title, List<AccountRow> rows) {
@@ -94,6 +97,7 @@ class AccountsScreen extends ConsumerWidget {
     addGroup('Bank', banks);
     addGroup('Cards', cards);
     addGroup('Pay later', payLater);
+    addGroup('Prepaid Balance', prepaidBalance);
     return out;
   }
 
