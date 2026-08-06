@@ -3608,6 +3608,15 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -3617,6 +3626,7 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
     startDate,
     alertThresholdPct,
     isActive,
+    note,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3664,6 +3674,12 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
         isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
       );
     }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
     return context;
   }
 
@@ -3709,6 +3725,10 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
         DriftSqlType.bool,
         data['${effectivePrefix}is_active'],
       )!,
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
     );
   }
 
@@ -3730,6 +3750,10 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
   final DateTime startDate;
   final int alertThresholdPct;
   final bool isActive;
+
+  /// Free-form context for this budget — why it's set the way it is, what
+  /// it's meant to cover, a reminder for next month. Entirely optional.
+  final String? note;
   const BudgetRow({
     required this.id,
     required this.categoryId,
@@ -3738,6 +3762,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
     required this.startDate,
     required this.alertThresholdPct,
     required this.isActive,
+    this.note,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3757,6 +3782,9 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
     map['start_date'] = Variable<DateTime>(startDate);
     map['alert_threshold_pct'] = Variable<int>(alertThresholdPct);
     map['is_active'] = Variable<bool>(isActive);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
     return map;
   }
 
@@ -3769,6 +3797,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
       startDate: Value(startDate),
       alertThresholdPct: Value(alertThresholdPct),
       isActive: Value(isActive),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
     );
   }
 
@@ -3787,6 +3816,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
       startDate: serializer.fromJson<DateTime>(json['startDate']),
       alertThresholdPct: serializer.fromJson<int>(json['alertThresholdPct']),
       isActive: serializer.fromJson<bool>(json['isActive']),
+      note: serializer.fromJson<String?>(json['note']),
     );
   }
   @override
@@ -3802,6 +3832,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
       'startDate': serializer.toJson<DateTime>(startDate),
       'alertThresholdPct': serializer.toJson<int>(alertThresholdPct),
       'isActive': serializer.toJson<bool>(isActive),
+      'note': serializer.toJson<String?>(note),
     };
   }
 
@@ -3813,6 +3844,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
     DateTime? startDate,
     int? alertThresholdPct,
     bool? isActive,
+    Value<String?> note = const Value.absent(),
   }) => BudgetRow(
     id: id ?? this.id,
     categoryId: categoryId ?? this.categoryId,
@@ -3821,6 +3853,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
     startDate: startDate ?? this.startDate,
     alertThresholdPct: alertThresholdPct ?? this.alertThresholdPct,
     isActive: isActive ?? this.isActive,
+    note: note.present ? note.value : this.note,
   );
   BudgetRow copyWithCompanion(BudgetsCompanion data) {
     return BudgetRow(
@@ -3835,6 +3868,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
           ? data.alertThresholdPct.value
           : this.alertThresholdPct,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      note: data.note.present ? data.note.value : this.note,
     );
   }
 
@@ -3847,7 +3881,8 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
           ..write('period: $period, ')
           ..write('startDate: $startDate, ')
           ..write('alertThresholdPct: $alertThresholdPct, ')
-          ..write('isActive: $isActive')
+          ..write('isActive: $isActive, ')
+          ..write('note: $note')
           ..write(')'))
         .toString();
   }
@@ -3861,6 +3896,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
     startDate,
     alertThresholdPct,
     isActive,
+    note,
   );
   @override
   bool operator ==(Object other) =>
@@ -3872,7 +3908,8 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
           other.period == this.period &&
           other.startDate == this.startDate &&
           other.alertThresholdPct == this.alertThresholdPct &&
-          other.isActive == this.isActive);
+          other.isActive == this.isActive &&
+          other.note == this.note);
 }
 
 class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
@@ -3883,6 +3920,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
   final Value<DateTime> startDate;
   final Value<int> alertThresholdPct;
   final Value<bool> isActive;
+  final Value<String?> note;
   const BudgetsCompanion({
     this.id = const Value.absent(),
     this.categoryId = const Value.absent(),
@@ -3891,6 +3929,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     this.startDate = const Value.absent(),
     this.alertThresholdPct = const Value.absent(),
     this.isActive = const Value.absent(),
+    this.note = const Value.absent(),
   });
   BudgetsCompanion.insert({
     this.id = const Value.absent(),
@@ -3900,6 +3939,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     required DateTime startDate,
     this.alertThresholdPct = const Value.absent(),
     this.isActive = const Value.absent(),
+    this.note = const Value.absent(),
   }) : categoryId = Value(categoryId),
        amount = Value(amount),
        period = Value(period),
@@ -3912,6 +3952,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     Expression<DateTime>? startDate,
     Expression<int>? alertThresholdPct,
     Expression<bool>? isActive,
+    Expression<String>? note,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3921,6 +3962,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
       if (startDate != null) 'start_date': startDate,
       if (alertThresholdPct != null) 'alert_threshold_pct': alertThresholdPct,
       if (isActive != null) 'is_active': isActive,
+      if (note != null) 'note': note,
     });
   }
 
@@ -3932,6 +3974,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     Value<DateTime>? startDate,
     Value<int>? alertThresholdPct,
     Value<bool>? isActive,
+    Value<String?>? note,
   }) {
     return BudgetsCompanion(
       id: id ?? this.id,
@@ -3941,6 +3984,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
       startDate: startDate ?? this.startDate,
       alertThresholdPct: alertThresholdPct ?? this.alertThresholdPct,
       isActive: isActive ?? this.isActive,
+      note: note ?? this.note,
     );
   }
 
@@ -3972,6 +4016,9 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     if (isActive.present) {
       map['is_active'] = Variable<bool>(isActive.value);
     }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
     return map;
   }
 
@@ -3984,7 +4031,8 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
           ..write('period: $period, ')
           ..write('startDate: $startDate, ')
           ..write('alertThresholdPct: $alertThresholdPct, ')
-          ..write('isActive: $isActive')
+          ..write('isActive: $isActive, ')
+          ..write('note: $note')
           ..write(')'))
         .toString();
   }
@@ -16040,6 +16088,7 @@ typedef $$BudgetsTableCreateCompanionBuilder =
       required DateTime startDate,
       Value<int> alertThresholdPct,
       Value<bool> isActive,
+      Value<String?> note,
     });
 typedef $$BudgetsTableUpdateCompanionBuilder =
     BudgetsCompanion Function({
@@ -16050,6 +16099,7 @@ typedef $$BudgetsTableUpdateCompanionBuilder =
       Value<DateTime> startDate,
       Value<int> alertThresholdPct,
       Value<bool> isActive,
+      Value<String?> note,
     });
 
 final class $$BudgetsTableReferences
@@ -16117,6 +16167,11 @@ class $$BudgetsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$CategoriesTableFilterComposer get categoryId {
     final $$CategoriesTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -16180,6 +16235,11 @@ class $$BudgetsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CategoriesTableOrderingComposer get categoryId {
     final $$CategoriesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -16232,6 +16292,9 @@ class $$BudgetsTableAnnotationComposer
 
   GeneratedColumn<bool> get isActive =>
       $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
 
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
@@ -16292,6 +16355,7 @@ class $$BudgetsTableTableManager
                 Value<DateTime> startDate = const Value.absent(),
                 Value<int> alertThresholdPct = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
+                Value<String?> note = const Value.absent(),
               }) => BudgetsCompanion(
                 id: id,
                 categoryId: categoryId,
@@ -16300,6 +16364,7 @@ class $$BudgetsTableTableManager
                 startDate: startDate,
                 alertThresholdPct: alertThresholdPct,
                 isActive: isActive,
+                note: note,
               ),
           createCompanionCallback:
               ({
@@ -16310,6 +16375,7 @@ class $$BudgetsTableTableManager
                 required DateTime startDate,
                 Value<int> alertThresholdPct = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
+                Value<String?> note = const Value.absent(),
               }) => BudgetsCompanion.insert(
                 id: id,
                 categoryId: categoryId,
@@ -16318,6 +16384,7 @@ class $$BudgetsTableTableManager
                 startDate: startDate,
                 alertThresholdPct: alertThresholdPct,
                 isActive: isActive,
+                note: note,
               ),
           withReferenceMapper: (p0) => p0
               .map(

@@ -114,7 +114,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'money_manager'));
 
   @override
-  int get schemaVersion => 21;
+  int get schemaVersion => 22;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -222,6 +222,9 @@ class AppDatabase extends _$AppDatabase {
         // final shape lands on the same result.
         await m.createTable(goalDetails);
         await migrateSavingsGoalsToGoalAccounts();
+      }
+      if (from < 22) {
+        await m.addColumn(budgets, budgets.note);
       }
     },
     beforeOpen: (details) async {
@@ -1649,6 +1652,7 @@ class AppDatabase extends _$AppDatabase {
     required Money amount,
     BudgetPeriod period = BudgetPeriod.monthly,
     int alertThresholdPct = 80,
+    String? note,
   }) async {
     final category = await categoryById(categoryId);
     if (category == null) {
@@ -1692,12 +1696,16 @@ class AppDatabase extends _$AppDatabase {
       }
     }
 
+    final trimmedNote = note?.trim();
     final entry = BudgetsCompanion.insert(
       categoryId: categoryId,
       amount: amount,
       period: period,
       startDate: DateTime(DateTime.now().year, DateTime.now().month),
       alertThresholdPct: Value(alertThresholdPct),
+      note: Value(
+        trimmedNote == null || trimmedNote.isEmpty ? null : trimmedNote,
+      ),
     );
     // `insertOnConflictUpdate` targets only the primary key (`id`) by
     // default, never `categoryId` — but `id` is always fresh here (the

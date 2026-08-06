@@ -406,11 +406,30 @@ class _BudgetTile extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: Text(
-                category.name,
-                style: compact
-                    ? theme.textTheme.bodyMedium
-                    : theme.textTheme.titleMedium,
+              child: Row(
+                children: [
+                  if (p.budget.note != null && p.budget.note!.isNotEmpty) ...[
+                    Tooltip(
+                      message: p.budget.note!,
+                      child: Icon(
+                        Icons.notes_rounded,
+                        size: compact ? 14 : 16,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                  ],
+                  Flexible(
+                    child: Text(
+                      category.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: compact
+                          ? theme.textTheme.bodyMedium
+                          : theme.textTheme.titleMedium,
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(width: 8),
@@ -574,6 +593,7 @@ class _BudgetSheet extends ConsumerStatefulWidget {
 
 class _BudgetSheetState extends ConsumerState<_BudgetSheet> {
   late final TextEditingController _amountCtrl;
+  late final TextEditingController _noteCtrl;
   late double _threshold;
 
   @override
@@ -583,6 +603,7 @@ class _BudgetSheetState extends ConsumerState<_BudgetSheet> {
     _amountCtrl = TextEditingController(
       text: existing == null ? '' : MoneyFormat.bare(existing.budget.amount),
     );
+    _noteCtrl = TextEditingController(text: existing?.budget.note ?? '');
     _threshold = (existing?.budget.alertThresholdPct ?? 80)
         .clamp(50, 95)
         .toDouble();
@@ -591,6 +612,7 @@ class _BudgetSheetState extends ConsumerState<_BudgetSheet> {
   @override
   void dispose() {
     _amountCtrl.dispose();
+    _noteCtrl.dispose();
     super.dispose();
   }
 
@@ -610,6 +632,7 @@ class _BudgetSheetState extends ConsumerState<_BudgetSheet> {
             categoryId: widget.category.id,
             amount: amount,
             alertThresholdPct: _threshold.round(),
+            note: _noteCtrl.text,
           );
     } on ArgumentError catch (e) {
       messenger.showSnackBar(
@@ -757,7 +780,19 @@ class _BudgetSheetState extends ConsumerState<_BudgetSheet> {
             onSubmitted: (_) => _save(),
           ),
           ..._budgetHint(context),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _noteCtrl,
+            textCapitalization: TextCapitalization.sentences,
+            maxLength: 200,
+            maxLines: 3,
+            minLines: 1,
+            decoration: const InputDecoration(
+              labelText: 'Note (optional)',
+              hintText: 'What this budget is for, or anything to remember',
+            ),
+          ),
+          const SizedBox(height: 8),
           Text(
             'Alert me at ${_threshold.round()}%',
             style: theme.textTheme.bodyMedium,
