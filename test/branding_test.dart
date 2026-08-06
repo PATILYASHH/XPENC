@@ -45,6 +45,7 @@ void main() {
     test('links point at the real profiles', () {
       expect(AppInfo.githubUrl, 'https://github.com/PATILYASHH');
       expect(AppInfo.linkedinUrl, 'https://www.linkedin.com/in/patilyasshh/');
+      expect(AppInfo.sponsorUrl, 'https://github.com/sponsors/PATILYASHH');
       // The public repo and website — a wrong link here ships to every phone.
       expect(AppInfo.repoUrl, 'https://github.com/PATILYASHH/XPENC');
       expect(AppInfo.websiteUrl, 'https://getxpenc.vercel.app');
@@ -54,6 +55,7 @@ void main() {
       for (final url in [
         AppInfo.githubUrl,
         AppInfo.linkedinUrl,
+        AppInfo.sponsorUrl,
         AppInfo.repoUrl,
         AppInfo.websiteUrl,
         AppInfo.issuesUrl,
@@ -64,6 +66,20 @@ void main() {
         expect(uri.isAbsolute, isTrue, reason: '$url is not absolute');
         expect(uri.scheme, 'https', reason: '$url is not https');
       }
+    });
+
+    test('advertised emails are plain addresses, not the internal account',
+        () {
+      for (final email in [AppInfo.feedbackEmail, AppInfo.personalEmail]) {
+        expect(email, contains('@'));
+        expect(
+          email,
+          isNot(contains('banafintech')),
+          reason: 'public docs must never advertise the internal account '
+              'email',
+        );
+      }
+      expect(AppInfo.feedbackEmail, isNot(AppInfo.personalEmail));
     });
   });
 
