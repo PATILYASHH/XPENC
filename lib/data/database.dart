@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import '../core/money.dart';
 import '../core/security/passcode.dart';
@@ -98,7 +99,7 @@ typedef BudgetStatementLine = ({
     Tags,
     TransactionTags,
     TransactionSplits,
-    SavingsGoals,
+    GoalDetails,
     ShoppingLists,
     ShoppingItems,
     BackupRecords,
@@ -113,7 +114,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'money_manager'));
 
   @override
-  int get schemaVersion => 18;
+  int get schemaVersion => 21;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -173,9 +174,6 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(personEntries, personEntries.categoryId);
         await m.addColumn(settings, settings.countRepaymentsAsIncome);
       }
-      if (from < 13) {
-        await m.createTable(savingsGoals);
-      }
       if (from < 14) {
         await m.addColumn(settings, settings.passcodeHash);
         await m.addColumn(settings, settings.passcodeSalt);
@@ -202,6 +200,28 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(settings, settings.autoBackupCustomHours);
         await m.addColumn(settings, settings.lastAutoBackupAt);
         await m.addColumn(settings, settings.backupRetentionDays);
+      }
+      if (from < 19) {
+        await m.addColumn(recurringRules, recurringRules.isEstimate);
+        await m.addColumn(transactions, transactions.needsAmountReview);
+      }
+      if (from < 20) {
+        await m.addColumn(settings, settings.preventScreenshots);
+      }
+      if (from < 21) {
+        // A goal used to be a metadata row that merely pointed at — and
+        // read the live balance of — some other account. It's now a real
+        // account of its own (AccountType.goal), same as Prepaid Balance,
+        // funded only by transfers. GoalDetails is the (much smaller)
+        // replacement for the old SavingsGoals table, which this step also
+        // retires. Nothing else in the schema ever referenced SavingsGoals,
+        // so — unlike every migration above it — this one is safe to
+        // collapse into a single step instead of replaying each version's
+        // history: whatever `from` a database starts at, migrating its
+        // savings_goals rows (if the table even exists) straight to the
+        // final shape lands on the same result.
+        await m.createTable(goalDetails);
+        await migrateSavingsGoalsToGoalAccounts();
       }
     },
     beforeOpen: (details) async {
@@ -296,6 +316,88 @@ class AppDatabase extends _$AppDatabase {
       ShoppingItemsCompanion(listId: Value(defaultListId)),
     );
     return orphaned.length;
+  }
+
+  /// v20 -> v21: a goal used to be a metadata row pointing at some other
+  /// account and reading its live balance. Raw SQL, not the typed API,
+  /// because the `SavingsGoals` Dart table this once was no longer exists —
+  /// see the migration step that calls this.
+  ///
+  /// For each old goal: a new [AccountType.goal] account is seeded with the
+  /// linked account's current balance (the same "saved so far" figure the
+  /// old UI showed), so the new goal starts already reflecting what the
+  /// user was seeing — no transaction is fabricated to explain how it got
+  /// there. The linked account itself is left completely untouched.
+  ///
+  /// Not private: exercised directly in `database_test.dart` against a
+  /// hand-seeded `savings_goals` table, since this app has no schema-snapshot
+  /// tooling to replay a real v13-v20 database through `onUpgrade`.
+  @visibleForTesting
+  Future<void> migrateSavingsGoalsToGoalAccounts() async {
+    final exists = await customSelect(
+      "SELECT name FROM sqlite_master WHERE type = 'table' "
+      "AND name = 'savings_goals'",
+    ).getSingleOrNull();
+    if (exists == null) return;
+
+    final oldGoals = await customSelect('SELECT * FROM savings_goals').get();
+    for (final row in oldGoals) {
+      await _createGoalAccountFromLegacy(
+        name: row.read<String>('name'),
+        colorValue: row.read<int>('color_value'),
+        iconKey: row.read<String>('icon_key'),
+        isArchived: row.read<bool>('is_archived'),
+        createdAt: row.read<DateTime>('created_at'),
+        targetAmount: Money(row.read<int>('target_amount')),
+        targetDate: row.readNullable<DateTime>('target_date'),
+        linkedAccountId: row.read<int>('account_id'),
+      );
+    }
+
+    await customStatement('DROP TABLE savings_goals');
+  }
+
+  /// Shared by the live-database migration above and [importAll]'s handling
+  /// of a backup taken before this version — both need to turn one old
+  /// "goal that tracks another account" row into a real [AccountType.goal]
+  /// account. [openingBalance] (not just [currentBalance]) carries the
+  /// snapshot, or [recalculateBalances] — run after every import, and
+  /// available any time from Settings — would rebuild this account from an
+  /// empty ledger and silently zero it back out.
+  Future<void> _createGoalAccountFromLegacy({
+    required String name,
+    required int colorValue,
+    required String iconKey,
+    required bool isArchived,
+    required DateTime createdAt,
+    required Money targetAmount,
+    DateTime? targetDate,
+    required int linkedAccountId,
+  }) async {
+    final linked = await (select(
+      accounts,
+    )..where((a) => a.id.equals(linkedAccountId))).getSingleOrNull();
+    final savedSoFar = linked?.currentBalance ?? const Money.zero();
+
+    final goalAccountId = await into(accounts).insert(
+      AccountsCompanion.insert(
+        name: name,
+        type: AccountType.goal,
+        colorValue: colorValue,
+        iconKey: iconKey,
+        openingBalance: savedSoFar,
+        currentBalance: savedSoFar,
+        isArchived: Value(isArchived),
+        createdAt: Value(createdAt),
+      ),
+    );
+    await into(goalDetails).insert(
+      GoalDetailsCompanion.insert(
+        accountId: Value(goalAccountId),
+        targetAmount: targetAmount,
+        targetDate: Value(targetDate),
+      ),
+    );
   }
 
   Future<void> _seedSenderRules() async {
@@ -401,7 +503,7 @@ class AppDatabase extends _$AppDatabase {
         await delete(budgets).go();
         await delete(transactionSplits).go();
         await delete(transactionTags).go();
-        await delete(savingsGoals).go();
+        await delete(goalDetails).go();
         await delete(shoppingItems).go();
         await delete(shoppingLists).go();
         // transactions references accounts/categories/persons/recurringRules,
@@ -542,6 +644,7 @@ class AppDatabase extends _$AppDatabase {
     String? payee,
     int? recurringRuleId,
     String? imagePath,
+    bool needsAmountReview = false,
   }) {
     _validateTx(
       type: type,
@@ -568,6 +671,7 @@ class AppDatabase extends _$AppDatabase {
           payee: Value(payee),
           recurringRuleId: Value(recurringRuleId),
           imagePath: Value(imagePath),
+          needsAmountReview: Value(needsAmountReview),
         ),
       );
       final row = await (select(
@@ -671,6 +775,9 @@ class AppDatabase extends _$AppDatabase {
           imagePath: Value(imagePath),
           payee: Value(payee),
           updatedAt: Value(DateTime.now()),
+          // Editing and saving *is* the confirmation — whatever amount is
+          // typed here is now the real one, estimate or not.
+          needsAmountReview: const Value(false),
         ),
       );
 
@@ -753,20 +860,25 @@ class AppDatabase extends _$AppDatabase {
   }
 
   // ── Savings goals ────────────────────────────────────────────────────────
+  //
+  // A goal is a real [AccountType.goal] account — see [GoalDetails]. Archive
+  // and delete reuse [archiveAccount] / [deleteAccount]; funding or drawing
+  // one down is an ordinary transfer via [addTransaction], not a method here.
 
-  Stream<List<SavingsGoalRow>> watchSavingsGoals() =>
-      (select(savingsGoals)
-            ..where((g) => g.isArchived.equals(false))
-            ..orderBy([(g) => OrderingTerm(expression: g.createdAt)]))
-          .watch();
+  Stream<List<GoalDetailRow>> watchGoalDetails() => select(goalDetails).watch();
 
-  Stream<SavingsGoalRow?> watchSavingsGoal(int id) =>
-      (select(savingsGoals)..where((g) => g.id.equals(id))).watchSingleOrNull();
+  Stream<GoalDetailRow?> watchGoalDetail(int accountId) =>
+      (select(
+        goalDetails,
+      )..where((g) => g.accountId.equals(accountId))).watchSingleOrNull();
 
-  Future<int> addSavingsGoal({
+  /// Creates the goal account and its target/deadline row together, always
+  /// starting at zero. The "turn an existing account into a goal" flow funds
+  /// it afterward with a real [addTransaction] transfer — this never
+  /// fabricates a starting balance.
+  Future<int> addGoal({
     required String name,
     required Money targetAmount,
-    required int accountId,
     DateTime? targetDate,
     required int colorValue,
     required String iconKey,
@@ -774,49 +886,58 @@ class AppDatabase extends _$AppDatabase {
     if (!targetAmount.isPositive) {
       throw ArgumentError('Target amount must be greater than zero.');
     }
-    return into(savingsGoals).insert(
-      SavingsGoalsCompanion.insert(
-        name: name,
-        targetAmount: targetAmount,
-        accountId: accountId,
-        targetDate: Value(targetDate),
-        colorValue: colorValue,
-        iconKey: iconKey,
-      ),
-    );
-  }
-
-  Future<void> updateSavingsGoal({
-    required int id,
-    required String name,
-    required Money targetAmount,
-    required int accountId,
-    DateTime? targetDate,
-    required int colorValue,
-    required String iconKey,
-  }) {
-    if (!targetAmount.isPositive) {
-      throw ArgumentError('Target amount must be greater than zero.');
-    }
-    return (update(savingsGoals)..where((g) => g.id.equals(id))).write(
-      SavingsGoalsCompanion(
-        name: Value(name),
-        targetAmount: Value(targetAmount),
-        accountId: Value(accountId),
-        targetDate: Value(targetDate),
-        colorValue: Value(colorValue),
-        iconKey: Value(iconKey),
-      ),
-    );
-  }
-
-  Future<void> archiveSavingsGoal(int id) =>
-      (update(savingsGoals)..where((g) => g.id.equals(id))).write(
-        const SavingsGoalsCompanion(isArchived: Value(true)),
+    return transaction(() async {
+      final accountId = await into(accounts).insert(
+        AccountsCompanion.insert(
+          name: name,
+          type: AccountType.goal,
+          colorValue: colorValue,
+          iconKey: iconKey,
+          openingBalance: const Money.zero(),
+          currentBalance: const Money.zero(),
+        ),
       );
+      await into(goalDetails).insert(
+        GoalDetailsCompanion.insert(
+          accountId: Value(accountId),
+          targetAmount: targetAmount,
+          targetDate: Value(targetDate),
+        ),
+      );
+      return accountId;
+    });
+  }
 
-  Future<void> deleteSavingsGoal(int id) =>
-      (delete(savingsGoals)..where((g) => g.id.equals(id))).go();
+  /// Never touches the account's balance — only a transfer does that.
+  Future<void> updateGoal({
+    required int accountId,
+    required String name,
+    required Money targetAmount,
+    DateTime? targetDate,
+    required int colorValue,
+    required String iconKey,
+  }) {
+    if (!targetAmount.isPositive) {
+      throw ArgumentError('Target amount must be greater than zero.');
+    }
+    return transaction(() async {
+      await (update(accounts)..where((a) => a.id.equals(accountId))).write(
+        AccountsCompanion(
+          name: Value(name),
+          colorValue: Value(colorValue),
+          iconKey: Value(iconKey),
+        ),
+      );
+      await (update(
+        goalDetails,
+      )..where((g) => g.accountId.equals(accountId))).write(
+        GoalDetailsCompanion(
+          targetAmount: Value(targetAmount),
+          targetDate: Value(targetDate),
+        ),
+      );
+    });
+  }
 
   // ── Shopping lists ───────────────────────────────────────────────────────
 
@@ -1443,16 +1564,14 @@ class AppDatabase extends _$AppDatabase {
         'first.',
       );
     }
-    final goal = await (select(
-      savingsGoals,
-    )..where((g) => g.accountId.equals(id))).getSingleOrNull();
-    if (goal != null) {
-      throw ArgumentError(
-        '"${goal.name}" tracks progress from this account. Delete or '
-        're-link that goal first.',
-      );
-    }
-    await (delete(accounts)..where((a) => a.id.equals(id))).go();
+    await transaction(() async {
+      // A goal account's own target/deadline row has no reason to outlive
+      // it — nothing else ever references GoalDetails.
+      await (delete(
+        goalDetails,
+      )..where((g) => g.accountId.equals(id))).go();
+      await (delete(accounts)..where((a) => a.id.equals(id))).go();
+    });
   }
 
   // ── Persons CRUD ──────────────────────────────────────────────────────────
@@ -1684,6 +1803,7 @@ class AppDatabase extends _$AppDatabase {
     required RecurringFrequency frequency,
     required DateTime startsOn,
     int notifyDaysBefore = 3,
+    bool isEstimate = false,
   }) async {
     final category = await categoryById(categoryId);
     if (category == null) {
@@ -1713,6 +1833,7 @@ class AppDatabase extends _$AppDatabase {
         dayOfMonth: Value(dayOfMonth),
         nextDueDate: DateTime(startsOn.year, startsOn.month, startsOn.day),
         notifyDaysBefore: Value(notifyDaysBefore),
+        isEstimate: Value(isEstimate),
       ),
     );
   }
@@ -1728,6 +1849,7 @@ class AppDatabase extends _$AppDatabase {
     required RecurringFrequency frequency,
     required DateTime nextDueDate,
     int notifyDaysBefore = 3,
+    bool isEstimate = false,
   }) async {
     final category = await categoryById(categoryId);
     if (category == null) {
@@ -1759,6 +1881,7 @@ class AppDatabase extends _$AppDatabase {
           DateTime(nextDueDate.year, nextDueDate.month, nextDueDate.day),
         ),
         notifyDaysBefore: Value(notifyDaysBefore),
+        isEstimate: Value(isEstimate),
       ),
     );
   }
@@ -1797,6 +1920,8 @@ class AppDatabase extends _$AppDatabase {
         return DateTime(from.year, from.month, from.day + 1);
       case RecurringFrequency.weekly:
         return DateTime(from.year, from.month, from.day + 7);
+      case RecurringFrequency.biweekly:
+        return DateTime(from.year, from.month, from.day + 14);
       case RecurringFrequency.monthly:
         var year = from.year;
         var month = from.month + 1;
@@ -1848,6 +1973,7 @@ class AppDatabase extends _$AppDatabase {
             date: next,
             payee: rule.kind == CategoryKind.expense ? rule.payee : null,
             recurringRuleId: rule.id,
+            needsAmountReview: rule.isEstimate,
           );
           posted++;
           next = _nextOccurrence(
@@ -2252,6 +2378,10 @@ class AppDatabase extends _$AppDatabase {
       settings,
     ).write(SettingsCompanion(biometricEnabled: Value(value)));
   }
+
+  Future<void> setPreventScreenshots(bool value) => update(
+    settings,
+  ).write(SettingsCompanion(preventScreenshots: Value(value)));
 
   // ── Expense reminder ─────────────────────────────────────────────────────
 
@@ -2753,7 +2883,7 @@ class AppDatabase extends _$AppDatabase {
       'transactionSplits': (await select(
         transactionSplits,
       ).get()).map(m).toList(),
-      'savingsGoals': (await select(savingsGoals).get()).map(m).toList(),
+      'goalDetails': (await select(goalDetails).get()).map(m).toList(),
       'shoppingLists': (await select(shoppingLists).get()).map(m).toList(),
       'shoppingItems': (await select(shoppingItems).get()).map(m).toList(),
       // `importAll` clears these two, so they MUST be exported. Otherwise
@@ -2815,7 +2945,7 @@ class AppDatabase extends _$AppDatabase {
       await delete(transactionSplits).go();
       await delete(transactionTags).go();
       // References accounts, so it goes before that delete too.
-      await delete(savingsGoals).go();
+      await delete(goalDetails).go();
       await delete(transactions).go();
       // References accounts/categories, and transactions.recurringRuleId
       // references it back — so it goes after that delete, before these.
@@ -2855,7 +2985,32 @@ class AppDatabase extends _$AppDatabase {
       await load(categories, 'categories');
       await load(persons, 'persons');
       await load(tags, 'tags');
-      await load(savingsGoals, 'savingsGoals');
+      // A backup taken before v21 has no `goalDetails` key — its (old-shaped)
+      // goals live under `savingsGoals` instead. `accounts` is already
+      // loaded above, so the linked account's balance is there to snapshot.
+      if (data['goalDetails'] != null) {
+        await load(goalDetails, 'goalDetails');
+      } else {
+        for (final row in rows('savingsGoals')) {
+          await _createGoalAccountFromLegacy(
+            name: row['name'] as String,
+            colorValue: row['color_value'] as int,
+            iconKey: row['icon_key'] as String,
+            isArchived:
+                _fromJson(row['is_archived'], DriftSqlType.bool) as bool? ??
+                false,
+            createdAt:
+                _fromJson(row['created_at'], DriftSqlType.dateTime)
+                    as DateTime? ??
+                DateTime.now(),
+            targetAmount: Money(row['target_amount'] as int),
+            targetDate:
+                _fromJson(row['target_date'], DriftSqlType.dateTime)
+                    as DateTime?,
+            linkedAccountId: row['account_id'] as int,
+          );
+        }
+      }
       await load(shoppingLists, 'shoppingLists');
       // Before `transactions`, whose `recurringRuleId` references it — and an
       // older backup simply has no rows for it, so `rows()` yields nothing.

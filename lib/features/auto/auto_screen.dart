@@ -9,8 +9,10 @@ import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'recurring_rule_sheet.dart';
 
-/// Auto Expenses / Auto Income — fixed transactions that post themselves on a
-/// schedule, with no confirmation step. See [AppDatabase.runDueRecurringRules].
+/// Auto Expenses / Auto Income — transactions that post themselves on a
+/// schedule, with no confirmation step. A rule whose amount varies (e.g. a
+/// salary) still posts on schedule but flags the result for review — see
+/// [AppDatabase.runDueRecurringRules].
 class AutoScreen extends ConsumerWidget {
   const AutoScreen({super.key});
 
@@ -157,6 +159,7 @@ class _RuleTile extends ConsumerWidget {
       ),
       subtitle: Text(
         '${_frequencyLabel(rule)} · Next ${DateFormat('d MMM').format(rule.nextDueDate)}'
+        '${rule.isEstimate ? ' · Estimate' : ''}'
         '${rule.isActive ? '' : ' · Paused'}',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
@@ -185,6 +188,8 @@ class _RuleTile extends ConsumerWidget {
         return 'Daily';
       case RecurringFrequency.weekly:
         return 'Weekly';
+      case RecurringFrequency.biweekly:
+        return 'Every 2 weeks';
       case RecurringFrequency.monthly:
         return 'Monthly on the ${r.dayOfMonth}${_ordinalSuffix(r.dayOfMonth ?? 1)}';
     }

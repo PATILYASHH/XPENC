@@ -28,6 +28,7 @@ class SettingsScreen extends ConsumerWidget {
     final countRepaymentsAsIncome = ref.watch(countRepaymentsAsIncomeProvider);
     final hasPasscode = ref.watch(hasPasscodeProvider);
     final biometricEnabled = ref.watch(biometricEnabledProvider);
+    final preventScreenshots = ref.watch(preventScreenshotsProvider);
     final expenseReminder = ref.watch(expenseReminderProvider);
 
     final trailingStyle = theme.textTheme.bodyMedium?.copyWith(
@@ -177,6 +178,22 @@ class SettingsScreen extends ConsumerWidget {
                         context.push('/more/settings/passcode?remove=true'),
                   ),
                 ],
+                Divider(height: 1, indent: 60, color: cs.outline),
+                SwitchListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  secondary: const Icon(Icons.screenshot_outlined),
+                  title: const Text('Block screenshots'),
+                  subtitle: Text(
+                    'Hides XPENC from screenshots, screen recording and the '
+                    'recent-apps thumbnail',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  value: preventScreenshots,
+                  onChanged: (v) =>
+                      ref.read(dbProvider).setPreventScreenshots(v),
+                ),
               ],
             ),
           ),

@@ -443,4 +443,5 @@ String _typeLabel(AccountType type) => switch (type) {
   AccountType.card => 'Card',
   AccountType.payLater => 'Pay later',
   AccountType.prepaidBalance => 'Prepaid Balance',
+  AccountType.goal => 'Goal',
 };

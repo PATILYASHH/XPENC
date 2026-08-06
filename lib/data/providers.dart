@@ -358,6 +358,10 @@ final biometricEnabledProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.biometricEnabled ?? false;
 });
 
+final preventScreenshotsProvider = Provider<bool>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.preventScreenshots ?? false;
+});
+
 /// A daily nudge to log spending — hour/minute in the user's local wall
 /// clock, defaulting to 8 PM.
 typedef ExpenseReminderSettings = ({bool enabled, int hour, int minute});
@@ -479,58 +483,63 @@ final shoppingListSummaryProvider = Provider<Map<int, ShoppingListSummary>>((
 });
 
 // ── Savings goals ───────────────────────────────────────────────────────────
+//
+// A goal is a real AccountType.goal account (see GoalDetails in tables.dart)
+// — `saved` is simply that account's own balance, never a separate figure to
+// keep in sync.
 
-final savingsGoalsProvider = StreamProvider<List<SavingsGoalRow>>(
-  (ref) => ref.watch(dbProvider).watchSavingsGoals(),
+final goalDetailsProvider = StreamProvider<List<GoalDetailRow>>(
+  (ref) => ref.watch(dbProvider).watchGoalDetails(),
 );
 
-final savingsGoalProvider = StreamProvider.family<SavingsGoalRow?, int>(
-  (ref, id) => ref.watch(dbProvider).watchSavingsGoal(id),
+final goalDetailProvider = StreamProvider.family<GoalDetailRow?, int>(
+  (ref, accountId) => ref.watch(dbProvider).watchGoalDetail(accountId),
 );
 
-/// A goal joined with the live balance of the account it tracks — progress is
-/// never stored, only ever read from the ledger through that account.
-typedef SavingsGoalProgress = ({
-  SavingsGoalRow goal,
-  AccountRow? account,
+typedef GoalProgress = ({
+  AccountRow account,
+  GoalDetailRow detail,
   Money saved,
   double fraction,
   bool reached,
 });
 
-final savingsGoalProgressListProvider = Provider<List<SavingsGoalProgress>>((
-  ref,
-) {
-  final goals = ref.watch(savingsGoalsProvider).valueOrNull ?? const [];
+/// Archived goals drop out on their own: [accountMapProvider] only ever
+/// holds non-archived accounts, so a goal whose account has been archived
+/// simply has no match here.
+final goalProgressListProvider = Provider<List<GoalProgress>>((ref) {
+  final details = ref.watch(goalDetailsProvider).valueOrNull ?? const [];
   final accountMap = ref.watch(accountMapProvider);
-  return [for (final g in goals) _progressOf(g, accountMap)];
+  final out = <GoalProgress>[
+    for (final d in details)
+      if (accountMap[d.accountId] case final account?)
+        _goalProgressOf(account, d),
+  ];
+  out.sort((a, b) => a.account.createdAt.compareTo(b.account.createdAt));
+  return out;
 });
 
-final savingsGoalProgressProvider = Provider.family<SavingsGoalProgress?, int>((
+final goalProgressProvider = Provider.family<GoalProgress?, int>((
   ref,
-  id,
+  accountId,
 ) {
-  final goal = ref.watch(savingsGoalProvider(id)).valueOrNull;
-  if (goal == null) return null;
-  final accountMap = ref.watch(accountMapProvider);
-  return _progressOf(goal, accountMap);
+  final detail = ref.watch(goalDetailProvider(accountId)).valueOrNull;
+  final account = ref.watch(accountMapProvider)[accountId];
+  if (detail == null || account == null) return null;
+  return _goalProgressOf(account, detail);
 });
 
-SavingsGoalProgress _progressOf(
-  SavingsGoalRow goal,
-  Map<int, AccountRow> accountMap,
-) {
-  final account = accountMap[goal.accountId];
-  final saved = account?.currentBalance ?? const Money.zero();
-  final fraction = goal.targetAmount.isZero
+GoalProgress _goalProgressOf(AccountRow account, GoalDetailRow detail) {
+  final saved = account.currentBalance;
+  final fraction = detail.targetAmount.isZero
       ? 0.0
-      : saved.paise / goal.targetAmount.paise;
+      : saved.paise / detail.targetAmount.paise;
   return (
-    goal: goal,
     account: account,
+    detail: detail,
     saved: saved,
     fraction: fraction.clamp(0.0, 1.0),
-    reached: saved.paise >= goal.targetAmount.paise,
+    reached: saved.paise >= detail.targetAmount.paise,
   );
 }
 

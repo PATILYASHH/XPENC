@@ -8,6 +8,7 @@ import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
+import '../../data/tables.dart';
 
 const _presetColors = <int>[
   0xFF16A34A,
@@ -31,21 +32,22 @@ const _iconKeys = <String>[
   'other',
 ];
 
-/// A savings target tracked live from a real account's balance — see
-/// `SavingsGoals` in tables.dart. No separate ledger: "contributing" is just
-/// depositing or transferring into that account the normal way.
+/// A savings target that's a real account of its own — see [GoalDetails] in
+/// tables.dart. Progress is that account's own balance; funding it is an
+/// ordinary transfer, either through the normal Add Transaction flow or this
+/// screen's own Add funds / Withdraw shortcut on the goal's detail page.
 class SavingsGoalsScreen extends ConsumerWidget {
   const SavingsGoalsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final progressAsync = ref.watch(savingsGoalsProvider);
-    final progress = ref.watch(savingsGoalProgressListProvider);
+    final detailsAsync = ref.watch(goalDetailsProvider);
+    final progress = ref.watch(goalProgressListProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Savings Goals')),
-      body: progressAsync.when(
+      body: detailsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => Center(
           child: Text(
@@ -68,8 +70,8 @@ class SavingsGoalsScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'No savings goals yet — tap + to set one, linked to any '
-                    'account you already have.',
+                    'No savings goals yet — tap + to set one, either fresh '
+                    'or by turning an account you already have into a goal.',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
@@ -88,7 +90,7 @@ class SavingsGoalsScreen extends ConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton(
         tooltip: 'New goal',
-        onPressed: () => _openGoalEditor(context),
+        onPressed: () => _openNewGoalChoice(context),
         child: const Icon(Icons.add),
       ),
     );
@@ -98,21 +100,22 @@ class SavingsGoalsScreen extends ConsumerWidget {
 class _GoalCard extends StatelessWidget {
   const _GoalCard({required this.progress});
 
-  final SavingsGoalProgress progress;
+  final GoalProgress progress;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final goal = progress.goal;
-    final color = Color(goal.colorValue);
-    final daysLeft = goal.targetDate?.difference(DateTime.now()).inDays;
+    final account = progress.account;
+    final detail = progress.detail;
+    final color = Color(account.colorValue);
+    final daysLeft = detail.targetDate?.difference(DateTime.now()).inDays;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Card(
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: () => context.push('/more/savings/${goal.id}'),
+          onTap: () => context.push('/more/savings/${account.id}'),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -128,31 +131,20 @@ class _GoalCard extends StatelessWidget {
                         color: color.withValues(alpha: 0.14),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(AppIcons.resolve(goal.iconKey), color: color),
+                      child: Icon(
+                        AppIcons.resolve(account.iconKey),
+                        color: color,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            goal.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          if (progress.account != null)
-                            Text(
-                              progress.account!.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                        ],
+                      child: Text(
+                        account.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                     if (progress.reached)
@@ -177,26 +169,31 @@ class _GoalCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                            text: MoneyFormat.symbol(progress.saved),
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
+                    Flexible(
+                      child: Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: MoneyFormat.symbol(progress.saved),
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
-                          ),
-                          TextSpan(
-                            text:
-                                ' of ${MoneyFormat.symbol(goal.targetAmount)}',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
+                            TextSpan(
+                              text:
+                                  ' of ${MoneyFormat.symbol(detail.targetAmount)}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    if (daysLeft != null)
+                    if (daysLeft != null) ...[
+                      const SizedBox(width: 8),
                       Text(
                         daysLeft >= 0 ? '$daysLeft days left' : 'Past due',
                         style: theme.textTheme.bodySmall?.copyWith(
@@ -205,6 +202,7 @@ class _GoalCard extends StatelessWidget {
                               : AppColors.expense,
                         ),
                       ),
+                    ],
                   ],
                 ),
               ],
@@ -216,7 +214,67 @@ class _GoalCard extends StatelessWidget {
   }
 }
 
-Future<void> _openGoalEditor(BuildContext context, {SavingsGoalRow? existing}) {
+enum _NewGoalChoice { fresh, fromAccount }
+
+/// The "+" FAB's first stop: a fresh goal, or an existing account turned
+/// into one. Skipped entirely when editing — only creation forks like this.
+Future<void> _openNewGoalChoice(BuildContext context) async {
+  final theme = Theme.of(context);
+  final choice = await showModalBottomSheet<_NewGoalChoice>(
+    context: context,
+    showDragHandle: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+    ),
+    builder: (sheetContext) => SafeArea(
+      top: false,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'New goal',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.add_circle_outline_rounded),
+            title: const Text('Start fresh'),
+            subtitle: const Text('A new goal, empty until you fund it.'),
+            onTap: () => Navigator.of(sheetContext).pop(_NewGoalChoice.fresh),
+          ),
+          ListTile(
+            leading: const Icon(Icons.savings_outlined),
+            title: const Text('Turn an account into a goal'),
+            subtitle: const Text(
+              'Move its balance in and set it aside for this.',
+            ),
+            onTap: () =>
+                Navigator.of(sheetContext).pop(_NewGoalChoice.fromAccount),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    ),
+  );
+  if (choice == null || !context.mounted) return;
+  await _openGoalEditor(
+    context,
+    fromExistingAccount: choice == _NewGoalChoice.fromAccount,
+  );
+}
+
+Future<void> _openGoalEditor(
+  BuildContext context, {
+  GoalProgress? existing,
+  bool fromExistingAccount = false,
+}) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -225,14 +283,18 @@ Future<void> _openGoalEditor(BuildContext context, {SavingsGoalRow? existing}) {
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
-    builder: (_) => _GoalEditorSheet(existing: existing),
+    builder: (_) => _GoalEditorSheet(
+      existing: existing,
+      fromExistingAccount: fromExistingAccount,
+    ),
   );
 }
 
 class _GoalEditorSheet extends ConsumerStatefulWidget {
-  const _GoalEditorSheet({this.existing});
+  const _GoalEditorSheet({this.existing, this.fromExistingAccount = false});
 
-  final SavingsGoalRow? existing;
+  final GoalProgress? existing;
+  final bool fromExistingAccount;
 
   @override
   ConsumerState<_GoalEditorSheet> createState() => _GoalEditorSheetState();
@@ -243,24 +305,26 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
   late final TextEditingController _amountController;
   late int _colorValue;
   late String _iconKey;
-  int? _accountId;
+  int? _sourceAccountId;
   DateTime? _targetDate;
   bool _submitting = false;
 
   bool get _isEdit => widget.existing != null;
+  bool get _fromExistingAccount => !_isEdit && widget.fromExistingAccount;
 
   @override
   void initState() {
     super.initState();
     final existing = widget.existing;
-    _nameController = TextEditingController(text: existing?.name ?? '');
+    _nameController = TextEditingController(text: existing?.account.name ?? '');
     _amountController = TextEditingController(
-      text: existing == null ? '' : MoneyFormat.bare(existing.targetAmount),
+      text: existing == null
+          ? ''
+          : MoneyFormat.bare(existing.detail.targetAmount),
     );
-    _colorValue = existing?.colorValue ?? _presetColors.first;
-    _iconKey = existing?.iconKey ?? _iconKeys.first;
-    _accountId = existing?.accountId;
-    _targetDate = existing?.targetDate;
+    _colorValue = existing?.account.colorValue ?? _presetColors.first;
+    _iconKey = existing?.account.iconKey ?? _iconKeys.first;
+    _targetDate = existing?.detail.targetDate;
   }
 
   @override
@@ -288,6 +352,17 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
     setState(() => _targetDate = picked);
   }
 
+  void _onSourceAccountChanged(int? id) {
+    setState(() {
+      _sourceAccountId = id;
+      // A convenience default, not a lock — the name field stays editable.
+      if (id != null && _nameController.text.trim().isEmpty) {
+        final account = ref.read(accountMapProvider)[id];
+        if (account != null) _nameController.text = account.name;
+      }
+    });
+  }
+
   Future<void> _save() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
@@ -299,36 +374,38 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
       _showError('Enter a target amount greater than zero.');
       return;
     }
-    if (_accountId == null) {
-      _showError('Pick the account this goal tracks.');
+    if (_fromExistingAccount && _sourceAccountId == null) {
+      _showError('Pick the account to turn into this goal.');
       return;
     }
 
     setState(() => _submitting = true);
     final db = ref.read(dbProvider);
+    final navigator = Navigator.of(context);
     try {
       if (_isEdit) {
-        await db.updateSavingsGoal(
-          id: widget.existing!.id,
+        await db.updateGoal(
+          accountId: widget.existing!.account.id,
           name: name,
           targetAmount: amount,
-          accountId: _accountId!,
           targetDate: _targetDate,
           colorValue: _colorValue,
           iconKey: _iconKey,
         );
       } else {
-        await db.addSavingsGoal(
+        final goalAccountId = await db.addGoal(
           name: name,
           targetAmount: amount,
-          accountId: _accountId!,
           targetDate: _targetDate,
           colorValue: _colorValue,
           iconKey: _iconKey,
         );
+        if (_fromExistingAccount && mounted) {
+          await _fundFromSourceAccount(db, goalAccountId);
+        }
       }
       if (!mounted) return;
-      Navigator.of(context).pop();
+      navigator.pop();
     } on ArgumentError catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
@@ -340,16 +417,83 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
     }
   }
 
+  /// The two follow-up prompts for "turn an account into a goal": sweep its
+  /// balance in, then optionally archive it. Both are opt-in — declining
+  /// either just leaves the new (empty) goal account and the source account
+  /// exactly as they were.
+  Future<void> _fundFromSourceAccount(AppDatabase db, int goalAccountId) async {
+    final sourceId = _sourceAccountId;
+    if (sourceId == null) return;
+    final source = ref.read(accountMapProvider)[sourceId];
+    if (source == null || !source.currentBalance.isPositive) return;
+
+    final move = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Move the balance in?'),
+        content: Text(
+          'Transfer ${MoneyFormat.symbol(source.currentBalance)} from '
+          '"${source.name}" into this goal now?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Not now'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Move it'),
+          ),
+        ],
+      ),
+    );
+    if (move == true) {
+      await db.addTransaction(
+        type: TxType.transfer,
+        accountId: sourceId,
+        toAccountId: goalAccountId,
+        amount: source.currentBalance,
+        date: DateTime.now(),
+      );
+    }
+    if (!mounted) return;
+
+    final archive = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Archive "${source.name}"?'),
+        content: const Text(
+          'It stays in your history — this only hides it from active '
+          "accounts, if you don't need it day-to-day anymore.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Keep it'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Archive'),
+          ),
+        ],
+      ),
+    );
+    if (archive == true) {
+      await db.archiveAccount(sourceId);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final accounts = ref.watch(accountsProvider).valueOrNull ?? const [];
 
     return Padding(
       padding: EdgeInsets.only(
         left: 20,
         right: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        bottom: MediaQuery.of(context).padding.bottom +
+            MediaQuery.of(context).viewInsets.bottom +
+            20,
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -357,12 +501,23 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              _isEdit ? 'Edit goal' : 'New savings goal',
+              _isEdit
+                  ? 'Edit goal'
+                  : _fromExistingAccount
+                  ? 'Turn an account into a goal'
+                  : 'New savings goal',
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 20),
+            if (_fromExistingAccount) ...[
+              _SourceAccountPicker(
+                selected: _sourceAccountId,
+                onChanged: _onSourceAccountChanged,
+              ),
+              const SizedBox(height: 16),
+            ],
             TextField(
               controller: _nameController,
               autofocus: !_isEdit,
@@ -380,27 +535,11 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Target amount',
-                prefixText: '₹ ',
+                prefixText: MoneyFormat.inputPrefix,
                 hintText: '0.00',
               ),
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<int>(
-              initialValue: accounts.any((a) => a.id == _accountId)
-                  ? _accountId
-                  : null,
-              isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Tracks this account',
-                helperText: "Progress is that account's live balance",
-              ),
-              items: [
-                for (final a in accounts)
-                  DropdownMenuItem(value: a.id, child: Text(a.name)),
-              ],
-              onChanged: (v) => setState(() => _accountId = v),
             ),
             const SizedBox(height: 16),
             OutlinedButton.icon(
@@ -514,8 +653,42 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
   }
 }
 
+/// Any balance-holding account that isn't already a goal — an instrument
+/// (debit card) holds no balance of its own so it's excluded the same way
+/// [balanceAccountsProvider] excludes it everywhere else.
+class _SourceAccountPicker extends ConsumerWidget {
+  const _SourceAccountPicker({required this.selected, required this.onChanged});
+
+  final int? selected;
+  final ValueChanged<int?> onChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final accounts = (ref.watch(balanceAccountsProvider).valueOrNull ?? const [])
+        .where((a) => a.type != AccountType.goal)
+        .toList();
+
+    return DropdownButtonFormField<int>(
+      initialValue: accounts.any((a) => a.id == selected) ? selected : null,
+      isExpanded: true,
+      decoration: const InputDecoration(
+        labelText: 'Account',
+        helperText: 'Its balance can be moved into the goal next.',
+      ),
+      items: [
+        for (final a in accounts)
+          DropdownMenuItem(
+            value: a.id,
+            child: Text('${a.name} · ${MoneyFormat.symbol(a.currentBalance)}'),
+          ),
+      ],
+      onChanged: onChanged,
+    );
+  }
+}
+
 /// Opens the editor for an existing goal — used by the detail screen's Edit
 /// action.
-void openSavingsGoalEditor(BuildContext context, SavingsGoalRow goal) {
-  _openGoalEditor(context, existing: goal);
+void openGoalEditor(BuildContext context, GoalProgress existing) {
+  _openGoalEditor(context, existing: existing);
 }

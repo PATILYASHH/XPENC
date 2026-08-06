@@ -20,6 +20,8 @@ import 'package:xpenc/features/more/more_screen.dart';
 import 'package:xpenc/features/onboarding/onboarding_screen.dart';
 import 'package:xpenc/features/reports/account_reports_screen.dart';
 import 'package:xpenc/features/reports/stats_screen.dart';
+import 'package:xpenc/features/savings/savings_goal_detail_screen.dart';
+import 'package:xpenc/features/savings/savings_goals_screen.dart';
 import 'package:xpenc/features/settings/settings_screen.dart';
 import 'package:xpenc/features/transactions/transaction_detail_screen.dart';
 
@@ -203,6 +205,65 @@ void main() {
       (tester) async {
     await pump(tester, const TransactionDetailScreen(transactionId: 999999));
     expect(tester.takeException(), isNull);
+    await unmount(tester);
+  });
+
+  testWidgets('Savings Goals renders empty', (tester) async {
+    await pump(tester, const SavingsGoalsScreen());
+    expect(tester.takeException(), isNull);
+    await unmount(tester);
+  });
+
+  testWidgets('Savings Goals renders a funded goal', (tester) async {
+    late int cash;
+    late int goalId;
+    await tester.runAsync(() async {
+      cash = (await db.watchAccounts().first)
+          .firstWhere((a) => a.type == AccountType.cash)
+          .id;
+      goalId = await db.addGoal(
+        name: 'New Bike',
+        targetAmount: Money.fromRupees(50000),
+        colorValue: 0xFF16A34A,
+        iconKey: 'travel',
+      );
+      await db.addTransaction(
+        type: TxType.transfer,
+        amount: Money.fromRupees(12000),
+        accountId: cash,
+        toAccountId: goalId,
+        date: DateTime.now(),
+      );
+    });
+    await pump(tester, const SavingsGoalsScreen());
+    expect(tester.takeException(), isNull);
+    expect(find.text('New Bike'), findsOneWidget);
+    await unmount(tester);
+  });
+
+  testWidgets('Goal detail renders and offers Add funds / Withdraw',
+      (tester) async {
+    late int goalId;
+    await tester.runAsync(() async {
+      goalId = await db.addGoal(
+        name: 'New Bike',
+        targetAmount: Money.fromRupees(50000),
+        colorValue: 0xFF16A34A,
+        iconKey: 'travel',
+      );
+    });
+    await pump(tester, SavingsGoalDetailScreen(goalId: goalId));
+    expect(tester.takeException(), isNull);
+    expect(find.text('Add funds'), findsOneWidget);
+    expect(find.text('Withdraw'), findsOneWidget);
+    await unmount(tester);
+  });
+
+  testWidgets('Goal detail: a missing goal shows an error, not a crash',
+      (tester) async {
+    await pump(tester, const SavingsGoalDetailScreen(goalId: 999999));
+    expect(tester.takeException(), isNull);
+    expect(find.text('Goal not found'), findsOneWidget);
     await unmount(tester);
   });
 

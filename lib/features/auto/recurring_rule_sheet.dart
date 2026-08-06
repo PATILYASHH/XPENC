@@ -25,8 +25,11 @@ Future<void> showRecurringRuleSheet(
   );
 }
 
-/// Create or edit an Auto rule — a fixed income or expense that posts itself
-/// on a schedule, with no confirmation step. See [AppDatabase.runDueRecurringRules].
+/// Create or edit an Auto rule — an income or expense that posts itself on a
+/// schedule, with no confirmation step. A rule marked "amount varies" still
+/// posts on schedule, using the entered amount as a placeholder, but flags
+/// the result via [Transactions.needsAmountReview] so the user is nudged to
+/// correct it. See [AppDatabase.runDueRecurringRules].
 class RecurringRuleSheet extends ConsumerStatefulWidget {
   const RecurringRuleSheet({this.existing, super.key});
 
@@ -40,6 +43,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
   final _nameController = TextEditingController();
   final _amountController = TextEditingController();
   final _payeeController = TextEditingController();
+  final _payeeFocus = FocusNode();
 
   CategoryKind _kind = CategoryKind.expense;
   int? _accountId;
@@ -47,6 +51,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
   RecurringFrequency _frequency = RecurringFrequency.monthly;
   late DateTime _dueDate;
   double _notifyDays = 3;
+  bool _isEstimate = false;
   bool _submitting = false;
 
   bool get _isEditing => widget.existing != null;
@@ -68,6 +73,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     _frequency = e.frequency;
     _dueDate = e.nextDueDate;
     _notifyDays = e.notifyDaysBefore.toDouble();
+    _isEstimate = e.isEstimate;
   }
 
   static String _bufferFromMoney(Money amount) {
@@ -83,6 +89,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     _nameController.dispose();
     _amountController.dispose();
     _payeeController.dispose();
+    _payeeFocus.dispose();
     super.dispose();
   }
 
@@ -130,7 +137,9 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     final navigator = Navigator.of(context);
     try {
       if (_isEditing) {
-        await ref.read(dbProvider).updateRecurringRule(
+        await ref
+            .read(dbProvider)
+            .updateRecurringRule(
               id: widget.existing!.id,
               name: name,
               kind: _kind,
@@ -141,9 +150,12 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               frequency: _frequency,
               nextDueDate: _dueDate,
               notifyDaysBefore: _notifyDays.round(),
+              isEstimate: _isEstimate,
             );
       } else {
-        await ref.read(dbProvider).addRecurringRule(
+        await ref
+            .read(dbProvider)
+            .addRecurringRule(
               name: name,
               kind: _kind,
               amount: amount,
@@ -153,6 +165,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               frequency: _frequency,
               startsOn: _dueDate,
               notifyDaysBefore: _notifyDays.round(),
+              isEstimate: _isEstimate,
             );
       }
     } on ArgumentError catch (e) {
@@ -174,7 +187,8 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final accounts = ref.watch(accountsProvider).valueOrNull ?? const [];
-    final categories = ref.watch(categoriesProvider(_kind)).valueOrNull ?? const [];
+    final categories =
+        ref.watch(categoriesProvider(_kind)).valueOrNull ?? const [];
     final categoryMap = ref.watch(categoryMapProvider);
 
     // The chosen category may no longer match the kind after toggling —
@@ -190,7 +204,10 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
         left: 20,
         right: 20,
         top: 8,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        bottom:
+            MediaQuery.of(context).padding.bottom +
+            MediaQuery.of(context).viewInsets.bottom +
+            20,
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -199,13 +216,21 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
           children: [
             Text(
               _isEditing ? 'Edit auto rule' : 'New auto rule',
-              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
             const SizedBox(height: 20),
             SegmentedButton<CategoryKind>(
               segments: const [
-                ButtonSegment(value: CategoryKind.expense, label: Text('Expense')),
-                ButtonSegment(value: CategoryKind.income, label: Text('Income')),
+                ButtonSegment(
+                  value: CategoryKind.expense,
+                  label: Text('Expense'),
+                ),
+                ButtonSegment(
+                  value: CategoryKind.income,
+                  label: Text('Income'),
+                ),
               ],
               selected: {_kind},
               showSelectedIcon: false,
@@ -218,19 +243,40 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               textCapitalization: TextCapitalization.words,
               decoration: InputDecoration(
                 labelText: 'Name',
-                hintText:
-                    _kind == CategoryKind.expense ? 'e.g. Netflix, Rent' : 'e.g. Salary',
+                hintText: _kind == CategoryKind.expense
+                    ? 'e.g. Netflix, Rent'
+                    : 'e.g. Salary',
               ),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _amountController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: theme.textTheme.titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w700, fontFeatures: kTabularFigures),
-              decoration: const InputDecoration(labelText: 'Amount', prefixText: '₹ '),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+                fontFeatures: kTabularFigures,
+              ),
+              decoration: InputDecoration(
+                labelText: _isEstimate ? 'Usual amount' : 'Amount',
+                prefixText: MoneyFormat.inputPrefix,
+                helperText: _isEstimate
+                    ? "You'll be nudged to confirm the exact figure each "
+                          'time it posts.'
+                    : null,
+              ),
             ),
-            const SizedBox(height: 16),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Amount varies each time'),
+              subtitle: const Text(
+                'For a salary or bill that changes, e.g. by hours worked.',
+              ),
+              value: _isEstimate,
+              onChanged: (v) => setState(() => _isEstimate = v),
+            ),
+            const SizedBox(height: 4),
             DropdownButtonFormField<int>(
               initialValue: _accountId,
               isExpanded: true,
@@ -243,7 +289,9 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<int>(
-              initialValue: categories.any((c) => c.id == _categoryId) ? _categoryId : null,
+              initialValue: categories.any((c) => c.id == _categoryId)
+                  ? _categoryId
+                  : null,
               isExpanded: true,
               decoration: const InputDecoration(labelText: 'Category'),
               items: [
@@ -260,22 +308,43 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               _payeeField(theme),
             ],
             const SizedBox(height: 20),
-            SegmentedButton<RecurringFrequency>(
-              segments: const [
-                ButtonSegment(value: RecurringFrequency.daily, label: Text('Daily')),
-                ButtonSegment(value: RecurringFrequency.weekly, label: Text('Weekly')),
-                ButtonSegment(value: RecurringFrequency.monthly, label: Text('Monthly')),
-              ],
-              selected: {_frequency},
-              showSelectedIcon: false,
-              onSelectionChanged: (s) => setState(() => _frequency = s.first),
+            // Four segments can outgrow a narrow phone or a larger system
+            // font scale — scroll rather than let it overflow (GitHub #14).
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SegmentedButton<RecurringFrequency>(
+                segments: const [
+                  ButtonSegment(
+                    value: RecurringFrequency.daily,
+                    label: Text('Daily'),
+                  ),
+                  ButtonSegment(
+                    value: RecurringFrequency.weekly,
+                    label: Text('Weekly'),
+                  ),
+                  ButtonSegment(
+                    value: RecurringFrequency.biweekly,
+                    label: Text('2 weeks'),
+                  ),
+                  ButtonSegment(
+                    value: RecurringFrequency.monthly,
+                    label: Text('Monthly'),
+                  ),
+                ],
+                selected: {_frequency},
+                showSelectedIcon: false,
+                onSelectionChanged: (s) => setState(() => _frequency = s.first),
+              ),
             ),
             const SizedBox(height: 16),
             InkWell(
               onTap: _pickDate,
               borderRadius: BorderRadius.circular(16),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 4,
+                ),
                 child: Row(
                   children: [
                     Icon(Icons.event_rounded, color: cs.onSurfaceVariant),
@@ -286,8 +355,9 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
                         children: [
                           Text(
                             _isEditing ? 'Next due date' : 'Starts on',
-                            style: theme.textTheme.bodySmall
-                                ?.copyWith(color: cs.onSurfaceVariant),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
                           ),
                           const SizedBox(height: 2),
                           Text(
@@ -297,7 +367,10 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
                         ],
                       ),
                     ),
-                    Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: cs.onSurfaceVariant,
+                    ),
                   ],
                 ),
               ),
@@ -306,7 +379,9 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               Text(
                 'A shorter month snaps to its last day, then returns to the '
                 '${_dueDate.day}${_ordinalSuffix(_dueDate.day)} once it exists again.',
-                style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
               ),
             const SizedBox(height: 16),
             Text(
@@ -343,6 +418,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     final suggestions = ref.watch(payeeSuggestionsProvider);
     return Autocomplete<String>(
       textEditingController: _payeeController,
+      focusNode: _payeeFocus,
       optionsBuilder: (value) {
         final q = value.text.trim().toLowerCase();
         if (q.isEmpty) return const Iterable<String>.empty();
