@@ -176,7 +176,10 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
       padding: EdgeInsets.only(
         left: 20,
         right: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        bottom:
+            MediaQuery.of(context).padding.bottom +
+            MediaQuery.of(context).viewInsets.bottom +
+            20,
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -204,32 +207,44 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
 
             _fieldLabel(theme, 'Type'),
             const SizedBox(height: 8),
-            SegmentedButton<AccountType>(
-              segments: const [
-                ButtonSegment(value: AccountType.cash, label: Text('Cash')),
-                ButtonSegment(value: AccountType.bank, label: Text('Bank')),
-                ButtonSegment(value: AccountType.card, label: Text('Card')),
-                ButtonSegment(
-                  value: AccountType.payLater,
-                  label: Text('Pay later'),
-                ),
-                ButtonSegment(
-                  value: AccountType.prepaidBalance,
-                  label: Text('Prepaid'),
-                ),
-              ],
-              selected: {_type},
-              showSelectedIcon: false,
-              onSelectionChanged: (s) => setState(() {
-                _type = s.first;
-                _iconKey = switch (_type) {
-                  AccountType.cash => 'cash',
-                  AccountType.bank => 'bank',
-                  AccountType.card => 'card',
-                  AccountType.payLater => 'pay_later',
-                  AccountType.prepaidBalance => 'prepaid_balance',
-                };
-              }),
+            // Five segments is too many to guarantee a fit — a narrow phone
+            // or a larger system font scale pushes "Prepaid" straight past
+            // the sheet's edge instead of wrapping (GitHub #14). Scrolling
+            // is Flutter's own recommended fallback for a SegmentedButton
+            // that doesn't fit; it's a no-op whenever everything already
+            // fits at the default text scale.
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SegmentedButton<AccountType>(
+                segments: const [
+                  ButtonSegment(value: AccountType.cash, label: Text('Cash')),
+                  ButtonSegment(value: AccountType.bank, label: Text('Bank')),
+                  ButtonSegment(value: AccountType.card, label: Text('Card')),
+                  ButtonSegment(
+                    value: AccountType.payLater,
+                    label: Text('Pay later'),
+                  ),
+                  ButtonSegment(
+                    value: AccountType.prepaidBalance,
+                    label: Text('Prepaid'),
+                  ),
+                ],
+                selected: {_type},
+                showSelectedIcon: false,
+                onSelectionChanged: (s) => setState(() {
+                  _type = s.first;
+                  _iconKey = switch (_type) {
+                    AccountType.cash => 'cash',
+                    AccountType.bank => 'bank',
+                    AccountType.card => 'card',
+                    AccountType.payLater => 'pay_later',
+                    AccountType.prepaidBalance => 'prepaid_balance',
+                    // Not a selectable segment here — a goal is only ever
+                    // created from the Goals hub. Exhaustiveness only.
+                    AccountType.goal => 'savings',
+                  };
+                }),
+              ),
             ),
             const SizedBox(height: 20),
 
@@ -339,6 +354,11 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
           _amountField(label: 'Starting balance'),
           const SizedBox(height: 20),
         ];
+
+      // Not a selectable segment here — a goal is only ever created from
+      // the Goals hub. Exhaustiveness only.
+      case AccountType.goal:
+        return const [];
     }
   }
 
@@ -399,7 +419,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
       decoration: InputDecoration(
         labelText: label,
-        prefixText: '₹ ',
+        prefixText: MoneyFormat.inputPrefix,
         hintText: '0.00',
       ),
     );

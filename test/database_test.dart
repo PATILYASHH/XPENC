@@ -354,6 +354,197 @@ void main() {
     });
   });
 
+  group('savings goals — a goal is a real account', () {
+    test('addGoal starts at zero and counts toward net worth once funded',
+        () async {
+      final goalId = await db.addGoal(
+        name: 'New Bike',
+        targetAmount: Money.fromRupees(50000),
+        colorValue: 0,
+        iconKey: 'savings',
+      );
+
+      expect(await balanceOf(goalId), const Money.zero());
+
+      final cash = await cashId();
+      await db.addTransaction(
+        type: TxType.income,
+        amount: Money.fromRupees(10000),
+        accountId: cash,
+        categoryId: await incomeCategory('Salary'),
+        date: DateTime(2026, 7, 1),
+      );
+      await db.addTransaction(
+        type: TxType.transfer,
+        amount: Money.fromRupees(3000),
+        accountId: cash,
+        toAccountId: goalId,
+        date: DateTime(2026, 7, 2),
+      );
+
+      expect(await balanceOf(goalId), Money.fromRupees(3000));
+      expect(
+        await netWorth(),
+        Money.fromRupees(10000),
+        reason: 'funding a goal is a transfer between own accounts — net '
+            'worth is unchanged, same as any other account-to-account move',
+      );
+    });
+
+    test('withdrawing moves money back out, exactly like any transfer',
+        () async {
+      final cash = await cashId();
+      final goalId = await db.addGoal(
+        name: 'New Bike',
+        targetAmount: Money.fromRupees(50000),
+        colorValue: 0,
+        iconKey: 'savings',
+      );
+      await db.addTransaction(
+        type: TxType.transfer,
+        amount: Money.fromRupees(3000),
+        accountId: cash,
+        toAccountId: goalId,
+        date: DateTime(2026, 7, 2),
+      );
+
+      await db.addTransaction(
+        type: TxType.transfer,
+        amount: Money.fromRupees(1000),
+        accountId: goalId,
+        toAccountId: cash,
+        date: DateTime(2026, 7, 10),
+      );
+
+      expect(await balanceOf(goalId), Money.fromRupees(2000));
+    });
+
+    test('updateGoal changes its target, never its balance', () async {
+      final cash = await cashId();
+      final goalId = await db.addGoal(
+        name: 'New Bike',
+        targetAmount: Money.fromRupees(50000),
+        colorValue: 0,
+        iconKey: 'savings',
+      );
+      await db.addTransaction(
+        type: TxType.transfer,
+        amount: Money.fromRupees(3000),
+        accountId: cash,
+        toAccountId: goalId,
+        date: DateTime(2026, 7, 2),
+      );
+
+      await db.updateGoal(
+        accountId: goalId,
+        name: 'Electric Bike',
+        targetAmount: Money.fromRupees(80000),
+        colorValue: 0xFF0000FF,
+        iconKey: 'travel',
+      );
+
+      final detail = await db.watchGoalDetail(goalId).first;
+      expect(detail!.targetAmount, Money.fromRupees(80000));
+      expect(await balanceOf(goalId), Money.fromRupees(3000),
+          reason: 'only a transfer ever changes what a goal holds');
+    });
+
+    test('deleteAccount removes an empty goal and its GoalDetails row',
+        () async {
+      final goalId = await db.addGoal(
+        name: 'New Bike',
+        targetAmount: Money.fromRupees(50000),
+        colorValue: 0,
+        iconKey: 'savings',
+      );
+
+      await db.deleteAccount(goalId);
+
+      expect(await db.watchGoalDetail(goalId).first, isNull);
+      expect(await db.watchGoalDetails().first, isEmpty);
+    });
+
+    test('deleteAccount refuses a goal that has ever been funded', () async {
+      final cash = await cashId();
+      final goalId = await db.addGoal(
+        name: 'New Bike',
+        targetAmount: Money.fromRupees(50000),
+        colorValue: 0,
+        iconKey: 'savings',
+      );
+      await db.addTransaction(
+        type: TxType.transfer,
+        amount: Money.fromRupees(3000),
+        accountId: cash,
+        toAccountId: goalId,
+        date: DateTime(2026, 7, 2),
+      );
+
+      expect(() => db.deleteAccount(goalId), throwsArgumentError);
+    });
+
+    test(
+        'migrateSavingsGoalsToGoalAccounts turns an old goal row into a '
+        'funded goal account, and recalculateBalances does not zero it out',
+        () async {
+      final bank = await db.addAccount(
+        name: 'IPPB',
+        type: AccountType.bank,
+        colorValue: 0,
+        iconKey: 'bank',
+        openingBalance: Money.fromRupees(12000),
+      );
+
+      // Hand-seed the pre-v21 shape — the whole point of this migration is
+      // that the SavingsGoals Dart table no longer exists to insert through.
+      await db.customStatement('''
+        CREATE TABLE savings_goals (
+          id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          target_amount INTEGER NOT NULL,
+          target_date INTEGER NULL,
+          account_id INTEGER NOT NULL,
+          color_value INTEGER NOT NULL,
+          icon_key TEXT NOT NULL,
+          is_archived INTEGER NOT NULL DEFAULT 0,
+          created_at INTEGER NOT NULL DEFAULT 0
+        )
+      ''');
+      await db.customStatement(
+        'INSERT INTO savings_goals (name, target_amount, account_id, '
+        'color_value, icon_key, created_at) VALUES '
+        "('Emergency Fund', 100000, ?, 255, 'savings', 1751328000)",
+        [bank],
+      );
+
+      await db.migrateSavingsGoalsToGoalAccounts();
+
+      final goals = await db.watchGoalDetails().first;
+      expect(goals, hasLength(1));
+      final goalAccountId = goals.single.accountId;
+      final goalAccount = (await db.watchAccounts().first)
+          .firstWhere((a) => a.id == goalAccountId);
+
+      expect(goalAccount.name, 'Emergency Fund');
+      expect(goalAccount.type, AccountType.goal);
+      expect(goalAccount.currentBalance, Money.fromRupees(12000),
+          reason: "seeded from the bank account's balance at migration time");
+      expect(goals.single.targetAmount, Money.fromRupees(1000));
+
+      // The bug this guards: seeding only currentBalance (not
+      // openingBalance too) would make this rebuild to zero, since the
+      // migrated goal has no real transaction backing that balance.
+      await db.recalculateBalances();
+      expect(await balanceOf(goalAccountId), Money.fromRupees(12000));
+
+      // The old table is really gone, not just emptied.
+      expect(
+        () => db.customSelect('SELECT * FROM savings_goals').get(),
+        throwsA(anything),
+      );
+    });
+  });
+
   group('deleteAccount — permanent, so it is guarded', () {
     test('removes an account nothing has touched', () async {
       final bank = await db.addAccount(
@@ -610,6 +801,81 @@ void main() {
       await db.runDueRecurringRules(now: today);
       final rule = (await db.watchRecurringRules().first).single;
       expect(rule.nextDueDate, start.add(const Duration(days: 7)));
+    });
+
+    test('biweekly rule advances by exactly 14 days', () async {
+      final cash = await cashId();
+      final food = await expenseCategory('Food');
+      final start = DateTime(2026, 7, 6);
+
+      await db.addRecurringRule(
+        name: 'Loan repayment',
+        kind: CategoryKind.expense,
+        amount: Money.fromRupees(500),
+        accountId: cash,
+        categoryId: food,
+        frequency: RecurringFrequency.biweekly,
+        startsOn: start,
+      );
+
+      await db.runDueRecurringRules(now: start);
+      final rule = (await db.watchRecurringRules().first).single;
+      expect(rule.nextDueDate, start.add(const Duration(days: 14)));
+    });
+
+    test('an estimate rule flags its posted transaction for review',
+        () async {
+      final cash = await cashId();
+      final salary = await incomeCategory('Salary');
+      final today = DateTime(2026, 7, 1);
+
+      await db.addRecurringRule(
+        name: 'Salary',
+        kind: CategoryKind.income,
+        amount: Money.fromRupees(50000),
+        accountId: cash,
+        categoryId: salary,
+        frequency: RecurringFrequency.monthly,
+        startsOn: today,
+        isEstimate: true,
+      );
+
+      await db.runDueRecurringRules(now: today);
+      final tx = (await db.watchTransactions().first).single;
+      expect(tx.needsAmountReview, isTrue);
+
+      // Editing and saving is the confirmation — the flag clears even if the
+      // user keeps the same amount.
+      await db.updateTransaction(
+        id: tx.id,
+        type: tx.type,
+        amount: tx.amount,
+        accountId: tx.accountId,
+        categoryId: tx.categoryId,
+        date: tx.date,
+      );
+      final updated = (await db.watchTransactions().first).single;
+      expect(updated.needsAmountReview, isFalse);
+    });
+
+    test('a fixed-amount rule never flags its posted transaction', () async {
+      final cash = await cashId();
+      final salary = await incomeCategory('Salary');
+      final today = DateTime(2026, 7, 1);
+
+      await db.addRecurringRule(
+        name: 'Salary',
+        kind: CategoryKind.income,
+        amount: Money.fromRupees(50000),
+        accountId: cash,
+        categoryId: salary,
+        frequency: RecurringFrequency.monthly,
+        startsOn: today,
+      );
+
+      await db.runDueRecurringRules(now: today);
+      final tx = (await db.watchTransactions().first).single;
+      expect(tx.needsAmountReview, isFalse);
     });
 
     test('monthly rule snaps to month-end, then returns to the target day',

@@ -712,6 +712,19 @@ class _TxCard extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 4),
                               ],
+                              if (tx.needsAmountReview) ...[
+                                Tooltip(
+                                  message:
+                                      'Posted from an estimate — tap to '
+                                      'confirm the exact amount.',
+                                  child: Icon(
+                                    Icons.error_outline_rounded,
+                                    size: 13,
+                                    color: AppColors.expense,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                              ],
                               Flexible(
                                 child: Text(
                                   title,

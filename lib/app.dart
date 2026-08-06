@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -5,6 +7,7 @@ import 'core/branding/app_info.dart';
 import 'core/branding/brand_mark.dart';
 import 'core/money.dart';
 import 'core/routing/app_router.dart';
+import 'core/security/screen_security.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/error_view.dart';
 import 'core/widgets/money_text.dart';
@@ -173,6 +176,10 @@ class _XpencAppState extends ConsumerState<XpencApp>
     final currency = ref.watch(currencyProvider);
     final showSymbol = ref.watch(showCurrencySymbolProvider);
     MoneyFormat.configure(currency: currency, showSymbol: showSymbol);
+
+    // Fire-and-forget: a platform-channel call, not something the frame
+    // waits on. ScreenSecurity itself no-ops if nothing actually changed.
+    unawaited(ScreenSecurity.apply(ref.watch(preventScreenshotsProvider)));
 
     return MaterialApp.router(
       title: AppInfo.name,

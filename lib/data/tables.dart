@@ -18,7 +18,11 @@ import '../core/money.dart';
 /// exactly like [cash] or [bank]. It gets its own type only so it can carry
 /// its own icon/label; every balance and net-worth code path treats it
 /// identically to [cash]/[bank] with no special-casing.
-enum AccountType { cash, bank, card, payLater, prepaidBalance }
+///
+/// [goal] is a savings target that holds its own real balance, exactly like
+/// [prepaidBalance] — see [GoalDetails]. Funded and drawn down only by a
+/// [TxType.transfer] to/from another account, same as every other account.
+enum AccountType { cash, bank, card, payLater, prepaidBalance, goal }
 
 /// A credit card is its own (liability) account. A debit card is an instrument
 /// linked to a bank — it never holds its own balance.
@@ -71,12 +75,12 @@ enum PendingStatus { pending, autoFilled, approved, dismissed, duplicate }
 /// Which budget alert already fired this period, so we never spam.
 enum AlertLevel { threshold, overspent }
 
-/// How often a recurring rule fires. Weekly/monthly need no separate
+/// How often a recurring rule fires. Daily/weekly/biweekly need no separate
 /// "which day" field — the day is implied by whatever date the rule's
 /// `nextDueDate` already carries; only monthly additionally pins
 /// [RecurringRules.dayOfMonth] so a short month can snap back to the
 /// intended day the following month instead of drifting.
-enum RecurringFrequency { daily, weekly, monthly }
+enum RecurringFrequency { daily, weekly, biweekly, monthly }
 
 /// How often automatic backups run. `custom` ignores the fixed cadences and
 /// uses [Settings.autoBackupCustomDays] + [Settings.autoBackupCustomHours]
@@ -194,6 +198,14 @@ class Transactions extends Table {
 
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+
+  /// Set when [AppDatabase.runDueRecurringRules] posts this from a rule whose
+  /// [RecurringRules.isEstimate] is true — the amount is a placeholder, not
+  /// what actually happened (e.g. a salary that varies month to month).
+  /// Cleared the moment the user edits and saves the transaction, by which
+  /// point they've either confirmed or corrected the real figure.
+  BoolColumn get needsAmountReview =>
+      boolean().withDefault(const Constant(false))();
 }
 
 @DataClassName('BudgetRow')
@@ -320,6 +332,15 @@ class RecurringRules extends Table {
 
   IntColumn get notifyDaysBefore => integer().withDefault(const Constant(3))();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+
+  /// True for a rule whose amount isn't really fixed — a salary that depends
+  /// on hours worked, production, etc. [amount] still seeds every posted
+  /// occurrence (so there's always a number in the ledger the moment it's
+  /// due), but that transaction comes out flagged via
+  /// [Transactions.needsAmountReview] so the user is nudged to correct it to
+  /// what actually landed.
+  BoolColumn get isEstimate => boolean().withDefault(const Constant(false))();
+
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
@@ -410,6 +431,13 @@ class Settings extends Table {
   /// could delete a backup before the next one exists to replace it.
   IntColumn get backupRetentionDays =>
       integer().withDefault(const Constant(180))();
+
+  /// Blocks screenshots and hides XPENC from the recent-apps thumbnail —
+  /// applied natively as `FLAG_SECURE` on the Android window (see
+  /// `ScreenSecurity`). Off by default: it's a privacy trade-off (no
+  /// screenshotting a statement to share it) the user opts into.
+  BoolColumn get preventScreenshots =>
+      boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -548,22 +576,23 @@ class ShoppingItems extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
-/// A savings target linked to a real account. Progress is never a separate
-/// number to keep in sync — it's read live from the linked account's balance,
-/// so "contributing" is just an ordinary transfer or deposit into that
-/// account through the normal Add Transaction flow. No parallel ledger, no
-/// double-counting, nothing that can drift from the real money.
-@DataClassName('SavingsGoalRow')
-class SavingsGoals extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  TextColumn get name => text().withLength(min: 1, max: 60)();
+/// The target/deadline for a [AccountType.goal] account — one row per goal
+/// account, [accountId] doubling as this table's own primary key. Everything
+/// else a goal needs (name, colour, icon, balance, archived) already lives on
+/// its [Accounts] row, so it isn't duplicated here.
+///
+/// "Contributing" is an ordinary [TxType.transfer] into the goal account
+/// through the normal Add Transaction flow (or the goal screen's own Add
+/// funds / Withdraw shortcut) — no parallel ledger, nothing that can drift
+/// from the real money.
+@DataClassName('GoalDetailRow')
+class GoalDetails extends Table {
+  IntColumn get accountId => integer().references(Accounts, #id)();
   IntColumn get targetAmount => integer().map(const MoneyConverter())();
   DateTimeColumn get targetDate => dateTime().nullable()();
-  IntColumn get accountId => integer().references(Accounts, #id)();
-  IntColumn get colorValue => integer()();
-  TextColumn get iconKey => text().withLength(min: 1, max: 40)();
-  BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {accountId};
 }
 
 /// One category's slice of a split expense. A transaction with 2+ rows here
