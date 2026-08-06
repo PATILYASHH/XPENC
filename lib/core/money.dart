@@ -128,6 +128,10 @@ class MoneyFormat {
     final sign = m.isNegative ? '-' : '+';
     return '$sign${symbol(m.abs)}';
   }
+
+  /// `₹ ` — for an amount [TextField]'s `prefixText`. Empty when the symbol
+  /// is hidden, so the field never shows a stale currency the user turned off.
+  static String get inputPrefix => _showSymbol ? '${_currency.symbol} ' : '';
 }
 
 /// Amounts must render with tabular figures so columns of numbers line up.

@@ -284,7 +284,10 @@ class _TagEditorSheetState extends ConsumerState<_TagEditorSheet> {
       padding: EdgeInsets.only(
         left: 20,
         right: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        bottom:
+            MediaQuery.of(context).padding.bottom +
+            MediaQuery.of(context).viewInsets.bottom +
+            20,
       ),
       child: SingleChildScrollView(
         child: Column(

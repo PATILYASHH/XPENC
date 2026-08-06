@@ -365,58 +365,61 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
-      builder: (sheetContext) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Image.file(
-                File(path),
-                height: 220,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => Container(
+      builder: (sheetContext) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.file(
+                  File(path),
                   height: 220,
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  child: Icon(
-                    Icons.broken_image_outlined,
-                    color: theme.colorScheme.onSurfaceVariant,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Container(
+                    height: 220,
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    child: Icon(
+                      Icons.broken_image_outlined,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.of(sheetContext).pop();
-                      _pickReceipt();
-                    },
-                    icon: const Icon(Icons.swap_horiz_rounded),
-                    label: const Text('Replace'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.expense,
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.of(sheetContext).pop();
+                        _pickReceipt();
+                      },
+                      icon: const Icon(Icons.swap_horiz_rounded),
+                      label: const Text('Replace'),
                     ),
-                    onPressed: () {
-                      Navigator.of(sheetContext).pop();
-                      _removeReceipt();
-                    },
-                    icon: const Icon(Icons.delete_outline),
-                    label: const Text('Remove'),
                   ),
-                ),
-              ],
-            ),
-          ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.expense,
+                      ),
+                      onPressed: () {
+                        Navigator.of(sheetContext).pop();
+                        _removeReceipt();
+                      },
+                      icon: const Icon(Icons.delete_outline),
+                      label: const Text('Remove'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -567,9 +570,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             inputFormatters: [
               FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
             ],
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               isDense: true,
-              prefixText: '₹ ',
+              prefixText: MoneyFormat.inputPrefix,
               hintText: '0.00',
             ),
             onChanged: (_) => setState(() {}),

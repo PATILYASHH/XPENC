@@ -324,13 +324,13 @@ Future<void> _confirmArchive(
 
   final usage = count > 0
       ? '$count transactions use this category. They keep it — '
-          'archiving only hides the category from new entries. '
-          'Nothing is deleted.'
+            'archiving only hides the category from new entries. '
+            'Nothing is deleted.'
       : "This category isn't used yet. It will be hidden from new "
-          'entries.';
+            'entries.';
   final cascade = childCount > 0
       ? '\n\nIts $childCount ${childCount == 1 ? 'subcategory' : 'subcategories'} '
-          'will be archived too.'
+            'will be archived too.'
       : '';
 
   final confirmed = await showDialog<bool>(
@@ -354,9 +354,7 @@ Future<void> _confirmArchive(
   if (confirmed != true) return;
 
   await db.archiveCategory(category.id);
-  messenger.showSnackBar(
-    const SnackBar(content: Text('Category archived')),
-  );
+  messenger.showSnackBar(const SnackBar(content: Text('Category archived')));
 }
 
 /// Create or edit a category: name, parent, colour, icon.
@@ -457,7 +455,10 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
       padding: EdgeInsets.only(
         left: 20,
         right: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        bottom:
+            MediaQuery.of(context).padding.bottom +
+            MediaQuery.of(context).viewInsets.bottom +
+            20,
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -466,8 +467,9 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
           children: [
             Text(
               _isEdit ? 'Edit category' : 'New category',
-              style: theme.textTheme.headlineSmall
-                  ?.copyWith(fontWeight: FontWeight.w700),
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
             const SizedBox(height: 20),
             TextField(
@@ -527,10 +529,8 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
     final hasChildren =
         editingId != null && all.any((c) => c.parentId == editingId);
 
-    Widget wrap(Widget child) => Padding(
-          padding: const EdgeInsets.only(bottom: 20),
-          child: child,
-        );
+    Widget wrap(Widget child) =>
+        Padding(padding: const EdgeInsets.only(bottom: 20), child: child);
 
     if (hasChildren) {
       return wrap(
@@ -553,7 +553,9 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
         .toList();
     final ids = {for (final p in parents) p.id};
     // Guard the dropdown's contract that its value matches one of its items.
-    final value = _parentId != null && ids.contains(_parentId) ? _parentId : null;
+    final value = _parentId != null && ids.contains(_parentId)
+        ? _parentId
+        : null;
 
     return wrap(
       DropdownButtonFormField<int?>(
@@ -634,7 +636,9 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
         height: 52,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? color.withValues(alpha: 0.15) : theme.colorScheme.surface,
+          color: selected
+              ? color.withValues(alpha: 0.15)
+              : theme.colorScheme.surface,
           shape: BoxShape.circle,
           border: Border.all(
             color: selected ? color : theme.colorScheme.outline,

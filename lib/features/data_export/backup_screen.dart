@@ -129,7 +129,9 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
       if (!mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(const SnackBar(content: Text("Couldn't read that file.")));
+        ..showSnackBar(
+          const SnackBar(content: Text("Couldn't read that file.")),
+        );
       return;
     }
 
@@ -171,19 +173,25 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
         ..hideCurrentSnackBar()
         ..showSnackBar(
           const SnackBar(
-            content: Text('Imported. A safety copy of your previous data was saved.'),
+            content: Text(
+              'Imported. A safety copy of your previous data was saved.',
+            ),
           ),
         );
     } on ArgumentError catch (e) {
       if (!mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text('${e.message} Nothing was changed.')));
+        ..showSnackBar(
+          SnackBar(content: Text('${e.message} Nothing was changed.')),
+        );
     } catch (e) {
       if (!mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text("Couldn't import: $e Nothing was changed.")));
+        ..showSnackBar(
+          SnackBar(content: Text("Couldn't import: $e Nothing was changed.")),
+        );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -229,19 +237,25 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
         ..hideCurrentSnackBar()
         ..showSnackBar(
           const SnackBar(
-            content: Text('Restored. A safety copy of your previous data was saved.'),
+            content: Text(
+              'Restored. A safety copy of your previous data was saved.',
+            ),
           ),
         );
     } on ArgumentError catch (e) {
       if (!mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text('${e.message} Nothing was changed.')));
+        ..showSnackBar(
+          SnackBar(content: Text('${e.message} Nothing was changed.')),
+        );
     } catch (e) {
       if (!mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text("Couldn't restore: $e Nothing was changed.")));
+        ..showSnackBar(
+          SnackBar(content: Text("Couldn't restore: $e Nothing was changed.")),
+        );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -351,19 +365,31 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          Text('Automatic backups', style: theme.textTheme.titleSmall?.copyWith(color: cs.onSurfaceVariant)),
+          Text(
+            'Automatic backups',
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: 12),
           Card(
             child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 4,
+              ),
               leading: Icon(
-                autoBackup.enabled ? Icons.schedule_outlined : Icons.schedule_outlined,
+                autoBackup.enabled
+                    ? Icons.schedule_outlined
+                    : Icons.schedule_outlined,
                 color: autoBackup.enabled ? cs.primary : cs.onSurfaceVariant,
               ),
               title: const Text('Automatic backups'),
               subtitle: Text(
                 _autoBackupSummary(autoBackup),
-                style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
               ),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => _openAutoBackupSheet(context, autoBackup),
@@ -375,7 +401,9 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
               Expanded(
                 child: Text(
                   'Backups',
-                  style: theme.textTheme.titleSmall?.copyWith(color: cs.onSurfaceVariant),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
                 ),
               ),
               TextButton.icon(
@@ -390,7 +418,8 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
               padding: EdgeInsets.symmetric(vertical: 40),
               child: Center(child: CircularProgressIndicator()),
             ),
-            error: (_, _) => const InlineErrorView(message: "Couldn't load backups"),
+            error: (_, _) =>
+                const InlineErrorView(message: "Couldn't load backups"),
             data: (backups) {
               if (backups.isEmpty) {
                 return Padding(
@@ -399,7 +428,9 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
                     'No backups yet. If you reinstalled and had backups '
                     'before, tap "Find existing" above.',
                     textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
                   ),
                 );
               }
@@ -429,7 +460,9 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
       AutoBackupFrequency.custom =>
         'Every ${_intervalLabel(s.customDays, s.customHours)}',
     };
-    final keep = s.retentionDays == 0 ? 'kept forever' : 'kept for ${_daysLabel(s.retentionDays)}';
+    final keep = s.retentionDays == 0
+        ? 'kept forever'
+        : 'kept for ${_daysLabel(s.retentionDays)}';
     return '$freq · $keep';
   }
 
@@ -514,7 +547,9 @@ class _BackupTile extends StatelessWidget {
                     subtitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -555,10 +590,12 @@ class _AutoBackupSettingsSheet extends ConsumerStatefulWidget {
   final AutoBackupSettings current;
 
   @override
-  ConsumerState<_AutoBackupSettingsSheet> createState() => _AutoBackupSettingsSheetState();
+  ConsumerState<_AutoBackupSettingsSheet> createState() =>
+      _AutoBackupSettingsSheetState();
 }
 
-class _AutoBackupSettingsSheetState extends ConsumerState<_AutoBackupSettingsSheet> {
+class _AutoBackupSettingsSheetState
+    extends ConsumerState<_AutoBackupSettingsSheet> {
   static const _retentionPresets = <(String, int)>[
     ('8 days', 8),
     ('1 month', 30),
@@ -573,7 +610,9 @@ class _AutoBackupSettingsSheetState extends ConsumerState<_AutoBackupSettingsShe
   late final _daysCtrl = TextEditingController(
     text: '${widget.current.customDays == 0 ? 1 : widget.current.customDays}',
   );
-  late final _hoursCtrl = TextEditingController(text: '${widget.current.customHours}');
+  late final _hoursCtrl = TextEditingController(
+    text: '${widget.current.customHours}',
+  );
   late int _retentionDays = widget.current.retentionDays;
   bool _saving = false;
 
@@ -590,7 +629,8 @@ class _AutoBackupSettingsSheetState extends ConsumerState<_AutoBackupSettingsShe
     customHours: int.tryParse(_hoursCtrl.text) ?? 0,
   );
 
-  bool _retentionAllowed(int days) => days == 0 || Duration(days: days) >= _interval;
+  bool _retentionAllowed(int days) =>
+      days == 0 || Duration(days: days) >= _interval;
 
   Future<void> _save() async {
     final messenger = ScaffoldMessenger.of(context);
@@ -610,7 +650,11 @@ class _AutoBackupSettingsSheetState extends ConsumerState<_AutoBackupSettingsShe
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          SnackBar(content: Text(_enabled ? 'Automatic backups on' : 'Automatic backups off')),
+          SnackBar(
+            content: Text(
+              _enabled ? 'Automatic backups on' : 'Automatic backups off',
+            ),
+          ),
         );
     } on ArgumentError catch (e) {
       if (!mounted) return;
@@ -632,7 +676,10 @@ class _AutoBackupSettingsSheetState extends ConsumerState<_AutoBackupSettingsShe
       padding: EdgeInsets.only(
         left: 20,
         right: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        bottom:
+            MediaQuery.of(context).padding.bottom +
+            MediaQuery.of(context).viewInsets.bottom +
+            20,
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -641,13 +688,17 @@ class _AutoBackupSettingsSheetState extends ConsumerState<_AutoBackupSettingsShe
           children: [
             Text(
               'Automatic backups',
-              style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               'Backs up on its own, no need to tap "Back up now" — saved to '
               'Download/$backupAppFolder just like a manual backup.',
-              style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: cs.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 8),
             SwitchListTile(
@@ -664,13 +715,23 @@ class _AutoBackupSettingsSheetState extends ConsumerState<_AutoBackupSettingsShe
                 width: double.infinity,
                 child: SegmentedButton<AutoBackupFrequency>(
                   segments: const [
-                    ButtonSegment(value: AutoBackupFrequency.daily, label: Text('Daily')),
-                    ButtonSegment(value: AutoBackupFrequency.monthly, label: Text('Monthly')),
-                    ButtonSegment(value: AutoBackupFrequency.custom, label: Text('Custom')),
+                    ButtonSegment(
+                      value: AutoBackupFrequency.daily,
+                      label: Text('Daily'),
+                    ),
+                    ButtonSegment(
+                      value: AutoBackupFrequency.monthly,
+                      label: Text('Monthly'),
+                    ),
+                    ButtonSegment(
+                      value: AutoBackupFrequency.custom,
+                      label: Text('Custom'),
+                    ),
                   ],
                   selected: {_frequency},
                   showSelectedIcon: false,
-                  onSelectionChanged: (s) => setState(() => _frequency = s.first),
+                  onSelectionChanged: (s) =>
+                      setState(() => _frequency = s.first),
                 ),
               ),
               if (_frequency == AutoBackupFrequency.custom) ...[
@@ -726,14 +787,18 @@ class _AutoBackupSettingsSheetState extends ConsumerState<_AutoBackupSettingsShe
             ],
             const SizedBox(height: 24),
             FilledButton(
-              onPressed: _saving || (_enabled && !_retentionAllowed(_retentionDays))
+              onPressed:
+                  _saving || (_enabled && !_retentionAllowed(_retentionDays))
                   ? null
                   : _save,
               child: _saving
                   ? const SizedBox(
                       height: 20,
                       width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : const Text('Save'),
             ),

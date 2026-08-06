@@ -84,7 +84,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     }
     messenger.showSnackBar(
       const SnackBar(
-        content: Text("Marked done — add the transaction from + when you're ready."),
+        content: Text(
+          "Marked done — add the transaction from + when you're ready.",
+        ),
       ),
     );
   }
@@ -93,9 +95,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await ref.read(dbProvider).deleteReminder(id);
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Reminder deleted')),
-      );
+      messenger.showSnackBar(const SnackBar(content: Text('Reminder deleted')));
     } catch (_) {
       messenger.showSnackBar(
         const SnackBar(content: Text('Could not delete reminder')),
@@ -141,8 +141,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             child: Text(
               'Could not load calendar.\n$e',
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(color: theme.colorScheme.error),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.error,
+              ),
             ),
           ),
         ),
@@ -173,9 +174,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       }
     }
 
-    final reminderDays = {
-      for (final r in openReminders) _dateOnly(r.dueDate),
-    };
+    final reminderDays = {for (final r in openReminders) _dateOnly(r.dueDate)};
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
@@ -200,8 +199,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           Text(
             'Reminders never post money on their own — you confirm each one.',
             textAlign: TextAlign.center,
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -222,8 +222,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           child: Center(
             child: Text(
               DateFormat('MMMM yyyy').format(_shownMonth),
-              style: theme.textTheme.titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w700),
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ),
@@ -264,8 +265,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     Map<DateTime, Money> expenseByDay,
     Set<DateTime> reminderDays,
   ) {
-    final daysInMonth =
-        DateTime(_shownMonth.year, _shownMonth.month + 1, 0).day;
+    final daysInMonth = DateTime(
+      _shownMonth.year,
+      _shownMonth.month + 1,
+      0,
+    ).day;
     // Monday-based offset: weekday is 1 (Mon) … 7 (Sun).
     final leadingBlanks = _shownMonth.weekday - 1;
     final cellCount = leadingBlanks + daysInMonth;
@@ -332,8 +336,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 child: Text(
                   '${date.day}',
                   style: theme.textTheme.labelLarge?.copyWith(
-                    fontWeight:
-                        isToday ? FontWeight.w800 : FontWeight.w500,
+                    fontWeight: isToday ? FontWeight.w800 : FontWeight.w500,
                     color: isSelected
                         ? Colors.white
                         : (isToday ? cs.secondary : cs.onSurface),
@@ -356,33 +359,30 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 ),
             ],
           ),
-          const SizedBox(height: 2),
-          // A grid cell is only ~42x53dp at 360dp wide. The day circle plus two
-          // 9pt lines barely fits, so a long compact amount or a larger system
-          // font overflows. Flexible + scale-down makes that impossible rather
-          // than merely unlikely.
-          if (inMoney != null) _cellAmount(inMoney, AppColors.income),
-          if (outMoney != null) _cellAmount(outMoney, AppColors.expense),
+          const SizedBox(height: 4),
+          // A plain dot per direction, not the amount itself — keeps the grid
+          // readable at a glance and, unlike a printed figure, gives away
+          // nothing if the screen is glimpsed by someone else (GitHub #28).
+          if (inMoney != null || outMoney != null)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (inMoney != null) _cellDot(AppColors.income),
+                if (inMoney != null && outMoney != null)
+                  const SizedBox(width: 4),
+                if (outMoney != null) _cellDot(AppColors.expense),
+              ],
+            ),
         ],
       ),
     );
   }
 
-  Widget _cellAmount(Money amount, Color color) => Flexible(
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            MoneyFormat.compact(amount),
-            maxLines: 1,
-            style: TextStyle(
-              fontSize: 9,
-              height: 1.1,
-              color: color,
-              fontFeatures: kTabularFigures,
-            ),
-          ),
-        ),
-      );
+  Widget _cellDot(Color color) => Container(
+    width: 5,
+    height: 5,
+    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+  );
 
   // ── Selected-day sections ───────────────────────────────────────────────────
 
@@ -394,18 +394,18 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     List<ReminderRow> openReminders,
   ) {
     final day = _selectedDay!;
-    final dayReminders = openReminders
-        .where((r) => _dateOnly(r.dueDate) == day)
-        .toList()
-      ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+    final dayReminders =
+        openReminders.where((r) => _dateOnly(r.dueDate) == day).toList()
+          ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
     final dayTx = txns.where((t) => _dateOnly(t.date) == day).toList()
       ..sort((a, b) => b.date.compareTo(a.date));
 
     final widgets = <Widget>[
       Text(
         DateFormat('EEE, d MMM yyyy').format(day),
-        style:
-            theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        style: theme.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w700,
+        ),
       ),
       const SizedBox(height: 12),
     ];
@@ -427,32 +427,32 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       widgets
         ..add(_sectionLabel(theme, 'Transactions'))
         ..add(const SizedBox(height: 8))
-        ..addAll(
-          dayTx.map((t) => _txTile(theme, t, categoryMap, accountMap)),
-        );
+        ..addAll(dayTx.map((t) => _txTile(theme, t, categoryMap, accountMap)));
     }
 
     return widgets;
   }
 
   Widget _sectionLabel(ThemeData theme, String text) => Text(
-        text,
-        style: theme.textTheme.titleSmall
-            ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-      );
+    text,
+    style: theme.textTheme.titleSmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    ),
+  );
 
   Widget _emptyCard(ThemeData theme, String text) => Card(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
-          child: Center(
-            child: Text(
-              text,
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
+      child: Center(
+        child: Text(
+          text,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-      );
+      ),
+    ),
+  );
 
   Widget _reminderTile(ThemeData theme, ReminderRow r) {
     final cs = theme.colorScheme;
@@ -503,8 +503,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                             MoneyText(
                               r.amount!,
                               color: accent,
-                              style: theme.textTheme.bodyMedium
-                                  ?.copyWith(fontWeight: FontWeight.w600),
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ],
                         ],
@@ -514,8 +515,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 ),
                 IconButton(
                   tooltip: 'Delete reminder',
-                  icon: Icon(Icons.delete_outline_rounded,
-                      color: cs.onSurfaceVariant),
+                  icon: Icon(
+                    Icons.delete_outline_rounded,
+                    color: cs.onSurfaceVariant,
+                  ),
                   onPressed: () => _deleteReminder(r.id),
                 ),
               ],
@@ -561,14 +564,15 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final isTransfer = tx.type == TxType.transfer;
     final category = tx.categoryId == null ? null : categoryMap[tx.categoryId];
     final account = accountMap[tx.accountId];
-    final toAccount =
-        tx.toAccountId == null ? null : accountMap[tx.toAccountId];
+    final toAccount = tx.toAccountId == null
+        ? null
+        : accountMap[tx.toAccountId];
 
     final accent = isTransfer
         ? AppColors.transfer
         : (category != null
-            ? Color(category.colorValue)
-            : theme.colorScheme.onSurfaceVariant);
+              ? Color(category.colorValue)
+              : theme.colorScheme.onSurfaceVariant);
     final icon = isTransfer
         ? Icons.swap_horiz_rounded
         : AppIcons.resolve(category?.iconKey ?? 'other');
@@ -578,8 +582,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         ? '${account?.name ?? '—'} → ${toAccount?.name ?? '—'}'
         : (account?.name ?? '—');
     final note = tx.note?.trim();
-    final subtitle =
-        (note != null && note.isNotEmpty) ? '$base · $note' : base;
+    final subtitle = (note != null && note.isNotEmpty) ? '$base · $note' : base;
 
     final displayAmount = tx.type == TxType.expense ? -tx.amount : tx.amount;
 
@@ -596,8 +599,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           displayAmount,
           signed: !isTransfer,
           color: colorForTxType(tx.type),
-          style:
-              theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+          style: theme.textTheme.bodyLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );
@@ -650,9 +654,7 @@ class _ReminderSheetState extends ConsumerState<_ReminderSheet> {
     final messenger = ScaffoldMessenger.of(context);
     final title = _titleCtrl.text.trim();
     if (title.isEmpty) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Enter a title')),
-      );
+      messenger.showSnackBar(const SnackBar(content: Text('Enter a title')));
       return;
     }
 
@@ -670,7 +672,9 @@ class _ReminderSheetState extends ConsumerState<_ReminderSheet> {
 
     final navigator = Navigator.of(context);
     try {
-      await ref.read(dbProvider).addReminder(
+      await ref
+          .read(dbProvider)
+          .addReminder(
             title: title,
             amount: amount,
             direction: _direction,
@@ -696,7 +700,10 @@ class _ReminderSheetState extends ConsumerState<_ReminderSheet> {
         left: 20,
         right: 20,
         top: 8,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        bottom:
+            MediaQuery.of(context).padding.bottom +
+            MediaQuery.of(context).viewInsets.bottom +
+            20,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -715,8 +722,9 @@ class _ReminderSheetState extends ConsumerState<_ReminderSheet> {
           ),
           Text(
             'New reminder',
-            style: theme.textTheme.titleLarge
-                ?.copyWith(fontWeight: FontWeight.w700),
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 20),
           TextField(
@@ -731,15 +739,14 @@ class _ReminderSheetState extends ConsumerState<_ReminderSheet> {
           const SizedBox(height: 16),
           TextField(
             controller: _amountCtrl,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w700,
               fontFeatures: kTabularFigures,
             ),
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Amount (optional)',
-              prefixText: '₹ ',
+              prefixText: MoneyFormat.inputPrefix,
             ),
           ),
           const SizedBox(height: 20),
@@ -775,8 +782,9 @@ class _ReminderSheetState extends ConsumerState<_ReminderSheet> {
                       children: [
                         Text(
                           'Due date',
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(color: cs.onSurfaceVariant),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
                         ),
                         const SizedBox(height: 2),
                         Text(
@@ -796,7 +804,7 @@ class _ReminderSheetState extends ConsumerState<_ReminderSheet> {
             _notifyDays.round() == 0
                 ? 'Notify me on the day'
                 : 'Notify me ${_notifyDays.round()} '
-                    'day${_notifyDays.round() == 1 ? '' : 's'} before',
+                      'day${_notifyDays.round() == 1 ? '' : 's'} before',
             style: theme.textTheme.bodyMedium,
           ),
           Slider(
