@@ -41,10 +41,12 @@ class _CurrencyPickerSheetState extends ConsumerState<CurrencyPickerSheet> {
     final q = _query.trim().toLowerCase();
     if (q.isEmpty) return kCurrencies;
     return kCurrencies
-        .where((c) =>
-            c.name.toLowerCase().contains(q) ||
-            c.code.toLowerCase().contains(q) ||
-            c.symbol.toLowerCase().contains(q))
+        .where(
+          (c) =>
+              c.name.toLowerCase().contains(q) ||
+              c.code.toLowerCase().contains(q) ||
+              c.symbol.toLowerCase().contains(q),
+        )
         .toList();
   }
 
@@ -58,79 +60,84 @@ class _CurrencyPickerSheetState extends ConsumerState<CurrencyPickerSheet> {
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.85,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-            child: Text('Currency', style: theme.textTheme.titleLarge),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: TextField(
-              controller: _controller,
-              autofocus: true,
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.search),
-                hintText: 'Search name, code or symbol',
-                filled: true,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide.none,
-                ),
-                isDense: true,
-              ),
-              onChanged: (v) => setState(() => _query = v),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+              child: Text('Currency', style: theme.textTheme.titleLarge),
             ),
-          ),
-          const SizedBox(height: 8),
-          Flexible(
-            child: results.isEmpty
-                ? Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Text(
-                      'No currency matches "$_query".',
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: TextField(
+                controller: _controller,
+                autofocus: true,
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search),
+                  hintText: 'Search name, code or symbol',
+                  filled: true,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                  isDense: true,
+                ),
+                onChanged: (v) => setState(() => _query = v),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Flexible(
+              child: results.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Text(
+                        'No currency matches "$_query".',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                       ),
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    itemCount: results.length,
-                    itemBuilder: (context, i) {
-                      final c = results[i];
-                      final isSelected = c.code == selected;
-                      return ListTile(
-                        leading: SizedBox(
-                          width: 40,
-                          child: Center(
-                            child: Text(
-                              c.symbol,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      itemCount: results.length,
+                      itemBuilder: (context, i) {
+                        final c = results[i];
+                        final isSelected = c.code == selected;
+                        return ListTile(
+                          leading: SizedBox(
+                            width: 40,
+                            child: Center(
+                              child: Text(
+                                c.symbol,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        title: Text(c.name),
-                        subtitle: Text(c.code),
-                        trailing: isSelected
-                            ? Icon(Icons.check_rounded,
-                                color: theme.colorScheme.primary)
-                            : null,
-                        selected: isSelected,
-                        onTap: () async {
-                          await ref.read(dbProvider).setCurrencyCode(c.code);
-                          if (context.mounted) Navigator.of(context).pop();
-                        },
-                      );
-                    },
-                  ),
-          ),
-        ],
+                          title: Text(c.name),
+                          subtitle: Text(c.code),
+                          trailing: isSelected
+                              ? Icon(
+                                  Icons.check_rounded,
+                                  color: theme.colorScheme.primary,
+                                )
+                              : null,
+                          selected: isSelected,
+                          onTap: () async {
+                            await ref.read(dbProvider).setCurrencyCode(c.code);
+                            if (context.mounted) Navigator.of(context).pop();
+                          },
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }

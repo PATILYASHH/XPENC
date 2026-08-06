@@ -396,7 +396,10 @@ class _ItemEditorSheetState extends ConsumerState<_ItemEditorSheet> {
       padding: EdgeInsets.only(
         left: 20,
         right: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        bottom:
+            MediaQuery.of(context).padding.bottom +
+            MediaQuery.of(context).viewInsets.bottom +
+            20,
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -428,9 +431,9 @@ class _ItemEditorSheetState extends ConsumerState<_ItemEditorSheet> {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Estimated price (optional)',
-                prefixText: '₹ ',
+                prefixText: MoneyFormat.inputPrefix,
                 hintText: '0.00',
               ),
               onSubmitted: (_) => _save(),

@@ -684,7 +684,10 @@ class _BudgetSheetState extends ConsumerState<_BudgetSheet> {
         left: 20,
         right: 20,
         top: 8,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        bottom:
+            MediaQuery.of(context).padding.bottom +
+            MediaQuery.of(context).viewInsets.bottom +
+            20,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -747,9 +750,9 @@ class _BudgetSheetState extends ConsumerState<_BudgetSheet> {
               fontWeight: FontWeight.w700,
               fontFeatures: kTabularFigures,
             ),
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Monthly budget',
-              prefixText: '₹ ',
+              prefixText: MoneyFormat.inputPrefix,
             ),
             onSubmitted: (_) => _save(),
           ),

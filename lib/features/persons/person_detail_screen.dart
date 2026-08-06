@@ -579,7 +579,9 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
 
     return Padding(
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
+        bottom:
+            MediaQuery.of(context).padding.bottom +
+            MediaQuery.of(context).viewInsets.bottom,
       ),
       child: SingleChildScrollView(
         child: Padding(
@@ -633,7 +635,7 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
                 ),
                 decoration: InputDecoration(
                   labelText: 'Amount',
-                  prefixText: '₹ ',
+                  prefixText: MoneyFormat.inputPrefix,
                   errorText: _amountError,
                   border: const OutlineInputBorder(),
                 ),
