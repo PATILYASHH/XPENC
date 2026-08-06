@@ -8,6 +8,44 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
+Beta track for 1.3.1 — everything below is on the `BETA` branch, not yet
+tagged or released.
+
+### Added
+- **Biweekly recurring rules** — a frequency between weekly and monthly, for
+  a loan repayment or anything else that lands every two weeks (#24).
+- **Variable-amount recurring rules** — a rule (e.g. a salary that depends on
+  hours worked) can be marked "amount varies each time": it still posts on
+  schedule using the usual amount as a placeholder, but the posted
+  transaction is flagged for review instead of silently trusting a guess
+  (#19).
+- **Screenshot blocking** — a Settings toggle that blocks screenshots and
+  screen recording, and blanks the recent-apps thumbnail, via Android's
+  native `FLAG_SECURE` (#15).
+- **Savings Goals redesign** — a goal is now a real account, funded and
+  drawn down by ordinary transfers, instead of a passive tracker that only
+  read another account's balance. Counts toward net worth and stays out of
+  income/expense automatically, same as every other account. Start a fresh
+  goal, or turn an existing account into one; Add funds / Withdraw
+  shortcuts sit right on the goal screen (#30).
+- **Budget notes** — an optional note field on any budget, for context on
+  what it's for or anything to remember about it (#34).
+- Two more category icons: bar chart and currency exchange (#31).
+
+### Fixed
+- Every amount field that hardcoded the ₹ symbol now reads the currency you
+  actually picked in Settings — it was wrong for anyone not using rupees,
+  most visibly on the Persons lending/borrowing screen (#33).
+- Several bottom sheets only left room for the keyboard, never the system
+  navigation bar, so content could sit flush against — or behind — a
+  3-button nav bar. Invisible on gesture navigation, obvious on a real
+  button bar (#14).
+- The calendar view now shows a plain dot per direction (income/expense)
+  instead of the actual amount — reads clearer at a glance and shows
+  nothing if the screen is glimpsed by someone else (#28).
+- Dropped the unused `ACCESS_NETWORK_STATE` permission — a WorkManager
+  default XPENC never needed, since the app makes no network calls (#27).
+
 ## [1.3.0] — 2026-08-05
 
 Full backward compatible: the database migrates itself in place (v8 → v18,
