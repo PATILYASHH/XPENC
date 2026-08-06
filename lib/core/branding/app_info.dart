@@ -35,6 +35,16 @@ class AppInfo {
   static const linkedinHandle = 'patilyasshh';
   static const linkedinUrl = 'https://www.linkedin.com/in/patilyasshh/';
 
+  static const sponsorUrl = 'https://github.com/sponsors/PATILYASHH';
+
+  /// For bug reports, feedback and suggestions about XPENC (or any other
+  /// project) — not the developer's personal inbox.
+  static const feedbackEmail = 'feedback.yashpatil@gmail.com';
+
+  /// The developer's personal contact, for anything that isn't
+  /// project feedback.
+  static const personalEmail = 'patilyasshh@gmail.com';
+
   // ── Project ────────────────────────────────────────────────────────────────
   /// Where this build's source lives.
   static const repoUrl = 'https://github.com/PATILYASHH/XPENC';

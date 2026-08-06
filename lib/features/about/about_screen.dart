@@ -90,6 +90,29 @@ class AboutScreen extends StatelessWidget {
                   value: '/in/${AppInfo.linkedinHandle}',
                   url: AppInfo.linkedinUrl,
                 ),
+                Divider(height: 1, indent: 60, color: cs.outline),
+                _LinkTile(
+                  icon: Icons.volunteer_activism_rounded,
+                  label: 'GitHub Sponsors',
+                  value: 'Support this project',
+                  url: AppInfo.sponsorUrl,
+                ),
+                Divider(height: 1, indent: 60, color: cs.outline),
+                _LinkTile(
+                  icon: Icons.mail_outline_rounded,
+                  label: 'Feedback & suggestions',
+                  value: AppInfo.feedbackEmail,
+                  url: 'mailto:${AppInfo.feedbackEmail}',
+                  copyValue: AppInfo.feedbackEmail,
+                ),
+                Divider(height: 1, indent: 60, color: cs.outline),
+                _LinkTile(
+                  icon: Icons.email_outlined,
+                  label: 'Personal email',
+                  value: AppInfo.personalEmail,
+                  url: 'mailto:${AppInfo.personalEmail}',
+                  copyValue: AppInfo.personalEmail,
+                ),
               ],
             ),
           ),
@@ -219,12 +242,18 @@ class _LinkTile extends StatelessWidget {
     required this.label,
     required this.value,
     required this.url,
+    this.copyValue,
   });
 
   final IconData icon;
   final String label;
   final String value;
   final String url;
+
+  /// What lands on the clipboard if nothing can open [url] — e.g. the bare
+  /// email address for a `mailto:` link, rather than the `mailto:` scheme
+  /// itself. Defaults to [url].
+  final String? copyValue;
 
   Future<void> _open(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
@@ -239,10 +268,11 @@ class _LinkTile extends StatelessWidget {
     }
     if (opened) return;
 
-    await Clipboard.setData(ClipboardData(text: url));
+    final fallback = copyValue ?? url;
+    await Clipboard.setData(ClipboardData(text: fallback));
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('Link copied — $url')));
+      ..showSnackBar(SnackBar(content: Text('Copied — $fallback')));
   }
 
   @override
