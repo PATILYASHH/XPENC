@@ -590,7 +590,12 @@ class _ApproveSheetState extends ConsumerState<_ApproveSheet> {
         'Could not load accounts.\n$e',
         style: theme.textTheme.bodyMedium,
       ),
-      data: (accounts) {
+      data: (allAccounts) {
+        // A captured message always posts as income or expense, never a
+        // transfer — a goal isn't a spendable account, so keep it out.
+        final accounts = allAccounts
+            .where((a) => a.type != AccountType.goal)
+            .toList();
         if (accounts.isEmpty) {
           return Text(
             'No accounts yet — add one first.',
