@@ -1030,6 +1030,61 @@ void main() {
     });
   });
 
+  group('budgets — an optional note (GitHub #34)', () {
+    test('defaults to null when not given', () async {
+      final food = await expenseCategory('Food');
+      await db.upsertBudget(categoryId: food, amount: Money.fromRupees(2000));
+
+      final budget = (await db.watchBudgets().first)
+          .firstWhere((b) => b.categoryId == food);
+      expect(budget.note, isNull);
+    });
+
+    test('round-trips through create and edit', () async {
+      final food = await expenseCategory('Food');
+      await db.upsertBudget(
+        categoryId: food,
+        amount: Money.fromRupees(2000),
+        note: 'Groceries + eating out',
+      );
+
+      var budget = (await db.watchBudgets().first)
+          .firstWhere((b) => b.categoryId == food);
+      expect(budget.note, 'Groceries + eating out');
+
+      // The unique-on-categoryId upsert must update the existing row, not
+      // insert a second one with the new note.
+      await db.upsertBudget(
+        categoryId: food,
+        amount: Money.fromRupees(2500),
+        note: 'Groceries only now',
+      );
+      final all = await db.watchBudgets().first;
+      expect(all.where((b) => b.categoryId == food), hasLength(1));
+      budget = all.firstWhere((b) => b.categoryId == food);
+      expect(budget.note, 'Groceries only now');
+    });
+
+    test('blank or whitespace-only clears it back to null', () async {
+      final food = await expenseCategory('Food');
+      await db.upsertBudget(
+        categoryId: food,
+        amount: Money.fromRupees(2000),
+        note: 'A note',
+      );
+
+      await db.upsertBudget(
+        categoryId: food,
+        amount: Money.fromRupees(2000),
+        note: '   ',
+      );
+
+      final budget = (await db.watchBudgets().first)
+          .firstWhere((b) => b.categoryId == food);
+      expect(budget.note, isNull);
+    });
+  });
+
   group('accountStatement', () {
     test('opening balance carries forward, running balance accumulates',
         () async {

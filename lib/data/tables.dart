@@ -219,6 +219,10 @@ class Budgets extends Table {
       integer().withDefault(const Constant(80))();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
 
+  /// Free-form context for this budget — why it's set the way it is, what
+  /// it's meant to cover, a reminder for next month. Entirely optional.
+  TextColumn get note => text().nullable()();
+
   @override
   List<Set<Column>> get uniqueKeys => [
     {categoryId},
