@@ -562,7 +562,7 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 
-  void _validateTx({
+  Future<void> _validateTx({
     required TxType type,
     required Money amount,
     required int accountId,
@@ -571,11 +571,24 @@ class AppDatabase extends _$AppDatabase {
     int? personId,
     String? payee,
     int? recurringRuleId,
-  }) {
+  }) async {
     if (!amount.isPositive) {
       throw ArgumentError(
         'Amount must be positive; direction comes from type.',
       );
+    }
+    // A goal is a savings store, not a spendable account — it is only ever
+    // funded or drawn down by a transfer. Every other type moves real money
+    // in or out on its own, which a goal must never do directly.
+    if (type != TxType.transfer) {
+      final account = await (select(
+        accounts,
+      )..where((a) => a.id.equals(accountId))).getSingleOrNull();
+      if (account?.type == AccountType.goal) {
+        throw ArgumentError(
+          'A goal is not a spendable account — transfer funds out of it first.',
+        );
+      }
     }
     if (!type.isPersonMovement && personId != null) {
       throw ArgumentError('Only a person movement names a person.');
@@ -648,8 +661,8 @@ class AppDatabase extends _$AppDatabase {
     int? recurringRuleId,
     String? imagePath,
     bool needsAmountReview = false,
-  }) {
-    _validateTx(
+  }) async {
+    await _validateTx(
       type: type,
       amount: amount,
       accountId: accountId,
@@ -742,8 +755,8 @@ class AppDatabase extends _$AppDatabase {
     String? note,
     String? payee,
     String? imagePath,
-  }) {
-    _validateTx(
+  }) async {
+    await _validateTx(
       type: type,
       amount: amount,
       accountId: accountId,
@@ -1968,31 +1981,37 @@ class AppDatabase extends _$AppDatabase {
 
     var posted = 0;
     for (final rule in due) {
-      await transaction(() async {
-        var next = rule.nextDueDate;
-        while (!next.isAfter(endOfToday)) {
-          await addTransaction(
-            type: rule.kind == CategoryKind.expense
-                ? TxType.expense
-                : TxType.income,
-            amount: rule.amount,
-            accountId: rule.accountId,
-            categoryId: rule.categoryId,
-            date: next,
-            payee: rule.kind == CategoryKind.expense ? rule.payee : null,
-            recurringRuleId: rule.id,
-            needsAmountReview: rule.isEstimate,
-          );
-          posted++;
-          next = _nextOccurrence(
-            rule.frequency,
-            next,
-            dayOfMonth: rule.dayOfMonth,
-          );
-        }
-        await (update(recurringRules)..where((r) => r.id.equals(rule.id)))
-            .write(RecurringRulesCompanion(nextDueDate: Value(next)));
-      });
+      try {
+        await transaction(() async {
+          var next = rule.nextDueDate;
+          while (!next.isAfter(endOfToday)) {
+            await addTransaction(
+              type: rule.kind == CategoryKind.expense
+                  ? TxType.expense
+                  : TxType.income,
+              amount: rule.amount,
+              accountId: rule.accountId,
+              categoryId: rule.categoryId,
+              date: next,
+              payee: rule.kind == CategoryKind.expense ? rule.payee : null,
+              recurringRuleId: rule.id,
+              needsAmountReview: rule.isEstimate,
+            );
+            posted++;
+            next = _nextOccurrence(
+              rule.frequency,
+              next,
+              dayOfMonth: rule.dayOfMonth,
+            );
+          }
+          await (update(recurringRules)..where((r) => r.id.equals(rule.id)))
+              .write(RecurringRulesCompanion(nextDueDate: Value(next)));
+        });
+      } catch (_) {
+        // One rule that can no longer post (its account stopped being
+        // spendable, etc.) must not block every other rule due today — this
+        // runs unguarded on every app open/resume.
+      }
     }
     return posted;
   }

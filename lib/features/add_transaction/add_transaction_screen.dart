@@ -281,6 +281,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             ? 'To account'
             : (_type == TxType.transfer ? 'From account' : 'Account'),
         excludeId: forTo ? _accountId : null,
+        // A goal isn't a spendable account — it's only funded or drawn down
+        // by a transfer. Hide it from expense/income pickers entirely.
+        excludeGoals: _type != TxType.transfer,
       ),
     );
     if (selected == null || !mounted) return;
@@ -1197,10 +1200,18 @@ Widget _iconCircle(String iconKey, int colorValue, {double size = 40}) {
 /// with. Debit cards are selectable but show the bank they draw from instead of
 /// a balance.
 class _AccountPickerSheet extends ConsumerWidget {
-  const _AccountPickerSheet({required this.title, this.excludeId});
+  const _AccountPickerSheet({
+    required this.title,
+    this.excludeId,
+    this.excludeGoals = false,
+  });
 
   final String title;
   final int? excludeId;
+
+  /// A goal is a savings store, not a spendable account — only a transfer
+  /// may fund or draw it down. Set for expense/income pickers.
+  final bool excludeGoals;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1238,6 +1249,9 @@ class _AccountPickerSheet extends ConsumerWidget {
                 data: (accounts) {
                   final list = accounts
                       .where((a) => a.id != excludeId)
+                      .where(
+                        (a) => !excludeGoals || a.type != AccountType.goal,
+                      )
                       .toList();
                   if (list.isEmpty) {
                     return Padding(

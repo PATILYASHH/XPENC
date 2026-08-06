@@ -186,7 +186,11 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final accounts = ref.watch(accountsProvider).valueOrNull ?? const [];
+    // A goal is a savings store, not a spendable/depositable account — a
+    // recurring rule always posts as income or expense, never a transfer.
+    final accounts = (ref.watch(accountsProvider).valueOrNull ?? const [])
+        .where((a) => a.type != AccountType.goal)
+        .toList();
     final categories =
         ref.watch(categoriesProvider(_kind)).valueOrNull ?? const [];
     final categoryMap = ref.watch(categoryMapProvider);

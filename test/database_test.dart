@@ -543,6 +543,51 @@ void main() {
         throwsA(anything),
       );
     });
+
+    test('a goal cannot be spent from or paid into directly — only a '
+        'transfer may move its money', () async {
+      final cash = await cashId();
+      final goalId = await db.addGoal(
+        name: 'New Bike',
+        targetAmount: Money.fromRupees(50000),
+        colorValue: 0,
+        iconKey: 'savings',
+      );
+      await db.addTransaction(
+        type: TxType.transfer,
+        amount: Money.fromRupees(3000),
+        accountId: cash,
+        toAccountId: goalId,
+        date: DateTime(2026, 7, 2),
+      );
+
+      final expenseCat = await expenseCategory('Shopping');
+      final incomeCat = await incomeCategory('Salary');
+      expect(
+        () => db.addTransaction(
+          type: TxType.expense,
+          amount: Money.fromRupees(500),
+          accountId: goalId,
+          categoryId: expenseCat,
+          date: DateTime(2026, 7, 10),
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => db.addTransaction(
+          type: TxType.income,
+          amount: Money.fromRupees(500),
+          accountId: goalId,
+          categoryId: incomeCat,
+          date: DateTime(2026, 7, 10),
+        ),
+        throwsArgumentError,
+      );
+
+      // Untouched — both rejected attempts left its balance exactly where
+      // the transfer left it.
+      expect(await balanceOf(goalId), Money.fromRupees(3000));
+    });
   });
 
   group('deleteAccount — permanent, so it is guarded', () {
