@@ -41,6 +41,8 @@ class AppIcons {
     // misc
     'transfer': Icons.swap_horiz_rounded,
     'person': Icons.person_outline_rounded,
+    'bar_chart': Icons.bar_chart_rounded,
+    'currency_exchange': Icons.currency_exchange_rounded,
     'other': Icons.more_horiz_rounded,
   };
 

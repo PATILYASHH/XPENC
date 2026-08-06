@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <!-- No SMS permissions — deliberately. READ_SMS made Google Play Protect
          block direct APK installs (users had to pause protection to install),
          so bank-SMS auto-capture is paused. The capture pipeline still exists
@@ -6,6 +7,12 @@
          re-testing sideload install on a Play-Protect-enabled device.
          test/native_channel_test.dart fails the build if this returns. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- WorkManager (pulled in transitively by flutter_local_notifications)
+         declares this by default for network-constrained jobs. XPENC is
+         offline-first and never sets a network constraint on any scheduled
+         work, so strip it from the merged manifest (GitHub #27). -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"
+        tools:node="remove"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <!-- Backups (see backup_service.dart) only ever touch files this app itself
          wrote into the public Download/BACKUP XPENC folder via MediaStore, which
