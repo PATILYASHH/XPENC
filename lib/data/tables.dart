@@ -132,6 +132,13 @@ class Accounts extends Table {
   BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  /// Turns this one account into "every rupee has a job" budgeting — an
+  /// expense on it must carry a category, and that category's balance is
+  /// funded from this account's own Ready to Assign via [Allocations]. Off
+  /// by default and per-account: every other account keeps working exactly
+  /// as it does today. See `AppDatabase.categoryBalance` / `readyToAssign`.
+  BoolColumn get envelopeMode => boolean().withDefault(const Constant(false))();
 }
 
 @DataClassName('CategoryRow')
@@ -227,6 +234,29 @@ class Budgets extends Table {
   List<Set<Column>> get uniqueKeys => [
     {categoryId},
   ];
+}
+
+/// One movement of money into or out of a category's envelope, for an
+/// [Accounts.envelopeMode] account — the ledger behind
+/// `AppDatabase.categoryBalance` / `readyToAssign`. Never touched for an
+/// account with envelope mode off.
+@DataClassName('AllocationRow')
+class Allocations extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get accountId => integer().references(Accounts, #id)();
+  IntColumn get categoryId => integer().references(Categories, #id)();
+
+  /// Positive: money assigned from Ready to Assign INTO this category.
+  /// Negative: money unassigned OUT of this category, back to Ready to
+  /// Assign. Moving money between two categories is two rows — one negative
+  /// on the source, one positive on the destination — never a single row
+  /// naming both, so a category's balance is always just the sum of its own
+  /// rows.
+  IntColumn get amount => integer().map(const MoneyConverter())();
+
+  DateTimeColumn get date => dateTime()();
+  TextColumn get note => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
 @DataClassName('PersonRow')

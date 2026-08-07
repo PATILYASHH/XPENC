@@ -49,6 +49,10 @@ class _XpencAppState extends ConsumerState<XpencApp>
     });
     if (!ready || !mounted) return;
 
+    // Associate the backup folder right away rather than the first time
+    // something is actually backed up — see `BackupService.ensureBackupFolderReady`.
+    unawaited(ref.read(backupServiceProvider).ensureBackupFolderReady());
+
     await _gateOnboarding();
     if (!mounted) return;
 

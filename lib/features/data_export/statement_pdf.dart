@@ -169,6 +169,144 @@ Future<Uint8List> buildBudgetStatementPdf({
   return doc.save();
 }
 
+/// One category's budget line plus every expense in it for a month — the PDF
+/// behind the Budget Detail page's download action.
+Future<Uint8List> buildCategoryStatementPdf({
+  required DateTime month,
+  required CategoryStatement statement,
+}) async {
+  final category = statement.category;
+  final remaining = statement.budgeted - statement.spent;
+  final doc = pw.Document(title: '${category.name} statement');
+
+  doc.addPage(
+    pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
+      header: (context) => _pageHeader('Budget Statement'),
+      footer: _pageFooter,
+      build: (context) => [
+        _kv('Category', category.name),
+        _kv('Period', _monthLabel(month)),
+        _kv('Currency', MoneyFormat.currency.code),
+        pw.SizedBox(height: 12),
+        _kv(
+          'Budgeted',
+          statement.budgeted.isZero
+              ? 'No budget set'
+              : MoneyFormat.bare(statement.budgeted),
+        ),
+        _kv('Spent', MoneyFormat.bare(statement.spent)),
+        if (!statement.budgeted.isZero)
+          _kv('Remaining', _remainingLabel(remaining)),
+        pw.SizedBox(height: 12),
+        if (statement.lines.isEmpty)
+          pw.Text(
+            'No transactions in this period.',
+            style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+          )
+        else
+          pw.TableHelper.fromTextArray(
+            headers: const ['Date', 'Description', 'Amount'],
+            data: [
+              for (final l in statement.lines)
+                [
+                  _dateLabel(l.date),
+                  l.isSplit ? '${l.description} (split)' : l.description,
+                  MoneyFormat.bare(l.amount),
+                ],
+            ],
+            cellAlignments: const {
+              0: pw.Alignment.centerLeft,
+              1: pw.Alignment.centerLeft,
+              2: pw.Alignment.centerRight,
+            },
+            headerStyle: pw.TextStyle(
+              fontWeight: pw.FontWeight.bold,
+              fontSize: 10,
+            ),
+            cellStyle: const pw.TextStyle(fontSize: 9),
+            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+            headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+          ),
+      ],
+    ),
+  );
+
+  return doc.save();
+}
+
+/// Every account's transactions for a period, merged date-wise rather than
+/// grouped by account — a real bank-style combined statement. No running
+/// total: a single balance across accounts of different kinds (cash owed vs.
+/// credit owed) would be misleading, so each row stands on its own.
+Future<Uint8List> buildCombinedStatementPdf({
+  required DateTime start,
+  required DateTime end,
+  required List<CombinedStatementLine> lines,
+}) async {
+  final doc = pw.Document(title: 'Combined statement');
+
+  doc.addPage(
+    pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
+      header: (context) => _pageHeader('Combined Statement'),
+      footer: _pageFooter,
+      build: (context) => [
+        _kv('Period', '${_dateLabel(start)} to ${_dateLabel(end)}'),
+        _kv('Currency', MoneyFormat.currency.code),
+        pw.SizedBox(height: 12),
+        if (lines.isEmpty)
+          pw.Text(
+            'No transactions in this period.',
+            style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+          )
+        else
+          pw.TableHelper.fromTextArray(
+            headers: const [
+              'Date',
+              'Account',
+              'Type',
+              'Category / Note',
+              'Amount',
+            ],
+            data: [
+              for (final l in lines)
+                [
+                  _dateLabel(l.date),
+                  l.accountName,
+                  l.type,
+                  l.description,
+                  MoneyFormat.bare(l.amount),
+                ],
+            ],
+            cellAlignments: const {
+              0: pw.Alignment.centerLeft,
+              1: pw.Alignment.centerLeft,
+              2: pw.Alignment.centerLeft,
+              3: pw.Alignment.centerLeft,
+              4: pw.Alignment.centerRight,
+            },
+            headerStyle: pw.TextStyle(
+              fontWeight: pw.FontWeight.bold,
+              fontSize: 10,
+            ),
+            cellStyle: const pw.TextStyle(fontSize: 9),
+            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+            headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+          ),
+        pw.SizedBox(height: 12),
+        pw.Text(
+          'Transfers move money between your own accounts and are never '
+          'counted as income or expense.',
+          style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
+        ),
+      ],
+    ),
+  );
+
+  return doc.save();
+}
+
 // ── Shared layout helpers ────────────────────────────────────────────────────
 
 pw.Widget _pageHeader(String title) => pw.Column(

@@ -8,10 +8,28 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
-Beta track for 1.3.1 — everything below is on the `BETA` branch, not yet
+Beta track for 1.4.0 — everything below is on the `BETA` branch, not yet
 tagged or released.
 
 ### Added
+- **Envelope Mode** — an opt-in, per-account "every rupee has a job" budget.
+  Turn it on for one account (Settings live on that account's own detail
+  page) and every expense on it needs a category, whose balance is funded
+  from that account's own Ready to Assign. A transfer or lending payment out
+  of an envelope account that would dip into an already-claimed category
+  now asks which one to draw the difference from, instead of letting the
+  envelope silently keep claiming money that already left. Dashboard shows
+  Ready to Assign per envelope account.
+- **Budget Detail page** — tapping a category on Budgets now opens a
+  dedicated page: every transaction in it this period, an Edit shortcut, and
+  its own PDF statement download.
+- **Combined account statement** — a new Statement action on the Accounts
+  screen exports every account's transactions in one PDF, merged
+  chronologically rather than grouped by account, with transfers clearly
+  marked.
+- **Onboarding**: a currency step up front, and first-launch auto-detection
+  of an existing XPENC backup on the phone — offers to restore it (with the
+  usual folder-access confirmation) before you ever fill in an account.
 - **Biweekly recurring rules** — a frequency between weekly and monthly, for
   a loan repayment or anything else that lands every two weeks (#24).
 - **Variable-amount recurring rules** — a rule (e.g. a salary that depends on

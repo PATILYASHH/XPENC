@@ -2,19 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/branding/brand_mark.dart';
+import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../data_export/backup_service.dart';
 
 const _pageDuration = Duration(milliseconds: 280);
 
-/// First-run wizard. Three buttons-only steps that explain the model, seed the
-/// Cash opening balance, and optionally add the user's bank. Nothing is written
-/// until the final "Finish" tap, so backing out never leaves a half-set state.
+/// First-run wizard. Buttons-only steps that explain the model, pick a
+/// currency, seed the Cash opening balance, and optionally add the user's
+/// bank. Nothing is written until the final "Finish" tap, so backing out
+/// never leaves a half-set state — the one exception is restoring a backup
+/// detected on the phone (see [_checkForExistingBackup]), which is its own
+/// single, explicitly confirmed action that replaces onboarding entirely.
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -23,7 +29,7 @@ class OnboardingScreen extends ConsumerStatefulWidget {
 }
 
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
-  static const _lastPage = 2;
+  static const _lastPage = 3;
 
   final _controller = PageController();
   final _cashCtrl = TextEditingController();
@@ -33,6 +39,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   int _page = 0;
   bool _submitting = false;
+  String _currencyCode = kDefaultCurrency.code;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _checkForExistingBackup(),
+    );
+  }
 
   @override
   void dispose() {
@@ -42,6 +57,97 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     _last4Ctrl.dispose();
     _bankBalanceCtrl.dispose();
     super.dispose();
+  }
+
+  /// A light, permission-free existence check (see
+  /// `BackupService.detectExistingBackup`) — nothing is restored, and no
+  /// system consent dialog appears, until the user explicitly taps Restore
+  /// below.
+  Future<void> _checkForExistingBackup() async {
+    final service = ref.read(backupServiceProvider);
+    DateTime? found;
+    try {
+      found = await service.detectExistingBackup();
+    } catch (_) {
+      return;
+    }
+    if (found == null || !mounted) return;
+
+    final restore = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Found a backup on this phone'),
+        content: Text(
+          'There is an XPENC backup from ${DateFormat('d MMM yyyy').format(found!)} '
+          'saved in Download/$backupAppFolder. Restore it, or start fresh?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Start fresh'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Restore'),
+          ),
+        ],
+      ),
+    );
+    if (restore != true || !mounted) return;
+    await _restoreDetectedBackup(found);
+  }
+
+  /// [detectedDate] only picks which record to prefer if more than one turns
+  /// up — [BackupService.resyncFromDevice] itself is what actually asks for
+  /// folder access and rebuilds the local index, exactly like the manual
+  /// "Find existing backups" flow in Settings.
+  Future<void> _restoreDetectedBackup(DateTime detectedDate) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final router = GoRouter.of(context);
+    final service = ref.read(backupServiceProvider);
+    final db = ref.read(dbProvider);
+
+    setState(() => _submitting = true);
+    try {
+      final foundCount = await service.resyncFromDevice();
+      if (foundCount == null || foundCount == 0) {
+        if (!mounted) return;
+        setState(() => _submitting = false);
+        messenger
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            const SnackBar(
+              content: Text("Couldn't find that backup. Continuing setup."),
+            ),
+          );
+        return;
+      }
+      final records = await service.listBackups();
+      final target =
+          records
+              .where(
+                (r) =>
+                    BackupService.dateFromBackupFileName(r.fileName) ==
+                    detectedDate,
+              )
+              .firstOrNull ??
+          records.first; // newest-first; see `AppDatabase.watchBackupRecords`.
+      await service.restoreBackup(target);
+      // The restored settings row carries its own `onboarded` flag, which is
+      // already true on any backup ever taken post-onboarding — set it
+      // explicitly anyway so a malformed or pre-onboarding backup can never
+      // strand the user back on this screen.
+      await db.markOnboarded();
+      if (!mounted) return;
+      router.go('/dashboard');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text("Couldn't restore: $e")));
+    }
   }
 
   void _next() {
@@ -92,16 +198,22 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     try {
       final db = ref.read(dbProvider);
 
-      // Step 2 — record cash on hand as an opening-balance income entry into
+      // Step 2 — currency. Always written explicitly, even when it's still
+      // the default, so a restart mid-onboarding never leaves it unset.
+      await db.setCurrencyCode(_currencyCode);
+
+      // Step 3 — record cash on hand as an opening-balance income entry into
       // the seeded Cash account. No API updates an account's balance directly.
       final cash = Money.tryParse(_cashCtrl.text);
       if (cash != null && cash.isPositive) {
         final accounts = await ref.read(accountsProvider.future);
-        final cashAccounts =
-            accounts.where((a) => a.type == AccountType.cash).toList();
+        final cashAccounts = accounts
+            .where((a) => a.type == AccountType.cash)
+            .toList();
         if (cashAccounts.isNotEmpty) {
-          final incomeCats =
-              await ref.read(categoriesProvider(CategoryKind.income).future);
+          final incomeCats = await ref.read(
+            categoriesProvider(CategoryKind.income).future,
+          );
           CategoryRow? category;
           for (final c in incomeCats) {
             if (c.name == 'Cash') {
@@ -122,7 +234,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         }
       }
 
-      // Step 3 — optionally add the user's bank.
+      // Step 4 — optionally add the user's bank.
       if (bankName.isNotEmpty) {
         await db.addAccount(
           name: bankName,
@@ -145,7 +257,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          SnackBar(content: Text(e.message?.toString() ?? 'Something went wrong.')),
+          SnackBar(
+            content: Text(e.message?.toString() ?? 'Something went wrong.'),
+          ),
         );
     } catch (_) {
       if (!mounted) return;
@@ -173,6 +287,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 onPageChanged: (i) => setState(() => _page = i),
                 children: [
                   _WelcomeStep(),
+                  _CurrencyStep(
+                    selected: _currencyCode,
+                    onSelect: (code) => setState(() => _currencyCode = code),
+                  ),
                   _CashStep(controller: _cashCtrl),
                   _BankStep(
                     nameController: _bankNameCtrl,
@@ -279,7 +397,130 @@ class _WelcomeStep extends StatelessWidget {
   }
 }
 
-/// Step 2 — cash on hand. Optional; 0 is fine. Recorded on Finish as an
+/// Step 2 — currency, up front, before any amount is typed. Only written to
+/// settings on Finish, same as every other step here — picking one just
+/// updates local state.
+class _CurrencyStep extends StatefulWidget {
+  const _CurrencyStep({required this.selected, required this.onSelect});
+
+  final String selected;
+  final ValueChanged<String> onSelect;
+
+  @override
+  State<_CurrencyStep> createState() => _CurrencyStepState();
+}
+
+class _CurrencyStepState extends State<_CurrencyStep> {
+  final _searchCtrl = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  List<Currency> get _filtered {
+    final q = _query.trim().toLowerCase();
+    if (q.isEmpty) return kCurrencies;
+    return kCurrencies
+        .where(
+          (c) =>
+              c.name.toLowerCase().contains(q) ||
+              c.code.toLowerCase().contains(q) ||
+              c.symbol.toLowerCase().contains(q),
+        )
+        .toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final results = _filtered;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 40, 24, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'What currency do you use?',
+            style: theme.textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              height: 1.2,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'You can change this later in Settings.',
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: cs.onSurfaceVariant,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 20),
+          TextField(
+            key: const Key('onboardingCurrencySearch'),
+            controller: _searchCtrl,
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search),
+              hintText: 'Search name, code or symbol',
+              filled: true,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
+              ),
+              isDense: true,
+            ),
+            onChanged: (v) => setState(() => _query = v),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: results.isEmpty
+                ? Center(
+                    child: Text(
+                      'No currency matches "$_query".',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: results.length,
+                    itemBuilder: (context, i) {
+                      final c = results[i];
+                      final isSelected = c.code == widget.selected;
+                      return ListTile(
+                        leading: SizedBox(
+                          width: 40,
+                          child: Center(
+                            child: Text(
+                              c.symbol,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        title: Text(c.name),
+                        subtitle: Text(c.code),
+                        trailing: isSelected
+                            ? Icon(Icons.check_rounded, color: cs.primary)
+                            : null,
+                        selected: isSelected,
+                        onTap: () => widget.onSelect(c.code),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Step 3 — cash on hand. Optional; 0 is fine. Recorded on Finish as an
 /// opening-balance income entry into the Cash account.
 class _CashStep extends StatelessWidget {
   const _CashStep({required this.controller});
@@ -343,7 +584,7 @@ class _CashStep extends StatelessWidget {
   }
 }
 
-/// Step 3 — optional bank account. All fields may be left blank. (The last-4
+/// Step 4 — optional bank account. All fields may be left blank. (The last-4
 /// digits also feed SMS matching when auto-capture returns.)
 class _BankStep extends StatelessWidget {
   const _BankStep({

@@ -8,6 +8,7 @@ import '../../features/accounts/accounts_screen.dart';
 import '../../features/accounts/archived_accounts_screen.dart';
 import '../../features/add_transaction/add_transaction_screen.dart';
 import '../../features/auto/auto_screen.dart';
+import '../../features/budgets/budget_detail_screen.dart';
 import '../../features/budgets/budgets_screen.dart';
 import '../../features/calendar/calendar_screen.dart';
 import '../../features/categories/categories_screen.dart';
@@ -79,6 +80,17 @@ final appRouter = GoRouter(
                   path: 'budgets',
                   parentNavigatorKey: _rootKey,
                   builder: (_, _) => const BudgetsScreen(),
+                  routes: [
+                    GoRoute(
+                      path: ':categoryId',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, state) => BudgetDetailScreen(
+                        categoryId: int.parse(
+                          state.pathParameters['categoryId']!,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 GoRoute(
                   path: 'calendar',

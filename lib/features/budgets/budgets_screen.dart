@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/app_icons.dart';
 import '../../core/money.dart';
@@ -115,19 +116,14 @@ class BudgetsScreen extends ConsumerWidget {
                   _BudgetTile(
                     category: node.category,
                     progress: progressById[node.category.id],
-                    onTap: () => _openSheet(
-                      context,
-                      node.category,
-                      progressById[node.category.id],
-                    ),
+                    onTap: () => _openDetail(context, node.category.id),
                   ),
                   if (node.children.isNotEmpty)
                     _ChildBudgetThread(
                       parentColor: Color(node.category.colorValue),
                       children: node.children,
                       progressById: progressById,
-                      onTapChild: (c) =>
-                          _openSheet(context, c, progressById[c.id]),
+                      onTapChild: (c) => _openDetail(context, c.id),
                     ),
                 ],
               ),
@@ -145,16 +141,8 @@ class BudgetsScreen extends ConsumerWidget {
     );
   }
 
-  void _openSheet(
-    BuildContext context,
-    CategoryRow category,
-    BudgetProgress? existing,
-  ) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => _BudgetSheet(category: category, existing: existing),
-    );
+  void _openDetail(BuildContext context, int categoryId) {
+    context.push('/more/budgets/$categoryId');
   }
 
   Future<void> _downloadBudgetStatement(
@@ -580,18 +568,24 @@ class _ThreadLinePainter extends CustomPainter {
       oldDelegate.isLast != isLast || oldDelegate.color != color;
 }
 
-/// Set / edit / remove a category's budget.
-class _BudgetSheet extends ConsumerStatefulWidget {
-  const _BudgetSheet({required this.category, required this.existing});
+/// Set / edit / remove a category's budget. Public so [BudgetDetailScreen]
+/// (`budget_detail_screen.dart`) can reuse the exact same sheet instead of
+/// building a second edit flow.
+class BudgetEditSheet extends ConsumerStatefulWidget {
+  const BudgetEditSheet({
+    required this.category,
+    required this.existing,
+    super.key,
+  });
 
   final CategoryRow category;
   final BudgetProgress? existing;
 
   @override
-  ConsumerState<_BudgetSheet> createState() => _BudgetSheetState();
+  ConsumerState<BudgetEditSheet> createState() => _BudgetEditSheetState();
 }
 
-class _BudgetSheetState extends ConsumerState<_BudgetSheet> {
+class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
   late final TextEditingController _amountCtrl;
   late final TextEditingController _noteCtrl;
   late double _threshold;

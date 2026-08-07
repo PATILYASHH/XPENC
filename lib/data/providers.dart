@@ -162,6 +162,56 @@ final budgetsProvider = StreamProvider<List<BudgetRow>>(
   (ref) => ref.watch(dbProvider).watchBudgets(),
 );
 
+/// One expense line on a category's Budget Detail page — either a normal
+/// transaction wholly in that category, or one leg of a split expense, in
+/// which case [amount] is that leg's slice, not the whole transaction.
+typedef CategoryTx = ({TransactionRow tx, Money amount, bool isSplit});
+
+/// Every expense in [categoryId] for the currently [selectedMonthProvider]
+/// window — a parent category also pulls in its live children's spend, same
+/// roll-up rule [budgetProgressProvider] already uses, so the numbers on this
+/// page always agree with the summary tile that links to it.
+final categoryTransactionsProvider = Provider.family<List<CategoryTx>, int>((
+  ref,
+  categoryId,
+) {
+  final month = ref.watch(selectedMonthProvider);
+  final start = DateTime(month.year, month.month);
+  final end = DateTime(
+    month.year,
+    month.month + 1,
+  ).subtract(const Duration(milliseconds: 1));
+
+  final cats = ref.watch(categoryMapProvider);
+  final categoryIds = {
+    categoryId,
+    for (final c in cats.values)
+      if (c.parentId == categoryId) c.id,
+  };
+
+  final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
+  final splitsByTx = ref.watch(transactionSplitsByTxProvider);
+
+  final out = <CategoryTx>[];
+  for (final t in txs) {
+    if (t.type != TxType.expense) continue;
+    if (t.date.isBefore(start) || t.date.isAfter(end)) continue;
+    if (t.categoryId != null) {
+      if (categoryIds.contains(t.categoryId)) {
+        out.add((tx: t, amount: t.amount, isSplit: false));
+      }
+      continue;
+    }
+    for (final s in splitsByTx[t.id] ?? const []) {
+      if (categoryIds.contains(s.categoryId)) {
+        out.add((tx: t, amount: s.amount, isSplit: true));
+      }
+    }
+  }
+  out.sort((a, b) => b.tx.date.compareTo(a.tx.date));
+  return out;
+});
+
 /// A budget joined with what has actually been spent this period.
 typedef BudgetProgress = ({
   BudgetRow budget,
@@ -202,6 +252,102 @@ final budgetProgressProvider = Provider<List<BudgetProgress>>((ref) {
   }
   out.sort((a, b) => b.fraction.compareTo(a.fraction));
   return out;
+});
+
+// ── Envelope Mode ────────────────────────────────────────────────────────────
+//
+// `category_balance` and `ready_to_assign` are derived here, reactively,
+// from `allocations` + the ledger — never stored as a column. That is
+// exactly the discipline that would have prevented the 1.3.0 parent/child
+// budget double-count bug: a derived money value must be recomputed from its
+// source rows every time, not cached and trusted.
+
+final allAllocationsProvider = StreamProvider<List<AllocationRow>>(
+  (ref) => ref.watch(dbProvider).watchAllAllocations(),
+);
+
+/// Every allocation, summed per (account, category) — see
+/// [Allocations.amount] for the sign convention.
+final _envelopeAllocatedProvider = Provider<Map<(int, int), Money>>((ref) {
+  final rows = ref.watch(allAllocationsProvider).valueOrNull ?? const [];
+  final out = <(int, int), Money>{};
+  for (final a in rows) {
+    final key = (a.accountId, a.categoryId);
+    out[key] = (out[key] ?? const Money.zero()) + a.amount;
+  }
+  return out;
+});
+
+/// Every expense, summed per (account, category) it was actually paid from —
+/// unlike [spendByCategoryProvider], this is scoped to one account (Envelope
+/// Mode is per-account) and carries no month window (an envelope's balance
+/// rolls forward, it never resets). Split legs count toward whichever
+/// category they name, same as [spendByCategoryProvider].
+final _envelopeSpentProvider = Provider<Map<(int, int), Money>>((ref) {
+  final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
+  final splitsByTx = ref.watch(transactionSplitsByTxProvider);
+
+  final out = <(int, int), Money>{};
+  void add(int accountId, int categoryId, Money amount) {
+    final key = (accountId, categoryId);
+    out[key] = (out[key] ?? const Money.zero()) + amount;
+  }
+
+  for (final t in txs) {
+    if (t.type != TxType.expense) continue;
+    if (t.categoryId != null) {
+      add(t.accountId, t.categoryId!, t.amount);
+    } else {
+      for (final s in splitsByTx[t.id] ?? const []) {
+        add(t.accountId, s.categoryId, s.amount);
+      }
+    }
+  }
+  return out;
+});
+
+/// `SUM(allocations) − SUM(expenses)` for one (account, category) pair. Never
+/// touches [Accounts.currentBalance] or `net worth` — Envelope Mode only
+/// re-labels money already correctly tracked by the ledger, it never moves
+/// any.
+final categoryBalanceProvider =
+    Provider.family<Money, ({int accountId, int categoryId})>((ref, key) {
+      final allocated = ref.watch(_envelopeAllocatedProvider);
+      final spent = ref.watch(_envelopeSpentProvider);
+      final pairKey = (key.accountId, key.categoryId);
+      return (allocated[pairKey] ?? const Money.zero()) -
+          (spent[pairKey] ?? const Money.zero());
+    });
+
+/// `account.currentBalance − Σ(category_balance > 0)`, for every category
+/// this account has ever allocated to or spent from. A category that has
+/// gone negative (overspent — allowed, shown in red, never blocked) does
+/// *not* reduce this further: those rupees already left the account and are
+/// already reflected in `currentBalance`, so only a category still holding a
+/// **positive**, unspent balance counts as "claimed". This keeps
+/// `ready_to_assign` bounded by the account's real balance in every case.
+final readyToAssignProvider = Provider.family<Money, int>((ref, accountId) {
+  final account = ref.watch(accountMapProvider)[accountId];
+  if (account == null) return const Money.zero();
+
+  final allocated = ref.watch(_envelopeAllocatedProvider);
+  final spent = ref.watch(_envelopeSpentProvider);
+  final categoryIds = <int>{
+    for (final k in allocated.keys)
+      if (k.$1 == accountId) k.$2,
+    for (final k in spent.keys)
+      if (k.$1 == accountId) k.$2,
+  };
+
+  var claimed = const Money.zero();
+  for (final categoryId in categoryIds) {
+    final pairKey = (accountId, categoryId);
+    final balance =
+        (allocated[pairKey] ?? const Money.zero()) -
+        (spent[pairKey] ?? const Money.zero());
+    if (balance.isPositive) claimed += balance;
+  }
+  return account.currentBalance - claimed;
 });
 
 // ── Persons ─────────────────────────────────────────────────────────────────

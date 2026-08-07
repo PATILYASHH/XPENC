@@ -18,7 +18,9 @@ const backupAppFolder = 'BACKUP XPENC';
 /// — because a backup taken later the same day is meant to replace, not pile
 /// up next to, one taken earlier that day. `060826XPENCEBACKUP.json` is
 /// 6 Aug 2026.
-final _backupFileNamePattern = RegExp(r'^(\d{2})(\d{2})(\d{2})XPENCEBACKUP\.json$');
+final _backupFileNamePattern = RegExp(
+  r'^(\d{2})(\d{2})(\d{2})XPENCEBACKUP\.json$',
+);
 
 /// Export, share, back up and restore.
 ///
@@ -78,6 +80,42 @@ class BackupService {
     }
   }
 
+  /// Associates the app with `Download/BACKUP XPENC` right away, at first
+  /// launch — not lazily the first time something is actually written there.
+  /// Cheap and idempotent (see `_mediaStoreReady`), so callable on every
+  /// startup without worrying about repeating the work.
+  Future<void> ensureBackupFolderReady() => _ensureMediaStoreReady();
+
+  /// Checks whether a backup from one of the last [lookbackDays] already
+  /// sits in `Download/BACKUP XPENC`, for onboarding's "we found a backup on
+  /// this phone" prompt — **without** the folder-picker consent dialog
+  /// [resyncFromDevice] needs. [MediaStore.isFileExist] only asks "does this
+  /// exact file exist", which Android answers for a file this app's own
+  /// package previously wrote (even across an uninstall/reinstall) with no
+  /// extra permission — unlike *listing* the folder's contents, which is
+  /// exactly the SAF consent tap [resyncFromDevice] triggers. Restoring what
+  /// this finds still goes through that full [resyncFromDevice] + confirm
+  /// flow — this only decides whether to offer it.
+  ///
+  /// Backup filenames are deterministic
+  /// (`DDMMYYXPENCEBACKUP.json`, see [backupFileName]), so this just walks
+  /// backwards from today rather than needing a directory listing. Returns
+  /// the most recent date found, or `null`.
+  Future<DateTime?> detectExistingBackup({int lookbackDays = 60}) async {
+    await _ensureMediaStoreReady();
+    final now = DateTime.now();
+    for (var i = 0; i < lookbackDays; i++) {
+      final day = DateTime(now.year, now.month, now.day - i);
+      final exists = await MediaStore().isFileExist(
+        fileName: backupFileName(day),
+        dirType: DirType.download,
+        dirName: DirName.download,
+      );
+      if (exists) return day;
+    }
+    return null;
+  }
+
   // ── Backup ────────────────────────────────────────────────────────────────
 
   /// Writes a full JSON snapshot to `Download/BACKUP XPENC` and records it.
@@ -99,7 +137,9 @@ class BackupService {
     await tempFile.delete().catchError((_) => tempFile);
 
     if (saved == null) {
-      throw StateError('Could not save the backup to Download/$backupAppFolder.');
+      throw StateError(
+        'Could not save the backup to Download/$backupAppFolder.',
+      );
     }
 
     // A duplicated name means MediaStore couldn't replace the existing file
@@ -353,6 +393,26 @@ class BackupService {
     return file;
   }
 
+  /// Every account's transactions for [start] to [end] inclusive, merged
+  /// date-wise — the Accounts screen's "Statement" action.
+  Future<File> writeCombinedStatementPdf({
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    final lines = await _db.combinedStatement(start: start, end: end);
+    final bytes = await buildCombinedStatementPdf(
+      start: start,
+      end: end,
+      lines: lines,
+    );
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File(
+      '${dir.path}/xpenc-combined-statement-${_stamp(DateTime.now())}.pdf',
+    );
+    await file.writeAsBytes(bytes, flush: true);
+    return file;
+  }
+
   /// Income & Expense Report for an arbitrary range — whatever period the
   /// Stats screen is showing (a month or a calendar year).
   Future<File> writeIncomeExpenseReportPdf({
@@ -389,11 +449,40 @@ class BackupService {
     return file;
   }
 
+  /// One category's budget line plus every expense in it for [month] — the
+  /// download action on the Budget Detail page.
+  Future<File> writeCategoryStatementPdf({
+    required int categoryId,
+    required DateTime month,
+  }) async {
+    final statement = await _db.categoryStatement(
+      categoryId: categoryId,
+      month: month,
+    );
+    final bytes = await buildCategoryStatementPdf(
+      month: month,
+      statement: statement,
+    );
+    final dir = await getApplicationDocumentsDirectory();
+    final safeName = statement.category.name
+        .replaceAll(RegExp(r'[^A-Za-z0-9]+'), '-')
+        .toLowerCase();
+    final file = File(
+      '${dir.path}/xpenc-budget-$safeName-${month.year}-'
+      '${_two(month.month)}.pdf',
+    );
+    await file.writeAsBytes(bytes, flush: true);
+    return file;
+  }
+
   /// Hands the file to the system share sheet so it can leave the app only
   /// when the user explicitly chooses to send it.
   Future<void> share(File file, {String? subject}) async {
     await SharePlus.instance.share(
-      ShareParams(files: [XFile(file.path)], subject: subject ?? 'XPENC export'),
+      ShareParams(
+        files: [XFile(file.path)],
+        subject: subject ?? 'XPENC export',
+      ),
     );
   }
 }

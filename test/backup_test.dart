@@ -169,6 +169,10 @@ void main() {
       expect(rules, hasLength(1));
       expect(rules.single.name, 'Netflix');
       expect(rules.single.amount, Money.fromRupees(649));
+
+      final reminders = await fresh.watchReminders().first;
+      expect(reminders, hasLength(1));
+      expect(reminders.single.title, 'EMI');
     });
 
     test('restoring twice is idempotent (no duplicated rows)', () async {
@@ -222,6 +226,169 @@ void main() {
       // The original ledger must survive untouched.
       expect(await db.watchTransactions().first, hasLength(before.length));
       expect(await db.watchNetWorth().first, Money.fromRupees(68265.44));
+    });
+  });
+
+  // §5 of the 1.4.0 spec: every module, not just the core ledger, must
+  // round-trip. Each assertion below is one line of that audit checklist.
+  group('full-app round trip (§5 backup audit)', () {
+    test('every module survives export -> wipe -> import', () async {
+      await seedRealisticData();
+      final bank = (await db.watchAccounts().first)
+          .firstWhere((a) => a.name == 'IPPB')
+          .id;
+
+      // Tags, and their usage on a transaction.
+      final tagId = await db.addTag(name: 'Work', colorValue: 0xFF00FF00);
+      final expenseTx = (await db.watchTransactions().first)
+          .firstWhere((t) => t.type == TxType.expense);
+      await db.setTransactionTags(expenseTx.id, {tagId});
+
+      // Receipt path + payee on that same transaction.
+      await db.updateTransaction(
+        id: expenseTx.id,
+        type: expenseTx.type,
+        amount: expenseTx.amount,
+        accountId: expenseTx.accountId,
+        date: expenseTx.date,
+        note: expenseTx.note,
+        payee: 'Big Bazaar',
+        imagePath: '/data/user/0/com.yash.xpenc/app_flutter/receipts/r1.jpg',
+      );
+
+      // Shopping lists — more than the default one, each with its own items.
+      final list1 = await db.addShoppingList(
+        name: 'Weekly groceries',
+        colorValue: 0xFFAA0000,
+      );
+      final list2 = await db.addShoppingList(
+        name: 'Diwali',
+        colorValue: 0xFF0000AA,
+      );
+      await db.addShoppingItem(
+        listId: list1,
+        name: 'Milk',
+        estimatedAmount: Money.fromRupees(60),
+      );
+      await db.addShoppingItem(listId: list2, name: 'Diyas');
+
+      // A savings goal (a real account) plus its contribution history (an
+      // ordinary transfer into it).
+      final goalId = await db.addGoal(
+        name: 'Trip to Goa',
+        targetAmount: Money.fromRupees(20000),
+        colorValue: 0xFF123456,
+        iconKey: 'flight',
+      );
+      await db.addTransaction(
+        type: TxType.transfer,
+        amount: Money.fromRupees(2000),
+        accountId: bank,
+        toAccountId: goalId,
+        date: DateTime(2026, 7, 6),
+      );
+
+      // Archived account and archived person must survive, not just active
+      // ones.
+      final archivedAccId = await db.addAccount(
+        name: 'Old Wallet',
+        type: AccountType.cash,
+        colorValue: 0xFF888888,
+        iconKey: 'wallet',
+        openingBalance: const Money.zero(),
+      );
+      await db.archiveAccount(archivedAccId);
+      final archivedPersonId = await db.addPerson('Retired Debtor');
+      await db.archivePerson(archivedPersonId);
+
+      // App settings, pushed away from every default so a restore that
+      // silently keeps local values (instead of the imported ones) shows up.
+      await db.setCurrencyCode('USD');
+      await db.setShowCurrencySymbol(false);
+      await db.setNotificationsEnabled(false);
+      await db.setCountRepaymentsAsIncome(true);
+      await db.setPreventScreenshots(true);
+      await db.setAutoBackupSettings(
+        enabled: true,
+        frequency: AutoBackupFrequency.monthly,
+        retentionDays: 60,
+      );
+      // Theme and passcode are the deliberate exception: a backup must not
+      // repaint or (re-)lock a device it's restored onto, so these are
+      // captured here only to prove the *other* settings above are not
+      // caught by that same local-wins rule.
+      await db.setThemeName('amoled');
+      await db.setPasscode('1357');
+
+      final dump =
+          jsonDecode(jsonEncode(await db.exportAll())) as Map<String, dynamic>;
+
+      // Restore onto a database with its own different local state, to
+      // prove the restore actually overwrites rather than coincidentally
+      // matching.
+      final fresh = AppDatabase(NativeDatabase.memory());
+      addTearDown(fresh.close);
+      await fresh.setThemeName('mono');
+      await fresh.setPasscode('9999');
+      await fresh.importAll(dump);
+
+      // Tags + usage.
+      final freshTags = await fresh.watchTags().first;
+      expect(freshTags.map((t) => t.name), contains('Work'));
+      final freshExpense = (await fresh.watchTransactions().first)
+          .firstWhere((t) => t.payee == 'Big Bazaar');
+      expect(
+        await fresh.tagIdsForTransaction(freshExpense.id),
+        hasLength(1),
+        reason: 'the tag link on the transaction must survive too',
+      );
+
+      // Receipt path + payee.
+      expect(
+        freshExpense.imagePath,
+        '/data/user/0/com.yash.xpenc/app_flutter/receipts/r1.jpg',
+      );
+      expect(freshExpense.payee, 'Big Bazaar');
+
+      // Shopping lists — both lists, each with its item.
+      final freshLists = await fresh.watchAllShoppingItems().first;
+      expect(freshLists.map((i) => i.name), containsAll(['Milk', 'Diyas']));
+
+      // Savings goal + its contribution transfer.
+      final freshGoalAccount = (await fresh.watchAccounts().first)
+          .firstWhere((a) => a.name == 'Trip to Goa');
+      expect(freshGoalAccount.currentBalance, Money.fromRupees(2000));
+      final freshGoalDetail = await fresh
+          .watchGoalDetail(freshGoalAccount.id)
+          .first;
+      expect(freshGoalDetail?.targetAmount, Money.fromRupees(20000));
+
+      // Archived account and person.
+      final freshArchivedAccounts = await fresh.watchArchivedAccounts().first;
+      expect(freshArchivedAccounts.map((a) => a.name), contains('Old Wallet'));
+      final freshArchivedPersons = await fresh.watchArchivedPersons().first;
+      expect(
+        freshArchivedPersons.map((p) => p.name),
+        contains('Retired Debtor'),
+      );
+
+      // App settings restored from the backup...
+      final freshSettings = await fresh.getSettings();
+      expect(freshSettings.currencyCode, 'USD');
+      expect(freshSettings.showCurrencySymbol, isFalse);
+      expect(freshSettings.notificationsEnabled, isFalse);
+      expect(freshSettings.countRepaymentsAsIncome, isTrue);
+      expect(freshSettings.preventScreenshots, isTrue);
+      expect(freshSettings.autoBackupEnabled, isTrue);
+      expect(freshSettings.autoBackupFrequency, AutoBackupFrequency.monthly);
+      expect(freshSettings.backupRetentionDays, 60);
+
+      // ...but theme and passcode stay whatever the device already had —
+      // restoring a ledger must never repaint or re-lock the phone it lands
+      // on.
+      expect(freshSettings.themeName, 'mono');
+      expect(await fresh.verifyPasscode('9999'), isTrue);
+      expect(await fresh.verifyPasscode('1357'), isFalse);
     });
   });
 

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/app_icons.dart';
 import '../../core/money.dart';
 import '../../core/widgets/money_text.dart';
+import '../../core/widgets/statement_range_picker.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
@@ -26,6 +27,11 @@ class AccountsScreen extends ConsumerWidget {
             title: const Text('Accounts'),
             expandedHeight: 132,
             actions: [
+              IconButton(
+                tooltip: 'Statement',
+                icon: const Icon(Icons.picture_as_pdf_outlined),
+                onPressed: () => _downloadCombinedStatement(context, ref),
+              ),
               IconButton(
                 tooltip: 'Archived accounts',
                 icon: const Icon(Icons.inventory_2_outlined),
@@ -67,6 +73,40 @@ class AccountsScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _downloadCombinedStatement(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final range = await pickStatementRange(context);
+    if (range == null || !context.mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final service = ref.read(backupServiceProvider);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Generating statement...')));
+    try {
+      final file = await service.writeCombinedStatementPdf(
+        start: range.start,
+        end: range.end,
+      );
+      await service.share(file, subject: 'Combined statement');
+      if (!context.mounted) return;
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text('Exported ${file.uri.pathSegments.last}')),
+        );
+    } catch (e) {
+      if (!context.mounted) return;
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text("Couldn't generate statement: $e")),
+        );
+    }
   }
 
   List<Widget> _sections(
