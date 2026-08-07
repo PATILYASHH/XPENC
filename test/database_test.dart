@@ -1268,6 +1268,108 @@ void main() {
     });
   });
 
+  group('combinedStatement — every account, merged date-wise', () {
+    test('rows are chronological across accounts, not grouped by one',
+        () async {
+      final cash = await cashId();
+      final bank = await db.addAccount(
+        name: 'IPPB',
+        type: AccountType.bank,
+        colorValue: 0,
+        iconKey: 'bank',
+        openingBalance: const Money.zero(),
+      );
+      final salary = await incomeCategory('Salary');
+      final food = await expenseCategory('Food');
+
+      await db.addTransaction(
+        type: TxType.income,
+        amount: Money.fromRupees(1000),
+        accountId: bank,
+        categoryId: salary,
+        date: DateTime(2026, 7, 3),
+      );
+      await db.addTransaction(
+        type: TxType.expense,
+        amount: Money.fromRupees(100),
+        accountId: cash,
+        categoryId: food,
+        date: DateTime(2026, 7, 1),
+      );
+
+      final lines = await db.combinedStatement(
+        start: DateTime(2026, 7, 1),
+        end: DateTime(2026, 7, 31),
+      );
+
+      expect(lines, hasLength(2));
+      // The 1st (cash expense) comes before the 3rd (bank income) — proves
+      // the merge is by date, not grouped account-by-account.
+      expect(lines[0].accountName, 'Cash');
+      expect(lines[1].accountName, 'IPPB');
+    });
+
+    test('a transfer is clearly marked, not counted as income or expense',
+        () async {
+      final cash = await cashId();
+      final bank = await db.addAccount(
+        name: 'IPPB',
+        type: AccountType.bank,
+        colorValue: 0,
+        iconKey: 'bank',
+        openingBalance: Money.fromRupees(500),
+      );
+      await db.addTransaction(
+        type: TxType.transfer,
+        amount: Money.fromRupees(100),
+        accountId: cash,
+        toAccountId: bank,
+        date: DateTime(2026, 7, 10),
+      );
+
+      final lines = await db.combinedStatement(
+        start: DateTime(2026, 7, 1),
+        end: DateTime(2026, 7, 31),
+      );
+
+      expect(lines, hasLength(1));
+      expect(lines.single.type, 'Transfer');
+      expect(lines.single.accountName, 'Cash');
+      expect(lines.single.description, 'To IPPB');
+      expect(lines.single.amount, Money.fromRupees(100));
+    });
+
+    test('a lending movement is named by the person, not left blank',
+        () async {
+      final cash = await cashId();
+      final ram = await db.addPerson('Ram');
+      await db.addPersonEntry(
+        personId: ram,
+        direction: PersonDirection.theyOwe,
+        amount: Money.fromRupees(500),
+        date: DateTime(2026, 7, 5),
+        accountId: cash,
+      );
+
+      final lines = await db.combinedStatement(
+        start: DateTime(2026, 7, 1),
+        end: DateTime(2026, 7, 31),
+      );
+
+      expect(lines, hasLength(1));
+      expect(lines.single.type, 'Lending out');
+      expect(lines.single.description, 'Ram');
+    });
+
+    test('an empty range reports no rows', () async {
+      final lines = await db.combinedStatement(
+        start: DateTime(2026, 1, 1),
+        end: DateTime(2026, 1, 31),
+      );
+      expect(lines, isEmpty);
+    });
+  });
+
   group('recalculateBalances — the repair function', () {
     test('rebuilds every balance from the ledger', () async {
       final cash = await cashId();

@@ -105,6 +105,25 @@ void main() {
     await unmount(tester);
   });
 
+  testWidgets('Dashboard shows Ready to Assign only for an envelope account',
+      (tester) async {
+    await pump(tester, const DashboardScreen());
+    expect(tester.takeException(), isNull);
+    expect(find.text('Ready to Assign'), findsNothing);
+    await unmount(tester);
+
+    await tester.runAsync(() async {
+      final cash = await cashId();
+      await db.setEnvelopeMode(cash, true);
+    });
+
+    await pump(tester, const DashboardScreen());
+    expect(tester.takeException(), isNull);
+    expect(find.text('Ready to Assign'), findsOneWidget);
+    expect(find.text('Cash'), findsWidgets);
+    await unmount(tester);
+  });
+
   testWidgets('Accounts renders and shows the seeded Cash account',
       (tester) async {
     await pump(tester, const AccountsScreen());

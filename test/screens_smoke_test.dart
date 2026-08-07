@@ -10,6 +10,8 @@ import 'package:xpenc/data/providers.dart';
 import 'package:xpenc/data/tables.dart';
 import 'package:xpenc/features/about/about_screen.dart';
 import 'package:xpenc/features/accounts/account_detail_screen.dart';
+import 'package:xpenc/features/accounts/accounts_screen.dart';
+import 'package:xpenc/features/budgets/budget_detail_screen.dart';
 import 'package:xpenc/features/calendar/calendar_screen.dart';
 import 'package:xpenc/features/categories/categories_screen.dart';
 import 'package:xpenc/features/data_export/backup_screen.dart';
@@ -138,6 +140,39 @@ void main() {
     await unmount(tester);
   });
 
+  testWidgets('Onboarding currency step lets you search and pick a currency',
+      (tester) async {
+    await pump(tester, const OnboardingScreen());
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('Next'));
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 60));
+    }
+    expect(find.text('What currency do you use?'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const Key('onboardingCurrencySearch')),
+      'USD',
+    );
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    expect(find.text('US Dollar'), findsOneWidget);
+
+    await tester.tap(find.text('US Dollar'));
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    expect(
+      find.descendant(
+        of: find.widgetWithText(ListTile, 'US Dollar'),
+        matching: find.byIcon(Icons.check_rounded),
+      ),
+      findsOneWidget,
+    );
+
+    await unmount(tester);
+  });
+
   testWidgets('Categories renders both tabs', (tester) async {
     await pump(tester, const CategoriesScreen());
     expect(tester.takeException(), isNull);
@@ -190,6 +225,53 @@ void main() {
       (tester) async {
     await pump(tester, const AccountDetailScreen(accountId: 999999));
     expect(tester.takeException(), isNull);
+    await unmount(tester);
+  });
+
+  testWidgets(
+      'Account detail: Envelope Mode shows Ready to Assign and category '
+      'balances once turned on', (tester) async {
+    late int cash;
+    await tester.runAsync(() async {
+      cash = (await seed()).cash;
+      await db.setEnvelopeMode(cash, true);
+      await db.addAllocation(
+        accountId: cash,
+        categoryId: await (db.watchCategories(CategoryKind.expense).first)
+            .then((c) => c.firstWhere((c) => c.name == 'Food').id),
+        amount: Money.fromRupees(500),
+      );
+    });
+    await pump(tester, AccountDetailScreen(accountId: cash));
+    expect(tester.takeException(), isNull);
+    expect(find.text('Envelope Mode'), findsOneWidget);
+    expect(find.text('Ready to Assign'), findsOneWidget);
+    expect(find.text('Food'), findsWidgets);
+    await unmount(tester);
+  });
+
+  testWidgets(
+      'Account detail: turning Envelope Mode on asks for confirmation first',
+      (tester) async {
+    late int cash;
+    await tester.runAsync(() async => cash = (await seed()).cash);
+    await pump(tester, AccountDetailScreen(accountId: cash));
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('Envelope Mode'));
+    await tester.pump();
+    expect(find.text('Turn on Envelope Mode?'), findsOneWidget);
+
+    late List<AccountRow> account;
+    await tester.runAsync(() async => account = await db.watchAccounts().first);
+    expect(
+      account.firstWhere((a) => a.id == cash).envelopeMode,
+      isFalse,
+      reason: 'must not flip on before the dialog is confirmed',
+    );
+
+    await tester.tap(find.text('Cancel'));
+    await tester.pump();
     await unmount(tester);
   });
 
@@ -264,6 +346,53 @@ void main() {
     await pump(tester, const SavingsGoalDetailScreen(goalId: 999999));
     expect(tester.takeException(), isNull);
     expect(find.text('Goal not found'), findsOneWidget);
+    await unmount(tester);
+  });
+
+  testWidgets('Accounts screen offers a combined Statement download',
+      (tester) async {
+    await tester.runAsync(seed);
+    await pump(tester, const AccountsScreen());
+    expect(tester.takeException(), isNull);
+    expect(find.byTooltip('Statement'), findsOneWidget);
+    await unmount(tester);
+  });
+
+  testWidgets('Budget detail renders spent/budgeted and its transactions',
+      (tester) async {
+    late int categoryId;
+    await tester.runAsync(() async {
+      final cash = (await db.watchAccounts().first)
+          .firstWhere((a) => a.type == AccountType.cash)
+          .id;
+      categoryId = (await db.watchCategories(CategoryKind.expense).first)
+          .firstWhere((c) => c.name == 'Food')
+          .id;
+      await db.upsertBudget(
+        categoryId: categoryId,
+        amount: Money.fromRupees(6000),
+      );
+      await db.addTransaction(
+        type: TxType.expense,
+        amount: Money.fromRupees(450),
+        accountId: cash,
+        categoryId: categoryId,
+        date: DateTime.now(),
+        note: 'Groceries',
+      );
+    });
+    await pump(tester, BudgetDetailScreen(categoryId: categoryId));
+    expect(tester.takeException(), isNull);
+    expect(find.text('Food'), findsOneWidget);
+    expect(find.text('Groceries'), findsOneWidget);
+    await unmount(tester);
+  });
+
+  testWidgets('Budget detail: a missing category shows an error, not a crash',
+      (tester) async {
+    await pump(tester, const BudgetDetailScreen(categoryId: 999999));
+    expect(tester.takeException(), isNull);
+    expect(find.text('Category not found'), findsOneWidget);
     await unmount(tester);
   });
 

@@ -14,8 +14,7 @@ class DownloadDataScreen extends ConsumerStatefulWidget {
   const DownloadDataScreen({super.key});
 
   @override
-  ConsumerState<DownloadDataScreen> createState() =>
-      _DownloadDataScreenState();
+  ConsumerState<DownloadDataScreen> createState() => _DownloadDataScreenState();
 }
 
 class _DownloadDataScreenState extends ConsumerState<DownloadDataScreen> {
@@ -188,8 +187,9 @@ class _ExportCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     title,
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w600),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],

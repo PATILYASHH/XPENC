@@ -12,6 +12,7 @@ import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../accounts/envelope_outflow.dart';
 import 'receipt_storage.dart';
 
 /// One editable row of a split expense: which category, and how much of the
@@ -305,10 +306,22 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => _CategoryPickerSheet(kind: kind),
+      builder: (_) => _CategoryPickerSheet(
+        kind: kind,
+        envelopeAccountId: _envelopeAccountId,
+      ),
     );
     if (selected == null || !mounted) return;
     setState(() => _categoryId = selected);
+  }
+
+  /// Non-null only for an expense on an Envelope Mode account — the signal
+  /// [_CategoryPickerSheet] uses to show each category's remaining balance
+  /// inline instead of just its name.
+  int? get _envelopeAccountId {
+    if (_type != TxType.expense || _accountId == null) return null;
+    final account = ref.read(accountMapProvider)[_accountId];
+    return (account?.envelopeMode ?? false) ? _accountId : null;
   }
 
   Future<void> _pickDate() async {
@@ -435,7 +448,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => const _CategoryPickerSheet(kind: CategoryKind.expense),
+      builder: (_) => _CategoryPickerSheet(
+        kind: CategoryKind.expense,
+        envelopeAccountId: _envelopeAccountId,
+      ),
     );
     if (selected == null || !mounted) return;
     setState(() => _splitRows[index].categoryId = selected);
@@ -619,6 +635,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       );
       return;
     }
+    int? envelopeShortfallCategoryId;
+    var envelopeShortfall = const Money.zero();
     if (_type == TxType.transfer) {
       if (_toAccountId == null) {
         messenger.showSnackBar(
@@ -633,6 +651,25 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           ),
         );
         return;
+      }
+      // Only a brand-new transfer — editing one that already resolved its
+      // own shortfall would otherwise record a second, duplicate allocation
+      // on top of the first.
+      if (!_isEditing) {
+        envelopeShortfall = envelopeOutflowShortfall(
+          ref,
+          accountId: _accountId!,
+          amount: amount,
+        );
+        if (envelopeShortfall.isPositive) {
+          final picked = await pickEnvelopeShortfallCategory(
+            context: context,
+            accountId: _accountId!,
+            shortfall: envelopeShortfall,
+          );
+          if (picked == null || !mounted) return;
+          envelopeShortfallCategoryId = picked;
+        }
       }
     } else if (_isSplitting) {
       if (_splitRows.any((r) => r.categoryId == null)) {
@@ -722,6 +759,18 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               ]
             : const [],
       );
+      // Written only after the transfer itself is safely saved — a failed
+      // transfer must never leave a stray allocation behind with nothing to
+      // account for.
+      if (envelopeShortfallCategoryId != null) {
+        await db.addAllocation(
+          accountId: _accountId!,
+          categoryId: envelopeShortfallCategoryId,
+          amount: -envelopeShortfall,
+          date: _date,
+          note: 'Drawn for a transfer out of this account',
+        );
+      }
     } on ArgumentError catch (e) {
       messenger.showSnackBar(
         SnackBar(
@@ -790,6 +839,11 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final theme = Theme.of(context);
     final accountMap = ref.watch(accountMapProvider);
     final categoryMap = ref.watch(categoryMapProvider);
+    // Kept warm from the moment this screen opens, not read for the first
+    // time inside `_save`: `envelopeOutflowShortfall` needs a real value
+    // already in hand the instant Save is tapped, and a provider nothing
+    // else here watches only starts loading on its first read.
+    ref.watch(allAllocationsProvider);
     final amount = _amount;
 
     return Scaffold(
@@ -1305,9 +1359,14 @@ class _AccountPickerSheet extends ConsumerWidget {
 /// [parent]" chip to pick the parent directly); a childless one is picked on the
 /// spot. Popping returns the chosen category id.
 class _CategoryPickerSheet extends ConsumerStatefulWidget {
-  const _CategoryPickerSheet({required this.kind});
+  const _CategoryPickerSheet({required this.kind, this.envelopeAccountId});
 
   final CategoryKind kind;
+
+  /// Set only for an expense on an Envelope Mode account — shows each
+  /// category's remaining envelope balance under its name instead of just
+  /// the name.
+  final int? envelopeAccountId;
 
   @override
   ConsumerState<_CategoryPickerSheet> createState() =>
@@ -1386,6 +1445,7 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
         for (final c in cats.where((c) => c.parentId == null))
           _cell(
             theme,
+            categoryId: c.id,
             iconKey: c.iconKey,
             colorValue: c.colorValue,
             label: c.name,
@@ -1424,6 +1484,7 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
         // Pick the parent itself, not one of its children.
         _cell(
           theme,
+          categoryId: drillParent.id,
           iconKey: drillParent.iconKey,
           colorValue: drillParent.colorValue,
           label: 'All ${drillParent.name}',
@@ -1432,6 +1493,7 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
         for (final c in childrenByParent[drillParent.id] ?? const [])
           _cell(
             theme,
+            categoryId: c.id,
             iconKey: c.iconKey,
             colorValue: c.colorValue,
             label: c.name,
@@ -1452,7 +1514,9 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
             crossAxisCount: 4,
             mainAxisSpacing: 16,
             crossAxisSpacing: 12,
-            childAspectRatio: 0.78,
+            // A little shorter when an envelope-balance line is also
+            // rendered under the label, so it never clips.
+            childAspectRatio: widget.envelopeAccountId == null ? 0.78 : 0.64,
             children: cells,
           ),
         ),
@@ -1461,15 +1525,19 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
   }
 
   /// One tappable category chip. A small dot marks a parent that opens into
-  /// subcategories rather than being picked directly.
+  /// subcategories rather than being picked directly. When [categoryId]
+  /// names a category and the sheet was opened for an Envelope Mode account,
+  /// a second line shows that category's remaining balance in this account.
   Widget _cell(
     ThemeData theme, {
+    required int categoryId,
     required String iconKey,
     required int colorValue,
     required String label,
     required VoidCallback onTap,
     bool hasChildren = false,
   }) {
+    final envelopeAccountId = widget.envelopeAccountId;
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: onTap,
@@ -1509,6 +1577,29 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
               style: theme.textTheme.bodySmall,
             ),
           ),
+          if (envelopeAccountId != null)
+            Consumer(
+              builder: (context, ref, _) {
+                final balance = ref.watch(
+                  categoryBalanceProvider((
+                    accountId: envelopeAccountId,
+                    categoryId: categoryId,
+                  )),
+                );
+                return Text(
+                  '${MoneyFormat.symbol(balance)} left',
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontSize: 9,
+                    color: balance.isNegative
+                        ? AppColors.expense
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );

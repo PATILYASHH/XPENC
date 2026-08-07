@@ -8,9 +8,11 @@ import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/error_view.dart';
 import '../../core/widgets/money_text.dart';
+import '../../core/widgets/statement_range_picker.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import 'envelope_section.dart';
 
 /// One account's balance, context and full history.
 ///
@@ -96,6 +98,10 @@ class _AccountDetailView extends ConsumerWidget {
           SliverToBoxAdapter(
             child: _HeaderCard(account: account, linkedBank: linkedBank),
           ),
+          // A linked instrument (debit card / UPI) holds no balance of its
+          // own — there is no money on it to give a job to.
+          if (account.linkedAccountId == null)
+            SliverToBoxAdapter(child: EnvelopeSection(account: account)),
           ..._historySlivers(
             context: context,
             txAsync: txAsync,
@@ -459,7 +465,7 @@ Future<void> _downloadStatement(
   WidgetRef ref,
   AccountRow account,
 ) async {
-  final range = await _pickStatementRange(context);
+  final range = await pickStatementRange(context);
   if (range == null || !context.mounted) return;
 
   final messenger = ScaffoldMessenger.of(context);
@@ -486,82 +492,6 @@ Future<void> _downloadStatement(
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(content: Text("Couldn't generate statement: $e")),
-      );
-  }
-}
-
-/// This month / Last month / a custom range picked via the platform's
-/// built-in range picker.
-Future<DateTimeRange?> _pickStatementRange(BuildContext context) async {
-  final now = DateTime.now();
-  final choice = await showModalBottomSheet<String>(
-    context: context,
-    showDragHandle: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-    ),
-    builder: (sheetContext) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Statement period',
-                style: Theme.of(
-                  sheetContext,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-              ),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.calendar_today_outlined),
-            title: const Text('This month'),
-            onTap: () => Navigator.of(sheetContext).pop('this'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.calendar_view_month_outlined),
-            title: const Text('Last month'),
-            onTap: () => Navigator.of(sheetContext).pop('last'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.date_range_outlined),
-            title: const Text('Custom range'),
-            onTap: () => Navigator.of(sheetContext).pop('custom'),
-          ),
-          const SizedBox(height: 8),
-        ],
-      ),
-    ),
-  );
-  if (choice == null) return null;
-
-  switch (choice) {
-    case 'this':
-      return DateTimeRange(
-        start: DateTime(now.year, now.month),
-        end: DateTime(
-          now.year,
-          now.month + 1,
-        ).subtract(const Duration(days: 1)),
-      );
-    case 'last':
-      return DateTimeRange(
-        start: DateTime(now.year, now.month - 1),
-        end: DateTime(now.year, now.month).subtract(const Duration(days: 1)),
-      );
-    default:
-      if (!context.mounted) return null;
-      return showDateRangePicker(
-        context: context,
-        firstDate: DateTime(2020),
-        lastDate: now,
-        initialDateRange: DateTimeRange(
-          start: DateTime(now.year, now.month),
-          end: now,
-        ),
       );
   }
 }

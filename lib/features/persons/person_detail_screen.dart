@@ -9,6 +9,7 @@ import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../accounts/envelope_outflow.dart';
 
 /// One person's ledger. Net balance = Σ(theyOwe) − Σ(iOwe).
 /// `+` they owe you · `-` you owe them.
@@ -497,6 +498,32 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
       );
       return;
     }
+
+    // Lending really moves money out of an account, same as a transfer —
+    // and, same as a transfer, that money carries no category of its own
+    // (see `AppDatabase._validateTx`). Only a brand-new "they owe" entry
+    // triggers this; editing one that already resolved its own shortfall
+    // would otherwise record a second, duplicate allocation on top of the
+    // first.
+    int? envelopeShortfallCategoryId;
+    var envelopeShortfall = const Money.zero();
+    if (!_isEdit && _theyOwe && _accountId != null) {
+      envelopeShortfall = envelopeOutflowShortfall(
+        ref,
+        accountId: _accountId!,
+        amount: amount,
+      );
+      if (envelopeShortfall.isPositive) {
+        final picked = await pickEnvelopeShortfallCategory(
+          context: context,
+          accountId: _accountId!,
+          shortfall: envelopeShortfall,
+        );
+        if (picked == null || !mounted) return;
+        envelopeShortfallCategoryId = picked;
+      }
+    }
+
     setState(() {
       _amountError = null;
       _saving = true;
@@ -524,6 +551,18 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
           accountId: _accountId,
           note: note.isEmpty ? null : note,
           categoryId: widget.isRepayment ? _repaymentCategoryId : null,
+        );
+      }
+      // Written only after the entry itself is safely saved — a failed save
+      // must never leave a stray allocation behind with nothing to account
+      // for.
+      if (envelopeShortfallCategoryId != null) {
+        await db.addAllocation(
+          accountId: _accountId!,
+          categoryId: envelopeShortfallCategoryId,
+          amount: -envelopeShortfall,
+          date: _date,
+          note: 'Drawn for money lent out of this account',
         );
       }
       navigator.pop();
@@ -556,6 +595,11 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
     final accounts =
         ref.watch(accountsProvider).valueOrNull ?? const <AccountRow>[];
     _initAccount(accounts);
+    // Kept warm from the moment this sheet opens, not read for the first
+    // time inside `_save`: `envelopeOutflowShortfall` needs a real value
+    // already in hand the instant Save is tapped, and a provider nothing
+    // else here watches only starts loading on its first read.
+    ref.watch(allAllocationsProvider);
     final accent = _theyOwe ? AppColors.income : AppColors.expense;
 
     // Editing an old entry can point at an account archived since — the

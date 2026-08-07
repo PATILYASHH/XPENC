@@ -81,6 +81,37 @@ typedef BudgetStatementLine = ({
   Money spent,
 });
 
+/// One expense row on a single category's statement — either a normal
+/// transaction wholly in that category, or one leg of a split expense, in
+/// which case [amount] is that leg's slice, not the whole transaction.
+typedef CategoryStatementLine = ({
+  DateTime date,
+  String description,
+  Money amount,
+  bool isSplit,
+});
+
+/// Everything needed to render one category's budget statement for a month.
+typedef CategoryStatement = ({
+  CategoryRow category,
+  Money budgeted,
+  Money spent,
+  List<CategoryStatementLine> lines,
+});
+
+/// One row of the combined, every-account statement — a real bank-style
+/// statement merged date-wise across every account rather than grouped by
+/// one. [amount] is always the transaction's own stored (positive) amount;
+/// [type] is what tells a reader whether it left, arrived, or just moved
+/// between two of the user's own accounts.
+typedef CombinedStatementLine = ({
+  DateTime date,
+  String accountName,
+  String type,
+  String description,
+  Money amount,
+});
+
 @DriftDatabase(
   tables: [
     Accounts,
@@ -103,6 +134,7 @@ typedef BudgetStatementLine = ({
     ShoppingLists,
     ShoppingItems,
     BackupRecords,
+    Allocations,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -114,7 +146,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'money_manager'));
 
   @override
-  int get schemaVersion => 22;
+  int get schemaVersion => 23;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -225,6 +257,10 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 22) {
         await m.addColumn(budgets, budgets.note);
+      }
+      if (from < 23) {
+        await m.addColumn(accounts, accounts.envelopeMode);
+        await m.createTable(allocations);
       }
     },
     beforeOpen: (details) async {
@@ -498,27 +534,27 @@ class AppDatabase extends _$AppDatabase {
   /// Deletes go children-before-parents, the same order [importAll] already
   /// established, so foreign keys never reject a delete partway through.
   Future<void> clearAllData() => transaction(() async {
-        await delete(budgetAlerts).go();
-        await delete(pendingTxns).go();
-        await delete(merchantRules).go();
-        await delete(reminders).go();
-        await delete(personEntries).go();
-        await delete(budgets).go();
-        await delete(transactionSplits).go();
-        await delete(transactionTags).go();
-        await delete(goalDetails).go();
-        await delete(shoppingItems).go();
-        await delete(shoppingLists).go();
-        // transactions references accounts/categories/persons/recurringRules,
-        // so it must go before all four.
-        await delete(transactions).go();
-        await delete(recurringRules).go();
-        await delete(persons).go();
-        await delete(categories).go();
-        await delete(accounts).go();
-        await delete(tags).go();
-        await _seedDefaultAccountsAndCategories();
-      });
+    await delete(budgetAlerts).go();
+    await delete(pendingTxns).go();
+    await delete(merchantRules).go();
+    await delete(reminders).go();
+    await delete(personEntries).go();
+    await delete(budgets).go();
+    await delete(transactionSplits).go();
+    await delete(transactionTags).go();
+    await delete(goalDetails).go();
+    await delete(shoppingItems).go();
+    await delete(shoppingLists).go();
+    // transactions references accounts/categories/persons/recurringRules,
+    // so it must go before all four.
+    await delete(transactions).go();
+    await delete(recurringRules).go();
+    await delete(persons).go();
+    await delete(categories).go();
+    await delete(accounts).go();
+    await delete(tags).go();
+    await _seedDefaultAccountsAndCategories();
+  });
 
   // ── Balance mechanics ─────────────────────────────────────────────────────
 
@@ -883,10 +919,9 @@ class AppDatabase extends _$AppDatabase {
 
   Stream<List<GoalDetailRow>> watchGoalDetails() => select(goalDetails).watch();
 
-  Stream<GoalDetailRow?> watchGoalDetail(int accountId) =>
-      (select(
-        goalDetails,
-      )..where((g) => g.accountId.equals(accountId))).watchSingleOrNull();
+  Stream<GoalDetailRow?> watchGoalDetail(int accountId) => (select(
+    goalDetails,
+  )..where((g) => g.accountId.equals(accountId))).watchSingleOrNull();
 
   /// Creates the goal account and its target/deadline row together, always
   /// starting at zero. The "turn an existing account into a goal" flow funds
@@ -1583,9 +1618,7 @@ class AppDatabase extends _$AppDatabase {
     await transaction(() async {
       // A goal account's own target/deadline row has no reason to outlive
       // it — nothing else ever references GoalDetails.
-      await (delete(
-        goalDetails,
-      )..where((g) => g.accountId.equals(id))).go();
+      await (delete(goalDetails)..where((g) => g.accountId.equals(id))).go();
       await (delete(accounts)..where((a) => a.id.equals(id))).go();
     });
   }
@@ -1738,6 +1771,114 @@ class AppDatabase extends _$AppDatabase {
 
   Stream<List<BudgetRow>> watchBudgets() =>
       (select(budgets)..where((b) => b.isActive.equals(true))).watch();
+
+  // ── Envelope Mode ─────────────────────────────────────────────────────────
+  //
+  // `category_balance` and `ready_to_assign` are never stored — always
+  // derived fresh from `allocations` + `transactions`, the same way
+  // `current_balance` is derived from the ledger rather than trusted as a
+  // cache (see `recalculateBalances`). Storing either as a column is exactly
+  // how the 1.3.0 parent/child budget double-count bug happened; the
+  // provider-layer composition in `data/providers.dart`
+  // (`categoryBalanceProvider` / `readyToAssignProvider`) is what actually
+  // computes them, from streams this section exposes.
+
+  /// Per-account, not global — every other account keeps working exactly as
+  /// it does today. Switching this off never deletes [Allocations] rows (see
+  /// [Allocations] doc); they simply stop being read while it's off, and
+  /// reappear if it's switched back on.
+  Future<void> setEnvelopeMode(int accountId, bool enabled) =>
+      (update(accounts)..where((a) => a.id.equals(accountId))).write(
+        AccountsCompanion(envelopeMode: Value(enabled)),
+      );
+
+  /// Every allocation, across every account — the provider layer sums these
+  /// per (account, category) rather than this querying once per pair.
+  Stream<List<AllocationRow>> watchAllAllocations() =>
+      select(allocations).watch();
+
+  Stream<List<AllocationRow>> watchAllocationsForAccount(int accountId) =>
+      (select(allocations)
+            ..where((a) => a.accountId.equals(accountId))
+            ..orderBy([
+              (a) => OrderingTerm(expression: a.date, mode: OrderingMode.desc),
+            ]))
+          .watch();
+
+  /// Records one movement of money into or out of [categoryId]'s envelope —
+  /// see [Allocations.amount] for the sign convention. This is both "assign"
+  /// (a positive amount) and "unassign" (a negative one); there is no
+  /// separate method for each, the same way [addTransaction] covers
+  /// income/expense/transfer with one method rather than three.
+  ///
+  /// Throws [ArgumentError] if [accountId] isn't in Envelope Mode, or if
+  /// [amount] is zero.
+  Future<int> addAllocation({
+    required int accountId,
+    required int categoryId,
+    required Money amount,
+    DateTime? date,
+    String? note,
+  }) async {
+    if (amount.isZero) {
+      throw ArgumentError('Amount must not be zero.');
+    }
+    final account = await (select(
+      accounts,
+    )..where((a) => a.id.equals(accountId))).getSingleOrNull();
+    if (account == null || !account.envelopeMode) {
+      throw ArgumentError('Envelope Mode is off for this account.');
+    }
+    return into(allocations).insert(
+      AllocationsCompanion.insert(
+        accountId: accountId,
+        categoryId: categoryId,
+        amount: amount,
+        date: date ?? DateTime.now(),
+        note: Value(note),
+      ),
+    );
+  }
+
+  /// Moves money from one category's envelope straight to another within the
+  /// same account — a negative row on [fromCategoryId], a positive row on
+  /// [toCategoryId], written together so a crash between the two can never
+  /// leave the move half-done.
+  Future<void> moveAllocation({
+    required int accountId,
+    required int fromCategoryId,
+    required int toCategoryId,
+    required Money amount,
+    DateTime? date,
+    String? note,
+  }) async {
+    if (!amount.isPositive) {
+      throw ArgumentError('Amount must be greater than zero.');
+    }
+    if (fromCategoryId == toCategoryId) {
+      throw ArgumentError('Pick two different categories.');
+    }
+    final when = date ?? DateTime.now();
+    await transaction(() async {
+      await addAllocation(
+        accountId: accountId,
+        categoryId: fromCategoryId,
+        amount: -amount,
+        date: when,
+        note: note,
+      );
+      await addAllocation(
+        accountId: accountId,
+        categoryId: toCategoryId,
+        amount: amount,
+        date: when,
+        note: note,
+      );
+    });
+  }
+
+  Future<void> deleteAllocation(int id) =>
+      (delete(allocations)..where((a) => a.id.equals(id))).go();
 
   // ── Reminders ─────────────────────────────────────────────────────────────
 
@@ -2510,16 +2651,16 @@ class AppDatabase extends _$AppDatabase {
   Future<void> deleteBackupRecordByName(String fileName) =>
       (delete(backupRecords)..where((b) => b.fileName.equals(fileName))).go();
 
-  Future<BackupRecordRow?> backupRecordByName(String fileName) =>
-      (select(
-        backupRecords,
-      )..where((b) => b.fileName.equals(fileName))).getSingleOrNull();
-
-  Stream<List<BackupRecordRow>> watchBackupRecords() => (select(
+  Future<BackupRecordRow?> backupRecordByName(String fileName) => (select(
     backupRecords,
-  )..orderBy([
-      (b) => OrderingTerm(expression: b.createdAt, mode: OrderingMode.desc),
-    ])).watch();
+  )..where((b) => b.fileName.equals(fileName))).getSingleOrNull();
+
+  Stream<List<BackupRecordRow>> watchBackupRecords() =>
+      (select(backupRecords)..orderBy([
+            (b) =>
+                OrderingTerm(expression: b.createdAt, mode: OrderingMode.desc),
+          ]))
+          .watch();
 
   /// Records older than the current retention window — what
   /// `BackupService.cleanupOldBackups` should delete next. Always empty when
@@ -2857,6 +2998,167 @@ class AppDatabase extends _$AppDatabase {
     return out;
   }
 
+  /// One category's statement for [month] — its budget line plus every
+  /// expense in it, a parent rolling up its children's the same way
+  /// [budgetStatement] and [categoryTransactionsProvider] both do (duplicated
+  /// here rather than shared, since that provider is a Riverpod composition
+  /// this data-only layer must not depend on).
+  Future<CategoryStatement> categoryStatement({
+    required int categoryId,
+    required DateTime month,
+  }) async {
+    final category = await categoryById(categoryId);
+    if (category == null) {
+      throw ArgumentError('That category no longer exists.');
+    }
+    final start = DateTime(month.year, month.month);
+    final end = DateTime(
+      month.year,
+      month.month + 1,
+    ).subtract(const Duration(milliseconds: 1));
+
+    final categoriesById = {
+      for (final c in await select(categories).get()) c.id: c,
+    };
+    final categoryIds = {
+      categoryId,
+      for (final c in categoriesById.values)
+        if (c.parentId == categoryId) c.id,
+    };
+
+    final budget = await (select(
+      budgets,
+    )..where((b) => b.categoryId.equals(categoryId))).getSingleOrNull();
+
+    final allSplits = await select(transactionSplits).get();
+    final splitsByTx = <int, List<TransactionSplitRow>>{};
+    for (final s in allSplits) {
+      (splitsByTx[s.transactionId] ??= []).add(s);
+    }
+
+    final txs =
+        await (select(transactions)
+              ..where(
+                (t) =>
+                    t.type.equalsValue(TxType.expense) &
+                    t.date.isBetweenValues(start, end),
+              )
+              ..orderBy([(t) => OrderingTerm(expression: t.date)]))
+            .get();
+
+    var spent = const Money.zero();
+    final lines = <CategoryStatementLine>[];
+    for (final t in txs) {
+      final payee = t.payee?.trim();
+      final note = t.note?.trim();
+      if (t.categoryId != null) {
+        if (!categoryIds.contains(t.categoryId)) continue;
+        spent += t.amount;
+        lines.add((
+          date: t.date,
+          description: (note != null && note.isNotEmpty)
+              ? note
+              : (payee != null && payee.isNotEmpty ? payee : 'Expense'),
+          amount: t.amount,
+          isSplit: false,
+        ));
+        continue;
+      }
+      for (final s in splitsByTx[t.id] ?? const []) {
+        if (!categoryIds.contains(s.categoryId)) continue;
+        spent += s.amount;
+        lines.add((
+          date: t.date,
+          description: (note != null && note.isNotEmpty)
+              ? note
+              : (payee != null && payee.isNotEmpty ? payee : 'Expense'),
+          amount: s.amount,
+          isSplit: true,
+        ));
+      }
+    }
+    lines.sort((a, b) => a.date.compareTo(b.date));
+
+    return (
+      category: category,
+      budgeted: budget?.amount ?? const Money.zero(),
+      spent: spent,
+      lines: lines,
+    );
+  }
+
+  /// Every account's transactions between [start] and [end] inclusive, merged
+  /// date-wise rather than grouped by account — a real bank-style combined
+  /// statement. Each row is one ledger transaction, named by its own
+  /// [Transactions.accountId] (the source, for a transfer or expense; the
+  /// destination, for income) — never expanded into two legs, so this list
+  /// stays in step with the underlying ledger row-for-row.
+  Future<List<CombinedStatementLine>> combinedStatement({
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    final endOfEnd = DateTime(end.year, end.month, end.day, 23, 59, 59, 999);
+    final accountsById = {
+      for (final a in await select(accounts).get()) a.id: a,
+    };
+    final categoriesById = {
+      for (final c in await select(categories).get()) c.id: c,
+    };
+    final personsById = {for (final p in await select(persons).get()) p.id: p};
+
+    final txs =
+        await (select(transactions)
+              ..where((t) => t.date.isBetweenValues(start, endOfEnd))
+              ..orderBy([
+                (t) => OrderingTerm(expression: t.date),
+                (t) => OrderingTerm(expression: t.id),
+              ]))
+            .get();
+
+    String typeLabel(TxType type) => switch (type) {
+      TxType.income => 'Income',
+      TxType.expense => 'Expense',
+      TxType.transfer => 'Transfer',
+      TxType.personOut => 'Lending out',
+      TxType.personIn => 'Lending in',
+    };
+
+    String describe(TransactionRow t) {
+      switch (t.type) {
+        case TxType.transfer:
+          final dest = t.toAccountId == null
+              ? null
+              : accountsById[t.toAccountId]?.name;
+          return 'To ${dest ?? '-'}';
+        case TxType.personOut:
+        case TxType.personIn:
+          final person = t.personId == null
+              ? null
+              : personsById[t.personId]?.name;
+          return person ?? 'Person';
+        case TxType.income:
+        case TxType.expense:
+          final category = t.categoryId == null
+              ? null
+              : categoriesById[t.categoryId]?.name;
+          if (category != null) return category;
+          final note = t.note?.trim();
+          return (note != null && note.isNotEmpty) ? note : 'Uncategorised';
+      }
+    }
+
+    return [
+      for (final t in txs)
+        (
+          date: t.date,
+          accountName: accountsById[t.accountId]?.name ?? 'Unknown',
+          type: typeLabel(t.type),
+          description: describe(t),
+          amount: t.amount,
+        ),
+    ];
+  }
+
   // ── Export / Import ───────────────────────────────────────────────────────
 
   static const backupFormatVersion = 1;
@@ -2911,6 +3213,7 @@ class AppDatabase extends _$AppDatabase {
         transactionSplits,
       ).get()).map(m).toList(),
       'goalDetails': (await select(goalDetails).get()).map(m).toList(),
+      'allocations': (await select(allocations).get()).map(m).toList(),
       'shoppingLists': (await select(shoppingLists).get()).map(m).toList(),
       'shoppingItems': (await select(shoppingItems).get()).map(m).toList(),
       // `importAll` clears these two, so they MUST be exported. Otherwise
@@ -2971,6 +3274,8 @@ class AppDatabase extends _$AppDatabase {
       // Both reference transactions/categories, so they go before either.
       await delete(transactionSplits).go();
       await delete(transactionTags).go();
+      // References accounts and categories, so it goes before both deletes.
+      await delete(allocations).go();
       // References accounts, so it goes before that delete too.
       await delete(goalDetails).go();
       await delete(transactions).go();
@@ -3044,6 +3349,9 @@ class AppDatabase extends _$AppDatabase {
       await load(recurringRules, 'recurringRules');
       await load(transactions, 'transactions');
       await load(budgets, 'budgets');
+      // References accounts and categories, both already loaded above. An
+      // older backup simply has no rows for it, so `rows()` yields nothing.
+      await load(allocations, 'allocations');
       await load(personEntries, 'personEntries');
       await load(reminders, 'reminders');
       await load(merchantRules, 'merchantRules');
