@@ -56,6 +56,21 @@ jobs:
           flutter-version: '3.38.9'
           cache: true
 
+      # Every release must be signed with the same permanent key so an
+      # install on top of a previous release is recognized as an update
+      # instead of a conflicting package (see docs/RELEASING.md). Without
+      # this, android/app/build.gradle.kts falls back to a fresh random
+      # debug key on every CI run.
+      - name: Configure release signing
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$GITHUB_WORKSPACE/android/xpenc-release.jks"
+          cat > android/key.properties <<EOF
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storeFile=$GITHUB_WORKSPACE/android/xpenc-release.jks
+          EOF
+
       - name: Pub get
         run: flutter pub get
 

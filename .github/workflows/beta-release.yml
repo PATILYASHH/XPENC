@@ -49,6 +49,19 @@ jobs:
           flutter-version: "3.38.9"
           cache: true
 
+      # Same permanent key as release.yml — a beta build must be updatable
+      # by the next beta build, and by the eventual stable release once a
+      # user moves off beta, without an uninstall. See docs/RELEASING.md.
+      - name: Configure release signing
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$GITHUB_WORKSPACE/android/xpenc-release.jks"
+          cat > android/key.properties <<EOF
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storeFile=$GITHUB_WORKSPACE/android/xpenc-release.jks
+          EOF
+
       - name: Pub get
         run: flutter pub get
 

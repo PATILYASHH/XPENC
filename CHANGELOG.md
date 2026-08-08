@@ -6,10 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
-## [Unreleased]
+## [1.4.0] — 2026-08-08
 
-Beta track for 1.4.0 — everything below is on the `BETA` branch, not yet
-tagged or released.
+### Fixed
+- **Release signing** — every GitHub release build was falling back to a
+  fresh, randomly-generated debug key because no permanent release keystore
+  existed. Each release was signed differently from the last, so Android
+  refused to install an update over a previous version and forced an
+  uninstall. From this release on, every build (beta and stable) is signed
+  with the same permanent key. **One-time migration:** anyone updating from
+  v1.3.0 or earlier must back up (Settings → Backup), uninstall, install
+  this version, then restore — this is the last time that'll be necessary.
 
 ### Added
 - **Envelope Mode** — an opt-in, per-account "every rupee has a job" budget.
@@ -338,7 +345,8 @@ First public release. 🎉
 - `tool/verify_apk.sh` gates every shipped APK against the missing
   `libsqlite3.so` class of crash.
 
-[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/PATILYASHH/XPENC/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/PATILYASHH/XPENC/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/PATILYASHH/XPENC/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/PATILYASHH/XPENC/compare/v1.1.3...v1.2.0
