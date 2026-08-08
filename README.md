@@ -54,6 +54,7 @@ adversarial audit that hardened it — is in [structure.md](structure.md).
 | 💳 **Honest accounts** | Cash / Bank / Card / Prepaid balance (fob, gift or transit card) with real balances. Debit cards & UPI are *linked instruments* — they spend their bank's money, so rupees are never counted twice. Credit cards carry their own (negative = owed) balance. |
 | 🔁 **Income · Expense · Transfer** | Three transaction types, kept strictly apart. Transfers never pollute budgets or reports. |
 | 🎯 **Budgets** | Per-category with period windows, live progress, once-per-period alerts at 80% and overspend, and a subcategory cap that can never exceed its parent's. |
+| 📮 **Envelope Mode** | Opt-in per account: "every rupee has a job." Assign money from Ready to Assign into a category before you can spend it — a real value container, not just a ceiling. |
 | 🏷️ **Tags & receipts** | Free-form tags beyond category, plus a photo receipt attached to any transaction — both one tap away in the app bar while adding a transaction. |
 | 🐷 **Savings goals** | Save toward a target amount with running progress and a contribution history. |
 | 🛍️ **Shopping lists** | Named, colour-coded lists, not one flat list. |
