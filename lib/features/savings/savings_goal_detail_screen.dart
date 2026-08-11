@@ -221,13 +221,23 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
+              leading: const Icon(Icons.tune_rounded),
+              title: const Text('Fix starting amount'),
+              subtitle: const Text(
+                'Correct "Saved" if it opened already showing money you '
+                "hadn't actually put in — common right after updating from "
+                '1.3.0.',
+              ),
+              onTap: () =>
+                  Navigator.of(sheetContext).pop(_GoalAction.fixStartingAmount),
+            ),
+            ListTile(
               leading: const Icon(Icons.archive_outlined),
               title: const Text('Archive'),
               subtitle: const Text(
                 'Hides it from active goals. Its money and history stay.',
               ),
-              onTap: () =>
-                  Navigator.of(sheetContext).pop(_GoalAction.archive),
+              onTap: () => Navigator.of(sheetContext).pop(_GoalAction.archive),
             ),
             ListTile(
               leading: Icon(
@@ -236,7 +246,9 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
               ),
               title: Text(
                 'Delete',
-                style: TextStyle(color: Theme.of(sheetContext).colorScheme.error),
+                style: TextStyle(
+                  color: Theme.of(sheetContext).colorScheme.error,
+                ),
               ),
               subtitle: const Text(
                 'Only for a goal with no funding history yet.',
@@ -249,11 +261,96 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
       ),
     );
     if (action == null || !context.mounted) return;
-    if (action == _GoalAction.archive) {
+    if (action == _GoalAction.fixStartingAmount) {
+      await _fixStartingAmount(context, ref, progress);
+    } else if (action == _GoalAction.archive) {
       await _confirmArchive(context, ref, progress);
     } else {
       await _confirmDelete(context, ref, progress);
     }
+  }
+
+  Future<void> _fixStartingAmount(
+    BuildContext context,
+    WidgetRef ref,
+    GoalProgress progress,
+  ) async {
+    final controller = TextEditingController(
+      text: MoneyFormat.bare(progress.saved),
+    );
+    final messenger = ScaffoldMessenger.of(context);
+    final newAmount = await showDialog<Money>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Fix starting amount'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Sets "Saved" directly — it does not create or change any '
+              'transaction.',
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: InputDecoration(
+                labelText: 'Saved so far',
+                prefixText: MoneyFormat.inputPrefix,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final amount = Money.tryParse(controller.text);
+              if (amount == null || amount.isNegative) {
+                messenger
+                  ..hideCurrentSnackBar()
+                  ..showSnackBar(
+                    const SnackBar(
+                      content: Text('Enter a valid amount, zero or more.'),
+                    ),
+                  );
+                return;
+              }
+              Navigator.of(dialogContext).pop(amount);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (newAmount == null) return;
+
+    try {
+      await ref
+          .read(dbProvider)
+          .correctGoalOpeningBalance(
+            accountId: progress.account.id,
+            openingBalance: newAmount,
+          );
+    } catch (e) {
+      if (!context.mounted) return;
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text("Couldn't save: $e")));
+      return;
+    }
+    if (!context.mounted) return;
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Starting amount updated')));
   }
 
   Future<void> _confirmArchive(
@@ -330,9 +427,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          SnackBar(
-            content: Text(e.message?.toString() ?? 'Could not delete.'),
-          ),
+          SnackBar(content: Text(e.message?.toString() ?? 'Could not delete.')),
         );
       return;
     }
@@ -344,7 +439,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
   }
 }
 
-enum _GoalAction { archive, delete }
+enum _GoalAction { fixStartingAmount, archive, delete }
 
 void _openFundsSheet(
   BuildContext context,
@@ -402,14 +497,18 @@ class _FundsSheetState extends ConsumerState<_FundsSheet> {
     }
     final otherId = _otherAccountId;
     if (otherId == null) {
-      _showError(widget.isAdd ? 'Choose a source account.' : 'Choose where it goes.');
+      _showError(
+        widget.isAdd ? 'Choose a source account.' : 'Choose where it goes.',
+      );
       return;
     }
 
     setState(() => _submitting = true);
     final navigator = Navigator.of(context);
     try {
-      await ref.read(dbProvider).addTransaction(
+      await ref
+          .read(dbProvider)
+          .addTransaction(
             type: TxType.transfer,
             accountId: widget.isAdd ? otherId : widget.goalAccountId,
             toAccountId: widget.isAdd ? widget.goalAccountId : otherId,
@@ -432,16 +531,20 @@ class _FundsSheetState extends ConsumerState<_FundsSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final accounts = (ref.watch(balanceAccountsProvider).valueOrNull ?? const [])
-        .where((a) => a.id != widget.goalAccountId && a.type != AccountType.goal)
-        .toList();
+    final accounts =
+        (ref.watch(balanceAccountsProvider).valueOrNull ?? const [])
+            .where(
+              (a) => a.id != widget.goalAccountId && a.type != AccountType.goal,
+            )
+            .toList();
 
     return Padding(
       padding: EdgeInsets.only(
         left: 20,
         right: 20,
         top: 8,
-        bottom: MediaQuery.of(context).padding.bottom +
+        bottom:
+            MediaQuery.of(context).padding.bottom +
             MediaQuery.of(context).viewInsets.bottom +
             20,
       ),

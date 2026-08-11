@@ -25,6 +25,7 @@ import 'package:xpenc/features/reports/stats_screen.dart';
 import 'package:xpenc/features/savings/savings_goal_detail_screen.dart';
 import 'package:xpenc/features/savings/savings_goals_screen.dart';
 import 'package:xpenc/features/settings/settings_screen.dart';
+import 'package:xpenc/features/settings/widgets_screen.dart';
 import 'package:xpenc/features/transactions/transaction_detail_screen.dart';
 
 /// Every screen must render against a real database, at a real phone size,
@@ -140,8 +141,9 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('Onboarding currency step lets you search and pick a currency',
-      (tester) async {
+  testWidgets('Onboarding currency step lets you search and pick a currency', (
+    tester,
+  ) async {
     await pump(tester, const OnboardingScreen());
     expect(tester.takeException(), isNull);
 
@@ -186,16 +188,18 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('Stats renders with real data (charts, negative card balance)',
-      (tester) async {
+  testWidgets('Stats renders with real data (charts, negative card balance)', (
+    tester,
+  ) async {
     await tester.runAsync(seed);
     await pump(tester, const StatsScreen());
     expect(tester.takeException(), isNull);
     await unmount(tester);
   });
 
-  testWidgets('Account Reports renders with a negative credit-card balance',
-      (tester) async {
+  testWidgets('Account Reports renders with a negative credit-card balance', (
+    tester,
+  ) async {
     await tester.runAsync(seed);
     await pump(tester, const AccountReportsScreen());
     expect(tester.takeException(), isNull);
@@ -211,8 +215,9 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('Account detail: debit card explains it holds no balance',
-      (tester) async {
+  testWidgets('Account detail: debit card explains it holds no balance', (
+    tester,
+  ) async {
     late int debit;
     await tester.runAsync(() async => debit = (await seed()).debit);
     await pump(tester, AccountDetailScreen(accountId: debit));
@@ -221,59 +226,65 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('Account detail: a missing account shows an error, not a crash',
-      (tester) async {
+  testWidgets('Account detail: a missing account shows an error, not a crash', (
+    tester,
+  ) async {
     await pump(tester, const AccountDetailScreen(accountId: 999999));
     expect(tester.takeException(), isNull);
     await unmount(tester);
   });
 
   testWidgets(
-      'Account detail: Envelope Mode shows Ready to Assign and category '
-      'balances once turned on', (tester) async {
-    late int cash;
-    await tester.runAsync(() async {
-      cash = (await seed()).cash;
-      await db.setEnvelopeMode(cash, true);
-      await db.addAllocation(
-        accountId: cash,
-        categoryId: await (db.watchCategories(CategoryKind.expense).first)
-            .then((c) => c.firstWhere((c) => c.name == 'Food').id),
-        amount: Money.fromRupees(500),
-      );
-    });
-    await pump(tester, AccountDetailScreen(accountId: cash));
-    expect(tester.takeException(), isNull);
-    expect(find.text('Envelope Mode'), findsOneWidget);
-    expect(find.text('Ready to Assign'), findsOneWidget);
-    expect(find.text('Food'), findsWidgets);
-    await unmount(tester);
-  });
+    'Account detail: Envelope Mode shows Ready to Assign and category '
+    'balances once turned on',
+    (tester) async {
+      late int cash;
+      await tester.runAsync(() async {
+        cash = (await seed()).cash;
+        await db.setEnvelopeMode(cash, true);
+        await db.addAllocation(
+          accountId: cash,
+          categoryId: await (db.watchCategories(CategoryKind.expense).first)
+              .then((c) => c.firstWhere((c) => c.name == 'Food').id),
+          amount: Money.fromRupees(500),
+        );
+      });
+      await pump(tester, AccountDetailScreen(accountId: cash));
+      expect(tester.takeException(), isNull);
+      expect(find.text('Envelope Mode'), findsOneWidget);
+      expect(find.text('Ready to Assign'), findsOneWidget);
+      expect(find.text('Food'), findsWidgets);
+      await unmount(tester);
+    },
+  );
 
   testWidgets(
-      'Account detail: turning Envelope Mode on asks for confirmation first',
-      (tester) async {
-    late int cash;
-    await tester.runAsync(() async => cash = (await seed()).cash);
-    await pump(tester, AccountDetailScreen(accountId: cash));
-    expect(tester.takeException(), isNull);
+    'Account detail: turning Envelope Mode on asks for confirmation first',
+    (tester) async {
+      late int cash;
+      await tester.runAsync(() async => cash = (await seed()).cash);
+      await pump(tester, AccountDetailScreen(accountId: cash));
+      expect(tester.takeException(), isNull);
 
-    await tester.tap(find.text('Envelope Mode'));
-    await tester.pump();
-    expect(find.text('Turn on Envelope Mode?'), findsOneWidget);
+      await tester.tap(find.text('Envelope Mode'));
+      await tester.pump();
+      expect(find.text('Turn on Envelope Mode?'), findsOneWidget);
 
-    late List<AccountRow> account;
-    await tester.runAsync(() async => account = await db.watchAccounts().first);
-    expect(
-      account.firstWhere((a) => a.id == cash).envelopeMode,
-      isFalse,
-      reason: 'must not flip on before the dialog is confirmed',
-    );
+      late List<AccountRow> account;
+      await tester.runAsync(
+        () async => account = await db.watchAccounts().first,
+      );
+      expect(
+        account.firstWhere((a) => a.id == cash).envelopeMode,
+        isFalse,
+        reason: 'must not flip on before the dialog is confirmed',
+      );
 
-    await tester.tap(find.text('Cancel'));
-    await tester.pump();
-    await unmount(tester);
-  });
+      await tester.tap(find.text('Cancel'));
+      await tester.pump();
+      await unmount(tester);
+    },
+  );
 
   testWidgets('Transaction detail renders', (tester) async {
     late int txId;
@@ -283,8 +294,9 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('Transaction detail: a missing transaction shows an error',
-      (tester) async {
+  testWidgets('Transaction detail: a missing transaction shows an error', (
+    tester,
+  ) async {
     await pump(tester, const TransactionDetailScreen(transactionId: 999999));
     expect(tester.takeException(), isNull);
     await unmount(tester);
@@ -323,8 +335,9 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('Goal detail renders and offers Add funds / Withdraw',
-      (tester) async {
+  testWidgets('Goal detail renders and offers Add funds / Withdraw', (
+    tester,
+  ) async {
     late int goalId;
     await tester.runAsync(() async {
       goalId = await db.addGoal(
@@ -341,16 +354,18 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('Goal detail: a missing goal shows an error, not a crash',
-      (tester) async {
+  testWidgets('Goal detail: a missing goal shows an error, not a crash', (
+    tester,
+  ) async {
     await pump(tester, const SavingsGoalDetailScreen(goalId: 999999));
     expect(tester.takeException(), isNull);
     expect(find.text('Goal not found'), findsOneWidget);
     await unmount(tester);
   });
 
-  testWidgets('Accounts screen offers a combined Statement download',
-      (tester) async {
+  testWidgets('Accounts screen offers a combined Statement download', (
+    tester,
+  ) async {
     await tester.runAsync(seed);
     await pump(tester, const AccountsScreen());
     expect(tester.takeException(), isNull);
@@ -358,8 +373,9 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('Budget detail renders spent/budgeted and its transactions',
-      (tester) async {
+  testWidgets('Budget detail renders spent/budgeted and its transactions', (
+    tester,
+  ) async {
     late int categoryId;
     await tester.runAsync(() async {
       final cash = (await db.watchAccounts().first)
@@ -388,8 +404,9 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('Budget detail: a missing category shows an error, not a crash',
-      (tester) async {
+  testWidgets('Budget detail: a missing category shows an error, not a crash', (
+    tester,
+  ) async {
     await pump(tester, const BudgetDetailScreen(categoryId: 999999));
     expect(tester.takeException(), isNull);
     expect(find.text('Category not found'), findsOneWidget);
@@ -412,8 +429,18 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('About renders the brand and the developer links',
-      (tester) async {
+  testWidgets('Widgets renders without a platform channel', (tester) async {
+    await pump(tester, const WidgetsScreen());
+    expect(tester.takeException(), isNull);
+    expect(find.text('Balance'), findsOneWidget);
+    expect(find.text('Budgets'), findsOneWidget);
+    expect(find.text('Quick Add'), findsOneWidget);
+    await unmount(tester);
+  });
+
+  testWidgets('About renders the brand and the developer links', (
+    tester,
+  ) async {
     await pump(tester, const AboutScreen());
     expect(tester.takeException(), isNull);
     expect(find.text('XPENC'), findsOneWidget);
@@ -452,7 +479,9 @@ void main() {
 
   // path_provider has no platform implementation under `flutter test`, so these
   // two must degrade to a visible error rather than crash the screen.
-  testWidgets('Download Data renders without a platform channel', (tester) async {
+  testWidgets('Download Data renders without a platform channel', (
+    tester,
+  ) async {
     await pump(tester, const DownloadDataScreen());
     expect(tester.takeException(), isNull);
     await unmount(tester);

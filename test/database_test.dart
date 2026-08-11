@@ -25,8 +25,9 @@ void main() {
           .id;
 
   Future<Money> netWorth() => db.watchNetWorth().first;
-  Future<Money> balanceOf(int id) async =>
-      (await db.watchAccounts().first).firstWhere((a) => a.id == id).currentBalance;
+  Future<Money> balanceOf(int id) async => (await db.watchAccounts().first)
+      .firstWhere((a) => a.id == id)
+      .currentBalance;
 
   group('seed', () {
     test('seeds Cash only, plus the confirmed categories', () async {
@@ -200,10 +201,16 @@ void main() {
         openingBalance: Money.fromRupees(9999), // must be ignored
       );
 
-      expect(await balanceOf(debit), const Money.zero(),
-          reason: 'an instrument holds no balance');
-      expect(await netWorth(), Money.fromRupees(10000),
-          reason: 'debit card must not add to net worth');
+      expect(
+        await balanceOf(debit),
+        const Money.zero(),
+        reason: 'an instrument holds no balance',
+      );
+      expect(
+        await netWorth(),
+        Money.fromRupees(10000),
+        reason: 'debit card must not add to net worth',
+      );
 
       await db.addTransaction(
         type: TxType.expense,
@@ -234,90 +241,108 @@ void main() {
   });
 
   group('credit card — a liability', () {
-    test('purchase goes negative; paying the bill from bank clears it',
-        () async {
-      final bank = await db.addAccount(
-        name: 'IPPB',
-        type: AccountType.bank,
-        colorValue: 0,
-        iconKey: 'bank',
-        openingBalance: Money.fromRupees(10000),
-      );
-      final card = await db.addAccount(
-        name: 'Yes Bank Credit Card',
-        type: AccountType.card,
-        cardKind: CardKind.credit,
-        colorValue: 0,
-        iconKey: 'card',
-        openingBalance: const Money.zero(),
-      );
+    test(
+      'purchase goes negative; paying the bill from bank clears it',
+      () async {
+        final bank = await db.addAccount(
+          name: 'IPPB',
+          type: AccountType.bank,
+          colorValue: 0,
+          iconKey: 'bank',
+          openingBalance: Money.fromRupees(10000),
+        );
+        final card = await db.addAccount(
+          name: 'Yes Bank Credit Card',
+          type: AccountType.card,
+          cardKind: CardKind.credit,
+          colorValue: 0,
+          iconKey: 'card',
+          openingBalance: const Money.zero(),
+        );
 
-      await db.addTransaction(
-        type: TxType.expense,
-        amount: Money.fromRupees(3000),
-        accountId: card,
-        categoryId: await expenseCategory('Shopping'),
-        date: DateTime(2026, 7, 7),
-      );
+        await db.addTransaction(
+          type: TxType.expense,
+          amount: Money.fromRupees(3000),
+          accountId: card,
+          categoryId: await expenseCategory('Shopping'),
+          date: DateTime(2026, 7, 7),
+        );
 
-      expect(await balanceOf(card), Money.fromRupees(-3000),
-          reason: 'negative = outstanding');
-      expect(await netWorth(), Money.fromRupees(7000),
-          reason: 'you own 10000 but owe 3000');
+        expect(
+          await balanceOf(card),
+          Money.fromRupees(-3000),
+          reason: 'negative = outstanding',
+        );
+        expect(
+          await netWorth(),
+          Money.fromRupees(7000),
+          reason: 'you own 10000 but owe 3000',
+        );
 
-      // Pay the bill: Bank -> Card
-      await db.addTransaction(
-        type: TxType.transfer,
-        amount: Money.fromRupees(3000),
-        accountId: bank,
-        toAccountId: card,
-        date: DateTime(2026, 7, 20),
-      );
+        // Pay the bill: Bank -> Card
+        await db.addTransaction(
+          type: TxType.transfer,
+          amount: Money.fromRupees(3000),
+          accountId: bank,
+          toAccountId: card,
+          date: DateTime(2026, 7, 20),
+        );
 
-      expect(await balanceOf(card), const Money.zero());
-      expect(await balanceOf(bank), Money.fromRupees(7000));
-      expect(await netWorth(), Money.fromRupees(7000),
-          reason: 'paying a bill moves money, it does not destroy it');
-    });
+        expect(await balanceOf(card), const Money.zero());
+        expect(await balanceOf(bank), Money.fromRupees(7000));
+        expect(
+          await netWorth(),
+          Money.fromRupees(7000),
+          reason: 'paying a bill moves money, it does not destroy it',
+        );
+      },
+    );
   });
 
   group('prepaid balance — a normal spending account', () {
-    test('starting balance loads positive and counts toward net worth',
-        () async {
-      final fob = await db.addAccount(
-        name: 'Canteen Fob',
-        type: AccountType.prepaidBalance,
-        colorValue: 0,
-        iconKey: 'prepaid_balance',
-        openingBalance: Money.fromRupees(500),
-      );
+    test(
+      'starting balance loads positive and counts toward net worth',
+      () async {
+        final fob = await db.addAccount(
+          name: 'Canteen Fob',
+          type: AccountType.prepaidBalance,
+          colorValue: 0,
+          iconKey: 'prepaid_balance',
+          openingBalance: Money.fromRupees(500),
+        );
 
-      expect(await balanceOf(fob), Money.fromRupees(500),
-          reason: 'unlike Pay-later/credit card, this is not a liability');
-      expect(await netWorth(), Money.fromRupees(500));
-    });
+        expect(
+          await balanceOf(fob),
+          Money.fromRupees(500),
+          reason: 'unlike Pay-later/credit card, this is not a liability',
+        );
+        expect(await netWorth(), Money.fromRupees(500));
+      },
+    );
 
-    test('an expense reduces its balance and net worth, exactly like Cash',
-        () async {
-      final fob = await db.addAccount(
-        name: 'Canteen Fob',
-        type: AccountType.prepaidBalance,
-        colorValue: 0,
-        iconKey: 'prepaid_balance',
-        openingBalance: Money.fromRupees(500),
-      );
+    test(
+      'an expense reduces its balance and net worth, exactly like Cash',
+      () async {
+        final fob = await db.addAccount(
+          name: 'Canteen Fob',
+          type: AccountType.prepaidBalance,
+          colorValue: 0,
+          iconKey: 'prepaid_balance',
+          openingBalance: Money.fromRupees(500),
+        );
 
-      await db.addTransaction(
-        type: TxType.expense,
-        amount: Money.fromRupees(120),
-        accountId: fob,
-        categoryId: await expenseCategory('Food'),
-        date: DateTime(2026, 7, 8),
-      );
+        await db.addTransaction(
+          type: TxType.expense,
+          amount: Money.fromRupees(120),
+          accountId: fob,
+          categoryId: await expenseCategory('Food'),
+          date: DateTime(2026, 7, 8),
+        );
 
-      expect(await balanceOf(fob), Money.fromRupees(380));
-      expect(await netWorth(), Money.fromRupees(380));
-    });
+        expect(await balanceOf(fob), Money.fromRupees(380));
+        expect(await netWorth(), Money.fromRupees(380));
+      },
+    );
 
     test('a transfer can top it up, and a transfer stays net-zero', () async {
       final cash = await cashId();
@@ -349,75 +374,81 @@ void main() {
       expect(
         await netWorth(),
         Money.fromRupees(1000),
-        reason: 'a transfer moves money between own accounts, net worth unchanged',
+        reason:
+            'a transfer moves money between own accounts, net worth unchanged',
       );
     });
   });
 
   group('savings goals — a goal is a real account', () {
-    test('addGoal starts at zero and counts toward net worth once funded',
-        () async {
-      final goalId = await db.addGoal(
-        name: 'New Bike',
-        targetAmount: Money.fromRupees(50000),
-        colorValue: 0,
-        iconKey: 'savings',
-      );
+    test(
+      'addGoal starts at zero and counts toward net worth once funded',
+      () async {
+        final goalId = await db.addGoal(
+          name: 'New Bike',
+          targetAmount: Money.fromRupees(50000),
+          colorValue: 0,
+          iconKey: 'savings',
+        );
 
-      expect(await balanceOf(goalId), const Money.zero());
+        expect(await balanceOf(goalId), const Money.zero());
 
-      final cash = await cashId();
-      await db.addTransaction(
-        type: TxType.income,
-        amount: Money.fromRupees(10000),
-        accountId: cash,
-        categoryId: await incomeCategory('Salary'),
-        date: DateTime(2026, 7, 1),
-      );
-      await db.addTransaction(
-        type: TxType.transfer,
-        amount: Money.fromRupees(3000),
-        accountId: cash,
-        toAccountId: goalId,
-        date: DateTime(2026, 7, 2),
-      );
+        final cash = await cashId();
+        await db.addTransaction(
+          type: TxType.income,
+          amount: Money.fromRupees(10000),
+          accountId: cash,
+          categoryId: await incomeCategory('Salary'),
+          date: DateTime(2026, 7, 1),
+        );
+        await db.addTransaction(
+          type: TxType.transfer,
+          amount: Money.fromRupees(3000),
+          accountId: cash,
+          toAccountId: goalId,
+          date: DateTime(2026, 7, 2),
+        );
 
-      expect(await balanceOf(goalId), Money.fromRupees(3000));
-      expect(
-        await netWorth(),
-        Money.fromRupees(10000),
-        reason: 'funding a goal is a transfer between own accounts — net '
-            'worth is unchanged, same as any other account-to-account move',
-      );
-    });
+        expect(await balanceOf(goalId), Money.fromRupees(3000));
+        expect(
+          await netWorth(),
+          Money.fromRupees(10000),
+          reason:
+              'funding a goal is a transfer between own accounts — net '
+              'worth is unchanged, same as any other account-to-account move',
+        );
+      },
+    );
 
-    test('withdrawing moves money back out, exactly like any transfer',
-        () async {
-      final cash = await cashId();
-      final goalId = await db.addGoal(
-        name: 'New Bike',
-        targetAmount: Money.fromRupees(50000),
-        colorValue: 0,
-        iconKey: 'savings',
-      );
-      await db.addTransaction(
-        type: TxType.transfer,
-        amount: Money.fromRupees(3000),
-        accountId: cash,
-        toAccountId: goalId,
-        date: DateTime(2026, 7, 2),
-      );
+    test(
+      'withdrawing moves money back out, exactly like any transfer',
+      () async {
+        final cash = await cashId();
+        final goalId = await db.addGoal(
+          name: 'New Bike',
+          targetAmount: Money.fromRupees(50000),
+          colorValue: 0,
+          iconKey: 'savings',
+        );
+        await db.addTransaction(
+          type: TxType.transfer,
+          amount: Money.fromRupees(3000),
+          accountId: cash,
+          toAccountId: goalId,
+          date: DateTime(2026, 7, 2),
+        );
 
-      await db.addTransaction(
-        type: TxType.transfer,
-        amount: Money.fromRupees(1000),
-        accountId: goalId,
-        toAccountId: cash,
-        date: DateTime(2026, 7, 10),
-      );
+        await db.addTransaction(
+          type: TxType.transfer,
+          amount: Money.fromRupees(1000),
+          accountId: goalId,
+          toAccountId: cash,
+          date: DateTime(2026, 7, 10),
+        );
 
-      expect(await balanceOf(goalId), Money.fromRupees(2000));
-    });
+        expect(await balanceOf(goalId), Money.fromRupees(2000));
+      },
+    );
 
     test('updateGoal changes its target, never its balance', () async {
       final cash = await cashId();
@@ -445,24 +476,29 @@ void main() {
 
       final detail = await db.watchGoalDetail(goalId).first;
       expect(detail!.targetAmount, Money.fromRupees(80000));
-      expect(await balanceOf(goalId), Money.fromRupees(3000),
-          reason: 'only a transfer ever changes what a goal holds');
-    });
-
-    test('deleteAccount removes an empty goal and its GoalDetails row',
-        () async {
-      final goalId = await db.addGoal(
-        name: 'New Bike',
-        targetAmount: Money.fromRupees(50000),
-        colorValue: 0,
-        iconKey: 'savings',
+      expect(
+        await balanceOf(goalId),
+        Money.fromRupees(3000),
+        reason: 'only a transfer ever changes what a goal holds',
       );
-
-      await db.deleteAccount(goalId);
-
-      expect(await db.watchGoalDetail(goalId).first, isNull);
-      expect(await db.watchGoalDetails().first, isEmpty);
     });
+
+    test(
+      'deleteAccount removes an empty goal and its GoalDetails row',
+      () async {
+        final goalId = await db.addGoal(
+          name: 'New Bike',
+          targetAmount: Money.fromRupees(50000),
+          colorValue: 0,
+          iconKey: 'savings',
+        );
+
+        await db.deleteAccount(goalId);
+
+        expect(await db.watchGoalDetail(goalId).first, isNull);
+        expect(await db.watchGoalDetails().first, isEmpty);
+      },
+    );
 
     test('deleteAccount refuses a goal that has ever been funded', () async {
       final cash = await cashId();
@@ -484,20 +520,20 @@ void main() {
     });
 
     test(
-        'migrateSavingsGoalsToGoalAccounts turns an old goal row into a '
-        'funded goal account, and recalculateBalances does not zero it out',
-        () async {
-      final bank = await db.addAccount(
-        name: 'IPPB',
-        type: AccountType.bank,
-        colorValue: 0,
-        iconKey: 'bank',
-        openingBalance: Money.fromRupees(12000),
-      );
+      'migrateSavingsGoalsToGoalAccounts turns an old goal row into a '
+      'funded goal account, and recalculateBalances does not zero it out',
+      () async {
+        final bank = await db.addAccount(
+          name: 'IPPB',
+          type: AccountType.bank,
+          colorValue: 0,
+          iconKey: 'bank',
+          openingBalance: Money.fromRupees(12000),
+        );
 
-      // Hand-seed the pre-v21 shape — the whole point of this migration is
-      // that the SavingsGoals Dart table no longer exists to insert through.
-      await db.customStatement('''
+        // Hand-seed the pre-v21 shape — the whole point of this migration is
+        // that the SavingsGoals Dart table no longer exists to insert through.
+        await db.customStatement('''
         CREATE TABLE savings_goals (
           id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL,
@@ -510,39 +546,44 @@ void main() {
           created_at INTEGER NOT NULL DEFAULT 0
         )
       ''');
-      await db.customStatement(
-        'INSERT INTO savings_goals (name, target_amount, account_id, '
-        'color_value, icon_key, created_at) VALUES '
-        "('Emergency Fund', 100000, ?, 255, 'savings', 1751328000)",
-        [bank],
-      );
+        await db.customStatement(
+          'INSERT INTO savings_goals (name, target_amount, account_id, '
+          'color_value, icon_key, created_at) VALUES '
+          "('Emergency Fund', 100000, ?, 255, 'savings', 1751328000)",
+          [bank],
+        );
 
-      await db.migrateSavingsGoalsToGoalAccounts();
+        await db.migrateSavingsGoalsToGoalAccounts();
 
-      final goals = await db.watchGoalDetails().first;
-      expect(goals, hasLength(1));
-      final goalAccountId = goals.single.accountId;
-      final goalAccount = (await db.watchAccounts().first)
-          .firstWhere((a) => a.id == goalAccountId);
+        final goals = await db.watchGoalDetails().first;
+        expect(goals, hasLength(1));
+        final goalAccountId = goals.single.accountId;
+        final goalAccount = (await db.watchAccounts().first).firstWhere(
+          (a) => a.id == goalAccountId,
+        );
 
-      expect(goalAccount.name, 'Emergency Fund');
-      expect(goalAccount.type, AccountType.goal);
-      expect(goalAccount.currentBalance, Money.fromRupees(12000),
-          reason: "seeded from the bank account's balance at migration time");
-      expect(goals.single.targetAmount, Money.fromRupees(1000));
+        expect(goalAccount.name, 'Emergency Fund');
+        expect(goalAccount.type, AccountType.goal);
+        expect(
+          goalAccount.currentBalance,
+          Money.fromRupees(12000),
+          reason: "seeded from the bank account's balance at migration time",
+        );
+        expect(goals.single.targetAmount, Money.fromRupees(1000));
 
-      // The bug this guards: seeding only currentBalance (not
-      // openingBalance too) would make this rebuild to zero, since the
-      // migrated goal has no real transaction backing that balance.
-      await db.recalculateBalances();
-      expect(await balanceOf(goalAccountId), Money.fromRupees(12000));
+        // The bug this guards: seeding only currentBalance (not
+        // openingBalance too) would make this rebuild to zero, since the
+        // migrated goal has no real transaction backing that balance.
+        await db.recalculateBalances();
+        expect(await balanceOf(goalAccountId), Money.fromRupees(12000));
 
-      // The old table is really gone, not just emptied.
-      expect(
-        () => db.customSelect('SELECT * FROM savings_goals').get(),
-        throwsA(anything),
-      );
-    });
+        // The old table is really gone, not just emptied.
+        expect(
+          () => db.customSelect('SELECT * FROM savings_goals').get(),
+          throwsA(anything),
+        );
+      },
+    );
 
     test('a goal cannot be spent from or paid into directly — only a '
         'transfer may move its money', () async {
@@ -639,6 +680,64 @@ void main() {
 
       expect(() => db.deleteAccount(bank), throwsArgumentError);
     });
+
+    test('refuses the account the quick-add notification posts to', () async {
+      final bank = await db.addAccount(
+        name: 'IPPB',
+        type: AccountType.bank,
+        colorValue: 0,
+        iconKey: 'bank',
+        openingBalance: Money.fromRupees(1000),
+      );
+      await db.setQuickAddAccount(bank);
+
+      expect(() => db.deleteAccount(bank), throwsArgumentError);
+    });
+  });
+
+  group('resolveQuickAddAccountId — GitHub #38', () {
+    test(
+      'falls back to the first balance-holding account when unset',
+      () async {
+        final cash = await cashId();
+        expect(await db.resolveQuickAddAccountId(), cash);
+      },
+    );
+
+    test('uses the explicitly configured account once set', () async {
+      final bank = await db.addAccount(
+        name: 'IPPB',
+        type: AccountType.bank,
+        colorValue: 0,
+        iconKey: 'bank',
+        openingBalance: Money.fromRupees(1000),
+      );
+      await db.setQuickAddAccount(bank);
+
+      expect(await db.resolveQuickAddAccountId(), bank);
+    });
+
+    test('falls back again once the configured account is archived', () async {
+      final cash = await cashId();
+      final bank = await db.addAccount(
+        name: 'IPPB',
+        type: AccountType.bank,
+        colorValue: 0,
+        iconKey: 'bank',
+        openingBalance: Money.fromRupees(1000),
+      );
+      await db.setQuickAddAccount(bank);
+      await db.archiveAccount(bank);
+
+      expect(await db.resolveQuickAddAccountId(), cash);
+    });
+
+    test('is null once every account is archived', () async {
+      final cash = await cashId();
+      await db.archiveAccount(cash);
+
+      expect(await db.resolveQuickAddAccountId(), isNull);
+    });
   });
 
   group('persons — lending is not spending', () {
@@ -662,12 +761,18 @@ void main() {
       );
 
       expect(await balanceOf(cash), Money.fromRupees(1500));
-      expect(await db.watchPersonBalance(ram).first, Money.fromRupees(500),
-          reason: '+ means they owe you');
+      expect(
+        await db.watchPersonBalance(ram).first,
+        Money.fromRupees(500),
+        reason: '+ means they owe you',
+      );
 
       final totals = await db.watchMonthTotals(DateTime(2026, 7)).first;
-      expect(totals.expense, const Money.zero(),
-          reason: 'lending must never show up as an expense');
+      expect(
+        totals.expense,
+        const Money.zero(),
+        reason: 'lending must never show up as an expense',
+      );
       expect(totals.income, Money.fromRupees(2000));
     });
 
@@ -819,8 +924,9 @@ void main() {
       expect(posted, 4);
       expect(await balanceOf(cash), Money.fromRupees(-200));
 
-      final rule =
-          (await db.watchRecurringRules().first).firstWhere((r) => r.id == ruleId);
+      final rule = (await db.watchRecurringRules().first).firstWhere(
+        (r) => r.id == ruleId,
+      );
       expect(rule.nextDueDate, today.add(const Duration(days: 1)));
 
       // Nothing left due — a second run the same day posts nothing more.
@@ -868,8 +974,7 @@ void main() {
       expect(rule.nextDueDate, start.add(const Duration(days: 14)));
     });
 
-    test('an estimate rule flags its posted transaction for review',
-        () async {
+    test('an estimate rule flags its posted transaction for review', () async {
       final cash = await cashId();
       final salary = await incomeCategory('Salary');
       final today = DateTime(2026, 7, 1);
@@ -923,33 +1028,42 @@ void main() {
       expect(tx.needsAmountReview, isFalse);
     });
 
-    test('monthly rule snaps to month-end, then returns to the target day',
-        () async {
-      final cash = await cashId();
-      final food = await expenseCategory('Food');
-      final jan31 = DateTime(2026, 1, 31);
+    test(
+      'monthly rule snaps to month-end, then returns to the target day',
+      () async {
+        final cash = await cashId();
+        final food = await expenseCategory('Food');
+        final jan31 = DateTime(2026, 1, 31);
 
-      await db.addRecurringRule(
-        name: 'Rent',
-        kind: CategoryKind.expense,
-        amount: Money.fromRupees(10000),
-        accountId: cash,
-        categoryId: food,
-        frequency: RecurringFrequency.monthly,
-        startsOn: jan31,
-      );
+        await db.addRecurringRule(
+          name: 'Rent',
+          kind: CategoryKind.expense,
+          amount: Money.fromRupees(10000),
+          accountId: cash,
+          categoryId: food,
+          frequency: RecurringFrequency.monthly,
+          startsOn: jan31,
+        );
 
-      // Catch up through Jan 31 — 2026 is not a leap year, so Feb has 28 days.
-      await db.runDueRecurringRules(now: jan31);
-      var rule = (await db.watchRecurringRules().first).single;
-      expect(rule.nextDueDate, DateTime(2026, 2, 28), reason: 'Feb has no 31st');
+        // Catch up through Jan 31 — 2026 is not a leap year, so Feb has 28 days.
+        await db.runDueRecurringRules(now: jan31);
+        var rule = (await db.watchRecurringRules().first).single;
+        expect(
+          rule.nextDueDate,
+          DateTime(2026, 2, 28),
+          reason: 'Feb has no 31st',
+        );
 
-      // Catch up through the snapped Feb date — March has a 31st again.
-      await db.runDueRecurringRules(now: DateTime(2026, 2, 28));
-      rule = (await db.watchRecurringRules().first).single;
-      expect(rule.nextDueDate, DateTime(2026, 3, 31),
-          reason: 'March returns to the original target day, not stuck at 28');
-    });
+        // Catch up through the snapped Feb date — March has a 31st again.
+        await db.runDueRecurringRules(now: DateTime(2026, 2, 28));
+        rule = (await db.watchRecurringRules().first).single;
+        expect(
+          rule.nextDueDate,
+          DateTime(2026, 3, 31),
+          reason: 'March returns to the original target day, not stuck at 28',
+        );
+      },
+    );
 
     test('a paused rule is skipped', () async {
       final cash = await cashId();
@@ -1025,54 +1139,61 @@ void main() {
       );
     });
 
-    test('deleting a rule keeps its posted transactions but clears the link',
-        () async {
-      final cash = await cashId();
-      final food = await expenseCategory('Food');
-      final today = DateTime(2026, 7, 20);
+    test(
+      'deleting a rule keeps its posted transactions but clears the link',
+      () async {
+        final cash = await cashId();
+        final food = await expenseCategory('Food');
+        final today = DateTime(2026, 7, 20);
 
-      final ruleId = await db.addRecurringRule(
-        name: 'Coffee',
-        kind: CategoryKind.expense,
-        amount: Money.fromRupees(50),
-        accountId: cash,
-        categoryId: food,
-        frequency: RecurringFrequency.daily,
-        startsOn: today,
-      );
-      await db.runDueRecurringRules(now: today);
+        final ruleId = await db.addRecurringRule(
+          name: 'Coffee',
+          kind: CategoryKind.expense,
+          amount: Money.fromRupees(50),
+          accountId: cash,
+          categoryId: food,
+          frequency: RecurringFrequency.daily,
+          startsOn: today,
+        );
+        await db.runDueRecurringRules(now: today);
 
-      await db.deleteRecurringRule(ruleId);
+        await db.deleteRecurringRule(ruleId);
 
-      final txs = await db.watchTransactions().first;
-      expect(txs, hasLength(1));
-      expect(txs.single.recurringRuleId, isNull);
-      expect(await balanceOf(cash), Money.fromRupees(-50),
-          reason: 'deleting the rule must not touch already-posted money');
-    });
+        final txs = await db.watchTransactions().first;
+        expect(txs, hasLength(1));
+        expect(txs.single.recurringRuleId, isNull);
+        expect(
+          await balanceOf(cash),
+          Money.fromRupees(-50),
+          reason: 'deleting the rule must not touch already-posted money',
+        );
+      },
+    );
 
-    test('deleteAccount refuses an account an active rule draws from',
-        () async {
-      final bank = await db.addAccount(
-        name: 'IPPB',
-        type: AccountType.bank,
-        colorValue: 0,
-        iconKey: 'bank',
-        openingBalance: Money.fromRupees(1000),
-      );
-      final salary = await incomeCategory('Salary');
-      await db.addRecurringRule(
-        name: 'Salary',
-        kind: CategoryKind.income,
-        amount: Money.fromRupees(1000),
-        accountId: bank,
-        categoryId: salary,
-        frequency: RecurringFrequency.monthly,
-        startsOn: DateTime(2026, 7, 1),
-      );
+    test(
+      'deleteAccount refuses an account an active rule draws from',
+      () async {
+        final bank = await db.addAccount(
+          name: 'IPPB',
+          type: AccountType.bank,
+          colorValue: 0,
+          iconKey: 'bank',
+          openingBalance: Money.fromRupees(1000),
+        );
+        final salary = await incomeCategory('Salary');
+        await db.addRecurringRule(
+          name: 'Salary',
+          kind: CategoryKind.income,
+          amount: Money.fromRupees(1000),
+          accountId: bank,
+          categoryId: salary,
+          frequency: RecurringFrequency.monthly,
+          startsOn: DateTime(2026, 7, 1),
+        );
 
-      expect(() => db.deleteAccount(bank), throwsArgumentError);
-    });
+        expect(() => db.deleteAccount(bank), throwsArgumentError);
+      },
+    );
   });
 
   group('budgets — an optional note (GitHub #34)', () {
@@ -1080,8 +1201,9 @@ void main() {
       final food = await expenseCategory('Food');
       await db.upsertBudget(categoryId: food, amount: Money.fromRupees(2000));
 
-      final budget = (await db.watchBudgets().first)
-          .firstWhere((b) => b.categoryId == food);
+      final budget = (await db.watchBudgets().first).firstWhere(
+        (b) => b.categoryId == food,
+      );
       expect(budget.note, isNull);
     });
 
@@ -1093,8 +1215,9 @@ void main() {
         note: 'Groceries + eating out',
       );
 
-      var budget = (await db.watchBudgets().first)
-          .firstWhere((b) => b.categoryId == food);
+      var budget = (await db.watchBudgets().first).firstWhere(
+        (b) => b.categoryId == food,
+      );
       expect(budget.note, 'Groceries + eating out');
 
       // The unique-on-categoryId upsert must update the existing row, not
@@ -1124,107 +1247,113 @@ void main() {
         note: '   ',
       );
 
-      final budget = (await db.watchBudgets().first)
-          .firstWhere((b) => b.categoryId == food);
+      final budget = (await db.watchBudgets().first).firstWhere(
+        (b) => b.categoryId == food,
+      );
       expect(budget.note, isNull);
     });
   });
 
   group('accountStatement', () {
-    test('opening balance carries forward, running balance accumulates',
-        () async {
-      final cash = await cashId();
-      final food = await expenseCategory('Food');
-      final salary = await incomeCategory('Salary');
+    test(
+      'opening balance carries forward, running balance accumulates',
+      () async {
+        final cash = await cashId();
+        final food = await expenseCategory('Food');
+        final salary = await incomeCategory('Salary');
 
-      // Before the statement period — folds into the opening balance only.
-      await db.addTransaction(
-        type: TxType.income,
-        amount: Money.fromRupees(1000),
-        accountId: cash,
-        categoryId: salary,
-        date: DateTime(2026, 6, 15),
-      );
-      await db.addTransaction(
-        type: TxType.expense,
-        amount: Money.fromRupees(200),
-        accountId: cash,
-        categoryId: food,
-        date: DateTime(2026, 7, 5),
-      );
-      await db.addTransaction(
-        type: TxType.income,
-        amount: Money.fromRupees(300),
-        accountId: cash,
-        categoryId: salary,
-        date: DateTime(2026, 7, 10),
-      );
+        // Before the statement period — folds into the opening balance only.
+        await db.addTransaction(
+          type: TxType.income,
+          amount: Money.fromRupees(1000),
+          accountId: cash,
+          categoryId: salary,
+          date: DateTime(2026, 6, 15),
+        );
+        await db.addTransaction(
+          type: TxType.expense,
+          amount: Money.fromRupees(200),
+          accountId: cash,
+          categoryId: food,
+          date: DateTime(2026, 7, 5),
+        );
+        await db.addTransaction(
+          type: TxType.income,
+          amount: Money.fromRupees(300),
+          accountId: cash,
+          categoryId: salary,
+          date: DateTime(2026, 7, 10),
+        );
 
-      final statement = await db.accountStatement(
-        accountId: cash,
-        start: DateTime(2026, 7, 1),
-        end: DateTime(2026, 7, 31),
-      );
+        final statement = await db.accountStatement(
+          accountId: cash,
+          start: DateTime(2026, 7, 1),
+          end: DateTime(2026, 7, 31),
+        );
 
-      expect(statement.openingBalance, Money.fromRupees(1000));
-      expect(statement.lines, hasLength(2));
-      expect(statement.lines[0].debit, Money.fromRupees(200));
-      expect(statement.lines[0].credit, const Money.zero());
-      expect(statement.lines[0].balance, Money.fromRupees(800));
-      expect(statement.lines[1].credit, Money.fromRupees(300));
-      expect(statement.lines[1].balance, Money.fromRupees(1100));
-      expect(statement.closingBalance, Money.fromRupees(1100));
-    });
+        expect(statement.openingBalance, Money.fromRupees(1000));
+        expect(statement.lines, hasLength(2));
+        expect(statement.lines[0].debit, Money.fromRupees(200));
+        expect(statement.lines[0].credit, const Money.zero());
+        expect(statement.lines[0].balance, Money.fromRupees(800));
+        expect(statement.lines[1].credit, Money.fromRupees(300));
+        expect(statement.lines[1].balance, Money.fromRupees(1100));
+        expect(statement.closingBalance, Money.fromRupees(1100));
+      },
+    );
 
     test(
-        'a transfer is a debit on the source and a credit on the destination',
-        () async {
-      final cash = await cashId();
-      final bank = await db.addAccount(
-        name: 'IPPB',
-        type: AccountType.bank,
-        colorValue: 0,
-        iconKey: 'bank',
-        openingBalance: Money.fromRupees(500),
-      );
-      await db.addTransaction(
-        type: TxType.transfer,
-        amount: Money.fromRupees(100),
-        accountId: cash,
-        toAccountId: bank,
-        date: DateTime(2026, 7, 10),
-      );
+      'a transfer is a debit on the source and a credit on the destination',
+      () async {
+        final cash = await cashId();
+        final bank = await db.addAccount(
+          name: 'IPPB',
+          type: AccountType.bank,
+          colorValue: 0,
+          iconKey: 'bank',
+          openingBalance: Money.fromRupees(500),
+        );
+        await db.addTransaction(
+          type: TxType.transfer,
+          amount: Money.fromRupees(100),
+          accountId: cash,
+          toAccountId: bank,
+          date: DateTime(2026, 7, 10),
+        );
 
-      final range = (start: DateTime(2026, 7, 1), end: DateTime(2026, 7, 31));
-      final cashStatement = await db.accountStatement(
-        accountId: cash,
-        start: range.start,
-        end: range.end,
-      );
-      expect(cashStatement.lines.single.debit, Money.fromRupees(100));
-      expect(cashStatement.lines.single.credit, const Money.zero());
+        final range = (start: DateTime(2026, 7, 1), end: DateTime(2026, 7, 31));
+        final cashStatement = await db.accountStatement(
+          accountId: cash,
+          start: range.start,
+          end: range.end,
+        );
+        expect(cashStatement.lines.single.debit, Money.fromRupees(100));
+        expect(cashStatement.lines.single.credit, const Money.zero());
 
-      final bankStatement = await db.accountStatement(
-        accountId: bank,
-        start: range.start,
-        end: range.end,
-      );
-      expect(bankStatement.openingBalance, Money.fromRupees(500));
-      expect(bankStatement.lines.single.credit, Money.fromRupees(100));
-      expect(bankStatement.closingBalance, Money.fromRupees(600));
-    });
+        final bankStatement = await db.accountStatement(
+          accountId: bank,
+          start: range.start,
+          end: range.end,
+        );
+        expect(bankStatement.openingBalance, Money.fromRupees(500));
+        expect(bankStatement.lines.single.credit, Money.fromRupees(100));
+        expect(bankStatement.closingBalance, Money.fromRupees(600));
+      },
+    );
 
-    test('an empty range reports opening equal to closing with no lines',
-        () async {
-      final cash = await cashId();
-      final statement = await db.accountStatement(
-        accountId: cash,
-        start: DateTime(2026, 1, 1),
-        end: DateTime(2026, 1, 31),
-      );
-      expect(statement.lines, isEmpty);
-      expect(statement.openingBalance, statement.closingBalance);
-    });
+    test(
+      'an empty range reports opening equal to closing with no lines',
+      () async {
+        final cash = await cashId();
+        final statement = await db.accountStatement(
+          accountId: cash,
+          start: DateTime(2026, 1, 1),
+          end: DateTime(2026, 1, 31),
+        );
+        expect(statement.lines, isEmpty);
+        expect(statement.openingBalance, statement.closingBalance);
+      },
+    );
   });
 
   group('budgetStatement', () {
@@ -1258,8 +1387,11 @@ void main() {
       final lines = await db.budgetStatement(DateTime(2026, 7, 1));
       final line = lines.firstWhere((l) => l.category.id == food);
       expect(line.budgeted, Money.fromRupees(5000));
-      expect(line.spent, Money.fromRupees(500),
-          reason: 'parent + child spend combined');
+      expect(
+        line.spent,
+        Money.fromRupees(500),
+        reason: 'parent + child spend combined',
+      );
     });
 
     test('a category with no budget does not appear', () async {
@@ -1269,78 +1401,81 @@ void main() {
   });
 
   group('combinedStatement — every account, merged date-wise', () {
-    test('rows are chronological across accounts, not grouped by one',
-        () async {
-      final cash = await cashId();
-      final bank = await db.addAccount(
-        name: 'IPPB',
-        type: AccountType.bank,
-        colorValue: 0,
-        iconKey: 'bank',
-        openingBalance: const Money.zero(),
-      );
-      final salary = await incomeCategory('Salary');
-      final food = await expenseCategory('Food');
+    test(
+      'rows are chronological across accounts, not grouped by one',
+      () async {
+        final cash = await cashId();
+        final bank = await db.addAccount(
+          name: 'IPPB',
+          type: AccountType.bank,
+          colorValue: 0,
+          iconKey: 'bank',
+          openingBalance: const Money.zero(),
+        );
+        final salary = await incomeCategory('Salary');
+        final food = await expenseCategory('Food');
 
-      await db.addTransaction(
-        type: TxType.income,
-        amount: Money.fromRupees(1000),
-        accountId: bank,
-        categoryId: salary,
-        date: DateTime(2026, 7, 3),
-      );
-      await db.addTransaction(
-        type: TxType.expense,
-        amount: Money.fromRupees(100),
-        accountId: cash,
-        categoryId: food,
-        date: DateTime(2026, 7, 1),
-      );
+        await db.addTransaction(
+          type: TxType.income,
+          amount: Money.fromRupees(1000),
+          accountId: bank,
+          categoryId: salary,
+          date: DateTime(2026, 7, 3),
+        );
+        await db.addTransaction(
+          type: TxType.expense,
+          amount: Money.fromRupees(100),
+          accountId: cash,
+          categoryId: food,
+          date: DateTime(2026, 7, 1),
+        );
 
-      final lines = await db.combinedStatement(
-        start: DateTime(2026, 7, 1),
-        end: DateTime(2026, 7, 31),
-      );
+        final lines = await db.combinedStatement(
+          start: DateTime(2026, 7, 1),
+          end: DateTime(2026, 7, 31),
+        );
 
-      expect(lines, hasLength(2));
-      // The 1st (cash expense) comes before the 3rd (bank income) — proves
-      // the merge is by date, not grouped account-by-account.
-      expect(lines[0].accountName, 'Cash');
-      expect(lines[1].accountName, 'IPPB');
-    });
+        expect(lines, hasLength(2));
+        // The 1st (cash expense) comes before the 3rd (bank income) — proves
+        // the merge is by date, not grouped account-by-account.
+        expect(lines[0].accountName, 'Cash');
+        expect(lines[1].accountName, 'IPPB');
+      },
+    );
 
-    test('a transfer is clearly marked, not counted as income or expense',
-        () async {
-      final cash = await cashId();
-      final bank = await db.addAccount(
-        name: 'IPPB',
-        type: AccountType.bank,
-        colorValue: 0,
-        iconKey: 'bank',
-        openingBalance: Money.fromRupees(500),
-      );
-      await db.addTransaction(
-        type: TxType.transfer,
-        amount: Money.fromRupees(100),
-        accountId: cash,
-        toAccountId: bank,
-        date: DateTime(2026, 7, 10),
-      );
+    test(
+      'a transfer is clearly marked, not counted as income or expense',
+      () async {
+        final cash = await cashId();
+        final bank = await db.addAccount(
+          name: 'IPPB',
+          type: AccountType.bank,
+          colorValue: 0,
+          iconKey: 'bank',
+          openingBalance: Money.fromRupees(500),
+        );
+        await db.addTransaction(
+          type: TxType.transfer,
+          amount: Money.fromRupees(100),
+          accountId: cash,
+          toAccountId: bank,
+          date: DateTime(2026, 7, 10),
+        );
 
-      final lines = await db.combinedStatement(
-        start: DateTime(2026, 7, 1),
-        end: DateTime(2026, 7, 31),
-      );
+        final lines = await db.combinedStatement(
+          start: DateTime(2026, 7, 1),
+          end: DateTime(2026, 7, 31),
+        );
 
-      expect(lines, hasLength(1));
-      expect(lines.single.type, 'Transfer');
-      expect(lines.single.accountName, 'Cash');
-      expect(lines.single.description, 'To IPPB');
-      expect(lines.single.amount, Money.fromRupees(100));
-    });
+        expect(lines, hasLength(1));
+        expect(lines.single.type, 'Transfer');
+        expect(lines.single.accountName, 'Cash');
+        expect(lines.single.description, 'To IPPB');
+        expect(lines.single.amount, Money.fromRupees(100));
+      },
+    );
 
-    test('a lending movement is named by the person, not left blank',
-        () async {
+    test('a lending movement is named by the person, not left blank', () async {
       final cash = await cashId();
       final ram = await db.addPerson('Ram');
       await db.addPersonEntry(

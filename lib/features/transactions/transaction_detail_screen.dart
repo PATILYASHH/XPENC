@@ -133,6 +133,10 @@ class _TransactionView extends ConsumerWidget {
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
       children: [
         _Hero(transaction: t),
+        if (t.paymentGroupId != null) ...[
+          const SizedBox(height: 16),
+          _HybridPaymentBanner(transaction: t),
+        ],
         const SizedBox(height: 24),
         Card(
           child: Padding(
@@ -354,6 +358,98 @@ class _Hero extends StatelessWidget {
           side: BorderSide.none,
         ),
       ],
+    );
+  }
+}
+
+/// "This is only part of what you spent" — without this, the account below
+/// looks charged the *full* purchase price when it only covered one leg of
+/// a hybrid/split payment (see GitHub #43). Lists every other leg so the
+/// full picture is one tap away.
+class _HybridPaymentBanner extends ConsumerWidget {
+  const _HybridPaymentBanner({required this.transaction});
+
+  final TransactionRow transaction;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final legsAsync = ref.watch(paymentGroupLegsProvider(transaction.id));
+    final accountMap = ref.watch(accountMapProvider);
+
+    return legsAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (legs) {
+        // The group might already be down to one leg (siblings deleted) —
+        // nothing left worth calling "split".
+        if (legs.length < 2) return const SizedBox.shrink();
+
+        final total = legs.fold(const Money.zero(), (s, l) => s + l.amount);
+        final others = legs.where((l) => l.id != transaction.id).toList();
+
+        return Card(
+          color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.4),
+          margin: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.call_split_rounded,
+                      size: 18,
+                      color: theme.colorScheme.onSecondaryContainer,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Split payment · total ${MoneyFormat.symbol(total)}',
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: theme.colorScheme.onSecondaryContainer,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                for (final leg in others) ...[
+                  const SizedBox(height: 8),
+                  InkWell(
+                    onTap: () => context.push('/transaction/${leg.id}'),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Also ${accountMap[leg.accountId]?.name ?? '—'}',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSecondaryContainer,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          MoneyFormat.symbol(leg.amount),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSecondaryContainer,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          size: 18,
+                          color: theme.colorScheme.onSecondaryContainer,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

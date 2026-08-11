@@ -12,6 +12,8 @@ import 'core/theme/app_theme.dart';
 import 'core/widgets/error_view.dart';
 import 'core/widgets/money_text.dart';
 import 'data/providers.dart';
+import 'features/message_capture/parser/bank_message.dart';
+import 'features/message_capture/share_intake.dart';
 import 'features/security/lock_screen.dart';
 
 class XpencApp extends ConsumerStatefulWidget {
@@ -58,16 +60,19 @@ class _XpencAppState extends ConsumerState<XpencApp>
 
     final homeWidget = ref.read(homeWidgetServiceProvider);
     homeWidget.init();
+    ref.read(shareIntakeServiceProvider).init(_handleShareResult);
     final netWorth = await ref.read(netWorthProvider.future).catchError((_) {
       return const Money.zero();
     });
     if (!mounted) return;
     await homeWidget.updateBalance(netWorth);
+    await homeWidget.updateBudgetSummary(ref.read(widgetBudgetSummaryProvider));
 
     final notifications = ref.read(notificationServiceProvider);
     await notifications.init();
     await notifications.syncReminders();
     await notifications.syncExpenseReminder();
+    await notifications.syncQuickAddNotification();
 
     // `checkBudgets` no-ops before `init()` completes (it must not claim an
     // alert it cannot deliver). The ledger listener may already have fired by
@@ -111,6 +116,9 @@ class _XpencAppState extends ConsumerState<XpencApp>
       _runRecurring();
       _scanMessages();
       _runAutoBackup();
+      // Restores the shortcut if the system cleared it under memory
+      // pressure while `ongoing: true` normally keeps a swipe from doing so.
+      ref.read(notificationServiceProvider).syncQuickAddNotification();
     }
     // Immediate re-lock, no grace period — the safer default for a finance
     // app. `_passcodeKnown` guards a launch race: if the very first
@@ -145,6 +153,34 @@ class _XpencAppState extends ConsumerState<XpencApp>
     }
   }
 
+  /// The user just shared a message into XPENC from another app — see
+  /// `ShareIntakeService`. Ingested lands straight in the Review Inbox,
+  /// since that is exactly where "filter it and add as expense or income"
+  /// already happens; anything else gets a plain-language reason instead of
+  /// silently doing nothing with a message the user deliberately picked.
+  void _handleShareResult(ShareIntakeResult result) {
+    switch (result) {
+      case ShareIntakeIngested():
+        appRouter.go('/inbox');
+      case ShareIntakeDuplicate():
+        showAppSnackBar('Already in your Review Inbox');
+      case ShareIntakeRejected(:final reason):
+        showAppSnackBar(
+          "Couldn't find a transaction in that message"
+          '${_rejectReasonHint(reason)}',
+        );
+    }
+  }
+
+  String _rejectReasonHint(RejectReason reason) => switch (reason) {
+    RejectReason.otp => ' — looks like an OTP.',
+    RejectReason.promotional => ' — looks promotional.',
+    RejectReason.balanceOnly => ' — no transaction, just a balance.',
+    RejectReason.declined => ' — the payment was declined.',
+    RejectReason.noAmount => ' — no amount found.',
+    RejectReason.noDirection || RejectReason.notATransaction => '.',
+  };
+
   @override
   Widget build(BuildContext context) {
     // Budgets are re-checked whenever the ledger changes. `claimBudgetAlert`
@@ -154,12 +190,15 @@ class _XpencAppState extends ConsumerState<XpencApp>
         ref.read(notificationServiceProvider).checkBudgets();
       }
     });
-    // Keeps the home-screen widget's balance live while the app is open —
-    // it has no other way to learn the ledger changed.
+    // Keeps the home-screen widgets live while the app is open — neither
+    // has any other way to learn the ledger (or budgets) changed.
     ref.listen(netWorthProvider, (_, next) {
       if (next.hasValue) {
         ref.read(homeWidgetServiceProvider).updateBalance(next.value!);
       }
+    });
+    ref.listen(widgetBudgetSummaryProvider, (_, next) {
+      ref.read(homeWidgetServiceProvider).updateBudgetSummary(next);
     });
 
     final ready = ref.watch(databaseReadyProvider);

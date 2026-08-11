@@ -14,6 +14,7 @@ import '../../features/calendar/calendar_screen.dart';
 import '../../features/categories/categories_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/data_export/backup_screen.dart';
+import '../../features/data_export/csv_import_screen.dart';
 import '../../features/data_export/download_data_screen.dart';
 import '../../features/message_capture/message_capture_screen.dart';
 import '../../features/message_capture/review_inbox_screen.dart';
@@ -30,6 +31,7 @@ import '../../features/savings/savings_goal_detail_screen.dart';
 import '../../features/savings/savings_goals_screen.dart';
 import '../../features/security/set_passcode_screen.dart';
 import '../../features/settings/settings_screen.dart';
+import '../../features/settings/widgets_screen.dart';
 import '../../features/shopping/shopping_list_screen.dart';
 import '../../features/shopping/shopping_lists_screen.dart';
 import '../../features/tags/tags_screen.dart';
@@ -38,6 +40,20 @@ import '../../features/transactions/transactions_screen.dart';
 import 'app_shell.dart';
 
 final _rootKey = GlobalKey<NavigatorState>();
+
+/// Shows a SnackBar from outside any screen's own `BuildContext` — e.g. a
+/// share-intake result arriving in `app.dart`, which runs before any route's
+/// `build` has necessarily settled. `_rootKey`'s context always has the
+/// `ScaffoldMessenger` `MaterialApp.router` installs, same as any in-screen
+/// `ScaffoldMessenger.of(context)` call. A no-op if the router isn't mounted
+/// yet (there is nothing to show a SnackBar over).
+void showAppSnackBar(String message) {
+  final context = _rootKey.currentContext;
+  if (context == null) return;
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(SnackBar(content: Text(message)));
+}
 
 /// Detail screens push above the shell (`parentNavigatorKey: _rootKey`) so they
 /// get a back button and hide the bottom bar, One UI style.
@@ -109,6 +125,11 @@ final appRouter = GoRouter(
                         isRemoving:
                             state.uri.queryParameters['remove'] == 'true',
                       ),
+                    ),
+                    GoRoute(
+                      path: 'widgets',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const WidgetsScreen(),
                     ),
                   ],
                 ),
@@ -251,6 +272,12 @@ final appRouter = GoRouter(
       path: '/inbox',
       parentNavigatorKey: _rootKey,
       builder: (_, _) => const ReviewInboxScreen(),
+    ),
+
+    GoRoute(
+      path: '/import-csv',
+      parentNavigatorKey: _rootKey,
+      builder: (_, _) => const CsvImportScreen(),
     ),
 
     GoRoute(

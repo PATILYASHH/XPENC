@@ -9,4 +9,12 @@
     <string name="widget_add_expense">+ Expense</string>
     <string name="widget_add_income">+ Income</string>
     <string name="widget_description">Your total balance, with one-tap shortcuts to log an expense or income.</string>
+
+    <!-- Budgets home-screen widget. -->
+    <string name="widget_budgets_title">Budgets</string>
+    <string name="widget_budgets_empty">No budgets set — add one in the app.</string>
+    <string name="widget_budgets_description">Your top budgets, closest to their limit first.</string>
+
+    <!-- Quick Add home-screen widget. -->
+    <string name="widget_quick_add_description">One-tap shortcuts to log an expense or income — nothing else.</string>
 </resources>

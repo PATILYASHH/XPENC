@@ -1,7 +1,3 @@
-import 'dart:convert';
-import 'dart:io';
-
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -11,6 +7,7 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'backup_service.dart';
+import 'import_from_file.dart';
 
 String _sizeLabel(int bytes) {
   if (bytes < 1024) return '$bytes B';
@@ -91,110 +88,16 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
   }
 
   /// Import a backup file the app didn't write — the other half of moving
-  /// data between phones. Picks any `.json`, then follows the same guarded
-  /// restore as an on-device backup: confirm, snapshot the current data,
-  /// then replace.
+  /// data between phones. See `importDataFromFile`.
   Future<void> _importFromFile() async {
     if (_busy) return;
-    final messenger = ScaffoldMessenger.of(context);
-
-    final FilePickerResult? picked;
-    try {
-      // Deliberately not filtering by extension: some Android file managers
-      // grey out `.json` under a custom filter, which would make a real backup
-      // unpickable. restoreFromContent is the real gate — it rejects anything
-      // that isn't an XPENC backup with a clear message.
-      picked = await FilePicker.platform.pickFiles(withData: true);
-    } catch (e) {
-      if (!mounted) return;
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text("Couldn't open a file: $e")));
-      return;
-    }
-    if (picked == null || picked.files.isEmpty) return; // cancelled
-
-    final file = picked.files.single;
-    // Prefer the in-memory bytes (withData); fall back to reading the path.
-    String content;
-    try {
-      if (file.bytes != null) {
-        content = utf8.decode(file.bytes!);
-      } else if (file.path != null) {
-        content = await File(file.path!).readAsString();
-      } else {
-        throw const FormatException('empty selection');
-      }
-    } catch (_) {
-      if (!mounted) return;
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(content: Text("Couldn't read that file.")),
-        );
-      return;
-    }
-
-    if (!mounted) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Import this file?'),
-        content: Text(
-          'Importing "${file.name}" replaces ALL current data on this phone — '
-          'every account, transaction, budget and person — with its contents. '
-          'A safety copy of your current data is saved first, so this can be '
-          'undone by restoring that copy.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(dialogContext).colorScheme.error,
-            ),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Replace everything'),
-          ),
-        ],
-      ),
+    await importDataFromFile(
+      context,
+      ref,
+      setBusy: (busy) {
+        if (mounted) setState(() => _busy = busy);
+      },
     );
-    if (!mounted || confirmed != true) return;
-
-    final service = ref.read(backupServiceProvider);
-    setState(() => _busy = true);
-    try {
-      await service.createBackup(); // safety copy first
-      await service.restoreFromContent(content);
-      if (!mounted) return;
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Imported. A safety copy of your previous data was saved.',
-            ),
-          ),
-        );
-    } on ArgumentError catch (e) {
-      if (!mounted) return;
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(content: Text('${e.message} Nothing was changed.')),
-        );
-    } catch (e) {
-      if (!mounted) return;
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(content: Text("Couldn't import: $e Nothing was changed.")),
-        );
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
   }
 
   Future<void> _restore(BackupRecordRow b) async {

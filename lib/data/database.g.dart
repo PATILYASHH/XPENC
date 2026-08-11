@@ -2864,6 +2864,20 @@ class $TransactionsTable extends Transactions
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _paymentGroupIdMeta = const VerificationMeta(
+    'paymentGroupId',
+  );
+  @override
+  late final GeneratedColumn<int> paymentGroupId = GeneratedColumn<int>(
+    'payment_group_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES transactions (id)',
+    ),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2881,6 +2895,7 @@ class $TransactionsTable extends Transactions
     createdAt,
     updatedAt,
     needsAmountReview,
+    paymentGroupId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2982,6 +2997,15 @@ class $TransactionsTable extends Transactions
         ),
       );
     }
+    if (data.containsKey('payment_group_id')) {
+      context.handle(
+        _paymentGroupIdMeta,
+        paymentGroupId.isAcceptableOrUnknown(
+          data['payment_group_id']!,
+          _paymentGroupIdMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -3055,6 +3079,10 @@ class $TransactionsTable extends Transactions
         DriftSqlType.bool,
         data['${effectivePrefix}needs_amount_review'],
       )!,
+      paymentGroupId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}payment_group_id'],
+      ),
     );
   }
 
@@ -3112,6 +3140,20 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   /// Cleared the moment the user edits and saves the transaction, by which
   /// point they've either confirmed or corrected the real figure.
   final bool needsAmountReview;
+
+  /// Ties together the legs of one hybrid/split payment — one purchase paid
+  /// from several accounts at once (see GitHub #43). Every leg in a group
+  /// points at the *first* leg inserted, including that leg itself, so
+  /// "every row in this group" is just `WHERE paymentGroupId = anchorId`
+  /// with no separate id space to manage. Null means an ordinary,
+  /// ungrouped transaction — the overwhelming majority.
+  ///
+  /// Deliberately not [TransactionSplits]: that ties one expense to several
+  /// *categories* against a single account; this ties several *accounts*
+  /// against a single category. The two are orthogonal and — for now —
+  /// mutually exclusive in the UI, to avoid the 2-D matrix of splitting
+  /// both at once.
+  final int? paymentGroupId;
   const TransactionRow({
     required this.id,
     required this.type,
@@ -3128,6 +3170,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     required this.createdAt,
     required this.updatedAt,
     required this.needsAmountReview,
+    this.paymentGroupId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3169,6 +3212,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     map['needs_amount_review'] = Variable<bool>(needsAmountReview);
+    if (!nullToAbsent || paymentGroupId != null) {
+      map['payment_group_id'] = Variable<int>(paymentGroupId);
+    }
     return map;
   }
 
@@ -3201,6 +3247,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       needsAmountReview: Value(needsAmountReview),
+      paymentGroupId: paymentGroupId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(paymentGroupId),
     );
   }
 
@@ -3227,6 +3276,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       needsAmountReview: serializer.fromJson<bool>(json['needsAmountReview']),
+      paymentGroupId: serializer.fromJson<int?>(json['paymentGroupId']),
     );
   }
   @override
@@ -3250,6 +3300,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'needsAmountReview': serializer.toJson<bool>(needsAmountReview),
+      'paymentGroupId': serializer.toJson<int?>(paymentGroupId),
     };
   }
 
@@ -3269,6 +3320,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? needsAmountReview,
+    Value<int?> paymentGroupId = const Value.absent(),
   }) => TransactionRow(
     id: id ?? this.id,
     type: type ?? this.type,
@@ -3287,6 +3339,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     needsAmountReview: needsAmountReview ?? this.needsAmountReview,
+    paymentGroupId: paymentGroupId.present
+        ? paymentGroupId.value
+        : this.paymentGroupId,
   );
   TransactionRow copyWithCompanion(TransactionsCompanion data) {
     return TransactionRow(
@@ -3313,6 +3368,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       needsAmountReview: data.needsAmountReview.present
           ? data.needsAmountReview.value
           : this.needsAmountReview,
+      paymentGroupId: data.paymentGroupId.present
+          ? data.paymentGroupId.value
+          : this.paymentGroupId,
     );
   }
 
@@ -3333,7 +3391,8 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           ..write('imagePath: $imagePath, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('needsAmountReview: $needsAmountReview')
+          ..write('needsAmountReview: $needsAmountReview, ')
+          ..write('paymentGroupId: $paymentGroupId')
           ..write(')'))
         .toString();
   }
@@ -3355,6 +3414,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     createdAt,
     updatedAt,
     needsAmountReview,
+    paymentGroupId,
   );
   @override
   bool operator ==(Object other) =>
@@ -3374,7 +3434,8 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           other.imagePath == this.imagePath &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
-          other.needsAmountReview == this.needsAmountReview);
+          other.needsAmountReview == this.needsAmountReview &&
+          other.paymentGroupId == this.paymentGroupId);
 }
 
 class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
@@ -3393,6 +3454,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<bool> needsAmountReview;
+  final Value<int?> paymentGroupId;
   const TransactionsCompanion({
     this.id = const Value.absent(),
     this.type = const Value.absent(),
@@ -3409,6 +3471,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.needsAmountReview = const Value.absent(),
+    this.paymentGroupId = const Value.absent(),
   });
   TransactionsCompanion.insert({
     this.id = const Value.absent(),
@@ -3426,6 +3489,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.needsAmountReview = const Value.absent(),
+    this.paymentGroupId = const Value.absent(),
   }) : type = Value(type),
        amount = Value(amount),
        accountId = Value(accountId),
@@ -3446,6 +3510,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<bool>? needsAmountReview,
+    Expression<int>? paymentGroupId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3463,6 +3528,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (needsAmountReview != null) 'needs_amount_review': needsAmountReview,
+      if (paymentGroupId != null) 'payment_group_id': paymentGroupId,
     });
   }
 
@@ -3482,6 +3548,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<bool>? needsAmountReview,
+    Value<int?>? paymentGroupId,
   }) {
     return TransactionsCompanion(
       id: id ?? this.id,
@@ -3499,6 +3566,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       needsAmountReview: needsAmountReview ?? this.needsAmountReview,
+      paymentGroupId: paymentGroupId ?? this.paymentGroupId,
     );
   }
 
@@ -3554,6 +3622,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     if (needsAmountReview.present) {
       map['needs_amount_review'] = Variable<bool>(needsAmountReview.value);
     }
+    if (paymentGroupId.present) {
+      map['payment_group_id'] = Variable<int>(paymentGroupId.value);
+    }
     return map;
   }
 
@@ -3574,7 +3645,8 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
           ..write('imagePath: $imagePath, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('needsAmountReview: $needsAmountReview')
+          ..write('needsAmountReview: $needsAmountReview, ')
+          ..write('paymentGroupId: $paymentGroupId')
           ..write(')'))
         .toString();
   }
@@ -5746,6 +5818,17 @@ class $SettingsTable extends Settings
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _passcodeLengthMeta = const VerificationMeta(
+    'passcodeLength',
+  );
+  @override
+  late final GeneratedColumn<int> passcodeLength = GeneratedColumn<int>(
+    'passcode_length',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _biometricEnabledMeta = const VerificationMeta(
     'biometricEnabled',
   );
@@ -5797,6 +5880,35 @@ class $SettingsTable extends Settings
     type: DriftSqlType.int,
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _notificationQuickAddEnabledMeta =
+      const VerificationMeta('notificationQuickAddEnabled');
+  @override
+  late final GeneratedColumn<bool> notificationQuickAddEnabled =
+      GeneratedColumn<bool>(
+        'notification_quick_add_enabled',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("notification_quick_add_enabled" IN (0, 1))',
+        ),
+        defaultValue: const Constant(false),
+      );
+  static const VerificationMeta _quickAddAccountIdMeta = const VerificationMeta(
+    'quickAddAccountId',
+  );
+  @override
+  late final GeneratedColumn<int> quickAddAccountId = GeneratedColumn<int>(
+    'quick_add_account_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES accounts (id)',
+    ),
   );
   static const VerificationMeta _autoBackupEnabledMeta = const VerificationMeta(
     'autoBackupEnabled',
@@ -5900,10 +6012,13 @@ class $SettingsTable extends Settings
     countRepaymentsAsIncome,
     passcodeHash,
     passcodeSalt,
+    passcodeLength,
     biometricEnabled,
     expenseReminderEnabled,
     expenseReminderHour,
     expenseReminderMinute,
+    notificationQuickAddEnabled,
+    quickAddAccountId,
     autoBackupEnabled,
     autoBackupFrequency,
     autoBackupCustomDays,
@@ -6029,6 +6144,15 @@ class $SettingsTable extends Settings
         ),
       );
     }
+    if (data.containsKey('passcode_length')) {
+      context.handle(
+        _passcodeLengthMeta,
+        passcodeLength.isAcceptableOrUnknown(
+          data['passcode_length']!,
+          _passcodeLengthMeta,
+        ),
+      );
+    }
     if (data.containsKey('biometric_enabled')) {
       context.handle(
         _biometricEnabledMeta,
@@ -6062,6 +6186,24 @@ class $SettingsTable extends Settings
         expenseReminderMinute.isAcceptableOrUnknown(
           data['expense_reminder_minute']!,
           _expenseReminderMinuteMeta,
+        ),
+      );
+    }
+    if (data.containsKey('notification_quick_add_enabled')) {
+      context.handle(
+        _notificationQuickAddEnabledMeta,
+        notificationQuickAddEnabled.isAcceptableOrUnknown(
+          data['notification_quick_add_enabled']!,
+          _notificationQuickAddEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('quick_add_account_id')) {
+      context.handle(
+        _quickAddAccountIdMeta,
+        quickAddAccountId.isAcceptableOrUnknown(
+          data['quick_add_account_id']!,
+          _quickAddAccountIdMeta,
         ),
       );
     }
@@ -6180,6 +6322,10 @@ class $SettingsTable extends Settings
         DriftSqlType.string,
         data['${effectivePrefix}passcode_salt'],
       ),
+      passcodeLength: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}passcode_length'],
+      ),
       biometricEnabled: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}biometric_enabled'],
@@ -6196,6 +6342,14 @@ class $SettingsTable extends Settings
         DriftSqlType.int,
         data['${effectivePrefix}expense_reminder_minute'],
       )!,
+      notificationQuickAddEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}notification_quick_add_enabled'],
+      )!,
+      quickAddAccountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}quick_add_account_id'],
+      ),
       autoBackupEnabled: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}auto_backup_enabled'],
@@ -6276,6 +6430,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   final String? passcodeHash;
   final String? passcodeSalt;
 
+  /// How many digits [passcodeHash] was set with — 4, 5 or 6 (see GitHub
+  /// #18). The hash itself doesn't care about length, only the entry/lock
+  /// screens' keypads do. Null means 4: every passcode set before this
+  /// column existed was 4 digits, since that was the only option.
+  final int? passcodeLength;
+
   /// Only ever offered as a shortcut once [passcodeHash] is set — the PIN
   /// stays the fallback whenever biometrics fail or aren't enrolled.
   final bool biometricEnabled;
@@ -6285,6 +6445,20 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   final bool expenseReminderEnabled;
   final int expenseReminderHour;
   final int expenseReminderMinute;
+
+  /// A standing, silent notification with "Add expense" / "Add income"
+  /// buttons — each opens an inline reply asking for an amount and posts a
+  /// transaction straight from the notification shade, no need to open the
+  /// app at all. Opt-in and off by default (see GitHub #38). Deliberately
+  /// uncategorised (there is no UI to pick one from a reply) and posted to
+  /// [quickAddAccountId] — categorise it later from the Transactions list,
+  /// same as any other transaction.
+  final bool notificationQuickAddEnabled;
+
+  /// Which account a quick-add notification reply posts to. Null falls back
+  /// to the first balance-holding account (by sort order) — see
+  /// `AppDatabase.resolveQuickAddAccountId`.
+  final int? quickAddAccountId;
 
   /// Whether XPENC creates a backup on its own schedule, with no "Back up
   /// now" tap needed. Off by default.
@@ -6327,10 +6501,13 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     required this.countRepaymentsAsIncome,
     this.passcodeHash,
     this.passcodeSalt,
+    this.passcodeLength,
     required this.biometricEnabled,
     required this.expenseReminderEnabled,
     required this.expenseReminderHour,
     required this.expenseReminderMinute,
+    required this.notificationQuickAddEnabled,
+    this.quickAddAccountId,
     required this.autoBackupEnabled,
     required this.autoBackupFrequency,
     required this.autoBackupCustomDays,
@@ -6361,10 +6538,19 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     if (!nullToAbsent || passcodeSalt != null) {
       map['passcode_salt'] = Variable<String>(passcodeSalt);
     }
+    if (!nullToAbsent || passcodeLength != null) {
+      map['passcode_length'] = Variable<int>(passcodeLength);
+    }
     map['biometric_enabled'] = Variable<bool>(biometricEnabled);
     map['expense_reminder_enabled'] = Variable<bool>(expenseReminderEnabled);
     map['expense_reminder_hour'] = Variable<int>(expenseReminderHour);
     map['expense_reminder_minute'] = Variable<int>(expenseReminderMinute);
+    map['notification_quick_add_enabled'] = Variable<bool>(
+      notificationQuickAddEnabled,
+    );
+    if (!nullToAbsent || quickAddAccountId != null) {
+      map['quick_add_account_id'] = Variable<int>(quickAddAccountId);
+    }
     map['auto_backup_enabled'] = Variable<bool>(autoBackupEnabled);
     {
       map['auto_backup_frequency'] = Variable<String>(
@@ -6402,10 +6588,17 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       passcodeSalt: passcodeSalt == null && nullToAbsent
           ? const Value.absent()
           : Value(passcodeSalt),
+      passcodeLength: passcodeLength == null && nullToAbsent
+          ? const Value.absent()
+          : Value(passcodeLength),
       biometricEnabled: Value(biometricEnabled),
       expenseReminderEnabled: Value(expenseReminderEnabled),
       expenseReminderHour: Value(expenseReminderHour),
       expenseReminderMinute: Value(expenseReminderMinute),
+      notificationQuickAddEnabled: Value(notificationQuickAddEnabled),
+      quickAddAccountId: quickAddAccountId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(quickAddAccountId),
       autoBackupEnabled: Value(autoBackupEnabled),
       autoBackupFrequency: Value(autoBackupFrequency),
       autoBackupCustomDays: Value(autoBackupCustomDays),
@@ -6445,6 +6638,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       ),
       passcodeHash: serializer.fromJson<String?>(json['passcodeHash']),
       passcodeSalt: serializer.fromJson<String?>(json['passcodeSalt']),
+      passcodeLength: serializer.fromJson<int?>(json['passcodeLength']),
       biometricEnabled: serializer.fromJson<bool>(json['biometricEnabled']),
       expenseReminderEnabled: serializer.fromJson<bool>(
         json['expenseReminderEnabled'],
@@ -6455,6 +6649,10 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       expenseReminderMinute: serializer.fromJson<int>(
         json['expenseReminderMinute'],
       ),
+      notificationQuickAddEnabled: serializer.fromJson<bool>(
+        json['notificationQuickAddEnabled'],
+      ),
+      quickAddAccountId: serializer.fromJson<int?>(json['quickAddAccountId']),
       autoBackupEnabled: serializer.fromJson<bool>(json['autoBackupEnabled']),
       autoBackupFrequency: $SettingsTable.$converterautoBackupFrequency
           .fromJson(serializer.fromJson<String>(json['autoBackupFrequency'])),
@@ -6492,10 +6690,15 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       ),
       'passcodeHash': serializer.toJson<String?>(passcodeHash),
       'passcodeSalt': serializer.toJson<String?>(passcodeSalt),
+      'passcodeLength': serializer.toJson<int?>(passcodeLength),
       'biometricEnabled': serializer.toJson<bool>(biometricEnabled),
       'expenseReminderEnabled': serializer.toJson<bool>(expenseReminderEnabled),
       'expenseReminderHour': serializer.toJson<int>(expenseReminderHour),
       'expenseReminderMinute': serializer.toJson<int>(expenseReminderMinute),
+      'notificationQuickAddEnabled': serializer.toJson<bool>(
+        notificationQuickAddEnabled,
+      ),
+      'quickAddAccountId': serializer.toJson<int?>(quickAddAccountId),
       'autoBackupEnabled': serializer.toJson<bool>(autoBackupEnabled),
       'autoBackupFrequency': serializer.toJson<String>(
         $SettingsTable.$converterautoBackupFrequency.toJson(
@@ -6524,10 +6727,13 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     bool? countRepaymentsAsIncome,
     Value<String?> passcodeHash = const Value.absent(),
     Value<String?> passcodeSalt = const Value.absent(),
+    Value<int?> passcodeLength = const Value.absent(),
     bool? biometricEnabled,
     bool? expenseReminderEnabled,
     int? expenseReminderHour,
     int? expenseReminderMinute,
+    bool? notificationQuickAddEnabled,
+    Value<int?> quickAddAccountId = const Value.absent(),
     bool? autoBackupEnabled,
     AutoBackupFrequency? autoBackupFrequency,
     int? autoBackupCustomDays,
@@ -6552,11 +6758,19 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
         countRepaymentsAsIncome ?? this.countRepaymentsAsIncome,
     passcodeHash: passcodeHash.present ? passcodeHash.value : this.passcodeHash,
     passcodeSalt: passcodeSalt.present ? passcodeSalt.value : this.passcodeSalt,
+    passcodeLength: passcodeLength.present
+        ? passcodeLength.value
+        : this.passcodeLength,
     biometricEnabled: biometricEnabled ?? this.biometricEnabled,
     expenseReminderEnabled:
         expenseReminderEnabled ?? this.expenseReminderEnabled,
     expenseReminderHour: expenseReminderHour ?? this.expenseReminderHour,
     expenseReminderMinute: expenseReminderMinute ?? this.expenseReminderMinute,
+    notificationQuickAddEnabled:
+        notificationQuickAddEnabled ?? this.notificationQuickAddEnabled,
+    quickAddAccountId: quickAddAccountId.present
+        ? quickAddAccountId.value
+        : this.quickAddAccountId,
     autoBackupEnabled: autoBackupEnabled ?? this.autoBackupEnabled,
     autoBackupFrequency: autoBackupFrequency ?? this.autoBackupFrequency,
     autoBackupCustomDays: autoBackupCustomDays ?? this.autoBackupCustomDays,
@@ -6602,6 +6816,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       passcodeSalt: data.passcodeSalt.present
           ? data.passcodeSalt.value
           : this.passcodeSalt,
+      passcodeLength: data.passcodeLength.present
+          ? data.passcodeLength.value
+          : this.passcodeLength,
       biometricEnabled: data.biometricEnabled.present
           ? data.biometricEnabled.value
           : this.biometricEnabled,
@@ -6614,6 +6831,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       expenseReminderMinute: data.expenseReminderMinute.present
           ? data.expenseReminderMinute.value
           : this.expenseReminderMinute,
+      notificationQuickAddEnabled: data.notificationQuickAddEnabled.present
+          ? data.notificationQuickAddEnabled.value
+          : this.notificationQuickAddEnabled,
+      quickAddAccountId: data.quickAddAccountId.present
+          ? data.quickAddAccountId.value
+          : this.quickAddAccountId,
       autoBackupEnabled: data.autoBackupEnabled.present
           ? data.autoBackupEnabled.value
           : this.autoBackupEnabled,
@@ -6654,10 +6877,13 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('countRepaymentsAsIncome: $countRepaymentsAsIncome, ')
           ..write('passcodeHash: $passcodeHash, ')
           ..write('passcodeSalt: $passcodeSalt, ')
+          ..write('passcodeLength: $passcodeLength, ')
           ..write('biometricEnabled: $biometricEnabled, ')
           ..write('expenseReminderEnabled: $expenseReminderEnabled, ')
           ..write('expenseReminderHour: $expenseReminderHour, ')
           ..write('expenseReminderMinute: $expenseReminderMinute, ')
+          ..write('notificationQuickAddEnabled: $notificationQuickAddEnabled, ')
+          ..write('quickAddAccountId: $quickAddAccountId, ')
           ..write('autoBackupEnabled: $autoBackupEnabled, ')
           ..write('autoBackupFrequency: $autoBackupFrequency, ')
           ..write('autoBackupCustomDays: $autoBackupCustomDays, ')
@@ -6684,10 +6910,13 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     countRepaymentsAsIncome,
     passcodeHash,
     passcodeSalt,
+    passcodeLength,
     biometricEnabled,
     expenseReminderEnabled,
     expenseReminderHour,
     expenseReminderMinute,
+    notificationQuickAddEnabled,
+    quickAddAccountId,
     autoBackupEnabled,
     autoBackupFrequency,
     autoBackupCustomDays,
@@ -6713,10 +6942,14 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.countRepaymentsAsIncome == this.countRepaymentsAsIncome &&
           other.passcodeHash == this.passcodeHash &&
           other.passcodeSalt == this.passcodeSalt &&
+          other.passcodeLength == this.passcodeLength &&
           other.biometricEnabled == this.biometricEnabled &&
           other.expenseReminderEnabled == this.expenseReminderEnabled &&
           other.expenseReminderHour == this.expenseReminderHour &&
           other.expenseReminderMinute == this.expenseReminderMinute &&
+          other.notificationQuickAddEnabled ==
+              this.notificationQuickAddEnabled &&
+          other.quickAddAccountId == this.quickAddAccountId &&
           other.autoBackupEnabled == this.autoBackupEnabled &&
           other.autoBackupFrequency == this.autoBackupFrequency &&
           other.autoBackupCustomDays == this.autoBackupCustomDays &&
@@ -6740,10 +6973,13 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<bool> countRepaymentsAsIncome;
   final Value<String?> passcodeHash;
   final Value<String?> passcodeSalt;
+  final Value<int?> passcodeLength;
   final Value<bool> biometricEnabled;
   final Value<bool> expenseReminderEnabled;
   final Value<int> expenseReminderHour;
   final Value<int> expenseReminderMinute;
+  final Value<bool> notificationQuickAddEnabled;
+  final Value<int?> quickAddAccountId;
   final Value<bool> autoBackupEnabled;
   final Value<AutoBackupFrequency> autoBackupFrequency;
   final Value<int> autoBackupCustomDays;
@@ -6765,10 +7001,13 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.countRepaymentsAsIncome = const Value.absent(),
     this.passcodeHash = const Value.absent(),
     this.passcodeSalt = const Value.absent(),
+    this.passcodeLength = const Value.absent(),
     this.biometricEnabled = const Value.absent(),
     this.expenseReminderEnabled = const Value.absent(),
     this.expenseReminderHour = const Value.absent(),
     this.expenseReminderMinute = const Value.absent(),
+    this.notificationQuickAddEnabled = const Value.absent(),
+    this.quickAddAccountId = const Value.absent(),
     this.autoBackupEnabled = const Value.absent(),
     this.autoBackupFrequency = const Value.absent(),
     this.autoBackupCustomDays = const Value.absent(),
@@ -6791,10 +7030,13 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.countRepaymentsAsIncome = const Value.absent(),
     this.passcodeHash = const Value.absent(),
     this.passcodeSalt = const Value.absent(),
+    this.passcodeLength = const Value.absent(),
     this.biometricEnabled = const Value.absent(),
     this.expenseReminderEnabled = const Value.absent(),
     this.expenseReminderHour = const Value.absent(),
     this.expenseReminderMinute = const Value.absent(),
+    this.notificationQuickAddEnabled = const Value.absent(),
+    this.quickAddAccountId = const Value.absent(),
     this.autoBackupEnabled = const Value.absent(),
     this.autoBackupFrequency = const Value.absent(),
     this.autoBackupCustomDays = const Value.absent(),
@@ -6817,10 +7059,13 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<bool>? countRepaymentsAsIncome,
     Expression<String>? passcodeHash,
     Expression<String>? passcodeSalt,
+    Expression<int>? passcodeLength,
     Expression<bool>? biometricEnabled,
     Expression<bool>? expenseReminderEnabled,
     Expression<int>? expenseReminderHour,
     Expression<int>? expenseReminderMinute,
+    Expression<bool>? notificationQuickAddEnabled,
+    Expression<int>? quickAddAccountId,
     Expression<bool>? autoBackupEnabled,
     Expression<String>? autoBackupFrequency,
     Expression<int>? autoBackupCustomDays,
@@ -6847,6 +7092,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
         'count_repayments_as_income': countRepaymentsAsIncome,
       if (passcodeHash != null) 'passcode_hash': passcodeHash,
       if (passcodeSalt != null) 'passcode_salt': passcodeSalt,
+      if (passcodeLength != null) 'passcode_length': passcodeLength,
       if (biometricEnabled != null) 'biometric_enabled': biometricEnabled,
       if (expenseReminderEnabled != null)
         'expense_reminder_enabled': expenseReminderEnabled,
@@ -6854,6 +7100,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
         'expense_reminder_hour': expenseReminderHour,
       if (expenseReminderMinute != null)
         'expense_reminder_minute': expenseReminderMinute,
+      if (notificationQuickAddEnabled != null)
+        'notification_quick_add_enabled': notificationQuickAddEnabled,
+      if (quickAddAccountId != null) 'quick_add_account_id': quickAddAccountId,
       if (autoBackupEnabled != null) 'auto_backup_enabled': autoBackupEnabled,
       if (autoBackupFrequency != null)
         'auto_backup_frequency': autoBackupFrequency,
@@ -6882,10 +7131,13 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<bool>? countRepaymentsAsIncome,
     Value<String?>? passcodeHash,
     Value<String?>? passcodeSalt,
+    Value<int?>? passcodeLength,
     Value<bool>? biometricEnabled,
     Value<bool>? expenseReminderEnabled,
     Value<int>? expenseReminderHour,
     Value<int>? expenseReminderMinute,
+    Value<bool>? notificationQuickAddEnabled,
+    Value<int?>? quickAddAccountId,
     Value<bool>? autoBackupEnabled,
     Value<AutoBackupFrequency>? autoBackupFrequency,
     Value<int>? autoBackupCustomDays,
@@ -6910,12 +7162,16 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           countRepaymentsAsIncome ?? this.countRepaymentsAsIncome,
       passcodeHash: passcodeHash ?? this.passcodeHash,
       passcodeSalt: passcodeSalt ?? this.passcodeSalt,
+      passcodeLength: passcodeLength ?? this.passcodeLength,
       biometricEnabled: biometricEnabled ?? this.biometricEnabled,
       expenseReminderEnabled:
           expenseReminderEnabled ?? this.expenseReminderEnabled,
       expenseReminderHour: expenseReminderHour ?? this.expenseReminderHour,
       expenseReminderMinute:
           expenseReminderMinute ?? this.expenseReminderMinute,
+      notificationQuickAddEnabled:
+          notificationQuickAddEnabled ?? this.notificationQuickAddEnabled,
+      quickAddAccountId: quickAddAccountId ?? this.quickAddAccountId,
       autoBackupEnabled: autoBackupEnabled ?? this.autoBackupEnabled,
       autoBackupFrequency: autoBackupFrequency ?? this.autoBackupFrequency,
       autoBackupCustomDays: autoBackupCustomDays ?? this.autoBackupCustomDays,
@@ -6973,6 +7229,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     if (passcodeSalt.present) {
       map['passcode_salt'] = Variable<String>(passcodeSalt.value);
     }
+    if (passcodeLength.present) {
+      map['passcode_length'] = Variable<int>(passcodeLength.value);
+    }
     if (biometricEnabled.present) {
       map['biometric_enabled'] = Variable<bool>(biometricEnabled.value);
     }
@@ -6988,6 +7247,14 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       map['expense_reminder_minute'] = Variable<int>(
         expenseReminderMinute.value,
       );
+    }
+    if (notificationQuickAddEnabled.present) {
+      map['notification_quick_add_enabled'] = Variable<bool>(
+        notificationQuickAddEnabled.value,
+      );
+    }
+    if (quickAddAccountId.present) {
+      map['quick_add_account_id'] = Variable<int>(quickAddAccountId.value);
     }
     if (autoBackupEnabled.present) {
       map['auto_backup_enabled'] = Variable<bool>(autoBackupEnabled.value);
@@ -7037,10 +7304,13 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('countRepaymentsAsIncome: $countRepaymentsAsIncome, ')
           ..write('passcodeHash: $passcodeHash, ')
           ..write('passcodeSalt: $passcodeSalt, ')
+          ..write('passcodeLength: $passcodeLength, ')
           ..write('biometricEnabled: $biometricEnabled, ')
           ..write('expenseReminderEnabled: $expenseReminderEnabled, ')
           ..write('expenseReminderHour: $expenseReminderHour, ')
           ..write('expenseReminderMinute: $expenseReminderMinute, ')
+          ..write('notificationQuickAddEnabled: $notificationQuickAddEnabled, ')
+          ..write('quickAddAccountId: $quickAddAccountId, ')
           ..write('autoBackupEnabled: $autoBackupEnabled, ')
           ..write('autoBackupFrequency: $autoBackupFrequency, ')
           ..write('autoBackupCustomDays: $autoBackupCustomDays, ')
@@ -12006,6 +12276,27 @@ final class $$AccountsTableReferences
     );
   }
 
+  static MultiTypedResultKey<$SettingsTable, List<SettingRow>>
+  _settingsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.settings,
+    aliasName: $_aliasNameGenerator(
+      db.accounts.id,
+      db.settings.quickAddAccountId,
+    ),
+  );
+
+  $$SettingsTableProcessedTableManager get settingsRefs {
+    final manager = $$SettingsTableTableManager(
+      $_db,
+      $_db.settings,
+    ).filter((f) => f.quickAddAccountId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_settingsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
   static MultiTypedResultKey<$PendingTxnsTable, List<PendingTxnRow>>
   _pendingTxnsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
     db.pendingTxns,
@@ -12254,6 +12545,31 @@ class $$AccountsTableFilterComposer
           }) => $$RemindersTableFilterComposer(
             $db: $db,
             $table: $db.reminders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> settingsRefs(
+    Expression<bool> Function($$SettingsTableFilterComposer f) f,
+  ) {
+    final $$SettingsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.settings,
+      getReferencedColumn: (t) => t.quickAddAccountId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SettingsTableFilterComposer(
+            $db: $db,
+            $table: $db.settings,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -12628,6 +12944,31 @@ class $$AccountsTableAnnotationComposer
     return f(composer);
   }
 
+  Expression<T> settingsRefs<T extends Object>(
+    Expression<T> Function($$SettingsTableAnnotationComposer a) f,
+  ) {
+    final $$SettingsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.settings,
+      getReferencedColumn: (t) => t.quickAddAccountId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SettingsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.settings,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
   Expression<T> pendingTxnsRefs<T extends Object>(
     Expression<T> Function($$PendingTxnsTableAnnotationComposer a) f,
   ) {
@@ -12747,6 +13088,7 @@ class $$AccountsTableTableManager
             bool recurringRulesRefs,
             bool personEntriesRefs,
             bool remindersRefs,
+            bool settingsRefs,
             bool pendingTxnsRefs,
             bool merchantRulesRefs,
             bool goalDetailsRefs,
@@ -12846,6 +13188,7 @@ class $$AccountsTableTableManager
                 recurringRulesRefs = false,
                 personEntriesRefs = false,
                 remindersRefs = false,
+                settingsRefs = false,
                 pendingTxnsRefs = false,
                 merchantRulesRefs = false,
                 goalDetailsRefs = false,
@@ -12857,6 +13200,7 @@ class $$AccountsTableTableManager
                     if (recurringRulesRefs) db.recurringRules,
                     if (personEntriesRefs) db.personEntries,
                     if (remindersRefs) db.reminders,
+                    if (settingsRefs) db.settings,
                     if (pendingTxnsRefs) db.pendingTxns,
                     if (merchantRulesRefs) db.merchantRules,
                     if (goalDetailsRefs) db.goalDetails,
@@ -12956,6 +13300,27 @@ class $$AccountsTableTableManager
                           referencedItemsForCurrentItem:
                               (item, referencedItems) => referencedItems.where(
                                 (e) => e.accountId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (settingsRefs)
+                        await $_getPrefetchedData<
+                          AccountRow,
+                          $AccountsTable,
+                          SettingRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$AccountsTableReferences
+                              ._settingsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$AccountsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).settingsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.quickAddAccountId == item.id,
                               ),
                           typedResults: items,
                         ),
@@ -13068,6 +13433,7 @@ typedef $$AccountsTableProcessedTableManager =
         bool recurringRulesRefs,
         bool personEntriesRefs,
         bool remindersRefs,
+        bool settingsRefs,
         bool pendingTxnsRefs,
         bool merchantRulesRefs,
         bool goalDetailsRefs,
@@ -15444,6 +15810,7 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<bool> needsAmountReview,
+      Value<int?> paymentGroupId,
     });
 typedef $$TransactionsTableUpdateCompanionBuilder =
     TransactionsCompanion Function({
@@ -15462,6 +15829,7 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<bool> needsAmountReview,
+      Value<int?> paymentGroupId,
     });
 
 final class $$TransactionsTableReferences
@@ -15560,6 +15928,28 @@ final class $$TransactionsTableReferences
       $_db.recurringRules,
     ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_recurringRuleIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $TransactionsTable _paymentGroupIdTable(_$AppDatabase db) =>
+      db.transactions.createAlias(
+        $_aliasNameGenerator(
+          db.transactions.paymentGroupId,
+          db.transactions.id,
+        ),
+      );
+
+  $$TransactionsTableProcessedTableManager? get paymentGroupId {
+    final $_column = $_itemColumn<int>('payment_group_id');
+    if ($_column == null) return null;
+    final manager = $$TransactionsTableTableManager(
+      $_db,
+      $_db.transactions,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_paymentGroupIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -15844,6 +16234,29 @@ class $$TransactionsTableFilterComposer
           }) => $$RecurringRulesTableFilterComposer(
             $db: $db,
             $table: $db.recurringRules,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TransactionsTableFilterComposer get paymentGroupId {
+    final $$TransactionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.paymentGroupId,
+      referencedTable: $db.transactions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TransactionsTableFilterComposer(
+            $db: $db,
+            $table: $db.transactions,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -16152,6 +16565,29 @@ class $$TransactionsTableOrderingComposer
     );
     return composer;
   }
+
+  $$TransactionsTableOrderingComposer get paymentGroupId {
+    final $$TransactionsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.paymentGroupId,
+      referencedTable: $db.transactions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TransactionsTableOrderingComposer(
+            $db: $db,
+            $table: $db.transactions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$TransactionsTableAnnotationComposer
@@ -16310,6 +16746,29 @@ class $$TransactionsTableAnnotationComposer
     return composer;
   }
 
+  $$TransactionsTableAnnotationComposer get paymentGroupId {
+    final $$TransactionsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.paymentGroupId,
+      referencedTable: $db.transactions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TransactionsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.transactions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
   Expression<T> personEntriesRefs<T extends Object>(
     Expression<T> Function($$PersonEntriesTableAnnotationComposer a) f,
   ) {
@@ -16456,6 +16915,7 @@ class $$TransactionsTableTableManager
             bool categoryId,
             bool personId,
             bool recurringRuleId,
+            bool paymentGroupId,
             bool personEntriesRefs,
             bool remindersRefs,
             bool pendingTxnsRefs,
@@ -16491,6 +16951,7 @@ class $$TransactionsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> needsAmountReview = const Value.absent(),
+                Value<int?> paymentGroupId = const Value.absent(),
               }) => TransactionsCompanion(
                 id: id,
                 type: type,
@@ -16507,6 +16968,7 @@ class $$TransactionsTableTableManager
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 needsAmountReview: needsAmountReview,
+                paymentGroupId: paymentGroupId,
               ),
           createCompanionCallback:
               ({
@@ -16525,6 +16987,7 @@ class $$TransactionsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> needsAmountReview = const Value.absent(),
+                Value<int?> paymentGroupId = const Value.absent(),
               }) => TransactionsCompanion.insert(
                 id: id,
                 type: type,
@@ -16541,6 +17004,7 @@ class $$TransactionsTableTableManager
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 needsAmountReview: needsAmountReview,
+                paymentGroupId: paymentGroupId,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -16557,6 +17021,7 @@ class $$TransactionsTableTableManager
                 categoryId = false,
                 personId = false,
                 recurringRuleId = false,
+                paymentGroupId = false,
                 personEntriesRefs = false,
                 remindersRefs = false,
                 pendingTxnsRefs = false,
@@ -16659,6 +17124,21 @@ class $$TransactionsTableTableManager
                                     referencedColumn:
                                         $$TransactionsTableReferences
                                             ._recurringRuleIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (paymentGroupId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.paymentGroupId,
+                                    referencedTable:
+                                        $$TransactionsTableReferences
+                                            ._paymentGroupIdTable(db),
+                                    referencedColumn:
+                                        $$TransactionsTableReferences
+                                            ._paymentGroupIdTable(db)
                                             .id,
                                   )
                                   as T;
@@ -16799,6 +17279,7 @@ typedef $$TransactionsTableProcessedTableManager =
         bool categoryId,
         bool personId,
         bool recurringRuleId,
+        bool paymentGroupId,
         bool personEntriesRefs,
         bool remindersRefs,
         bool pendingTxnsRefs,
@@ -18668,10 +19149,13 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<bool> countRepaymentsAsIncome,
       Value<String?> passcodeHash,
       Value<String?> passcodeSalt,
+      Value<int?> passcodeLength,
       Value<bool> biometricEnabled,
       Value<bool> expenseReminderEnabled,
       Value<int> expenseReminderHour,
       Value<int> expenseReminderMinute,
+      Value<bool> notificationQuickAddEnabled,
+      Value<int?> quickAddAccountId,
       Value<bool> autoBackupEnabled,
       Value<AutoBackupFrequency> autoBackupFrequency,
       Value<int> autoBackupCustomDays,
@@ -18695,10 +19179,13 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<bool> countRepaymentsAsIncome,
       Value<String?> passcodeHash,
       Value<String?> passcodeSalt,
+      Value<int?> passcodeLength,
       Value<bool> biometricEnabled,
       Value<bool> expenseReminderEnabled,
       Value<int> expenseReminderHour,
       Value<int> expenseReminderMinute,
+      Value<bool> notificationQuickAddEnabled,
+      Value<int?> quickAddAccountId,
       Value<bool> autoBackupEnabled,
       Value<AutoBackupFrequency> autoBackupFrequency,
       Value<int> autoBackupCustomDays,
@@ -18707,6 +19194,30 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<int> backupRetentionDays,
       Value<bool> preventScreenshots,
     });
+
+final class $$SettingsTableReferences
+    extends BaseReferences<_$AppDatabase, $SettingsTable, SettingRow> {
+  $$SettingsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $AccountsTable _quickAddAccountIdTable(_$AppDatabase db) =>
+      db.accounts.createAlias(
+        $_aliasNameGenerator(db.settings.quickAddAccountId, db.accounts.id),
+      );
+
+  $$AccountsTableProcessedTableManager? get quickAddAccountId {
+    final $_column = $_itemColumn<int>('quick_add_account_id');
+    if ($_column == null) return null;
+    final manager = $$AccountsTableTableManager(
+      $_db,
+      $_db.accounts,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_quickAddAccountIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
 
 class $$SettingsTableFilterComposer
     extends Composer<_$AppDatabase, $SettingsTable> {
@@ -18782,6 +19293,11 @@ class $$SettingsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get passcodeLength => $composableBuilder(
+    column: $table.passcodeLength,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<bool> get biometricEnabled => $composableBuilder(
     column: $table.biometricEnabled,
     builder: (column) => ColumnFilters(column),
@@ -18799,6 +19315,11 @@ class $$SettingsTableFilterComposer
 
   ColumnFilters<int> get expenseReminderMinute => $composableBuilder(
     column: $table.expenseReminderMinute,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get notificationQuickAddEnabled => $composableBuilder(
+    column: $table.notificationQuickAddEnabled,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -18841,6 +19362,29 @@ class $$SettingsTableFilterComposer
     column: $table.preventScreenshots,
     builder: (column) => ColumnFilters(column),
   );
+
+  $$AccountsTableFilterComposer get quickAddAccountId {
+    final $$AccountsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.quickAddAccountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableFilterComposer(
+            $db: $db,
+            $table: $db.accounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$SettingsTableOrderingComposer
@@ -18917,6 +19461,11 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get passcodeLength => $composableBuilder(
+    column: $table.passcodeLength,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get biometricEnabled => $composableBuilder(
     column: $table.biometricEnabled,
     builder: (column) => ColumnOrderings(column),
@@ -18934,6 +19483,11 @@ class $$SettingsTableOrderingComposer
 
   ColumnOrderings<int> get expenseReminderMinute => $composableBuilder(
     column: $table.expenseReminderMinute,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get notificationQuickAddEnabled => $composableBuilder(
+    column: $table.notificationQuickAddEnabled,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -18971,6 +19525,29 @@ class $$SettingsTableOrderingComposer
     column: $table.preventScreenshots,
     builder: (column) => ColumnOrderings(column),
   );
+
+  $$AccountsTableOrderingComposer get quickAddAccountId {
+    final $$AccountsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.quickAddAccountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableOrderingComposer(
+            $db: $db,
+            $table: $db.accounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$SettingsTableAnnotationComposer
@@ -19041,6 +19618,11 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get passcodeLength => $composableBuilder(
+    column: $table.passcodeLength,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get biometricEnabled => $composableBuilder(
     column: $table.biometricEnabled,
     builder: (column) => column,
@@ -19058,6 +19640,11 @@ class $$SettingsTableAnnotationComposer
 
   GeneratedColumn<int> get expenseReminderMinute => $composableBuilder(
     column: $table.expenseReminderMinute,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get notificationQuickAddEnabled => $composableBuilder(
+    column: $table.notificationQuickAddEnabled,
     builder: (column) => column,
   );
 
@@ -19096,6 +19683,29 @@ class $$SettingsTableAnnotationComposer
     column: $table.preventScreenshots,
     builder: (column) => column,
   );
+
+  $$AccountsTableAnnotationComposer get quickAddAccountId {
+    final $$AccountsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.quickAddAccountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.accounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$SettingsTableTableManager
@@ -19109,12 +19719,9 @@ class $$SettingsTableTableManager
           $$SettingsTableAnnotationComposer,
           $$SettingsTableCreateCompanionBuilder,
           $$SettingsTableUpdateCompanionBuilder,
-          (
-            SettingRow,
-            BaseReferences<_$AppDatabase, $SettingsTable, SettingRow>,
-          ),
+          (SettingRow, $$SettingsTableReferences),
           SettingRow,
-          PrefetchHooks Function()
+          PrefetchHooks Function({bool quickAddAccountId})
         > {
   $$SettingsTableTableManager(_$AppDatabase db, $SettingsTable table)
     : super(
@@ -19142,10 +19749,13 @@ class $$SettingsTableTableManager
                 Value<bool> countRepaymentsAsIncome = const Value.absent(),
                 Value<String?> passcodeHash = const Value.absent(),
                 Value<String?> passcodeSalt = const Value.absent(),
+                Value<int?> passcodeLength = const Value.absent(),
                 Value<bool> biometricEnabled = const Value.absent(),
                 Value<bool> expenseReminderEnabled = const Value.absent(),
                 Value<int> expenseReminderHour = const Value.absent(),
                 Value<int> expenseReminderMinute = const Value.absent(),
+                Value<bool> notificationQuickAddEnabled = const Value.absent(),
+                Value<int?> quickAddAccountId = const Value.absent(),
                 Value<bool> autoBackupEnabled = const Value.absent(),
                 Value<AutoBackupFrequency> autoBackupFrequency =
                     const Value.absent(),
@@ -19168,10 +19778,13 @@ class $$SettingsTableTableManager
                 countRepaymentsAsIncome: countRepaymentsAsIncome,
                 passcodeHash: passcodeHash,
                 passcodeSalt: passcodeSalt,
+                passcodeLength: passcodeLength,
                 biometricEnabled: biometricEnabled,
                 expenseReminderEnabled: expenseReminderEnabled,
                 expenseReminderHour: expenseReminderHour,
                 expenseReminderMinute: expenseReminderMinute,
+                notificationQuickAddEnabled: notificationQuickAddEnabled,
+                quickAddAccountId: quickAddAccountId,
                 autoBackupEnabled: autoBackupEnabled,
                 autoBackupFrequency: autoBackupFrequency,
                 autoBackupCustomDays: autoBackupCustomDays,
@@ -19195,10 +19808,13 @@ class $$SettingsTableTableManager
                 Value<bool> countRepaymentsAsIncome = const Value.absent(),
                 Value<String?> passcodeHash = const Value.absent(),
                 Value<String?> passcodeSalt = const Value.absent(),
+                Value<int?> passcodeLength = const Value.absent(),
                 Value<bool> biometricEnabled = const Value.absent(),
                 Value<bool> expenseReminderEnabled = const Value.absent(),
                 Value<int> expenseReminderHour = const Value.absent(),
                 Value<int> expenseReminderMinute = const Value.absent(),
+                Value<bool> notificationQuickAddEnabled = const Value.absent(),
+                Value<int?> quickAddAccountId = const Value.absent(),
                 Value<bool> autoBackupEnabled = const Value.absent(),
                 Value<AutoBackupFrequency> autoBackupFrequency =
                     const Value.absent(),
@@ -19221,10 +19837,13 @@ class $$SettingsTableTableManager
                 countRepaymentsAsIncome: countRepaymentsAsIncome,
                 passcodeHash: passcodeHash,
                 passcodeSalt: passcodeSalt,
+                passcodeLength: passcodeLength,
                 biometricEnabled: biometricEnabled,
                 expenseReminderEnabled: expenseReminderEnabled,
                 expenseReminderHour: expenseReminderHour,
                 expenseReminderMinute: expenseReminderMinute,
+                notificationQuickAddEnabled: notificationQuickAddEnabled,
+                quickAddAccountId: quickAddAccountId,
                 autoBackupEnabled: autoBackupEnabled,
                 autoBackupFrequency: autoBackupFrequency,
                 autoBackupCustomDays: autoBackupCustomDays,
@@ -19234,9 +19853,54 @@ class $$SettingsTableTableManager
                 preventScreenshots: preventScreenshots,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$SettingsTableReferences(db, table, e),
+                ),
+              )
               .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback: ({quickAddAccountId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (quickAddAccountId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.quickAddAccountId,
+                                referencedTable: $$SettingsTableReferences
+                                    ._quickAddAccountIdTable(db),
+                                referencedColumn: $$SettingsTableReferences
+                                    ._quickAddAccountIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
         ),
       );
 }
@@ -19251,9 +19915,9 @@ typedef $$SettingsTableProcessedTableManager =
       $$SettingsTableAnnotationComposer,
       $$SettingsTableCreateCompanionBuilder,
       $$SettingsTableUpdateCompanionBuilder,
-      (SettingRow, BaseReferences<_$AppDatabase, $SettingsTable, SettingRow>),
+      (SettingRow, $$SettingsTableReferences),
       SettingRow,
-      PrefetchHooks Function()
+      PrefetchHooks Function({bool quickAddAccountId})
     >;
 typedef $$PendingTxnsTableCreateCompanionBuilder =
     PendingTxnsCompanion Function({

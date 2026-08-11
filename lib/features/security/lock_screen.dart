@@ -7,8 +7,6 @@ import '../../core/branding/brand_mark.dart';
 import '../../core/security/pin_pad.dart';
 import '../../data/providers.dart';
 
-const _pinLength = 4;
-
 /// Rendered directly by [XpencApp]'s `builder`, outside the router — a
 /// blocking overlay, not a route, so there is no back button and no way
 /// around it except a correct PIN or biometric.
@@ -56,12 +54,13 @@ class _LockScreenState extends ConsumerState<LockScreen> {
   }
 
   void _onDigit(String d) {
-    if (_checking || _pin.length >= _pinLength) return;
+    final pinLength = ref.read(passcodeLengthProvider);
+    if (_checking || _pin.length >= pinLength) return;
     setState(() {
       _error = false;
       _pin += d;
     });
-    if (_pin.length == _pinLength) _submit();
+    if (_pin.length == pinLength) _submit();
   }
 
   void _onBackspace() {
@@ -88,6 +87,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final biometricEnabled = ref.watch(biometricEnabledProvider);
+    final pinLength = ref.watch(passcodeLengthProvider);
 
     return PopScope(
       canPop: false,
@@ -114,7 +114,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                 ),
               ),
               const SizedBox(height: 18),
-              PinDots(entered: _pin.length, length: _pinLength, error: _error),
+              PinDots(entered: _pin.length, length: pinLength, error: _error),
               const Spacer(flex: 3),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),

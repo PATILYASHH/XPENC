@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/security/pin_pad.dart';
 import '../../data/providers.dart';
 
-const _pinLength = 4;
+const _pinLengthOptions = [4, 5, 6];
 
 enum _Step { verifyCurrent, enterNew, confirmNew }
 
@@ -26,11 +26,18 @@ class _SetPasscodeScreenState extends ConsumerState<SetPasscodeScreen> {
   bool _error = false;
   bool _checking = false;
 
+  /// Only meaningful while entering/confirming a *new* PIN — the length of
+  /// the *current* one (verifyCurrent) always comes from what's already
+  /// stored, via [passcodeLengthProvider]. Defaults to the existing length
+  /// when changing a passcode, so switching it is opt-in, not forced.
+  late int _newPinLength;
+
   @override
   void initState() {
     super.initState();
     final hasPasscode = ref.read(hasPasscodeProvider);
     _step = hasPasscode ? _Step.verifyCurrent : _Step.enterNew;
+    _newPinLength = ref.read(passcodeLengthProvider);
   }
 
   String get _title => switch (_step) {
@@ -38,6 +45,18 @@ class _SetPasscodeScreenState extends ConsumerState<SetPasscodeScreen> {
     _Step.enterNew => 'Set a new PIN',
     _Step.confirmNew => 'Confirm PIN',
   };
+
+  int get _pinLength => _step == _Step.verifyCurrent
+      ? ref.read(passcodeLengthProvider)
+      : _newPinLength;
+
+  void _onLengthChanged(int length) {
+    setState(() {
+      _newPinLength = length;
+      _pin = '';
+      _error = false;
+    });
+  }
 
   void _onDigit(String d) {
     if (_checking || _pin.length >= _pinLength) return;
@@ -137,6 +156,21 @@ class _SetPasscodeScreenState extends ConsumerState<SetPasscodeScreen> {
               ),
             const SizedBox(height: 18),
             PinDots(entered: _pin.length, length: _pinLength, error: _error),
+            if (_step == _Step.enterNew) ...[
+              const SizedBox(height: 24),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: SegmentedButton<int>(
+                  segments: [
+                    for (final n in _pinLengthOptions)
+                      ButtonSegment(value: n, label: Text('$n digits')),
+                  ],
+                  selected: {_newPinLength},
+                  showSelectedIcon: false,
+                  onSelectionChanged: (s) => _onLengthChanged(s.first),
+                ),
+              ),
+            ],
             const Spacer(flex: 3),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),

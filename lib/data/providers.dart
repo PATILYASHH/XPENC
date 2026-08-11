@@ -8,6 +8,7 @@ import '../core/theme/theme_preset.dart';
 import '../features/data_export/backup_service.dart';
 import '../features/message_capture/capture_service.dart';
 import '../features/message_capture/message_source.dart';
+import '../features/message_capture/share_intake.dart';
 import 'database.dart';
 import 'tables.dart';
 
@@ -120,6 +121,10 @@ final monthTotalsProvider = StreamProvider<({Money income, Money expense})>((
 /// Deliberately local to Stats — [spendByCategoryProvider] below stays
 /// month-only so nothing else silently starts aggregating a year.
 final statsShowYearProvider = StateProvider<bool>((ref) => false);
+
+/// The "Spending by category" pie: main categories (rolled up, the default)
+/// or a per-subcategory breakdown. See GitHub #40.
+final statsShowSubcategoriesProvider = StateProvider<bool>((ref) => false);
 
 /// Same split-aware category aggregation as [spendByCategoryProvider], for a
 /// whole calendar year instead of one month — composed locally so the
@@ -252,6 +257,17 @@ final budgetProgressProvider = Provider<List<BudgetProgress>>((ref) {
   }
   out.sort((a, b) => b.fraction.compareTo(a.fraction));
   return out;
+});
+
+/// The Budgets home-screen widget's content — the same most-pressing-first
+/// order [budgetProgressProvider] already sorts into, capped to however
+/// many rows the widget's static layout has. See `HomeWidgetService`.
+final widgetBudgetSummaryProvider = Provider<List<WidgetBudgetLine>>((ref) {
+  final progress = ref.watch(budgetProgressProvider);
+  return [
+    for (final p in progress.take(HomeWidgetService.maxBudgetLines))
+      (name: p.category.name, spent: p.spent, limit: p.budget.amount),
+  ];
 });
 
 // ── Envelope Mode ────────────────────────────────────────────────────────────
@@ -504,8 +520,27 @@ final biometricEnabledProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.biometricEnabled ?? false;
 });
 
+/// The current passcode's digit count — 4, 5 or 6. Null in [Settings] means
+/// 4 (every passcode set before length was configurable, see GitHub #18).
+final passcodeLengthProvider = Provider<int>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.passcodeLength ?? 4;
+});
+
 final preventScreenshotsProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.preventScreenshots ?? false;
+});
+
+/// A standing notification with "Add expense" / "Add income" shortcuts —
+/// off by default. See GitHub #38.
+final notificationQuickAddEnabledProvider = Provider<bool>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.notificationQuickAddEnabled ??
+      false;
+});
+
+/// The account a quick-add reply posts to — null means "use the first
+/// account" (see `AppDatabase.resolveQuickAddAccountId`).
+final quickAddAccountIdProvider = Provider<int?>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.quickAddAccountId;
 });
 
 /// A daily nudge to log spending — hour/minute in the user's local wall
@@ -536,6 +571,10 @@ final captureServiceProvider = Provider<CaptureService>(
     db: ref.watch(dbProvider),
     source: ref.watch(messageSourceProvider),
   ),
+);
+
+final shareIntakeServiceProvider = Provider<ShareIntakeService>(
+  (ref) => ShareIntakeService(db: ref.watch(dbProvider)),
 );
 
 /// Cards awaiting review, plus auto-filled ones shown for information.
@@ -592,6 +631,16 @@ final accountByIdProvider = StreamProvider.family<AccountRow?, int>(
 final transactionByIdProvider = StreamProvider.family<TransactionRow?, int>(
   (ref, id) => ref.watch(dbProvider).watchTransaction(id),
 );
+
+/// Every leg of the hybrid/split payment a transaction belongs to (itself
+/// included), or empty for an ordinary one — see GitHub #43 and
+/// `AppDatabase.paymentGroupLegs`. Re-reads whenever the ledger changes, so
+/// a leg edited or deleted elsewhere is reflected without a manual refresh.
+final paymentGroupLegsProvider =
+    FutureProvider.family<List<TransactionRow>, int>((ref, id) {
+      ref.watch(allTransactionsProvider);
+      return ref.watch(dbProvider).paymentGroupLegs(id);
+    });
 
 // ── Shopping lists ──────────────────────────────────────────────────────────
 
