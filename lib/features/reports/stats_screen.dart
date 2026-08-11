@@ -59,8 +59,18 @@ class StatsScreen extends ConsumerWidget {
                 ? DateTime(month.year + delta, month.month)
                 : DateTime(month.year, month.month + delta),
           ),
+          const SizedBox(height: 8),
+          _CategoryDetailToggle(
+            showSubcategories: ref.watch(statsShowSubcategoriesProvider),
+            onChanged: (v) =>
+                ref.read(statsShowSubcategoriesProvider.notifier).state = v,
+          ),
           const SizedBox(height: 12),
-          _CategorySection(showYear: showYear, year: month.year),
+          _CategorySection(
+            showYear: showYear,
+            year: month.year,
+            showSubcategories: ref.watch(statsShowSubcategoriesProvider),
+          ),
           const SizedBox(height: 28),
           const _Caption('Highlights'),
           _HighlightsSection(month: month, showYear: showYear),
@@ -296,6 +306,31 @@ class _PeriodToggle extends StatelessWidget {
   }
 }
 
+/// Main categories (rolled up, the default) vs. a per-subcategory
+/// breakdown of the same pie. See GitHub #40.
+class _CategoryDetailToggle extends StatelessWidget {
+  const _CategoryDetailToggle({
+    required this.showSubcategories,
+    required this.onChanged,
+  });
+
+  final bool showSubcategories;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SegmentedButton<bool>(
+      segments: const [
+        ButtonSegment(value: false, label: Text('Main categories')),
+        ButtonSegment(value: true, label: Text('Subcategories')),
+      ],
+      selected: {showSubcategories},
+      showSelectedIcon: false,
+      onSelectionChanged: (s) => onChanged(s.first),
+    );
+  }
+}
+
 class _PeriodStepper extends StatelessWidget {
   const _PeriodStepper({
     required this.month,
@@ -337,29 +372,51 @@ class _PeriodStepper extends StatelessWidget {
 }
 
 class _CategorySection extends ConsumerWidget {
-  const _CategorySection({required this.showYear, required this.year});
+  const _CategorySection({
+    required this.showYear,
+    required this.year,
+    required this.showSubcategories,
+  });
 
   final bool showYear;
   final int year;
+  final bool showSubcategories;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final categories = ref.watch(categoryMapProvider);
 
     Widget chartOf(Map<int, Money> rawSpend) {
-      // Group by top-level category: a parent's slice is the sum of its own
-      // spend and its subcategories'.
-      final spend = rollUpToParents(rawSpend, categories);
       final slices = <({String label, Money value, Color color})>[];
-      spend.forEach((id, amount) {
-        final cat = categories[id];
-        if (cat == null) return;
-        slices.add((
-          label: cat.name,
-          value: amount,
-          color: Color(cat.colorValue),
-        ));
-      });
+      if (showSubcategories) {
+        // Every leaf category gets its own slice — no roll-up. A
+        // subcategory is labelled "Parent · Child" so two subcategories
+        // that happen to share a name (under different parents) stay
+        // distinguishable; a category with no parent just shows its name.
+        rawSpend.forEach((id, amount) {
+          final cat = categories[id];
+          if (cat == null) return;
+          final parent = cat.parentId == null ? null : categories[cat.parentId];
+          slices.add((
+            label: parent == null ? cat.name : '${parent.name} · ${cat.name}',
+            value: amount,
+            color: Color(cat.colorValue),
+          ));
+        });
+      } else {
+        // Group by top-level category: a parent's slice is the sum of its
+        // own spend and its subcategories'.
+        final spend = rollUpToParents(rawSpend, categories);
+        spend.forEach((id, amount) {
+          final cat = categories[id];
+          if (cat == null) return;
+          slices.add((
+            label: cat.name,
+            value: amount,
+            color: Color(cat.colorValue),
+          ));
+        });
+      }
       return CategoryPieChart(slices: slices);
     }
 

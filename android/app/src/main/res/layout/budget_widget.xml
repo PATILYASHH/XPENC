@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/widget_budgets_title"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.08"
+        android:textColor="@color/widget_text_secondary" />
+
+    <!-- Up to three rows, one per budget — closest to (or past) its limit
+         first, matching budgetProgressProvider's own sort. Rows past the
+         real budget count are hidden (GONE), never left blank. -->
+    <LinearLayout
+        android:id="@+id/widget_budget_row_1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/widget_budget_name_1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textColor="@color/widget_text_primary"
+            tools:text="Food" />
+
+        <TextView
+            android:id="@+id/widget_budget_value_1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:textColor="@color/widget_text_secondary"
+            tools:text="&#8377;1,200 / &#8377;2,000" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/widget_budget_row_2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/widget_budget_name_2"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textColor="@color/widget_text_primary"
+            tools:text="Shopping" />
+
+        <TextView
+            android:id="@+id/widget_budget_value_2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:textColor="@color/widget_text_secondary"
+            tools:text="&#8377;900 / &#8377;1,500" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/widget_budget_row_3"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/widget_budget_name_3"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textColor="@color/widget_text_primary"
+            tools:text="Travel" />
+
+        <TextView
+            android:id="@+id/widget_budget_value_3"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:textColor="@color/widget_text_secondary"
+            tools:text="&#8377;300 / &#8377;1,000" />
+    </LinearLayout>
+
+    <!-- Shown instead of the three rows above when there is nothing to
+         summarise yet (no budgets set at all). -->
+    <TextView
+        android:id="@+id/widget_budget_empty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="@string/widget_budgets_empty"
+        android:textSize="13sp"
+        android:visibility="gone"
+        android:textColor="@color/widget_text_secondary" />
+</LinearLayout>

@@ -56,6 +56,15 @@
             <intent-filter>
                 <action android:name="es.antonborri.home_widget.action.LAUNCH"/>
             </intent-filter>
+            <!-- Puts XPENC in the system Share sheet for plain text, so a bank
+                 SMS can be shared straight in and parsed — a Play-compliant
+                 route into message capture that needs no READ_SMS permission
+                 (see share_intake.dart and GitHub #26). -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/plain"/>
+            </intent-filter>
         </activity>
 
         <!-- The home-screen Balance widget. -->
@@ -66,6 +75,26 @@
             </intent-filter>
             <meta-data android:name="android.appwidget.provider"
                 android:resource="@xml/balance_widget_info"/>
+        </receiver>
+
+        <!-- The home-screen Budgets widget. -->
+        <receiver android:name=".BudgetWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider"
+                android:resource="@xml/budget_widget_info"/>
+        </receiver>
+
+        <!-- The home-screen Quick Add widget. -->
+        <receiver android:name=".QuickAddWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider"
+                android:resource="@xml/quick_add_widget_info"/>
         </receiver>
 
         <!-- Don't delete the meta-data below.

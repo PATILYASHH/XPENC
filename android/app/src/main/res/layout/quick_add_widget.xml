@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Just the "+ Expense" / "+ Income" shortcuts from the Balance widget,
+     enlarged to be the whole point of this widget instead of a footnote on
+     it — for anyone who wants a dedicated one-tap-to-log tile without the
+     balance taking up space. Tapping either opens Add Transaction with the
+     type already chosen, exactly like the Balance widget's own shortcuts —
+     RemoteViews can't host the app's real amount keypad, so there is no
+     inline entry inside the widget itself. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:background="@drawable/widget_background"
+    android:padding="12dp">
+
+    <TextView
+        android:id="@+id/widget_add_expense"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:layout_marginEnd="6dp"
+        android:background="@drawable/widget_chip"
+        android:gravity="center"
+        android:text="@string/widget_add_expense"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:textColor="@color/widget_chip_text" />
+
+    <TextView
+        android:id="@+id/widget_add_income"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:layout_marginStart="6dp"
+        android:background="@drawable/widget_chip"
+        android:gravity="center"
+        android:text="@string/widget_add_income"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:textColor="@color/widget_chip_text" />
+</LinearLayout>

@@ -64,7 +64,10 @@ enum ReminderStatus { open, done, snoozed, dismissed }
 
 /// Where a captured message came from. The parser is source-agnostic so a
 /// notification listener can be swapped in without touching anything else.
-enum MessageSourceKind { sms, notification }
+/// `shared`: the user picked XPENC from the Android Share sheet on a
+/// message from their SMS/bank app — see `share_intake.dart` and GitHub
+/// #26. A `textEnum` column, so adding this needed no migration.
+enum MessageSourceKind { sms, notification, shared }
 
 /// Banking sense: `debit` = money out, `credit` = money in.
 /// (Distinct from a *credit card*, which is an account.)
@@ -213,6 +216,21 @@ class Transactions extends Table {
   /// point they've either confirmed or corrected the real figure.
   BoolColumn get needsAmountReview =>
       boolean().withDefault(const Constant(false))();
+
+  /// Ties together the legs of one hybrid/split payment — one purchase paid
+  /// from several accounts at once (see GitHub #43). Every leg in a group
+  /// points at the *first* leg inserted, including that leg itself, so
+  /// "every row in this group" is just `WHERE paymentGroupId = anchorId`
+  /// with no separate id space to manage. Null means an ordinary,
+  /// ungrouped transaction — the overwhelming majority.
+  ///
+  /// Deliberately not [TransactionSplits]: that ties one expense to several
+  /// *categories* against a single account; this ties several *accounts*
+  /// against a single category. The two are orthogonal and — for now —
+  /// mutually exclusive in the UI, to avoid the 2-D matrix of splitting
+  /// both at once.
+  IntColumn get paymentGroupId =>
+      integer().nullable().references(Transactions, #id)();
 }
 
 @DataClassName('BudgetRow')
@@ -424,6 +442,12 @@ class Settings extends Table {
   TextColumn get passcodeHash => text().nullable()();
   TextColumn get passcodeSalt => text().nullable()();
 
+  /// How many digits [passcodeHash] was set with — 4, 5 or 6 (see GitHub
+  /// #18). The hash itself doesn't care about length, only the entry/lock
+  /// screens' keypads do. Null means 4: every passcode set before this
+  /// column existed was 4 digits, since that was the only option.
+  IntColumn get passcodeLength => integer().nullable()();
+
   /// Only ever offered as a shortcut once [passcodeHash] is set — the PIN
   /// stays the fallback whenever biometrics fail or aren't enrolled.
   BoolColumn get biometricEnabled =>
@@ -437,6 +461,22 @@ class Settings extends Table {
       integer().withDefault(const Constant(20))();
   IntColumn get expenseReminderMinute =>
       integer().withDefault(const Constant(0))();
+
+  /// A standing, silent notification with "Add expense" / "Add income"
+  /// buttons — each opens an inline reply asking for an amount and posts a
+  /// transaction straight from the notification shade, no need to open the
+  /// app at all. Opt-in and off by default (see GitHub #38). Deliberately
+  /// uncategorised (there is no UI to pick one from a reply) and posted to
+  /// [quickAddAccountId] — categorise it later from the Transactions list,
+  /// same as any other transaction.
+  BoolColumn get notificationQuickAddEnabled =>
+      boolean().withDefault(const Constant(false))();
+
+  /// Which account a quick-add notification reply posts to. Null falls back
+  /// to the first balance-holding account (by sort order) — see
+  /// `AppDatabase.resolveQuickAddAccountId`.
+  IntColumn get quickAddAccountId =>
+      integer().nullable().references(Accounts, #id)();
 
   /// Whether XPENC creates a backup on its own schedule, with no "Back up
   /// now" tap needed. Off by default.

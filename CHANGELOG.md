@@ -6,6 +6,67 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
+## [1.4.1] — 2026-08-11
+
+### Fixed
+- **Database migration crash on update** — a database whose stored version
+  undercounted its real (already-migrated) shape — for example, a build from
+  the rolling BETA-branch APK channel that applied a step under a version
+  number later reused for something else — could hit `duplicate column name`
+  and never open again. Every migration step now checks whether its
+  column/table already exists before touching it, so a mismatch like this is
+  a no-op instead of a crash (#49, #50).
+- **Couldn't edit a transaction's amount** — opening an existing transaction
+  prefilled the keypad with its amount (e.g. "15.44"), which already has two
+  decimal digits — the keypad's own two-decimal-place guard then rejected
+  every digit tap from the moment the screen opened, so only backspace
+  appeared to work. The first tap after loading now clears the stale value
+  and starts fresh, same as a calculator after a result (#45).
+- **Goals from a 1.3.0 → 1.4.0 upgrade could open "already funded"** — that
+  migration seeded a goal's starting balance from its old linked account's
+  whole balance, with nothing to explain how it got there. Goal detail's ⋮
+  menu now has "Fix starting amount" to correct it directly (#44).
+- **No way back in from Download Data** — that screen could export a JSON
+  backup but not import one, and a file exported from it wasn't recognised
+  as a "known backup" anywhere else in the app either. Download Data now has
+  its own Import action, sharing the exact same restore path as the Backup
+  screen.
+
+### Added
+- **Share a bank SMS straight into XPENC** — pick XPENC from the Share sheet
+  on a message in your SMS/bank app and it's parsed into the Review Inbox,
+  same as auto-capture — a Play-compliant way in that needs no READ_SMS
+  permission at all (#26).
+- **Import transactions from a bank CSV statement** — a signed Amount column
+  or separate Withdrawal/Deposit columns are both auto-detected from the
+  file's own headers (covers most Indian bank exports), with a mapping
+  screen to check or correct before anything is imported. New entry point
+  in Download Data (#17).
+- **Split payment across accounts** — one purchase paid from more than one
+  account (part bank, part cash, ...) posts as linked transactions sharing
+  one category, with a banner on each leg's detail page pointing at the
+  others so the full picture is always one tap away (#43).
+- **Quick add from a notification** — an opt-in (Settings → Notifications)
+  standing notification with "Add expense" / "Add income" buttons. Reply
+  with an amount and it posts immediately — no need to open the app.
+  Deliberately uncategorised (there's no UI for that in a reply) and posts
+  to an account you choose in Settings, defaulting to your first one (#38).
+- **Two new home-screen widgets** — Budgets (your top budgets, closest to
+  their limit first) and Quick Add (just the "+ Expense" / "+ Income"
+  shortcuts, enlarged), alongside the existing Balance widget. New
+  Settings → Widgets screen to add any of them straight from the app where
+  the launcher supports it.
+- **Calendar "today" button** — jumps straight back to the current month
+  (#46).
+- **Archive inactive Auto rules** — paused rules collapse into a single "N
+  paused" row instead of crowding out what's still running, with a tap to
+  reveal them (#51).
+- **Configurable PIN length** — Settings → Security now offers a 4, 5 or
+  6-digit passcode instead of a fixed 4 (#18).
+- **Subcategory spending breakdown** — Stats' "Spending by category" pie can
+  now show every subcategory individually instead of only rolling up to its
+  parent (#40).
+
 ## [1.4.0] — 2026-08-08
 
 ### Fixed
@@ -345,7 +406,8 @@ First public release. 🎉
 - `tool/verify_apk.sh` gates every shipped APK against the missing
   `libsqlite3.so` class of crash.
 
-[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.4.1...HEAD
+[1.4.1]: https://github.com/PATILYASHH/XPENC/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/PATILYASHH/XPENC/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/PATILYASHH/XPENC/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/PATILYASHH/XPENC/compare/v1.2.0...v1.2.1

@@ -40,6 +40,19 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
   static DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
+  bool get _onCurrentMonth {
+    final now = DateTime.now();
+    return _shownMonth.year == now.year && _shownMonth.month == now.month;
+  }
+
+  void _goToToday() {
+    final now = DateTime.now();
+    setState(() {
+      _shownMonth = DateTime(now.year, now.month, 1);
+      _selectedDay = _dateOnly(now);
+    });
+  }
+
   void _stepMonth(int delta) {
     setState(() {
       _shownMonth = DateTime(_shownMonth.year, _shownMonth.month + delta, 1);
@@ -126,6 +139,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       appBar: AppBar(
         title: const Text('Calendar'),
         actions: [
+          if (!_onCurrentMonth)
+            IconButton(
+              tooltip: 'Today',
+              icon: const Icon(Icons.today_rounded),
+              onPressed: _goToToday,
+            ),
           IconButton(
             tooltip: 'New reminder',
             icon: const Icon(Icons.add_rounded),

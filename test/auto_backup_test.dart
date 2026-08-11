@@ -59,6 +59,7 @@ void main() {
       expenseReminderEnabled: false,
       expenseReminderHour: 20,
       expenseReminderMinute: 0,
+      notificationQuickAddEnabled: false,
       autoBackupEnabled: enabled,
       autoBackupFrequency: frequency,
       autoBackupCustomDays: customDays,
@@ -84,14 +85,18 @@ void main() {
     test('daily: not due 12 hours in, due 25 hours in', () {
       expect(
         isAutoBackupDue(
-          settingsWith(lastAutoBackupAt: now.subtract(const Duration(hours: 12))),
+          settingsWith(
+            lastAutoBackupAt: now.subtract(const Duration(hours: 12)),
+          ),
           now,
         ),
         isFalse,
       );
       expect(
         isAutoBackupDue(
-          settingsWith(lastAutoBackupAt: now.subtract(const Duration(hours: 25))),
+          settingsWith(
+            lastAutoBackupAt: now.subtract(const Duration(hours: 25)),
+          ),
           now,
         ),
         isTrue,
@@ -206,25 +211,28 @@ void main() {
     setUp(() => db = AppDatabase(NativeDatabase.memory()));
     tearDown(() => db.close());
 
-    test('upserting the same fileName updates rather than duplicates', () async {
-      await db.upsertBackupRecord(
-        fileName: '050826XPENCEBACKUP.json',
-        uri: 'content://a',
-        sizeBytes: 100,
-        createdAt: DateTime(2026, 8, 5, 9),
-      );
-      await db.upsertBackupRecord(
-        fileName: '050826XPENCEBACKUP.json',
-        uri: 'content://a-replaced',
-        sizeBytes: 250,
-        createdAt: DateTime(2026, 8, 5, 18),
-      );
+    test(
+      'upserting the same fileName updates rather than duplicates',
+      () async {
+        await db.upsertBackupRecord(
+          fileName: '050826XPENCEBACKUP.json',
+          uri: 'content://a',
+          sizeBytes: 100,
+          createdAt: DateTime(2026, 8, 5, 9),
+        );
+        await db.upsertBackupRecord(
+          fileName: '050826XPENCEBACKUP.json',
+          uri: 'content://a-replaced',
+          sizeBytes: 250,
+          createdAt: DateTime(2026, 8, 5, 18),
+        );
 
-      final all = await db.watchBackupRecords().first;
-      expect(all, hasLength(1));
-      expect(all.single.uri, 'content://a-replaced');
-      expect(all.single.sizeBytes, 250);
-    });
+        final all = await db.watchBackupRecords().first;
+        expect(all, hasLength(1));
+        expect(all.single.uri, 'content://a-replaced');
+        expect(all.single.sizeBytes, 250);
+      },
+    );
 
     test('staleBackupRecords finds only what is past retention', () async {
       await db.setAutoBackupSettings(
@@ -294,58 +302,67 @@ void main() {
         .firstWhere((a) => a.type == AccountType.cash)
         .id;
     Future<int> catId(CategoryKind k, String name) async =>
-        (await db.watchCategories(k).first).firstWhere((c) => c.name == name).id;
+        (await db.watchCategories(k).first)
+            .firstWhere((c) => c.name == name)
+            .id;
 
-    test('wipes the ledger but reseeds the same defaults a new install gets', () async {
-      final cash = await cashId();
-      await db.addTransaction(
-        type: TxType.income,
-        amount: Money.fromRupees(5000),
-        accountId: cash,
-        categoryId: await catId(CategoryKind.income, 'Salary'),
-        date: DateTime(2026, 7, 1),
-      );
-      final ram = await db.addPerson('Ram');
-      await db.addPersonEntry(
-        personId: ram,
-        direction: PersonDirection.theyOwe,
-        amount: Money.fromRupees(500),
-        date: DateTime(2026, 7, 5),
-        accountId: cash,
-      );
-      await db.upsertBudget(
-        categoryId: await catId(CategoryKind.expense, 'Food'),
-        amount: Money.fromRupees(6000),
-      );
+    test(
+      'wipes the ledger but reseeds the same defaults a new install gets',
+      () async {
+        final cash = await cashId();
+        await db.addTransaction(
+          type: TxType.income,
+          amount: Money.fromRupees(5000),
+          accountId: cash,
+          categoryId: await catId(CategoryKind.income, 'Salary'),
+          date: DateTime(2026, 7, 1),
+        );
+        final ram = await db.addPerson('Ram');
+        await db.addPersonEntry(
+          personId: ram,
+          direction: PersonDirection.theyOwe,
+          amount: Money.fromRupees(500),
+          date: DateTime(2026, 7, 5),
+          accountId: cash,
+        );
+        await db.upsertBudget(
+          categoryId: await catId(CategoryKind.expense, 'Food'),
+          amount: Money.fromRupees(6000),
+        );
 
-      final freshAccounts = await db.watchAccounts().first;
-      final freshExpenseCats = await db.watchCategories(CategoryKind.expense).first;
-      final freshIncomeCats = await db.watchCategories(CategoryKind.income).first;
+        final freshAccounts = await db.watchAccounts().first;
+        final freshExpenseCats = await db
+            .watchCategories(CategoryKind.expense)
+            .first;
+        final freshIncomeCats = await db
+            .watchCategories(CategoryKind.income)
+            .first;
 
-      await db.clearAllData();
+        await db.clearAllData();
 
-      expect(await db.watchTransactions().first, isEmpty);
-      expect(await db.watchAllPersonBalances().first, isEmpty);
-      expect(await db.watchBudgets().first, isEmpty);
-      expect(await db.watchPersons().first, isEmpty);
+        expect(await db.watchTransactions().first, isEmpty);
+        expect(await db.watchAllPersonBalances().first, isEmpty);
+        expect(await db.watchBudgets().first, isEmpty);
+        expect(await db.watchPersons().first, isEmpty);
 
-      final accountsAfter = await db.watchAccounts().first;
-      expect(accountsAfter, hasLength(1));
-      expect(accountsAfter.single.name, 'Cash');
-      expect(accountsAfter.single.currentBalance, const Money.zero());
+        final accountsAfter = await db.watchAccounts().first;
+        expect(accountsAfter, hasLength(1));
+        expect(accountsAfter.single.name, 'Cash');
+        expect(accountsAfter.single.currentBalance, const Money.zero());
 
-      expect(
-        (await db.watchCategories(CategoryKind.expense).first).length,
-        freshExpenseCats.length,
-      );
-      expect(
-        (await db.watchCategories(CategoryKind.income).first).length,
-        freshIncomeCats.length,
-      );
-      // Sanity: this really is the same default shape a brand-new database
-      // seeds, not a coincidentally-equal count.
-      expect(freshAccounts, hasLength(1));
-    });
+        expect(
+          (await db.watchCategories(CategoryKind.expense).first).length,
+          freshExpenseCats.length,
+        );
+        expect(
+          (await db.watchCategories(CategoryKind.income).first).length,
+          freshIncomeCats.length,
+        );
+        // Sanity: this really is the same default shape a brand-new database
+        // seeds, not a coincidentally-equal count.
+        expect(freshAccounts, hasLength(1));
+      },
+    );
 
     test('preferences survive — this resets data, not settings', () async {
       await db.setShowCurrencySymbol(false);
@@ -353,16 +370,19 @@ void main() {
       expect((await db.getSettings()).showCurrencySymbol, isFalse);
     });
 
-    test('backup records are left alone — they describe files on disk, not ledger data', () async {
-      await db.upsertBackupRecord(
-        fileName: '040826XPENCEBACKUP.json',
-        uri: 'content://kept',
-        sizeBytes: 42,
-        createdAt: DateTime(2026, 8, 4),
-      );
-      await db.clearAllData();
-      expect(await db.watchBackupRecords().first, hasLength(1));
-    });
+    test(
+      'backup records are left alone — they describe files on disk, not ledger data',
+      () async {
+        await db.upsertBackupRecord(
+          fileName: '040826XPENCEBACKUP.json',
+          uri: 'content://kept',
+          sizeBytes: 42,
+          createdAt: DateTime(2026, 8, 4),
+        );
+        await db.clearAllData();
+        expect(await db.watchBackupRecords().first, hasLength(1));
+      },
+    );
   });
 
   group('BackupService filename scheme', () {

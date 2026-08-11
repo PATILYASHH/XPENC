@@ -1,4 +1,6 @@
-import 'package:flutter/foundation.dart';
+import 'dart:async';
+
+import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
@@ -52,6 +54,18 @@ class NotificationService {
     importance: Importance.defaultImportance,
   );
 
+  static const _quickAddChannel = AndroidNotificationChannel(
+    'quick_add',
+    'Quick add shortcut',
+    description:
+        'A standing, silent notification with "Add expense" / "Add '
+        'income" buttons.',
+    importance: Importance.low,
+  );
+
+  static const _quickAddExpenseAction = 'quick_add_expense';
+  static const _quickAddIncomeAction = 'quick_add_income';
+
   Future<void> init() async {
     if (_ready) return;
     try {
@@ -64,6 +78,12 @@ class NotificationService {
         settings: const InitializationSettings(
           android: AndroidInitializationSettings('@mipmap/ic_launcher'),
         ),
+        // Neither quick-add action sets `showsUserInterface`, so Android
+        // never brings the app to the foreground — the reply is delivered
+        // to `_quickAddBackgroundResponse` on its own background isolate.
+        // `onDidReceiveNotificationResponse` (foreground) has nothing to
+        // handle right now — nothing else in the app defines an action.
+        onDidReceiveBackgroundNotificationResponse: _quickAddBackgroundResponse,
       );
 
       final android = _plugin
@@ -76,6 +96,7 @@ class NotificationService {
         await android.createNotificationChannel(_captureChannel);
         await android.createNotificationChannel(_autoChannel);
         await android.createNotificationChannel(_expenseNudgeChannel);
+        await android.createNotificationChannel(_quickAddChannel);
       }
       _ready = true;
     } catch (e, s) {
@@ -446,5 +467,154 @@ class NotificationService {
     } catch (e) {
       debugPrint('expense reminder schedule failed: $e');
     }
+  }
+
+  // ── Quick add ─────────────────────────────────────────────────────────────
+
+  static const _quickAddId = 800000;
+  static const _quickAddResultId = 810000;
+
+  /// Shows or cancels the standing "Add expense" / "Add income" notification
+  /// to match [Settings.notificationQuickAddEnabled]. Safe to call on every
+  /// app start/resume and right after the setting changes, same as the
+  /// other `sync*` methods.
+  ///
+  /// Also gated on [Settings.notificationsEnabled] — the master switch is
+  /// what requests the Android 13+ runtime permission in the first place
+  /// (see [requestPermission]), so a shortcut nobody granted permission for
+  /// would just silently fail to show.
+  Future<void> syncQuickAddNotification() async {
+    if (!_ready) return;
+    final settings = await _db.getSettings();
+    if (!settings.notificationsEnabled ||
+        !settings.notificationQuickAddEnabled) {
+      await _cancel(_quickAddId);
+      return;
+    }
+
+    try {
+      await _plugin.show(
+        id: _quickAddId,
+        title: 'Quick add',
+        body: 'Reply with an amount to log an expense or income.',
+        notificationDetails: NotificationDetails(
+          android: AndroidNotificationDetails(
+            _quickAddChannel.id,
+            _quickAddChannel.name,
+            channelDescription: _quickAddChannel.description,
+            importance: _quickAddChannel.importance,
+            priority: Priority.low,
+            playSound: false,
+            enableVibration: false,
+            // A shortcut, not an alert — stays until the setting is turned
+            // back off, and a swipe shouldn't quietly disable the feature.
+            ongoing: true,
+            autoCancel: false,
+            actions: const [
+              AndroidNotificationAction(
+                _quickAddExpenseAction,
+                'Add expense',
+                cancelNotification: false,
+                inputs: [AndroidNotificationActionInput(label: 'Amount')],
+              ),
+              AndroidNotificationAction(
+                _quickAddIncomeAction,
+                'Add income',
+                cancelNotification: false,
+                inputs: [AndroidNotificationActionInput(label: 'Amount')],
+              ),
+            ],
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('quick add notification failed: $e');
+    }
+  }
+}
+
+/// The other half of quick add: the user typed an amount into the reply
+/// field and hit send. Neither action sets `showsUserInterface`, so Android
+/// never brings the app to the foreground for this — it hands the reply to
+/// a background isolate instead, which is why this has to be a top-level
+/// function (`@pragma('vm:entry-point')` is required by
+/// flutter_local_notifications for exactly this case), not a method on
+/// [NotificationService]. It builds its own tiny, disposable copy of
+/// everything it needs rather than reusing the running app's — there isn't
+/// a running app instance to reuse, most of the time this fires.
+///
+/// Posts with no category — there is no UI to pick one from a reply, so it
+/// waits to be categorised from the Transactions list, same as any other
+/// transaction. This is the one place in the app that posts money without a
+/// human looking at the account/category first; seeing that as *not* what
+/// you want next is exactly why `Settings > Quick add from notification`
+/// exists as an opt-in.
+@pragma('vm:entry-point')
+void _quickAddBackgroundResponse(NotificationResponse response) {
+  unawaited(_handleQuickAddReply(response));
+}
+
+Future<void> _handleQuickAddReply(NotificationResponse response) async {
+  final type = switch (response.actionId) {
+    NotificationService._quickAddExpenseAction => TxType.expense,
+    NotificationService._quickAddIncomeAction => TxType.income,
+    _ => null,
+  };
+  if (type == null) return;
+
+  WidgetsFlutterBinding.ensureInitialized();
+  final plugin = FlutterLocalNotificationsPlugin();
+  await plugin.initialize(
+    settings: const InitializationSettings(
+      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+    ),
+  );
+
+  Future<void> result(String body) => plugin.show(
+    id: NotificationService._quickAddResultId,
+    title: 'Quick add',
+    body: body,
+    notificationDetails: NotificationDetails(
+      android: AndroidNotificationDetails(
+        NotificationService._quickAddChannel.id,
+        NotificationService._quickAddChannel.name,
+        channelDescription: NotificationService._quickAddChannel.description,
+        importance: Importance.low,
+        priority: Priority.low,
+        playSound: false,
+        enableVibration: false,
+      ),
+    ),
+  );
+
+  final amount = Money.tryParse(response.input ?? '');
+  if (amount == null || !amount.isPositive) {
+    await result("Couldn't read that as an amount — nothing was added.");
+    return;
+  }
+
+  final db = AppDatabase();
+  try {
+    final accountId = await db.resolveQuickAddAccountId();
+    if (accountId == null) {
+      await result('No account to post to — nothing was added.');
+      return;
+    }
+    await db.addTransaction(
+      type: type,
+      amount: amount,
+      accountId: accountId,
+      date: DateTime.now(),
+    );
+    final account = await db.watchAccount(accountId).first;
+    await result(
+      '${type == TxType.expense ? 'Expense' : 'Income'} of '
+      '${MoneyFormat.symbol(amount)} added to ${account?.name ?? 'your account'}.',
+    );
+  } catch (e) {
+    await result("Couldn't save that — nothing was added.");
+    debugPrint('quick add background insert failed: $e');
+  } finally {
+    await db.close();
   }
 }

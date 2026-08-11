@@ -2,14 +2,19 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../data/providers.dart';
+import 'import_from_file.dart';
 
-/// Export the ledger to a file the user can carry off the phone.
+/// Export the ledger to a file the user can carry off the phone, or bring
+/// one back in.
 ///
-/// Nothing here uploads anything — every button writes a file locally and then
-/// hands it to the system share sheet, so the data leaves only when the user
-/// picks a destination themselves.
+/// Export never uploads anything — every export button writes a file locally
+/// and then hands it to the system share sheet, so the data leaves only when
+/// the user picks a destination themselves. Import is the other direction:
+/// a JSON file exported from here (or a backup made on another phone) can be
+/// read back in from the same screen — see `importDataFromFile`.
 class DownloadDataScreen extends ConsumerStatefulWidget {
   const DownloadDataScreen({super.key});
 
@@ -64,6 +69,22 @@ class _DownloadDataScreenState extends ConsumerState<DownloadDataScreen> {
     }
   }
 
+  Future<void> _importFromFile() async {
+    if (_busy) return;
+    await importDataFromFile(
+      context,
+      ref,
+      setBusy: (busy) {
+        if (mounted) {
+          setState(() {
+            _busy = busy;
+            _running = busy ? 'import' : null;
+          });
+        }
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -73,7 +94,7 @@ class _DownloadDataScreenState extends ConsumerState<DownloadDataScreen> {
         children: [
           const _IntroCard(),
           const SizedBox(height: 16),
-          _ExportCard(
+          _ActionCard(
             icon: Icons.table_chart_outlined,
             title: 'Transactions (CSV)',
             subtitle: 'Opens in Excel or Google Sheets. Accountant friendly.',
@@ -87,7 +108,7 @@ class _DownloadDataScreenState extends ConsumerState<DownloadDataScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          _ExportCard(
+          _ActionCard(
             icon: Icons.data_object_outlined,
             title: 'Everything (JSON)',
             subtitle:
@@ -101,6 +122,40 @@ class _DownloadDataScreenState extends ConsumerState<DownloadDataScreen> {
               write: () => ref.read(backupServiceProvider).writeJson(),
               subject: 'XPENC data',
             ),
+          ),
+          const SizedBox(height: 28),
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 8),
+            child: Text(
+              'Import',
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
+          _ActionCard(
+            icon: Icons.file_open_outlined,
+            title: 'From a JSON file',
+            subtitle:
+                'Bring in an "Everything (JSON)" export — from this phone or '
+                'another one. Replaces all current data; a safety copy is '
+                'saved first.',
+            buttonLabel: 'Import JSON',
+            busy: _busy && _running == 'import',
+            enabled: !_busy,
+            onPressed: _importFromFile,
+          ),
+          const SizedBox(height: 12),
+          _ActionCard(
+            icon: Icons.table_chart_outlined,
+            title: 'From a bank CSV statement',
+            subtitle:
+                "Adds transactions from a bank's exported .csv statement "
+                "into an account you choose — doesn't touch anything else.",
+            buttonLabel: 'Import CSV',
+            busy: false,
+            enabled: !_busy,
+            onPressed: () => context.push('/import-csv'),
           ),
         ],
       ),
@@ -143,8 +198,8 @@ class _IntroCard extends StatelessWidget {
 
 /// One export format: an icon, a plain-language description and a button that
 /// spins while its file is being written.
-class _ExportCard extends StatelessWidget {
-  const _ExportCard({
+class _ActionCard extends StatelessWidget {
+  const _ActionCard({
     required this.icon,
     required this.title,
     required this.subtitle,

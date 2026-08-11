@@ -142,11 +142,25 @@ class AppDatabase extends _$AppDatabase {
   // purpose: it is a persistence key no user ever sees, and renaming it would
   // point the app at a fresh, empty database — silently losing the ledger of
   // anyone whose data directory carries over.
+  //
+  // `shareAcrossIsolates: true`: the quick-add notification's reply handler
+  // (see `notification_service.dart`) opens its own `AppDatabase` from a
+  // background isolate flutter_local_notifications spawns for it. Without
+  // this, two independent connections to the same file race each other —
+  // drift's own docs recommend this exact flag for "used on multiple
+  // isolates." Every other `AppDatabase()` call (including every test)
+  // shares the same default, so the main app gets the same safety for free.
   AppDatabase([QueryExecutor? executor])
-    : super(executor ?? driftDatabase(name: 'money_manager'));
+    : super(
+        executor ??
+            driftDatabase(
+              name: 'money_manager',
+              native: const DriftNativeOptions(shareAcrossIsolates: true),
+            ),
+      );
 
   @override
-  int get schemaVersion => 23;
+  int get schemaVersion => 27;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -161,36 +175,44 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(merchantRules);
         await m.createTable(senderRules);
         await m.createTable(budgetAlerts);
-        await m.addColumn(settings, settings.messageCaptureEnabled);
-        await m.addColumn(settings, settings.lastMessageScanAt);
-        await m.addColumn(settings, settings.notificationsEnabled);
+        await _addColumnIfMissing(m, settings, settings.messageCaptureEnabled);
+        await _addColumnIfMissing(m, settings, settings.lastMessageScanAt);
+        await _addColumnIfMissing(m, settings, settings.notificationsEnabled);
         await _seedSenderRules();
       }
       if (from < 3) {
-        await m.addColumn(transactions, transactions.personId);
-        await m.addColumn(personEntries, personEntries.transactionId);
+        await _addColumnIfMissing(m, transactions, transactions.personId);
+        await _addColumnIfMissing(
+          m,
+          personEntries,
+          personEntries.transactionId,
+        );
         await backfillPersonTransactions();
       }
       if (from < 4) {
-        await m.addColumn(settings, settings.themeName);
+        await _addColumnIfMissing(m, settings, settings.themeName);
       }
       if (from < 5) {
         // Additive and nullable: every existing category becomes a
         // top-level one (parentId stays null). Nothing to backfill.
-        await m.addColumn(categories, categories.parentId);
+        await _addColumnIfMissing(m, categories, categories.parentId);
       }
       if (from < 6) {
         // Defaults true, so existing users keep seeing their symbol.
-        await m.addColumn(settings, settings.showCurrencySymbol);
+        await _addColumnIfMissing(m, settings, settings.showCurrencySymbol);
       }
       if (from < 7) {
         // Additive and nullable: every existing transaction just has no
         // payee. Nothing to backfill.
-        await m.addColumn(transactions, transactions.payee);
+        await _addColumnIfMissing(m, transactions, transactions.payee);
       }
       if (from < 8) {
         await m.createTable(recurringRules);
-        await m.addColumn(transactions, transactions.recurringRuleId);
+        await _addColumnIfMissing(
+          m,
+          transactions,
+          transactions.recurringRuleId,
+        );
       }
       if (from < 9) {
         await m.createTable(tags);
@@ -200,45 +222,53 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(transactionSplits);
       }
       if (from < 11) {
-        await m.addColumn(transactions, transactions.imagePath);
+        await _addColumnIfMissing(m, transactions, transactions.imagePath);
       }
       if (from < 12) {
-        await m.addColumn(personEntries, personEntries.categoryId);
-        await m.addColumn(settings, settings.countRepaymentsAsIncome);
+        await _addColumnIfMissing(m, personEntries, personEntries.categoryId);
+        await _addColumnIfMissing(
+          m,
+          settings,
+          settings.countRepaymentsAsIncome,
+        );
       }
       if (from < 14) {
-        await m.addColumn(settings, settings.passcodeHash);
-        await m.addColumn(settings, settings.passcodeSalt);
-        await m.addColumn(settings, settings.biometricEnabled);
+        await _addColumnIfMissing(m, settings, settings.passcodeHash);
+        await _addColumnIfMissing(m, settings, settings.passcodeSalt);
+        await _addColumnIfMissing(m, settings, settings.biometricEnabled);
       }
       if (from < 15) {
-        await m.addColumn(settings, settings.expenseReminderEnabled);
-        await m.addColumn(settings, settings.expenseReminderHour);
-        await m.addColumn(settings, settings.expenseReminderMinute);
+        await _addColumnIfMissing(m, settings, settings.expenseReminderEnabled);
+        await _addColumnIfMissing(m, settings, settings.expenseReminderHour);
+        await _addColumnIfMissing(m, settings, settings.expenseReminderMinute);
       }
       if (from < 16) {
         await m.createTable(shoppingItems);
       }
       if (from < 17) {
         await m.createTable(shoppingLists);
-        await m.addColumn(shoppingItems, shoppingItems.listId);
+        await _addColumnIfMissing(m, shoppingItems, shoppingItems.listId);
         await backfillShoppingListIds();
       }
       if (from < 18) {
         await m.createTable(backupRecords);
-        await m.addColumn(settings, settings.autoBackupEnabled);
-        await m.addColumn(settings, settings.autoBackupFrequency);
-        await m.addColumn(settings, settings.autoBackupCustomDays);
-        await m.addColumn(settings, settings.autoBackupCustomHours);
-        await m.addColumn(settings, settings.lastAutoBackupAt);
-        await m.addColumn(settings, settings.backupRetentionDays);
+        await _addColumnIfMissing(m, settings, settings.autoBackupEnabled);
+        await _addColumnIfMissing(m, settings, settings.autoBackupFrequency);
+        await _addColumnIfMissing(m, settings, settings.autoBackupCustomDays);
+        await _addColumnIfMissing(m, settings, settings.autoBackupCustomHours);
+        await _addColumnIfMissing(m, settings, settings.lastAutoBackupAt);
+        await _addColumnIfMissing(m, settings, settings.backupRetentionDays);
       }
       if (from < 19) {
-        await m.addColumn(recurringRules, recurringRules.isEstimate);
-        await m.addColumn(transactions, transactions.needsAmountReview);
+        await _addColumnIfMissing(m, recurringRules, recurringRules.isEstimate);
+        await _addColumnIfMissing(
+          m,
+          transactions,
+          transactions.needsAmountReview,
+        );
       }
       if (from < 20) {
-        await m.addColumn(settings, settings.preventScreenshots);
+        await _addColumnIfMissing(m, settings, settings.preventScreenshots);
       }
       if (from < 21) {
         // A goal used to be a metadata row that merely pointed at — and
@@ -256,11 +286,27 @@ class AppDatabase extends _$AppDatabase {
         await migrateSavingsGoalsToGoalAccounts();
       }
       if (from < 22) {
-        await m.addColumn(budgets, budgets.note);
+        await _addColumnIfMissing(m, budgets, budgets.note);
       }
       if (from < 23) {
-        await m.addColumn(accounts, accounts.envelopeMode);
+        await _addColumnIfMissing(m, accounts, accounts.envelopeMode);
         await m.createTable(allocations);
+      }
+      if (from < 24) {
+        await _addColumnIfMissing(m, settings, settings.passcodeLength);
+      }
+      if (from < 25) {
+        await _addColumnIfMissing(m, transactions, transactions.paymentGroupId);
+      }
+      if (from < 26) {
+        await _addColumnIfMissing(
+          m,
+          settings,
+          settings.notificationQuickAddEnabled,
+        );
+      }
+      if (from < 27) {
+        await _addColumnIfMissing(m, settings, settings.quickAddAccountId);
       }
     },
     beforeOpen: (details) async {
@@ -280,6 +326,34 @@ class AppDatabase extends _$AppDatabase {
       await backfillShoppingListIds();
     },
   );
+
+  /// True if [table] already has a column named [column].
+  ///
+  /// `Migrator.createTable` already guards itself with `CREATE TABLE IF NOT
+  /// EXISTS`, but `Migrator.addColumn` is a bare `ALTER TABLE ADD COLUMN`
+  /// with no such guard — SQLite has no `ADD COLUMN IF NOT EXISTS`. If a
+  /// database's stored `user_version` ever undercounts its real shape (a
+  /// build from the rolling BETA-branch APK channel applied a step under a
+  /// version number since reused for something else, a migration died
+  /// half-way through a batched step, ...), re-running `addColumn` throws
+  /// `duplicate column name` and the app can never open the database again
+  /// — see GitHub #49 / #50. [_addColumnIfMissing] makes that a no-op
+  /// instead.
+  Future<bool> _hasColumn(String table, String column) async {
+    final rows = await customSelect(
+      "SELECT 1 FROM pragma_table_info('$table') WHERE name = '$column'",
+    ).get();
+    return rows.isNotEmpty;
+  }
+
+  Future<void> _addColumnIfMissing(
+    Migrator m,
+    TableInfo table,
+    GeneratedColumn column,
+  ) async {
+    if (await _hasColumn(table.actualTableName, column.name)) return;
+    await m.addColumn(table, column);
+  }
 
   /// v2 → v3: person entries used to poke the account balance directly, with no
   /// ledger row. Give each one that moved money a real `personOut`/`personIn`
@@ -734,6 +808,90 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
+  /// Posts one expense split across several accounts at once — e.g. ₹25
+  /// from the bank, ₹5 cash, ₹0.80 from a prepaid balance, for one ₹30.80
+  /// purchase. Each [legs] entry becomes its own ordinary transaction row,
+  /// all sharing a `paymentGroupId` — see the doc on
+  /// `Transactions.paymentGroupId`. Returns every leg's id, first leg
+  /// (the group's anchor) first.
+  ///
+  /// Expense-only and deliberately kept apart from [TransactionSplits]
+  /// (which splits one expense across *categories* instead of accounts) —
+  /// combining both at once is a 2-D matrix this app doesn't offer yet.
+  Future<List<int>> addHybridPaymentTransaction({
+    required List<({int accountId, Money amount})> legs,
+    int? categoryId,
+    required DateTime date,
+    String? note,
+    String? payee,
+    String? imagePath,
+  }) async {
+    if (legs.length < 2) {
+      throw ArgumentError('A split payment needs at least two accounts.');
+    }
+    for (final leg in legs) {
+      await _validateTx(
+        type: TxType.expense,
+        amount: leg.amount,
+        accountId: leg.accountId,
+        categoryId: categoryId,
+        payee: payee,
+      );
+    }
+
+    return transaction(() async {
+      final ids = <int>[];
+      for (final leg in legs) {
+        // The receipt (if any) is attached to the anchor leg only — the
+        // rest are plain money movements with nothing more to say.
+        final isAnchor = ids.isEmpty;
+        ids.add(
+          await into(transactions).insert(
+            TransactionsCompanion.insert(
+              type: TxType.expense,
+              amount: leg.amount,
+              accountId: leg.accountId,
+              categoryId: Value(categoryId),
+              date: date,
+              note: Value(note),
+              payee: Value(payee),
+              imagePath: Value(isAnchor ? imagePath : null),
+            ),
+          ),
+        );
+      }
+
+      // Every leg — including the anchor itself — points at the first
+      // leg's id, so "every row in this group" is one equality filter with
+      // no separate id space to track.
+      final groupId = ids.first;
+      await (update(transactions)..where((t) => t.id.isIn(ids))).write(
+        TransactionsCompanion(paymentGroupId: Value(groupId)),
+      );
+
+      for (final id in ids) {
+        final row = await (select(
+          transactions,
+        )..where((t) => t.id.equals(id))).getSingle();
+        await _applyTxEffect(row, reverse: false);
+      }
+      return ids;
+    });
+  }
+
+  /// Every leg of the split payment [transactionId] belongs to, itself
+  /// included — empty for an ordinary, ungrouped transaction.
+  Future<List<TransactionRow>> paymentGroupLegs(int transactionId) async {
+    final row = await (select(
+      transactions,
+    )..where((t) => t.id.equals(transactionId))).getSingleOrNull();
+    final groupId = row?.paymentGroupId;
+    if (groupId == null) return const [];
+    return (select(
+      transactions,
+    )..where((t) => t.paymentGroupId.equals(groupId))).get();
+  }
+
   Future<void> deleteTransaction(int id) {
     return transaction(() async {
       final row = await (select(
@@ -764,6 +922,11 @@ class AppDatabase extends _$AppDatabase {
       await (update(pendingTxns)
             ..where((t) => t.createdTransactionId.equals(id)))
           .write(const PendingTxnsCompanion(createdTransactionId: Value(null)));
+      // Deleting a hybrid-payment group's anchor leg must not orphan the
+      // other legs' foreign key — ungroup them instead. They stay exactly
+      // as valid, ordinary transactions on their own.
+      await (update(transactions)..where((t) => t.paymentGroupId.equals(id)))
+          .write(const TransactionsCompanion(paymentGroupId: Value(null)));
       // A tag link (or split line) is meaningless without its transaction —
       // drop the rows outright rather than nulling a reference, unlike the
       // two updates above.
@@ -987,6 +1150,38 @@ class AppDatabase extends _$AppDatabase {
           targetDate: Value(targetDate),
         ),
       );
+    });
+  }
+
+  /// One-time correction for a goal whose "saved so far" figure is wrong,
+  /// not a general balance editor — [updateGoal] above still holds for
+  /// everything else ("only a transfer" touches a goal's balance).
+  ///
+  /// The v20→v21 migration (`_createGoalAccountFromLegacy`) seeded a
+  /// migrated goal's `openingBalance` from its old linked account's whole
+  /// balance, with no transaction to explain how it got there — for anyone
+  /// who hadn't actually saved that much, the goal opened "already funded"
+  /// with no way to fix it in-app (see GitHub #44). This lets the user set
+  /// the correct starting figure directly, then rebuilds `currentBalance`
+  /// from it the same way any other ledger change does.
+  Future<void> correctGoalOpeningBalance({
+    required int accountId,
+    required Money openingBalance,
+  }) {
+    if (openingBalance.isNegative) {
+      throw ArgumentError('Starting amount cannot be negative.');
+    }
+    return transaction(() async {
+      final account = await (select(
+        accounts,
+      )..where((a) => a.id.equals(accountId))).getSingleOrNull();
+      if (account == null || account.type != AccountType.goal) {
+        throw ArgumentError('This account is not a goal.');
+      }
+      await (update(accounts)..where((a) => a.id.equals(accountId))).write(
+        AccountsCompanion(openingBalance: Value(openingBalance)),
+      );
+      await recalculateBalances();
     });
   }
 
@@ -1613,6 +1808,13 @@ class AppDatabase extends _$AppDatabase {
       throw ArgumentError(
         '"${recurring.name}" auto-posts from this account. Delete that rule '
         'first.',
+      );
+    }
+    final settingsRow = await getSettings();
+    if (settingsRow.quickAddAccountId == id) {
+      throw ArgumentError(
+        'The quick-add notification still posts to this account. Change '
+        'that in Settings first.',
       );
     }
     await transaction(() async {
@@ -2488,6 +2690,29 @@ class AppDatabase extends _$AppDatabase {
     settings,
   ).write(SettingsCompanion(notificationsEnabled: Value(enabled)));
 
+  Future<void> setNotificationQuickAddEnabled(bool enabled) => update(
+    settings,
+  ).write(SettingsCompanion(notificationQuickAddEnabled: Value(enabled)));
+
+  /// Null clears back to "use the first account" — see
+  /// [resolveQuickAddAccountId].
+  Future<void> setQuickAddAccount(int? accountId) => update(
+    settings,
+  ).write(SettingsCompanion(quickAddAccountId: Value(accountId)));
+
+  /// [Settings.quickAddAccountId] if it still names a real, non-archived,
+  /// balance-holding account, else the first such account by sort order
+  /// (typically Cash, since every fresh install seeds one). Null only when
+  /// every account has been archived — nothing left to post to.
+  Future<int?> resolveQuickAddAccountId() async {
+    final chosen = (await getSettings()).quickAddAccountId;
+    final candidates = await watchBalanceHoldingAccounts().first;
+    if (chosen != null && candidates.any((a) => a.id == chosen)) {
+      return chosen;
+    }
+    return candidates.isEmpty ? null : candidates.first.id;
+  }
+
   Future<void> setLastMessageScanAt(DateTime at) =>
       update(settings).write(SettingsCompanion(lastMessageScanAt: Value(at)));
 
@@ -2511,12 +2736,15 @@ class AppDatabase extends _$AppDatabase {
 
   // ── Passcode ──────────────────────────────────────────────────────────────
 
+  /// [pin].length is trusted as-is — the entry screen is what enforces 4-6
+  /// digits (see GitHub #18).
   Future<void> setPasscode(String pin) {
     final salt = Passcode.generateSalt();
     return update(settings).write(
       SettingsCompanion(
         passcodeHash: Value(Passcode.hash(pin, salt)),
         passcodeSalt: Value(salt),
+        passcodeLength: Value(pin.length),
       ),
     );
   }
@@ -2527,6 +2755,7 @@ class AppDatabase extends _$AppDatabase {
     const SettingsCompanion(
       passcodeHash: Value(null),
       passcodeSalt: Value(null),
+      passcodeLength: Value(null),
       biometricEnabled: Value(false),
     ),
   );

@@ -13,6 +13,7 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../accounts/envelope_outflow.dart';
+import 'amount_buffer.dart';
 import 'receipt_storage.dart';
 
 /// One editable row of a split expense: which category, and how much of the
@@ -35,6 +36,29 @@ class _SplitEntry {
   /// is up — see [_AddTransactionScreenState._textFieldFocused]. Without
   /// this, focusing a split amount brought up the system keyboard *on top
   /// of* the still-visible custom keypad.
+  final FocusNode focusNode;
+
+  Money get amount =>
+      Money.tryParse(amountController.text) ?? const Money.zero();
+
+  void dispose() {
+    amountController.dispose();
+    focusNode.dispose();
+  }
+}
+
+/// One leg of a hybrid/split payment: which account, and how much of the
+/// total it covers. Same shape as [_SplitEntry], but an account instead of
+/// a category — see GitHub #43.
+class _PaymentLegEntry {
+  _PaymentLegEntry({VoidCallback? onFocusChange})
+    : amountController = TextEditingController(),
+      focusNode = FocusNode() {
+    if (onFocusChange != null) focusNode.addListener(onFocusChange);
+  }
+
+  int? accountId;
+  final TextEditingController amountController;
   final FocusNode focusNode;
 
   Money get amount =>
@@ -74,6 +98,15 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   /// Raw rupee text as typed on the keypad: digits + at most one '.'.
   String _buffer = '';
 
+  /// True right after loading an existing transaction for edit, until the
+  /// first keypad tap. A prefilled buffer like "15.44" already has two
+  /// decimal digits, so without this the two-decimal-place guard in
+  /// [_onKey] rejects every digit from the moment the screen opens — the
+  /// amount looks permanently stuck and only backspace appears to work
+  /// (see GitHub #45). The first digit tap clears the stale value and
+  /// starts fresh, same as tapping a digit after a calculator result.
+  bool _freshAmountEntry = false;
+
   int? _accountId; // expense/income: account. transfer: FROM account.
   int? _toAccountId; // transfer: TO account.
   int? _categoryId; // income/expense only.
@@ -94,6 +127,15 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   bool _isSplit = false;
   final List<_SplitEntry> _splitRows = [];
 
+  /// Expense only — one expense, several *accounts*, instead of one (see
+  /// GitHub #43). Mutually exclusive with [_isSplit] — combining both is a
+  /// 2-D matrix this screen doesn't offer. Creation only: editing an
+  /// existing hybrid payment's legs together isn't supported here, since
+  /// each leg is its own transaction row, not sub-rows of one — see
+  /// `AppDatabase.addHybridPaymentTransaction`.
+  bool _isHybridPayment = false;
+  final List<_PaymentLegEntry> _hybridLegs = [];
+
   /// The receipt path that will be saved — an existing one loaded for
   /// editing, a freshly picked one, or null.
   String? _imagePath;
@@ -112,6 +154,11 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   /// type switch (kept around so toggling back doesn't lose entered rows).
   bool get _isSplitting => _type == TxType.expense && _isSplit;
 
+  /// Hybrid payment only ever applies to a brand-new expense — see the doc
+  /// on [_isHybridPayment].
+  bool get _isHybrid =>
+      _type == TxType.expense && !_isEditing && _isHybridPayment;
+
   /// The on-screen keypad and the system keyboard must never both be up —
   /// they'd fight over the same strip of screen and hide whatever the user
   /// just typed. The keypad only shows while no text field has focus,
@@ -119,7 +166,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   bool get _textFieldFocused =>
       _noteFocus.hasFocus ||
       _payeeFocus.hasFocus ||
-      _splitRows.any((r) => r.focusNode.hasFocus);
+      _splitRows.any((r) => r.focusNode.hasFocus) ||
+      _hybridLegs.any((r) => r.focusNode.hasFocus);
 
   @override
   void initState() {
@@ -153,6 +201,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     _payeeFocus.dispose();
     for (final row in _splitRows) {
       row.dispose();
+    }
+    for (final leg in _hybridLegs) {
+      leg.dispose();
     }
     // Best-effort: leaving without saving shouldn't leak the copy made on
     // pick. Fire-and-forget — nothing in this widget survives to await it.
@@ -200,6 +251,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     setState(() {
       _type = row.type;
       _buffer = _bufferFromMoney(row.amount);
+      _freshAmountEntry = true;
       _accountId = row.accountId;
       _toAccountId = row.toAccountId;
       _categoryId = row.categoryId;
@@ -245,28 +297,18 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
   void _onKey(String k) {
     setState(() {
-      if (k == '.') {
-        if (!_buffer.contains('.')) {
-          _buffer = _buffer.isEmpty ? '0.' : '$_buffer.';
-        }
-        return;
-      }
-      final dot = _buffer.indexOf('.');
-      if (dot != -1 && _buffer.length - dot - 1 >= 2) {
-        return; // already two decimal places
-      }
-      if (_buffer == '0') {
-        _buffer = k; // replace a lone leading zero
-      } else {
-        if (_buffer.replaceAll('.', '').length >= 12) return; // sane cap
-        _buffer = '$_buffer$k';
-      }
+      _buffer = AmountBuffer.applyKey(
+        _buffer,
+        k,
+        freshEntry: _freshAmountEntry,
+      );
+      _freshAmountEntry = false;
     });
   }
 
   void _onBackspace() {
-    if (_buffer.isEmpty) return;
-    setState(() => _buffer = _buffer.substring(0, _buffer.length - 1));
+    _freshAmountEntry = false;
+    setState(() => _buffer = AmountBuffer.applyBackspace(_buffer));
   }
 
   // ── Pickers ───────────────────────────────────────────────────────────────
@@ -466,6 +508,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         value: _isSplit,
         onChanged: (v) => setState(() {
           _isSplit = v;
+          // Splitting by category and by account at once is a 2-D matrix
+          // this screen doesn't offer — turning one on turns the other off.
+          if (v) _isHybridPayment = false;
           while (v && _splitRows.length < 2) {
             _splitRows.add(_SplitEntry(onFocusChange: _onFieldFocusChanged));
           }
@@ -479,6 +524,184 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             ? null
             : const Text('One expense, more than one category'),
       ),
+    );
+  }
+
+  // ── Hybrid payment ───────────────────────────────────────────────────────
+
+  Future<void> _pickHybridLegAccount(int index) async {
+    final excludeIds = {
+      for (var i = 0; i < _hybridLegs.length; i++)
+        if (i != index && _hybridLegs[i].accountId != null)
+          _hybridLegs[i].accountId!,
+    };
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => _AccountPickerSheet(
+        title: 'Account',
+        excludeGoals: true,
+        excludeIds: excludeIds,
+      ),
+    );
+    if (selected == null || !mounted) return;
+    setState(() => _hybridLegs[index].accountId = selected);
+  }
+
+  Widget _hybridToggleTile() {
+    final theme = Theme.of(context);
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: SwitchListTile(
+        value: _isHybridPayment,
+        onChanged: (v) => setState(() {
+          _isHybridPayment = v;
+          if (v) _isSplit = false;
+          while (v && _hybridLegs.length < 2) {
+            _hybridLegs.add(
+              _PaymentLegEntry(onFocusChange: _onFieldFocusChanged),
+            );
+          }
+        }),
+        secondary: Icon(
+          Icons.account_balance_wallet_outlined,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+        title: const Text('Split payment across accounts'),
+        subtitle: _isHybridPayment
+            ? null
+            : const Text('One purchase, paid from more than one account'),
+      ),
+    );
+  }
+
+  Widget _hybridEditorCard(Map<int, AccountRow> accountMap) {
+    final theme = Theme.of(context);
+    final sum = _hybridLegs.fold(const Money.zero(), (s, r) => s + r.amount);
+    final remaining = _amount - sum;
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < _hybridLegs.length; i++) ...[
+              if (i > 0) const SizedBox(height: 10),
+              _hybridLegTile(i, accountMap),
+            ],
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => setState(
+                  () => _hybridLegs.add(
+                    _PaymentLegEntry(onFocusChange: _onFieldFocusChanged),
+                  ),
+                ),
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('Add account'),
+              ),
+            ),
+            const Divider(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Remaining',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                MoneyText(
+                  remaining,
+                  signed: true,
+                  color: remaining.isZero
+                      ? AppColors.income
+                      : AppColors.expense,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _hybridLegTile(int index, Map<int, AccountRow> accountMap) {
+    final theme = Theme.of(context);
+    final row = _hybridLegs[index];
+    final account = accountMap[row.accountId];
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _pickHybridLegAccount(index),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            decoration: BoxDecoration(
+              border: Border.all(color: theme.colorScheme.outline),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  AppIcons.resolve(account?.iconKey ?? 'cash'),
+                  size: 18,
+                  color: account != null
+                      ? Color(account.colorValue)
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 6),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 84),
+                  child: Text(
+                    account?.name ?? 'Account',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: TextField(
+            controller: row.amountController,
+            focusNode: row.focusNode,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+            ],
+            decoration: InputDecoration(
+              isDense: true,
+              prefixText: MoneyFormat.inputPrefix,
+              hintText: '0.00',
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.close_rounded, size: 18),
+          tooltip: 'Remove',
+          onPressed: _hybridLegs.length <= 1
+              ? null
+              : () => setState(() {
+                  _hybridLegs.removeAt(index).dispose();
+                }),
+        ),
+      ],
     );
   }
 
@@ -621,6 +844,74 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       messenger.showSnackBar(
         const SnackBar(content: Text('Enter an amount greater than zero')),
       );
+      return;
+    }
+    if (_isHybrid) {
+      if (_hybridLegs.any((r) => r.accountId == null)) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Choose an account for every leg')),
+        );
+        return;
+      }
+      if (_hybridLegs.any((r) => !r.amount.isPositive)) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Every leg needs an amount greater than zero'),
+          ),
+        );
+        return;
+      }
+      final sum = _hybridLegs.fold(const Money.zero(), (s, r) => s + r.amount);
+      if (sum != amount) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              sum < amount
+                  ? 'Accounts are short by ${MoneyFormat.symbol(amount - sum)}'
+                  : 'Accounts are over by ${MoneyFormat.symbol(sum - amount)}',
+            ),
+          ),
+        );
+        return;
+      }
+      if (_categoryId == null) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Choose a category')),
+        );
+        return;
+      }
+      try {
+        final db = ref.read(dbProvider);
+        final note = _noteController.text.trim();
+        final payeeText = _payeeController.text.trim();
+        final ids = await db.addHybridPaymentTransaction(
+          legs: [
+            for (final leg in _hybridLegs)
+              (accountId: leg.accountId!, amount: leg.amount),
+          ],
+          categoryId: _categoryId,
+          date: _date,
+          note: note.isEmpty ? null : note,
+          payee: payeeText.isEmpty ? null : payeeText,
+          imagePath: _imagePath,
+        );
+        // The receipt (if any) is now referenced by a saved row — no longer
+        // an orphan `dispose()` needs to clean up. Tags apply to the anchor
+        // leg only, same reasoning as the receipt.
+        _unsavedPickedPath = null;
+        await db.setTransactionTags(ids.first, _tagIds);
+      } on ArgumentError catch (e) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              e.message?.toString() ?? 'Could not save transaction',
+            ),
+          ),
+        );
+        return;
+      }
+      navigator.pop();
+      messenger.showSnackBar(const SnackBar(content: Text('Saved')));
       return;
     }
     if (_accountId == null) {
@@ -922,6 +1213,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
                         child: Text(
+                          key: const Key('amountDisplay'),
                           MoneyFormat.symbol(amount),
                           style: theme.textTheme.displayMedium?.copyWith(
                             fontWeight: FontWeight.w700,
@@ -977,23 +1269,38 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         ),
       );
     } else {
-      tiles.add(
-        _pickerTile(
-          icon: AppIcons.resolve('wallet'),
-          label: _type == TxType.income ? 'Deposit to' : 'Paid via',
-          value: accountMap[_accountId]?.name ?? 'Select account',
-          selected: _accountId != null,
-          onTap: () => _pickAccount(isFrom: true),
-        ),
-      );
-      tiles.add(const SizedBox(height: 12));
+      // A hybrid payment has no single "paid via" account of its own — its
+      // editor below picks each leg's account instead.
+      if (!_isHybrid) {
+        tiles.add(
+          _pickerTile(
+            icon: AppIcons.resolve('wallet'),
+            label: _type == TxType.income ? 'Deposit to' : 'Paid via',
+            value: accountMap[_accountId]?.name ?? 'Select account',
+            selected: _accountId != null,
+            onTap: () => _pickAccount(isFrom: true),
+          ),
+        );
+        tiles.add(const SizedBox(height: 12));
+      }
       if (_type == TxType.expense) {
         tiles.add(_splitToggleTile());
+        tiles.add(const SizedBox(height: 12));
+        if (!_isEditing) {
+          tiles.add(_hybridToggleTile());
+          tiles.add(const SizedBox(height: 12));
+        }
+      }
+      if (_isHybrid) {
+        tiles.add(_hybridEditorCard(accountMap));
         tiles.add(const SizedBox(height: 12));
       }
       if (_isSplitting) {
         tiles.add(_splitEditorCard(categoryMap));
       } else {
+        // A hybrid payment still carries one shared category — see the doc
+        // on [_isHybridPayment] — unlike a category split, which replaces
+        // this picker with one category per row instead.
         final cat = categoryMap[_categoryId];
         final parent = cat?.parentId == null
             ? null
@@ -1257,11 +1564,16 @@ class _AccountPickerSheet extends ConsumerWidget {
   const _AccountPickerSheet({
     required this.title,
     this.excludeId,
+    this.excludeIds = const {},
     this.excludeGoals = false,
   });
 
   final String title;
   final int? excludeId;
+
+  /// Every other hybrid-payment leg's already-chosen account — see GitHub
+  /// #43. Not a replacement for [excludeId]; both apply together.
+  final Set<int> excludeIds;
 
   /// A goal is a savings store, not a spendable account — only a transfer
   /// may fund or draw it down. Set for expense/income pickers.
@@ -1303,9 +1615,8 @@ class _AccountPickerSheet extends ConsumerWidget {
                 data: (accounts) {
                   final list = accounts
                       .where((a) => a.id != excludeId)
-                      .where(
-                        (a) => !excludeGoals || a.type != AccountType.goal,
-                      )
+                      .where((a) => !excludeIds.contains(a.id))
+                      .where((a) => !excludeGoals || a.type != AccountType.goal)
                       .toList();
                   if (list.isEmpty) {
                     return Padding(
