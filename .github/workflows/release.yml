@@ -71,8 +71,13 @@ jobs:
           storeFile=$GITHUB_WORKSPACE/android/xpenc-release.jks
           EOF
 
+      # `--enforce-lockfile` refuses to silently rewrite pubspec.lock if it's
+      # out of sync with pubspec.yaml — F-Droid's own reproducible build uses
+      # the same flag (see docs/fdroid/metadata-com.yash.xpenc.yml), so a
+      # drifted lock file must fail *here*, at tag time, not on their side
+      # after the tag is already out (GitHub #57).
       - name: Pub get
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Analyze
         run: flutter analyze

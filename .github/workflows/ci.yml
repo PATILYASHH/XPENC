@@ -35,8 +35,10 @@ jobs:
           flutter-version: "3.38.9"
           cache: true
 
+      # Catch a drifted pubspec.lock on every push, not just at release —
+      # the earliest possible warning before it reaches a tag (GitHub #57).
       - name: Pub get
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Analyze
         run: flutter analyze
