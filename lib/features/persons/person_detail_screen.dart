@@ -59,7 +59,7 @@ class PersonDetailScreen extends ConsumerWidget {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          SliverAppBar.large(title: Text(person.name), expandedHeight: 132),
+          SliverAppBar(pinned: true, title: Text(person.name)),
           SliverToBoxAdapter(child: _BalanceHero(balance: balance)),
           SliverToBoxAdapter(
             child: _ActionButtons(personId: person.id, balance: balance),

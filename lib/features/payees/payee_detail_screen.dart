@@ -26,9 +26,9 @@ class PayeeDetailScreen extends ConsumerWidget {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          SliverAppBar.large(
+          SliverAppBar(
+            pinned: true,
             title: Text(payee),
-            expandedHeight: 132,
             actions: [
               IconButton(
                 icon: const Icon(Icons.edit_outlined),

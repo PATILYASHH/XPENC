@@ -23,9 +23,9 @@ class AccountsScreen extends ConsumerWidget {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          SliverAppBar.large(
+          SliverAppBar(
+            pinned: true,
             title: const Text('Accounts'),
-            expandedHeight: 132,
             actions: [
               IconButton(
                 tooltip: 'Statement',

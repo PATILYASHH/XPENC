@@ -64,7 +64,9 @@ void main() {
       .id;
 
   Future<int> categoryId(CategoryKind kind, String name) async =>
-      (await db.watchCategories(kind).first).firstWhere((c) => c.name == name).id;
+      (await db.watchCategories(kind).first)
+          .firstWhere((c) => c.name == name)
+          .id;
 
   testWidgets('Dashboard renders with an empty ledger', (tester) async {
     await pump(tester, const DashboardScreen());
@@ -105,8 +107,9 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('Dashboard shows Ready to Assign only for an envelope account',
-      (tester) async {
+  testWidgets('Dashboard shows Ready to Assign only for an envelope account', (
+    tester,
+  ) async {
     await pump(tester, const DashboardScreen());
     expect(tester.takeException(), isNull);
     expect(find.text('Ready to Assign'), findsNothing);
@@ -124,16 +127,18 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('Accounts renders and shows the seeded Cash account',
-      (tester) async {
+  testWidgets('Accounts renders and shows the seeded Cash account', (
+    tester,
+  ) async {
     await pump(tester, const AccountsScreen());
     expect(tester.takeException(), isNull);
     expect(find.text('Cash'), findsWidgets);
     await unmount(tester);
   });
 
-  testWidgets('Accounts shows a debit card as linked, with no balance',
-      (tester) async {
+  testWidgets('Accounts shows a debit card as linked, with no balance', (
+    tester,
+  ) async {
     await tester.runAsync(() async {
       final bank = await db.addAccount(
         name: 'IPPB',
@@ -160,24 +165,26 @@ void main() {
   });
 
   testWidgets(
-      'Accounts shows a Prepaid Balance account in its own group, with a '
-      'positive balance', (tester) async {
-    await tester.runAsync(() async {
-      await db.addAccount(
-        name: 'Canteen Fob',
-        type: AccountType.prepaidBalance,
-        colorValue: 0xFF16A34A,
-        iconKey: 'prepaid_balance',
-        openingBalance: Money.fromRupees(500),
-      );
-    });
+    'Accounts shows a Prepaid Balance account in its own group, with a '
+    'positive balance',
+    (tester) async {
+      await tester.runAsync(() async {
+        await db.addAccount(
+          name: 'Canteen Fob',
+          type: AccountType.prepaidBalance,
+          colorValue: 0xFF16A34A,
+          iconKey: 'prepaid_balance',
+          openingBalance: Money.fromRupees(500),
+        );
+      });
 
-    await pump(tester, const AccountsScreen());
-    expect(tester.takeException(), isNull);
-    expect(find.text('PREPAID BALANCE'), findsOneWidget);
-    expect(find.text('Canteen Fob'), findsOneWidget);
-    await unmount(tester);
-  });
+      await pump(tester, const AccountsScreen());
+      expect(tester.takeException(), isNull);
+      expect(find.text('PREPAID BALANCE'), findsOneWidget);
+      expect(find.text('Canteen Fob'), findsOneWidget);
+      await unmount(tester);
+    },
+  );
 
   testWidgets('Transactions renders empty, then with a row', (tester) async {
     await pump(tester, const TransactionsScreen());
@@ -210,40 +217,48 @@ void main() {
   });
 
   testWidgets(
-      'Budgets summary does not double-count a subcategory already covered '
-      "by its parent's budget", (tester) async {
-    await tester.runAsync(() async {
-      final food = await categoryId(CategoryKind.expense, 'Food');
-      final junkFood = await db.addCategory(
-        name: 'Junk food',
-        kind: CategoryKind.expense,
-        colorValue: 0xFF000000,
-        iconKey: 'other',
-        parentId: food,
-      );
-      await db.upsertBudget(categoryId: food, amount: Money.fromRupees(2000));
-      await db.upsertBudget(
-        categoryId: junkFood,
-        amount: Money.fromRupees(1000),
-      );
-    });
+    'Budgets summary does not double-count a subcategory already covered '
+    "by its parent's budget",
+    (tester) async {
+      await tester.runAsync(() async {
+        final food = await categoryId(CategoryKind.expense, 'Food');
+        final junkFood = await db.addCategory(
+          name: 'Junk food',
+          kind: CategoryKind.expense,
+          colorValue: 0xFF000000,
+          iconKey: 'other',
+          parentId: food,
+        );
+        await db.upsertBudget(categoryId: food, amount: Money.fromRupees(2000));
+        await db.upsertBudget(
+          categoryId: junkFood,
+          amount: Money.fromRupees(1000),
+        );
+      });
 
-    await pump(tester, const BudgetsScreen());
-    expect(tester.takeException(), isNull);
-    // Food (2000) already covers Junk food's (1000) sub-allocation — the
-    // "This month" summary must read 2000, never 3000.
-    expect(find.text(MoneyFormat.symbol(Money.fromRupees(2000))), findsOneWidget);
-    expect(
-      find.text(MoneyFormat.symbol(Money.fromRupees(3000))),
-      findsNothing,
-    );
-    await unmount(tester);
-  });
+      await pump(tester, const BudgetsScreen());
+      expect(tester.takeException(), isNull);
+      // Food (2000) already covers Junk food's (1000) sub-allocation — the
+      // "This month" summary must read 2000, never 3000.
+      expect(
+        find.text(MoneyFormat.symbol(Money.fromRupees(2000))),
+        findsOneWidget,
+      );
+      expect(
+        find.text(MoneyFormat.symbol(Money.fromRupees(3000))),
+        findsNothing,
+      );
+      await unmount(tester);
+    },
+  );
 
   testWidgets('Persons renders empty state', (tester) async {
     await pump(tester, const PersonsScreen());
     expect(tester.takeException(), isNull);
-    expect(find.text('Persons'), findsWidgets);
+    // The screen's own title bar moved to the shared top bar (`AppShell`),
+    // which this bare pump doesn't include — assert on the screen's own
+    // content instead.
+    expect(find.textContaining('No people yet'), findsOneWidget);
     await unmount(tester);
   });
 
