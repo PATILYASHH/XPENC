@@ -80,10 +80,23 @@ dependencies:
   # Parses a bank-exported statement for CSV import (see
   # data_export/csv_import_screen.dart and GitHub #17).
   csv: ^8.0.0
+  # On-device text recognition for shared payment screenshots (PhonePe/GPay/
+  # Paytm "payment successful" screens) — see
+  # message_capture/ocr_service.dart and GitHub #25. Uses ML Kit's *bundled*
+  # model (statically linked at build time), not the Play-Services-backed
+  # "unbundled" variant: no Google Play Services dependency at runtime, no
+  # extra Android permission, fully offline immediately after install.
+  google_mlkit_text_recognition: ^0.15.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
+  # Lets tests fake out `path_provider` (see screenshot_intake_test.dart) —
+  # already a transitive dependency of path_provider itself, declared
+  # directly here only because tests import it by name.
+  path_provider_platform_interface: ^2.1.3
+  plugin_platform_interface: ^2.1.8
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

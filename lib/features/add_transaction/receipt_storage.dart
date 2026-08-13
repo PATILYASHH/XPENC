@@ -24,6 +24,14 @@ class ReceiptStorage {
     return _copyIntoAppStorage(File(pickedPath));
   }
 
+  /// Same copy-into-app-storage step as [pickAndStore], for a file that
+  /// arrived some other way than the file picker — namely a screenshot
+  /// handed to XPENC through the Android Share sheet (see
+  /// `message_capture/share_intake.dart`), which the sharing plugin only
+  /// ever hands back a path into a *temp* cache folder for.
+  static Future<String> storeExternalFile(File source) =>
+      _copyIntoAppStorage(source);
+
   static Future<String> _copyIntoAppStorage(File source) async {
     final docs = await getApplicationDocumentsDirectory();
     final dir = Directory('${docs.path}/receipts');

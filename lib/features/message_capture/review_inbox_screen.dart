@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -245,15 +247,7 @@ class PendingCard extends ConsumerWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.14),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: color, size: 22),
-                ),
+                _leadingVisual(color, icon),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -299,6 +293,37 @@ class PendingCard extends ConsumerWidget {
       ),
     );
   }
+
+  /// A thumbnail of the source screenshot for a [MessageSourceKind.screenshot]
+  /// card — so it reads as "detected from this image" at a glance — falling
+  /// back to the plain direction icon for every other source, or if the file
+  /// is gone (best-effort, same tolerance the rest of receipt handling has).
+  Widget _leadingVisual(Color color, IconData icon) {
+    final imagePath = pending.sourceImagePath;
+    if (imagePath != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Image.file(
+          File(imagePath),
+          width: 44,
+          height: 44,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _iconCircle44(color, icon),
+        ),
+      );
+    }
+    return _iconCircle44(color, icon);
+  }
+
+  Widget _iconCircle44(Color color, IconData icon) => Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.14),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: color, size: 22),
+      );
 
   Widget _statusStrip(
     BuildContext context,
@@ -401,6 +426,7 @@ class _MessageDisclosure extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    final isScreenshot = pending.source == MessageSourceKind.screenshot;
     return ExpansionTile(
       tilePadding: EdgeInsets.zero,
       shape: const Border(),
@@ -408,7 +434,7 @@ class _MessageDisclosure extends StatelessWidget {
       childrenPadding: const EdgeInsets.only(bottom: 8),
       expandedCrossAxisAlignment: CrossAxisAlignment.start,
       title: Text(
-        'Show message',
+        isScreenshot ? 'Show recognised text' : 'Show message',
         style: theme.textTheme.labelLarge?.copyWith(
           color: cs.onSurfaceVariant,
         ),
@@ -450,15 +476,31 @@ class _ApproveSheetState extends ConsumerState<_ApproveSheet> {
   int? _accountId;
   int? _categoryId;
   bool _remember = true;
+  final _payeeController = TextEditingController();
 
   PendingTxnRow get _p => widget.pending;
   bool get _isOut => _p.parsedDirection == TxDirection.debit;
-  String? get _merchant => _p.parsedMerchant;
+
+  /// The payee actually being posted — the user's edit if they made one,
+  /// which is what "remember this merchant" should key off of too, not
+  /// whatever was auto-extracted (a corrected OCR misread should be what
+  /// gets learned, not the misread itself).
+  String? get _merchant {
+    final t = _payeeController.text.trim();
+    return t.isEmpty ? null : t;
+  }
 
   @override
   void initState() {
     super.initState();
     _accountId = _p.matchedAccountId;
+    _payeeController.text = _p.parsedMerchant ?? '';
+  }
+
+  @override
+  void dispose() {
+    _payeeController.dispose();
+    super.dispose();
   }
 
   Future<void> _add() async {
@@ -486,6 +528,7 @@ class _ApproveSheetState extends ConsumerState<_ApproveSheet> {
             categoryId: categoryId,
             accountId: accountId,
             learnMerchantRule: _remember && _merchant != null,
+            payee: _merchant,
           );
     } on ArgumentError catch (e) {
       messenger.showSnackBar(
@@ -541,6 +584,21 @@ class _ApproveSheetState extends ConsumerState<_ApproveSheet> {
                     style: theme.textTheme.labelLarge?.copyWith(color: color),
                   ),
                 ],
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Payee',
+                style: theme.textTheme.titleSmall
+                    ?.copyWith(color: cs.onSurfaceVariant),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _payeeController,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(hintText: 'Who was this with?'),
+                // Keeps the "remember this merchant" tile below in sync with
+                // what's actually about to be posted as it's typed.
+                onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: 20),
               Text(

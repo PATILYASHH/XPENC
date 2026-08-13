@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../currency.dart';
 import '../money.dart';
@@ -30,6 +32,59 @@ class CurrencyScope extends InheritedWidget {
   bool updateShouldNotify(CurrencyScope oldWidget) =>
       currency.code != oldWidget.currency.code ||
       showSymbol != oldWidget.showSymbol;
+}
+
+/// Broadcasts the "hide amounts" privacy toggle down the tree so every
+/// [MoneyText] masks (or unmasks) the instant it flips — the eye icon in
+/// [AppShell]'s top bar. Same broadcast-only shape as [CurrencyScope]: the
+/// masking itself happens in [MoneyText.build], this only notifies.
+class AmountVisibilityScope extends InheritedWidget {
+  const AmountVisibilityScope({
+    required this.hidden,
+    required super.child,
+    super.key,
+  });
+
+  final bool hidden;
+
+  /// Defaults to visible (not hidden) when absent — bare widget tests, or
+  /// any [MoneyText] rendered before the scope is mounted.
+  static bool of(BuildContext context) {
+    final scope =
+        context.dependOnInheritedWidgetOfExactType<AmountVisibilityScope>();
+    return scope?.hidden ?? false;
+  }
+
+  @override
+  bool updateShouldNotify(AmountVisibilityScope oldWidget) =>
+      hidden != oldWidget.hidden;
+}
+
+/// The privacy switch for [AmountVisibilityScope] — small enough to sit right
+/// next to a hero figure (the dashboard's Total Money card, an account
+/// balance, ...) instead of living as a single button disconnected from any
+/// amount on screen. Toggling it masks every [MoneyText] app-wide at once,
+/// wherever else it's shown.
+class AmountVisibilityToggle extends ConsumerWidget {
+  const AmountVisibilityToggle({this.size = 18, super.key});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hidden = ref.watch(hideAmountsProvider);
+    return IconButton(
+      tooltip: hidden ? 'Show amounts' : 'Hide amounts',
+      iconSize: size,
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(),
+      icon: Icon(
+        hidden ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+      ),
+      onPressed: () => ref.read(dbProvider).setHideAmounts(!hidden),
+    );
+  }
 }
 
 /// Colour only ever *means* something: money in is green, money out is red,
@@ -84,16 +139,26 @@ class MoneyText extends StatelessWidget {
   final bool signed;
   final bool compact;
 
+  /// A fixed-width placeholder — never derived from the real digits, so the
+  /// mask can't leak the amount's order of magnitude (a 3-digit vs 7-digit
+  /// figure would otherwise be visibly distinguishable even hidden).
+  static const _maskGlyph = '••••••';
+
   @override
   Widget build(BuildContext context) {
     // Rebuild whenever the currency setting changes — [MoneyFormat] is already
     // reconfigured by then, so the new symbol/grouping lands immediately.
     CurrencyScope.depend(context);
-    final text = compact
-        ? MoneyFormat.compact(amount)
-        : signed
-            ? MoneyFormat.signed(amount)
-            : MoneyFormat.symbol(amount);
+    final hidden = AmountVisibilityScope.of(context);
+    final text = hidden
+        ? (MoneyFormat.showSymbol
+            ? '${MoneyFormat.currency.symbol} $_maskGlyph'
+            : _maskGlyph)
+        : compact
+            ? MoneyFormat.compact(amount)
+            : signed
+                ? MoneyFormat.signed(amount)
+                : MoneyFormat.symbol(amount);
 
     return Text(
       text,

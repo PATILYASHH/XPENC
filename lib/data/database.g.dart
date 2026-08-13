@@ -5997,6 +5997,21 @@ class $SettingsTable extends Settings
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _hideAmountsMeta = const VerificationMeta(
+    'hideAmounts',
+  );
+  @override
+  late final GeneratedColumn<bool> hideAmounts = GeneratedColumn<bool>(
+    'hide_amounts',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("hide_amounts" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -6026,6 +6041,7 @@ class $SettingsTable extends Settings
     lastAutoBackupAt,
     backupRetentionDays,
     preventScreenshots,
+    hideAmounts,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6261,6 +6277,15 @@ class $SettingsTable extends Settings
         ),
       );
     }
+    if (data.containsKey('hide_amounts')) {
+      context.handle(
+        _hideAmountsMeta,
+        hideAmounts.isAcceptableOrUnknown(
+          data['hide_amounts']!,
+          _hideAmountsMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -6380,6 +6405,10 @@ class $SettingsTable extends Settings
         DriftSqlType.bool,
         data['${effectivePrefix}prevent_screenshots'],
       )!,
+      hideAmounts: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}hide_amounts'],
+      )!,
     );
   }
 
@@ -6487,6 +6516,13 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// `ScreenSecurity`). Off by default: it's a privacy trade-off (no
   /// screenshotting a statement to share it) the user opts into.
   final bool preventScreenshots;
+
+  /// Masks every amount rendered anywhere in the app (see
+  /// `AmountVisibilityScope` in `money_text.dart`) — flipped from the eye
+  /// icon in the top bar (`AppShell`). Persisted, not session-only: hiding
+  /// amounts is usually done right before handing the phone to someone, and
+  /// should still be hidden the next time the app opens, not reset.
+  final bool hideAmounts;
   const SettingRow({
     required this.id,
     required this.currencyCode,
@@ -6515,6 +6551,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     this.lastAutoBackupAt,
     required this.backupRetentionDays,
     required this.preventScreenshots,
+    required this.hideAmounts,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -6564,6 +6601,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     }
     map['backup_retention_days'] = Variable<int>(backupRetentionDays);
     map['prevent_screenshots'] = Variable<bool>(preventScreenshots);
+    map['hide_amounts'] = Variable<bool>(hideAmounts);
     return map;
   }
 
@@ -6608,6 +6646,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           : Value(lastAutoBackupAt),
       backupRetentionDays: Value(backupRetentionDays),
       preventScreenshots: Value(preventScreenshots),
+      hideAmounts: Value(hideAmounts),
     );
   }
 
@@ -6669,6 +6708,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
         json['backupRetentionDays'],
       ),
       preventScreenshots: serializer.fromJson<bool>(json['preventScreenshots']),
+      hideAmounts: serializer.fromJson<bool>(json['hideAmounts']),
     );
   }
   @override
@@ -6710,6 +6750,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'lastAutoBackupAt': serializer.toJson<DateTime?>(lastAutoBackupAt),
       'backupRetentionDays': serializer.toJson<int>(backupRetentionDays),
       'preventScreenshots': serializer.toJson<bool>(preventScreenshots),
+      'hideAmounts': serializer.toJson<bool>(hideAmounts),
     };
   }
 
@@ -6741,6 +6782,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     Value<DateTime?> lastAutoBackupAt = const Value.absent(),
     int? backupRetentionDays,
     bool? preventScreenshots,
+    bool? hideAmounts,
   }) => SettingRow(
     id: id ?? this.id,
     currencyCode: currencyCode ?? this.currencyCode,
@@ -6780,6 +6822,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
         : this.lastAutoBackupAt,
     backupRetentionDays: backupRetentionDays ?? this.backupRetentionDays,
     preventScreenshots: preventScreenshots ?? this.preventScreenshots,
+    hideAmounts: hideAmounts ?? this.hideAmounts,
   );
   SettingRow copyWithCompanion(SettingsCompanion data) {
     return SettingRow(
@@ -6858,6 +6901,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       preventScreenshots: data.preventScreenshots.present
           ? data.preventScreenshots.value
           : this.preventScreenshots,
+      hideAmounts: data.hideAmounts.present
+          ? data.hideAmounts.value
+          : this.hideAmounts,
     );
   }
 
@@ -6890,7 +6936,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('autoBackupCustomHours: $autoBackupCustomHours, ')
           ..write('lastAutoBackupAt: $lastAutoBackupAt, ')
           ..write('backupRetentionDays: $backupRetentionDays, ')
-          ..write('preventScreenshots: $preventScreenshots')
+          ..write('preventScreenshots: $preventScreenshots, ')
+          ..write('hideAmounts: $hideAmounts')
           ..write(')'))
         .toString();
   }
@@ -6924,6 +6971,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     lastAutoBackupAt,
     backupRetentionDays,
     preventScreenshots,
+    hideAmounts,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -6956,7 +7004,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.autoBackupCustomHours == this.autoBackupCustomHours &&
           other.lastAutoBackupAt == this.lastAutoBackupAt &&
           other.backupRetentionDays == this.backupRetentionDays &&
-          other.preventScreenshots == this.preventScreenshots);
+          other.preventScreenshots == this.preventScreenshots &&
+          other.hideAmounts == this.hideAmounts);
 }
 
 class SettingsCompanion extends UpdateCompanion<SettingRow> {
@@ -6987,6 +7036,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<DateTime?> lastAutoBackupAt;
   final Value<int> backupRetentionDays;
   final Value<bool> preventScreenshots;
+  final Value<bool> hideAmounts;
   const SettingsCompanion({
     this.id = const Value.absent(),
     this.currencyCode = const Value.absent(),
@@ -7015,6 +7065,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.lastAutoBackupAt = const Value.absent(),
     this.backupRetentionDays = const Value.absent(),
     this.preventScreenshots = const Value.absent(),
+    this.hideAmounts = const Value.absent(),
   });
   SettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -7044,6 +7095,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.lastAutoBackupAt = const Value.absent(),
     this.backupRetentionDays = const Value.absent(),
     this.preventScreenshots = const Value.absent(),
+    this.hideAmounts = const Value.absent(),
   });
   static Insertable<SettingRow> custom({
     Expression<int>? id,
@@ -7073,6 +7125,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<DateTime>? lastAutoBackupAt,
     Expression<int>? backupRetentionDays,
     Expression<bool>? preventScreenshots,
+    Expression<bool>? hideAmounts,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -7114,6 +7167,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       if (backupRetentionDays != null)
         'backup_retention_days': backupRetentionDays,
       if (preventScreenshots != null) 'prevent_screenshots': preventScreenshots,
+      if (hideAmounts != null) 'hide_amounts': hideAmounts,
     });
   }
 
@@ -7145,6 +7199,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<DateTime?>? lastAutoBackupAt,
     Value<int>? backupRetentionDays,
     Value<bool>? preventScreenshots,
+    Value<bool>? hideAmounts,
   }) {
     return SettingsCompanion(
       id: id ?? this.id,
@@ -7180,6 +7235,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       lastAutoBackupAt: lastAutoBackupAt ?? this.lastAutoBackupAt,
       backupRetentionDays: backupRetentionDays ?? this.backupRetentionDays,
       preventScreenshots: preventScreenshots ?? this.preventScreenshots,
+      hideAmounts: hideAmounts ?? this.hideAmounts,
     );
   }
 
@@ -7285,6 +7341,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     if (preventScreenshots.present) {
       map['prevent_screenshots'] = Variable<bool>(preventScreenshots.value);
     }
+    if (hideAmounts.present) {
+      map['hide_amounts'] = Variable<bool>(hideAmounts.value);
+    }
     return map;
   }
 
@@ -7317,7 +7376,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('autoBackupCustomHours: $autoBackupCustomHours, ')
           ..write('lastAutoBackupAt: $lastAutoBackupAt, ')
           ..write('backupRetentionDays: $backupRetentionDays, ')
-          ..write('preventScreenshots: $preventScreenshots')
+          ..write('preventScreenshots: $preventScreenshots, ')
+          ..write('hideAmounts: $hideAmounts')
           ..write(')'))
         .toString();
   }
@@ -7526,6 +7586,17 @@ class $PendingTxnsTable extends PendingTxns
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _sourceImagePathMeta = const VerificationMeta(
+    'sourceImagePath',
+  );
+  @override
+  late final GeneratedColumn<String> sourceImagePath = GeneratedColumn<String>(
+    'source_image_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -7546,6 +7617,7 @@ class $PendingTxnsTable extends PendingTxns
     createdTransactionId,
     dedupeKey,
     createdAt,
+    sourceImagePath,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -7657,6 +7729,15 @@ class $PendingTxnsTable extends PendingTxns
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
+    if (data.containsKey('source_image_path')) {
+      context.handle(
+        _sourceImagePathMeta,
+        sourceImagePath.isAcceptableOrUnknown(
+          data['source_image_path']!,
+          _sourceImagePathMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -7752,6 +7833,10 @@ class $PendingTxnsTable extends PendingTxns
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      sourceImagePath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_image_path'],
+      ),
     );
   }
 
@@ -7809,6 +7894,13 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
   /// Stable identity for dedupe: sender + body + received-minute.
   final String dedupeKey;
   final DateTime createdAt;
+
+  /// Set only for [MessageSourceKind.screenshot] cards: the shared image,
+  /// already copied into the app's own `documents/receipts/` directory (see
+  /// `ReceiptStorage.storeExternalFile`) — the same directory a manually
+  /// attached receipt lives in, so an approved card needs no second copy:
+  /// this path is used directly as the new transaction's `imagePath`.
+  final String? sourceImagePath;
   const PendingTxnRow({
     required this.id,
     required this.source,
@@ -7828,6 +7920,7 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
     this.createdTransactionId,
     required this.dedupeKey,
     required this.createdAt,
+    this.sourceImagePath,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -7882,6 +7975,9 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
     }
     map['dedupe_key'] = Variable<String>(dedupeKey);
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || sourceImagePath != null) {
+      map['source_image_path'] = Variable<String>(sourceImagePath);
+    }
     return map;
   }
 
@@ -7923,6 +8019,9 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
           : Value(createdTransactionId),
       dedupeKey: Value(dedupeKey),
       createdAt: Value(createdAt),
+      sourceImagePath: sourceImagePath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceImagePath),
     );
   }
 
@@ -7960,6 +8059,7 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
       ),
       dedupeKey: serializer.fromJson<String>(json['dedupeKey']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      sourceImagePath: serializer.fromJson<String?>(json['sourceImagePath']),
     );
   }
   @override
@@ -7990,6 +8090,7 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
       'createdTransactionId': serializer.toJson<int?>(createdTransactionId),
       'dedupeKey': serializer.toJson<String>(dedupeKey),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'sourceImagePath': serializer.toJson<String?>(sourceImagePath),
     };
   }
 
@@ -8012,6 +8113,7 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
     Value<int?> createdTransactionId = const Value.absent(),
     String? dedupeKey,
     DateTime? createdAt,
+    Value<String?> sourceImagePath = const Value.absent(),
   }) => PendingTxnRow(
     id: id ?? this.id,
     source: source ?? this.source,
@@ -8045,6 +8147,9 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
         : this.createdTransactionId,
     dedupeKey: dedupeKey ?? this.dedupeKey,
     createdAt: createdAt ?? this.createdAt,
+    sourceImagePath: sourceImagePath.present
+        ? sourceImagePath.value
+        : this.sourceImagePath,
   );
   PendingTxnRow copyWithCompanion(PendingTxnsCompanion data) {
     return PendingTxnRow(
@@ -8086,6 +8191,9 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
           : this.createdTransactionId,
       dedupeKey: data.dedupeKey.present ? data.dedupeKey.value : this.dedupeKey,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      sourceImagePath: data.sourceImagePath.present
+          ? data.sourceImagePath.value
+          : this.sourceImagePath,
     );
   }
 
@@ -8109,7 +8217,8 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
           ..write('appliedRuleId: $appliedRuleId, ')
           ..write('createdTransactionId: $createdTransactionId, ')
           ..write('dedupeKey: $dedupeKey, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('sourceImagePath: $sourceImagePath')
           ..write(')'))
         .toString();
   }
@@ -8134,6 +8243,7 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
     createdTransactionId,
     dedupeKey,
     createdAt,
+    sourceImagePath,
   );
   @override
   bool operator ==(Object other) =>
@@ -8156,7 +8266,8 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
           other.appliedRuleId == this.appliedRuleId &&
           other.createdTransactionId == this.createdTransactionId &&
           other.dedupeKey == this.dedupeKey &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.sourceImagePath == this.sourceImagePath);
 }
 
 class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
@@ -8178,6 +8289,7 @@ class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
   final Value<int?> createdTransactionId;
   final Value<String> dedupeKey;
   final Value<DateTime> createdAt;
+  final Value<String?> sourceImagePath;
   const PendingTxnsCompanion({
     this.id = const Value.absent(),
     this.source = const Value.absent(),
@@ -8197,6 +8309,7 @@ class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
     this.createdTransactionId = const Value.absent(),
     this.dedupeKey = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.sourceImagePath = const Value.absent(),
   });
   PendingTxnsCompanion.insert({
     this.id = const Value.absent(),
@@ -8217,6 +8330,7 @@ class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
     this.createdTransactionId = const Value.absent(),
     required String dedupeKey,
     this.createdAt = const Value.absent(),
+    this.sourceImagePath = const Value.absent(),
   }) : source = Value(source),
        rawBody = Value(rawBody),
        sender = Value(sender),
@@ -8241,6 +8355,7 @@ class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
     Expression<int>? createdTransactionId,
     Expression<String>? dedupeKey,
     Expression<DateTime>? createdAt,
+    Expression<String>? sourceImagePath,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -8262,6 +8377,7 @@ class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
         'created_transaction_id': createdTransactionId,
       if (dedupeKey != null) 'dedupe_key': dedupeKey,
       if (createdAt != null) 'created_at': createdAt,
+      if (sourceImagePath != null) 'source_image_path': sourceImagePath,
     });
   }
 
@@ -8284,6 +8400,7 @@ class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
     Value<int?>? createdTransactionId,
     Value<String>? dedupeKey,
     Value<DateTime>? createdAt,
+    Value<String?>? sourceImagePath,
   }) {
     return PendingTxnsCompanion(
       id: id ?? this.id,
@@ -8304,6 +8421,7 @@ class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
       createdTransactionId: createdTransactionId ?? this.createdTransactionId,
       dedupeKey: dedupeKey ?? this.dedupeKey,
       createdAt: createdAt ?? this.createdAt,
+      sourceImagePath: sourceImagePath ?? this.sourceImagePath,
     );
   }
 
@@ -8376,6 +8494,9 @@ class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (sourceImagePath.present) {
+      map['source_image_path'] = Variable<String>(sourceImagePath.value);
+    }
     return map;
   }
 
@@ -8399,7 +8520,8 @@ class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
           ..write('appliedRuleId: $appliedRuleId, ')
           ..write('createdTransactionId: $createdTransactionId, ')
           ..write('dedupeKey: $dedupeKey, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('sourceImagePath: $sourceImagePath')
           ..write(')'))
         .toString();
   }
@@ -19163,6 +19285,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<DateTime?> lastAutoBackupAt,
       Value<int> backupRetentionDays,
       Value<bool> preventScreenshots,
+      Value<bool> hideAmounts,
     });
 typedef $$SettingsTableUpdateCompanionBuilder =
     SettingsCompanion Function({
@@ -19193,6 +19316,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<DateTime?> lastAutoBackupAt,
       Value<int> backupRetentionDays,
       Value<bool> preventScreenshots,
+      Value<bool> hideAmounts,
     });
 
 final class $$SettingsTableReferences
@@ -19363,6 +19487,11 @@ class $$SettingsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get hideAmounts => $composableBuilder(
+    column: $table.hideAmounts,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$AccountsTableFilterComposer get quickAddAccountId {
     final $$AccountsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -19526,6 +19655,11 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get hideAmounts => $composableBuilder(
+    column: $table.hideAmounts,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$AccountsTableOrderingComposer get quickAddAccountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -19684,6 +19818,11 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get hideAmounts => $composableBuilder(
+    column: $table.hideAmounts,
+    builder: (column) => column,
+  );
+
   $$AccountsTableAnnotationComposer get quickAddAccountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -19764,6 +19903,7 @@ class $$SettingsTableTableManager
                 Value<DateTime?> lastAutoBackupAt = const Value.absent(),
                 Value<int> backupRetentionDays = const Value.absent(),
                 Value<bool> preventScreenshots = const Value.absent(),
+                Value<bool> hideAmounts = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
                 currencyCode: currencyCode,
@@ -19792,6 +19932,7 @@ class $$SettingsTableTableManager
                 lastAutoBackupAt: lastAutoBackupAt,
                 backupRetentionDays: backupRetentionDays,
                 preventScreenshots: preventScreenshots,
+                hideAmounts: hideAmounts,
               ),
           createCompanionCallback:
               ({
@@ -19823,6 +19964,7 @@ class $$SettingsTableTableManager
                 Value<DateTime?> lastAutoBackupAt = const Value.absent(),
                 Value<int> backupRetentionDays = const Value.absent(),
                 Value<bool> preventScreenshots = const Value.absent(),
+                Value<bool> hideAmounts = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
                 currencyCode: currencyCode,
@@ -19851,6 +19993,7 @@ class $$SettingsTableTableManager
                 lastAutoBackupAt: lastAutoBackupAt,
                 backupRetentionDays: backupRetentionDays,
                 preventScreenshots: preventScreenshots,
+                hideAmounts: hideAmounts,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -19939,6 +20082,7 @@ typedef $$PendingTxnsTableCreateCompanionBuilder =
       Value<int?> createdTransactionId,
       required String dedupeKey,
       Value<DateTime> createdAt,
+      Value<String?> sourceImagePath,
     });
 typedef $$PendingTxnsTableUpdateCompanionBuilder =
     PendingTxnsCompanion Function({
@@ -19960,6 +20104,7 @@ typedef $$PendingTxnsTableUpdateCompanionBuilder =
       Value<int?> createdTransactionId,
       Value<String> dedupeKey,
       Value<DateTime> createdAt,
+      Value<String?> sourceImagePath,
     });
 
 final class $$PendingTxnsTableReferences
@@ -20104,6 +20249,11 @@ class $$PendingTxnsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get sourceImagePath => $composableBuilder(
+    column: $table.sourceImagePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$AccountsTableFilterComposer get matchedAccountId {
     final $$AccountsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -20240,6 +20390,11 @@ class $$PendingTxnsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get sourceImagePath => $composableBuilder(
+    column: $table.sourceImagePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$AccountsTableOrderingComposer get matchedAccountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -20363,6 +20518,11 @@ class $$PendingTxnsTableAnnotationComposer
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
+  GeneratedColumn<String> get sourceImagePath => $composableBuilder(
+    column: $table.sourceImagePath,
+    builder: (column) => column,
+  );
+
   $$AccountsTableAnnotationComposer get matchedAccountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -20459,6 +20619,7 @@ class $$PendingTxnsTableTableManager
                 Value<int?> createdTransactionId = const Value.absent(),
                 Value<String> dedupeKey = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> sourceImagePath = const Value.absent(),
               }) => PendingTxnsCompanion(
                 id: id,
                 source: source,
@@ -20478,6 +20639,7 @@ class $$PendingTxnsTableTableManager
                 createdTransactionId: createdTransactionId,
                 dedupeKey: dedupeKey,
                 createdAt: createdAt,
+                sourceImagePath: sourceImagePath,
               ),
           createCompanionCallback:
               ({
@@ -20499,6 +20661,7 @@ class $$PendingTxnsTableTableManager
                 Value<int?> createdTransactionId = const Value.absent(),
                 required String dedupeKey,
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> sourceImagePath = const Value.absent(),
               }) => PendingTxnsCompanion.insert(
                 id: id,
                 source: source,
@@ -20518,6 +20681,7 @@ class $$PendingTxnsTableTableManager
                 createdTransactionId: createdTransactionId,
                 dedupeKey: dedupeKey,
                 createdAt: createdAt,
+                sourceImagePath: sourceImagePath,
               ),
           withReferenceMapper: (p0) => p0
               .map(

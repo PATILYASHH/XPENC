@@ -164,10 +164,16 @@ class _XpencAppState extends ConsumerState<XpencApp>
         appRouter.go('/inbox');
       case ShareIntakeDuplicate():
         showAppSnackBar('Already in your Review Inbox');
-      case ShareIntakeRejected(:final reason):
+      case ShareIntakeRejected(:final reason, :final recognizedText):
         showAppSnackBar(
           "Couldn't find a transaction in that message"
           '${_rejectReasonHint(reason)}',
+          action: recognizedText == null
+              ? null
+              : SnackBarAction(
+                  label: 'View text',
+                  onPressed: () => showRecognizedTextDialog(recognizedText),
+                ),
         );
     }
   }
@@ -219,6 +225,7 @@ class _XpencAppState extends ConsumerState<XpencApp>
     final currency = ref.watch(currencyProvider);
     final showSymbol = ref.watch(showCurrencySymbolProvider);
     MoneyFormat.configure(currency: currency, showSymbol: showSymbol);
+    final hideAmounts = ref.watch(hideAmountsProvider);
 
     // Fire-and-forget: a platform-channel call, not something the frame
     // waits on. ScreenSecurity itself no-ops if nothing actually changed.
@@ -237,32 +244,37 @@ class _XpencAppState extends ConsumerState<XpencApp>
       builder: (context, child) => CurrencyScope(
         currency: currency,
         showSymbol: showSymbol,
-        child: switch (ready) {
-          AsyncError(:final error) => _FatalError(
-            error: error,
-            onRetry: () => ref.invalidate(databaseReadyProvider),
-          ),
-          // The router's subtree stays mounted underneath even while locked —
-          // only stacked, opaque `LockScreen` sits on top of it — or every
-          // relock (immediate, on every backgrounding) would silently drop
-          // whatever the user was in the middle of doing: a half-typed
-          // transaction, a scroll position, anything not yet saved.
-          AsyncData() =>
-            !_passcodeKnown
-                ? const _LaunchSplash()
-                : Stack(
-                    children: [
-                      ?child,
-                      if (_locked)
-                        Positioned.fill(
-                          child: LockScreen(
-                            onUnlocked: () => setState(() => _locked = false),
+        child: AmountVisibilityScope(
+          hidden: hideAmounts,
+          child: switch (ready) {
+            AsyncError(:final error) => _FatalError(
+              error: error,
+              onRetry: () => ref.invalidate(databaseReadyProvider),
+            ),
+            // The router's subtree stays mounted underneath even while locked
+            // — only stacked, opaque `LockScreen` sits on top of it — or
+            // every relock (immediate, on every backgrounding) would
+            // silently drop whatever the user was in the middle of doing: a
+            // half-typed transaction, a scroll position, anything not yet
+            // saved.
+            AsyncData() =>
+              !_passcodeKnown
+                  ? const _LaunchSplash()
+                  : Stack(
+                      children: [
+                        ?child,
+                        if (_locked)
+                          Positioned.fill(
+                            child: LockScreen(
+                              onUnlocked: () =>
+                                  setState(() => _locked = false),
+                            ),
                           ),
-                        ),
-                    ],
-                  ),
-          _ => child ?? const SizedBox.shrink(),
-        },
+                      ],
+                    ),
+            _ => child ?? const SizedBox.shrink(),
+          },
+        ),
       ),
     );
   }

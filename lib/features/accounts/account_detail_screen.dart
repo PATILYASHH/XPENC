@@ -198,7 +198,7 @@ class _AccountDetailView extends ConsumerWidget {
 // ── Header ──────────────────────────────────────────────────────────────────
 
 /// Balance + a one-line story about this account, plus type / bank chips.
-class _HeaderCard extends StatelessWidget {
+class _HeaderCard extends ConsumerWidget {
   const _HeaderCard({required this.account, required this.linkedBank});
 
   final AccountRow account;
@@ -211,7 +211,7 @@ class _HeaderCard extends StatelessWidget {
   bool get _owesLikeCredit => _isCreditCard || _isPayLater;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
@@ -254,12 +254,18 @@ class _HeaderCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                _isDebitCard ? 'Available balance' : 'Balance',
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: cs.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
+              Row(
+                children: [
+                  Text(
+                    _isDebitCard ? 'Available balance' : 'Balance',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const Spacer(),
+                  const AmountVisibilityToggle(),
+                ],
               ),
               const SizedBox(height: 6),
               FittedBox(

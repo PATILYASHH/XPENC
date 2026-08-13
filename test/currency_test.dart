@@ -102,4 +102,5 @@ void main() {
       expect(s.showCurrencySymbol, isFalse);
     });
   });
+
 }

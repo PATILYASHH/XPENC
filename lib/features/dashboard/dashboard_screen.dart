@@ -307,7 +307,13 @@ class _NetWorthCard extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const _CardLabel('Total money'),
+                    const Row(
+                      children: [
+                        _CardLabel('Total money'),
+                        Spacer(),
+                        AmountVisibilityToggle(),
+                      ],
+                    ),
                     const SizedBox(height: 8),
                     netWorth.when(
                       data: (money) => AnimatedBalanceText(

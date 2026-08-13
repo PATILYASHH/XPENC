@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../data/providers.dart';
+import '../../features/transactions/transaction_filters.dart';
 
 /// `Dashboard · Transactions · ➕ · Persons · More`
 ///
@@ -33,6 +37,7 @@ class AppShell extends StatelessWidget {
     final border = theme.colorScheme.outline;
 
     return Scaffold(
+      appBar: _TopBar(currentIndex: navigationShell.currentIndex),
       body: navigationShell,
       bottomNavigationBar: DecoratedBox(
         decoration: BoxDecoration(
@@ -113,4 +118,109 @@ class _TabSpec {
   final IconData icon;
   final IconData activeIcon;
   final String label;
+}
+
+/// The app's persistent top bar — fixed on screen across all 4 tabs, sibling
+/// to the bottom nav bar (a pushed detail route, e.g. Inbox or Calendar
+/// itself, covers both the same way, since both live outside the shell).
+///
+/// Neither Inbox nor Calendar has a tab of its own (Inbox has no dedicated
+/// entry point at all today; Calendar is buried in the More hub) — this is
+/// the quick way to either, on every tab. The net-worth figure and its
+/// hide-amounts eye icon used to live here too; they've moved to sit next to
+/// the actual amounts they describe (the dashboard's Total Money card, an
+/// account balance, ...) — a number with no card under it, and a toggle
+/// disconnected from anything on screen, aren't "useful options" for a bar
+/// that's supposed to stay out of the way. See GitHub #25's follow-up
+/// request. On the Transactions tab specifically, [_TransactionsBarActions]
+/// takes the same slot Transactions' own search/filter buttons used to
+/// occupy in a separate app bar of their own — one bar, not two.
+class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
+  const _TopBar({required this.currentIndex});
+
+  final int currentIndex;
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return AppBar(
+      automaticallyImplyLeading: false,
+      titleSpacing: 4,
+      title: Row(
+        children: [
+          IconButton(
+            tooltip: 'Review Inbox',
+            icon: const Icon(Icons.inbox_outlined),
+            onPressed: () => context.push('/inbox'),
+          ),
+          IconButton(
+            tooltip: 'Calendar',
+            icon: const Icon(Icons.calendar_month_outlined),
+            onPressed: () => context.push('/more/calendar'),
+          ),
+        ],
+      ),
+      actions: currentIndex == 1
+          ? const [_TransactionsBarActions(), SizedBox(width: 4)]
+          : null,
+    );
+  }
+}
+
+/// The Transactions tab's search + filter controls — the actions this bar
+/// shows in place of nothing, only while that tab is active. State lives in
+/// `txSearchActiveProvider`/`txAdvancedFiltersProvider` rather than in
+/// `TransactionsScreen` itself, since these buttons are no longer a
+/// descendant of the screen they control.
+class _TransactionsBarActions extends ConsumerWidget {
+  const _TransactionsBarActions();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final filters = ref.watch(txAdvancedFiltersProvider);
+    final searchActive = ref.watch(txSearchActiveProvider);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          tooltip: 'Filters',
+          icon: Badge(
+            isLabelVisible: filters.count > 0,
+            label: Text('${filters.count}'),
+            child: const Icon(Icons.tune_rounded),
+          ),
+          onPressed: () => _openFilters(context, ref, filters),
+        ),
+        IconButton(
+          tooltip: searchActive ? 'Close search' : 'Search',
+          icon: Icon(
+            searchActive ? Icons.close_rounded : Icons.search_rounded,
+          ),
+          onPressed: () {
+            final active = !searchActive;
+            ref.read(txSearchActiveProvider.notifier).state = active;
+            if (!active) ref.read(txSearchQueryProvider.notifier).state = '';
+          },
+        ),
+      ],
+    );
+  }
+
+  Future<void> _openFilters(
+    BuildContext context,
+    WidgetRef ref,
+    TransactionFilters current,
+  ) async {
+    final result = await showModalBottomSheet<TransactionFilters>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => TransactionFiltersSheet(initial: current),
+    );
+    if (result == null) return;
+    ref.read(txAdvancedFiltersProvider.notifier).state = result;
+  }
 }
