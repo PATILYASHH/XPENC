@@ -24,22 +24,6 @@ class PersonsScreen extends ConsumerWidget {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          SliverAppBar.large(
-            title: const Text('Persons'),
-            expandedHeight: 132,
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.inventory_2_outlined),
-                tooltip: 'Archived people',
-                onPressed: () => context.push('/persons/archived'),
-              ),
-              IconButton(
-                icon: const Icon(Icons.person_add_alt_1_outlined),
-                tooltip: 'Add person',
-                onPressed: () => _addPersonDialog(context, ref),
-              ),
-            ],
-          ),
           SliverToBoxAdapter(child: _TotalsHeader(totals: totals)),
           personsAsync.when(
             loading: () => const SliverToBoxAdapter(
@@ -466,7 +450,10 @@ String _initials(String name) {
       .toUpperCase();
 }
 
-Future<void> _addPersonDialog(BuildContext context, WidgetRef ref) async {
+/// Not private: the shared top bar's "Add person" action (see `AppShell`)
+/// calls this directly rather than duplicating it, since this screen no
+/// longer owns its own app bar.
+Future<void> showAddPersonDialog(BuildContext context, WidgetRef ref) async {
   final controller = TextEditingController();
   final name = await showDialog<String>(
     context: context,

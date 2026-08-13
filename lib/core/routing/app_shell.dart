@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/providers.dart';
+import '../../features/persons/persons_screen.dart' show showAddPersonDialog;
 import '../../features/transactions/transaction_filters.dart';
+import '../branding/app_info.dart';
+import '../branding/brand_mark.dart';
 
 /// `Dashboard · Transactions · ➕ · Persons · More`
 ///
@@ -128,24 +131,27 @@ class _TabSpec {
 }
 
 /// The app's persistent top bar — fixed on screen across all 4 tabs, sibling
-/// to the bottom nav bar (a pushed detail route, e.g. Inbox or Calendar
-/// itself, covers both the same way, since both live outside the shell).
+/// to the bottom nav bar (a pushed detail route, e.g. a screen reached from
+/// the More hub, covers both the same way, since both live outside the
+/// shell).
 ///
-/// Neither Inbox nor Calendar has a tab of its own (Inbox has no dedicated
-/// entry point at all today; Calendar is buried in the More hub) — this is
-/// the quick way to either, on every tab. The net-worth figure and its
-/// hide-amounts eye icon used to live here too; they've moved to sit next to
-/// the actual amounts they describe (the dashboard's Total Money card, an
-/// account balance, ...) — a number with no card under it, and a toggle
-/// disconnected from anything on screen, aren't "useful options" for a bar
-/// that's supposed to stay out of the way. See GitHub #25's follow-up
-/// request. On the Transactions tab specifically, [_TransactionsBarActions]
-/// takes the same slot Transactions' own search/filter buttons used to
-/// occupy in a separate app bar of their own — one bar, not two.
+/// Carries the current tab's own title and actions now — Dashboard, Persons
+/// and More each used to render their *own* large title bar (132dp) stacked
+/// directly underneath this one, so a tab opened under ~190dp of chrome
+/// before any real content. One bar, sized like an ordinary toolbar
+/// (`kToolbarHeight`, same as every pushed screen's bar now — see the
+/// screens under `lib/features/*`), replaces that stack.
+///
+/// Calendar used to sit here too; it's dropped now that a tab-specific
+/// action can claim the slot instead — Calendar is still one tap away from
+/// the More hub's own "Calendar & Reminders" tile, so nothing is lost, only
+/// de-duplicated. Review Inbox stays — it has no other entry point at all.
 class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
   const _TopBar({required this.currentIndex});
 
   final int currentIndex;
+
+  static const _titles = ['Dashboard', 'Transactions', 'Persons', 'More'];
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -165,41 +171,84 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
       ),
       child: AppBar(
         automaticallyImplyLeading: false,
-        titleSpacing: 4,
-        title: Row(
-          children: [
-            _TonalIconButton(
-              tooltip: 'Review Inbox',
-              icon: const Icon(Icons.inbox_outlined),
-              onPressed: () => context.push('/inbox'),
-            ),
-            const SizedBox(width: 4),
-            _TonalIconButton(
-              tooltip: 'Calendar',
-              icon: const Icon(Icons.calendar_month_outlined),
-              onPressed: () => context.push('/more/calendar'),
-            ),
-          ],
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 4),
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 220),
-              switchInCurve: Curves.easeOutCubic,
-              switchOutCurve: Curves.easeInCubic,
-              transitionBuilder: (child, animation) => FadeTransition(
-                opacity: animation,
-                child: ScaleTransition(scale: animation, child: child),
-              ),
-              child: currentIndex == 1
-                  ? const _TransactionsBarActions(key: ValueKey('tx-actions'))
-                  : const SizedBox.shrink(key: ValueKey('no-actions')),
+        title: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 220),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          transitionBuilder: (child, animation) => FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.3),
+                end: Offset.zero,
+              ).animate(animation),
+              child: child,
             ),
           ),
+          child: Text(_titles[currentIndex], key: ValueKey(currentIndex)),
+        ),
+        actions: [
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(scale: animation, child: child),
+            ),
+            child: Row(
+              key: ValueKey(currentIndex),
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ..._tabActions(context, ref, currentIndex),
+                _TonalIconButton(
+                  tooltip: 'Review Inbox',
+                  icon: const Icon(Icons.inbox_outlined),
+                  onPressed: () => context.push('/inbox'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 4),
         ],
       ),
     );
+  }
+
+  /// Whatever's specific to the active tab, Review Inbox appended after by
+  /// the caller — see the class doc for why Inbox always gets that trailing
+  /// slot.
+  List<Widget> _tabActions(BuildContext context, WidgetRef ref, int index) {
+    switch (index) {
+      case 0: // Dashboard
+        return [
+          _TonalIconButton(
+            tooltip: 'About ${AppInfo.name}',
+            icon: const BrandMark(size: 22),
+            onPressed: () => context.push('/more/about'),
+          ),
+          const SizedBox(width: 4),
+        ];
+      case 1: // Transactions
+        return const [_TransactionsBarActions(), SizedBox(width: 4)];
+      case 2: // Persons
+        return [
+          _TonalIconButton(
+            tooltip: 'Archived people',
+            icon: const Icon(Icons.inventory_2_outlined),
+            onPressed: () => context.push('/persons/archived'),
+          ),
+          const SizedBox(width: 4),
+          _TonalIconButton(
+            tooltip: 'Add person',
+            icon: const Icon(Icons.person_add_alt_1_outlined),
+            onPressed: () => showAddPersonDialog(context, ref),
+          ),
+          const SizedBox(width: 4),
+        ];
+      default: // More
+        return const [];
+    }
   }
 }
 
@@ -236,7 +285,7 @@ class _TonalIconButton extends StatelessWidget {
 /// `TransactionsScreen` itself, since these buttons are no longer a
 /// descendant of the screen they control.
 class _TransactionsBarActions extends ConsumerWidget {
-  const _TransactionsBarActions({super.key});
+  const _TransactionsBarActions();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

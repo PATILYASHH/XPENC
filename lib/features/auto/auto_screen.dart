@@ -33,9 +33,9 @@ class _AutoScreenState extends ConsumerState<AutoScreen> {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          SliverAppBar.large(
+          SliverAppBar(
+            pinned: true,
             title: const Text('Auto'),
-            expandedHeight: 132,
             actions: [
               IconButton(
                 tooltip: 'New auto rule',

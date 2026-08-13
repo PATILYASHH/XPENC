@@ -4,8 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/app_icons.dart';
-import '../../core/branding/app_info.dart';
-import '../../core/branding/brand_mark.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/money_text.dart';
@@ -39,25 +37,7 @@ class DashboardScreen extends ConsumerWidget {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          SliverAppBar.large(
-            title: const Text('Dashboard'),
-            expandedHeight: 132,
-            actions: [
-              // The mark doubles as the way into About — the only screen with
-              // no home of its own on the bottom bar.
-              Padding(
-                padding: const EdgeInsets.only(right: 20),
-                child: Tooltip(
-                  message: 'About ${AppInfo.name}',
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(10),
-                    onTap: () => context.push('/more/about'),
-                    child: const BrandMark(size: 28),
-                  ),
-                ),
-              ),
-            ],
-          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 8)),
           SliverList.list(
             children: [
               for (var i = 0; i < _sections.length; i++)

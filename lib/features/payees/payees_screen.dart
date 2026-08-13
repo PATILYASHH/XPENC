@@ -16,15 +16,12 @@ class PayeesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final summaries = ref.watch(payeeSummariesProvider);
-    final total = summaries.fold(
-      const Money.zero(),
-      (sum, s) => sum + s.total,
-    );
+    final total = summaries.fold(const Money.zero(), (sum, s) => sum + s.total);
 
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          SliverAppBar.large(title: const Text('Payees'), expandedHeight: 132),
+          SliverAppBar(pinned: true, title: const Text('Payees')),
           SliverToBoxAdapter(
             child: _TotalsHeader(total: total, count: summaries.length),
           ),
@@ -144,8 +141,7 @@ class _PayeeTile extends StatelessWidget {
           ),
         ),
       ),
-      onTap: () =>
-          context.push('/more/payees/${Uri.encodeComponent(s.payee)}'),
+      onTap: () => context.push('/more/payees/${Uri.encodeComponent(s.payee)}'),
     );
   }
 }

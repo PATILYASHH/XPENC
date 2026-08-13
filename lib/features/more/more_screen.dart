@@ -146,7 +146,7 @@ class MoreScreen extends ConsumerWidget {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          SliverAppBar.large(title: const Text('More'), expandedHeight: 132),
+          const SliverToBoxAdapter(child: SizedBox(height: 8)),
           for (final group in groups) ...[
             SliverToBoxAdapter(
               child: Padding(
