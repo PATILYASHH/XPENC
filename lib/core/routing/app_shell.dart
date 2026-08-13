@@ -15,12 +15,19 @@ class AppShell extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
 
   static const _tabs = <_TabSpec>[
-    _TabSpec(0, Icons.pie_chart_outline_rounded, Icons.pie_chart_rounded,
-        'Dashboard'),
-    _TabSpec(1, Icons.receipt_long_outlined, Icons.receipt_long_rounded,
-        'Transactions'),
     _TabSpec(
-        2, Icons.people_alt_outlined, Icons.people_alt_rounded, 'Persons'),
+      0,
+      Icons.pie_chart_outline_rounded,
+      Icons.pie_chart_rounded,
+      'Dashboard',
+    ),
+    _TabSpec(
+      1,
+      Icons.receipt_long_outlined,
+      Icons.receipt_long_rounded,
+      'Transactions',
+    ),
+    _TabSpec(2, Icons.people_alt_outlined, Icons.people_alt_rounded, 'Persons'),
     _TabSpec(3, Icons.grid_view_outlined, Icons.grid_view_rounded, 'More'),
   ];
 
@@ -145,26 +152,80 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return AppBar(
-      automaticallyImplyLeading: false,
-      titleSpacing: 4,
-      title: Row(
-        children: [
-          IconButton(
-            tooltip: 'Review Inbox',
-            icon: const Icon(Icons.inbox_outlined),
-            onPressed: () => context.push('/inbox'),
-          ),
-          IconButton(
-            tooltip: 'Calendar',
-            icon: const Icon(Icons.calendar_month_outlined),
-            onPressed: () => context.push('/more/calendar'),
+    final cs = Theme.of(context).colorScheme;
+
+    // A hairline border, the same idiom the bottom nav bar already uses
+    // (`Border(top: ...)`) — flat depth, not a shadow, matching the rest of
+    // the app's chrome. `BoxDecoration.border` paints inset within the
+    // existing bounds, so this adds no extra height for `preferredSize` to
+    // account for.
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: cs.outline)),
+      ),
+      child: AppBar(
+        automaticallyImplyLeading: false,
+        titleSpacing: 4,
+        title: Row(
+          children: [
+            _TonalIconButton(
+              tooltip: 'Review Inbox',
+              icon: const Icon(Icons.inbox_outlined),
+              onPressed: () => context.push('/inbox'),
+            ),
+            const SizedBox(width: 4),
+            _TonalIconButton(
+              tooltip: 'Calendar',
+              icon: const Icon(Icons.calendar_month_outlined),
+              onPressed: () => context.push('/more/calendar'),
+            ),
+          ],
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: ScaleTransition(scale: animation, child: child),
+              ),
+              child: currentIndex == 1
+                  ? const _TransactionsBarActions(key: ValueKey('tx-actions'))
+                  : const SizedBox.shrink(key: ValueKey('no-actions')),
+            ),
           ),
         ],
       ),
-      actions: currentIndex == 1
-          ? const [_TransactionsBarActions(), SizedBox(width: 4)]
-          : null,
+    );
+  }
+}
+
+/// The soft, tappable pill behind a top-bar icon — the same accent-tint idiom
+/// [ThemePickerSheet]'s selected tile already uses, so a tonal icon reads as
+/// *this app's* accent rather than a generic Material default. Its shape
+/// isn't hardcoded — a `CircleBorder` already matches every preset, Cove's
+/// bigger radius included, since a circle has no corner to disagree about.
+class _TonalIconButton extends StatelessWidget {
+  const _TonalIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final Widget icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: cs.secondary.withValues(alpha: 0.08),
+      shape: const CircleBorder(),
+      child: IconButton(tooltip: tooltip, icon: icon, onPressed: onPressed),
     );
   }
 }
@@ -175,7 +236,7 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
 /// `TransactionsScreen` itself, since these buttons are no longer a
 /// descendant of the screen they control.
 class _TransactionsBarActions extends ConsumerWidget {
-  const _TransactionsBarActions();
+  const _TransactionsBarActions({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -185,19 +246,34 @@ class _TransactionsBarActions extends ConsumerWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        IconButton(
+        _TonalIconButton(
           tooltip: 'Filters',
-          icon: Badge(
-            isLabelVisible: filters.count > 0,
-            label: Text('${filters.count}'),
-            child: const Icon(Icons.tune_rounded),
+          icon: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            transitionBuilder: (child, animation) =>
+                ScaleTransition(scale: animation, child: child),
+            child: Badge(
+              key: ValueKey(filters.count),
+              isLabelVisible: filters.count > 0,
+              label: Text('${filters.count}'),
+              child: const Icon(Icons.tune_rounded),
+            ),
           ),
           onPressed: () => _openFilters(context, ref, filters),
         ),
-        IconButton(
+        const SizedBox(width: 4),
+        _TonalIconButton(
           tooltip: searchActive ? 'Close search' : 'Search',
-          icon: Icon(
-            searchActive ? Icons.close_rounded : Icons.search_rounded,
+          icon: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            transitionBuilder: (child, animation) => ScaleTransition(
+              scale: animation,
+              child: FadeTransition(opacity: animation, child: child),
+            ),
+            child: Icon(
+              searchActive ? Icons.close_rounded : Icons.search_rounded,
+              key: ValueKey(searchActive),
+            ),
           ),
           onPressed: () {
             final active = !searchActive;

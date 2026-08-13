@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
+import 'theme_shape.dart';
 
 /// The themes a user can pick, as a flat list — "System, Light, Dark,
-/// Colourful, Midnight" is what a person expects to see, not a matrix of
-/// brightness × palette.
+/// Colourful, Midnight, Cove" is what a person expects to see, not a matrix of
+/// brightness × palette × shape.
 ///
 /// The name is what gets written to the database, so **never rename a value**.
 /// Add new ones at the end.
@@ -16,6 +17,7 @@ enum ThemePreset {
     mode: ThemeMode.system,
     lightPalette: AppPalettes.monoLight,
     darkPalette: AppPalettes.monoDark,
+    shape: ThemeShape.classic,
   ),
   light(
     label: 'Light',
@@ -24,6 +26,7 @@ enum ThemePreset {
     mode: ThemeMode.light,
     lightPalette: AppPalettes.monoLight,
     darkPalette: AppPalettes.monoLight,
+    shape: ThemeShape.classic,
   ),
   dark(
     label: 'Dark',
@@ -32,6 +35,7 @@ enum ThemePreset {
     mode: ThemeMode.dark,
     lightPalette: AppPalettes.monoDark,
     darkPalette: AppPalettes.monoDark,
+    shape: ThemeShape.classic,
   ),
   colourful(
     label: 'Colourful',
@@ -40,6 +44,7 @@ enum ThemePreset {
     mode: ThemeMode.system,
     lightPalette: AppPalettes.vividLight,
     darkPalette: AppPalettes.vividDark,
+    shape: ThemeShape.classic,
   ),
   midnight(
     label: 'Midnight',
@@ -48,6 +53,16 @@ enum ThemePreset {
     mode: ThemeMode.dark,
     lightPalette: AppPalettes.midnight,
     darkPalette: AppPalettes.midnight,
+    shape: ThemeShape.classic,
+  ),
+  cove(
+    label: 'Cove',
+    description: 'Soft curves, ocean blue — follows your device',
+    icon: Icons.water_rounded,
+    mode: ThemeMode.system,
+    lightPalette: AppPalettes.coveLight,
+    darkPalette: AppPalettes.coveDark,
+    shape: ThemeShape.soft,
   );
 
   const ThemePreset({
@@ -57,6 +72,7 @@ enum ThemePreset {
     required this.mode,
     required this.lightPalette,
     required this.darkPalette,
+    required this.shape,
   });
 
   final String label;
@@ -69,14 +85,16 @@ enum ThemePreset {
   final Palette lightPalette;
   final Palette darkPalette;
 
+  /// Card/control radius and headline weight — see [ThemeShape].
+  final ThemeShape shape;
+
   /// The palette actually shown, for previews and swatches.
   Palette resolve(Brightness platformBrightness) => switch (mode) {
-        ThemeMode.light => lightPalette,
-        ThemeMode.dark => darkPalette,
-        ThemeMode.system => platformBrightness == Brightness.dark
-            ? darkPalette
-            : lightPalette,
-      };
+    ThemeMode.light => lightPalette,
+    ThemeMode.dark => darkPalette,
+    ThemeMode.system =>
+      platformBrightness == Brightness.dark ? darkPalette : lightPalette,
+  };
 
   static const fallback = ThemePreset.system;
 

@@ -139,6 +139,35 @@ class AppPalettes {
     onPrimary: Color(0xFF1A1030),
   );
 
+  // ── Cove: ocean blue, soft chrome (see ThemeShape.soft) ──────────────────
+  static const coveLight = Palette(
+    brightness: Brightness.light,
+    bg: Color(0xFFF5F6F8),
+    surface: Color(0xFFF5F6F8),
+    surfaceHigh: Color(0xFFFFFFFF),
+    track: Color(0xFFE8EBF0),
+    border: Color(0xFFDEE2E8),
+    text: Color(0xFF0B0D12),
+    textMuted: Color(0xFF6C7480),
+    accent: Color(0xFF1C6EDB),
+    primary: Color(0xFF1C6EDB),
+    onPrimary: Color(0xFFFFFFFF),
+  );
+
+  static const coveDark = Palette(
+    brightness: Brightness.dark,
+    bg: Color(0xFF0A0E14),
+    surface: Color(0xFF10151D),
+    surfaceHigh: Color(0xFF171D27),
+    track: Color(0xFF212836),
+    border: Color(0xFF2A3140),
+    text: Color(0xFFEEF1F6),
+    textMuted: Color(0xFF8B94A3),
+    accent: Color(0xFF4C8DF5),
+    primary: Color(0xFF4C8DF5),
+    onPrimary: Color(0xFF071019),
+  );
+
   // ── Midnight: deep navy, cyan accent. Dark only. ─────────────────────────
   static const midnight = Palette(
     brightness: Brightness.dark,
