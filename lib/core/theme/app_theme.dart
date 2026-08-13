@@ -2,21 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'app_colors.dart';
+import 'theme_shape.dart';
 
 /// One UI–inspired: large rounded cards, generous spacing, big titles.
-/// The chrome is whatever [Palette] it is handed; money colours never change.
+/// The chrome is whatever [Palette]/[ThemeShape] it is handed; money colours
+/// never change.
 class AppTheme {
   const AppTheme._();
 
-  static const _radius = 20.0;
-  static const _cardRadius = 24.0;
-
   /// The default monochrome pair, used before a preference has loaded.
-  static ThemeData get light => of(AppPalettes.monoLight);
-  static ThemeData get dark => of(AppPalettes.monoDark);
+  static ThemeData get light => of(AppPalettes.monoLight, ThemeShape.classic);
+  static ThemeData get dark => of(AppPalettes.monoDark, ThemeShape.classic);
 
-  static ThemeData of(Palette p) {
+  static ThemeData of(Palette p, ThemeShape shape) {
     final isDark = p.brightness == Brightness.dark;
+    final radius = shape.controlRadius;
+    final cardRadius = shape.cardRadius;
 
     final scheme = ColorScheme(
       brightness: p.brightness,
@@ -53,12 +54,13 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        systemOverlayStyle:
-            isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+        systemOverlayStyle: isDark
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark,
         titleTextStyle: base.textTheme.headlineSmall?.copyWith(
           color: p.text,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.4,
+          fontWeight: shape.headlineWeight,
+          letterSpacing: shape.headlineLetterSpacing,
         ),
       ),
       cardTheme: CardThemeData(
@@ -67,7 +69,7 @@ class AppTheme {
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(_cardRadius),
+          borderRadius: BorderRadius.circular(cardRadius),
           side: BorderSide(color: p.border),
         ),
       ),
@@ -76,7 +78,7 @@ class AppTheme {
         iconColor: p.textMuted,
         textColor: p.text,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(_radius),
+          borderRadius: BorderRadius.circular(radius),
         ),
       ),
       chipTheme: ChipThemeData(
@@ -84,9 +86,7 @@ class AppTheme {
         selectedColor: p.accent.withValues(alpha: 0.14),
         checkmarkColor: p.accent,
         side: BorderSide(color: p.border),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(999),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
         labelStyle: base.textTheme.labelLarge?.copyWith(color: p.text),
         secondaryLabelStyle: base.textTheme.labelLarge?.copyWith(
           color: p.accent,
@@ -102,38 +102,35 @@ class AppTheme {
           // wrapped in Expanded/Flexible.
           minimumSize: const Size.fromHeight(56),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_radius),
+            borderRadius: BorderRadius.circular(radius),
           ),
-          textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: p.surface,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 18,
+          vertical: 18,
+        ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_radius),
+          borderRadius: BorderRadius.circular(radius),
           borderSide: BorderSide(color: p.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_radius),
+          borderRadius: BorderRadius.circular(radius),
           borderSide: BorderSide(color: p.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_radius),
+          borderRadius: BorderRadius.circular(radius),
           borderSide: BorderSide(color: p.accent, width: 1.6),
         ),
       ),
       textTheme: base.textTheme.apply(bodyColor: p.text, displayColor: p.text),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     );
   }

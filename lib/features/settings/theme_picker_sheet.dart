@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/theme_preset.dart';
+import '../../core/theme/theme_shape.dart';
 import '../../core/widgets/motion.dart';
 import '../../data/providers.dart';
 
@@ -12,11 +13,11 @@ class ThemePickerSheet extends ConsumerWidget {
   const ThemePickerSheet({super.key});
 
   static Future<void> show(BuildContext context) => showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        showDragHandle: true,
-        builder: (_) => const ThemePickerSheet(),
-      );
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (_) => const ThemePickerSheet(),
+  );
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -112,7 +113,7 @@ class _PresetTile extends StatelessWidget {
             ),
             child: Row(
               children: [
-                _Swatch(palette: palette),
+                _Swatch(palette: palette, shape: preset.shape),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -166,11 +167,14 @@ class _PresetTile extends StatelessWidget {
   }
 }
 
-/// A miniature of the theme: its page, a card on it, and the accent.
+/// A miniature of the theme: its page, a card on it, and the accent. The
+/// card's own corner scales with [shape] — Cove's swatch shows its bigger
+/// squircle at a glance, the same way its colour shows in the fill.
 class _Swatch extends StatelessWidget {
-  const _Swatch({required this.palette});
+  const _Swatch({required this.palette, required this.shape});
 
   final Palette palette;
+  final ThemeShape shape;
 
   @override
   Widget build(BuildContext context) {
@@ -179,7 +183,7 @@ class _Swatch extends StatelessWidget {
       height: 52,
       decoration: BoxDecoration(
         color: palette.bg,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(shape.controlRadius * 0.7),
         border: Border.all(color: palette.border),
       ),
       child: Padding(
@@ -191,7 +195,7 @@ class _Swatch extends StatelessWidget {
               height: 12,
               decoration: BoxDecoration(
                 color: palette.surfaceHigh,
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(shape.cardRadius / 6),
                 border: Border.all(color: palette.border),
               ),
             ),

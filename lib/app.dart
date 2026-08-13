@@ -236,8 +236,8 @@ class _XpencAppState extends ConsumerState<XpencApp>
       debugShowCheckedModeBanner: false,
       // A preset that forces one brightness stores the same palette in both
       // slots, so `themeMode` alone decides which of these two is used.
-      theme: AppTheme.of(preset.lightPalette),
-      darkTheme: AppTheme.of(preset.darkPalette),
+      theme: AppTheme.of(preset.lightPalette, preset.shape),
+      darkTheme: AppTheme.of(preset.darkPalette, preset.shape),
       themeMode: preset.mode,
       routerConfig: appRouter,
       // A failed database must never look like "still loading".
@@ -266,8 +266,7 @@ class _XpencAppState extends ConsumerState<XpencApp>
                         if (_locked)
                           Positioned.fill(
                             child: LockScreen(
-                              onUnlocked: () =>
-                                  setState(() => _locked = false),
+                              onUnlocked: () => setState(() => _locked = false),
                             ),
                           ),
                       ],

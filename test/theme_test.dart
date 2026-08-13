@@ -48,18 +48,48 @@ void main() {
         'distinct from cards', () {
       for (final preset in ThemePreset.values) {
         for (final p in [preset.lightPalette, preset.darkPalette]) {
-          expect(p.surfaceHigh, isNot(p.bg), reason: '${preset.name}: card == page');
-          expect(p.track, isNot(p.surfaceHigh), reason: '${preset.name}: track == card');
+          expect(
+            p.surfaceHigh,
+            isNot(p.bg),
+            reason: '${preset.name}: card == page',
+          );
+          expect(
+            p.track,
+            isNot(p.surfaceHigh),
+            reason: '${preset.name}: track == card',
+          );
         }
       }
     });
 
     test('money colours are identical in every theme', () {
-      final schemes =
-          ThemePreset.values.map((p) => AppTheme.of(p.lightPalette).colorScheme);
+      final schemes = ThemePreset.values.map(
+        (p) => AppTheme.of(p.lightPalette, p.shape).colorScheme,
+      );
       // `error` is the one money colour the ColorScheme carries. If a palette
       // ever repainted it, red would stop meaning "expense".
       expect(schemes.map((s) => s.error).toSet(), hasLength(1));
+    });
+
+    test('Cove renders with its own bigger, softer shape — not the shared '
+        'classic radius every other preset before it used', () {
+      final classicCard =
+          AppTheme.of(
+                ThemePreset.system.lightPalette,
+                ThemePreset.system.shape,
+              ).cardTheme.shape
+              as RoundedRectangleBorder;
+      final coveCard =
+          AppTheme.of(
+                ThemePreset.cove.lightPalette,
+                ThemePreset.cove.shape,
+              ).cardTheme.shape
+              as RoundedRectangleBorder;
+
+      expect(
+        (coveCard.borderRadius as BorderRadius).topLeft.x,
+        greaterThan((classicCard.borderRadius as BorderRadius).topLeft.x),
+      );
     });
   });
 
@@ -108,14 +138,16 @@ void main() {
       expect((await db.getSettings()).themeName, ThemePreset.light.name);
     });
 
-    test('restore still repairs a settings row that has no theme at all',
-        () async {
-      final dump = await db.exportAll();
-      (dump['settings'] as List).cast<Map>().first.remove('themeName');
+    test(
+      'restore still repairs a settings row that has no theme at all',
+      () async {
+        final dump = await db.exportAll();
+        (dump['settings'] as List).cast<Map>().first.remove('themeName');
 
-      await db.importAll(dump);
-      expect((await db.getSettings()).themeName, 'system');
-    });
+        await db.importAll(dump);
+        expect((await db.getSettings()).themeName, 'system');
+      },
+    );
 
     test('themePresetProvider reflects the stored row', () async {
       await db.setThemeName(ThemePreset.midnight.name);
@@ -164,8 +196,9 @@ void main() {
       await tester.pump(Duration.zero);
     }
 
-    testWidgets('the picker lists every preset and does not overflow',
-        (tester) async {
+    testWidgets('the picker lists every preset and does not overflow', (
+      tester,
+    ) async {
       await pump(tester, const Scaffold(body: ThemePickerSheet()));
       expect(tester.takeException(), isNull);
 
@@ -194,8 +227,9 @@ void main() {
       await unmount(tester);
     });
 
-    testWidgets('settings shows the stored theme, not a hardcoded label',
-        (tester) async {
+    testWidgets('settings shows the stored theme, not a hardcoded label', (
+      tester,
+    ) async {
       await tester.runAsync(() => db.setThemeName(ThemePreset.midnight.name));
 
       await pump(tester, const SettingsScreen());
@@ -205,8 +239,9 @@ void main() {
       await unmount(tester);
     });
 
-    testWidgets('a transaction card survives a long name, note and amount',
-        (tester) async {
+    testWidgets('a transaction card survives a long name, note and amount', (
+      tester,
+    ) async {
       await tester.runAsync(() async {
         final cash = (await db.watchAccounts().first)
             .firstWhere((a) => a.type == AccountType.cash)
