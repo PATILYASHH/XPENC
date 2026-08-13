@@ -145,6 +145,14 @@ class CaptureService {
     // Guardrail 4: never post a card the dedupe pass already flagged.
     if (card?.status == PendingStatus.duplicate) return false;
 
+    // Guardrail 4b: OCR misreads an amount far more easily than the SMS
+    // regex parser does (e.g. "500" read as "5OO") — a screenshot-derived
+    // card always waits for a human, no matter how confident the parse.
+    // Structurally redundant today (nothing routes a screenshot through this
+    // scan path — see `share_intake.dart`) but kept as a hard stop so a
+    // future wiring change can't silently start auto-posting them.
+    if (card?.source == MessageSourceKind.screenshot) return false;
+
     // Guardrail 5: the learned category must match the message direction.
     final category = await db.categoryById(rule.categoryId);
     if (category == null) return false;

@@ -47,12 +47,39 @@ final _rootKey = GlobalKey<NavigatorState>();
 /// `ScaffoldMessenger` `MaterialApp.router` installs, same as any in-screen
 /// `ScaffoldMessenger.of(context)` call. A no-op if the router isn't mounted
 /// yet (there is nothing to show a SnackBar over).
-void showAppSnackBar(String message) {
+void showAppSnackBar(String message, {SnackBarAction? action}) {
   final context = _rootKey.currentContext;
   if (context == null) return;
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(message)));
+    ..showSnackBar(SnackBar(content: Text(message), action: action));
+}
+
+/// The raw text ML Kit recognised off a shared screenshot XPENC couldn't
+/// turn into a transaction. A rejected screenshot parse never reaches
+/// `PendingTxns`, so without this there is no way to see what OCR actually
+/// read — see `ShareIntakeRejected.recognizedText` and GitHub #25.
+void showRecognizedTextDialog(String text) {
+  final context = _rootKey.currentContext;
+  if (context == null) return;
+  showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Recognised text'),
+      content: SingleChildScrollView(
+        child: SelectableText(
+          text.trim().isEmpty ? '(nothing recognised)' : text,
+          style: const TextStyle(fontFamily: 'monospace'),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close'),
+        ),
+      ],
+    ),
+  );
 }
 
 /// Detail screens push above the shell (`parentNavigatorKey: _rootKey`) so they

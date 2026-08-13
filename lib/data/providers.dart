@@ -9,6 +9,7 @@ import '../features/data_export/backup_service.dart';
 import '../features/message_capture/capture_service.dart';
 import '../features/message_capture/message_source.dart';
 import '../features/message_capture/share_intake.dart';
+import '../features/transactions/transaction_filters.dart';
 import 'database.dart';
 import 'tables.dart';
 
@@ -125,6 +126,21 @@ final statsShowYearProvider = StateProvider<bool>((ref) => false);
 /// The "Spending by category" pie: main categories (rolled up, the default)
 /// or a per-subcategory breakdown. See GitHub #40.
 final statsShowSubcategoriesProvider = StateProvider<bool>((ref) => false);
+
+// ── Transactions search & filter ───────────────────────────────────────────
+// Shared between the shared top bar (which owns the search/filter buttons —
+// see `AppShell`) and `TransactionsScreen` (which applies them to the list),
+// since the buttons no longer live inside the screen they act on.
+
+final txSearchActiveProvider = StateProvider<bool>((ref) => false);
+final txSearchQueryProvider = StateProvider<String>((ref) => '');
+
+/// `null` == the "All" chip.
+final txQuickFilterProvider = StateProvider<TxType?>((ref) => null);
+
+final txAdvancedFiltersProvider = StateProvider<TransactionFilters>(
+  (ref) => const TransactionFilters(),
+);
 
 /// Same split-aware category aggregation as [spendByCategoryProvider], for a
 /// whole calendar year instead of one month — composed locally so the
@@ -528,6 +544,12 @@ final passcodeLengthProvider = Provider<int>((ref) {
 
 final preventScreenshotsProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.preventScreenshots ?? false;
+});
+
+/// Whether every amount app-wide is masked — the top bar's eye icon. See
+/// `AmountVisibilityScope` in `money_text.dart`.
+final hideAmountsProvider = Provider<bool>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.hideAmounts ?? false;
 });
 
 /// A standing notification with "Add expense" / "Add income" shortcuts —

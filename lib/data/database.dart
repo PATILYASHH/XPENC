@@ -160,7 +160,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 27;
+  int get schemaVersion => 29;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -307,6 +307,12 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 27) {
         await _addColumnIfMissing(m, settings, settings.quickAddAccountId);
+      }
+      if (from < 28) {
+        await _addColumnIfMissing(m, pendingTxns, pendingTxns.sourceImagePath);
+      }
+      if (from < 29) {
+        await _addColumnIfMissing(m, settings, settings.hideAmounts);
       }
     },
     beforeOpen: (details) async {
@@ -2447,7 +2453,16 @@ class AppDatabase extends _$AppDatabase {
 
   /// Store a parsed message as a review card. Returns the row id, or `null`
   /// when the exact message was already ingested (idempotent re-scan).
-  Future<int?> ingestMessage(RawMessage msg, ParsedMessage parsed) {
+  ///
+  /// [sourceImagePath] is set only for a shared screenshot (see
+  /// `MessageSourceKind.screenshot`) — the caller has already copied it into
+  /// permanent app storage, so a `null` return here (exact duplicate) means
+  /// the caller is responsible for deleting that now-orphaned copy.
+  Future<int?> ingestMessage(
+    RawMessage msg,
+    ParsedMessage parsed, {
+    String? sourceImagePath,
+  }) {
     return transaction(() async {
       final key = dedupeKeyFor(msg);
       final seen = await (select(
@@ -2476,6 +2491,7 @@ class AppDatabase extends _$AppDatabase {
           parsedBalance: Value(parsed.availableBalance),
           confidence: Value(parsed.confidence),
           matchedAccountId: Value(matched?.id),
+          sourceImagePath: Value(sourceImagePath),
           status: Value(
             duplicate ? PendingStatus.duplicate : PendingStatus.pending,
           ),
@@ -2491,6 +2507,12 @@ class AppDatabase extends _$AppDatabase {
   ///
   /// [autoFilled] marks it as machine-decided so the card still shows the user
   /// what happened, with an Undo.
+  ///
+  /// [payee] lets the review sheet post the user's *edited* payee instead of
+  /// whatever was auto-extracted — falls back to [PendingTxnRow.parsedMerchant]
+  /// when not given (the auto-fill path never overrides it). [learnMerchantRule]
+  /// still keys off whichever string actually gets posted, so a corrected OCR
+  /// misread is what gets learned, not the misread itself.
   Future<int> approvePending(
     int pendingId, {
     required int categoryId,
@@ -2498,6 +2520,7 @@ class AppDatabase extends _$AppDatabase {
     bool autoFilled = false,
     int? appliedRuleId,
     bool learnMerchantRule = false,
+    String? payee,
   }) {
     return transaction(() async {
       final p = await (select(
@@ -2510,6 +2533,8 @@ class AppDatabase extends _$AppDatabase {
         throw ArgumentError('This card was already posted.');
       }
 
+      final resolvedPayee = payee ?? p.parsedMerchant;
+
       final txId = await addTransaction(
         type: txTypeFor(p.parsedDirection!),
         amount: p.parsedAmount!,
@@ -2517,6 +2542,8 @@ class AppDatabase extends _$AppDatabase {
         categoryId: categoryId,
         date: p.receivedAt,
         note: p.parsedMerchant,
+        payee: resolvedPayee,
+        imagePath: p.sourceImagePath,
       );
 
       await (update(pendingTxns)..where((t) => t.id.equals(pendingId))).write(
@@ -2530,9 +2557,9 @@ class AppDatabase extends _$AppDatabase {
         ),
       );
 
-      if (learnMerchantRule && p.parsedMerchant != null) {
+      if (learnMerchantRule && resolvedPayee != null) {
         await upsertMerchantRule(
-          pattern: p.parsedMerchant!,
+          pattern: resolvedPayee,
           categoryId: categoryId,
           accountId: accountId,
         );
@@ -2779,6 +2806,9 @@ class AppDatabase extends _$AppDatabase {
   Future<void> setPreventScreenshots(bool value) => update(
     settings,
   ).write(SettingsCompanion(preventScreenshots: Value(value)));
+
+  Future<void> setHideAmounts(bool value) =>
+      update(settings).write(SettingsCompanion(hideAmounts: Value(value)));
 
   // ── Expense reminder ─────────────────────────────────────────────────────
 

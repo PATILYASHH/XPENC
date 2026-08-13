@@ -12,6 +12,7 @@ import '../../core/widgets/motion.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import 'transaction_filters.dart';
 
 /// All transactions, grouped day-wise (newest first) with a per-day net total.
 /// Searchable by note / category / account and filterable by [TxType].
@@ -23,63 +24,17 @@ class TransactionsScreen extends ConsumerStatefulWidget {
 }
 
 class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
+  // The search field itself still lives here (this is where it's drawn), but
+  // whether it's *open* — and every filter value — lives in providers now:
+  // the buttons that drive them moved to the shared top bar (see
+  // `AppShell`'s `_TransactionsBarActions`), which is no longer a descendant
+  // of this screen.
   final TextEditingController _searchController = TextEditingController();
-  bool _searchActive = false;
-  String _query = '';
-
-  /// `null` == the "All" chip.
-  TxType? _filter;
-
-  /// Advanced filters, opened from the tune icon. Empty set / null == no
-  /// restriction on that facet.
-  DateTimeRange? _dateRange;
-  Set<int> _accountFilter = {};
-  Set<int> _categoryFilter = {};
-  Set<int> _tagFilter = {};
-
-  int get _advancedFilterCount =>
-      (_dateRange != null ? 1 : 0) +
-      (_accountFilter.isNotEmpty ? 1 : 0) +
-      (_categoryFilter.isNotEmpty ? 1 : 0) +
-      (_tagFilter.isNotEmpty ? 1 : 0);
-
-  Future<void> _openFilters() async {
-    final result = await showModalBottomSheet<_AdvancedFilters>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => _FiltersSheet(
-        initial: _AdvancedFilters(
-          dateRange: _dateRange,
-          accountIds: _accountFilter,
-          categoryIds: _categoryFilter,
-          tagIds: _tagFilter,
-        ),
-      ),
-    );
-    if (result == null || !mounted) return;
-    setState(() {
-      _dateRange = result.dateRange;
-      _accountFilter = result.accountIds;
-      _categoryFilter = result.categoryIds;
-      _tagFilter = result.tagIds;
-    });
-  }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  void _toggleSearch() {
-    setState(() {
-      _searchActive = !_searchActive;
-      if (!_searchActive) {
-        _searchController.clear();
-        _query = '';
-      }
-    });
   }
 
   /// Deleting a ledger row is not undoable, so it is not done on a swipe alone.
@@ -145,9 +100,30 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final tagsByTx = ref.watch(transactionTagsByTxProvider);
     final splitsByTx = ref.watch(transactionSplitsByTxProvider);
 
+    final searchActive = ref.watch(txSearchActiveProvider);
+    final query = ref.watch(txSearchQueryProvider);
+    final quickFilter = ref.watch(txQuickFilterProvider);
+    final advanced = ref.watch(txAdvancedFiltersProvider);
+    final searchOrFilterActive =
+        query.trim().isNotEmpty || quickFilter != null || advanced.count > 0;
+    // The top bar's close-search button clears the provider directly; this
+    // screen owns the actual TextField, so it's on the hook for clearing the
+    // stale text left sitting in its controller.
+    ref.listen<bool>(txSearchActiveProvider, (_, next) {
+      if (!next) _searchController.clear();
+    });
+
     // Filtering runs once per build and feeds both the summary and the list.
     final matched = txAsync.hasValue
-        ? _filtered(txAsync.value!, categoryMap, accountMap, tagsByTx)
+        ? _filtered(
+            txAsync.value!,
+            categoryMap,
+            accountMap,
+            tagsByTx,
+            query: query,
+            filter: quickFilter,
+            advanced: advanced,
+          )
         : const <TransactionRow>[];
 
     final Widget body = txAsync.when(
@@ -167,7 +143,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         if (matched.isEmpty) {
           return SliverFillRemaining(
             hasScrollBody: false,
-            child: _searchOrFilterActive
+            child: searchOrFilterActive
                 ? const _EmptyState(
                     icon: Icons.search_off_rounded,
                     title: 'Nothing matches',
@@ -225,36 +201,17 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          SliverAppBar.large(
-            title: const Text('Transactions'),
-            actions: [
-              IconButton(
-                tooltip: 'Filters',
-                icon: Badge(
-                  isLabelVisible: _advancedFilterCount > 0,
-                  label: Text('$_advancedFilterCount'),
-                  child: const Icon(Icons.tune_rounded),
-                ),
-                onPressed: _openFilters,
-              ),
-              IconButton(
-                tooltip: _searchActive ? 'Close search' : 'Search',
-                icon: Icon(
-                  _searchActive ? Icons.close_rounded : Icons.search_rounded,
-                ),
-                onPressed: _toggleSearch,
-              ),
-            ],
-          ),
           SliverPersistentHeader(
             pinned: true,
             delegate: _StickyHeaderDelegate(
-              searchActive: _searchActive,
+              searchActive: searchActive,
               controller: _searchController,
-              filter: _filter,
+              filter: quickFilter,
               background: theme.colorScheme.surface,
-              onQueryChanged: (value) => setState(() => _query = value),
-              onFilterChanged: (value) => setState(() => _filter = value),
+              onQueryChanged: (value) =>
+                  ref.read(txSearchQueryProvider.notifier).state = value,
+              onFilterChanged: (value) =>
+                  ref.read(txQuickFilterProvider.notifier).state = value,
             ),
           ),
           SliverToBoxAdapter(child: _SummaryStrip(txns: matched)),
@@ -265,9 +222,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     );
   }
 
-  bool get _searchOrFilterActive =>
-      _query.trim().isNotEmpty || _filter != null || _advancedFilterCount > 0;
-
   // ── Data shaping ────────────────────────────────────────────────────────────
 
   /// Applies the search box, the type chip, and every advanced filter.
@@ -276,16 +230,20 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     List<TransactionRow> txns,
     Map<int, CategoryRow> categoryMap,
     Map<int, AccountRow> accountMap,
-    Map<int, List<TagRow>> tagsByTx,
-  ) {
-    final q = _query.trim().toLowerCase();
+    Map<int, List<TagRow>> tagsByTx, {
+    required String query,
+    required TxType? filter,
+    required TransactionFilters advanced,
+  }) {
+    final q = query.trim().toLowerCase();
+    final dateRange = advanced.dateRange;
     // Inclusive of the whole end day, not just its midnight instant.
-    final rangeEnd = _dateRange == null
+    final rangeEnd = dateRange == null
         ? null
         : DateTime(
-            _dateRange!.end.year,
-            _dateRange!.end.month,
-            _dateRange!.end.day,
+            dateRange.end.year,
+            dateRange.end.month,
+            dateRange.end.day,
             23,
             59,
             59,
@@ -293,24 +251,25 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           );
 
     return txns.where((tx) {
-      if (_filter != null && tx.type != _filter) return false;
-      if (_dateRange != null &&
-          (tx.date.isBefore(_dateRange!.start) || tx.date.isAfter(rangeEnd!))) {
+      if (filter != null && tx.type != filter) return false;
+      if (dateRange != null &&
+          (tx.date.isBefore(dateRange.start) || tx.date.isAfter(rangeEnd!))) {
         return false;
       }
-      if (_accountFilter.isNotEmpty &&
-          !_accountFilter.contains(tx.accountId) &&
+      if (advanced.accountIds.isNotEmpty &&
+          !advanced.accountIds.contains(tx.accountId) &&
           !(tx.toAccountId != null &&
-              _accountFilter.contains(tx.toAccountId))) {
+              advanced.accountIds.contains(tx.toAccountId))) {
         return false;
       }
-      if (_categoryFilter.isNotEmpty &&
-          !(tx.categoryId != null && _categoryFilter.contains(tx.categoryId))) {
+      if (advanced.categoryIds.isNotEmpty &&
+          !(tx.categoryId != null &&
+              advanced.categoryIds.contains(tx.categoryId))) {
         return false;
       }
-      if (_tagFilter.isNotEmpty) {
+      if (advanced.tagIds.isNotEmpty) {
         final tagIds = (tagsByTx[tx.id] ?? const []).map((t) => t.id).toSet();
-        if (tagIds.intersection(_tagFilter).isEmpty) return false;
+        if (tagIds.intersection(advanced.tagIds).isEmpty) return false;
       }
       if (q.isEmpty) return true;
       final cat = tx.categoryId == null ? null : categoryMap[tx.categoryId];
@@ -1112,247 +1071,6 @@ class _FilterChips extends StatelessWidget {
   }
 }
 
-// ── Advanced filters (date range · account · category · tag) ──────────────────
-
-/// Snapshot of everything the tune sheet can set, handed back to the screen
-/// as one value when "Apply" is pressed.
-class _AdvancedFilters {
-  const _AdvancedFilters({
-    required this.dateRange,
-    required this.accountIds,
-    required this.categoryIds,
-    required this.tagIds,
-  });
-
-  final DateTimeRange? dateRange;
-  final Set<int> accountIds;
-  final Set<int> categoryIds;
-  final Set<int> tagIds;
-}
-
-/// Bottom sheet: date range plus multi-select chips for account, category and
-/// tag. Edits a local copy — nothing applies to the list until "Apply".
-class _FiltersSheet extends ConsumerStatefulWidget {
-  const _FiltersSheet({required this.initial});
-
-  final _AdvancedFilters initial;
-
-  @override
-  ConsumerState<_FiltersSheet> createState() => _FiltersSheetState();
-}
-
-class _FiltersSheetState extends ConsumerState<_FiltersSheet> {
-  DateTimeRange? _dateRange;
-  final Set<int> _accountIds = {};
-  final Set<int> _categoryIds = {};
-  final Set<int> _tagIds = {};
-
-  @override
-  void initState() {
-    super.initState();
-    _dateRange = widget.initial.dateRange;
-    _accountIds.addAll(widget.initial.accountIds);
-    _categoryIds.addAll(widget.initial.categoryIds);
-    _tagIds.addAll(widget.initial.tagIds);
-  }
-
-  Future<void> _pickDateRange() async {
-    final now = DateTime.now();
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(now.year + 1),
-      initialDateRange: _dateRange,
-    );
-    if (picked == null) return;
-    setState(() => _dateRange = picked);
-  }
-
-  void _clearAll() {
-    setState(() {
-      _dateRange = null;
-      _accountIds.clear();
-      _categoryIds.clear();
-      _tagIds.clear();
-    });
-  }
-
-  void _apply() {
-    Navigator.of(context).pop(
-      _AdvancedFilters(
-        dateRange: _dateRange,
-        accountIds: _accountIds,
-        categoryIds: _categoryIds,
-        tagIds: _tagIds,
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final accounts = ref.watch(accountsProvider).valueOrNull ?? const [];
-    final income =
-        ref.watch(categoriesProvider(CategoryKind.income)).valueOrNull ??
-        const [];
-    final expense =
-        ref.watch(categoriesProvider(CategoryKind.expense)).valueOrNull ??
-        const [];
-    final categories = [...expense, ...income];
-    final tags = ref.watch(tagsProvider).valueOrNull ?? const [];
-
-    return ConstrainedBox(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.85,
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text('Filters', style: theme.textTheme.titleLarge),
-                  ),
-                  TextButton(
-                    onPressed: _clearAll,
-                    child: const Text('Clear all'),
-                  ),
-                ],
-              ),
-            ),
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _sectionLabel(theme, 'Date range'),
-                    const SizedBox(height: 10),
-                    OutlinedButton.icon(
-                      onPressed: _pickDateRange,
-                      icon: const Icon(Icons.event_outlined, size: 18),
-                      label: Text(
-                        _dateRange == null
-                            ? 'Any time'
-                            : '${DateFormat('d MMM yyyy').format(_dateRange!.start)} '
-                                  '– ${DateFormat('d MMM yyyy').format(_dateRange!.end)}',
-                      ),
-                    ),
-                    if (_dateRange != null)
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton(
-                          onPressed: () => setState(() => _dateRange = null),
-                          child: const Text('Clear date range'),
-                        ),
-                      ),
-                    if (accounts.isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      _sectionLabel(theme, 'Account'),
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          for (final a in accounts)
-                            FilterChip(
-                              label: Text(a.name),
-                              selected: _accountIds.contains(a.id),
-                              onSelected: (v) => setState(() {
-                                if (v) {
-                                  _accountIds.add(a.id);
-                                } else {
-                                  _accountIds.remove(a.id);
-                                }
-                              }),
-                            ),
-                        ],
-                      ),
-                    ],
-                    if (categories.isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      _sectionLabel(theme, 'Category'),
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          for (final c in categories)
-                            FilterChip(
-                              label: Text(c.name),
-                              avatar: Icon(
-                                AppIcons.resolve(c.iconKey),
-                                size: 16,
-                              ),
-                              selected: _categoryIds.contains(c.id),
-                              onSelected: (v) => setState(() {
-                                if (v) {
-                                  _categoryIds.add(c.id);
-                                } else {
-                                  _categoryIds.remove(c.id);
-                                }
-                              }),
-                            ),
-                        ],
-                      ),
-                    ],
-                    if (tags.isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      _sectionLabel(theme, 'Tag'),
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          for (final t in tags)
-                            FilterChip(
-                              label: Text(t.name),
-                              selected: _tagIds.contains(t.id),
-                              selectedColor: Color(
-                                t.colorValue,
-                              ).withValues(alpha: 0.22),
-                              checkmarkColor: Color(t.colorValue),
-                              onSelected: (v) => setState(() {
-                                if (v) {
-                                  _tagIds.add(t.id);
-                                } else {
-                                  _tagIds.remove(t.id);
-                                }
-                              }),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-              child: FilledButton(
-                onPressed: _apply,
-                child: const Text('Apply'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _sectionLabel(ThemeData theme, String text) {
-    return Text(
-      text.toUpperCase(),
-      style: theme.textTheme.labelSmall?.copyWith(
-        color: theme.colorScheme.onSurfaceVariant,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 1.1,
-      ),
-    );
-  }
-}
+// Advanced filters (date range · account · category · tag) now live in
+// `transaction_filters.dart` as `TransactionFilters`/`TransactionFiltersSheet`
+// — shared with the top bar's filter button, which opens the sheet directly.

@@ -67,6 +67,7 @@ void main() {
       lastAutoBackupAt: lastAutoBackupAt,
       backupRetentionDays: 180,
       preventScreenshots: false,
+      hideAmounts: false,
     );
 
     final now = DateTime(2026, 8, 5, 12);

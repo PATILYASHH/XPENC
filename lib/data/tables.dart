@@ -66,8 +66,13 @@ enum ReminderStatus { open, done, snoozed, dismissed }
 /// notification listener can be swapped in without touching anything else.
 /// `shared`: the user picked XPENC from the Android Share sheet on a
 /// message from their SMS/bank app — see `share_intake.dart` and GitHub
-/// #26. A `textEnum` column, so adding this needed no migration.
-enum MessageSourceKind { sms, notification, shared }
+/// #26. `screenshot`: the user shared a payment-app screenshot (PhonePe/
+/// GPay/Paytm "payment successful" screen) instead of text — the image is
+/// OCR'd on-device and the recognised text is parsed by `ScreenshotParser`
+/// exactly like a shared SMS is by `MessageParser` — see
+/// `parser/screenshot_parser.dart` and GitHub #25. A `textEnum` column, so
+/// adding either of these needed no migration.
+enum MessageSourceKind { sms, notification, shared, screenshot }
 
 /// Banking sense: `debit` = money out, `credit` = money in.
 /// (Distinct from a *credit card*, which is an account.)
@@ -513,6 +518,14 @@ class Settings extends Table {
   BoolColumn get preventScreenshots =>
       boolean().withDefault(const Constant(false))();
 
+  /// Masks every amount rendered anywhere in the app (see
+  /// `AmountVisibilityScope` in `money_text.dart`) — flipped from the eye
+  /// icon in the top bar (`AppShell`). Persisted, not session-only: hiding
+  /// amounts is usually done right before handing the phone to someone, and
+  /// should still be hidden the next time the app opens, not reset.
+  BoolColumn get hideAmounts =>
+      boolean().withDefault(const Constant(false))();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -556,6 +569,13 @@ class PendingTxns extends Table {
   TextColumn get dedupeKey => text()();
 
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  /// Set only for [MessageSourceKind.screenshot] cards: the shared image,
+  /// already copied into the app's own `documents/receipts/` directory (see
+  /// `ReceiptStorage.storeExternalFile`) — the same directory a manually
+  /// attached receipt lives in, so an approved card needs no second copy:
+  /// this path is used directly as the new transaction's `imagePath`.
+  TextColumn get sourceImagePath => text().nullable()();
 
   @override
   List<Set<Column>> get uniqueKeys => [

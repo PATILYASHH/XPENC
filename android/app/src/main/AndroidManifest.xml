@@ -56,14 +56,18 @@
             <intent-filter>
                 <action android:name="es.antonborri.home_widget.action.LAUNCH"/>
             </intent-filter>
-            <!-- Puts XPENC in the system Share sheet for plain text, so a bank
-                 SMS can be shared straight in and parsed — a Play-compliant
-                 route into message capture that needs no READ_SMS permission
-                 (see share_intake.dart and GitHub #26). -->
+            <!-- Puts XPENC in the system Share sheet for plain text (a bank
+                 SMS, see share_intake.dart and GitHub #26) and for images (a
+                 PhonePe/GPay/Paytm "payment successful" screenshot, OCR'd
+                 on-device with ML Kit — see message_capture/ocr_service.dart,
+                 parser/screenshot_parser.dart and GitHub #25). Both needing no
+                 extra Android permission. Two <data> tags in one filter, not
+                 two filters: Android unions them, matching either mime type. -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <data android:mimeType="text/plain"/>
+                <data android:mimeType="image/*"/>
             </intent-filter>
         </activity>
 
