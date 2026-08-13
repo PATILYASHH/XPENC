@@ -62,8 +62,11 @@ jobs:
           storeFile=$GITHUB_WORKSPACE/android/xpenc-release.jks
           EOF
 
+      # Same enforcement as the stable release workflow — a BETA tag is
+      # exactly the kind of "before tagging a release" moment GitHub #57
+      # asked to catch a drifted lock file at.
       - name: Pub get
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Analyze
         run: flutter analyze
