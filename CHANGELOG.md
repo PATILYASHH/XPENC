@@ -6,6 +6,51 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
+## [1.4.2] — 2026-08-13
+
+### Added
+- **Share a payment screenshot straight into XPENC** — pick XPENC from the
+  Share sheet on a Paytm/Google Pay/PhonePe "payment successful" or
+  "transaction details" screenshot and it's read entirely on-device (ML Kit
+  text recognition, no network call) and parsed into the Review Inbox, the
+  same way a shared bank SMS already is. Tuned against real screenshots from
+  all three apps — a misread currency glyph glued onto the amount, a stray
+  avatar-initial letter next to it, and a "transaction details" layout with
+  no sent/received verb at all are all handled (#25).
+- **A new theme: Cove** — an ocean-blue accent over noticeably bigger,
+  softer "squircle" cards and bolder headlines, in the spirit of Samsung's
+  One UI 9. Settings → Theme; every existing theme renders exactly as
+  before.
+- **Hide amounts, right where they're shown** — a small eye icon now sits
+  next to every hero balance (the Dashboard's Total Money card, the
+  Accounts screen's total, an account's own balance) instead of one
+  disconnected toggle in the top bar. Tapping any one of them still masks
+  every amount app-wide.
+
+### Changed
+- **The top bar is decluttered and consolidated.** Dashboard, Persons and
+  More used to render their own full-size title bar directly underneath the
+  persistent top bar — nearly 190dp of stacked chrome before any real
+  content appeared. Their titles now live in the shared bar itself, which
+  stays a standard toolbar height; every screen reached from the More hub
+  (Accounts, Auto, Payees, ...) had its own oversized title bar shrunk to
+  match, so the whole app now has one consistent chrome height instead of
+  three different ones. Search and Filter on the Transactions tab moved
+  into the same shared bar instead of sitting in a separate title row of
+  their own. The redundant Calendar shortcut was dropped from the bar
+  (still one tap away via More → Calendar & Reminders); Review Inbox
+  stayed, since it has no other entry point at all.
+
+### Fixed
+- **F-Droid's reproducible build could fail on a drifted lock file** — our
+  release and CI workflows ran a plain `flutter pub get`, which silently
+  rewrites `pubspec.lock` if it's ever out of sync with `pubspec.yaml`.
+  F-Droid's own build enforces strict lock-file fidelity with no such
+  fallback, so a drift invisible to us here could break their build only
+  after a tag was already published. All three workflows now enforce that
+  same strictness themselves, so a drift fails our own CI immediately
+  instead (#57).
+
 ## [1.4.1] — 2026-08-11
 
 ### Fixed
@@ -406,7 +451,8 @@ First public release. 🎉
 - `tool/verify_apk.sh` gates every shipped APK against the missing
   `libsqlite3.so` class of crash.
 
-[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.4.1...HEAD
+[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.4.2...HEAD
+[1.4.2]: https://github.com/PATILYASHH/XPENC/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/PATILYASHH/XPENC/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/PATILYASHH/XPENC/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/PATILYASHH/XPENC/compare/v1.2.1...v1.3.0
