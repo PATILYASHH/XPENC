@@ -60,12 +60,12 @@ adversarial audit that hardened it — is in [structure.md](structure.md).
 | 🛍️ **Shopping lists** | Named, colour-coded lists, not one flat list. |
 | 🔒 **Passcode lock** | An optional PIN gate on app open, with biometric unlock (fingerprint/face) on top. |
 | 📱 **Home screen widget** | Net worth at a glance on the Android home screen, live-updated with the ledger. |
-| 📩 **Bank-SMS auto-capture** — *coming soon* | Shipped in 1.0, paused in 1.1: the `READ_SMS` permission made Google Play Protect block direct APK installs. The on-device pipeline (parser · dedupe · review cards · Auto-Approve with real Undo) is intact and returns in a Play-compliant form. |
+| 📩 **Share it in — SMS or screenshot** | Share a bank SMS, or a Paytm/Google Pay/PhonePe payment screenshot, straight from your bank app. Read entirely on-device (no `READ_SMS` permission, no network call) and parsed into the Review Inbox — the same pipeline (dedupe · review cards · Auto-Approve with real Undo) either way. |
 | 👥 **Persons — dues & loans** | They-owe / I-owe with running balances, partial settlements, optional real account movement, editable ledger entries. |
 | 📅 **Calendar & cash reminders** | Day-wise in/out grid; EMI/bill reminders that post *nothing* until you confirm. |
 | 📊 **Insights** | Category pie, income vs expense, net-worth trend, per-account reports, and a downloadable Income & Expense PDF report — one chart engine, many views. |
 | 💾 **Backup & export** | Symmetric JSON backup/restore + CSV shaped for accountants / Tally. Backups land in the public `Download/BACKUP XPENC` folder so they survive an uninstall, with an optional automatic schedule and retention. |
-| 🖤 **Monochrome UI** | Material 3, One UI–inspired, true-black AMOLED dark theme. |
+| 🎨 **Six themes** | Material 3, One UI–inspired. True-black AMOLED dark, a violet "Colourful", a navy "Midnight", and Cove — a One UI 9–inspired look with an ocean-blue accent and bigger, softer rounded cards. |
 
 ## Download
 
