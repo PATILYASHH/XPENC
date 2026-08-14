@@ -199,6 +199,34 @@
         </li>
       </ul>
 
+      <h2>OCR corrections (optional)</h2>
+      <p>
+        Settings → Message Capture → OCR corrections lets you test a payment-app
+        screenshot against XPENC's on-device OCR and mark whether it read
+        correctly. This does nothing unless you open that screen yourself.
+      </p>
+      <ul>
+        <li>
+          Screenshots are processed on-device only — the image itself is never
+          stored or included in anything you send, only the correction you
+          choose to keep.
+        </li>
+        <li>
+          Tapping "Send" hands the extracted text — never the image — to your
+          own email app or the Android share sheet, the same mechanism used
+          for backup exports above. XPENC's own code makes no network call;
+          you choose where the text goes, the same way you choose where an
+          exported backup goes.
+        </li>
+        <li>
+          What's sent is a small JSON snippet: the payment app and country you
+          labeled it with, the raw recognised text, the amount/direction/payee/
+          reference XPENC's parser guessed from it, and what (if anything) you
+          corrected. No account balances, transaction history or other
+          financial records are included.
+        </li>
+      </ul>
+
       <h2>Data retention and deletion</h2>
       <p>Your data stays on your device until <strong>you</strong> remove it. You can:</p>
       <ol>

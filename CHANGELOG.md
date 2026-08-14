@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
+## [Unreleased]
+
+### Added
+- **OCR corrections** — Settings → Message Capture → OCR corrections lets you
+  test a payment-app screenshot against the real on-device OCR+parser
+  pipeline, mark whether it read correctly, and optionally send the
+  correction (extracted text only, never the image) to help improve parsing
+  for more apps and countries over time.
+
+### Changed
+- Screenshot OCR now uses Tesseract instead of Google ML Kit — ML Kit's
+  trained-model blobs are proprietary even in the bundled, no-Play-Services
+  form, which blocked F-Droid distribution (#57). Fully on-device either way;
+  no behavior change for existing users beyond OCR accuracy.
+
 ## [1.4.2] — 2026-08-13
 
 ### Added
