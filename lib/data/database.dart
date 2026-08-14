@@ -135,6 +135,7 @@ typedef CombinedStatementLine = ({
     ShoppingItems,
     BackupRecords,
     Allocations,
+    OcrCorrections,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -160,7 +161,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 29;
+  int get schemaVersion => 30;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -313,6 +314,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 29) {
         await _addColumnIfMissing(m, settings, settings.hideAmounts);
+      }
+      if (from < 30) {
+        await m.createTable(ocrCorrections);
       }
     },
     beforeOpen: (details) async {
@@ -2617,6 +2621,67 @@ class AppDatabase extends _$AppDatabase {
                 OrderingTerm(expression: t.receivedAt, mode: OrderingMode.desc),
           ]))
           .watch();
+
+  // ── OCR corrections ────────────────────────────────────────────────────
+
+  Future<int> addOcrCorrection({
+    required String appLabel,
+    String? country,
+    required String rawOcrText,
+    required bool wasCorrect,
+    String? extractedAmount,
+    String? extractedDirection,
+    String? extractedPayee,
+    String? extractedReference,
+    String? correctedAmount,
+    String? correctedDirection,
+    String? correctedPayee,
+    String? correctedReference,
+  }) => into(ocrCorrections).insert(
+    OcrCorrectionsCompanion.insert(
+      appLabel: appLabel,
+      country: Value(country),
+      rawOcrText: rawOcrText,
+      wasCorrect: wasCorrect,
+      extractedAmount: Value(extractedAmount),
+      extractedDirection: Value(extractedDirection),
+      extractedPayee: Value(extractedPayee),
+      extractedReference: Value(extractedReference),
+      correctedAmount: Value(correctedAmount),
+      correctedDirection: Value(correctedDirection),
+      correctedPayee: Value(correctedPayee),
+      correctedReference: Value(correctedReference),
+    ),
+  );
+
+  Stream<List<OcrCorrectionRow>> watchPendingOcrCorrections() =>
+      (select(ocrCorrections)
+            ..where((t) => t.sentAt.isNull())
+            ..orderBy([
+              (t) =>
+                  OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
+            ]))
+          .watch();
+
+  Stream<List<OcrCorrectionRow>> watchSentOcrCorrections() =>
+      (select(ocrCorrections)
+            ..where((t) => t.sentAt.isNotNull())
+            ..orderBy([
+              (t) => OrderingTerm(expression: t.sentAt, mode: OrderingMode.desc),
+            ]))
+          .watch();
+
+  Future<void> markOcrCorrectionsSent(List<int> ids) async {
+    if (ids.isEmpty) return;
+    await (update(
+      ocrCorrections,
+    )..where((t) => t.id.isIn(ids))).write(
+      OcrCorrectionsCompanion(sentAt: Value(DateTime.now())),
+    );
+  }
+
+  Future<void> deleteOcrCorrection(int id) =>
+      (delete(ocrCorrections)..where((t) => t.id.equals(id))).go();
 
   // ── Merchant rules (what Auto-Approve is allowed to fire from) ────────────
 

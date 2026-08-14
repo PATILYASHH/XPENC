@@ -583,6 +583,39 @@ class PendingTxns extends Table {
   ];
 }
 
+/// A user-submitted example of what XPENC's on-device OCR read from a
+/// payment-app screenshot, and whether the parser's extraction was right —
+/// see Settings > Message Capture > OCR corrections and
+/// docs/superpowers/specs/2026-08-14-ocr-corrections-design.md. Never holds
+/// the source image, only text. [sentAt] is set once the user has fired a
+/// send intent (mailto/share sheet) for this row — the app itself never
+/// transmits it.
+@DataClassName('OcrCorrectionRow')
+class OcrCorrections extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  TextColumn get appLabel => text()();
+  TextColumn get country => text().nullable()();
+  TextColumn get rawOcrText => text()();
+  BoolColumn get wasCorrect => boolean()();
+
+  /// What `ScreenshotParser` actually produced — kept as display strings,
+  /// not typed `Money`/`TxDirection`, since these are export-only and never
+  /// feed back into the ledger.
+  TextColumn get extractedAmount => text().nullable()();
+  TextColumn get extractedDirection => text().nullable()();
+  TextColumn get extractedPayee => text().nullable()();
+  TextColumn get extractedReference => text().nullable()();
+
+  /// Only set when [wasCorrect] is false.
+  TextColumn get correctedAmount => text().nullable()();
+  TextColumn get correctedDirection => text().nullable()();
+  TextColumn get correctedPayee => text().nullable()();
+  TextColumn get correctedReference => text().nullable()();
+
+  DateTimeColumn get sentAt => dateTime().nullable()();
+}
+
 /// Learned "this merchant means this category" mappings. Auto-Approve only ever
 /// fires from one of these — never from a fresh guess.
 @DataClassName('MerchantRuleRow')

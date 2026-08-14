@@ -12225,6 +12225,931 @@ class AllocationsCompanion extends UpdateCompanion<AllocationRow> {
   }
 }
 
+class $OcrCorrectionsTable extends OcrCorrections
+    with TableInfo<$OcrCorrectionsTable, OcrCorrectionRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $OcrCorrectionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _appLabelMeta = const VerificationMeta(
+    'appLabel',
+  );
+  @override
+  late final GeneratedColumn<String> appLabel = GeneratedColumn<String>(
+    'app_label',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _countryMeta = const VerificationMeta(
+    'country',
+  );
+  @override
+  late final GeneratedColumn<String> country = GeneratedColumn<String>(
+    'country',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _rawOcrTextMeta = const VerificationMeta(
+    'rawOcrText',
+  );
+  @override
+  late final GeneratedColumn<String> rawOcrText = GeneratedColumn<String>(
+    'raw_ocr_text',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _wasCorrectMeta = const VerificationMeta(
+    'wasCorrect',
+  );
+  @override
+  late final GeneratedColumn<bool> wasCorrect = GeneratedColumn<bool>(
+    'was_correct',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("was_correct" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _extractedAmountMeta = const VerificationMeta(
+    'extractedAmount',
+  );
+  @override
+  late final GeneratedColumn<String> extractedAmount = GeneratedColumn<String>(
+    'extracted_amount',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _extractedDirectionMeta =
+      const VerificationMeta('extractedDirection');
+  @override
+  late final GeneratedColumn<String> extractedDirection =
+      GeneratedColumn<String>(
+        'extracted_direction',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _extractedPayeeMeta = const VerificationMeta(
+    'extractedPayee',
+  );
+  @override
+  late final GeneratedColumn<String> extractedPayee = GeneratedColumn<String>(
+    'extracted_payee',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _extractedReferenceMeta =
+      const VerificationMeta('extractedReference');
+  @override
+  late final GeneratedColumn<String> extractedReference =
+      GeneratedColumn<String>(
+        'extracted_reference',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _correctedAmountMeta = const VerificationMeta(
+    'correctedAmount',
+  );
+  @override
+  late final GeneratedColumn<String> correctedAmount = GeneratedColumn<String>(
+    'corrected_amount',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _correctedDirectionMeta =
+      const VerificationMeta('correctedDirection');
+  @override
+  late final GeneratedColumn<String> correctedDirection =
+      GeneratedColumn<String>(
+        'corrected_direction',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _correctedPayeeMeta = const VerificationMeta(
+    'correctedPayee',
+  );
+  @override
+  late final GeneratedColumn<String> correctedPayee = GeneratedColumn<String>(
+    'corrected_payee',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _correctedReferenceMeta =
+      const VerificationMeta('correctedReference');
+  @override
+  late final GeneratedColumn<String> correctedReference =
+      GeneratedColumn<String>(
+        'corrected_reference',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _sentAtMeta = const VerificationMeta('sentAt');
+  @override
+  late final GeneratedColumn<DateTime> sentAt = GeneratedColumn<DateTime>(
+    'sent_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    createdAt,
+    appLabel,
+    country,
+    rawOcrText,
+    wasCorrect,
+    extractedAmount,
+    extractedDirection,
+    extractedPayee,
+    extractedReference,
+    correctedAmount,
+    correctedDirection,
+    correctedPayee,
+    correctedReference,
+    sentAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'ocr_corrections';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<OcrCorrectionRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('app_label')) {
+      context.handle(
+        _appLabelMeta,
+        appLabel.isAcceptableOrUnknown(data['app_label']!, _appLabelMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_appLabelMeta);
+    }
+    if (data.containsKey('country')) {
+      context.handle(
+        _countryMeta,
+        country.isAcceptableOrUnknown(data['country']!, _countryMeta),
+      );
+    }
+    if (data.containsKey('raw_ocr_text')) {
+      context.handle(
+        _rawOcrTextMeta,
+        rawOcrText.isAcceptableOrUnknown(
+          data['raw_ocr_text']!,
+          _rawOcrTextMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_rawOcrTextMeta);
+    }
+    if (data.containsKey('was_correct')) {
+      context.handle(
+        _wasCorrectMeta,
+        wasCorrect.isAcceptableOrUnknown(data['was_correct']!, _wasCorrectMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_wasCorrectMeta);
+    }
+    if (data.containsKey('extracted_amount')) {
+      context.handle(
+        _extractedAmountMeta,
+        extractedAmount.isAcceptableOrUnknown(
+          data['extracted_amount']!,
+          _extractedAmountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('extracted_direction')) {
+      context.handle(
+        _extractedDirectionMeta,
+        extractedDirection.isAcceptableOrUnknown(
+          data['extracted_direction']!,
+          _extractedDirectionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('extracted_payee')) {
+      context.handle(
+        _extractedPayeeMeta,
+        extractedPayee.isAcceptableOrUnknown(
+          data['extracted_payee']!,
+          _extractedPayeeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('extracted_reference')) {
+      context.handle(
+        _extractedReferenceMeta,
+        extractedReference.isAcceptableOrUnknown(
+          data['extracted_reference']!,
+          _extractedReferenceMeta,
+        ),
+      );
+    }
+    if (data.containsKey('corrected_amount')) {
+      context.handle(
+        _correctedAmountMeta,
+        correctedAmount.isAcceptableOrUnknown(
+          data['corrected_amount']!,
+          _correctedAmountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('corrected_direction')) {
+      context.handle(
+        _correctedDirectionMeta,
+        correctedDirection.isAcceptableOrUnknown(
+          data['corrected_direction']!,
+          _correctedDirectionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('corrected_payee')) {
+      context.handle(
+        _correctedPayeeMeta,
+        correctedPayee.isAcceptableOrUnknown(
+          data['corrected_payee']!,
+          _correctedPayeeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('corrected_reference')) {
+      context.handle(
+        _correctedReferenceMeta,
+        correctedReference.isAcceptableOrUnknown(
+          data['corrected_reference']!,
+          _correctedReferenceMeta,
+        ),
+      );
+    }
+    if (data.containsKey('sent_at')) {
+      context.handle(
+        _sentAtMeta,
+        sentAt.isAcceptableOrUnknown(data['sent_at']!, _sentAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  OcrCorrectionRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return OcrCorrectionRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      appLabel: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}app_label'],
+      )!,
+      country: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}country'],
+      ),
+      rawOcrText: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}raw_ocr_text'],
+      )!,
+      wasCorrect: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}was_correct'],
+      )!,
+      extractedAmount: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}extracted_amount'],
+      ),
+      extractedDirection: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}extracted_direction'],
+      ),
+      extractedPayee: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}extracted_payee'],
+      ),
+      extractedReference: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}extracted_reference'],
+      ),
+      correctedAmount: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}corrected_amount'],
+      ),
+      correctedDirection: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}corrected_direction'],
+      ),
+      correctedPayee: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}corrected_payee'],
+      ),
+      correctedReference: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}corrected_reference'],
+      ),
+      sentAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}sent_at'],
+      ),
+    );
+  }
+
+  @override
+  $OcrCorrectionsTable createAlias(String alias) {
+    return $OcrCorrectionsTable(attachedDatabase, alias);
+  }
+}
+
+class OcrCorrectionRow extends DataClass
+    implements Insertable<OcrCorrectionRow> {
+  final int id;
+  final DateTime createdAt;
+  final String appLabel;
+  final String? country;
+  final String rawOcrText;
+  final bool wasCorrect;
+
+  /// What `ScreenshotParser` actually produced — kept as display strings,
+  /// not typed `Money`/`TxDirection`, since these are export-only and never
+  /// feed back into the ledger.
+  final String? extractedAmount;
+  final String? extractedDirection;
+  final String? extractedPayee;
+  final String? extractedReference;
+
+  /// Only set when [wasCorrect] is false.
+  final String? correctedAmount;
+  final String? correctedDirection;
+  final String? correctedPayee;
+  final String? correctedReference;
+  final DateTime? sentAt;
+  const OcrCorrectionRow({
+    required this.id,
+    required this.createdAt,
+    required this.appLabel,
+    this.country,
+    required this.rawOcrText,
+    required this.wasCorrect,
+    this.extractedAmount,
+    this.extractedDirection,
+    this.extractedPayee,
+    this.extractedReference,
+    this.correctedAmount,
+    this.correctedDirection,
+    this.correctedPayee,
+    this.correctedReference,
+    this.sentAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['app_label'] = Variable<String>(appLabel);
+    if (!nullToAbsent || country != null) {
+      map['country'] = Variable<String>(country);
+    }
+    map['raw_ocr_text'] = Variable<String>(rawOcrText);
+    map['was_correct'] = Variable<bool>(wasCorrect);
+    if (!nullToAbsent || extractedAmount != null) {
+      map['extracted_amount'] = Variable<String>(extractedAmount);
+    }
+    if (!nullToAbsent || extractedDirection != null) {
+      map['extracted_direction'] = Variable<String>(extractedDirection);
+    }
+    if (!nullToAbsent || extractedPayee != null) {
+      map['extracted_payee'] = Variable<String>(extractedPayee);
+    }
+    if (!nullToAbsent || extractedReference != null) {
+      map['extracted_reference'] = Variable<String>(extractedReference);
+    }
+    if (!nullToAbsent || correctedAmount != null) {
+      map['corrected_amount'] = Variable<String>(correctedAmount);
+    }
+    if (!nullToAbsent || correctedDirection != null) {
+      map['corrected_direction'] = Variable<String>(correctedDirection);
+    }
+    if (!nullToAbsent || correctedPayee != null) {
+      map['corrected_payee'] = Variable<String>(correctedPayee);
+    }
+    if (!nullToAbsent || correctedReference != null) {
+      map['corrected_reference'] = Variable<String>(correctedReference);
+    }
+    if (!nullToAbsent || sentAt != null) {
+      map['sent_at'] = Variable<DateTime>(sentAt);
+    }
+    return map;
+  }
+
+  OcrCorrectionsCompanion toCompanion(bool nullToAbsent) {
+    return OcrCorrectionsCompanion(
+      id: Value(id),
+      createdAt: Value(createdAt),
+      appLabel: Value(appLabel),
+      country: country == null && nullToAbsent
+          ? const Value.absent()
+          : Value(country),
+      rawOcrText: Value(rawOcrText),
+      wasCorrect: Value(wasCorrect),
+      extractedAmount: extractedAmount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(extractedAmount),
+      extractedDirection: extractedDirection == null && nullToAbsent
+          ? const Value.absent()
+          : Value(extractedDirection),
+      extractedPayee: extractedPayee == null && nullToAbsent
+          ? const Value.absent()
+          : Value(extractedPayee),
+      extractedReference: extractedReference == null && nullToAbsent
+          ? const Value.absent()
+          : Value(extractedReference),
+      correctedAmount: correctedAmount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(correctedAmount),
+      correctedDirection: correctedDirection == null && nullToAbsent
+          ? const Value.absent()
+          : Value(correctedDirection),
+      correctedPayee: correctedPayee == null && nullToAbsent
+          ? const Value.absent()
+          : Value(correctedPayee),
+      correctedReference: correctedReference == null && nullToAbsent
+          ? const Value.absent()
+          : Value(correctedReference),
+      sentAt: sentAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sentAt),
+    );
+  }
+
+  factory OcrCorrectionRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return OcrCorrectionRow(
+      id: serializer.fromJson<int>(json['id']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      appLabel: serializer.fromJson<String>(json['appLabel']),
+      country: serializer.fromJson<String?>(json['country']),
+      rawOcrText: serializer.fromJson<String>(json['rawOcrText']),
+      wasCorrect: serializer.fromJson<bool>(json['wasCorrect']),
+      extractedAmount: serializer.fromJson<String?>(json['extractedAmount']),
+      extractedDirection: serializer.fromJson<String?>(
+        json['extractedDirection'],
+      ),
+      extractedPayee: serializer.fromJson<String?>(json['extractedPayee']),
+      extractedReference: serializer.fromJson<String?>(
+        json['extractedReference'],
+      ),
+      correctedAmount: serializer.fromJson<String?>(json['correctedAmount']),
+      correctedDirection: serializer.fromJson<String?>(
+        json['correctedDirection'],
+      ),
+      correctedPayee: serializer.fromJson<String?>(json['correctedPayee']),
+      correctedReference: serializer.fromJson<String?>(
+        json['correctedReference'],
+      ),
+      sentAt: serializer.fromJson<DateTime?>(json['sentAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'appLabel': serializer.toJson<String>(appLabel),
+      'country': serializer.toJson<String?>(country),
+      'rawOcrText': serializer.toJson<String>(rawOcrText),
+      'wasCorrect': serializer.toJson<bool>(wasCorrect),
+      'extractedAmount': serializer.toJson<String?>(extractedAmount),
+      'extractedDirection': serializer.toJson<String?>(extractedDirection),
+      'extractedPayee': serializer.toJson<String?>(extractedPayee),
+      'extractedReference': serializer.toJson<String?>(extractedReference),
+      'correctedAmount': serializer.toJson<String?>(correctedAmount),
+      'correctedDirection': serializer.toJson<String?>(correctedDirection),
+      'correctedPayee': serializer.toJson<String?>(correctedPayee),
+      'correctedReference': serializer.toJson<String?>(correctedReference),
+      'sentAt': serializer.toJson<DateTime?>(sentAt),
+    };
+  }
+
+  OcrCorrectionRow copyWith({
+    int? id,
+    DateTime? createdAt,
+    String? appLabel,
+    Value<String?> country = const Value.absent(),
+    String? rawOcrText,
+    bool? wasCorrect,
+    Value<String?> extractedAmount = const Value.absent(),
+    Value<String?> extractedDirection = const Value.absent(),
+    Value<String?> extractedPayee = const Value.absent(),
+    Value<String?> extractedReference = const Value.absent(),
+    Value<String?> correctedAmount = const Value.absent(),
+    Value<String?> correctedDirection = const Value.absent(),
+    Value<String?> correctedPayee = const Value.absent(),
+    Value<String?> correctedReference = const Value.absent(),
+    Value<DateTime?> sentAt = const Value.absent(),
+  }) => OcrCorrectionRow(
+    id: id ?? this.id,
+    createdAt: createdAt ?? this.createdAt,
+    appLabel: appLabel ?? this.appLabel,
+    country: country.present ? country.value : this.country,
+    rawOcrText: rawOcrText ?? this.rawOcrText,
+    wasCorrect: wasCorrect ?? this.wasCorrect,
+    extractedAmount: extractedAmount.present
+        ? extractedAmount.value
+        : this.extractedAmount,
+    extractedDirection: extractedDirection.present
+        ? extractedDirection.value
+        : this.extractedDirection,
+    extractedPayee: extractedPayee.present
+        ? extractedPayee.value
+        : this.extractedPayee,
+    extractedReference: extractedReference.present
+        ? extractedReference.value
+        : this.extractedReference,
+    correctedAmount: correctedAmount.present
+        ? correctedAmount.value
+        : this.correctedAmount,
+    correctedDirection: correctedDirection.present
+        ? correctedDirection.value
+        : this.correctedDirection,
+    correctedPayee: correctedPayee.present
+        ? correctedPayee.value
+        : this.correctedPayee,
+    correctedReference: correctedReference.present
+        ? correctedReference.value
+        : this.correctedReference,
+    sentAt: sentAt.present ? sentAt.value : this.sentAt,
+  );
+  OcrCorrectionRow copyWithCompanion(OcrCorrectionsCompanion data) {
+    return OcrCorrectionRow(
+      id: data.id.present ? data.id.value : this.id,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      appLabel: data.appLabel.present ? data.appLabel.value : this.appLabel,
+      country: data.country.present ? data.country.value : this.country,
+      rawOcrText: data.rawOcrText.present
+          ? data.rawOcrText.value
+          : this.rawOcrText,
+      wasCorrect: data.wasCorrect.present
+          ? data.wasCorrect.value
+          : this.wasCorrect,
+      extractedAmount: data.extractedAmount.present
+          ? data.extractedAmount.value
+          : this.extractedAmount,
+      extractedDirection: data.extractedDirection.present
+          ? data.extractedDirection.value
+          : this.extractedDirection,
+      extractedPayee: data.extractedPayee.present
+          ? data.extractedPayee.value
+          : this.extractedPayee,
+      extractedReference: data.extractedReference.present
+          ? data.extractedReference.value
+          : this.extractedReference,
+      correctedAmount: data.correctedAmount.present
+          ? data.correctedAmount.value
+          : this.correctedAmount,
+      correctedDirection: data.correctedDirection.present
+          ? data.correctedDirection.value
+          : this.correctedDirection,
+      correctedPayee: data.correctedPayee.present
+          ? data.correctedPayee.value
+          : this.correctedPayee,
+      correctedReference: data.correctedReference.present
+          ? data.correctedReference.value
+          : this.correctedReference,
+      sentAt: data.sentAt.present ? data.sentAt.value : this.sentAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OcrCorrectionRow(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('appLabel: $appLabel, ')
+          ..write('country: $country, ')
+          ..write('rawOcrText: $rawOcrText, ')
+          ..write('wasCorrect: $wasCorrect, ')
+          ..write('extractedAmount: $extractedAmount, ')
+          ..write('extractedDirection: $extractedDirection, ')
+          ..write('extractedPayee: $extractedPayee, ')
+          ..write('extractedReference: $extractedReference, ')
+          ..write('correctedAmount: $correctedAmount, ')
+          ..write('correctedDirection: $correctedDirection, ')
+          ..write('correctedPayee: $correctedPayee, ')
+          ..write('correctedReference: $correctedReference, ')
+          ..write('sentAt: $sentAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    createdAt,
+    appLabel,
+    country,
+    rawOcrText,
+    wasCorrect,
+    extractedAmount,
+    extractedDirection,
+    extractedPayee,
+    extractedReference,
+    correctedAmount,
+    correctedDirection,
+    correctedPayee,
+    correctedReference,
+    sentAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is OcrCorrectionRow &&
+          other.id == this.id &&
+          other.createdAt == this.createdAt &&
+          other.appLabel == this.appLabel &&
+          other.country == this.country &&
+          other.rawOcrText == this.rawOcrText &&
+          other.wasCorrect == this.wasCorrect &&
+          other.extractedAmount == this.extractedAmount &&
+          other.extractedDirection == this.extractedDirection &&
+          other.extractedPayee == this.extractedPayee &&
+          other.extractedReference == this.extractedReference &&
+          other.correctedAmount == this.correctedAmount &&
+          other.correctedDirection == this.correctedDirection &&
+          other.correctedPayee == this.correctedPayee &&
+          other.correctedReference == this.correctedReference &&
+          other.sentAt == this.sentAt);
+}
+
+class OcrCorrectionsCompanion extends UpdateCompanion<OcrCorrectionRow> {
+  final Value<int> id;
+  final Value<DateTime> createdAt;
+  final Value<String> appLabel;
+  final Value<String?> country;
+  final Value<String> rawOcrText;
+  final Value<bool> wasCorrect;
+  final Value<String?> extractedAmount;
+  final Value<String?> extractedDirection;
+  final Value<String?> extractedPayee;
+  final Value<String?> extractedReference;
+  final Value<String?> correctedAmount;
+  final Value<String?> correctedDirection;
+  final Value<String?> correctedPayee;
+  final Value<String?> correctedReference;
+  final Value<DateTime?> sentAt;
+  const OcrCorrectionsCompanion({
+    this.id = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.appLabel = const Value.absent(),
+    this.country = const Value.absent(),
+    this.rawOcrText = const Value.absent(),
+    this.wasCorrect = const Value.absent(),
+    this.extractedAmount = const Value.absent(),
+    this.extractedDirection = const Value.absent(),
+    this.extractedPayee = const Value.absent(),
+    this.extractedReference = const Value.absent(),
+    this.correctedAmount = const Value.absent(),
+    this.correctedDirection = const Value.absent(),
+    this.correctedPayee = const Value.absent(),
+    this.correctedReference = const Value.absent(),
+    this.sentAt = const Value.absent(),
+  });
+  OcrCorrectionsCompanion.insert({
+    this.id = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    required String appLabel,
+    this.country = const Value.absent(),
+    required String rawOcrText,
+    required bool wasCorrect,
+    this.extractedAmount = const Value.absent(),
+    this.extractedDirection = const Value.absent(),
+    this.extractedPayee = const Value.absent(),
+    this.extractedReference = const Value.absent(),
+    this.correctedAmount = const Value.absent(),
+    this.correctedDirection = const Value.absent(),
+    this.correctedPayee = const Value.absent(),
+    this.correctedReference = const Value.absent(),
+    this.sentAt = const Value.absent(),
+  }) : appLabel = Value(appLabel),
+       rawOcrText = Value(rawOcrText),
+       wasCorrect = Value(wasCorrect);
+  static Insertable<OcrCorrectionRow> custom({
+    Expression<int>? id,
+    Expression<DateTime>? createdAt,
+    Expression<String>? appLabel,
+    Expression<String>? country,
+    Expression<String>? rawOcrText,
+    Expression<bool>? wasCorrect,
+    Expression<String>? extractedAmount,
+    Expression<String>? extractedDirection,
+    Expression<String>? extractedPayee,
+    Expression<String>? extractedReference,
+    Expression<String>? correctedAmount,
+    Expression<String>? correctedDirection,
+    Expression<String>? correctedPayee,
+    Expression<String>? correctedReference,
+    Expression<DateTime>? sentAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (createdAt != null) 'created_at': createdAt,
+      if (appLabel != null) 'app_label': appLabel,
+      if (country != null) 'country': country,
+      if (rawOcrText != null) 'raw_ocr_text': rawOcrText,
+      if (wasCorrect != null) 'was_correct': wasCorrect,
+      if (extractedAmount != null) 'extracted_amount': extractedAmount,
+      if (extractedDirection != null) 'extracted_direction': extractedDirection,
+      if (extractedPayee != null) 'extracted_payee': extractedPayee,
+      if (extractedReference != null) 'extracted_reference': extractedReference,
+      if (correctedAmount != null) 'corrected_amount': correctedAmount,
+      if (correctedDirection != null) 'corrected_direction': correctedDirection,
+      if (correctedPayee != null) 'corrected_payee': correctedPayee,
+      if (correctedReference != null) 'corrected_reference': correctedReference,
+      if (sentAt != null) 'sent_at': sentAt,
+    });
+  }
+
+  OcrCorrectionsCompanion copyWith({
+    Value<int>? id,
+    Value<DateTime>? createdAt,
+    Value<String>? appLabel,
+    Value<String?>? country,
+    Value<String>? rawOcrText,
+    Value<bool>? wasCorrect,
+    Value<String?>? extractedAmount,
+    Value<String?>? extractedDirection,
+    Value<String?>? extractedPayee,
+    Value<String?>? extractedReference,
+    Value<String?>? correctedAmount,
+    Value<String?>? correctedDirection,
+    Value<String?>? correctedPayee,
+    Value<String?>? correctedReference,
+    Value<DateTime?>? sentAt,
+  }) {
+    return OcrCorrectionsCompanion(
+      id: id ?? this.id,
+      createdAt: createdAt ?? this.createdAt,
+      appLabel: appLabel ?? this.appLabel,
+      country: country ?? this.country,
+      rawOcrText: rawOcrText ?? this.rawOcrText,
+      wasCorrect: wasCorrect ?? this.wasCorrect,
+      extractedAmount: extractedAmount ?? this.extractedAmount,
+      extractedDirection: extractedDirection ?? this.extractedDirection,
+      extractedPayee: extractedPayee ?? this.extractedPayee,
+      extractedReference: extractedReference ?? this.extractedReference,
+      correctedAmount: correctedAmount ?? this.correctedAmount,
+      correctedDirection: correctedDirection ?? this.correctedDirection,
+      correctedPayee: correctedPayee ?? this.correctedPayee,
+      correctedReference: correctedReference ?? this.correctedReference,
+      sentAt: sentAt ?? this.sentAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (appLabel.present) {
+      map['app_label'] = Variable<String>(appLabel.value);
+    }
+    if (country.present) {
+      map['country'] = Variable<String>(country.value);
+    }
+    if (rawOcrText.present) {
+      map['raw_ocr_text'] = Variable<String>(rawOcrText.value);
+    }
+    if (wasCorrect.present) {
+      map['was_correct'] = Variable<bool>(wasCorrect.value);
+    }
+    if (extractedAmount.present) {
+      map['extracted_amount'] = Variable<String>(extractedAmount.value);
+    }
+    if (extractedDirection.present) {
+      map['extracted_direction'] = Variable<String>(extractedDirection.value);
+    }
+    if (extractedPayee.present) {
+      map['extracted_payee'] = Variable<String>(extractedPayee.value);
+    }
+    if (extractedReference.present) {
+      map['extracted_reference'] = Variable<String>(extractedReference.value);
+    }
+    if (correctedAmount.present) {
+      map['corrected_amount'] = Variable<String>(correctedAmount.value);
+    }
+    if (correctedDirection.present) {
+      map['corrected_direction'] = Variable<String>(correctedDirection.value);
+    }
+    if (correctedPayee.present) {
+      map['corrected_payee'] = Variable<String>(correctedPayee.value);
+    }
+    if (correctedReference.present) {
+      map['corrected_reference'] = Variable<String>(correctedReference.value);
+    }
+    if (sentAt.present) {
+      map['sent_at'] = Variable<DateTime>(sentAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OcrCorrectionsCompanion(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('appLabel: $appLabel, ')
+          ..write('country: $country, ')
+          ..write('rawOcrText: $rawOcrText, ')
+          ..write('wasCorrect: $wasCorrect, ')
+          ..write('extractedAmount: $extractedAmount, ')
+          ..write('extractedDirection: $extractedDirection, ')
+          ..write('extractedPayee: $extractedPayee, ')
+          ..write('extractedReference: $extractedReference, ')
+          ..write('correctedAmount: $correctedAmount, ')
+          ..write('correctedDirection: $correctedDirection, ')
+          ..write('correctedPayee: $correctedPayee, ')
+          ..write('correctedReference: $correctedReference, ')
+          ..write('sentAt: $sentAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -12252,6 +13177,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ShoppingItemsTable shoppingItems = $ShoppingItemsTable(this);
   late final $BackupRecordsTable backupRecords = $BackupRecordsTable(this);
   late final $AllocationsTable allocations = $AllocationsTable(this);
+  late final $OcrCorrectionsTable ocrCorrections = $OcrCorrectionsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -12278,6 +13204,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     shoppingItems,
     backupRecords,
     allocations,
+    ocrCorrections,
   ];
 }
 
@@ -24257,6 +25184,416 @@ typedef $$AllocationsTableProcessedTableManager =
       AllocationRow,
       PrefetchHooks Function({bool accountId, bool categoryId})
     >;
+typedef $$OcrCorrectionsTableCreateCompanionBuilder =
+    OcrCorrectionsCompanion Function({
+      Value<int> id,
+      Value<DateTime> createdAt,
+      required String appLabel,
+      Value<String?> country,
+      required String rawOcrText,
+      required bool wasCorrect,
+      Value<String?> extractedAmount,
+      Value<String?> extractedDirection,
+      Value<String?> extractedPayee,
+      Value<String?> extractedReference,
+      Value<String?> correctedAmount,
+      Value<String?> correctedDirection,
+      Value<String?> correctedPayee,
+      Value<String?> correctedReference,
+      Value<DateTime?> sentAt,
+    });
+typedef $$OcrCorrectionsTableUpdateCompanionBuilder =
+    OcrCorrectionsCompanion Function({
+      Value<int> id,
+      Value<DateTime> createdAt,
+      Value<String> appLabel,
+      Value<String?> country,
+      Value<String> rawOcrText,
+      Value<bool> wasCorrect,
+      Value<String?> extractedAmount,
+      Value<String?> extractedDirection,
+      Value<String?> extractedPayee,
+      Value<String?> extractedReference,
+      Value<String?> correctedAmount,
+      Value<String?> correctedDirection,
+      Value<String?> correctedPayee,
+      Value<String?> correctedReference,
+      Value<DateTime?> sentAt,
+    });
+
+class $$OcrCorrectionsTableFilterComposer
+    extends Composer<_$AppDatabase, $OcrCorrectionsTable> {
+  $$OcrCorrectionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get appLabel => $composableBuilder(
+    column: $table.appLabel,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get country => $composableBuilder(
+    column: $table.country,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rawOcrText => $composableBuilder(
+    column: $table.rawOcrText,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get wasCorrect => $composableBuilder(
+    column: $table.wasCorrect,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get extractedAmount => $composableBuilder(
+    column: $table.extractedAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get extractedDirection => $composableBuilder(
+    column: $table.extractedDirection,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get extractedPayee => $composableBuilder(
+    column: $table.extractedPayee,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get extractedReference => $composableBuilder(
+    column: $table.extractedReference,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get correctedAmount => $composableBuilder(
+    column: $table.correctedAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get correctedDirection => $composableBuilder(
+    column: $table.correctedDirection,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get correctedPayee => $composableBuilder(
+    column: $table.correctedPayee,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get correctedReference => $composableBuilder(
+    column: $table.correctedReference,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get sentAt => $composableBuilder(
+    column: $table.sentAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$OcrCorrectionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $OcrCorrectionsTable> {
+  $$OcrCorrectionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get appLabel => $composableBuilder(
+    column: $table.appLabel,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get country => $composableBuilder(
+    column: $table.country,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rawOcrText => $composableBuilder(
+    column: $table.rawOcrText,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get wasCorrect => $composableBuilder(
+    column: $table.wasCorrect,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get extractedAmount => $composableBuilder(
+    column: $table.extractedAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get extractedDirection => $composableBuilder(
+    column: $table.extractedDirection,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get extractedPayee => $composableBuilder(
+    column: $table.extractedPayee,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get extractedReference => $composableBuilder(
+    column: $table.extractedReference,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get correctedAmount => $composableBuilder(
+    column: $table.correctedAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get correctedDirection => $composableBuilder(
+    column: $table.correctedDirection,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get correctedPayee => $composableBuilder(
+    column: $table.correctedPayee,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get correctedReference => $composableBuilder(
+    column: $table.correctedReference,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get sentAt => $composableBuilder(
+    column: $table.sentAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$OcrCorrectionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $OcrCorrectionsTable> {
+  $$OcrCorrectionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get appLabel =>
+      $composableBuilder(column: $table.appLabel, builder: (column) => column);
+
+  GeneratedColumn<String> get country =>
+      $composableBuilder(column: $table.country, builder: (column) => column);
+
+  GeneratedColumn<String> get rawOcrText => $composableBuilder(
+    column: $table.rawOcrText,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get wasCorrect => $composableBuilder(
+    column: $table.wasCorrect,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get extractedAmount => $composableBuilder(
+    column: $table.extractedAmount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get extractedDirection => $composableBuilder(
+    column: $table.extractedDirection,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get extractedPayee => $composableBuilder(
+    column: $table.extractedPayee,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get extractedReference => $composableBuilder(
+    column: $table.extractedReference,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get correctedAmount => $composableBuilder(
+    column: $table.correctedAmount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get correctedDirection => $composableBuilder(
+    column: $table.correctedDirection,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get correctedPayee => $composableBuilder(
+    column: $table.correctedPayee,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get correctedReference => $composableBuilder(
+    column: $table.correctedReference,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get sentAt =>
+      $composableBuilder(column: $table.sentAt, builder: (column) => column);
+}
+
+class $$OcrCorrectionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $OcrCorrectionsTable,
+          OcrCorrectionRow,
+          $$OcrCorrectionsTableFilterComposer,
+          $$OcrCorrectionsTableOrderingComposer,
+          $$OcrCorrectionsTableAnnotationComposer,
+          $$OcrCorrectionsTableCreateCompanionBuilder,
+          $$OcrCorrectionsTableUpdateCompanionBuilder,
+          (
+            OcrCorrectionRow,
+            BaseReferences<
+              _$AppDatabase,
+              $OcrCorrectionsTable,
+              OcrCorrectionRow
+            >,
+          ),
+          OcrCorrectionRow,
+          PrefetchHooks Function()
+        > {
+  $$OcrCorrectionsTableTableManager(
+    _$AppDatabase db,
+    $OcrCorrectionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$OcrCorrectionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$OcrCorrectionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$OcrCorrectionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<String> appLabel = const Value.absent(),
+                Value<String?> country = const Value.absent(),
+                Value<String> rawOcrText = const Value.absent(),
+                Value<bool> wasCorrect = const Value.absent(),
+                Value<String?> extractedAmount = const Value.absent(),
+                Value<String?> extractedDirection = const Value.absent(),
+                Value<String?> extractedPayee = const Value.absent(),
+                Value<String?> extractedReference = const Value.absent(),
+                Value<String?> correctedAmount = const Value.absent(),
+                Value<String?> correctedDirection = const Value.absent(),
+                Value<String?> correctedPayee = const Value.absent(),
+                Value<String?> correctedReference = const Value.absent(),
+                Value<DateTime?> sentAt = const Value.absent(),
+              }) => OcrCorrectionsCompanion(
+                id: id,
+                createdAt: createdAt,
+                appLabel: appLabel,
+                country: country,
+                rawOcrText: rawOcrText,
+                wasCorrect: wasCorrect,
+                extractedAmount: extractedAmount,
+                extractedDirection: extractedDirection,
+                extractedPayee: extractedPayee,
+                extractedReference: extractedReference,
+                correctedAmount: correctedAmount,
+                correctedDirection: correctedDirection,
+                correctedPayee: correctedPayee,
+                correctedReference: correctedReference,
+                sentAt: sentAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                required String appLabel,
+                Value<String?> country = const Value.absent(),
+                required String rawOcrText,
+                required bool wasCorrect,
+                Value<String?> extractedAmount = const Value.absent(),
+                Value<String?> extractedDirection = const Value.absent(),
+                Value<String?> extractedPayee = const Value.absent(),
+                Value<String?> extractedReference = const Value.absent(),
+                Value<String?> correctedAmount = const Value.absent(),
+                Value<String?> correctedDirection = const Value.absent(),
+                Value<String?> correctedPayee = const Value.absent(),
+                Value<String?> correctedReference = const Value.absent(),
+                Value<DateTime?> sentAt = const Value.absent(),
+              }) => OcrCorrectionsCompanion.insert(
+                id: id,
+                createdAt: createdAt,
+                appLabel: appLabel,
+                country: country,
+                rawOcrText: rawOcrText,
+                wasCorrect: wasCorrect,
+                extractedAmount: extractedAmount,
+                extractedDirection: extractedDirection,
+                extractedPayee: extractedPayee,
+                extractedReference: extractedReference,
+                correctedAmount: correctedAmount,
+                correctedDirection: correctedDirection,
+                correctedPayee: correctedPayee,
+                correctedReference: correctedReference,
+                sentAt: sentAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$OcrCorrectionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $OcrCorrectionsTable,
+      OcrCorrectionRow,
+      $$OcrCorrectionsTableFilterComposer,
+      $$OcrCorrectionsTableOrderingComposer,
+      $$OcrCorrectionsTableAnnotationComposer,
+      $$OcrCorrectionsTableCreateCompanionBuilder,
+      $$OcrCorrectionsTableUpdateCompanionBuilder,
+      (
+        OcrCorrectionRow,
+        BaseReferences<_$AppDatabase, $OcrCorrectionsTable, OcrCorrectionRow>,
+      ),
+      OcrCorrectionRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -24302,4 +25639,6 @@ class $AppDatabaseManager {
       $$BackupRecordsTableTableManager(_db, _db.backupRecords);
   $$AllocationsTableTableManager get allocations =>
       $$AllocationsTableTableManager(_db, _db.allocations);
+  $$OcrCorrectionsTableTableManager get ocrCorrections =>
+      $$OcrCorrectionsTableTableManager(_db, _db.ocrCorrections);
 }
