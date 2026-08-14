@@ -612,6 +612,14 @@ final allPendingProvider = StreamProvider<List<PendingTxnRow>>(
   (ref) => ref.watch(dbProvider).watchAllPendingTxns(),
 );
 
+final pendingOcrCorrectionsProvider = StreamProvider<List<OcrCorrectionRow>>(
+  (ref) => ref.watch(dbProvider).watchPendingOcrCorrections(),
+);
+
+final sentOcrCorrectionsProvider = StreamProvider<List<OcrCorrectionRow>>(
+  (ref) => ref.watch(dbProvider).watchSentOcrCorrections(),
+);
+
 final merchantRulesProvider = StreamProvider<List<MerchantRuleRow>>(
   (ref) => ref.watch(dbProvider).watchMerchantRules(),
 );
