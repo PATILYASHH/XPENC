@@ -17,6 +17,8 @@ import '../../features/data_export/backup_screen.dart';
 import '../../features/data_export/csv_import_screen.dart';
 import '../../features/data_export/download_data_screen.dart';
 import '../../features/message_capture/message_capture_screen.dart';
+import '../../features/message_capture/ocr_feedback/ocr_correction_capture_screen.dart';
+import '../../features/message_capture/ocr_feedback/ocr_correction_screen.dart';
 import '../../features/message_capture/review_inbox_screen.dart';
 import '../../features/more/more_screen.dart';
 import '../../features/onboarding/onboarding_screen.dart';
@@ -169,6 +171,20 @@ final appRouter = GoRouter(
                   path: 'capture',
                   parentNavigatorKey: _rootKey,
                   builder: (_, _) => const MessageCaptureScreen(),
+                  routes: [
+                    GoRoute(
+                      path: 'ocr-feedback',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const OcrCorrectionScreen(),
+                      routes: [
+                        GoRoute(
+                          path: 'new',
+                          parentNavigatorKey: _rootKey,
+                          builder: (_, _) => const OcrCorrectionCaptureScreen(),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
                 GoRoute(
                   path: 'categories',
