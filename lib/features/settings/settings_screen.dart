@@ -307,19 +307,38 @@ class SettingsScreen extends ConsumerWidget {
           // ── Message capture ────────────────────────────────────────────────
           _sectionLabel(context, 'Message Capture'),
           Card(
-            child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              leading: const Icon(Icons.sms_outlined),
-              title: const Text('Bank-SMS auto-capture'),
-              subtitle: Text(
-                'Coming soon — removed for now so the app installs without a '
-                'Play Protect block.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
+            child: Column(
+              children: [
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  leading: const Icon(Icons.sms_outlined),
+                  title: const Text('Bank-SMS auto-capture'),
+                  subtitle: Text(
+                    'Coming soon — removed for now so the app installs '
+                    'without a Play Protect block.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => context.push('/more/capture'),
                 ),
-              ),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: () => context.push('/more/capture'),
+                Divider(height: 1, indent: 60, color: cs.outline),
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  leading: const Icon(Icons.rate_review_outlined),
+                  title: const Text('OCR corrections'),
+                  subtitle: Text(
+                    'Optional — test a payment screenshot and help improve '
+                    'OCR by sharing what you find, entirely on your terms.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => context.push('/more/capture/ocr-feedback'),
+                ),
+              ],
             ),
           ),
 
