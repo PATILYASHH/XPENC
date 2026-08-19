@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
-## [Unreleased]
+## [1.4.3] — 2026-08-19
 
 ### Added
 - **OCR corrections** — Settings → Message Capture → OCR corrections lets you
@@ -14,12 +14,27 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   pipeline, mark whether it read correctly, and optionally send the
   correction (extracted text only, never the image) to help improve parsing
   for more apps and countries over time.
+- **Calendar: transfer and upcoming-event dots** — a day with a transfer now
+  shows a blue dot alongside the existing income/expense ones, and any open
+  reminder or active Auto rule due on a day shows a yellow dot ahead of time,
+  turning red once the day arrives or it's overdue (#67).
+- **Calendar → transaction detail** — tapping a transaction under a selected
+  day now opens its detail screen, the same destination a tap in the
+  Transactions tab already opens (#56).
+- Double-tap the Transactions tab to scroll its list back to the top (#66).
 
 ### Changed
 - Screenshot OCR now uses Tesseract instead of Google ML Kit — ML Kit's
   trained-model blobs are proprietary even in the bundled, no-Play-Services
   form, which blocked F-Droid distribution (#57). Fully on-device either way;
   no behavior change for existing users beyond OCR accuracy.
+- Website moved to its own domain, **xpenc.in** (was `getxpenc.vercel.app`,
+  which still resolves to the same site).
+
+### Fixed
+- Release builds no longer request the `INTERNET` permission — a transitive
+  declaration from a plugin's Android library that 1.4.2 shipped with, even
+  though nothing in XPENC's own code makes a network call (#59).
 
 ## [1.4.2] — 2026-08-13
 
@@ -391,7 +406,7 @@ signing and tooling needed to publish.
   [fastlane metadata](fastlane/metadata/android/en-US/) (texts, per-versionCode
   changelogs, icon, feature graphic) that F-Droid reads directly.
 - **Privacy policy** — [PRIVACY.md](PRIVACY.md), live at
-  [getxpenc.vercel.app/privacy](https://getxpenc.vercel.app/privacy) and linked
+  [xpenc.in/privacy](https://xpenc.in/privacy) and linked
   from the website footer.
 - **Play Store submission kit** — [docs/playstore/](docs/playstore/): store
   listing copy, Data safety answers, content rating, declarations and a release
@@ -466,7 +481,8 @@ First public release. 🎉
 - `tool/verify_apk.sh` gates every shipped APK against the missing
   `libsqlite3.so` class of crash.
 
-[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.4.2...HEAD
+[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.4.3...HEAD
+[1.4.3]: https://github.com/PATILYASHH/XPENC/compare/v1.4.2...v1.4.3
 [1.4.2]: https://github.com/PATILYASHH/XPENC/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/PATILYASHH/XPENC/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/PATILYASHH/XPENC/compare/v1.3.0...v1.4.0
