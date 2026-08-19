@@ -75,6 +75,11 @@ if command -v aapt2 >/dev/null 2>&1 || command -v aapt >/dev/null 2>&1; then
   else
     ok "RECEIVE_SMS absent (as designed)"
   fi
+  if printf '%s' "$perms" | grep -q 'android.permission.INTERNET'; then
+    bad "INTERNET declared -- PRIVACY.md promises release builds request no internet permission (GitHub #59)"
+  else
+    ok "INTERNET absent (as designed)"
+  fi
 else
   say "  skip  permission checks (aapt not on PATH)"
 fi
