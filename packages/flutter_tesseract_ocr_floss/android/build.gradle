@@ -1,0 +1,62 @@
+group 'io.paratoner.flutter_tesseract_ocr'
+version '1.0'
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath 'com.android.tools.build:gradle:7.1.2'
+    }
+
+}
+
+apply plugin: 'com.android.library'
+
+android {
+    namespace "io.paratoner.flutter_tesseract_ocr"
+    compileSdkVersion 34
+
+
+    defaultConfig {
+        minSdkVersion 21
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+    }
+    lintOptions {
+        disable 'InvalidPackage'
+    }
+    // packagingOptions{
+    //     doNotStrip '*/mips/*.so'
+    //     doNotStrip '*/mips64/*.so'
+    // }
+}
+
+// Upstream flutter_tesseract_ocr (pub.dev, BSD-3) vendors a prebuilt
+// tesseract4android-release.aar directly in android/libs/ via a flatDir
+// repo declared on rootProject.allprojects — an unreviewable binary blob
+// that fails F-Droid's build policy (GitHub #57). This fork drops that
+// file and resolves the same library from JitPack instead: F-Droid's
+// Inclusion Policy explicitly lists JitPack.io as a trusted repository for
+// prebuilt FLOSS binaries, and Tesseract4Android (adaptech-cz, Apache-2.0)
+// publishes there under the legacy com.googlecode.tesseract.android.
+// TessBaseAPI namespace — the exact class FlutterTesseractOcrPlugin.java
+// already imports, so no plugin source change is needed, only how the
+// binary is fetched.
+//
+// Still declared on rootProject.allprojects, not just this module's own
+// repositories{} — :app is what actually resolves this dependency's
+// transitive classpath (:app:releaseRuntimeClasspath), and a per-project
+// repository only governs resolution for configurations resolved *within*
+// that project, not for a consumer resolving the merged graph.
+rootProject.allprojects {
+    repositories {
+        maven { url 'https://jitpack.io' }
+    }
+}
+
+dependencies {
+    api 'cz.adaptech.tesseract4android:tesseract4android:4.9.0'
+}

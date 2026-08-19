@@ -385,10 +385,9 @@ packages:
   flutter_tesseract_ocr:
     dependency: "direct main"
     description:
-      name: flutter_tesseract_ocr
-      sha256: "63552ab444f3fa3b2e86485ad3a40cfcf70408fcd14cd061d87bfd3c7ff22a0e"
-      url: "https://pub.dev"
-    source: hosted
+      path: "packages/flutter_tesseract_ocr_floss"
+      relative: true
+    source: path
     version: "0.4.31"
   flutter_test:
     dependency: "direct dev"

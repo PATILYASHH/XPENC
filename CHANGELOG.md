@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
+## [Unreleased]
+
+### Fixed
+- Screenshot OCR (`flutter_tesseract_ocr`) no longer depends on a vendored
+  prebuilt `tesseract4android-release.aar` binary blob — the upstream
+  pub.dev package bundled it directly in `android/libs/`, which itself
+  failed F-Droid's build policy the same way ML Kit did (#57). A local
+  fork (`packages/flutter_tesseract_ocr_floss`) resolves the identical
+  library from JitPack instead, a trusted repository under F-Droid's
+  Inclusion Policy. No Dart-side or user-facing change — verified on a
+  real device build that OCR still reads screenshots correctly.
+
 ## [1.4.3] — 2026-08-19
 
 ### Added
