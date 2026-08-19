@@ -87,7 +87,16 @@ dependencies:
   # blobs even in the "bundled" no-Play-Services form. Fully offline, no
   # extra Android permission — assets/tessdata/eng.traineddata ships in the
   # APK instead of being fetched at runtime.
-  flutter_tesseract_ocr: ^0.4.31
+  #
+  # A local fork (packages/flutter_tesseract_ocr_floss), not the pub.dev
+  # package: upstream vendors a prebuilt tesseract4android-release.aar
+  # directly in its own android/libs/ — itself an unreviewable binary blob,
+  # same class of problem ML Kit was (GitHub #57). The fork drops that file
+  # and resolves the identical library from JitPack instead, which
+  # F-Droid's Inclusion Policy explicitly allows. See that package's
+  # android/build.gradle for the full rationale.
+  flutter_tesseract_ocr:
+    path: packages/flutter_tesseract_ocr_floss
 
 dev_dependencies:
   flutter_test:

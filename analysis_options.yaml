@@ -16,6 +16,9 @@ analyzer:
     - windows/**
     - macos/**
     - linux/**
+    # Vendored third-party plugin (see pubspec.yaml) — not this project's own
+    # code, so not held to its lint rules.
+    - packages/**
 include: package:flutter_lints/flutter.yaml
 
 linter:
