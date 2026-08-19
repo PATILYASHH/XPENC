@@ -127,7 +127,16 @@ class ShareIntakeService {
   /// receipt (see `AppDatabase.approvePending`).
   Future<ShareIntakeResult> ingestImage(String path) async {
     final stored = await ReceiptStorage.storeExternalFile(File(path));
-    final text = await ocr.recognizeText(stored);
+    final String text;
+    try {
+      text = await ocr.recognizeText(stored);
+    } catch (_) {
+      // OCR itself failed (bad image, engine error) — treat it the same as
+      // a screenshot that yielded no usable transaction, rather than
+      // crashing the whole share flow.
+      await _deleteBestEffort(stored);
+      return const ShareIntakeRejected(RejectReason.notATransaction);
+    }
 
     final msg = RawMessage(
       body: text,
