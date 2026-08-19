@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
-## [Unreleased]
+## [1.4.4] — 2026-08-19
 
 ### Fixed
 - Screenshot OCR (`flutter_tesseract_ocr`) no longer depends on a vendored
@@ -493,7 +493,8 @@ First public release. 🎉
 - `tool/verify_apk.sh` gates every shipped APK against the missing
   `libsqlite3.so` class of crash.
 
-[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.4.3...HEAD
+[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.4.4...HEAD
+[1.4.4]: https://github.com/PATILYASHH/XPENC/compare/v1.4.3...v1.4.4
 [1.4.3]: https://github.com/PATILYASHH/XPENC/compare/v1.4.2...v1.4.3
 [1.4.2]: https://github.com/PATILYASHH/XPENC/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/PATILYASHH/XPENC/compare/v1.4.0...v1.4.1
