@@ -1,26 +1,25 @@
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:flutter_tesseract_ocr/flutter_tesseract_ocr.dart';
 
 /// Recognises text in an image, entirely on-device.
 ///
-/// Wraps ML Kit's *bundled* Latin text recognizer — the model is statically
-/// linked into the app at build time (`com.google.mlkit:text-recognition`,
-/// not `play-services-mlkit-text-recognition`), so this needs no Google Play
-/// Services at runtime, no extra Android permission, and no network call.
-/// See GitHub #25 and the dependency note in `pubspec.yaml`.
+/// Wraps Tesseract (BSD-3-Clause) via `flutter_tesseract_ocr` — not Google
+/// ML Kit, which F-Droid rejects: its trained-model blobs are proprietary
+/// even in the no-Play-Services "bundled" form (see GitHub #57). The English
+/// model ships as an asset (`assets/tessdata/eng.traineddata`, Apache-2.0
+/// from tesseract-ocr/tessdata_fast) so recognition needs no network call.
 class OcrService {
   const OcrService();
 
-  /// Returns every line of text ML Kit found in the image at [imagePath],
+  /// Returns every line of text Tesseract found in the image at [imagePath],
   /// top-to-bottom as it appears on screen — empty if none.
   Future<String> recognizeText(String imagePath) async {
-    final recognizer = TextRecognizer(script: TextRecognitionScript.latin);
-    try {
-      final result = await recognizer.processImage(
-        InputImage.fromFilePath(imagePath),
-      );
-      return result.text;
-    } finally {
-      await recognizer.close();
-    }
+    final text = await FlutterTesseractOcr.extractText(
+      imagePath,
+      language: 'eng',
+      args: {
+        'preserve_interword_spaces': '1',
+      },
+    );
+    return text.trim();
   }
 }

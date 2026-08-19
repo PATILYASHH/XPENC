@@ -77,9 +77,7 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
-            // See proguard-rules.pro — needed once google_mlkit_text_recognition
-            // (GitHub #25) started tripping R8 over script-recognizer classes
-            // this app never uses.
+            // See proguard-rules.pro.
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",

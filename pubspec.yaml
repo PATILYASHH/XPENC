@@ -82,11 +82,12 @@ dependencies:
   csv: ^8.0.0
   # On-device text recognition for shared payment screenshots (PhonePe/GPay/
   # Paytm "payment successful" screens) — see
-  # message_capture/ocr_service.dart and GitHub #25. Uses ML Kit's *bundled*
-  # model (statically linked at build time), not the Play-Services-backed
-  # "unbundled" variant: no Google Play Services dependency at runtime, no
-  # extra Android permission, fully offline immediately after install.
-  google_mlkit_text_recognition: ^0.15.0
+  # message_capture/ocr_service.dart and GitHub #25/#57. Tesseract (BSD-3),
+  # not Google ML Kit: F-Droid rejects ML Kit's proprietary trained-model
+  # blobs even in the "bundled" no-Play-Services form. Fully offline, no
+  # extra Android permission — assets/tessdata/eng.traineddata ships in the
+  # APK instead of being fetched at runtime.
+  flutter_tesseract_ocr: ^0.4.31
 
 dev_dependencies:
   flutter_test:
@@ -118,10 +119,16 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  # Tesseract's English trained-data model (Apache-2.0, tesseract-ocr/
+  # tessdata_fast) — bundled at build time so OCR stays fully offline; see
+  # message_capture/ocr_service.dart. tessdata_config.json is required by
+  # flutter_tesseract_ocr itself (android_ios.dart's _loadTessData) — it's
+  # the manifest the plugin reads to know which files to copy out of the
+  # asset bundle into a real filesystem path before every OCR call; without
+  # it declared as an asset, that copy step throws on every attempt.
+  assets:
+    - assets/tessdata/eng.traineddata
+    - assets/tessdata_config.json
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
