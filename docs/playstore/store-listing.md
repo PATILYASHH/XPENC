@@ -89,7 +89,7 @@ First release on Google Play!
 | Field | Value |
 |---|---|
 | Email (required, shown publicly) | patilyasshh@gmail.com |
-| Website | https://getxpenc.vercel.app |
+| Website | https://xpenc.in |
 | Phone | optional — leave blank |
 | External marketing | opt out if unwanted |
 

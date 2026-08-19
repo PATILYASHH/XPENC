@@ -1,0 +1,46 @@
+# XPENC
+
+> XPENC is a free, open-source, offline-first personal finance app for Android. It tracks income, expenses, transfers, budgets, savings goals, and dues/loans entirely in an on-device SQLite database — there is no server, no user account, no analytics, and release builds don't even request the INTERNET permission.
+
+XPENC is built and maintained by one developer, Yash Patil (GitHub: PATILYASHH), and is licensed under the MIT license. The current stable release is v1.4.2 (August 2026).
+
+## Key facts
+
+- Platform: Android 7.0 and later. No iOS, web, or desktop version.
+- Price: free, no ads, no in-app purchases, no subscription.
+- Privacy: no server, no accounts, no analytics/trackers, no ads, no SMS permission. Release builds request no INTERNET permission at all.
+- License: MIT — source code is public and auditable.
+- Distribution: F-Droid (recommended, reproducible build from source), direct APK download, OpenAPK mirror. A Google Play listing is in progress.
+
+## Core features
+
+- Accounts: Cash, Bank, Card and Prepaid Balance types with real, non-double-counted balances.
+- Transactions: income, expense and transfer, kept strictly separate; tags and receipt photos supported.
+- Budgets: per-category budgets with live progress and overspend alerts; an opt-in "Envelope Mode" for zero-based, every-rupee-has-a-job budgeting.
+- Dues & loans: track money lent or borrowed, with partial settlements, kept out of budget totals.
+- Data entry automation: share a bank SMS or a UPI payment screenshot (Paytm/Google Pay/PhonePe) into the app from the Android Share sheet, or import a CSV bank statement — all parsed entirely on-device.
+- Split payments: one purchase paid from more than one account posts as linked transactions.
+- Savings goals, shopping lists, calendar/reminders, and PDF statement / CSV export.
+- Security: optional 4/5/6-digit PIN with fingerprint/face unlock, and a per-balance "hide amounts" toggle.
+- Six themes including a true-black AMOLED dark mode.
+
+## Pages
+
+- [Home](https://xpenc.in/): features, screenshots, and download links.
+- [Privacy Policy](https://xpenc.in/privacy): full data-handling policy — the short version is "nothing leaves the device."
+- [GitHub repository](https://github.com/PATILYASHH/XPENC): full source code, issue tracker, and discussions.
+- [Changelog](https://github.com/PATILYASHH/XPENC/blob/master/CHANGELOG.md): version history and release notes.
+- [Latest release](https://github.com/PATILYASHH/XPENC/releases/latest): APKs and SHA-256 checksums.
+- [F-Droid listing](https://f-droid.org/packages/com.yash.xpenc/): recommended install source, builds from source.
+
+## Support
+
+- Email: support.yashpatil@gmail.com
+- Bug reports and feature requests: [GitHub Issues](https://github.com/PATILYASHH/XPENC/issues/new/choose)
+- Questions and open-ended discussion: [GitHub Discussions](https://github.com/PATILYASHH/XPENC/discussions)
+- Security vulnerabilities: [private reporting](https://github.com/PATILYASHH/XPENC/security)
+
+## Optional
+
+- [Contributing guide](https://github.com/PATILYASHH/XPENC/blob/master/CONTRIBUTING.md): the highest-impact contribution is an SMS parsing template for an unsupported bank.
+- [Release process](https://github.com/PATILYASHH/XPENC/blob/master/docs/RELEASING.md): how tagged releases are built and verified.

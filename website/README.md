@@ -1,6 +1,6 @@
 # XPENC website
 
-The landing page served at https://getxpenc.vercel.app — a single static page
+The landing page served at https://xpenc.in — a single static page
 (`index.html`, no build step) plus the privacy policy (`privacy.html`, served
 at `/privacy` via `cleanUrls`). Dependency-free by design: no JS libraries, no
 CDN scripts — the only external requests are Google Fonts and one GitHub API
@@ -45,6 +45,16 @@ npx serve website
 - `privacy.html` mirrors `PRIVACY.md` at the repo root — update both together,
   and bump the effective date.
 - `sitemap.xml` lists every page by absolute URL — add new pages there when you
-  create them, or Search Console won't find them. `robots.txt` points at it.
+  create them, or Search Console won't find them. Bump `<lastmod>` when a
+  page's content changes. `robots.txt` points at it.
 - The `google-site-verification` meta in `index.html` is what Search Console
   checks — removing it un-verifies the property.
+- `llms.txt` is a plain-text summary for AI assistants/answer engines (the
+  [llms.txt convention](https://llmstxt.org/)) — update it alongside the
+  Features section and support email so it doesn't drift from the real page.
+  `robots.txt` explicitly allows known AI crawlers (GPTBot, ClaudeBot, ...) in
+  addition to the blanket `Allow: /`.
+- `index.html` carries two `application/ld+json` blocks (SoftwareApplication +
+  FAQPage). Bump `softwareVersion` on every release, and keep the FAQPage
+  entries word-for-word identical to the visible `#faq` section — mismatched
+  structured data can get flagged by Google.

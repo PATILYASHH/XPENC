@@ -23,7 +23,7 @@ everything lives in a local SQLite database on your phone. Nothing is ever uploa
 
 [<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid" height="70">](https://f-droid.org/packages/com.yash.xpenc/)
 
-[**🌐 Website**](https://getxpenc.vercel.app) · [**⬇️ Download APK**](https://github.com/PATILYASHH/XPENC/releases/latest) · [**🐛 Report a bug**](../../issues/new?template=bug_report.yml) · [**✨ Request a feature**](../../issues/new?template=feature_request.yml) · [**🏦 Add your bank**](../../issues/new?template=bank_support.yml)
+[**🌐 Website**](https://xpenc.in) · [**⬇️ Download APK**](https://github.com/PATILYASHH/XPENC/releases/latest) · [**🐛 Report a bug**](../../issues/new?template=bug_report.yml) · [**✨ Request a feature**](../../issues/new?template=feature_request.yml) · [**🏦 Add your bank**](../../issues/new?template=bank_support.yml)
 
 </div>
 
@@ -80,7 +80,7 @@ for your phone automatically.
 ### Direct APK
 
 Or grab it from [**Releases**](https://github.com/PATILYASHH/XPENC/releases/latest)
-/ the [website](https://getxpenc.vercel.app#download):
+/ the [website](https://xpenc.in#download):
 
 | Your phone | Asset |
 |---|---|
@@ -102,7 +102,7 @@ Everything is stored on-device in the app's private SQLite database. Since
 1.1.0 the app requests **no SMS permission at all** — the only runtime
 permission is notifications. No transaction or balance ever leaves the phone.
 **There is no server.**
-Full policy: [PRIVACY.md](PRIVACY.md) · live at [getxpenc.vercel.app/privacy](https://getxpenc.vercel.app/privacy).
+Full policy: [PRIVACY.md](PRIVACY.md) · live at [xpenc.in/privacy](https://xpenc.in/privacy).
 See [SECURITY.md](SECURITY.md) for the vulnerability disclosure policy.
 
 ## Tech stack

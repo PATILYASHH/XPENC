@@ -1,11 +1,11 @@
 # XPENC Privacy Policy
 
-**Effective date:** 12 July 2026
+**Effective date:** 14 August 2026
 **Applies to:** XPENC for Android (package name `com.yash.xpenc`), version 1.1.0 and later
 **Developer:** Yash Patil (individual developer)
-**Contact:** patilyasshh@gmail.com
+**Contact:** support.yashpatil@gmail.com
 
-This policy is published at <https://getxpenc.vercel.app/privacy> and mirrored in the
+This policy is published at <https://xpenc.in/privacy> and mirrored in the
 app's source repository at <https://github.com/PATILYASHH/XPENC/blob/master/PRIVACY.md>.
 
 ## The short version
@@ -82,7 +82,7 @@ children under 13, and it collects no data from anyone regardless of age.
 
 ## The website
 
-The download website <https://getxpenc.vercel.app> is a static page hosted on
+The download website <https://xpenc.in> is a static page hosted on
 Vercel. It runs no analytics or trackers. Like any web host, Vercel may keep
 standard access logs (IP address, user agent) to operate the service — see
 [Vercel's privacy policy](https://vercel.com/legal/privacy-policy). The page
@@ -105,7 +105,7 @@ processing will remain fully on-device.
 
 ## Changes to this policy
 
-Updates are published at <https://getxpenc.vercel.app/privacy> with a new
+Updates are published at <https://xpenc.in/privacy> with a new
 effective date. Material changes will also be called out in the
 [changelog](https://github.com/PATILYASHH/XPENC/blob/master/CHANGELOG.md) and
 release notes.
@@ -114,6 +114,6 @@ release notes.
 
 Questions or concerns about privacy:
 
-- Email: **patilyasshh@gmail.com**
+- Email: **support.yashpatil@gmail.com**
 - Bug reports: [GitHub issues](https://github.com/PATILYASHH/XPENC/issues)
 - Security vulnerabilities: [private reporting](https://github.com/PATILYASHH/XPENC/security) — see [SECURITY.md](SECURITY.md)

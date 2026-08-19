@@ -72,9 +72,10 @@ The website links to `releases/latest/download/xpenc-arm64-v8a.apk` (and
 ## Website deployment
 
 The site lives in `website/` and is deployed on Vercel as project
-`yash-projects/xpenc`, production domain **https://getxpenc.vercel.app**
-(`xpenc.vercel.app` was already taken by another user). Deployment protection
-is disabled on this project so the site is public.
+`yash-projects/xpenc`, production domain **https://xpenc.in** (custom domain;
+`getxpenc.vercel.app` was the domain before this and still resolves to the
+same deployment as Vercel's project domain). Deployment protection is
+disabled on this project so the site is public.
 
 To redeploy after editing the site:
 

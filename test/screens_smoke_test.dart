@@ -453,7 +453,7 @@ void main() {
     // doesn't exist publicly; these keep the shipped links real. They sit
     // below the fold at phone size, so bring them into the viewport first.
     await tester.scrollUntilVisible(find.text('PATILYASHH/XPENC'), 240);
-    expect(find.text('getxpenc.vercel.app'), findsOneWidget);
+    expect(find.text('xpenc.in'), findsOneWidget);
     expect(find.text('PATILYASHH/XPENC'), findsOneWidget);
     await unmount(tester);
   });
