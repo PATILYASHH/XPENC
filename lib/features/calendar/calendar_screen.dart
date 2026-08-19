@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/app_icons.dart';
@@ -134,6 +135,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final categoryMap = ref.watch(categoryMapProvider);
     final accountMap = ref.watch(accountMapProvider);
     final openReminders = ref.watch(openRemindersProvider);
+    final recurringRules =
+        ref.watch(recurringRulesProvider).valueOrNull ?? const [];
 
     return Scaffold(
       appBar: AppBar(
@@ -166,8 +169,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             ),
           ),
         ),
-        data: (txns) =>
-            _content(theme, txns, categoryMap, accountMap, openReminders),
+        data: (txns) => _content(
+          theme,
+          txns,
+          categoryMap,
+          accountMap,
+          openReminders,
+          recurringRules,
+        ),
       ),
     );
   }
@@ -178,13 +187,19 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     Map<int, CategoryRow> categoryMap,
     Map<int, AccountRow> accountMap,
     List<ReminderRow> openReminders,
+    List<RecurringRuleRow> recurringRules,
   ) {
-    // Per-day money in / out (transfers are neither income nor expense — ignore).
+    // Per-day money in / out, plus which days carry a transfer (neither
+    // income nor expense — a lateral move between the user's own accounts).
     final incomeByDay = <DateTime, Money>{};
     final expenseByDay = <DateTime, Money>{};
+    final transferDays = <DateTime>{};
     for (final tx in txns) {
-      if (tx.type == TxType.transfer) continue;
       final day = _dateOnly(tx.date);
+      if (tx.type == TxType.transfer) {
+        transferDays.add(day);
+        continue;
+      }
       if (tx.type == TxType.income) {
         incomeByDay[day] = (incomeByDay[day] ?? const Money.zero()) + tx.amount;
       } else {
@@ -193,7 +208,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       }
     }
 
-    final reminderDays = {for (final r in openReminders) _dateOnly(r.dueDate)};
+    // Every open reminder and active Auto rule's next run — a probable event
+    // ahead of today, or the day it lands and becomes an actual one (#67).
+    final dueDays = <DateTime>{
+      for (final r in openReminders) _dateOnly(r.dueDate),
+      for (final r in recurringRules)
+        if (r.isActive) _dateOnly(r.nextDueDate),
+    };
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
@@ -204,7 +225,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           const SizedBox(height: 16),
           _weekdayHeader(theme),
           const SizedBox(height: 8),
-          _grid(theme, incomeByDay, expenseByDay, reminderDays),
+          _grid(theme, incomeByDay, expenseByDay, transferDays, dueDays),
           const SizedBox(height: 24),
           if (_selectedDay != null)
             ..._daySections(
@@ -282,7 +303,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     ThemeData theme,
     Map<DateTime, Money> incomeByDay,
     Map<DateTime, Money> expenseByDay,
-    Set<DateTime> reminderDays,
+    Set<DateTime> transferDays,
+    Set<DateTime> dueDays,
   ) {
     final daysInMonth = DateTime(
       _shownMonth.year,
@@ -308,12 +330,18 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         if (index < leadingBlanks) return const SizedBox.shrink();
         final dayNum = index - leadingBlanks + 1;
         final date = DateTime(_shownMonth.year, _shownMonth.month, dayNum);
+        // Yellow while the reminder/Auto rule is still ahead of today; once
+        // today catches up to it, it's no longer probable but actual (#67).
+        final dueColor = !dueDays.contains(date)
+            ? null
+            : (date.isAfter(today) ? Colors.amber : AppColors.expense);
         return _dayCell(
           theme,
           date: date,
           income: incomeByDay[date],
           expense: expenseByDay[date],
-          hasReminder: reminderDays.contains(date),
+          hasTransfer: transferDays.contains(date),
+          dueColor: dueColor,
           isToday: date == today,
           isSelected: _selectedDay == date,
         );
@@ -326,13 +354,19 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     required DateTime date,
     required Money? income,
     required Money? expense,
-    required bool hasReminder,
+    required bool hasTransfer,
+    required Color? dueColor,
     required bool isToday,
     required bool isSelected,
   }) {
     final cs = theme.colorScheme;
     final inMoney = (income != null && !income.isZero) ? income : null;
     final outMoney = (expense != null && !expense.isZero) ? expense : null;
+    final dots = [
+      if (inMoney != null) AppColors.income,
+      if (outMoney != null) AppColors.expense,
+      if (hasTransfer) AppColors.transfer,
+    ];
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -363,7 +397,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   ),
                 ),
               ),
-              if (hasReminder && !isSelected)
+              if (dueColor != null && !isSelected)
                 Positioned(
                   right: 1,
                   top: 1,
@@ -371,7 +405,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     width: 6,
                     height: 6,
                     decoration: BoxDecoration(
-                      color: cs.secondary,
+                      color: dueColor,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -382,14 +416,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           // A plain dot per direction, not the amount itself — keeps the grid
           // readable at a glance and, unlike a printed figure, gives away
           // nothing if the screen is glimpsed by someone else (GitHub #28).
-          if (inMoney != null || outMoney != null)
+          if (dots.isNotEmpty)
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (inMoney != null) _cellDot(AppColors.income),
-                if (inMoney != null && outMoney != null)
-                  const SizedBox(width: 4),
-                if (outMoney != null) _cellDot(AppColors.expense),
+                for (var i = 0; i < dots.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 4),
+                  _cellDot(dots[i]),
+                ],
               ],
             ),
         ],
@@ -622,6 +656,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
+        // Same destination a tap in the Transactions tab opens (GitHub #56)
+        // — the calendar's day list gave no way in before this.
+        onTap: () => context.push('/transaction/${tx.id}'),
       ),
     );
   }
