@@ -12,7 +12,7 @@ import '../branding/brand_mark.dart';
 ///
 /// The ➕ slot is not a tab — it pushes the Add Transaction route. Tabs map to
 /// shell branches 0,1,2,3 while sitting at bar slots 0,1,3,4.
-class AppShell extends StatelessWidget {
+class AppShell extends ConsumerWidget {
   const AppShell({required this.navigationShell, super.key});
 
   final StatefulNavigationShell navigationShell;
@@ -34,15 +34,18 @@ class AppShell extends StatelessWidget {
     _TabSpec(3, Icons.grid_view_outlined, Icons.grid_view_rounded, 'More'),
   ];
 
-  void _goBranch(int branchIndex) {
-    navigationShell.goBranch(
-      branchIndex,
-      initialLocation: branchIndex == navigationShell.currentIndex,
-    );
+  /// Re-tapping the tab you're already on doesn't navigate anywhere — instead
+  /// it signals that tab's screen to scroll back to the top (GitHub #66).
+  void _goBranch(WidgetRef ref, int branchIndex) {
+    final alreadyActive = branchIndex == navigationShell.currentIndex;
+    if (alreadyActive && branchIndex == 1) {
+      ref.read(txScrollToTopProvider.notifier).state++;
+    }
+    navigationShell.goBranch(branchIndex, initialLocation: alreadyActive);
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final border = theme.colorScheme.outline;
 
@@ -59,11 +62,11 @@ class AppShell extends StatelessWidget {
             height: 68,
             child: Row(
               children: [
-                _navItem(context, _tabs[0]),
-                _navItem(context, _tabs[1]),
+                _navItem(context, ref, _tabs[0]),
+                _navItem(context, ref, _tabs[1]),
                 _addButton(context),
-                _navItem(context, _tabs[2]),
-                _navItem(context, _tabs[3]),
+                _navItem(context, ref, _tabs[2]),
+                _navItem(context, ref, _tabs[3]),
               ],
             ),
           ),
@@ -72,7 +75,7 @@ class AppShell extends StatelessWidget {
     );
   }
 
-  Widget _navItem(BuildContext context, _TabSpec tab) {
+  Widget _navItem(BuildContext context, WidgetRef ref, _TabSpec tab) {
     final theme = Theme.of(context);
     final selected = navigationShell.currentIndex == tab.branch;
     final color = selected
@@ -81,7 +84,7 @@ class AppShell extends StatelessWidget {
 
     return Expanded(
       child: InkWell(
-        onTap: () => _goBranch(tab.branch),
+        onTap: () => _goBranch(ref, tab.branch),
         borderRadius: BorderRadius.circular(16),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
