@@ -50,3 +50,5 @@ app.*.map.json
 
 # Raw screenshot drops — the padded, store-ready copies live under fastlane/
 /Images/
+graphify-out
+Temp
