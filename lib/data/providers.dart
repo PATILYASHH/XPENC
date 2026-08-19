@@ -142,6 +142,12 @@ final txAdvancedFiltersProvider = StateProvider<TransactionFilters>(
   (ref) => const TransactionFilters(),
 );
 
+/// Bumped by `AppShell` whenever the Transactions tab is tapped while it's
+/// already the active tab, so `TransactionsScreen` can scroll itself back to
+/// the top — see GitHub #66. The value itself is meaningless, only the change
+/// matters (a `ref.listen` trigger).
+final txScrollToTopProvider = StateProvider<int>((ref) => 0);
+
 /// Same split-aware category aggregation as [spendByCategoryProvider], for a
 /// whole calendar year instead of one month — composed locally so the
 /// shared, month-scoped provider never has to know "year" exists.

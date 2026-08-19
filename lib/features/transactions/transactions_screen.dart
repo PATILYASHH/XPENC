@@ -30,10 +30,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   // `AppShell`'s `_TransactionsBarActions`), which is no longer a descendant
   // of this screen.
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -111,6 +113,16 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     // stale text left sitting in its controller.
     ref.listen<bool>(txSearchActiveProvider, (_, next) {
       if (!next) _searchController.clear();
+    });
+    // Re-tapping the already-active Transactions tab (AppShell._goBranch)
+    // bumps this instead of navigating anywhere — see GitHub #66.
+    ref.listen<int>(txScrollToTopProvider, (_, _) {
+      if (!_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOutCubic,
+      );
     });
 
     // Filtering runs once per build and feeds both the summary and the list.
@@ -200,6 +212,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
     return Scaffold(
       body: CustomScrollView(
+        controller: _scrollController,
         slivers: [
           SliverPersistentHeader(
             pinned: true,
