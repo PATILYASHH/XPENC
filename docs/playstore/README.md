@@ -8,7 +8,7 @@ this order:
 |---|---|---|---|
 | 1 | Create dev account, **start recruiting 12 closed-testers now** (14-day rule) | [release-checklist.md](release-checklist.md) | — |
 | 2 | Fix release signing (currently debug-signed — hard blocker) | [release-checklist.md](release-checklist.md) | — |
-| 3 | Privacy policy — live at [getxpenc.vercel.app/privacy](https://getxpenc.vercel.app/privacy), source [`PRIVACY.md`](../../PRIVACY.md) / [`website/privacy.html`](../../website/privacy.html) | — | App content → Privacy policy |
+| 3 | Privacy policy — live at [xpenc.in/privacy](https://xpenc.in/privacy), source [`PRIVACY.md`](../../PRIVACY.md) / [`website/privacy.html`](../../website/privacy.html) | — | App content → Privacy policy |
 | 4 | Store listing copy + graphics | [store-listing.md](store-listing.md) | Store presence → Main store listing |
 | 5 | Data safety form | [data-safety.md](data-safety.md) | App content → Data safety |
 | 6 | Content rating questionnaire | [content-rating.md](content-rating.md) | App content → Content ratings |

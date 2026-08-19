@@ -48,7 +48,7 @@ void main() {
       expect(AppInfo.sponsorUrl, 'https://github.com/sponsors/PATILYASHH');
       // The public repo and website — a wrong link here ships to every phone.
       expect(AppInfo.repoUrl, 'https://github.com/PATILYASHH/XPENC');
-      expect(AppInfo.websiteUrl, 'https://getxpenc.vercel.app');
+      expect(AppInfo.websiteUrl, 'https://xpenc.in');
     });
 
     test('every advertised link is an absolute https URL', () {

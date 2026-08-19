@@ -1,4 +1,30 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://getxpenc.vercel.app/sitemap.xml
+# AI assistants / answer engines — explicitly welcome, same as everyone else.
+# See /llms.txt for a purpose-built summary of this site.
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+Sitemap: https://xpenc.in/sitemap.xml

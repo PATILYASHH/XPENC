@@ -26,7 +26,7 @@ Result on the store listing: **"No data collected · No data shared."**
 ## Privacy policy URL (required regardless)
 
 ```
-https://getxpenc.vercel.app/privacy
+https://xpenc.in/privacy
 ```
 
 Entered under **App content → Privacy policy**. The page must stay publicly reachable —

@@ -4,7 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>XPENC — Money, tracked honestly.</title>
-  <meta name="description" content="XPENC is an offline-first personal finance app for Android. Income, expenses, budgets, goals, dues and insights — everything stays on your phone. No server, no sign-up, no SMS permission. Open source.">
+  <meta name="description" content="XPENC is a free, open-source, offline-first expense tracker and budget app for Android. Track income, expenses, budgets, savings goals, dues and loans — everything stays on your phone. No server, no sign-up, no ads, no SMS permission.">
+  <meta name="keywords" content="XPENC, expense tracker, budget app, personal finance app, offline expense tracker, money manager Android, budget planner, envelope budgeting, dues and loans tracker, open source finance app, no ads finance app, offline budget app India">
+  <meta name="author" content="Yash Patil">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <link rel="canonical" href="https://xpenc.in/">
   <meta name="theme-color" content="#ffffff">
   <meta name="google-site-verification" content="WAS2f7jnX5YxUBIXxbid23arE0_KYn75v_7I45wmETI">
 
@@ -12,17 +16,23 @@
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon_32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon_16.png">
   <link rel="apple-touch-icon" href="assets/apple_touch_icon_180.png">
+  <link rel="alternate" type="application/rss+xml" title="XPENC Changelog" href="https://github.com/PATILYASHH/XPENC/releases.atom">
 
   <!-- Open Graph / Twitter -->
   <meta property="og:type" content="website">
+  <meta property="og:site_name" content="XPENC">
   <meta property="og:title" content="XPENC — Money, tracked honestly.">
-  <meta property="og:description" content="Offline-first personal finance for Android. Budgets, goals, dues, insights — all on-device. No server. No sign-up. No SMS permission. Open source.">
-  <meta property="og:url" content="https://getxpenc.vercel.app/">
-  <meta property="og:image" content="https://getxpenc.vercel.app/assets/og_cover.jpg">
+  <meta property="og:description" content="Free, open-source, offline-first expense tracker and budget app for Android. Budgets, goals, dues, insights — all on-device. No server. No sign-up. No ads.">
+  <meta property="og:url" content="https://xpenc.in/">
+  <meta property="og:image" content="https://xpenc.in/assets/og_cover.jpg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="XPENC — Money, tracked honestly. Offline-first personal finance for Android.">
+  <meta property="og:locale" content="en_IN">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="XPENC — Money, tracked honestly.">
+  <meta name="twitter:description" content="Free, open-source, offline-first expense tracker and budget app for Android. No server, no sign-up, no ads.">
+  <meta name="twitter:image" content="https://xpenc.in/assets/og_cover.jpg">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -352,6 +362,9 @@
     .f10 { --c: var(--blurple); --tint: var(--blurple-50); }
     .f11 { --c: var(--brand);  --tint: var(--brand-50); }
     .f12 { --c: var(--blue);   --tint: var(--blue-50); }
+    .f13 { --c: var(--violet); --tint: var(--violet-50); }
+    .f14 { --c: var(--amber);  --tint: var(--amber-50); }
+    .f15 { --c: var(--rose);   --tint: var(--rose-50); }
 
     /* ── soft band ───────────────────────────────────────── */
     .band-soft {
@@ -563,6 +576,25 @@
     .sup-foot h4 { font-family: var(--font-display); font-size: 13.5px; margin-bottom: 4px; }
     .sup-foot p { color: var(--muted); font-size: 13.5px; }
 
+    /* ── FAQ ─────────────────────────────────────────────── */
+    .faq-list { display: flex; flex-direction: column; gap: 12px; max-width: 760px; }
+    .faq-item {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 18px; padding: 2px 22px; box-shadow: var(--shadow-1);
+    }
+    .faq-item summary {
+      cursor: pointer; list-style: none; padding: 18px 0;
+      font-family: var(--font-display); font-weight: 600; font-size: 15.5px;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .faq-item summary::-webkit-details-marker { display: none; }
+    .faq-item summary::after {
+      content: "+"; font-size: 22px; font-weight: 400; line-height: 1;
+      color: var(--faint); flex: none; transition: transform .2s ease;
+    }
+    .faq-item[open] summary::after { transform: rotate(45deg); }
+    .faq-item p { color: var(--muted); font-size: 14.5px; line-height: 1.62; padding: 0 0 20px; margin: -4px 0 0; }
+
     /* ── open source ─────────────────────────────────────── */
     .oss-band {
       background: linear-gradient(135deg, #101a17 0%, #17251f 55%, #10201c 100%);
@@ -604,12 +636,170 @@
     .foot-bottom a { color: var(--muted); }
     .foot-bottom a:hover { color: var(--brand-700); }
 
+    /* ── scroll reveal ───────────────────────────────────── */
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+    }
+    html.reveal-ready [data-reveal] {
+      opacity: 0; transform: translateY(26px);
+      transition: opacity .75s cubic-bezier(.16,1,.3,1), transform .75s cubic-bezier(.16,1,.3,1);
+      transition-delay: var(--reveal-delay, 0s);
+    }
+    html.reveal-ready [data-reveal].is-visible { opacity: 1; transform: none; }
+
+    /* ── micro-interactions ─────────────────────────────── */
+    .btn:active, .sbtn:active:not(:disabled), .copy-btn:active, .dl-tile:active .dl-icon {
+      transform: scale(.95);
+    }
+    .feat .fi { transition: transform .3s cubic-bezier(.34,1.56,.64,1), background .2s ease; }
+    .feat:hover .fi { transform: scale(1.08) rotate(-4deg); }
+    .trust-card b { transition: transform .25s ease; }
+    .trust-card:hover b { transform: scale(1.06); }
+
+    /* ── compare table ───────────────────────────────────── */
+    .cmp-wrap {
+      overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--line);
+      box-shadow: var(--shadow-1); background: var(--card);
+    }
+    .cmp-table { width: 100%; border-collapse: collapse; min-width: 600px; }
+    .cmp-table th, .cmp-table td { padding: 15px 22px; text-align: left; font-size: 14.5px; border-bottom: 1px solid var(--line); }
+    .cmp-table thead th {
+      font-family: var(--font-display); font-size: 12px; letter-spacing: .07em; text-transform: uppercase;
+      color: var(--faint); background: var(--bg-soft);
+    }
+    .cmp-table thead th:nth-child(2) { color: var(--brand-700); }
+    .cmp-table tbody th { font-weight: 600; color: var(--ink); white-space: nowrap; }
+    .cmp-table tbody tr:last-child td, .cmp-table tbody tr:last-child th { border-bottom: 0; }
+    .cmp-table tbody tr { transition: background .15s ease; }
+    .cmp-table tbody tr:hover { background: var(--bg-soft); }
+    .cmp-yes { color: var(--brand-700); font-weight: 600; }
+    .cmp-yes svg { vertical-align: -2px; margin-right: 7px; }
+    .cmp-no { color: var(--muted); }
+
+    /* ── roadmap ─────────────────────────────────────────── */
+    .rmap { position: relative; max-width: 760px; margin-top: 12px; }
+    .rmap::before {
+      content: ""; position: absolute; left: 15px; top: 6px; bottom: 6px; width: 2px;
+      background: linear-gradient(var(--line-2), var(--line));
+    }
+    .rmap-item { position: relative; padding: 0 0 34px 46px; }
+    .rmap-item:last-child { padding-bottom: 0; }
+    .rmap-dot {
+      position: absolute; left: 0; top: 2px; width: 32px; height: 32px; border-radius: 50%;
+      background: #fff; border: 1px solid var(--line); box-shadow: var(--shadow-1); color: var(--brand-700);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .rmap-item.next .rmap-dot { background: var(--brand-50); border-color: var(--brand-100); }
+    .rmap-item.next .rmap-dot i {
+      width: 8px; height: 8px; border-radius: 50%; background: var(--brand);
+      animation: pulse 2.4s ease-out infinite;
+    }
+    .rmap-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 7px; }
+    .rmap-ver { font-family: var(--font-display); font-weight: 700; font-size: 16.5px; }
+    .rmap-date { font-size: 12.5px; color: var(--faint); }
+    .rmap-badge {
+      font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+      color: var(--brand-700); background: var(--brand-50); border-radius: 999px; padding: 3px 10px;
+    }
+    .rmap-item p { color: var(--muted); font-size: 14.5px; line-height: 1.6; }
+    .rmap-more { margin-top: 30px; }
+
+    /* ── oss live stats ──────────────────────────────────── */
+    .oss-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin: 30px 0 6px; }
+    @media (max-width: 820px) { .oss-stats { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 480px) { .oss-stats { grid-template-columns: repeat(2, 1fr); } }
+    .oss-stat {
+      background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14);
+      border-radius: 16px; padding: 16px 18px; transition: background .2s ease, transform .2s ease;
+    }
+    .oss-stat:hover { background: rgba(255,255,255,.1); transform: translateY(-2px); }
+    .oss-stat b {
+      display: block; font-family: var(--font-display); font-size: 26px; font-weight: 700;
+      color: #fff; letter-spacing: -.02em; font-variant-numeric: tabular-nums;
+    }
+    .oss-stat span { font-size: 12px; color: rgba(255,255,255,.62); }
+
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
       * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
       .shots-track { scroll-behavior: auto; }
     }
   </style>
+
+  <!-- Structured data — bump softwareVersion on every release (see website/README.md) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "XPENC",
+    "alternateName": "XPENC — Money, tracked honestly.",
+    "applicationCategory": "FinanceApplication",
+    "operatingSystem": "Android 7.0+",
+    "description": "XPENC is a free, open-source, offline-first expense tracker and budget app for Android. Track income, expenses, budgets, savings goals, dues and loans — everything stays on your phone.",
+    "url": "https://xpenc.in/",
+    "downloadUrl": "https://f-droid.org/packages/com.yash.xpenc/",
+    "installUrl": "https://f-droid.org/packages/com.yash.xpenc/",
+    "softwareVersion": "1.4.2",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "INR" },
+    "isAccessibleForFree": true,
+    "author": { "@type": "Person", "name": "Yash Patil", "url": "https://github.com/PATILYASHH" },
+    "license": "https://github.com/PATILYASHH/XPENC/blob/master/LICENSE",
+    "image": "https://xpenc.in/assets/og_cover.jpg",
+    "screenshot": "https://xpenc.in/assets/og_cover.jpg",
+    "featureList": [
+      "Income, expense and transfer tracking",
+      "Per-category budgets with overspend alerts",
+      "Envelope Mode zero-based budgeting",
+      "Dues and loans tracking",
+      "Savings goals and shopping lists",
+      "Bank SMS and payment-screenshot capture",
+      "CSV bank statement import",
+      "Split payments across accounts",
+      "PDF statements and CSV export",
+      "Passcode lock with fingerprint/face unlock",
+      "Six themes including a true-black AMOLED dark mode"
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Is XPENC free to use?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes. XPENC is free and open source under the MIT license — no ads, no in-app purchases, no subscription, ever." }
+      },
+      {
+        "@type": "Question",
+        "name": "Does XPENC need an internet connection?",
+        "acceptedAnswer": { "@type": "Answer", "text": "No. Release builds of the app don't request the INTERNET permission, so it's technically incapable of sending your data anywhere. This website itself loads a font and a version badge online, but the Android app never does." }
+      },
+      {
+        "@type": "Question",
+        "name": "Is my financial data safe and private?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Your accounts, transactions, budgets and dues live in a private SQLite database on your phone only. There's no server, no user accounts, no analytics and no trackers — and since the app is open source, every claim can be verified by reading the code." }
+      },
+      {
+        "@type": "Question",
+        "name": "Can I import transactions from my bank?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes, three ways: share a bank SMS or a UPI payment screenshot (Paytm, Google Pay, PhonePe) into XPENC from the Share sheet, or import a CSV bank statement from Download Data. All three are read and parsed entirely on-device." }
+      },
+      {
+        "@type": "Question",
+        "name": "Does XPENC do budgeting and dues/loan tracking?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes — per-category budgets with live progress and overspend alerts, an opt-in Envelope Mode for zero-based budgeting, and separate dues & loans tracking for money you lend or borrow, kept out of your budgets." }
+      },
+      {
+        "@type": "Question",
+        "name": "Where can I download XPENC?",
+        "acceptedAnswer": { "@type": "Answer", "text": "F-Droid (recommended, builds straight from source), a direct APK from GitHub Releases, or the OpenAPK mirror. A Google Play listing is coming soon." }
+      }
+    ]
+  }
+  </script>
 </head>
 <body id="top">
 
@@ -621,6 +811,7 @@
       </a>
       <div class="nav-links">
         <a href="#features">Features</a>
+        <a href="#compare">Compare</a>
         <a href="#screens">Screens</a>
         <a href="#privacy">Privacy</a>
         <a href="#support">Support</a>
@@ -728,83 +919,160 @@
   <!-- ── trust strip ── -->
   <section class="trust">
     <div class="wrap trust-grid">
-      <div class="trust-card tc1"><b>0</b><span>servers — data never leaves the phone</span></div>
-      <div class="trust-card tc2"><b>0</b><span>trackers, analytics or ads</span></div>
-      <div class="trust-card tc3"><b>1</b><span>runtime permission: notifications</span></div>
-      <div class="trust-card tc4"><b>100%</b><span>open source, MIT licensed</span></div>
+      <div class="trust-card tc1" data-reveal><b>0</b><span>servers — data never leaves the phone</span></div>
+      <div class="trust-card tc2" data-reveal><b>0</b><span>trackers, analytics or ads</span></div>
+      <div class="trust-card tc3" data-reveal><b>1</b><span>runtime permission: notifications</span></div>
+      <div class="trust-card tc4" data-reveal><b>100%</b><span>open source, MIT licensed</span></div>
     </div>
   </section>
 
   <!-- ── features ── -->
   <section id="features">
     <div class="wrap">
-      <div class="sec-head">
+      <div class="sec-head" data-reveal>
         <div class="kicker">Features</div>
         <h2>One rule everywhere: <span class="grad">the numbers must not lie.</span></h2>
         <p>Net worth = the sum of your account balances. Transfers leave it unchanged,
            income raises it, expense lowers it. Everything else follows.</p>
       </div>
       <div class="feat-grid">
-        <div class="feat f1">
+        <div class="feat f1" data-reveal>
           <div class="fi"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="2.5" y="5" width="19" height="14" rx="3"/><path d="M2.5 9.5h19"/></svg></div>
           <h3>Honest accounts</h3>
           <p>Cash, Bank, Card &amp; Prepaid balance (a canteen fob or gift card) with real balances. UPI and debit cards spend their bank's money — a payment is never counted twice.</p>
         </div>
-        <div class="feat f2">
+        <div class="feat f2" data-reveal>
           <div class="fi"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v13M7 4L4 7m3-3l3 3"/><path d="M17 20V7m0 13l3-3m-3 3l-3-3"/></svg></div>
           <h3>Income · Expense · Transfer</h3>
           <p>Three transaction types kept strictly apart. Tag anything and attach a receipt photo. Transfers never pollute budgets or reports.</p>
         </div>
-        <div class="feat f3">
+        <div class="feat f3" data-reveal>
           <div class="fi"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="9" opacity=".3"/><path d="M12 3a9 9 0 0 1 8.4 5.7"/><path d="M12 8v4l2.5 2.5"/></svg></div>
           <h3>Budgets that speak up</h3>
           <p>Per-category budgets with period windows, live progress, and alerts at 80% and on overspend. A subcategory's cap can never exceed its parent's.</p>
         </div>
-        <div class="feat f4">
+        <div class="feat f4" data-reveal>
           <div class="fi"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="8.5" cy="8" r="3.2"/><path d="M2.8 19c.7-3 3-4.6 5.7-4.6s5 1.6 5.7 4.6"/><circle cx="16.8" cy="9" r="2.6"/><path d="M15.5 14.7c2.6-.4 5 1 5.7 3.8"/></svg></div>
           <h3>Dues &amp; loans</h3>
           <p>Who owes what, partial settlements, running balances. Lending is not spending — dues stay out of your budgets.</p>
         </div>
-        <div class="feat f5">
+        <div class="feat f5" data-reveal>
           <div class="fi"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg></div>
           <h3>Calendar &amp; reminders</h3>
           <p>Day-wise money-in / money-out grid. EMI and bill reminders that post nothing until you confirm.</p>
         </div>
-        <div class="feat f6">
+        <div class="feat f6" data-reveal>
           <div class="fi"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg></div>
           <h3>Insights</h3>
-          <p>Category breakdown, income vs expense, net-worth trend and per-account reports.</p>
+          <p>Category breakdown — down to subcategories — income vs expense, net-worth trend and per-account reports.</p>
         </div>
-        <div class="feat f7">
+        <div class="feat f7" data-reveal>
           <div class="fi"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10m0 0l-3.5-3.5M12 13l3.5-3.5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></div>
           <h3>Backup &amp; export</h3>
           <p>Auto-backups land in your Downloads folder on a schedule, so they survive an uninstall. Plus PDF statements/reports and CSV export for accountants and Tally.</p>
         </div>
-        <div class="feat f8">
+        <div class="feat f8" data-reveal>
           <div class="fi"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.5L3 21l2-5.6A8.5 8.5 0 1 1 21 11.5z"/></svg></div>
           <h3>Share it in — SMS or screenshot</h3>
           <p>Share a bank SMS, or a Paytm/Google Pay/PhonePe payment screenshot, straight from your bank app — read entirely on-device (no READ_SMS permission, no network call), parsed and dropped into your Review Inbox to confirm.</p>
         </div>
-        <div class="feat f9">
+        <div class="feat f9" data-reveal>
           <div class="fi"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg></div>
           <h3>Passcode lock</h3>
-          <p>An optional PIN gates the app on open, with fingerprint or face unlock on top — your ledger stays yours even if your phone doesn't.</p>
+          <p>An optional 4, 5 or 6-digit PIN gates the app on open, with fingerprint or face unlock on top — your ledger stays yours even if your phone doesn't.</p>
         </div>
-        <div class="feat f10">
+        <div class="feat f10" data-reveal>
           <div class="fi"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.2"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg></div>
           <h3>Savings goals</h3>
           <p>Save toward a target with running progress and a contribution history — plus named shopping lists and a home-screen net-worth widget.</p>
         </div>
-        <div class="feat f11">
+        <div class="feat f11" data-reveal>
           <div class="fi"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="14" rx="2.5"/><path d="M3 7l9 6 9-6"/><path d="M12 13v5"/></svg></div>
           <h3>Envelope Mode</h3>
           <p>Opt-in per account: every rupee gets a job. Assign money from Ready to Assign into a category before you can spend it — a real value container, not just a ceiling.</p>
         </div>
-        <div class="feat f12">
+        <div class="feat f12" data-reveal>
           <div class="fi"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18 5.5 5.5 0 0 1 0-11 3.2 3.2 0 0 0 0-7z"/></svg></div>
           <h3>Six themes, real dark mode</h3>
           <p>True-black AMOLED dark, a violet "Colourful", a navy "Midnight" — and Cove, a One UI 9–inspired look with an ocean-blue accent and bigger, softer rounded cards.</p>
         </div>
+        <div class="feat f13" data-reveal>
+          <div class="fi"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 12v6m0 0-2.5-2.5M12 18l2.5-2.5"/></svg></div>
+          <h3>Import from CSV</h3>
+          <p>Bring in a bank statement — a signed Amount column or separate Withdrawal/Deposit columns are auto-detected from most Indian bank exports, with a mapping screen to check before anything's imported.</p>
+        </div>
+        <div class="feat f14" data-reveal>
+          <div class="fi"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="8" height="16" rx="2"/><rect x="13" y="4" width="8" height="16" rx="2"/><path d="M7 9h.01M7 13h.01M17 9h.01M17 13h.01"/></svg></div>
+          <h3>Split payments</h3>
+          <p>One purchase, paid from more than one account — part bank, part cash — posts as linked transactions sharing a category, with each leg pointing back to the others.</p>
+        </div>
+        <div class="feat f15" data-reveal>
+          <div class="fi"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><path d="M17.5 13v8M13.5 17h8"/></svg></div>
+          <h3>Quick Add &amp; widgets</h3>
+          <p>A standing notification with Add expense / Add income buttons posts straight from a reply — no need to open the app. Plus Budgets and Quick Add home-screen widgets alongside Balance.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── compare ── -->
+  <section id="compare">
+    <div class="wrap">
+      <div class="sec-head" data-reveal>
+        <div class="kicker k-blue">Compare</div>
+        <h2>How it's different.</h2>
+        <p>Most "free" finance apps make money from your data. XPENC has nowhere
+           to send it — there's no server on the other end.</p>
+      </div>
+      <div class="cmp-wrap" data-reveal>
+        <table class="cmp-table">
+          <caption class="sr-only">XPENC compared with most free finance apps</caption>
+          <thead>
+            <tr><th scope="col"><span class="sr-only">Category</span></th><th scope="col">XPENC</th><th scope="col">Most free finance apps</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Works with no internet</th>
+              <td class="cmp-yes"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg>Always</td>
+              <td class="cmp-no">Usually needs a connection</td>
+            </tr>
+            <tr>
+              <th scope="row">Account / sign-up</th>
+              <td class="cmp-yes"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg>None, ever</td>
+              <td class="cmp-no">Email or phone required</td>
+            </tr>
+            <tr>
+              <th scope="row">Ads</th>
+              <td class="cmp-yes"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg>Never</td>
+              <td class="cmp-no">Common on the free tier</td>
+            </tr>
+            <tr>
+              <th scope="row">Analytics &amp; trackers</th>
+              <td class="cmp-yes"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg>None</td>
+              <td class="cmp-no">Standard, often bundled</td>
+            </tr>
+            <tr>
+              <th scope="row">Source code</th>
+              <td class="cmp-yes"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg>100% open, MIT</td>
+              <td class="cmp-no">Closed</td>
+            </tr>
+            <tr>
+              <th scope="row">Reading bank SMS</th>
+              <td class="cmp-yes"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg>On-device via Share, no READ_SMS</td>
+              <td class="cmp-no">Often needs background SMS access</td>
+            </tr>
+            <tr>
+              <th scope="row">Where your data lives</th>
+              <td class="cmp-yes"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg>Only on your phone</td>
+              <td class="cmp-no">Synced to the vendor's servers</td>
+            </tr>
+            <tr>
+              <th scope="row">Price</th>
+              <td class="cmp-yes"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg>Free, forever</td>
+              <td class="cmp-no">Free tier + paid upgrade</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </section>
@@ -812,7 +1080,7 @@
   <!-- ── screens ── -->
   <section id="screens" class="band-soft">
     <div class="wrap">
-      <div class="sec-head shots-head">
+      <div class="sec-head shots-head" data-reveal>
         <div class="sec-copy">
           <div class="kicker k-blue">Screens</div>
           <h2>What it actually looks like.</h2>
@@ -889,7 +1157,7 @@
   <!-- ── privacy ── -->
   <section id="privacy">
     <div class="wrap">
-      <div class="privacy-band">
+      <div class="privacy-band" data-reveal>
         <div class="kicker">Privacy</div>
         <h2>The app can't leak your data. It has no internet.</h2>
         <p>Release builds don't request the INTERNET permission, so transmitting your
@@ -901,6 +1169,7 @@
           <span class="chip">No analytics</span>
           <span class="chip">No account</span>
           <span class="chip">No cloud</span>
+          <span class="chip">Hide amounts on demand</span>
         </div>
         <a class="more" href="/privacy">Read the full privacy policy →</a>
       </div>
@@ -910,7 +1179,7 @@
   <!-- ── download ── -->
   <section id="download" class="band-soft">
     <div class="wrap">
-      <div class="sec-head">
+      <div class="sec-head" data-reveal>
         <div class="kicker k-violet">Download</div>
         <h2>Get XPENC</h2>
         <p>Four ways to install it — all free, and every build comes from the same
@@ -920,7 +1189,7 @@
 
       <div class="dl-icons">
 
-        <div class="dl-tile disabled" title="Google Play — coming soon" aria-label="Google Play — coming soon">
+        <div class="dl-tile disabled" data-reveal title="Google Play — coming soon" aria-label="Google Play — coming soon">
           <span class="dl-icon s1">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><title>Google Play</title><path d="M22.018 13.298l-3.919 2.218-3.515-3.493 3.543-3.521 3.891 2.202a1.49 1.49 0 0 1 0 2.594zM1.337.924a1.486 1.486 0 0 0-.112.568v21.017c0 .217.045.419.124.6l11.155-11.087L1.337.924zm12.207 10.065l3.258-3.238L3.45.195a1.466 1.466 0 0 0-.946-.179l11.04 10.973zm0 2.067l-11 10.933c.298.036.612-.016.906-.183l13.324-7.54-3.23-3.21z"/></svg>
           </span>
@@ -928,21 +1197,21 @@
           <span class="dl-label">Play Store</span>
         </div>
 
-        <a class="dl-tile" href="https://f-droid.org/packages/com.yash.xpenc/" target="_blank" rel="noopener" title="F-Droid — recommended, builds from source" aria-label="F-Droid — recommended, builds from source">
+        <a class="dl-tile" data-reveal href="https://f-droid.org/packages/com.yash.xpenc/" target="_blank" rel="noopener" title="F-Droid — recommended, builds from source" aria-label="F-Droid — recommended, builds from source">
           <span class="dl-icon s2">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><title>F-Droid</title><path d="M20.472,10.081H3.528c-0.877,0-1.589,0.711-1.589,1.589v10.59c0,0.877,0.711,1.589,1.589,1.589h16.944 c0.877,0,1.589-0.711,1.589-1.589V11.67C22.061,10.792,21.349,10.081,20.472,10.081z M12,22.525c-3.066,0-5.56-2.494-5.56-5.56 s2.494-5.56,5.56-5.56c3.066,0,5.56,2.494,5.56,5.56S15.066,22.525,12,22.525z M12,12.411c-2.511,0-4.554,2.043-4.554,4.554 S9.489,21.519,12,21.519s4.554-2.043,4.554-4.554S14.511,12.411,12,12.411z M12,20.274c-1.563,0-2.881-1.103-3.221-2.568h1.67 c0.275,0.581,0.859,0.979,1.551,0.979c0.96,0,1.721-0.761,1.721-1.721c0-0.96-0.761-1.721-1.721-1.721 c-0.649,0-1.2,0.352-1.493,0.874H8.805c0.378-1.412,1.669-2.462,3.195-2.462c1.818,0,3.309,1.491,3.309,3.309 C15.309,18.783,13.818,20.274,12,20.274z M23.849,0.396c-0.001,0.001-0.002,0.002-0.002,0.003 c-0.002-0.002-0.004-0.003-0.006-0.005c0.001-0.001,0.002-0.003,0.004-0.004c-0.116-0.137-0.279-0.231-0.519-0.238 c-0.202,0.005-0.391,0.097-0.512,0.259l-1.818,2.353c-0.164-0.058-0.339-0.095-0.523-0.095H3.528c-0.184,0-0.358,0.038-0.523,0.095 L1.187,0.41c-0.121-0.162-0.31-0.253-0.512-0.259c-0.24,0.006-0.403,0.1-0.519,0.238c0.001,0.001,0.002,0.003,0.004,0.004 C0.157,0.395,0.155,0.397,0.153,0.399C0.153,0.398,0.152,0.397,0.151,0.396C0.085,0.474-0.146,0.822,0.139,1.22l1.909,2.471 C1.981,3.867,1.94,4.057,1.94,4.257v3.707c0,0.877,0.711,1.589,1.589,1.589h16.944c0.877,0,1.589-0.711,1.589-1.589V4.257 c0-0.2-0.041-0.39-0.109-0.566l1.909-2.471C24.146,0.822,23.915,0.474,23.849,0.396z M6.904,8.228c-0.987,0-1.787-0.8-1.787-1.787 s0.8-1.787,1.787-1.787s1.787,0.8,1.787,1.787S7.891,8.228,6.904,8.228z M17.229,8.228c-0.987,0-1.787-0.8-1.787-1.787 s0.8-1.787,1.787-1.787c0.987,0,1.787,0.8,1.787,1.787S18.216,8.228,17.229,8.228z"/></svg>
           </span>
           <span class="dl-label">F-Droid</span>
         </a>
 
-        <a class="dl-tile" href="https://github.com/PATILYASHH/XPENC/releases/latest/download/xpenc-arm64-v8a.apk" title="Direct APK download (arm64-v8a — most phones)" aria-label="Direct APK download">
+        <a class="dl-tile" data-reveal href="https://github.com/PATILYASHH/XPENC/releases/latest/download/xpenc-arm64-v8a.apk" title="Direct APK download (arm64-v8a — most phones)" aria-label="Direct APK download">
           <span class="dl-icon s3">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11m0 0-4-4m4 4 4-4"/><path d="M4 16v2.5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V16"/></svg>
           </span>
           <span class="dl-label">Direct APK</span>
         </a>
 
-        <a class="dl-tile" href="https://www.openapk.net/xpenc/com.yash.xpenc/" target="_blank" rel="noopener" title="OpenAPK — mirror page for XPENC" aria-label="OpenAPK mirror">
+        <a class="dl-tile" data-reveal href="https://www.openapk.net/xpenc/com.yash.xpenc/" target="_blank" rel="noopener" title="OpenAPK — mirror page for XPENC" aria-label="OpenAPK mirror">
           <span class="dl-icon s5">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>
           </span>
@@ -951,7 +1220,7 @@
 
       </div>
 
-      <div class="qr-card">
+      <div class="qr-card" data-reveal>
         <img src="assets/qr_download.png?v=2" width="120" height="120" alt="QR code linking to the XPENC download page">
         <div>
           <div class="t">On your phone already?</div>
@@ -967,10 +1236,60 @@
     </div>
   </section>
 
+  <!-- ── roadmap ── -->
+  <section id="roadmap">
+    <div class="wrap">
+      <div class="sec-head" data-reveal>
+        <div class="kicker k-amber">Roadmap</div>
+        <h2>Actively developed, in the open.</h2>
+        <p>Every release ships from a public changelog — no vague "various improvements."
+           Here's what shipped recently, and what's already built for next.</p>
+      </div>
+
+      <div class="rmap">
+        <div class="rmap-item next" data-reveal>
+          <span class="rmap-dot"><i></i></span>
+          <div class="rmap-head"><span class="rmap-badge">Coming next</span></div>
+          <p>OCR corrections for payment-screenshot capture — test a screenshot against
+             the real on-device parser and flag what it got wrong. Screenshot OCR itself
+             now runs on Tesseract instead of Google ML Kit, for full F-Droid compatibility
+             with no change in behavior.</p>
+        </div>
+        <div class="rmap-item" data-reveal>
+          <span class="rmap-dot">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg>
+          </span>
+          <div class="rmap-head"><span class="rmap-ver">v1.4.2</span><span class="rmap-date">13 Aug 2026</span></div>
+          <p>Share a payment screenshot (Paytm, Google Pay, PhonePe) straight into XPENC,
+             a new Cove theme inspired by One UI 9, and a hide-amounts eye icon on every
+             balance.</p>
+        </div>
+        <div class="rmap-item" data-reveal>
+          <span class="rmap-dot">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg>
+          </span>
+          <div class="rmap-head"><span class="rmap-ver">v1.4.1</span><span class="rmap-date">11 Aug 2026</span></div>
+          <p>Share a bank SMS straight into XPENC, CSV bank-statement import, split
+             payments across accounts, and quick-add from a standing notification.</p>
+        </div>
+        <div class="rmap-item" data-reveal>
+          <span class="rmap-dot">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg>
+          </span>
+          <div class="rmap-head"><span class="rmap-ver">v1.4.0</span><span class="rmap-date">8 Aug 2026</span></div>
+          <p>Envelope Mode budgeting, biweekly &amp; variable-amount recurring rules,
+             a combined multi-account statement, and permanent release signing.</p>
+        </div>
+      </div>
+
+      <a class="btn btn-ghost rmap-more" data-reveal href="https://github.com/PATILYASHH/XPENC/blob/master/CHANGELOG.md" target="_blank" rel="noopener">Full changelog on GitHub →</a>
+    </div>
+  </section>
+
   <!-- ── support ── -->
   <section id="support">
     <div class="wrap">
-      <div class="sec-head">
+      <div class="sec-head" data-reveal>
         <div class="kicker k-amber">Support</div>
         <h2>Stuck, or got an idea? <span class="grad">Talk to me.</span></h2>
         <p>XPENC is built and maintained by one person. Pick whichever channel suits
@@ -981,7 +1300,7 @@
       <div class="support-grid">
 
         <!-- Email -->
-        <div class="sup-card u1">
+        <div class="sup-card u1" data-reveal>
           <div class="sup-head">
             <span class="sup-ic" aria-hidden="true">
               <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="19" height="15" rx="3"/><path d="m3.5 7 7.6 5.4a1.6 1.6 0 0 0 1.8 0L20.5 7"/></svg>
@@ -993,14 +1312,14 @@
           </div>
           <p>Account trouble, a backup that won't restore, or something you'd rather not post publicly — write to me directly.</p>
           <div class="sup-value">
-            <span id="mailValue">patilyasshh@gmail.com</span>
-            <button class="copy-btn" type="button" data-copy="patilyasshh@gmail.com">Copy</button>
+            <span id="mailValue">support.yashpatil@gmail.com</span>
+            <button class="copy-btn" type="button" data-copy="support.yashpatil@gmail.com">Copy</button>
           </div>
-          <a class="sup-cta" href="mailto:patilyasshh@gmail.com?subject=XPENC%20support">Send an email →</a>
+          <a class="sup-cta" href="mailto:support.yashpatil@gmail.com?subject=XPENC%20support">Send an email →</a>
         </div>
 
         <!-- GitHub Issues -->
-        <div class="sup-card u2">
+        <div class="sup-card u2" data-reveal>
           <div class="sup-head">
             <span class="sup-ic" aria-hidden="true">
               <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="7" width="8" height="12" rx="4"/><path d="M8 11H4.5M8 15H4.5M16 11h3.5M16 15h3.5M9.5 6.5 8 4.5M14.5 6.5 16 4.5M12 19v2"/></svg>
@@ -1018,7 +1337,7 @@
         </div>
 
         <!-- GitHub Discussions -->
-        <div class="sup-card u3">
+        <div class="sup-card u3" data-reveal>
           <div class="sup-head">
             <span class="sup-ic" aria-hidden="true">
               <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 12.6a7.5 7.5 0 0 1-9.3 7.3L6 21.5l1.6-5a7.5 7.5 0 1 1 12.9-3.9z"/><path d="M9 11h6M9 14.5h4"/></svg>
@@ -1036,7 +1355,7 @@
         </div>
 
         <!-- Discord -->
-        <div class="sup-card u4">
+        <div class="sup-card u4" data-reveal>
           <div class="sup-head">
             <span class="sup-ic" aria-hidden="true">
               <svg width="23" height="23" viewBox="0 0 24 24" fill="currentColor"><path d="M19.3 5.4A16.6 16.6 0 0 0 15.2 4l-.3.6a12.4 12.4 0 0 1 3.6 1.7 15.6 15.6 0 0 0-12.9 0A12.5 12.5 0 0 1 9.2 4.6L8.8 4a16.6 16.6 0 0 0-4 1.4C2.1 9.5 1.4 13.4 1.7 17.3a16.9 16.9 0 0 0 5.1 2.6l1.1-1.7a11 11 0 0 1-1.7-.8l.4-.3a11.9 11.9 0 0 0 10.8 0l.4.3a11 11 0 0 1-1.7.8l1.1 1.7a16.8 16.8 0 0 0 5.1-2.6c.4-4.5-.7-8.4-3-11.9zM8.7 15c-1 0-1.8-.9-1.8-2.1s.8-2.1 1.8-2.1 1.9.9 1.8 2.1c0 1.2-.8 2.1-1.8 2.1zm6.6 0c-1 0-1.8-.9-1.8-2.1s.8-2.1 1.8-2.1 1.9.9 1.8 2.1c0 1.2-.8 2.1-1.8 2.1z"/></svg>
@@ -1073,14 +1392,59 @@
     </div>
   </section>
 
+  <!-- ── FAQ ── -->
+  <section id="faq" class="band-soft">
+    <div class="wrap">
+      <div class="sec-head" data-reveal>
+        <div class="kicker k-blue">FAQ</div>
+        <h2>Common questions.</h2>
+        <p>The short answers. Everything here is also covered in more detail in
+           the sections above or the privacy policy.</p>
+      </div>
+      <div class="faq-list">
+        <details class="faq-item" data-reveal>
+          <summary>Is XPENC free to use?</summary>
+          <p>Yes. XPENC is free and open source under the MIT license — no ads, no in-app purchases, no subscription, ever.</p>
+        </details>
+        <details class="faq-item" data-reveal>
+          <summary>Does XPENC need an internet connection?</summary>
+          <p>No. Release builds of the app don't request the INTERNET permission, so it's technically incapable of sending your data anywhere. (This website itself loads a font and a version badge online, but the Android app never does.)</p>
+        </details>
+        <details class="faq-item" data-reveal>
+          <summary>Is my financial data safe and private?</summary>
+          <p>Your accounts, transactions, budgets and dues live in a private SQLite database on your phone only. There's no server, no user accounts, no analytics and no trackers — and since the app is open source, every claim here can be verified by reading the code.</p>
+        </details>
+        <details class="faq-item" data-reveal>
+          <summary>Can I import transactions from my bank?</summary>
+          <p>Yes, three ways: share a bank SMS or a UPI payment screenshot (Paytm, Google Pay, PhonePe) into XPENC from the Share sheet, or import a CSV bank statement from Download Data. All three are read and parsed entirely on-device.</p>
+        </details>
+        <details class="faq-item" data-reveal>
+          <summary>Does XPENC do budgeting and dues/loan tracking?</summary>
+          <p>Yes — per-category budgets with live progress and overspend alerts, an opt-in Envelope Mode for zero-based budgeting, and separate dues &amp; loans tracking for money you lend or borrow (kept out of your budgets).</p>
+        </details>
+        <details class="faq-item" data-reveal>
+          <summary>Where can I download XPENC?</summary>
+          <p>F-Droid (recommended — builds straight from source), a direct APK from GitHub Releases, or the OpenAPK mirror. A Google Play listing is coming soon.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
   <!-- ── open source ── -->
   <section style="padding-top: 0;">
     <div class="wrap">
-      <div class="oss-band">
+      <div class="oss-band" data-reveal>
         <div class="kicker">Open source</div>
         <h2>Read every line.</h2>
         <p>XPENC is MIT-licensed. The highest-impact contribution is an SMS template
            for your bank — config and regex, no app internals needed.</p>
+        <div class="oss-stats">
+          <div class="oss-stat" data-reveal><b data-count-to="550" id="statDownloads">550</b><span>APK downloads</span></div>
+          <div class="oss-stat" data-reveal><b data-count-to="18" id="statStars">18</b><span>GitHub stars</span></div>
+          <div class="oss-stat" data-reveal><b data-count-to="12" id="statReleases">12</b><span>Tagged releases</span></div>
+          <div class="oss-stat" data-reveal><b data-count-to="52" id="statCommits">52</b><span>Commits</span></div>
+          <div class="oss-stat" data-reveal><b data-count-to="5" id="statForks">5</b><span>Forks</span></div>
+        </div>
         <div class="btns">
           <a class="btn btn-ghost" href="https://github.com/PATILYASHH/XPENC" target="_blank" rel="noopener">Star on GitHub</a>
           <a class="btn btn-ghost" href="https://github.com/PATILYASHH/XPENC/blob/master/CONTRIBUTING.md" target="_blank" rel="noopener">Contributing guide</a>
@@ -1104,8 +1468,11 @@
           <h5>Product</h5>
           <ul>
             <li><a href="#features">Features</a></li>
+            <li><a href="#compare">Compare</a></li>
             <li><a href="#screens">Screens</a></li>
             <li><a href="#download">Download</a></li>
+            <li><a href="#roadmap">Roadmap</a></li>
+            <li><a href="#faq">FAQ</a></li>
             <li><a href="https://github.com/PATILYASHH/XPENC/releases" target="_blank" rel="noopener">Releases</a></li>
             <li><a href="https://github.com/PATILYASHH/XPENC/blob/master/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></li>
           </ul>
@@ -1113,7 +1480,7 @@
         <div class="foot">
           <h5>Support</h5>
           <ul>
-            <li><a href="mailto:patilyasshh@gmail.com?subject=XPENC%20support">Email me</a></li>
+            <li><a href="mailto:support.yashpatil@gmail.com?subject=XPENC%20support">Email me</a></li>
             <li><a href="https://github.com/PATILYASHH/XPENC/issues/new/choose" target="_blank" rel="noopener">Report a bug</a></li>
             <li><a href="https://github.com/PATILYASHH/XPENC/discussions" target="_blank" rel="noopener">Discussions</a></li>
             <li><a href="#support">Discord · patilyashh</a></li>
@@ -1153,6 +1520,49 @@
         document.getElementById('version').textContent = d.tag_name;
       })
       .catch(() => {});
+
+    // ── live GitHub stats (stars/forks/releases/commits), static fallback baked into the markup ──
+    (function () {
+      const stars = document.getElementById('statStars');
+      const forks = document.getElementById('statForks');
+      const releases = document.getElementById('statReleases');
+      const commits = document.getElementById('statCommits');
+      const downloads = document.getElementById('statDownloads');
+
+      fetch('https://api.github.com/repos/PATILYASHH/XPENC')
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          if (!d) return;
+          if (stars && typeof d.stargazers_count === 'number') stars.dataset.countTo = d.stargazers_count;
+          if (forks && typeof d.forks_count === 'number') forks.dataset.countTo = d.forks_count;
+        })
+        .catch(() => {});
+
+      fetch('https://api.github.com/repos/PATILYASHH/XPENC/releases?per_page=100')
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          if (!Array.isArray(d)) return;
+          if (releases) releases.dataset.countTo = d.length;
+          if (downloads) {
+            const total = d.reduce((sum, rel) => sum + (rel.assets || [])
+              .filter(a => a.name.endsWith('.apk'))
+              .reduce((s, a) => s + (a.download_count || 0), 0), 0);
+            downloads.dataset.countTo = total;
+          }
+        })
+        .catch(() => {});
+
+      fetch('https://api.github.com/repos/PATILYASHH/XPENC/commits?per_page=1')
+        .then(r => {
+          if (!r.ok) return null;
+          const link = r.headers.get('Link') || '';
+          const m = link.match(/[?&]page=(\d+)>;\s*rel="last"/);
+          if (m) return parseInt(m[1], 10);
+          return r.json().then(a => Array.isArray(a) ? a.length : null);
+        })
+        .then(n => { if (commits && n) commits.dataset.countTo = n; })
+        .catch(() => {});
+    })();
 
     // ── copy buttons (email, discord handle) ──
     document.querySelectorAll('.copy-btn').forEach(btn => {
@@ -1228,6 +1638,65 @@
       };
       tick();
       setInterval(tick, 60000);
+    })();
+
+    // ── scroll reveal: fade+slide sections/cards in, staggered within their group ──
+    (function () {
+      const items = [...document.querySelectorAll('[data-reveal]')];
+      const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (!items.length || reduceMotion || !('IntersectionObserver' in window)) return;
+
+      document.documentElement.classList.add('reveal-ready');
+
+      const groups = new Map();
+      items.forEach(el => {
+        const list = groups.get(el.parentElement) || [];
+        list.push(el);
+        groups.set(el.parentElement, list);
+      });
+      groups.forEach(list => list.forEach((el, i) => {
+        el.style.setProperty('--reveal-delay', Math.min(i, 5) * 70 + 'ms');
+      }));
+
+      const io = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add('is-visible');
+          io.unobserve(entry.target);
+        });
+      }, { threshold: 0.12, rootMargin: '0px 0px -10% 0px' });
+      items.forEach(el => io.observe(el));
+    })();
+
+    // ── animated count-up for the open-source stats band ──
+    (function () {
+      const els = [...document.querySelectorAll('[data-count-to]')];
+      if (!els.length) return;
+      const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      const run = el => {
+        const target = Number(el.dataset.countTo) || 0;
+        if (reduceMotion) { el.textContent = target.toLocaleString(); return; }
+        const t0 = performance.now();
+        const duration = 1100;
+        const step = now => {
+          const p = Math.min(1, (now - t0) / duration);
+          const eased = 1 - Math.pow(1 - p, 3);
+          el.textContent = Math.round(target * eased).toLocaleString();
+          if (p < 1) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      };
+
+      if (!('IntersectionObserver' in window)) { els.forEach(run); return; }
+      const io = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          run(entry.target);
+          io.unobserve(entry.target);
+        });
+      }, { threshold: 0.4 });
+      els.forEach(el => io.observe(el));
     })();
   </script>
 </body>

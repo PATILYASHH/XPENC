@@ -17,9 +17,9 @@ release and how to upgrade safely.
 
 ## Quick links
 
-- Website: <https://getxpenc.vercel.app>
+- Website: <https://xpenc.in>
 - Download the latest APKs: <https://github.com/PATILYASHH/XPENC/releases/latest>
-- Privacy policy: <https://getxpenc.vercel.app/privacy>
+- Privacy policy: <https://xpenc.in/privacy>
 - Report a bug or request a feature:
   <https://github.com/PATILYASHH/XPENC/issues/new/choose>
 - Full changelog: [CHANGELOG.md](https://github.com/PATILYASHH/XPENC/blob/master/CHANGELOG.md)

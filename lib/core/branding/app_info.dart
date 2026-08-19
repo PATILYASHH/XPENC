@@ -50,7 +50,7 @@ class AppInfo {
   static const repoUrl = 'https://github.com/PATILYASHH/XPENC';
 
   /// The project website — features, downloads, FAQ.
-  static const websiteUrl = 'https://getxpenc.vercel.app';
+  static const websiteUrl = 'https://xpenc.in';
 
   /// New issue with a template picker (bug / feature / bank support).
   static const issuesUrl = '$repoUrl/issues/new/choose';
