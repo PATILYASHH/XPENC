@@ -7,6 +7,7 @@ import '../../core/branding/brand_mark.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import 'currency_picker_sheet.dart';
+import 'pin_timeout_sheet.dart';
 import 'theme_picker_sheet.dart';
 
 /// App preferences. Most rows are placeholders for later phases; "Recalculate
@@ -29,6 +30,7 @@ class SettingsScreen extends ConsumerWidget {
     final countRepaymentsAsIncome = ref.watch(countRepaymentsAsIncomeProvider);
     final hasPasscode = ref.watch(hasPasscodeProvider);
     final biometricEnabled = ref.watch(biometricEnabledProvider);
+    final pinTimeoutMinutes = ref.watch(pinTimeoutMinutesProvider);
     final preventScreenshots = ref.watch(preventScreenshotsProvider);
     final expenseReminder = ref.watch(expenseReminderProvider);
     final notificationQuickAddEnabled = ref.watch(
@@ -169,6 +171,34 @@ class SettingsScreen extends ConsumerWidget {
                     value: biometricEnabled,
                     onChanged: (v) =>
                         ref.read(dbProvider).setBiometricEnabled(v),
+                  ),
+                  Divider(height: 1, indent: 60, color: cs.outline),
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    leading: const Icon(Icons.timer_outlined),
+                    title: const Text('Lock after'),
+                    subtitle: Text(
+                      'How long XPENC may sit in the background before it '
+                      'asks for your PIN again',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          PinTimeoutSheet.label(pinTimeoutMinutes),
+                          style: trailingStyle,
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ],
+                    ),
+                    onTap: () => PinTimeoutSheet.show(context),
                   ),
                   Divider(height: 1, indent: 60, color: cs.outline),
                   ListTile(

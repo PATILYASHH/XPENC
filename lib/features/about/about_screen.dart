@@ -16,11 +16,18 @@ class AboutScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('About')),
-      body: SafeArea(
-        top: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
-          children: [
+      // Not a `SafeArea` — on some 3-button-nav devices its reported inset
+      // doesn't clear the nav bar (GitHub #53, the same class of bug as
+      // #14). Adding the inset explicitly is the pattern that actually held
+      // up for that one.
+      body: ListView(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          8,
+          20,
+          40 + MediaQuery.of(context).padding.bottom,
+        ),
+        children: [
             const SizedBox(height: 12),
             const Center(child: BrandMark(size: 92)),
             const SizedBox(height: 20),
@@ -183,8 +190,7 @@ class AboutScreen extends StatelessWidget {
                 ),
               ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }

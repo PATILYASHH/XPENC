@@ -31,6 +31,11 @@ class _XpencAppState extends ConsumerState<XpencApp>
   bool _passcodeKnown = false;
   bool _locked = false;
 
+  /// When the app was last backgrounded — the anchor a non-zero
+  /// [pinTimeoutMinutesProvider] is measured from on the next resume. Null
+  /// whenever the app is in the foreground.
+  DateTime? _pausedAt;
+
   @override
   void initState() {
     super.initState();
@@ -113,6 +118,8 @@ class _XpencAppState extends ConsumerState<XpencApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      _maybeLockAfterTimeout();
+      _pausedAt = null;
       _runRecurring();
       _scanMessages();
       _runAutoBackup();
@@ -120,14 +127,35 @@ class _XpencAppState extends ConsumerState<XpencApp>
       // pressure while `ongoing: true` normally keeps a swipe from doing so.
       ref.read(notificationServiceProvider).syncQuickAddNotification();
     }
-    // Immediate re-lock, no grace period — the safer default for a finance
-    // app. `_passcodeKnown` guards a launch race: if the very first
-    // backgrounding somehow lands before the initial settings read, there is
-    // nothing yet to decide with.
+    // `_passcodeKnown` guards a launch race: if the very first backgrounding
+    // somehow lands before the initial settings read, there is nothing yet
+    // to decide with.
     if (state == AppLifecycleState.paused && _passcodeKnown) {
+      _pausedAt = DateTime.now();
       final hasPasscode =
           ref.read(settingsProvider).valueOrNull?.passcodeHash != null;
-      if (hasPasscode) setState(() => _locked = true);
+      // A zero timeout ("Immediately", the default) locks right here rather
+      // than waiting for resume — otherwise the very next resume, however
+      // soon, would still show real data for one frame first.
+      final immediate =
+          (ref.read(settingsProvider).valueOrNull?.pinTimeoutMinutes ?? 0) ==
+          0;
+      if (hasPasscode && immediate) setState(() => _locked = true);
+    }
+  }
+
+  /// A non-zero pin timeout defers the lock decision to here, judged against
+  /// how long the app actually sat backgrounded — see GitHub #60. The
+  /// immediate case is already handled at pause time, above.
+  void _maybeLockAfterTimeout() {
+    if (_locked || !_passcodeKnown) return;
+    final settings = ref.read(settingsProvider).valueOrNull;
+    if (settings?.passcodeHash == null) return;
+    final minutes = settings?.pinTimeoutMinutes ?? 0;
+    final pausedAt = _pausedAt;
+    if (minutes == 0 || pausedAt == null) return;
+    if (DateTime.now().difference(pausedAt) >= Duration(minutes: minutes)) {
+      setState(() => _locked = true);
     }
   }
 

@@ -372,7 +372,9 @@ class RecurringRules extends Table {
   IntColumn get accountId => integer().references(Accounts, #id)();
   IntColumn get categoryId => integer().references(Categories, #id)();
 
-  /// Expense only — same free-text field as [Transactions.payee].
+  /// Same free-text field as [Transactions.payee] — who the rule pays (an
+  /// expense) or who it's paid by (income, e.g. an employer for a salary
+  /// rule). See GitHub #62.
   TextColumn get payee => text().withLength(min: 1, max: 80).nullable()();
 
   TextColumn get frequency => textEnum<RecurringFrequency>()();
@@ -457,6 +459,13 @@ class Settings extends Table {
   /// stays the fallback whenever biometrics fail or aren't enrolled.
   BoolColumn get biometricEnabled =>
       boolean().withDefault(const Constant(false))();
+
+  /// Minutes the app may sit backgrounded before the next resume re-locks it
+  /// — `0` means immediately (see GitHub #60). Checked against how long the
+  /// app was actually paused, not a running timer, so it costs nothing while
+  /// backgrounded.
+  IntColumn get pinTimeoutMinutes =>
+      integer().withDefault(const Constant(0))();
 
   /// A daily nudge — "log today's spending" — distinct from [Reminders],
   /// which are always for one specific planned payment.
@@ -670,6 +679,19 @@ class TransactionTags extends Table {
 
   @override
   Set<Column> get primaryKey => {transactionId, tagId};
+}
+
+/// Many-to-many join: which tags a recurring rule stamps onto every
+/// transaction it posts (see [AppDatabase.runDueRecurringRules]) — set once
+/// on the rule instead of retagging each auto-posted transaction by hand.
+/// See GitHub #63.
+@DataClassName('RecurringRuleTagRow')
+class RecurringRuleTags extends Table {
+  IntColumn get ruleId => integer().references(RecurringRules, #id)();
+  IntColumn get tagId => integer().references(Tags, #id)();
+
+  @override
+  Set<Column> get primaryKey => {ruleId, tagId};
 }
 
 /// One named shopping list (e.g. "Weekly groceries", "Diwali"). A user can

@@ -13,6 +13,7 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../accounts/envelope_outflow.dart';
+import '../tags/tag_picker_sheet.dart';
 import 'amount_buffer.dart';
 import 'receipt_storage.dart';
 
@@ -999,7 +1000,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
     final note = _noteController.text.trim();
     final payeeText = _payeeController.text.trim();
-    final payee = _type == TxType.expense && payeeText.isNotEmpty
+    final payee =
+        (_type == TxType.expense || _type == TxType.income) &&
+            payeeText.isNotEmpty
         ? payeeText
         : null;
     // A split expense has no single category of its own — see
@@ -1331,7 +1334,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         onTap: _pickDate,
       ),
     );
-    if (_type == TxType.expense) {
+    if (_type == TxType.expense || _type == TxType.income) {
       tiles.add(const SizedBox(height: 12));
       tiles.add(_payeeCard());
     }
@@ -1396,7 +1399,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     );
   }
 
-  /// Expense only. Free text with autocomplete drawn from payees used before —
+  /// Expense or income only (GitHub #62 — a salary needs a payee too, same as
+  /// a purchase). Free text with autocomplete drawn from payees used before —
   /// optional, so leaving it blank is a normal, unremarkable choice.
   Widget _payeeCard() {
     final theme = Theme.of(context);
@@ -1420,7 +1424,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               focusNode: focusNode,
               textCapitalization: TextCapitalization.words,
               decoration: InputDecoration(
-                hintText: 'Payee (optional) — who did you pay?',
+                hintText: _type == TxType.income
+                    ? 'Payee (optional) — who paid you?'
+                    : 'Payee (optional) — who did you pay?',
                 border: InputBorder.none,
                 icon: Icon(
                   Icons.storefront_outlined,
@@ -1490,7 +1496,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => _TagPickerSheet(initiallySelected: _tagIds),
+      builder: (_) => TagPickerSheet(initiallySelected: _tagIds),
     );
     if (result == null || !mounted) return;
     setState(() => _tagIds = result);
@@ -1912,115 +1918,6 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
               },
             ),
         ],
-      ),
-    );
-  }
-}
-
-/// Bottom sheet: pick any number of tags as toggleable filter chips. New tags
-/// are created from **More → Tags**, not from here — this sheet only selects.
-class _TagPickerSheet extends ConsumerStatefulWidget {
-  const _TagPickerSheet({required this.initiallySelected});
-
-  final Set<int> initiallySelected;
-
-  @override
-  ConsumerState<_TagPickerSheet> createState() => _TagPickerSheetState();
-}
-
-class _TagPickerSheetState extends ConsumerState<_TagPickerSheet> {
-  final Set<int> _selected = {};
-
-  @override
-  void initState() {
-    super.initState();
-    _selected.addAll(widget.initiallySelected);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final tagsAsync = ref.watch(tagsProvider);
-
-    return ConstrainedBox(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.7,
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text('Tags', style: theme.textTheme.titleLarge),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(_selected),
-                    child: const Text('Done'),
-                  ),
-                ],
-              ),
-            ),
-            Flexible(
-              child: tagsAsync.when(
-                loading: () => const Padding(
-                  padding: EdgeInsets.all(32),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                error: (e, _) => Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Text(
-                    'Could not load tags.\n$e',
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                ),
-                data: (tags) {
-                  if (tags.isEmpty) {
-                    return Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Text(
-                        'No tags yet — add one from More → Tags.',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    );
-                  }
-                  return SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                    child: Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: [
-                        for (final tag in tags)
-                          FilterChip(
-                            label: Text(tag.name),
-                            selected: _selected.contains(tag.id),
-                            selectedColor: Color(
-                              tag.colorValue,
-                            ).withValues(alpha: 0.22),
-                            checkmarkColor: Color(tag.colorValue),
-                            onSelected: (v) => setState(() {
-                              if (v) {
-                                _selected.add(tag.id);
-                              } else {
-                                _selected.remove(tag.id);
-                              }
-                            }),
-                          ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

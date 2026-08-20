@@ -801,7 +801,7 @@ void main() {
     });
   });
 
-  group('payee — expense only, free text', () {
+  group('payee — expense or income, free text', () {
     test('round-trips on add and update', () async {
       final cash = await cashId();
       final id = await db.addTransaction(
@@ -826,15 +826,35 @@ void main() {
       expect((await db.transactionById(id))?.payee, 'Zomato');
     });
 
-    test('rejects a payee on anything but an expense', () async {
+    test('an income names a payee too (GitHub #62)', () async {
       final cash = await cashId();
       final salary = await incomeCategory('Salary');
+      final id = await db.addTransaction(
+        type: TxType.income,
+        amount: Money.fromRupees(10),
+        accountId: cash,
+        categoryId: salary,
+        date: DateTime(2026, 7, 9),
+        payee: 'Employer',
+      );
+      expect((await db.transactionById(id))?.payee, 'Employer');
+    });
+
+    test('rejects a payee on a transfer', () async {
+      final cash = await cashId();
+      final bank = await db.addAccount(
+        name: 'IPPB',
+        type: AccountType.bank,
+        colorValue: 0,
+        iconKey: 'bank',
+        openingBalance: Money.fromRupees(1000),
+      );
       expect(
         () => db.addTransaction(
-          type: TxType.income,
+          type: TxType.transfer,
           amount: Money.fromRupees(10),
-          accountId: cash,
-          categoryId: salary,
+          accountId: bank,
+          toAccountId: cash,
           date: DateTime(2026, 7, 9),
           payee: 'Someone',
         ),
@@ -1104,23 +1124,34 @@ void main() {
       expect(await balanceOf(cash), Money.fromRupees(50000));
     });
 
-    test('rejects a payee on an income rule', () async {
-      final cash = await cashId();
-      final salary = await incomeCategory('Salary');
-      expect(
-        () => db.addRecurringRule(
+    test(
+      'an income rule names a payee too, carried onto what it posts '
+      '(GitHub #62)',
+      () async {
+        final cash = await cashId();
+        final salary = await incomeCategory('Salary');
+        final today = DateTime(2026, 7, 1);
+        final ruleId = await db.addRecurringRule(
           name: 'Salary',
           kind: CategoryKind.income,
           amount: Money.fromRupees(1000),
           accountId: cash,
           categoryId: salary,
-          payee: 'Someone',
+          payee: 'Employer',
           frequency: RecurringFrequency.monthly,
-          startsOn: DateTime(2026, 7, 1),
-        ),
-        throwsArgumentError,
-      );
-    });
+          startsOn: today,
+        );
+
+        await db.runDueRecurringRules(now: today);
+
+        final rule = (await db.watchRecurringRules().first).firstWhere(
+          (r) => r.id == ruleId,
+        );
+        expect(rule.payee, 'Employer');
+        final posted = await db.watchTransactions().first;
+        expect(posted.single.payee, 'Employer');
+      },
+    );
 
     test('rejects a category whose kind does not match the rule', () async {
       final cash = await cashId();
@@ -1194,6 +1225,80 @@ void main() {
         expect(() => db.deleteAccount(bank), throwsArgumentError);
       },
     );
+
+    test(
+      'preset tags are stamped onto every transaction it posts (GitHub #63)',
+      () async {
+        final cash = await cashId();
+        final food = await expenseCategory('Food');
+        final subs = await db.addTag(name: 'Subscriptions', colorValue: 0);
+        final ott = await db.addTag(name: 'Streaming', colorValue: 0);
+        final today = DateTime(2026, 7, 20);
+
+        final ruleId = await db.addRecurringRule(
+          name: 'Netflix',
+          kind: CategoryKind.expense,
+          amount: Money.fromRupees(500),
+          accountId: cash,
+          categoryId: food,
+          frequency: RecurringFrequency.monthly,
+          startsOn: today,
+          tagIds: {subs, ott},
+        );
+        expect(
+          (await db.tagIdsForRecurringRule(ruleId)).toSet(),
+          {subs, ott},
+        );
+
+        await db.runDueRecurringRules(now: today);
+        final posted = (await db.watchTransactions().first).single;
+        expect(
+          (await db.tagIdsForTransaction(posted.id)).toSet(),
+          {subs, ott},
+        );
+      },
+    );
+
+    test('setRecurringRuleTags replaces the whole set', () async {
+      final cash = await cashId();
+      final food = await expenseCategory('Food');
+      final a = await db.addTag(name: 'A', colorValue: 0);
+      final b = await db.addTag(name: 'B', colorValue: 0);
+      final ruleId = await db.addRecurringRule(
+        name: 'Netflix',
+        kind: CategoryKind.expense,
+        amount: Money.fromRupees(500),
+        accountId: cash,
+        categoryId: food,
+        frequency: RecurringFrequency.monthly,
+        startsOn: DateTime(2026, 7, 20),
+        tagIds: {a},
+      );
+
+      await db.setRecurringRuleTags(ruleId, {b});
+
+      expect(await db.tagIdsForRecurringRule(ruleId), [b]);
+    });
+
+    test('deleting a rule drops its tag links too', () async {
+      final cash = await cashId();
+      final food = await expenseCategory('Food');
+      final tag = await db.addTag(name: 'A', colorValue: 0);
+      final ruleId = await db.addRecurringRule(
+        name: 'Netflix',
+        kind: CategoryKind.expense,
+        amount: Money.fromRupees(500),
+        accountId: cash,
+        categoryId: food,
+        frequency: RecurringFrequency.monthly,
+        startsOn: DateTime(2026, 7, 20),
+        tagIds: {tag},
+      );
+
+      await db.deleteRecurringRule(ruleId);
+
+      expect(await db.tagIdsForRecurringRule(ruleId), isEmpty);
+    });
   });
 
   group('budgets — an optional note (GitHub #34)', () {

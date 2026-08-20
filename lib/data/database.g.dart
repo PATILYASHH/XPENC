@@ -2211,7 +2211,9 @@ class RecurringRuleRow extends DataClass
   final int accountId;
   final int categoryId;
 
-  /// Expense only — same free-text field as [Transactions.payee].
+  /// Same free-text field as [Transactions.payee] — who the rule pays (an
+  /// expense) or who it's paid by (income, e.g. an employer for a salary
+  /// rule). See GitHub #62.
   final String? payee;
   final RecurringFrequency frequency;
 
@@ -5844,6 +5846,18 @@ class $SettingsTable extends Settings
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _pinTimeoutMinutesMeta = const VerificationMeta(
+    'pinTimeoutMinutes',
+  );
+  @override
+  late final GeneratedColumn<int> pinTimeoutMinutes = GeneratedColumn<int>(
+    'pin_timeout_minutes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _expenseReminderEnabledMeta =
       const VerificationMeta('expenseReminderEnabled');
   @override
@@ -6029,6 +6043,7 @@ class $SettingsTable extends Settings
     passcodeSalt,
     passcodeLength,
     biometricEnabled,
+    pinTimeoutMinutes,
     expenseReminderEnabled,
     expenseReminderHour,
     expenseReminderMinute,
@@ -6175,6 +6190,15 @@ class $SettingsTable extends Settings
         biometricEnabled.isAcceptableOrUnknown(
           data['biometric_enabled']!,
           _biometricEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('pin_timeout_minutes')) {
+      context.handle(
+        _pinTimeoutMinutesMeta,
+        pinTimeoutMinutes.isAcceptableOrUnknown(
+          data['pin_timeout_minutes']!,
+          _pinTimeoutMinutesMeta,
         ),
       );
     }
@@ -6355,6 +6379,10 @@ class $SettingsTable extends Settings
         DriftSqlType.bool,
         data['${effectivePrefix}biometric_enabled'],
       )!,
+      pinTimeoutMinutes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}pin_timeout_minutes'],
+      )!,
       expenseReminderEnabled: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}expense_reminder_enabled'],
@@ -6469,6 +6497,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// stays the fallback whenever biometrics fail or aren't enrolled.
   final bool biometricEnabled;
 
+  /// Minutes the app may sit backgrounded before the next resume re-locks it
+  /// — `0` means immediately (see GitHub #60). Checked against how long the
+  /// app was actually paused, not a running timer, so it costs nothing while
+  /// backgrounded.
+  final int pinTimeoutMinutes;
+
   /// A daily nudge — "log today's spending" — distinct from [Reminders],
   /// which are always for one specific planned payment.
   final bool expenseReminderEnabled;
@@ -6539,6 +6573,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     this.passcodeSalt,
     this.passcodeLength,
     required this.biometricEnabled,
+    required this.pinTimeoutMinutes,
     required this.expenseReminderEnabled,
     required this.expenseReminderHour,
     required this.expenseReminderMinute,
@@ -6579,6 +6614,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       map['passcode_length'] = Variable<int>(passcodeLength);
     }
     map['biometric_enabled'] = Variable<bool>(biometricEnabled);
+    map['pin_timeout_minutes'] = Variable<int>(pinTimeoutMinutes);
     map['expense_reminder_enabled'] = Variable<bool>(expenseReminderEnabled);
     map['expense_reminder_hour'] = Variable<int>(expenseReminderHour);
     map['expense_reminder_minute'] = Variable<int>(expenseReminderMinute);
@@ -6630,6 +6666,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ? const Value.absent()
           : Value(passcodeLength),
       biometricEnabled: Value(biometricEnabled),
+      pinTimeoutMinutes: Value(pinTimeoutMinutes),
       expenseReminderEnabled: Value(expenseReminderEnabled),
       expenseReminderHour: Value(expenseReminderHour),
       expenseReminderMinute: Value(expenseReminderMinute),
@@ -6679,6 +6716,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       passcodeSalt: serializer.fromJson<String?>(json['passcodeSalt']),
       passcodeLength: serializer.fromJson<int?>(json['passcodeLength']),
       biometricEnabled: serializer.fromJson<bool>(json['biometricEnabled']),
+      pinTimeoutMinutes: serializer.fromJson<int>(json['pinTimeoutMinutes']),
       expenseReminderEnabled: serializer.fromJson<bool>(
         json['expenseReminderEnabled'],
       ),
@@ -6732,6 +6770,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'passcodeSalt': serializer.toJson<String?>(passcodeSalt),
       'passcodeLength': serializer.toJson<int?>(passcodeLength),
       'biometricEnabled': serializer.toJson<bool>(biometricEnabled),
+      'pinTimeoutMinutes': serializer.toJson<int>(pinTimeoutMinutes),
       'expenseReminderEnabled': serializer.toJson<bool>(expenseReminderEnabled),
       'expenseReminderHour': serializer.toJson<int>(expenseReminderHour),
       'expenseReminderMinute': serializer.toJson<int>(expenseReminderMinute),
@@ -6770,6 +6809,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     Value<String?> passcodeSalt = const Value.absent(),
     Value<int?> passcodeLength = const Value.absent(),
     bool? biometricEnabled,
+    int? pinTimeoutMinutes,
     bool? expenseReminderEnabled,
     int? expenseReminderHour,
     int? expenseReminderMinute,
@@ -6804,6 +6844,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
         ? passcodeLength.value
         : this.passcodeLength,
     biometricEnabled: biometricEnabled ?? this.biometricEnabled,
+    pinTimeoutMinutes: pinTimeoutMinutes ?? this.pinTimeoutMinutes,
     expenseReminderEnabled:
         expenseReminderEnabled ?? this.expenseReminderEnabled,
     expenseReminderHour: expenseReminderHour ?? this.expenseReminderHour,
@@ -6865,6 +6906,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       biometricEnabled: data.biometricEnabled.present
           ? data.biometricEnabled.value
           : this.biometricEnabled,
+      pinTimeoutMinutes: data.pinTimeoutMinutes.present
+          ? data.pinTimeoutMinutes.value
+          : this.pinTimeoutMinutes,
       expenseReminderEnabled: data.expenseReminderEnabled.present
           ? data.expenseReminderEnabled.value
           : this.expenseReminderEnabled,
@@ -6925,6 +6969,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('passcodeSalt: $passcodeSalt, ')
           ..write('passcodeLength: $passcodeLength, ')
           ..write('biometricEnabled: $biometricEnabled, ')
+          ..write('pinTimeoutMinutes: $pinTimeoutMinutes, ')
           ..write('expenseReminderEnabled: $expenseReminderEnabled, ')
           ..write('expenseReminderHour: $expenseReminderHour, ')
           ..write('expenseReminderMinute: $expenseReminderMinute, ')
@@ -6959,6 +7004,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     passcodeSalt,
     passcodeLength,
     biometricEnabled,
+    pinTimeoutMinutes,
     expenseReminderEnabled,
     expenseReminderHour,
     expenseReminderMinute,
@@ -6992,6 +7038,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.passcodeSalt == this.passcodeSalt &&
           other.passcodeLength == this.passcodeLength &&
           other.biometricEnabled == this.biometricEnabled &&
+          other.pinTimeoutMinutes == this.pinTimeoutMinutes &&
           other.expenseReminderEnabled == this.expenseReminderEnabled &&
           other.expenseReminderHour == this.expenseReminderHour &&
           other.expenseReminderMinute == this.expenseReminderMinute &&
@@ -7024,6 +7071,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<String?> passcodeSalt;
   final Value<int?> passcodeLength;
   final Value<bool> biometricEnabled;
+  final Value<int> pinTimeoutMinutes;
   final Value<bool> expenseReminderEnabled;
   final Value<int> expenseReminderHour;
   final Value<int> expenseReminderMinute;
@@ -7053,6 +7101,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.passcodeSalt = const Value.absent(),
     this.passcodeLength = const Value.absent(),
     this.biometricEnabled = const Value.absent(),
+    this.pinTimeoutMinutes = const Value.absent(),
     this.expenseReminderEnabled = const Value.absent(),
     this.expenseReminderHour = const Value.absent(),
     this.expenseReminderMinute = const Value.absent(),
@@ -7083,6 +7132,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.passcodeSalt = const Value.absent(),
     this.passcodeLength = const Value.absent(),
     this.biometricEnabled = const Value.absent(),
+    this.pinTimeoutMinutes = const Value.absent(),
     this.expenseReminderEnabled = const Value.absent(),
     this.expenseReminderHour = const Value.absent(),
     this.expenseReminderMinute = const Value.absent(),
@@ -7113,6 +7163,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<String>? passcodeSalt,
     Expression<int>? passcodeLength,
     Expression<bool>? biometricEnabled,
+    Expression<int>? pinTimeoutMinutes,
     Expression<bool>? expenseReminderEnabled,
     Expression<int>? expenseReminderHour,
     Expression<int>? expenseReminderMinute,
@@ -7147,6 +7198,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       if (passcodeSalt != null) 'passcode_salt': passcodeSalt,
       if (passcodeLength != null) 'passcode_length': passcodeLength,
       if (biometricEnabled != null) 'biometric_enabled': biometricEnabled,
+      if (pinTimeoutMinutes != null) 'pin_timeout_minutes': pinTimeoutMinutes,
       if (expenseReminderEnabled != null)
         'expense_reminder_enabled': expenseReminderEnabled,
       if (expenseReminderHour != null)
@@ -7187,6 +7239,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<String?>? passcodeSalt,
     Value<int?>? passcodeLength,
     Value<bool>? biometricEnabled,
+    Value<int>? pinTimeoutMinutes,
     Value<bool>? expenseReminderEnabled,
     Value<int>? expenseReminderHour,
     Value<int>? expenseReminderMinute,
@@ -7219,6 +7272,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       passcodeSalt: passcodeSalt ?? this.passcodeSalt,
       passcodeLength: passcodeLength ?? this.passcodeLength,
       biometricEnabled: biometricEnabled ?? this.biometricEnabled,
+      pinTimeoutMinutes: pinTimeoutMinutes ?? this.pinTimeoutMinutes,
       expenseReminderEnabled:
           expenseReminderEnabled ?? this.expenseReminderEnabled,
       expenseReminderHour: expenseReminderHour ?? this.expenseReminderHour,
@@ -7290,6 +7344,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     }
     if (biometricEnabled.present) {
       map['biometric_enabled'] = Variable<bool>(biometricEnabled.value);
+    }
+    if (pinTimeoutMinutes.present) {
+      map['pin_timeout_minutes'] = Variable<int>(pinTimeoutMinutes.value);
     }
     if (expenseReminderEnabled.present) {
       map['expense_reminder_enabled'] = Variable<bool>(
@@ -7365,6 +7422,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('passcodeSalt: $passcodeSalt, ')
           ..write('passcodeLength: $passcodeLength, ')
           ..write('biometricEnabled: $biometricEnabled, ')
+          ..write('pinTimeoutMinutes: $pinTimeoutMinutes, ')
           ..write('expenseReminderEnabled: $expenseReminderEnabled, ')
           ..write('expenseReminderHour: $expenseReminderHour, ')
           ..write('expenseReminderMinute: $expenseReminderMinute, ')
@@ -10109,6 +10167,227 @@ class TransactionTagsCompanion extends UpdateCompanion<TransactionTagRow> {
   String toString() {
     return (StringBuffer('TransactionTagsCompanion(')
           ..write('transactionId: $transactionId, ')
+          ..write('tagId: $tagId, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $RecurringRuleTagsTable extends RecurringRuleTags
+    with TableInfo<$RecurringRuleTagsTable, RecurringRuleTagRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RecurringRuleTagsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _ruleIdMeta = const VerificationMeta('ruleId');
+  @override
+  late final GeneratedColumn<int> ruleId = GeneratedColumn<int>(
+    'rule_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES recurring_rules (id)',
+    ),
+  );
+  static const VerificationMeta _tagIdMeta = const VerificationMeta('tagId');
+  @override
+  late final GeneratedColumn<int> tagId = GeneratedColumn<int>(
+    'tag_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES tags (id)',
+    ),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [ruleId, tagId];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'recurring_rule_tags';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RecurringRuleTagRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('rule_id')) {
+      context.handle(
+        _ruleIdMeta,
+        ruleId.isAcceptableOrUnknown(data['rule_id']!, _ruleIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_ruleIdMeta);
+    }
+    if (data.containsKey('tag_id')) {
+      context.handle(
+        _tagIdMeta,
+        tagId.isAcceptableOrUnknown(data['tag_id']!, _tagIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_tagIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {ruleId, tagId};
+  @override
+  RecurringRuleTagRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RecurringRuleTagRow(
+      ruleId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}rule_id'],
+      )!,
+      tagId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}tag_id'],
+      )!,
+    );
+  }
+
+  @override
+  $RecurringRuleTagsTable createAlias(String alias) {
+    return $RecurringRuleTagsTable(attachedDatabase, alias);
+  }
+}
+
+class RecurringRuleTagRow extends DataClass
+    implements Insertable<RecurringRuleTagRow> {
+  final int ruleId;
+  final int tagId;
+  const RecurringRuleTagRow({required this.ruleId, required this.tagId});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['rule_id'] = Variable<int>(ruleId);
+    map['tag_id'] = Variable<int>(tagId);
+    return map;
+  }
+
+  RecurringRuleTagsCompanion toCompanion(bool nullToAbsent) {
+    return RecurringRuleTagsCompanion(
+      ruleId: Value(ruleId),
+      tagId: Value(tagId),
+    );
+  }
+
+  factory RecurringRuleTagRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RecurringRuleTagRow(
+      ruleId: serializer.fromJson<int>(json['ruleId']),
+      tagId: serializer.fromJson<int>(json['tagId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'ruleId': serializer.toJson<int>(ruleId),
+      'tagId': serializer.toJson<int>(tagId),
+    };
+  }
+
+  RecurringRuleTagRow copyWith({int? ruleId, int? tagId}) =>
+      RecurringRuleTagRow(
+        ruleId: ruleId ?? this.ruleId,
+        tagId: tagId ?? this.tagId,
+      );
+  RecurringRuleTagRow copyWithCompanion(RecurringRuleTagsCompanion data) {
+    return RecurringRuleTagRow(
+      ruleId: data.ruleId.present ? data.ruleId.value : this.ruleId,
+      tagId: data.tagId.present ? data.tagId.value : this.tagId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RecurringRuleTagRow(')
+          ..write('ruleId: $ruleId, ')
+          ..write('tagId: $tagId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(ruleId, tagId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RecurringRuleTagRow &&
+          other.ruleId == this.ruleId &&
+          other.tagId == this.tagId);
+}
+
+class RecurringRuleTagsCompanion extends UpdateCompanion<RecurringRuleTagRow> {
+  final Value<int> ruleId;
+  final Value<int> tagId;
+  final Value<int> rowid;
+  const RecurringRuleTagsCompanion({
+    this.ruleId = const Value.absent(),
+    this.tagId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RecurringRuleTagsCompanion.insert({
+    required int ruleId,
+    required int tagId,
+    this.rowid = const Value.absent(),
+  }) : ruleId = Value(ruleId),
+       tagId = Value(tagId);
+  static Insertable<RecurringRuleTagRow> custom({
+    Expression<int>? ruleId,
+    Expression<int>? tagId,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (ruleId != null) 'rule_id': ruleId,
+      if (tagId != null) 'tag_id': tagId,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RecurringRuleTagsCompanion copyWith({
+    Value<int>? ruleId,
+    Value<int>? tagId,
+    Value<int>? rowid,
+  }) {
+    return RecurringRuleTagsCompanion(
+      ruleId: ruleId ?? this.ruleId,
+      tagId: tagId ?? this.tagId,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (ruleId.present) {
+      map['rule_id'] = Variable<int>(ruleId.value);
+    }
+    if (tagId.present) {
+      map['tag_id'] = Variable<int>(tagId.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RecurringRuleTagsCompanion(')
+          ..write('ruleId: $ruleId, ')
           ..write('tagId: $tagId, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -13170,6 +13449,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $TransactionTagsTable transactionTags = $TransactionTagsTable(
     this,
   );
+  late final $RecurringRuleTagsTable recurringRuleTags =
+      $RecurringRuleTagsTable(this);
   late final $TransactionSplitsTable transactionSplits =
       $TransactionSplitsTable(this);
   late final $GoalDetailsTable goalDetails = $GoalDetailsTable(this);
@@ -13198,6 +13479,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     budgetAlerts,
     tags,
     transactionTags,
+    recurringRuleTags,
     transactionSplits,
     goalDetails,
     shoppingLists,
@@ -16242,6 +16524,30 @@ final class $$RecurringRulesTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$RecurringRuleTagsTable, List<RecurringRuleTagRow>>
+  _recurringRuleTagsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.recurringRuleTags,
+        aliasName: $_aliasNameGenerator(
+          db.recurringRules.id,
+          db.recurringRuleTags.ruleId,
+        ),
+      );
+
+  $$RecurringRuleTagsTableProcessedTableManager get recurringRuleTagsRefs {
+    final manager = $$RecurringRuleTagsTableTableManager(
+      $_db,
+      $_db.recurringRuleTags,
+    ).filter((f) => f.ruleId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _recurringRuleTagsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$RecurringRulesTableFilterComposer
@@ -16378,6 +16684,31 @@ class $$RecurringRulesTableFilterComposer
           }) => $$TransactionsTableFilterComposer(
             $db: $db,
             $table: $db.transactions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> recurringRuleTagsRefs(
+    Expression<bool> Function($$RecurringRuleTagsTableFilterComposer f) f,
+  ) {
+    final $$RecurringRuleTagsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.recurringRuleTags,
+      getReferencedColumn: (t) => t.ruleId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RecurringRuleTagsTableFilterComposer(
+            $db: $db,
+            $table: $db.recurringRuleTags,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -16627,6 +16958,32 @@ class $$RecurringRulesTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> recurringRuleTagsRefs<T extends Object>(
+    Expression<T> Function($$RecurringRuleTagsTableAnnotationComposer a) f,
+  ) {
+    final $$RecurringRuleTagsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.recurringRuleTags,
+          getReferencedColumn: (t) => t.ruleId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$RecurringRuleTagsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.recurringRuleTags,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$RecurringRulesTableTableManager
@@ -16646,6 +17003,7 @@ class $$RecurringRulesTableTableManager
             bool accountId,
             bool categoryId,
             bool transactionsRefs,
+            bool recurringRuleTagsRefs,
           })
         > {
   $$RecurringRulesTableTableManager(
@@ -16738,11 +17096,13 @@ class $$RecurringRulesTableTableManager
                 accountId = false,
                 categoryId = false,
                 transactionsRefs = false,
+                recurringRuleTagsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (transactionsRefs) db.transactions,
+                    if (recurringRuleTagsRefs) db.recurringRuleTags,
                   ],
                   addJoins:
                       <
@@ -16816,6 +17176,27 @@ class $$RecurringRulesTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (recurringRuleTagsRefs)
+                        await $_getPrefetchedData<
+                          RecurringRuleRow,
+                          $RecurringRulesTable,
+                          RecurringRuleTagRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$RecurringRulesTableReferences
+                              ._recurringRuleTagsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$RecurringRulesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).recurringRuleTagsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.ruleId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -16840,6 +17221,7 @@ typedef $$RecurringRulesTableProcessedTableManager =
         bool accountId,
         bool categoryId,
         bool transactionsRefs,
+        bool recurringRuleTagsRefs,
       })
     >;
 typedef $$TransactionsTableCreateCompanionBuilder =
@@ -20200,6 +20582,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<String?> passcodeSalt,
       Value<int?> passcodeLength,
       Value<bool> biometricEnabled,
+      Value<int> pinTimeoutMinutes,
       Value<bool> expenseReminderEnabled,
       Value<int> expenseReminderHour,
       Value<int> expenseReminderMinute,
@@ -20231,6 +20614,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<String?> passcodeSalt,
       Value<int?> passcodeLength,
       Value<bool> biometricEnabled,
+      Value<int> pinTimeoutMinutes,
       Value<bool> expenseReminderEnabled,
       Value<int> expenseReminderHour,
       Value<int> expenseReminderMinute,
@@ -20351,6 +20735,11 @@ class $$SettingsTableFilterComposer
 
   ColumnFilters<bool> get biometricEnabled => $composableBuilder(
     column: $table.biometricEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get pinTimeoutMinutes => $composableBuilder(
+    column: $table.pinTimeoutMinutes,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -20527,6 +20916,11 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get pinTimeoutMinutes => $composableBuilder(
+    column: $table.pinTimeoutMinutes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get expenseReminderEnabled => $composableBuilder(
     column: $table.expenseReminderEnabled,
     builder: (column) => ColumnOrderings(column),
@@ -20689,6 +21083,11 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get pinTimeoutMinutes => $composableBuilder(
+    column: $table.pinTimeoutMinutes,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get expenseReminderEnabled => $composableBuilder(
     column: $table.expenseReminderEnabled,
     builder: (column) => column,
@@ -20817,6 +21216,7 @@ class $$SettingsTableTableManager
                 Value<String?> passcodeSalt = const Value.absent(),
                 Value<int?> passcodeLength = const Value.absent(),
                 Value<bool> biometricEnabled = const Value.absent(),
+                Value<int> pinTimeoutMinutes = const Value.absent(),
                 Value<bool> expenseReminderEnabled = const Value.absent(),
                 Value<int> expenseReminderHour = const Value.absent(),
                 Value<int> expenseReminderMinute = const Value.absent(),
@@ -20847,6 +21247,7 @@ class $$SettingsTableTableManager
                 passcodeSalt: passcodeSalt,
                 passcodeLength: passcodeLength,
                 biometricEnabled: biometricEnabled,
+                pinTimeoutMinutes: pinTimeoutMinutes,
                 expenseReminderEnabled: expenseReminderEnabled,
                 expenseReminderHour: expenseReminderHour,
                 expenseReminderMinute: expenseReminderMinute,
@@ -20878,6 +21279,7 @@ class $$SettingsTableTableManager
                 Value<String?> passcodeSalt = const Value.absent(),
                 Value<int?> passcodeLength = const Value.absent(),
                 Value<bool> biometricEnabled = const Value.absent(),
+                Value<int> pinTimeoutMinutes = const Value.absent(),
                 Value<bool> expenseReminderEnabled = const Value.absent(),
                 Value<int> expenseReminderHour = const Value.absent(),
                 Value<int> expenseReminderMinute = const Value.absent(),
@@ -20908,6 +21310,7 @@ class $$SettingsTableTableManager
                 passcodeSalt: passcodeSalt,
                 passcodeLength: passcodeLength,
                 biometricEnabled: biometricEnabled,
+                pinTimeoutMinutes: pinTimeoutMinutes,
                 expenseReminderEnabled: expenseReminderEnabled,
                 expenseReminderHour: expenseReminderHour,
                 expenseReminderMinute: expenseReminderMinute,
@@ -22651,6 +23054,27 @@ final class $$TagsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$RecurringRuleTagsTable, List<RecurringRuleTagRow>>
+  _recurringRuleTagsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.recurringRuleTags,
+        aliasName: $_aliasNameGenerator(db.tags.id, db.recurringRuleTags.tagId),
+      );
+
+  $$RecurringRuleTagsTableProcessedTableManager get recurringRuleTagsRefs {
+    final manager = $$RecurringRuleTagsTableTableManager(
+      $_db,
+      $_db.recurringRuleTags,
+    ).filter((f) => f.tagId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _recurringRuleTagsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$TagsTableFilterComposer extends Composer<_$AppDatabase, $TagsTable> {
@@ -22692,6 +23116,31 @@ class $$TagsTableFilterComposer extends Composer<_$AppDatabase, $TagsTable> {
           }) => $$TransactionTagsTableFilterComposer(
             $db: $db,
             $table: $db.transactionTags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> recurringRuleTagsRefs(
+    Expression<bool> Function($$RecurringRuleTagsTableFilterComposer f) f,
+  ) {
+    final $$RecurringRuleTagsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.recurringRuleTags,
+      getReferencedColumn: (t) => t.tagId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RecurringRuleTagsTableFilterComposer(
+            $db: $db,
+            $table: $db.recurringRuleTags,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -22770,6 +23219,32 @@ class $$TagsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> recurringRuleTagsRefs<T extends Object>(
+    Expression<T> Function($$RecurringRuleTagsTableAnnotationComposer a) f,
+  ) {
+    final $$RecurringRuleTagsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.recurringRuleTags,
+          getReferencedColumn: (t) => t.tagId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$RecurringRuleTagsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.recurringRuleTags,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$TagsTableTableManager
@@ -22785,7 +23260,10 @@ class $$TagsTableTableManager
           $$TagsTableUpdateCompanionBuilder,
           (TagRow, $$TagsTableReferences),
           TagRow,
-          PrefetchHooks Function({bool transactionTagsRefs})
+          PrefetchHooks Function({
+            bool transactionTagsRefs,
+            bool recurringRuleTagsRefs,
+          })
         > {
   $$TagsTableTableManager(_$AppDatabase db, $TagsTable table)
     : super(
@@ -22820,37 +23298,61 @@ class $$TagsTableTableManager
                     (e.readTable(table), $$TagsTableReferences(db, table, e)),
               )
               .toList(),
-          prefetchHooksCallback: ({transactionTagsRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [
-                if (transactionTagsRefs) db.transactionTags,
-              ],
-              addJoins: null,
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (transactionTagsRefs)
-                    await $_getPrefetchedData<
-                      TagRow,
-                      $TagsTable,
-                      TransactionTagRow
-                    >(
-                      currentTable: table,
-                      referencedTable: $$TagsTableReferences
-                          ._transactionTagsRefsTable(db),
-                      managerFromTypedResult: (p0) => $$TagsTableReferences(
-                        db,
-                        table,
-                        p0,
-                      ).transactionTagsRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where((e) => e.tagId == item.id),
-                      typedResults: items,
-                    ),
-                ];
+          prefetchHooksCallback:
+              ({transactionTagsRefs = false, recurringRuleTagsRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (transactionTagsRefs) db.transactionTags,
+                    if (recurringRuleTagsRefs) db.recurringRuleTags,
+                  ],
+                  addJoins: null,
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (transactionTagsRefs)
+                        await $_getPrefetchedData<
+                          TagRow,
+                          $TagsTable,
+                          TransactionTagRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$TagsTableReferences
+                              ._transactionTagsRefsTable(db),
+                          managerFromTypedResult: (p0) => $$TagsTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).transactionTagsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.tagId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (recurringRuleTagsRefs)
+                        await $_getPrefetchedData<
+                          TagRow,
+                          $TagsTable,
+                          RecurringRuleTagRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$TagsTableReferences
+                              ._recurringRuleTagsRefsTable(db),
+                          managerFromTypedResult: (p0) => $$TagsTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).recurringRuleTagsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.tagId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -22867,7 +23369,10 @@ typedef $$TagsTableProcessedTableManager =
       $$TagsTableUpdateCompanionBuilder,
       (TagRow, $$TagsTableReferences),
       TagRow,
-      PrefetchHooks Function({bool transactionTagsRefs})
+      PrefetchHooks Function({
+        bool transactionTagsRefs,
+        bool recurringRuleTagsRefs,
+      })
     >;
 typedef $$TransactionTagsTableCreateCompanionBuilder =
     TransactionTagsCompanion Function({
@@ -23235,6 +23740,373 @@ typedef $$TransactionTagsTableProcessedTableManager =
       (TransactionTagRow, $$TransactionTagsTableReferences),
       TransactionTagRow,
       PrefetchHooks Function({bool transactionId, bool tagId})
+    >;
+typedef $$RecurringRuleTagsTableCreateCompanionBuilder =
+    RecurringRuleTagsCompanion Function({
+      required int ruleId,
+      required int tagId,
+      Value<int> rowid,
+    });
+typedef $$RecurringRuleTagsTableUpdateCompanionBuilder =
+    RecurringRuleTagsCompanion Function({
+      Value<int> ruleId,
+      Value<int> tagId,
+      Value<int> rowid,
+    });
+
+final class $$RecurringRuleTagsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $RecurringRuleTagsTable,
+          RecurringRuleTagRow
+        > {
+  $$RecurringRuleTagsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $RecurringRulesTable _ruleIdTable(_$AppDatabase db) =>
+      db.recurringRules.createAlias(
+        $_aliasNameGenerator(db.recurringRuleTags.ruleId, db.recurringRules.id),
+      );
+
+  $$RecurringRulesTableProcessedTableManager get ruleId {
+    final $_column = $_itemColumn<int>('rule_id')!;
+
+    final manager = $$RecurringRulesTableTableManager(
+      $_db,
+      $_db.recurringRules,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_ruleIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $TagsTable _tagIdTable(_$AppDatabase db) => db.tags.createAlias(
+    $_aliasNameGenerator(db.recurringRuleTags.tagId, db.tags.id),
+  );
+
+  $$TagsTableProcessedTableManager get tagId {
+    final $_column = $_itemColumn<int>('tag_id')!;
+
+    final manager = $$TagsTableTableManager(
+      $_db,
+      $_db.tags,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_tagIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$RecurringRuleTagsTableFilterComposer
+    extends Composer<_$AppDatabase, $RecurringRuleTagsTable> {
+  $$RecurringRuleTagsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  $$RecurringRulesTableFilterComposer get ruleId {
+    final $$RecurringRulesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.ruleId,
+      referencedTable: $db.recurringRules,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RecurringRulesTableFilterComposer(
+            $db: $db,
+            $table: $db.recurringRules,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TagsTableFilterComposer get tagId {
+    final $$TagsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tagId,
+      referencedTable: $db.tags,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagsTableFilterComposer(
+            $db: $db,
+            $table: $db.tags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$RecurringRuleTagsTableOrderingComposer
+    extends Composer<_$AppDatabase, $RecurringRuleTagsTable> {
+  $$RecurringRuleTagsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  $$RecurringRulesTableOrderingComposer get ruleId {
+    final $$RecurringRulesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.ruleId,
+      referencedTable: $db.recurringRules,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RecurringRulesTableOrderingComposer(
+            $db: $db,
+            $table: $db.recurringRules,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TagsTableOrderingComposer get tagId {
+    final $$TagsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tagId,
+      referencedTable: $db.tags,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagsTableOrderingComposer(
+            $db: $db,
+            $table: $db.tags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$RecurringRuleTagsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RecurringRuleTagsTable> {
+  $$RecurringRuleTagsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  $$RecurringRulesTableAnnotationComposer get ruleId {
+    final $$RecurringRulesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.ruleId,
+      referencedTable: $db.recurringRules,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RecurringRulesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.recurringRules,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TagsTableAnnotationComposer get tagId {
+    final $$TagsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tagId,
+      referencedTable: $db.tags,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.tags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$RecurringRuleTagsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RecurringRuleTagsTable,
+          RecurringRuleTagRow,
+          $$RecurringRuleTagsTableFilterComposer,
+          $$RecurringRuleTagsTableOrderingComposer,
+          $$RecurringRuleTagsTableAnnotationComposer,
+          $$RecurringRuleTagsTableCreateCompanionBuilder,
+          $$RecurringRuleTagsTableUpdateCompanionBuilder,
+          (RecurringRuleTagRow, $$RecurringRuleTagsTableReferences),
+          RecurringRuleTagRow,
+          PrefetchHooks Function({bool ruleId, bool tagId})
+        > {
+  $$RecurringRuleTagsTableTableManager(
+    _$AppDatabase db,
+    $RecurringRuleTagsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RecurringRuleTagsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RecurringRuleTagsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RecurringRuleTagsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> ruleId = const Value.absent(),
+                Value<int> tagId = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RecurringRuleTagsCompanion(
+                ruleId: ruleId,
+                tagId: tagId,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required int ruleId,
+                required int tagId,
+                Value<int> rowid = const Value.absent(),
+              }) => RecurringRuleTagsCompanion.insert(
+                ruleId: ruleId,
+                tagId: tagId,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$RecurringRuleTagsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({ruleId = false, tagId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (ruleId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.ruleId,
+                                referencedTable:
+                                    $$RecurringRuleTagsTableReferences
+                                        ._ruleIdTable(db),
+                                referencedColumn:
+                                    $$RecurringRuleTagsTableReferences
+                                        ._ruleIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+                    if (tagId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.tagId,
+                                referencedTable:
+                                    $$RecurringRuleTagsTableReferences
+                                        ._tagIdTable(db),
+                                referencedColumn:
+                                    $$RecurringRuleTagsTableReferences
+                                        ._tagIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$RecurringRuleTagsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RecurringRuleTagsTable,
+      RecurringRuleTagRow,
+      $$RecurringRuleTagsTableFilterComposer,
+      $$RecurringRuleTagsTableOrderingComposer,
+      $$RecurringRuleTagsTableAnnotationComposer,
+      $$RecurringRuleTagsTableCreateCompanionBuilder,
+      $$RecurringRuleTagsTableUpdateCompanionBuilder,
+      (RecurringRuleTagRow, $$RecurringRuleTagsTableReferences),
+      RecurringRuleTagRow,
+      PrefetchHooks Function({bool ruleId, bool tagId})
     >;
 typedef $$TransactionSplitsTableCreateCompanionBuilder =
     TransactionSplitsCompanion Function({
@@ -25627,6 +26499,8 @@ class $AppDatabaseManager {
   $$TagsTableTableManager get tags => $$TagsTableTableManager(_db, _db.tags);
   $$TransactionTagsTableTableManager get transactionTags =>
       $$TransactionTagsTableTableManager(_db, _db.transactionTags);
+  $$RecurringRuleTagsTableTableManager get recurringRuleTags =>
+      $$RecurringRuleTagsTableTableManager(_db, _db.recurringRuleTags);
   $$TransactionSplitsTableTableManager get transactionSplits =>
       $$TransactionSplitsTableTableManager(_db, _db.transactionSplits);
   $$GoalDetailsTableTableManager get goalDetails =>
