@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
+## [1.4.5] — 2026-08-20
+
+### Added
+- **PIN lock timeout** — Settings → Security → "Lock after" lets XPENC wait
+  before re-locking instead of always locking the instant it's backgrounded:
+  Immediately, or after 1/5/10/15/30/60 minutes (#60).
+- **Payee on income** — the Payee field, its autocomplete and the Payees hub
+  are no longer expense-only; a salary or any other income can now name who
+  paid it, e.g. an employer (#62). The Payees hub shows each payee's net
+  flow (income minus expense) instead of assuming every payee is a spend.
+- **Preset tags on an Auto rule** — a recurring rule can now carry its own
+  set of tags, stamped automatically onto every transaction it posts (#63).
+
+### Fixed
+- About screen: the footer could sit right against the system navigation bar
+  on a 3-button-nav device — the same class of bug as #14, fixed the same
+  way (reading the nav bar inset explicitly) for this screen (#53).
+
 ## [1.4.4] — 2026-08-19
 
 ### Fixed
@@ -493,7 +511,8 @@ First public release. 🎉
 - `tool/verify_apk.sh` gates every shipped APK against the missing
   `libsqlite3.so` class of crash.
 
-[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.4.4...HEAD
+[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.4.5...HEAD
+[1.4.5]: https://github.com/PATILYASHH/XPENC/compare/v1.4.4...v1.4.5
 [1.4.4]: https://github.com/PATILYASHH/XPENC/compare/v1.4.3...v1.4.4
 [1.4.3]: https://github.com/PATILYASHH/XPENC/compare/v1.4.2...v1.4.3
 [1.4.2]: https://github.com/PATILYASHH/XPENC/compare/v1.4.1...v1.4.2

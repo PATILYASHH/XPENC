@@ -129,6 +129,7 @@ typedef CombinedStatementLine = ({
     RecurringRules,
     Tags,
     TransactionTags,
+    RecurringRuleTags,
     TransactionSplits,
     GoalDetails,
     ShoppingLists,
@@ -161,7 +162,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 30;
+  int get schemaVersion => 32;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -317,6 +318,12 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 30) {
         await m.createTable(ocrCorrections);
+      }
+      if (from < 31) {
+        await _addColumnIfMissing(m, settings, settings.pinTimeoutMinutes);
+      }
+      if (from < 32) {
+        await m.createTable(recurringRuleTags);
       }
     },
     beforeOpen: (details) async {
@@ -713,8 +720,8 @@ class AppDatabase extends _$AppDatabase {
     if (!type.isPersonMovement && personId != null) {
       throw ArgumentError('Only a person movement names a person.');
     }
-    if (type != TxType.expense && payee != null) {
-      throw ArgumentError('Only an expense names a payee.');
+    if (!type.isIncomeOrExpense && payee != null) {
+      throw ArgumentError('Only an income or expense names a payee.');
     }
     if (!type.isIncomeOrExpense && recurringRuleId != null) {
       throw ArgumentError('Only income or expense can come from a rule.');
@@ -2144,7 +2151,6 @@ class AppDatabase extends _$AppDatabase {
     required CategoryRow category,
     required RecurringFrequency frequency,
     int? dayOfMonth,
-    String? payee,
   }) {
     if (!amount.isPositive) {
       throw ArgumentError('Amount must be positive.');
@@ -2154,9 +2160,6 @@ class AppDatabase extends _$AppDatabase {
         'That category is ${category.kind == CategoryKind.income ? 'an income' : 'an expense'} '
         'category — pick one that matches.',
       );
-    }
-    if (kind != CategoryKind.expense && payee != null) {
-      throw ArgumentError('Only an expense names a payee.');
     }
     if (frequency == RecurringFrequency.monthly) {
       if (dayOfMonth == null || dayOfMonth < 1 || dayOfMonth > 31) {
@@ -2178,6 +2181,7 @@ class AppDatabase extends _$AppDatabase {
     required DateTime startsOn,
     int notifyDaysBefore = 3,
     bool isEstimate = false,
+    Set<int> tagIds = const {},
   }) async {
     final category = await categoryById(categoryId);
     if (category == null) {
@@ -2192,24 +2196,27 @@ class AppDatabase extends _$AppDatabase {
       category: category,
       frequency: frequency,
       dayOfMonth: dayOfMonth,
-      payee: payee,
     );
 
-    return into(recurringRules).insert(
-      RecurringRulesCompanion.insert(
-        name: name,
-        kind: kind,
-        amount: amount,
-        accountId: accountId,
-        categoryId: categoryId,
-        payee: Value(payee),
-        frequency: frequency,
-        dayOfMonth: Value(dayOfMonth),
-        nextDueDate: DateTime(startsOn.year, startsOn.month, startsOn.day),
-        notifyDaysBefore: Value(notifyDaysBefore),
-        isEstimate: Value(isEstimate),
-      ),
-    );
+    return transaction(() async {
+      final id = await into(recurringRules).insert(
+        RecurringRulesCompanion.insert(
+          name: name,
+          kind: kind,
+          amount: amount,
+          accountId: accountId,
+          categoryId: categoryId,
+          payee: Value(payee),
+          frequency: frequency,
+          dayOfMonth: Value(dayOfMonth),
+          nextDueDate: DateTime(startsOn.year, startsOn.month, startsOn.day),
+          notifyDaysBefore: Value(notifyDaysBefore),
+          isEstimate: Value(isEstimate),
+        ),
+      );
+      await setRecurringRuleTags(id, tagIds);
+      return id;
+    });
   }
 
   Future<void> updateRecurringRule({
@@ -2224,6 +2231,7 @@ class AppDatabase extends _$AppDatabase {
     required DateTime nextDueDate,
     int notifyDaysBefore = 3,
     bool isEstimate = false,
+    Set<int> tagIds = const {},
   }) async {
     final category = await categoryById(categoryId);
     if (category == null) {
@@ -2238,9 +2246,9 @@ class AppDatabase extends _$AppDatabase {
       category: category,
       frequency: frequency,
       dayOfMonth: dayOfMonth,
-      payee: payee,
     );
 
+    await setRecurringRuleTags(id, tagIds);
     await (update(recurringRules)..where((r) => r.id.equals(id))).write(
       RecurringRulesCompanion(
         name: Value(name),
@@ -2271,12 +2279,44 @@ class AppDatabase extends _$AppDatabase {
   Future<void> deleteRecurringRule(int id) => transaction(() async {
     await (update(transactions)..where((t) => t.recurringRuleId.equals(id)))
         .write(const TransactionsCompanion(recurringRuleId: Value(null)));
+    await (delete(
+      recurringRuleTags,
+    )..where((t) => t.ruleId.equals(id))).go();
     await (delete(recurringRules)..where((r) => r.id.equals(id))).go();
   });
 
   Stream<List<RecurringRuleRow>> watchRecurringRules() => (select(
     recurringRules,
   )..orderBy([(r) => OrderingTerm(expression: r.nextDueDate)])).watch();
+
+  /// Every rule-tag link, across every rule — same shape as
+  /// [watchAllTransactionTags], for the same reason.
+  Stream<List<RecurringRuleTagRow>> watchAllRecurringRuleTags() =>
+      select(recurringRuleTags).watch();
+
+  Future<List<int>> tagIdsForRecurringRule(int ruleId) async {
+    final rows = await (select(
+      recurringRuleTags,
+    )..where((t) => t.ruleId.equals(ruleId))).get();
+    return rows.map((r) => r.tagId).toList();
+  }
+
+  /// Replaces every tag [ruleId] stamps onto its posted transactions with
+  /// exactly [tagIds] — same whole-set-rewrite shape as [setTransactionTags].
+  /// Existing transactions the rule already posted keep whatever tags they
+  /// have; only future postings pick up the change.
+  Future<void> setRecurringRuleTags(int ruleId, Set<int> tagIds) {
+    return transaction(() async {
+      await (delete(
+        recurringRuleTags,
+      )..where((t) => t.ruleId.equals(ruleId))).go();
+      for (final tagId in tagIds) {
+        await into(recurringRuleTags).insert(
+          RecurringRuleTagsCompanion.insert(ruleId: ruleId, tagId: tagId),
+        );
+      }
+    });
+  }
 
   /// The occurrence after [from], for a rule whose target day is
   /// [dayOfMonth] (monthly only). Short months snap to their last day, but
@@ -2335,10 +2375,11 @@ class AppDatabase extends _$AppDatabase {
     var posted = 0;
     for (final rule in due) {
       try {
+        final ruleTagIds = (await tagIdsForRecurringRule(rule.id)).toSet();
         await transaction(() async {
           var next = rule.nextDueDate;
           while (!next.isAfter(endOfToday)) {
-            await addTransaction(
+            final txId = await addTransaction(
               type: rule.kind == CategoryKind.expense
                   ? TxType.expense
                   : TxType.income,
@@ -2346,10 +2387,13 @@ class AppDatabase extends _$AppDatabase {
               accountId: rule.accountId,
               categoryId: rule.categoryId,
               date: next,
-              payee: rule.kind == CategoryKind.expense ? rule.payee : null,
+              payee: rule.payee,
               recurringRuleId: rule.id,
               needsAmountReview: rule.isEstimate,
             );
+            if (ruleTagIds.isNotEmpty) {
+              await setTransactionTags(txId, ruleTagIds);
+            }
             posted++;
             next = _nextOccurrence(
               rule.frequency,
@@ -2872,6 +2916,15 @@ class AppDatabase extends _$AppDatabase {
     settings,
   ).write(SettingsCompanion(preventScreenshots: Value(value)));
 
+  /// A no-op when no passcode is set — same guard as [setBiometricEnabled];
+  /// a timeout means nothing without a lock to defer.
+  Future<void> setPinTimeoutMinutes(int minutes) async {
+    if ((await getSettings()).passcodeHash == null) return;
+    await update(
+      settings,
+    ).write(SettingsCompanion(pinTimeoutMinutes: Value(minutes)));
+  }
+
   Future<void> setHideAmounts(bool value) =>
       update(settings).write(SettingsCompanion(hideAmounts: Value(value)));
 
@@ -3257,9 +3310,7 @@ class AppDatabase extends _$AppDatabase {
               : categoriesById[t.categoryId];
           final base = category?.name ?? 'Uncategorised';
           final payee = t.payee?.trim();
-          return (t.type == TxType.expense && payee != null && payee.isNotEmpty)
-              ? '$base - $payee'
-              : base;
+          return (payee != null && payee.isNotEmpty) ? '$base - $payee' : base;
       }
     }
 

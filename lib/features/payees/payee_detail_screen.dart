@@ -8,10 +8,12 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
+import '../../data/tables.dart';
 
-/// One payee's expense history. "Rename" bulk-edits every transaction that
-/// named this payee — renaming to a name that already exists elsewhere merges
-/// the two into one, since they simply end up sharing a name.
+/// One payee's expense/income history (GitHub #62). "Rename" bulk-edits
+/// every transaction that named this payee — renaming to a name that already
+/// exists elsewhere merges the two into one, since they simply end up
+/// sharing a name.
 class PayeeDetailScreen extends ConsumerWidget {
   const PayeeDetailScreen({required this.payee, super.key});
 
@@ -21,7 +23,10 @@ class PayeeDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final txs = ref.watch(payeeTransactionsProvider(payee));
-    final total = txs.fold(const Money.zero(), (sum, t) => sum + t.amount);
+    final net = txs.fold(
+      const Money.zero(),
+      (sum, t) => sum + (t.type == TxType.expense ? -t.amount : t.amount),
+    );
 
     return Scaffold(
       body: CustomScrollView(
@@ -37,9 +42,7 @@ class PayeeDetailScreen extends ConsumerWidget {
               ),
             ],
           ),
-          SliverToBoxAdapter(
-            child: _TotalHero(total: total, count: txs.length),
-          ),
+          SliverToBoxAdapter(child: _TotalHero(net: net, count: txs.length)),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 14, 24, 6),
@@ -125,9 +128,9 @@ class PayeeDetailScreen extends ConsumerWidget {
 }
 
 class _TotalHero extends StatelessWidget {
-  const _TotalHero({required this.total, required this.count});
+  const _TotalHero({required this.net, required this.count});
 
-  final Money total;
+  final Money net;
   final int count;
 
   @override
@@ -141,15 +144,16 @@ class _TotalHero extends StatelessWidget {
           child: Column(
             children: [
               MoneyText(
-                total,
-                color: AppColors.expense,
+                net,
+                signed: true,
+                color: net.isNegative ? AppColors.expense : AppColors.income,
                 style: theme.textTheme.displaySmall?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 6),
               Text(
-                count == 1 ? '1 payment' : '$count payments',
+                count == 1 ? '1 transaction' : '$count transactions',
                 style: theme.textTheme.titleMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -172,14 +176,18 @@ class _TxRow extends StatelessWidget {
     final theme = Theme.of(context);
     final note = tx.note?.trim();
     final dateStr = DateFormat('d MMM yyyy').format(tx.date);
-    final title = (note != null && note.isNotEmpty) ? note : 'Expense';
+    final title = (note != null && note.isNotEmpty)
+        ? note
+        : labelForTxType(tx.type);
+    final color = colorForTxType(tx.type);
+    final displayAmount = tx.type == TxType.expense ? -tx.amount : tx.amount;
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       leading: CircleAvatar(
-        backgroundColor: AppColors.expense.withValues(alpha: 0.14),
-        foregroundColor: AppColors.expense,
-        child: const Icon(Icons.north_east_rounded, size: 20),
+        backgroundColor: color.withValues(alpha: 0.14),
+        foregroundColor: color,
+        child: Icon(iconForTxType(tx.type), size: 20),
       ),
       title: Text(
         title,
@@ -194,9 +202,9 @@ class _TxRow extends StatelessWidget {
         ),
       ),
       trailing: MoneyText(
-        -tx.amount,
+        displayAmount,
         signed: true,
-        color: AppColors.expense,
+        color: color,
         style: theme.textTheme.titleMedium?.copyWith(
           fontWeight: FontWeight.w600,
         ),

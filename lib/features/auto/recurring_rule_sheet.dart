@@ -6,6 +6,7 @@ import '../../core/money.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../tags/tag_picker_sheet.dart';
 
 /// Opens the add/edit sheet. Pass [existing] to edit that rule instead of
 /// creating a new one.
@@ -53,6 +54,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
   double _notifyDays = 3;
   bool _isEstimate = false;
   bool _submitting = false;
+  Set<int> _tagIds = {};
 
   bool get _isEditing => widget.existing != null;
 
@@ -74,6 +76,15 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     _dueDate = e.nextDueDate;
     _notifyDays = e.notifyDaysBefore.toDouble();
     _isEstimate = e.isEstimate;
+    _loadTagIds(e.id);
+  }
+
+  /// Preset tags aren't on [RecurringRuleRow] itself (see
+  /// `RecurringRuleTags`) — fetch them once, same shape as
+  /// `AddTransactionScreen._loadForEdit` fetching a transaction's tags.
+  Future<void> _loadTagIds(int ruleId) async {
+    final ids = await ref.read(dbProvider).tagIdsForRecurringRule(ruleId);
+    if (mounted) setState(() => _tagIds = ids.toSet());
   }
 
   static String _bufferFromMoney(Money amount) {
@@ -129,9 +140,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
       return;
     }
     final payeeText = _payeeController.text.trim();
-    final payee = _kind == CategoryKind.expense && payeeText.isNotEmpty
-        ? payeeText
-        : null;
+    final payee = payeeText.isEmpty ? null : payeeText;
 
     setState(() => _submitting = true);
     final navigator = Navigator.of(context);
@@ -151,6 +160,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               nextDueDate: _dueDate,
               notifyDaysBefore: _notifyDays.round(),
               isEstimate: _isEstimate,
+              tagIds: _tagIds,
             );
       } else {
         await ref
@@ -166,6 +176,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               startsOn: _dueDate,
               notifyDaysBefore: _notifyDays.round(),
               isEstimate: _isEstimate,
+              tagIds: _tagIds,
             );
       }
     } on ArgumentError catch (e) {
@@ -307,10 +318,10 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               ],
               onChanged: (v) => setState(() => _categoryId = v),
             ),
-            if (_kind == CategoryKind.expense) ...[
-              const SizedBox(height: 16),
-              _payeeField(theme),
-            ],
+            const SizedBox(height: 16),
+            _payeeField(theme),
+            const SizedBox(height: 16),
+            _tagsField(theme),
             const SizedBox(height: 20),
             // Four segments can outgrow a narrow phone or a larger system
             // font scale — scroll rather than let it overflow (GitHub #14).
@@ -433,13 +444,93 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
           controller: controller,
           focusNode: focusNode,
           textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: 'Payee (optional)',
-            hintText: 'Who gets paid?',
+            hintText: _kind == CategoryKind.income
+                ? 'Who pays you?'
+                : 'Who gets paid?',
           ),
         );
       },
     );
+  }
+
+  /// Preset tags every posting of this rule gets stamped with automatically
+  /// — see GitHub #63 and `AppDatabase.runDueRecurringRules`.
+  Widget _tagsField(ThemeData theme) {
+    final cs = theme.colorScheme;
+    final tagMap = ref.watch(tagMapProvider);
+    final selected = [
+      for (final id in _tagIds)
+        if (tagMap[id] != null) tagMap[id]!,
+    ]..sort((a, b) => a.name.compareTo(b.name));
+
+    return InkWell(
+      onTap: _pickTags,
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.sell_outlined, color: cs.onSurfaceVariant),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Tags (optional)',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  if (selected.isEmpty)
+                    Text(
+                      'Stamped on every transaction this rule posts',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    )
+                  else
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final tag in selected)
+                          Chip(
+                            label: Text(tag.name),
+                            backgroundColor: Color(
+                              tag.colorValue,
+                            ).withValues(alpha: 0.15),
+                            labelStyle: TextStyle(color: Color(tag.colorValue)),
+                            visualDensity: VisualDensity.compact,
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                            side: BorderSide.none,
+                          ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickTags() async {
+    final result = await showModalBottomSheet<Set<int>>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => TagPickerSheet(initiallySelected: _tagIds),
+    );
+    if (result == null || !mounted) return;
+    setState(() => _tagIds = result);
   }
 
   String _categoryLabel(CategoryRow c, Map<int, CategoryRow> byId) {

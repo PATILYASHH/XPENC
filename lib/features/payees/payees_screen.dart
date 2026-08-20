@@ -7,8 +7,9 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/providers.dart';
 
-/// Who you pay. Derived from the `payee` typed on each expense — there is no
-/// separate table, so this screen is a grouped view, not a CRUD list.
+/// Who you pay, or who pays you. Derived from the `payee` typed on each
+/// expense or income (GitHub #62) — there is no separate table, so this
+/// screen is a grouped view, not a CRUD list.
 class PayeesScreen extends ConsumerWidget {
   const PayeesScreen({super.key});
 
@@ -16,14 +17,14 @@ class PayeesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final summaries = ref.watch(payeeSummariesProvider);
-    final total = summaries.fold(const Money.zero(), (sum, s) => sum + s.total);
+    final net = summaries.fold(const Money.zero(), (sum, s) => sum + s.net);
 
     return Scaffold(
       body: CustomScrollView(
         slivers: [
           SliverAppBar(pinned: true, title: const Text('Payees')),
           SliverToBoxAdapter(
-            child: _TotalsHeader(total: total, count: summaries.length),
+            child: _TotalsHeader(net: net, count: summaries.length),
           ),
           if (summaries.isEmpty)
             const SliverToBoxAdapter(child: _EmptyPayees())
@@ -57,9 +58,9 @@ class PayeesScreen extends ConsumerWidget {
 }
 
 class _TotalsHeader extends StatelessWidget {
-  const _TotalsHeader({required this.total, required this.count});
+  const _TotalsHeader({required this.net, required this.count});
 
-  final Money total;
+  final Money net;
   final int count;
 
   @override
@@ -73,15 +74,16 @@ class _TotalsHeader extends StatelessWidget {
           child: Column(
             children: [
               MoneyText(
-                total,
-                color: AppColors.expense,
+                net,
+                signed: true,
+                color: net.isNegative ? AppColors.expense : AppColors.income,
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 6),
               Text(
-                count == 1 ? 'Paid to 1 payee' : 'Paid to $count payees',
+                count == 1 ? 'Net across 1 payee' : 'Net across $count payees',
                 style: theme.textTheme.labelMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -122,7 +124,7 @@ class _PayeeTile extends StatelessWidget {
         style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
       ),
       subtitle: Text(
-        s.count == 1 ? '1 payment' : '${s.count} payments',
+        s.count == 1 ? '1 transaction' : '${s.count} transactions',
         style: theme.textTheme.bodySmall?.copyWith(
           color: theme.colorScheme.onSurfaceVariant,
         ),
@@ -133,8 +135,9 @@ class _PayeeTile extends StatelessWidget {
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerRight,
           child: MoneyText(
-            s.total,
-            color: AppColors.expense,
+            s.net,
+            signed: true,
+            color: s.net.isNegative ? AppColors.expense : AppColors.income,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
             ),
@@ -163,7 +166,7 @@ class _EmptyPayees extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'No payees yet — name one on an expense to see it here.',
+            'No payees yet — name one on an expense or income to see it here.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,

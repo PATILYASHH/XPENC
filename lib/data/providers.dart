@@ -552,6 +552,12 @@ final preventScreenshotsProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.preventScreenshots ?? false;
 });
 
+/// Minutes the app may sit backgrounded before the next resume re-locks it —
+/// `0` means immediately. See GitHub #60.
+final pinTimeoutMinutesProvider = Provider<int>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.pinTimeoutMinutes ?? 0;
+});
+
 /// Whether every amount app-wide is masked — the top bar's eye icon. See
 /// `AmountVisibilityScope` in `money_text.dart`.
 final hideAmountsProvider = Provider<bool>((ref) {
@@ -825,65 +831,71 @@ final transactionSplitsByTxProvider =
 
 // ── Payees ──────────────────────────────────────────────────────────────────
 //
-// A payee is free text on an expense, not its own table (see Transactions.payee
-// in tables.dart) — these all derive their view by grouping that column out of
-// transactions already being watched elsewhere. Compose, don't re-subscribe.
+// A payee is free text on an expense or income (GitHub #62 — a salary needs
+// one too), not its own table (see Transactions.payee in tables.dart) — these
+// all derive their view by grouping that column out of transactions already
+// being watched elsewhere. Compose, don't re-subscribe.
 
-/// Distinct payee names used on past expenses, most recently paid first — the
-/// source for autocomplete suggestions on the add/edit screen.
+/// Distinct payee names used on past expenses/income, most recently used
+/// first — the source for autocomplete suggestions on the add/edit screen.
 final payeeSuggestionsProvider = Provider<List<String>>((ref) {
   final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
-  final lastPaid = <String, DateTime>{};
+  final lastUsed = <String, DateTime>{};
   for (final t in txs) {
     final p = t.payee;
-    if (t.type != TxType.expense || p == null || p.isEmpty) continue;
-    final seen = lastPaid[p];
-    if (seen == null || t.date.isAfter(seen)) lastPaid[p] = t.date;
+    if (!t.type.isIncomeOrExpense || p == null || p.isEmpty) continue;
+    final seen = lastUsed[p];
+    if (seen == null || t.date.isAfter(seen)) lastUsed[p] = t.date;
   }
-  return lastPaid.keys.toList()
-    ..sort((a, b) => lastPaid[b]!.compareTo(lastPaid[a]!));
+  return lastUsed.keys.toList()
+    ..sort((a, b) => lastUsed[b]!.compareTo(lastUsed[a]!));
 });
 
-/// One payee's spend: total, how many payments, and when they were last paid.
+/// One payee's net flow: income minus expense, how many transactions, and
+/// when one last happened. [net] is signed — positive when a payee has paid
+/// more than they've been paid (e.g. an employer, income-only), negative the
+/// other way (e.g. a shop, expense-only).
 typedef PayeeSummary = ({
   String payee,
-  Money total,
+  Money net,
   int count,
-  DateTime lastPaid,
+  DateTime lastUsed,
 });
 
-/// Every payee named on an expense, ranked by total spent — the Payees hub.
+/// Every payee named on an expense or income, ranked by absolute net flow —
+/// the Payees hub.
 final payeeSummariesProvider = Provider<List<PayeeSummary>>((ref) {
   final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
-  final totals = <String, Money>{};
+  final nets = <String, Money>{};
   final counts = <String, int>{};
-  final lastPaid = <String, DateTime>{};
+  final lastUsed = <String, DateTime>{};
   for (final t in txs) {
     final p = t.payee;
-    if (t.type != TxType.expense || p == null || p.isEmpty) continue;
-    totals[p] = (totals[p] ?? const Money.zero()) + t.amount;
+    if (!t.type.isIncomeOrExpense || p == null || p.isEmpty) continue;
+    final signed = t.type == TxType.expense ? -t.amount : t.amount;
+    nets[p] = (nets[p] ?? const Money.zero()) + signed;
     counts[p] = (counts[p] ?? 0) + 1;
-    final seen = lastPaid[p];
-    if (seen == null || t.date.isAfter(seen)) lastPaid[p] = t.date;
+    final seen = lastUsed[p];
+    if (seen == null || t.date.isAfter(seen)) lastUsed[p] = t.date;
   }
   final out = [
-    for (final name in totals.keys)
+    for (final name in nets.keys)
       (
         payee: name,
-        total: totals[name]!,
+        net: nets[name]!,
         count: counts[name]!,
-        lastPaid: lastPaid[name]!,
+        lastUsed: lastUsed[name]!,
       ),
-  ]..sort((a, b) => b.total.paise.compareTo(a.total.paise));
+  ]..sort((a, b) => b.net.abs.paise.compareTo(a.net.abs.paise));
   return out;
 });
 
-/// One payee's expense history, newest first.
+/// One payee's expense/income history, newest first.
 final payeeTransactionsProvider = Provider.family<List<TransactionRow>, String>(
   (ref, payee) {
     final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
     return txs
-        .where((t) => t.type == TxType.expense && t.payee == payee)
+        .where((t) => t.type.isIncomeOrExpense && t.payee == payee)
         .toList()
       ..sort((a, b) => b.date.compareTo(a.date));
   },

@@ -68,6 +68,7 @@ void main() {
       backupRetentionDays: 180,
       preventScreenshots: false,
       hideAmounts: false,
+      pinTimeoutMinutes: 0,
     );
 
     final now = DateTime(2026, 8, 5, 12);
