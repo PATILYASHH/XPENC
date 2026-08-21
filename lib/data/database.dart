@@ -896,6 +896,82 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
+  /// Posts a cash expense where part of the change received lands in a
+  /// different account instead of back in the paying one — e.g. paying with
+  /// a banknote and the coins received as change go into a separate "Coins"
+  /// account (see GitHub #55). [amount] is the real cost of the purchase
+  /// (never the amount handed over) — the change leg is an ordinary
+  /// transfer of [changeAmount] out of [accountId] into [changeAccountId],
+  /// linked to the expense via `paymentGroupId` the same way a hybrid
+  /// payment's legs are. Returns `[expenseId, changeId]`.
+  Future<List<int>> addExpenseWithChange({
+    required Money amount,
+    required int accountId,
+    required int categoryId,
+    required int changeAccountId,
+    required Money changeAmount,
+    required DateTime date,
+    String? note,
+    String? payee,
+    String? imagePath,
+  }) async {
+    if (changeAccountId == accountId) {
+      throw ArgumentError('Change must go to a different account.');
+    }
+    await _validateTx(
+      type: TxType.expense,
+      amount: amount,
+      accountId: accountId,
+      categoryId: categoryId,
+      payee: payee,
+    );
+    await _validateTx(
+      type: TxType.transfer,
+      amount: changeAmount,
+      accountId: accountId,
+      toAccountId: changeAccountId,
+    );
+
+    return transaction(() async {
+      final expenseId = await into(transactions).insert(
+        TransactionsCompanion.insert(
+          type: TxType.expense,
+          amount: amount,
+          accountId: accountId,
+          categoryId: Value(categoryId),
+          date: date,
+          note: Value(note),
+          payee: Value(payee),
+          imagePath: Value(imagePath),
+        ),
+      );
+      final changeId = await into(transactions).insert(
+        TransactionsCompanion.insert(
+          type: TxType.transfer,
+          amount: changeAmount,
+          accountId: accountId,
+          toAccountId: Value(changeAccountId),
+          date: date,
+        ),
+      );
+
+      final ids = [expenseId, changeId];
+      // Same anchor-points-at-itself shape as a hybrid payment's legs — see
+      // the doc on [Transactions.paymentGroupId].
+      await (update(transactions)..where((t) => t.id.isIn(ids))).write(
+        TransactionsCompanion(paymentGroupId: Value(expenseId)),
+      );
+
+      for (final id in ids) {
+        final row = await (select(
+          transactions,
+        )..where((t) => t.id.equals(id))).getSingle();
+        await _applyTxEffect(row, reverse: false);
+      }
+      return ids;
+    });
+  }
+
   /// Every leg of the split payment [transactionId] belongs to, itself
   /// included — empty for an ordinary, ungrouped transaction.
   Future<List<TransactionRow>> paymentGroupLegs(int transactionId) async {
