@@ -137,6 +137,16 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   bool _isHybridPayment = false;
   final List<_PaymentLegEntry> _hybridLegs = [];
 
+  /// Expense only, paid from a cash account — some of the change received
+  /// lands in a different account instead of back in the paying one (e.g.
+  /// coins into a separate "Coins" account) — see GitHub #55. Mutually
+  /// exclusive with [_isSplit] / [_isHybridPayment], same reasoning as those.
+  /// Creation only, same reasoning as [_isHybridPayment].
+  bool _hasChange = false;
+  int? _changeAccountId;
+  final _changeAmountController = TextEditingController();
+  final _changeAmountFocus = FocusNode();
+
   /// The receipt path that will be saved — an existing one loaded for
   /// editing, a freshly picked one, or null.
   String? _imagePath;
@@ -160,6 +170,21 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   bool get _isHybrid =>
       _type == TxType.expense && !_isEditing && _isHybridPayment;
 
+  /// Change only ever applies to a brand-new cash expense — see the doc on
+  /// [_hasChange]. Re-checks the account's type (not just [_hasChange])
+  /// so switching "Paid via" away from a cash account hides the editor
+  /// along with the toggle, instead of leaving it stranded on screen —
+  /// [_hasChange] itself is left untouched, same reasoning as [_isSplitting]
+  /// staying stale-but-harmless across a type switch.
+  bool get _isChange =>
+      _type == TxType.expense &&
+      !_isEditing &&
+      _hasChange &&
+      ref.read(accountMapProvider)[_accountId]?.type == AccountType.cash;
+
+  Money get _changeAmount =>
+      Money.tryParse(_changeAmountController.text) ?? const Money.zero();
+
   /// The on-screen keypad and the system keyboard must never both be up —
   /// they'd fight over the same strip of screen and hide whatever the user
   /// just typed. The keypad only shows while no text field has focus,
@@ -168,7 +193,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       _noteFocus.hasFocus ||
       _payeeFocus.hasFocus ||
       _splitRows.any((r) => r.focusNode.hasFocus) ||
-      _hybridLegs.any((r) => r.focusNode.hasFocus);
+      _hybridLegs.any((r) => r.focusNode.hasFocus) ||
+      _changeAmountFocus.hasFocus;
 
   @override
   void initState() {
@@ -206,6 +232,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     for (final leg in _hybridLegs) {
       leg.dispose();
     }
+    _changeAmountController.dispose();
+    _changeAmountFocus.dispose();
     // Best-effort: leaving without saving shouldn't leak the copy made on
     // pick. Fire-and-forget — nothing in this widget survives to await it.
     if (_unsavedPickedPath != null) _deleteQuietly(_unsavedPickedPath!);
@@ -511,7 +539,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           _isSplit = v;
           // Splitting by category and by account at once is a 2-D matrix
           // this screen doesn't offer — turning one on turns the other off.
-          if (v) _isHybridPayment = false;
+          if (v) {
+            _isHybridPayment = false;
+            _hasChange = false;
+          }
           while (v && _splitRows.length < 2) {
             _splitRows.add(_SplitEntry(onFocusChange: _onFieldFocusChanged));
           }
@@ -559,7 +590,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         value: _isHybridPayment,
         onChanged: (v) => setState(() {
           _isHybridPayment = v;
-          if (v) _isSplit = false;
+          if (v) {
+            _isSplit = false;
+            _hasChange = false;
+          }
           while (v && _hybridLegs.length < 2) {
             _hybridLegs.add(
               _PaymentLegEntry(onFocusChange: _onFieldFocusChanged),
@@ -703,6 +737,121 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                 }),
         ),
       ],
+    );
+  }
+
+  // ── Change ────────────────────────────────────────────────────────────────
+
+  Future<void> _pickChangeAccount() async {
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => _AccountPickerSheet(
+        title: 'Change to account',
+        excludeId: _accountId,
+        onlyTypes: const {AccountType.cash},
+      ),
+    );
+    if (selected == null || !mounted) return;
+    setState(() => _changeAccountId = selected);
+  }
+
+  Widget _changeToggleTile() {
+    final theme = Theme.of(context);
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: SwitchListTile(
+        value: _hasChange,
+        onChanged: (v) => setState(() {
+          _hasChange = v;
+          if (v) {
+            _isSplit = false;
+            _isHybridPayment = false;
+          }
+        }),
+        secondary: Icon(
+          Icons.currency_exchange_rounded,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+        title: const Text('Change went elsewhere'),
+        subtitle: _hasChange
+            ? null
+            : const Text('Part of the change lands in another account'),
+      ),
+    );
+  }
+
+  Widget _changeEditorCard(Map<int, AccountRow> accountMap) {
+    final theme = Theme.of(context);
+    final account = accountMap[_changeAccountId];
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: _pickChangeAccount,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  border: Border.all(color: theme.colorScheme.outline),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      AppIcons.resolve(account?.iconKey ?? 'cash'),
+                      size: 18,
+                      color: account != null
+                          ? Color(account.colorValue)
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 6),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 100),
+                      child: Text(
+                        account?.name ?? 'Account',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: TextField(
+                controller: _changeAmountController,
+                focusNode: _changeAmountFocus,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                ],
+                decoration: InputDecoration(
+                  isDense: true,
+                  prefixText: MoneyFormat.inputPrefix,
+                  hintText: '0.00',
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -925,6 +1074,56 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           ),
         ),
       );
+      return;
+    }
+    if (_isChange) {
+      if (_changeAccountId == null) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Choose where the change goes')),
+        );
+        return;
+      }
+      if (!_changeAmount.isPositive) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Enter how much change goes there')),
+        );
+        return;
+      }
+      if (_categoryId == null) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Choose a category')),
+        );
+        return;
+      }
+      try {
+        final db = ref.read(dbProvider);
+        final note = _noteController.text.trim();
+        final payeeText = _payeeController.text.trim();
+        final ids = await db.addExpenseWithChange(
+          amount: amount,
+          accountId: _accountId!,
+          categoryId: _categoryId!,
+          changeAccountId: _changeAccountId!,
+          changeAmount: _changeAmount,
+          date: _date,
+          note: note.isEmpty ? null : note,
+          payee: payeeText.isEmpty ? null : payeeText,
+          imagePath: _imagePath,
+        );
+        _unsavedPickedPath = null;
+        await db.setTransactionTags(ids.first, _tagIds);
+      } on ArgumentError catch (e) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              e.message?.toString() ?? 'Could not save transaction',
+            ),
+          ),
+        );
+        return;
+      }
+      navigator.pop();
+      messenger.showSnackBar(const SnackBar(content: Text('Saved')));
       return;
     }
     int? envelopeShortfallCategoryId;
@@ -1292,10 +1491,25 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         if (!_isEditing) {
           tiles.add(_hybridToggleTile());
           tiles.add(const SizedBox(height: 12));
+          // Change only ever makes sense out of a cash account, and only if
+          // there's a second cash-type account (e.g. Coins) for it to land
+          // in — otherwise the toggle leads nowhere. See GitHub #55.
+          final cashAccounts = accountMap.values
+              .where((a) => a.type == AccountType.cash)
+              .length;
+          if (accountMap[_accountId]?.type == AccountType.cash &&
+              cashAccounts >= 2) {
+            tiles.add(_changeToggleTile());
+            tiles.add(const SizedBox(height: 12));
+          }
         }
       }
       if (_isHybrid) {
         tiles.add(_hybridEditorCard(accountMap));
+        tiles.add(const SizedBox(height: 12));
+      }
+      if (_isChange) {
+        tiles.add(_changeEditorCard(accountMap));
         tiles.add(const SizedBox(height: 12));
       }
       if (_isSplitting) {
@@ -1572,6 +1786,7 @@ class _AccountPickerSheet extends ConsumerWidget {
     this.excludeId,
     this.excludeIds = const {},
     this.excludeGoals = false,
+    this.onlyTypes,
   });
 
   final String title;
@@ -1584,6 +1799,11 @@ class _AccountPickerSheet extends ConsumerWidget {
   /// A goal is a savings store, not a spendable account — only a transfer
   /// may fund or draw it down. Set for expense/income pickers.
   final bool excludeGoals;
+
+  /// Restricts the list to these account types when set — e.g. change from
+  /// a cash payment only ever lands in another cash-type account, never a
+  /// card or bank one (see GitHub #55).
+  final Set<AccountType>? onlyTypes;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1623,6 +1843,7 @@ class _AccountPickerSheet extends ConsumerWidget {
                       .where((a) => a.id != excludeId)
                       .where((a) => !excludeIds.contains(a.id))
                       .where((a) => !excludeGoals || a.type != AccountType.goal)
+                      .where((a) => onlyTypes?.contains(a.type) ?? true)
                       .toList();
                   if (list.isEmpty) {
                     return Padding(

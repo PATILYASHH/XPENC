@@ -135,7 +135,7 @@ class _TransactionView extends ConsumerWidget {
         _Hero(transaction: t),
         if (t.paymentGroupId != null) ...[
           const SizedBox(height: 16),
-          _HybridPaymentBanner(transaction: t),
+          _PaymentGroupBanner(transaction: t),
         ],
         const SizedBox(height: 24),
         Card(
@@ -362,12 +362,15 @@ class _Hero extends StatelessWidget {
   }
 }
 
-/// "This is only part of what you spent" — without this, the account below
-/// looks charged the *full* purchase price when it only covered one leg of
-/// a hybrid/split payment (see GitHub #43). Lists every other leg so the
-/// full picture is one tap away.
-class _HybridPaymentBanner extends ConsumerWidget {
-  const _HybridPaymentBanner({required this.transaction});
+/// A banner for any `paymentGroupId` group — either a hybrid/split payment
+/// (one purchase, several accounts, see GitHub #43) or a cash expense with
+/// change routed to another account (see GitHub #55). The two read
+/// differently: a hybrid group's legs are all expenses, so their sum is a
+/// meaningful "total spent"; a change group mixes an expense with a transfer,
+/// so summing them would mislabel the change amount as part of the purchase
+/// price. Lists every other leg so the full picture is one tap away.
+class _PaymentGroupBanner extends ConsumerWidget {
+  const _PaymentGroupBanner({required this.transaction});
 
   final TransactionRow transaction;
 
@@ -385,8 +388,12 @@ class _HybridPaymentBanner extends ConsumerWidget {
         // nothing left worth calling "split".
         if (legs.length < 2) return const SizedBox.shrink();
 
-        final total = legs.fold(const Money.zero(), (s, l) => s + l.amount);
+        final isChangeGroup = legs.any((l) => l.type == TxType.transfer);
         final others = legs.where((l) => l.id != transaction.id).toList();
+        final headline = isChangeGroup
+            ? 'Change also went elsewhere'
+            : 'Split payment · total '
+                  '${MoneyFormat.symbol(legs.fold(const Money.zero(), (s, l) => s + l.amount))}';
 
         return Card(
           color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.4),
@@ -399,14 +406,16 @@ class _HybridPaymentBanner extends ConsumerWidget {
                 Row(
                   children: [
                     Icon(
-                      Icons.call_split_rounded,
+                      isChangeGroup
+                          ? Icons.currency_exchange_rounded
+                          : Icons.call_split_rounded,
                       size: 18,
                       color: theme.colorScheme.onSecondaryContainer,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Split payment · total ${MoneyFormat.symbol(total)}',
+                        headline,
                         style: theme.textTheme.labelLarge?.copyWith(
                           color: theme.colorScheme.onSecondaryContainer,
                           fontWeight: FontWeight.w700,
@@ -423,7 +432,13 @@ class _HybridPaymentBanner extends ConsumerWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            'Also ${accountMap[leg.accountId]?.name ?? '—'}',
+                            // A leg's own type tells its own story — the
+                            // transfer leg is "the change", whichever side
+                            // of the group this banner happens to render on.
+                            leg.type == TxType.transfer
+                                ? 'Change to '
+                                      '${accountMap[leg.toAccountId]?.name ?? '—'}'
+                                : 'Also ${accountMap[leg.accountId]?.name ?? '—'}',
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: theme.colorScheme.onSecondaryContainer,
                             ),
