@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -131,6 +133,208 @@ class _LegendChip extends StatelessWidget {
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
               fontFeatures: kTabularFigures,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Sectors sized by *budget* share (bigger allocation → bigger wedge), each
+/// filled from its centre out by however much of that budget is spent —
+/// filled radius is `outerRadius * sqrt(fraction)`, so the *area* coloured in
+/// (not just the radius) matches the spent/budget ratio. The rest of the
+/// wedge stays a faint tint of the same colour rather than blank or black, so
+/// an unspent budget still reads as "this category's slice" at a glance. A
+/// category over its cap gets a thin red ring — its fill is capped at 100%,
+/// so the ring is the only way to see it went over. Sorted by budget size;
+/// past the top five, the tail folds into a grey "Other" slice.
+class BudgetRadialChart extends StatelessWidget {
+  const BudgetRadialChart({required this.slices, super.key});
+
+  final List<({String label, Money budget, Money spent, Color color})> slices;
+
+  @override
+  Widget build(BuildContext context) {
+    final positive = slices.where((s) => s.budget.isPositive).toList()
+      ..sort((a, b) => b.budget.compareTo(a.budget));
+
+    if (positive.isEmpty) return const _NoData(height: 220);
+
+    final data = <_BudgetSlice>[];
+    if (positive.length > 6) {
+      for (final s in positive.take(5)) {
+        data.add(_BudgetSlice(s.label, s.budget, s.spent, s.color));
+      }
+      var restBudget = const Money.zero();
+      var restSpent = const Money.zero();
+      for (final s in positive.skip(5)) {
+        restBudget += s.budget;
+        restSpent += s.spent;
+      }
+      data.add(_BudgetSlice('Other', restBudget, restSpent, Colors.grey));
+    } else {
+      for (final s in positive) {
+        data.add(_BudgetSlice(s.label, s.budget, s.spent, s.color));
+      }
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          key: const Key('budgetRadialPaintArea'),
+          height: 200,
+          width: 200,
+          child: CustomPaint(painter: _BudgetSectorPainter(data)),
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 16,
+          runSpacing: 10,
+          alignment: WrapAlignment.center,
+          children: [for (final s in data) _BudgetLegendChip(slice: s)],
+        ),
+      ],
+    );
+  }
+}
+
+class _BudgetSlice {
+  const _BudgetSlice(this.label, this.budget, this.spent, this.color);
+
+  final String label;
+  final Money budget;
+  final Money spent;
+  final Color color;
+
+  bool get overspent => spent > budget;
+
+  double get fraction =>
+      budget.isPositive ? (spent.paise / budget.paise).clamp(0.0, 1.0) : 0.0;
+}
+
+class _BudgetSectorPainter extends CustomPainter {
+  _BudgetSectorPainter(this.slices);
+
+  final List<_BudgetSlice> slices;
+
+  /// Angular gap between wedges, in radians — skipped on a wedge too thin to
+  /// spare it, so a small budget doesn't vanish under its own gap.
+  static const _gap = 0.035;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final total = slices.fold<int>(0, (sum, s) => sum + s.budget.paise);
+    if (total <= 0) return;
+
+    final center = size.center(Offset.zero);
+    final outerRadius = math.min(size.width, size.height) / 2 - 2;
+    final outerRect = Rect.fromCircle(center: center, radius: outerRadius);
+
+    var angle = -math.pi / 2;
+    for (final slice in slices) {
+      final share = slice.budget.paise / total * 2 * math.pi;
+      final gap = share > _gap * 3 ? _gap : 0.0;
+      final start = angle + gap / 2;
+      final sweep = share - gap;
+
+      canvas.drawPath(
+        _wedge(center, outerRect, start, sweep),
+        Paint()..color = slice.color.withValues(alpha: 0.16),
+      );
+
+      if (slice.fraction > 0) {
+        final filledRadius = outerRadius * math.sqrt(slice.fraction);
+        canvas.drawPath(
+          _wedge(
+            center,
+            Rect.fromCircle(center: center, radius: filledRadius),
+            start,
+            sweep,
+          ),
+          Paint()..color = slice.color,
+        );
+      }
+
+      if (slice.overspent) {
+        canvas.drawArc(
+          outerRect,
+          start,
+          sweep,
+          false,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 3
+            ..strokeCap = StrokeCap.round
+            ..color = AppColors.expense,
+        );
+      }
+
+      angle += share;
+    }
+  }
+
+  Path _wedge(Offset center, Rect rect, double start, double sweep) => Path()
+    ..moveTo(center.dx, center.dy)
+    ..arcTo(rect, start, sweep, false)
+    ..close();
+
+  @override
+  bool shouldRepaint(_BudgetSectorPainter old) => !identical(old.slices, slices);
+}
+
+class _BudgetLegendChip extends StatelessWidget {
+  const _BudgetLegendChip({required this.slice});
+
+  final _BudgetSlice slice;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 170),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 3),
+            child: Container(
+              width: 10,
+              height: 10,
+              decoration:
+                  BoxDecoration(color: slice.color, shape: BoxShape.circle),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  slice.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  '${MoneyFormat.compact(slice.spent)}'
+                  ' / ${MoneyFormat.compact(slice.budget)}'
+                  '${slice.overspent ? ' · over' : ''}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: slice.overspent
+                        ? AppColors.expense
+                        : theme.colorScheme.onSurfaceVariant,
+                    fontFeatures: kTabularFigures,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
