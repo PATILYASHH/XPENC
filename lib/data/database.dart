@@ -131,6 +131,7 @@ typedef CombinedStatementLine = ({
     TransactionTags,
     RecurringRuleTags,
     TransactionSplits,
+    TransactionLinks,
     GoalDetails,
     ShoppingLists,
     ShoppingItems,
@@ -162,7 +163,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 32;
+  int get schemaVersion => 33;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -324,6 +325,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 32) {
         await m.createTable(recurringRuleTags);
+      }
+      if (from < 33) {
+        await m.createTable(transactionLinks);
       }
     },
     beforeOpen: (details) async {
@@ -985,6 +989,55 @@ class AppDatabase extends _$AppDatabase {
     )..where((t) => t.paymentGroupId.equals(groupId))).get();
   }
 
+  // ── Transaction links (GitHub #64) ──────────────────────────────────────
+
+  /// Every transaction manually linked to [transactionId], either direction
+  /// — see [TransactionLinks].
+  Future<List<TransactionRow>> linkedTransactions(int transactionId) async {
+    final rows = await (select(transactionLinks)..where(
+          (l) =>
+              l.transactionAId.equals(transactionId) |
+              l.transactionBId.equals(transactionId),
+        ))
+        .get();
+    if (rows.isEmpty) return const [];
+    final otherIds = rows.map(
+      (r) => r.transactionAId == transactionId ? r.transactionBId : r.transactionAId,
+    );
+    return (select(
+      transactions,
+    )..where((t) => t.id.isIn(otherIds))).get();
+  }
+
+  Stream<List<TransactionLinkRow>> watchTransactionLinks() =>
+      select(transactionLinks).watch();
+
+  /// Links [aId] and [bId] together, both directions at once — tapping
+  /// either transaction's link chip reaches the other. Linking an
+  /// already-linked pair again is a silent no-op rather than a duplicate-row
+  /// error, since the picker has no way to know a link already exists.
+  Future<void> addTransactionLink(int aId, int bId) async {
+    if (aId == bId) {
+      throw ArgumentError('A transaction cannot be linked to itself.');
+    }
+    final lo = aId < bId ? aId : bId;
+    final hi = aId < bId ? bId : aId;
+    await into(transactionLinks).insert(
+      TransactionLinksCompanion.insert(transactionAId: lo, transactionBId: hi),
+      mode: InsertMode.insertOrIgnore,
+    );
+  }
+
+  /// Removes the link between [aId] and [bId], if any.
+  Future<void> removeTransactionLink(int aId, int bId) async {
+    final lo = aId < bId ? aId : bId;
+    final hi = aId < bId ? bId : aId;
+    await (delete(transactionLinks)..where(
+          (l) => l.transactionAId.equals(lo) & l.transactionBId.equals(hi),
+        ))
+        .go();
+  }
+
   Future<void> deleteTransaction(int id) {
     return transaction(() async {
       final row = await (select(
@@ -1029,6 +1082,12 @@ class AppDatabase extends _$AppDatabase {
       await (delete(
         transactionSplits,
       )..where((s) => s.transactionId.equals(id))).go();
+      // A manual link is meaningless once one side is gone — same hard
+      // delete as the tag/split rows above, not a null-out.
+      await (delete(transactionLinks)..where(
+            (l) => l.transactionAId.equals(id) | l.transactionBId.equals(id),
+          ))
+          .go();
       await _deleteReceiptFile(row.imagePath);
 
       await (delete(transactions)..where((t) => t.id.equals(id))).go();
@@ -3660,8 +3719,14 @@ class AppDatabase extends _$AppDatabase {
       'senderRules': (await select(senderRules).get()).map(m).toList(),
       'tags': (await select(tags).get()).map(m).toList(),
       'transactionTags': (await select(transactionTags).get()).map(m).toList(),
+      'recurringRuleTags': (await select(
+        recurringRuleTags,
+      ).get()).map(m).toList(),
       'transactionSplits': (await select(
         transactionSplits,
+      ).get()).map(m).toList(),
+      'transactionLinks': (await select(
+        transactionLinks,
       ).get()).map(m).toList(),
       'goalDetails': (await select(goalDetails).get()).map(m).toList(),
       'allocations': (await select(allocations).get()).map(m).toList(),
@@ -3725,11 +3790,15 @@ class AppDatabase extends _$AppDatabase {
       // Both reference transactions/categories, so they go before either.
       await delete(transactionSplits).go();
       await delete(transactionTags).go();
+      // References two transactions, so it goes before that delete too.
+      await delete(transactionLinks).go();
       // References accounts and categories, so it goes before both deletes.
       await delete(allocations).go();
       // References accounts, so it goes before that delete too.
       await delete(goalDetails).go();
       await delete(transactions).go();
+      // References recurringRules and tags, so it goes before both deletes.
+      await delete(recurringRuleTags).go();
       // References accounts/categories, and transactions.recurringRuleId
       // references it back — so it goes after that delete, before these.
       await delete(recurringRules).go();
@@ -3798,6 +3867,9 @@ class AppDatabase extends _$AppDatabase {
       // Before `transactions`, whose `recurringRuleId` references it — and an
       // older backup simply has no rows for it, so `rows()` yields nothing.
       await load(recurringRules, 'recurringRules');
+      // References recurringRules and tags, both already loaded above. An
+      // older backup simply has no rows for it, so `rows()` yields nothing.
+      await load(recurringRuleTags, 'recurringRuleTags');
       await load(transactions, 'transactions');
       await load(budgets, 'budgets');
       // References accounts and categories, both already loaded above. An
@@ -3815,6 +3887,7 @@ class AppDatabase extends _$AppDatabase {
       // three are loaded.
       await load(transactionTags, 'transactionTags');
       await load(transactionSplits, 'transactionSplits');
+      await load(transactionLinks, 'transactionLinks');
       await load(shoppingItems, 'shoppingItems');
       await load(settings, 'settings');
 

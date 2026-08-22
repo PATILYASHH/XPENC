@@ -244,6 +244,24 @@ void main() {
           .firstWhere((t) => t.type == TxType.expense);
       await db.setTransactionTags(expenseTx.id, {tagId});
 
+      // A preset tag on a recurring rule (#63) — its own join table
+      // (`recurringRuleTags`), separate from the transaction-tag one above.
+      await db.addRecurringRule(
+        name: 'Spotify',
+        kind: CategoryKind.expense,
+        amount: Money.fromRupees(199),
+        accountId: bank,
+        categoryId: await catId(CategoryKind.expense, 'Entertainment'),
+        frequency: RecurringFrequency.monthly,
+        startsOn: DateTime(2026, 7, 15),
+        tagIds: {tagId},
+      );
+
+      // A manual link between two transactions (#64).
+      final incomeTx = (await db.watchTransactions().first)
+          .firstWhere((t) => t.type == TxType.income);
+      await db.addTransactionLink(expenseTx.id, incomeTx.id);
+
       // Receipt path + payee on that same transaction.
       await db.updateTransaction(
         id: expenseTx.id,
@@ -341,6 +359,24 @@ void main() {
         await fresh.tagIdsForTransaction(freshExpense.id),
         hasLength(1),
         reason: 'the tag link on the transaction must survive too',
+      );
+
+      // Preset tag on a recurring rule (recurringRuleTags, #63).
+      final freshSpotify = (await fresh.watchRecurringRules().first)
+          .firstWhere((r) => r.name == 'Spotify');
+      expect(
+        await fresh.tagIdsForRecurringRule(freshSpotify.id),
+        hasLength(1),
+        reason: 'the preset tag on a recurring rule must survive too',
+      );
+
+      // Manual link between two transactions (transactionLinks, #64).
+      final freshIncome = (await fresh.watchTransactions().first)
+          .firstWhere((t) => t.type == TxType.income);
+      expect(
+        (await fresh.linkedTransactions(freshExpense.id)).map((t) => t.id),
+        [freshIncome.id],
+        reason: 'the manual link between the two transactions must survive',
       );
 
       // Receipt path + payee.

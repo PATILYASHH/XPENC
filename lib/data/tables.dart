@@ -799,3 +799,21 @@ class BackupRecords extends Table {
     {fileName},
   ];
 }
+
+/// Many-to-many join: a manual, bidirectional link between two
+/// transactions — e.g. an old charge and its refund — so each one carries a
+/// button straight to the other, the way GitHub links two issues (see
+/// GitHub #64). One row per *pair*, never per direction:
+/// [AppDatabase.addTransactionLink] always stores the smaller id as
+/// [transactionAId], so A-B and B-A can never both exist, and every read
+/// queries `WHERE transactionAId = id OR transactionBId = id` to get both
+/// directions back out of that single row.
+@DataClassName('TransactionLinkRow')
+class TransactionLinks extends Table {
+  IntColumn get transactionAId => integer().references(Transactions, #id)();
+  IntColumn get transactionBId => integer().references(Transactions, #id)();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {transactionAId, transactionBId};
+}

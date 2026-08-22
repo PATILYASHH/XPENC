@@ -12,6 +12,7 @@ import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import 'transaction_link_picker_sheet.dart';
 
 /// Read-only view of a single transaction, with edit + delete in the app bar.
 ///
@@ -137,6 +138,8 @@ class _TransactionView extends ConsumerWidget {
           const SizedBox(height: 16),
           _PaymentGroupBanner(transaction: t),
         ],
+        const SizedBox(height: 16),
+        _LinkedTransactionsCard(transaction: t),
         const SizedBox(height: 24),
         Card(
           child: Padding(
@@ -468,6 +471,204 @@ class _PaymentGroupBanner extends ConsumerWidget {
     );
   }
 }
+
+/// Manual, bidirectional links to other transactions — e.g. an old charge
+/// and its refund — so each carries a button straight to the other, the way
+/// GitHub links two issues (see GitHub #64). Unlike [_PaymentGroupBanner]
+/// this always renders, even with zero links, so the link button stays
+/// discoverable.
+class _LinkedTransactionsCard extends ConsumerWidget {
+  const _LinkedTransactionsCard({required this.transaction});
+
+  final TransactionRow transaction;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final linksAsync = ref.watch(linkedTransactionsProvider(transaction.id));
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.link_rounded,
+                  size: 18,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Linked transactions',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add_link_rounded),
+                  tooltip: 'Link to another transaction',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => _pickAndLink(
+                    context,
+                    ref,
+                    linksAsync.valueOrNull ?? const [],
+                  ),
+                ),
+              ],
+            ),
+            linksAsync.when(
+              loading: () => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
+              data: (links) {
+                if (links.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(26, 0, 8, 0),
+                    child: Text(
+                      'No linked transactions yet.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  );
+                }
+                return Column(
+                  children: [
+                    for (final linked in links)
+                      _LinkedTxRow(
+                        linked: linked,
+                        onUnlink: () => _unlink(context, ref, linked.id),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickAndLink(
+    BuildContext context,
+    WidgetRef ref,
+    List<TransactionRow> existing,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final picked = await showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => TransactionLinkPickerSheet(
+        excludeIds: {transaction.id, ...existing.map((t) => t.id)},
+      ),
+    );
+    if (picked == null) return;
+    try {
+      await ref.read(dbProvider).addTransactionLink(transaction.id, picked);
+    } catch (e) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text('Could not link: $e')));
+    }
+  }
+
+  Future<void> _unlink(BuildContext context, WidgetRef ref, int otherId) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref
+          .read(dbProvider)
+          .removeTransactionLink(transaction.id, otherId);
+    } catch (e) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text('Could not remove link: $e')));
+    }
+  }
+}
+
+/// One linked transaction: tapping the row navigates to it, same as a
+/// [_PaymentGroupBanner] leg; the trailing button removes just this link.
+class _LinkedTxRow extends StatelessWidget {
+  const _LinkedTxRow({required this.linked, required this.onUnlink});
+
+  final TransactionRow linked;
+  final VoidCallback onUnlink;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isTransfer = linked.type == TxType.transfer;
+    final note = linked.note?.trim();
+    final payee = linked.payee?.trim();
+    final title = (note != null && note.isNotEmpty)
+        ? note
+        : (payee != null && payee.isNotEmpty) ? payee : _typeLabel(linked.type);
+    final displayAmount =
+        (linked.type == TxType.expense || linked.type == TxType.personOut)
+        ? -linked.amount
+        : linked.amount;
+
+    return Row(
+      children: [
+        Expanded(
+          child: InkWell(
+            onTap: () => context.push('/transaction/${linked.id}'),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  MoneyText(
+                    displayAmount,
+                    signed: !isTransfer,
+                    color: colorForTxType(linked.type),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.link_off_rounded, size: 18),
+          tooltip: 'Remove link',
+          visualDensity: VisualDensity.compact,
+          onPressed: onUnlink,
+        ),
+      ],
+    );
+  }
+}
+
+String _typeLabel(TxType type) => switch (type) {
+  TxType.income => 'Income',
+  TxType.expense => 'Expense',
+  TxType.transfer => 'Transfer',
+  TxType.personOut => 'Gave to person',
+  TxType.personIn => 'Received from person',
+};
 
 // ── Row helpers ───────────────────────────────────────────────────────────────
 
