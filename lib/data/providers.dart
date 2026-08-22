@@ -684,6 +684,23 @@ final paymentGroupLegsProvider =
       return ref.watch(dbProvider).paymentGroupLegs(id);
     });
 
+/// Raw rows of every manual transaction-to-transaction link, across the
+/// whole ledger — see GitHub #64 and `AppDatabase.watchTransactionLinks`.
+final _transactionLinkRowsProvider = StreamProvider<List<TransactionLinkRow>>(
+  (ref) => ref.watch(dbProvider).watchTransactionLinks(),
+);
+
+/// The other transaction(s) manually linked to [id], either direction.
+/// Re-reads whenever a link is added/removed or the ledger changes, so a
+/// linked transaction edited or deleted elsewhere is reflected without a
+/// manual refresh.
+final linkedTransactionsProvider =
+    FutureProvider.family<List<TransactionRow>, int>((ref, id) {
+      ref.watch(allTransactionsProvider);
+      ref.watch(_transactionLinkRowsProvider);
+      return ref.watch(dbProvider).linkedTransactions(id);
+    });
+
 // ── Shopping lists ──────────────────────────────────────────────────────────
 
 final shoppingListsProvider = StreamProvider<List<ShoppingListRow>>(

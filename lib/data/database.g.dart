@@ -10709,6 +10709,294 @@ class TransactionSplitsCompanion extends UpdateCompanion<TransactionSplitRow> {
   }
 }
 
+class $TransactionLinksTable extends TransactionLinks
+    with TableInfo<$TransactionLinksTable, TransactionLinkRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TransactionLinksTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _transactionAIdMeta = const VerificationMeta(
+    'transactionAId',
+  );
+  @override
+  late final GeneratedColumn<int> transactionAId = GeneratedColumn<int>(
+    'transaction_a_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES transactions (id)',
+    ),
+  );
+  static const VerificationMeta _transactionBIdMeta = const VerificationMeta(
+    'transactionBId',
+  );
+  @override
+  late final GeneratedColumn<int> transactionBId = GeneratedColumn<int>(
+    'transaction_b_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES transactions (id)',
+    ),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    transactionAId,
+    transactionBId,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'transaction_links';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TransactionLinkRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('transaction_a_id')) {
+      context.handle(
+        _transactionAIdMeta,
+        transactionAId.isAcceptableOrUnknown(
+          data['transaction_a_id']!,
+          _transactionAIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_transactionAIdMeta);
+    }
+    if (data.containsKey('transaction_b_id')) {
+      context.handle(
+        _transactionBIdMeta,
+        transactionBId.isAcceptableOrUnknown(
+          data['transaction_b_id']!,
+          _transactionBIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_transactionBIdMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {transactionAId, transactionBId};
+  @override
+  TransactionLinkRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TransactionLinkRow(
+      transactionAId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}transaction_a_id'],
+      )!,
+      transactionBId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}transaction_b_id'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $TransactionLinksTable createAlias(String alias) {
+    return $TransactionLinksTable(attachedDatabase, alias);
+  }
+}
+
+class TransactionLinkRow extends DataClass
+    implements Insertable<TransactionLinkRow> {
+  final int transactionAId;
+  final int transactionBId;
+  final DateTime createdAt;
+  const TransactionLinkRow({
+    required this.transactionAId,
+    required this.transactionBId,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['transaction_a_id'] = Variable<int>(transactionAId);
+    map['transaction_b_id'] = Variable<int>(transactionBId);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  TransactionLinksCompanion toCompanion(bool nullToAbsent) {
+    return TransactionLinksCompanion(
+      transactionAId: Value(transactionAId),
+      transactionBId: Value(transactionBId),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory TransactionLinkRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TransactionLinkRow(
+      transactionAId: serializer.fromJson<int>(json['transactionAId']),
+      transactionBId: serializer.fromJson<int>(json['transactionBId']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'transactionAId': serializer.toJson<int>(transactionAId),
+      'transactionBId': serializer.toJson<int>(transactionBId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  TransactionLinkRow copyWith({
+    int? transactionAId,
+    int? transactionBId,
+    DateTime? createdAt,
+  }) => TransactionLinkRow(
+    transactionAId: transactionAId ?? this.transactionAId,
+    transactionBId: transactionBId ?? this.transactionBId,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  TransactionLinkRow copyWithCompanion(TransactionLinksCompanion data) {
+    return TransactionLinkRow(
+      transactionAId: data.transactionAId.present
+          ? data.transactionAId.value
+          : this.transactionAId,
+      transactionBId: data.transactionBId.present
+          ? data.transactionBId.value
+          : this.transactionBId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TransactionLinkRow(')
+          ..write('transactionAId: $transactionAId, ')
+          ..write('transactionBId: $transactionBId, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(transactionAId, transactionBId, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TransactionLinkRow &&
+          other.transactionAId == this.transactionAId &&
+          other.transactionBId == this.transactionBId &&
+          other.createdAt == this.createdAt);
+}
+
+class TransactionLinksCompanion extends UpdateCompanion<TransactionLinkRow> {
+  final Value<int> transactionAId;
+  final Value<int> transactionBId;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const TransactionLinksCompanion({
+    this.transactionAId = const Value.absent(),
+    this.transactionBId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TransactionLinksCompanion.insert({
+    required int transactionAId,
+    required int transactionBId,
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : transactionAId = Value(transactionAId),
+       transactionBId = Value(transactionBId);
+  static Insertable<TransactionLinkRow> custom({
+    Expression<int>? transactionAId,
+    Expression<int>? transactionBId,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (transactionAId != null) 'transaction_a_id': transactionAId,
+      if (transactionBId != null) 'transaction_b_id': transactionBId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TransactionLinksCompanion copyWith({
+    Value<int>? transactionAId,
+    Value<int>? transactionBId,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return TransactionLinksCompanion(
+      transactionAId: transactionAId ?? this.transactionAId,
+      transactionBId: transactionBId ?? this.transactionBId,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (transactionAId.present) {
+      map['transaction_a_id'] = Variable<int>(transactionAId.value);
+    }
+    if (transactionBId.present) {
+      map['transaction_b_id'] = Variable<int>(transactionBId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TransactionLinksCompanion(')
+          ..write('transactionAId: $transactionAId, ')
+          ..write('transactionBId: $transactionBId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $GoalDetailsTable extends GoalDetails
     with TableInfo<$GoalDetailsTable, GoalDetailRow> {
   @override
@@ -13453,6 +13741,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $RecurringRuleTagsTable(this);
   late final $TransactionSplitsTable transactionSplits =
       $TransactionSplitsTable(this);
+  late final $TransactionLinksTable transactionLinks = $TransactionLinksTable(
+    this,
+  );
   late final $GoalDetailsTable goalDetails = $GoalDetailsTable(this);
   late final $ShoppingListsTable shoppingLists = $ShoppingListsTable(this);
   late final $ShoppingItemsTable shoppingItems = $ShoppingItemsTable(this);
@@ -13481,6 +13772,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     transactionTags,
     recurringRuleTags,
     transactionSplits,
+    transactionLinks,
     goalDetails,
     shoppingLists,
     shoppingItems,
@@ -24512,6 +24804,397 @@ typedef $$TransactionSplitsTableProcessedTableManager =
       TransactionSplitRow,
       PrefetchHooks Function({bool transactionId, bool categoryId})
     >;
+typedef $$TransactionLinksTableCreateCompanionBuilder =
+    TransactionLinksCompanion Function({
+      required int transactionAId,
+      required int transactionBId,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+typedef $$TransactionLinksTableUpdateCompanionBuilder =
+    TransactionLinksCompanion Function({
+      Value<int> transactionAId,
+      Value<int> transactionBId,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+final class $$TransactionLinksTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $TransactionLinksTable,
+          TransactionLinkRow
+        > {
+  $$TransactionLinksTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $TransactionsTable _transactionAIdTable(_$AppDatabase db) =>
+      db.transactions.createAlias(
+        $_aliasNameGenerator(
+          db.transactionLinks.transactionAId,
+          db.transactions.id,
+        ),
+      );
+
+  $$TransactionsTableProcessedTableManager get transactionAId {
+    final $_column = $_itemColumn<int>('transaction_a_id')!;
+
+    final manager = $$TransactionsTableTableManager(
+      $_db,
+      $_db.transactions,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_transactionAIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $TransactionsTable _transactionBIdTable(_$AppDatabase db) =>
+      db.transactions.createAlias(
+        $_aliasNameGenerator(
+          db.transactionLinks.transactionBId,
+          db.transactions.id,
+        ),
+      );
+
+  $$TransactionsTableProcessedTableManager get transactionBId {
+    final $_column = $_itemColumn<int>('transaction_b_id')!;
+
+    final manager = $$TransactionsTableTableManager(
+      $_db,
+      $_db.transactions,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_transactionBIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$TransactionLinksTableFilterComposer
+    extends Composer<_$AppDatabase, $TransactionLinksTable> {
+  $$TransactionLinksTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$TransactionsTableFilterComposer get transactionAId {
+    final $$TransactionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.transactionAId,
+      referencedTable: $db.transactions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TransactionsTableFilterComposer(
+            $db: $db,
+            $table: $db.transactions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TransactionsTableFilterComposer get transactionBId {
+    final $$TransactionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.transactionBId,
+      referencedTable: $db.transactions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TransactionsTableFilterComposer(
+            $db: $db,
+            $table: $db.transactions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TransactionLinksTableOrderingComposer
+    extends Composer<_$AppDatabase, $TransactionLinksTable> {
+  $$TransactionLinksTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$TransactionsTableOrderingComposer get transactionAId {
+    final $$TransactionsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.transactionAId,
+      referencedTable: $db.transactions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TransactionsTableOrderingComposer(
+            $db: $db,
+            $table: $db.transactions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TransactionsTableOrderingComposer get transactionBId {
+    final $$TransactionsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.transactionBId,
+      referencedTable: $db.transactions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TransactionsTableOrderingComposer(
+            $db: $db,
+            $table: $db.transactions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TransactionLinksTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TransactionLinksTable> {
+  $$TransactionLinksTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$TransactionsTableAnnotationComposer get transactionAId {
+    final $$TransactionsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.transactionAId,
+      referencedTable: $db.transactions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TransactionsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.transactions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TransactionsTableAnnotationComposer get transactionBId {
+    final $$TransactionsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.transactionBId,
+      referencedTable: $db.transactions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TransactionsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.transactions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TransactionLinksTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TransactionLinksTable,
+          TransactionLinkRow,
+          $$TransactionLinksTableFilterComposer,
+          $$TransactionLinksTableOrderingComposer,
+          $$TransactionLinksTableAnnotationComposer,
+          $$TransactionLinksTableCreateCompanionBuilder,
+          $$TransactionLinksTableUpdateCompanionBuilder,
+          (TransactionLinkRow, $$TransactionLinksTableReferences),
+          TransactionLinkRow,
+          PrefetchHooks Function({bool transactionAId, bool transactionBId})
+        > {
+  $$TransactionLinksTableTableManager(
+    _$AppDatabase db,
+    $TransactionLinksTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TransactionLinksTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TransactionLinksTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TransactionLinksTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> transactionAId = const Value.absent(),
+                Value<int> transactionBId = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TransactionLinksCompanion(
+                transactionAId: transactionAId,
+                transactionBId: transactionBId,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required int transactionAId,
+                required int transactionBId,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TransactionLinksCompanion.insert(
+                transactionAId: transactionAId,
+                transactionBId: transactionBId,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$TransactionLinksTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({transactionAId = false, transactionBId = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (transactionAId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.transactionAId,
+                                    referencedTable:
+                                        $$TransactionLinksTableReferences
+                                            ._transactionAIdTable(db),
+                                    referencedColumn:
+                                        $$TransactionLinksTableReferences
+                                            ._transactionAIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (transactionBId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.transactionBId,
+                                    referencedTable:
+                                        $$TransactionLinksTableReferences
+                                            ._transactionBIdTable(db),
+                                    referencedColumn:
+                                        $$TransactionLinksTableReferences
+                                            ._transactionBIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$TransactionLinksTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TransactionLinksTable,
+      TransactionLinkRow,
+      $$TransactionLinksTableFilterComposer,
+      $$TransactionLinksTableOrderingComposer,
+      $$TransactionLinksTableAnnotationComposer,
+      $$TransactionLinksTableCreateCompanionBuilder,
+      $$TransactionLinksTableUpdateCompanionBuilder,
+      (TransactionLinkRow, $$TransactionLinksTableReferences),
+      TransactionLinkRow,
+      PrefetchHooks Function({bool transactionAId, bool transactionBId})
+    >;
 typedef $$GoalDetailsTableCreateCompanionBuilder =
     GoalDetailsCompanion Function({
       Value<int> accountId,
@@ -26503,6 +27186,8 @@ class $AppDatabaseManager {
       $$RecurringRuleTagsTableTableManager(_db, _db.recurringRuleTags);
   $$TransactionSplitsTableTableManager get transactionSplits =>
       $$TransactionSplitsTableTableManager(_db, _db.transactionSplits);
+  $$TransactionLinksTableTableManager get transactionLinks =>
+      $$TransactionLinksTableTableManager(_db, _db.transactionLinks);
   $$GoalDetailsTableTableManager get goalDetails =>
       $$GoalDetailsTableTableManager(_db, _db.goalDetails);
   $$ShoppingListsTableTableManager get shoppingLists =>
