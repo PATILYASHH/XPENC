@@ -74,8 +74,15 @@ jobs:
       - name: Test
         run: flutter test
 
+      # pubspec.yaml's build number stays fixed between stable releases, so
+      # every beta build would otherwise ship the identical versionCode.
+      # Android then has no signal a newer beta is available — on some
+      # devices a sideloaded install over a same-versionCode app is a silent
+      # no-op instead of an update. github.run_number increases on every run
+      # and will never collide with (or fall below) a real release's build
+      # number, so it's a safe, always-increasing override.
       - name: Build release APKs
-        run: flutter build apk --release --split-per-abi
+        run: flutter build apk --release --split-per-abi --build-number=${{ github.run_number }}
 
       - name: Rename to beta asset names
         run: |
