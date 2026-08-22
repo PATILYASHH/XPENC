@@ -493,6 +493,14 @@ final recurringRulesProvider = StreamProvider<List<RecurringRuleRow>>(
   (ref) => ref.watch(dbProvider).watchRecurringRules(),
 );
 
+/// Paused rules, across both kinds — [AutoScreen] hides these from its main
+/// list entirely and [ArchivedAutoRulesScreen] is the only place they still
+/// show, with a way back in (see GitHub #61).
+final archivedRecurringRulesProvider = Provider<List<RecurringRuleRow>>((ref) {
+  final rules = ref.watch(recurringRulesProvider).valueOrNull ?? const [];
+  return rules.where((r) => !r.isActive).toList();
+});
+
 /// For naming the rule behind a transaction's [TransactionRow.recurringRuleId].
 final recurringRuleMapProvider = Provider<Map<int, RecurringRuleRow>>((ref) {
   final rules = ref.watch(recurringRulesProvider).valueOrNull ?? const [];

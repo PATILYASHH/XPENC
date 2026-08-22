@@ -7,6 +7,7 @@ import '../../features/accounts/account_detail_screen.dart';
 import '../../features/accounts/accounts_screen.dart';
 import '../../features/accounts/archived_accounts_screen.dart';
 import '../../features/add_transaction/add_transaction_screen.dart';
+import '../../features/auto/archived_auto_rules_screen.dart';
 import '../../features/auto/auto_screen.dart';
 import '../../features/budgets/budget_detail_screen.dart';
 import '../../features/budgets/budgets_screen.dart';
@@ -220,6 +221,13 @@ final appRouter = GoRouter(
                   path: 'auto',
                   parentNavigatorKey: _rootKey,
                   builder: (_, _) => const AutoScreen(),
+                  routes: [
+                    GoRoute(
+                      path: 'archived',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const ArchivedAutoRulesScreen(),
+                    ),
+                  ],
                 ),
                 GoRoute(
                   path: 'shopping',

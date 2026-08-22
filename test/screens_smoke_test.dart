@@ -11,6 +11,8 @@ import 'package:xpenc/data/tables.dart';
 import 'package:xpenc/features/about/about_screen.dart';
 import 'package:xpenc/features/accounts/account_detail_screen.dart';
 import 'package:xpenc/features/accounts/accounts_screen.dart';
+import 'package:xpenc/features/auto/archived_auto_rules_screen.dart';
+import 'package:xpenc/features/auto/auto_screen.dart';
 import 'package:xpenc/features/budgets/budget_detail_screen.dart';
 import 'package:xpenc/features/calendar/calendar_screen.dart';
 import 'package:xpenc/features/categories/categories_screen.dart';
@@ -179,6 +181,87 @@ void main() {
     await pump(tester, const CategoriesScreen());
     expect(tester.takeException(), isNull);
     expect(find.text('Categories'), findsWidgets);
+    await unmount(tester);
+  });
+
+  /// GitHub #61: a paused rule must never render on the main Auto screen —
+  /// only the "N paused" summary row stands in for it.
+  Future<int> addRecurringRuleFixture(
+    int bank, {
+    required String name,
+    bool active = true,
+  }) async {
+    final food = (await db.watchCategories(CategoryKind.expense).first)
+        .firstWhere((c) => c.name == 'Food')
+        .id;
+    final id = await db.addRecurringRule(
+      name: name,
+      kind: CategoryKind.expense,
+      amount: Money.fromRupees(649),
+      accountId: bank,
+      categoryId: food,
+      frequency: RecurringFrequency.monthly,
+      startsOn: DateTime(2026, 7, 10),
+    );
+    if (!active) await db.setRecurringActive(id, false);
+    return id;
+  }
+
+  testWidgets('Auto hides paused rules behind a summary row', (tester) async {
+    late int bank;
+    await tester.runAsync(() async {
+      bank = (await seed()).bank;
+      await addRecurringRuleFixture(bank, name: 'Netflix');
+      await addRecurringRuleFixture(bank, name: 'Old Gym', active: false);
+    });
+    await pump(tester, const AutoScreen());
+    expect(tester.takeException(), isNull);
+    expect(find.text('Netflix'), findsOneWidget);
+    expect(find.text('Old Gym'), findsNothing);
+    expect(find.text('1 paused'), findsOneWidget);
+    await unmount(tester);
+  });
+
+  testWidgets('Archived auto rules lists paused rules and can restore one', (
+    tester,
+  ) async {
+    late int bank;
+    late int pausedId;
+    await tester.runAsync(() async {
+      bank = (await seed()).bank;
+      pausedId = await addRecurringRuleFixture(
+        bank,
+        name: 'Old Gym',
+        active: false,
+      );
+    });
+    await pump(tester, const ArchivedAutoRulesScreen());
+    expect(tester.takeException(), isNull);
+    expect(find.text('Old Gym'), findsOneWidget);
+    expect(find.text('Paused'), findsOneWidget);
+
+    await tester.tap(find.text('Restore'));
+    await tester.pump();
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 200)),
+    );
+
+    late bool isActive;
+    await tester.runAsync(() async {
+      isActive = (await db.watchRecurringRules().first)
+          .firstWhere((r) => r.id == pausedId)
+          .isActive;
+    });
+    expect(isActive, isTrue, reason: 'Restore must resume the rule');
+
+    await tester.pump();
+    await unmount(tester);
+  });
+
+  testWidgets('Archived auto rules renders empty', (tester) async {
+    await pump(tester, const ArchivedAutoRulesScreen());
+    expect(tester.takeException(), isNull);
+    expect(find.text('No paused auto rules.'), findsOneWidget);
     await unmount(tester);
   });
 

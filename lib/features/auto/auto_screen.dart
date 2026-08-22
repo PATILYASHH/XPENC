@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/theme/app_colors.dart';
@@ -13,20 +14,11 @@ import 'recurring_rule_sheet.dart';
 /// schedule, with no confirmation step. A rule whose amount varies (e.g. a
 /// salary) still posts on schedule but flags the result for review — see
 /// [AppDatabase.runDueRecurringRules].
-class AutoScreen extends ConsumerStatefulWidget {
+class AutoScreen extends ConsumerWidget {
   const AutoScreen({super.key});
 
   @override
-  ConsumerState<AutoScreen> createState() => _AutoScreenState();
-}
-
-class _AutoScreenState extends ConsumerState<AutoScreen> {
-  /// Paused rules are hidden by default (see GitHub #51) — a section key
-  /// lands here once the user taps its "N paused" row to reveal them.
-  final Set<CategoryKind> _pausedExpanded = {};
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final rulesAsync = ref.watch(recurringRulesProvider);
 
@@ -37,6 +29,11 @@ class _AutoScreenState extends ConsumerState<AutoScreen> {
             pinned: true,
             title: const Text('Auto'),
             actions: [
+              IconButton(
+                tooltip: 'Archived auto rules',
+                icon: const Icon(Icons.inventory_2_outlined),
+                onPressed: () => context.push('/more/auto/archived'),
+              ),
               IconButton(
                 tooltip: 'New auto rule',
                 icon: const Icon(Icons.add_rounded),
@@ -76,11 +73,11 @@ class _AutoScreenState extends ConsumerState<AutoScreen> {
                 children: [
                   if (expenses.isNotEmpty) ...[
                     _sectionHeader(theme, 'Auto Expenses'),
-                    _section(theme, CategoryKind.expense, expenses),
+                    _section(context, theme, expenses),
                   ],
                   if (income.isNotEmpty) ...[
                     _sectionHeader(theme, 'Auto Income'),
-                    _section(theme, CategoryKind.income, income),
+                    _section(context, theme, income),
                   ],
                 ],
               );
@@ -104,18 +101,16 @@ class _AutoScreenState extends ConsumerState<AutoScreen> {
     ),
   );
 
-  /// Active rules always show. Paused ones are folded into a single "N
-  /// paused" row so a long-abandoned subscription doesn't crowd out what's
-  /// still running — tapping it reveals them, same card, rather than
-  /// hiding them with no way back.
+  /// Active rules always show. Paused ones never do (see GitHub #61) — a
+  /// summary row stands in their place and opens [ArchivedAutoRulesScreen],
+  /// the only place they're still visible and can be resumed from.
   Widget _section(
+    BuildContext context,
     ThemeData theme,
-    CategoryKind kind,
     List<RecurringRuleRow> rules,
   ) {
     final active = rules.where((r) => r.isActive).toList();
-    final paused = rules.where((r) => !r.isActive).toList();
-    final showPaused = paused.isEmpty || _pausedExpanded.contains(kind);
+    final pausedCount = rules.length - active.length;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -126,32 +121,26 @@ class _AutoScreenState extends ConsumerState<AutoScreen> {
               if (i > 0) const Divider(height: 1, indent: 20),
               _RuleTile(rule: active[i]),
             ],
-            if (paused.isNotEmpty) ...[
+            if (pausedCount > 0) ...[
               if (active.isNotEmpty) const Divider(height: 1, indent: 20),
-              if (showPaused)
-                for (final rule in paused) ...[
-                  const Divider(height: 1, indent: 20),
-                  _RuleTile(rule: rule),
-                ]
-              else
-                ListTile(
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 4,
-                  ),
-                  leading: Icon(
-                    Icons.pause_circle_outline,
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
+                leading: Icon(
+                  Icons.pause_circle_outline,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                title: Text(
+                  '$pausedCount paused',
+                  style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
-                  title: Text(
-                    '${paused.length} paused',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  trailing: const Icon(Icons.expand_more_rounded),
-                  onTap: () => setState(() => _pausedExpanded.add(kind)),
                 ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => context.push('/more/auto/archived'),
+              ),
             ],
           ],
         ),
@@ -190,6 +179,9 @@ class _EmptyAuto extends StatelessWidget {
   }
 }
 
+/// [AutoScreen] only ever renders this for an active rule — pausing one
+/// (via [_showActions]) removes it from here entirely, onto
+/// [ArchivedAutoRulesScreen] (see GitHub #61).
 class _RuleTile extends ConsumerWidget {
   const _RuleTile({required this.rule});
 
@@ -215,15 +207,11 @@ class _RuleTile extends ConsumerWidget {
         rule.name,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: theme.textTheme.bodyLarge?.copyWith(
-          fontWeight: FontWeight.w500,
-          color: rule.isActive ? null : theme.colorScheme.onSurfaceVariant,
-        ),
+        style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
       ),
       subtitle: Text(
         '${_frequencyLabel(rule)} · Next ${DateFormat('d MMM').format(rule.nextDueDate)}'
-        '${rule.isEstimate ? ' · Estimate' : ''}'
-        '${rule.isActive ? '' : ' · Paused'}',
+        '${rule.isEstimate ? ' · Estimate' : ''}',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: theme.textTheme.bodySmall?.copyWith(
@@ -237,7 +225,7 @@ class _RuleTile extends ConsumerWidget {
           alignment: Alignment.centerRight,
           child: MoneyText(
             rule.amount,
-            color: rule.isActive ? color : theme.colorScheme.onSurfaceVariant,
+            color: color,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
             ),
@@ -301,19 +289,13 @@ class _RuleTile extends ConsumerWidget {
               ),
             ),
             ListTile(
-              leading: Icon(
-                rule.isActive
-                    ? Icons.pause_circle_outline
-                    : Icons.play_circle_outline,
+              leading: const Icon(Icons.pause_circle_outline),
+              title: const Text('Pause'),
+              subtitle: const Text(
+                'Move it to Archived auto rules until you restore it. '
+                'Nothing is deleted.',
               ),
-              title: Text(rule.isActive ? 'Pause' : 'Resume'),
-              subtitle: Text(
-                rule.isActive
-                    ? "Stop auto-posting until you resume it. Nothing is deleted."
-                    : 'Start auto-posting again from its next due date.',
-              ),
-              onTap: () =>
-                  Navigator.of(sheetContext).pop(_RuleAction.toggleActive),
+              onTap: () => Navigator.of(sheetContext).pop(_RuleAction.pause),
             ),
             ListTile(
               leading: Icon(
@@ -335,8 +317,8 @@ class _RuleTile extends ConsumerWidget {
       ),
     );
     if (action == null || !context.mounted) return;
-    if (action == _RuleAction.toggleActive) {
-      await ref.read(dbProvider).setRecurringActive(rule.id, !rule.isActive);
+    if (action == _RuleAction.pause) {
+      await ref.read(dbProvider).setRecurringActive(rule.id, false);
       return;
     }
     await _confirmDelete(context, ref);
@@ -375,4 +357,4 @@ class _RuleTile extends ConsumerWidget {
   }
 }
 
-enum _RuleAction { toggleActive, delete }
+enum _RuleAction { pause, delete }
