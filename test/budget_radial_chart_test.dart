@@ -24,7 +24,13 @@ class _Rgb {
 void main() {
   const categoryColor = Color(0xFFFF6600);
 
-  Future<ui.Image> renderSingleSlice(
+  /// [RenderRepaintBoundary.toImage] and [ui.Image.toByteData] perform real
+  /// GPU/software rasterisation — work the fake clock `testWidgets` runs
+  /// under cannot drive. Called directly they never resolve: it hangs
+  /// forever (both locally and in CI) instead of failing fast. Running them
+  /// through [WidgetTester.runAsync] steps outside the fake async zone so
+  /// they can actually complete.
+  Future<({ui.Image image, ByteData bytes})> renderSingleSlice(
     WidgetTester tester, {
     required Money budget,
     required Money spent,
@@ -39,18 +45,27 @@ void main() {
       MaterialApp(
         home: Scaffold(
           backgroundColor: Colors.white,
+          // Scaffold.backgroundColor paints on the Scaffold's own render
+          // object — a sibling of RepaintBoundary's subtree, not a
+          // descendant of it — so it never reaches the captured raster.
+          // Without this ColoredBox, toImage() captures a transparent
+          // backdrop; reading its raw RGBA (ignoring alpha) then reads every
+          // unpainted pixel as solid black instead of white.
           body: RepaintBoundary(
             key: boundaryKey,
-            child: Center(
-              child: BudgetRadialChart(
-                slices: [
-                  (
-                    label: 'Food',
-                    budget: budget,
-                    spent: spent,
-                    color: categoryColor,
-                  ),
-                ],
+            child: ColoredBox(
+              color: Colors.white,
+              child: Center(
+                child: BudgetRadialChart(
+                  slices: [
+                    (
+                      label: 'Food',
+                      budget: budget,
+                      spent: spent,
+                      color: categoryColor,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -62,7 +77,13 @@ void main() {
     final boundary = tester.renderObject<RenderRepaintBoundary>(
       find.byKey(boundaryKey),
     );
-    return boundary.toImage();
+
+    final result = await tester.runAsync(() async {
+      final image = await boundary.toImage();
+      final bytes = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+      return (image: image, bytes: bytes!);
+    });
+    return result!;
   }
 
   _Rgb pixelAt(ByteData bytes, ui.Image image, Offset p) {
@@ -88,13 +109,11 @@ void main() {
   testWidgets('half-spent budget colours ~71% of the wedge radius, not 50%', (
     tester,
   ) async {
-    final image = await renderSingleSlice(
+    final (:image, :bytes) = await renderSingleSlice(
       tester,
       budget: Money.fromRupees(3000),
       spent: Money.fromRupees(1500),
     );
-    final bytes =
-        (await image.toByteData(format: ui.ImageByteFormat.rawRgba))!;
 
     final area = tester.getRect(find.byKey(const Key('budgetRadialPaintArea')));
     final center = area.center;
@@ -137,13 +156,11 @@ void main() {
   });
 
   testWidgets('fully spent budget colours the whole wedge', (tester) async {
-    final image = await renderSingleSlice(
+    final (:image, :bytes) = await renderSingleSlice(
       tester,
       budget: Money.fromRupees(2000),
       spent: Money.fromRupees(2000),
     );
-    final bytes =
-        (await image.toByteData(format: ui.ImageByteFormat.rawRgba))!;
 
     final area = tester.getRect(find.byKey(const Key('budgetRadialPaintArea')));
     final center = area.center;
