@@ -12,6 +12,7 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../message_capture/review_inbox_screen.dart';
+import '../reports/chart_widgets.dart';
 import 'sparkline.dart';
 
 /// The graphical glance view: net worth, this-month income vs expense,
@@ -234,31 +235,107 @@ class _CountBadge extends StatelessWidget {
 
 // ── 1. Net worth ──────────────────────────────────────────────────────────
 
-/// The hero. One figure, the direction it is heading, and six months of shape.
-class _NetWorthCard extends ConsumerWidget {
+/// Which line the hero card's sparkline is drawing. `null` is the resting
+/// state — net worth, direction-tinted. Picking a tab pins the card to that
+/// metric's own colour instead, since the colour now names the metric rather
+/// than reporting which way it moved.
+enum _MoneyMetric { income, expense, investment, loan }
+
+/// The hero. One figure, the direction it is heading, and six months of
+/// shape — for net worth by default, or for one metric at a time when a tab
+/// below the graph is picked.
+class _NetWorthCard extends ConsumerStatefulWidget {
   const _NetWorthCard();
 
+  @override
+  ConsumerState<_NetWorthCard> createState() => _NetWorthCardState();
+}
+
+class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
   static const _months = 6;
 
+  _MoneyMetric? _metric;
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final netWorth = ref.watch(netWorthProvider);
-    final trend = ref.watch(netWorthTrendProvider(_months));
-    // The trend is rebuilt from the full ledger. Until that stream lands it
-    // reports a flat line at the opening balance, which would be a lie.
+    // Every metric is rebuilt from the full ledger. Until that stream lands
+    // it would report a flat line at the opening balance, which is a lie.
     final trendReady = ref.watch(allTransactionsProvider).hasValue;
 
-    final delta = trend.length >= 2
-        ? trend.last.value - trend[trend.length - 2].value
-        : const Money.zero();
+    final metric = _metric;
+    final label = switch (metric) {
+      null => 'Total money',
+      _MoneyMetric.income => 'Income',
+      _MoneyMetric.expense => 'Expense',
+      _MoneyMetric.investment => 'Investment',
+      _MoneyMetric.loan => 'Loan',
+    };
 
-    // Colour here *means* direction, the same as it does on a ledger row.
-    final tint = !trendReady || delta.isZero
-        ? theme.colorScheme.onSurfaceVariant
-        : delta.isNegative
-        ? AppColors.expense
-        : AppColors.income;
+    // Net worth alone keeps its own AsyncValue (a live DB stream) so its
+    // loading/error states stay exactly as they were. Every other metric is
+    // a plain composition over already-watched streams — see the
+    // "compose, don't resubscribe" note above [netWorthTrendProvider] — so it
+    // has no error state of its own; it is simply not ready until they are.
+    final netWorth = metric == null ? ref.watch(netWorthProvider) : null;
+
+    List<double> trendValues = const [];
+    var delta = const Money.zero();
+    Money? headline;
+
+    switch (metric) {
+      case null:
+        final trend = ref.watch(netWorthTrendProvider(_months));
+        trendValues = [for (final p in trend) p.value.paise.toDouble()];
+        delta = trend.length >= 2
+            ? trend.last.value - trend[trend.length - 2].value
+            : const Money.zero();
+        headline = netWorth!.valueOrNull;
+      case _MoneyMetric.income:
+      case _MoneyMetric.expense:
+        final monthly = ref.watch(monthlyTotalsProvider(_months));
+        final values = [
+          for (final m in monthly)
+            metric == _MoneyMetric.income ? m.income : m.expense,
+        ];
+        trendValues = [for (final v in values) v.paise.toDouble()];
+        delta = values.length >= 2
+            ? values.last - values[values.length - 2]
+            : const Money.zero();
+        headline = trendReady
+            ? (values.isEmpty ? const Money.zero() : values.last)
+            : null;
+      case _MoneyMetric.investment:
+      case _MoneyMetric.loan:
+        final type = metric == _MoneyMetric.investment
+            ? AccountType.goal
+            : AccountType.payLater;
+        final trend = ref.watch(
+          accountTypeBalanceTrendProvider((type: type, months: _months)),
+        );
+        trendValues = [for (final p in trend) p.value.paise.toDouble()];
+        delta = trend.length >= 2
+            ? trend.last.value - trend[trend.length - 2].value
+            : const Money.zero();
+        headline = trendReady
+            ? (trend.isEmpty ? const Money.zero() : trend.last.value)
+            : null;
+    }
+
+    // For net worth, colour *means* direction, the same as it does on a
+    // ledger row. For a picked metric, colour names the metric instead —
+    // Expense stays red whether spending rose or fell this month.
+    final tint = switch (metric) {
+      null => !trendReady || delta.isZero
+          ? theme.colorScheme.onSurfaceVariant
+          : delta.isNegative
+          ? AppColors.expense
+          : AppColors.income,
+      _MoneyMetric.income => AppColors.income,
+      _MoneyMetric.expense => AppColors.expense,
+      _MoneyMetric.investment => AppColors.transfer,
+      _MoneyMetric.loan => AppColors.person,
+    };
 
     return Padding(
       padding: _sectionPad,
@@ -287,25 +364,36 @@ class _NetWorthCard extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
+                    Row(
                       children: [
-                        _CardLabel('Total money'),
-                        Spacer(),
-                        AmountVisibilityToggle(),
+                        _CardLabel(label),
+                        const Spacer(),
+                        const AmountVisibilityToggle(),
                       ],
                     ),
                     const SizedBox(height: 8),
-                    netWorth.when(
-                      data: (money) => AnimatedBalanceText(
-                        money,
+                    if (metric == null)
+                      netWorth!.when(
+                        data: (money) => AnimatedBalanceText(
+                          money,
+                          style: theme.textTheme.displaySmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -1,
+                          ),
+                        ),
+                        loading: () => const _InlineLoader(height: 44),
+                        error: (_, _) => const _InlineError(),
+                      )
+                    else if (headline == null)
+                      const _InlineLoader(height: 44)
+                    else
+                      AnimatedBalanceText(
+                        headline,
                         style: theme.textTheme.displaySmall?.copyWith(
                           fontWeight: FontWeight.w700,
                           letterSpacing: -1,
                         ),
                       ),
-                      loading: () => const _InlineLoader(height: 44),
-                      error: (_, _) => const _InlineError(),
-                    ),
                     // Below the figure, not beside it: `+₹12.34Cr this month`
                     // beside a label has nowhere to go on a 360dp screen.
                     if (trendReady && !delta.isZero) ...[
@@ -315,18 +403,106 @@ class _NetWorthCard extends ConsumerWidget {
                   ],
                 ),
               ),
-              if (trendReady && trend.length >= 2)
+              if (trendReady && trendValues.length >= 2)
                 Sparkline(
-                  values: [
-                    for (final point in trend) point.value.paise.toDouble(),
-                  ],
+                  values: trendValues,
                   color: tint,
                   background:
                       theme.cardTheme.color ?? theme.colorScheme.surface,
                 )
               else
                 const SizedBox(height: 22),
+              _MoneyMetricTabs(
+                selected: _metric,
+                onSelect: (m) => setState(
+                  () => _metric = _metric == m ? null : m,
+                ),
+              ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// `Income · Expense · Investment · Loan` beneath the hero graph. Tapping a
+/// tab points the sparkline above at that metric; tapping the active one
+/// again returns to net worth.
+class _MoneyMetricTabs extends StatelessWidget {
+  const _MoneyMetricTabs({required this.selected, required this.onSelect});
+
+  final _MoneyMetric? selected;
+  final ValueChanged<_MoneyMetric> onSelect;
+
+  static const _tabs = [
+    (_MoneyMetric.income, 'Income', AppColors.income),
+    (_MoneyMetric.expense, 'Expense', AppColors.expense),
+    (_MoneyMetric.investment, 'Investment', AppColors.transfer),
+    (_MoneyMetric.loan, 'Loan', AppColors.person),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
+      child: Row(
+        children: [
+          for (final tab in _tabs)
+            Expanded(
+              child: _MoneyMetricChip(
+                label: tab.$2,
+                color: tab.$3,
+                active: selected == tab.$1,
+                onTap: () => onSelect(tab.$1),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MoneyMetricChip extends StatelessWidget {
+  const _MoneyMetricChip({
+    required this.label,
+    required this.color,
+    required this.active,
+    required this.onTap,
+  });
+
+  final String label;
+  final Color color;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      borderRadius: BorderRadius.circular(999),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        margin: const EdgeInsets.symmetric(horizontal: 3),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: active ? color.withValues(alpha: 0.14) : Colors.transparent,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: active
+                ? color.withValues(alpha: 0.40)
+                : theme.colorScheme.outline,
+          ),
+        ),
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: active ? color : theme.colorScheme.onSurfaceVariant,
+            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
           ),
         ),
       ),
@@ -1208,7 +1384,6 @@ class _BudgetsSection extends ConsumerWidget {
 
     if (progress.isEmpty) return const _SetBudgetCard();
 
-    final top = progress.take(3).toList();
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
       child: Column(
@@ -1226,13 +1401,16 @@ class _BudgetsSection extends ConsumerWidget {
             child: Card(
               margin: EdgeInsets.zero,
               child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  children: [
-                    for (var i = 0; i < top.length; i++) ...[
-                      if (i > 0) const SizedBox(height: 18),
-                      _BudgetRow(progress: top[i]),
-                    ],
+                padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
+                child: BudgetRadialChart(
+                  slices: [
+                    for (final p in progress)
+                      (
+                        label: p.category.name,
+                        budget: p.budget.amount,
+                        spent: p.spent,
+                        color: Color(p.category.colorValue),
+                      ),
                   ],
                 ),
               ),
@@ -1312,67 +1490,6 @@ class _SetBudgetCard extends StatelessWidget {
   }
 }
 
-class _BudgetRow extends StatelessWidget {
-  const _BudgetRow({required this.progress});
-
-  final BudgetProgress progress;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final barColor = progress.overspent
-        ? AppColors.expense
-        : progress.nearingLimit
-        ? Colors.amber
-        : theme.colorScheme.secondary;
-
-    final left = progress.budget.amount - progress.spent;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                progress.category.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '${MoneyFormat.symbol(progress.spent)}'
-              ' / ${MoneyFormat.symbol(progress.budget.amount)}',
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontFeatures: kTabularFigures,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        AnimatedBar(fraction: progress.fraction, color: barColor),
-        const SizedBox(height: 6),
-        Text(
-          left.isNegative
-              ? '${MoneyFormat.symbol(left.abs)} over'
-              : '${MoneyFormat.symbol(left)} left',
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: progress.overspent
-                ? AppColors.expense
-                : theme.colorScheme.onSurfaceVariant,
-            fontFeatures: kTabularFigures,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 // ── 5. Spending by category ───────────────────────────────────────────────
 
 class _SpendByCategorySection extends ConsumerWidget {
@@ -1393,8 +1510,6 @@ class _SpendByCategorySection extends ConsumerWidget {
           ..sort((a, b) => b.value.compareTo(a.value));
         if (entries.isEmpty) return const SizedBox.shrink();
 
-        final top = entries.take(6).toList();
-        final maxPaise = top.first.value.paise;
         final total = entries.fold(
           const Money.zero(),
           (sum, e) => sum + e.value,
@@ -1421,19 +1536,17 @@ class _SpendByCategorySection extends ConsumerWidget {
                 child: Card(
                   margin: EdgeInsets.zero,
                   child: Padding(
-                    padding: const EdgeInsets.all(18),
-                    child: Column(
-                      children: [
-                        for (var i = 0; i < top.length; i++) ...[
-                          if (i > 0) const SizedBox(height: 16),
-                          _SpendRow(
-                            category: cats[top[i].key],
-                            amount: top[i].value,
-                            fraction: maxPaise == 0
-                                ? 0
-                                : top[i].value.paise / maxPaise,
+                    padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
+                    child: CategoryPieChart(
+                      slices: [
+                        for (final e in entries)
+                          (
+                            label: cats[e.key]?.name ?? 'Uncategorised',
+                            value: e.value,
+                            color: cats[e.key] != null
+                                ? Color(cats[e.key]!.colorValue)
+                                : theme.colorScheme.secondary,
                           ),
-                        ],
                       ],
                     ),
                   ),
@@ -1447,68 +1560,6 @@ class _SpendByCategorySection extends ConsumerWidget {
           const Padding(padding: _sectionPad, child: _InlineLoader()),
       error: (_, _) =>
           const Padding(padding: _sectionPad, child: _InlineError()),
-    );
-  }
-}
-
-class _SpendRow extends StatelessWidget {
-  const _SpendRow({
-    required this.category,
-    required this.amount,
-    required this.fraction,
-  });
-
-  final CategoryRow? category;
-  final Money amount;
-  final double fraction;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final color = category != null
-        ? Color(category!.colorValue)
-        : theme.colorScheme.secondary;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 28,
-              height: 28,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: color.withValues(alpha: 0.14),
-              ),
-              child: Icon(
-                AppIcons.resolve(category?.iconKey ?? 'other'),
-                size: 15,
-                color: color,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                category?.name ?? 'Uncategorised',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium,
-              ),
-            ),
-            const SizedBox(width: 8),
-            MoneyText(
-              amount,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        AnimatedBar(fraction: fraction, color: color, height: 6),
-      ],
     );
   }
 }

@@ -1022,6 +1022,57 @@ final netWorthTrendProvider =
       return out;
     });
 
+/// Combined balance of every account of one [AccountType], at the end of each
+/// of the last N months, oldest first. Dashboard's Investment/Loan sparkline
+/// tabs use this — goal accounts for Investment, pay-later accounts for Loan.
+///
+/// A transfer between two accounts of the *same* type nets to zero (the money
+/// never left the group); a transfer across the boundary counts as in/out,
+/// same accounting [netWorthTrendProvider] uses for the whole ledger.
+final accountTypeBalanceTrendProvider = Provider.family<
+    List<({DateTime month, Money value})>, ({AccountType type, int months})>((
+  ref,
+  args,
+) {
+  final accounts = ref.watch(balanceAccountsProvider).valueOrNull ?? const [];
+  final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
+
+  final matching = accounts.where((a) => a.type == args.type).toList();
+  final ownIds = {for (final a in matching) a.id};
+  final opening = matching.fold(
+    const Money.zero(),
+    (sum, a) => sum + a.openingBalance,
+  );
+
+  final now = DateTime.now();
+  final out = <({DateTime month, Money value})>[];
+
+  for (var i = args.months - 1; i >= 0; i--) {
+    final end = DateTime(
+      now.year,
+      now.month - i + 1,
+    ).subtract(const Duration(milliseconds: 1));
+    var total = opening;
+
+    for (final t in txs) {
+      if (t.date.isAfter(end)) continue;
+      if (t.type == TxType.transfer) {
+        final fromIn = ownIds.contains(t.accountId);
+        final toIn = t.toAccountId != null && ownIds.contains(t.toAccountId);
+        if (fromIn == toIn) continue;
+        total += fromIn ? -t.amount : t.amount;
+      } else if (ownIds.contains(t.accountId)) {
+        total +=
+            (t.type == TxType.income || t.type == TxType.personIn)
+                ? t.amount
+                : -t.amount;
+      }
+    }
+    out.add((month: DateTime(end.year, end.month), value: total));
+  }
+  return out;
+});
+
 /// Income and expense per month for the last N months, oldest first.
 final monthlyTotalsProvider =
     Provider.family<List<({DateTime month, Money income, Money expense})>, int>(
