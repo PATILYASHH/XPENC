@@ -105,9 +105,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final searchActive = ref.watch(txSearchActiveProvider);
     final query = ref.watch(txSearchQueryProvider);
     final quickFilter = ref.watch(txQuickFilterProvider);
+    final linkedOnly = ref.watch(txLinkedOnlyProvider);
+    final clusters = ref.watch(txLinkClusterProvider);
     final advanced = ref.watch(txAdvancedFiltersProvider);
     final searchOrFilterActive =
-        query.trim().isNotEmpty || quickFilter != null || advanced.count > 0;
+        query.trim().isNotEmpty ||
+        quickFilter != null ||
+        linkedOnly ||
+        advanced.count > 0;
     // The top bar's close-search button clears the provider directly; this
     // screen owns the actual TextField, so it's on the hook for clearing the
     // stale text left sitting in its controller.
@@ -135,6 +140,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             query: query,
             filter: quickFilter,
             advanced: advanced,
+            linkedOnly: linkedOnly,
+            clusters: clusters,
           )
         : const <TransactionRow>[];
 
@@ -155,7 +162,15 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         if (matched.isEmpty) {
           return SliverFillRemaining(
             hasScrollBody: false,
-            child: searchOrFilterActive
+            child: linkedOnly
+                ? const _EmptyState(
+                    icon: Icons.link_off_rounded,
+                    title: 'No linked transactions',
+                    message:
+                        "Open a transaction and tap the link icon to connect "
+                        'it to another — they\'ll show up here.',
+                  )
+                : searchOrFilterActive
                 ? const _EmptyState(
                     icon: Icons.search_off_rounded,
                     title: 'Nothing matches',
@@ -169,7 +184,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           );
         }
 
-        final entries = _group(matched);
+        final entries = linkedOnly
+            ? _groupLinked(matched, clusters)
+            : _group(matched);
         return SliverList.builder(
           itemCount: entries.length,
           itemBuilder: (context, i) {
@@ -204,6 +221,35 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   onDelete: _confirmDelete,
                 ),
               ),
+              _ClusterHeaderEntry(:final count, :final start, :final end) =>
+                _ClusterHeader(count: count, start: start, end: end),
+              _ClusterTxEntry(:final tx, :final isFirst, :final isLast) =>
+                Reveal(
+                  index: i < 8 ? i : 0,
+                  child: _LinkedTxRow(
+                    tx: tx,
+                    isFirst: isFirst,
+                    isLast: isLast,
+                    category: tx.categoryId == null
+                        ? null
+                        : categoryMap[tx.categoryId],
+                    account: accountMap[tx.accountId],
+                    toAccount: tx.toAccountId == null
+                        ? null
+                        : accountMap[tx.toAccountId],
+                    person: tx.personId == null
+                        ? null
+                        : personMap[tx.personId],
+                    tags: tagsByTx[tx.id] ?? const [],
+                    hasReceipt: tx.imagePath != null,
+                    splitCategories: [
+                      for (final s in splitsByTx[tx.id] ?? const [])
+                        if (categoryMap[s.categoryId] != null)
+                          categoryMap[s.categoryId]!,
+                    ],
+                    onDelete: _confirmDelete,
+                  ),
+                ),
             };
           },
         );
@@ -219,12 +265,28 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             delegate: _StickyHeaderDelegate(
               searchActive: searchActive,
               controller: _searchController,
-              filter: quickFilter,
+              quickFilter: linkedOnly
+                  ? _QuickFilter.linked
+                  : switch (quickFilter) {
+                      null => _QuickFilter.all,
+                      TxType.income => _QuickFilter.income,
+                      TxType.expense => _QuickFilter.expense,
+                      TxType.transfer => _QuickFilter.transfer,
+                      _ => _QuickFilter.all,
+                    },
               background: theme.colorScheme.surface,
               onQueryChanged: (value) =>
                   ref.read(txSearchQueryProvider.notifier).state = value,
-              onFilterChanged: (value) =>
-                  ref.read(txQuickFilterProvider.notifier).state = value,
+              onQuickFilterChanged: (value) {
+                ref.read(txLinkedOnlyProvider.notifier).state =
+                    value == _QuickFilter.linked;
+                ref.read(txQuickFilterProvider.notifier).state = switch (value) {
+                  _QuickFilter.all || _QuickFilter.linked => null,
+                  _QuickFilter.income => TxType.income,
+                  _QuickFilter.expense => TxType.expense,
+                  _QuickFilter.transfer => TxType.transfer,
+                };
+              },
             ),
           ),
           SliverToBoxAdapter(child: _SummaryStrip(txns: matched)),
@@ -247,6 +309,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     required String query,
     required TxType? filter,
     required TransactionFilters advanced,
+    required bool linkedOnly,
+    required Map<int, int> clusters,
   }) {
     final q = query.trim().toLowerCase();
     final dateRange = advanced.dateRange;
@@ -264,6 +328,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           );
 
     return txns.where((tx) {
+      if (linkedOnly && !clusters.containsKey(tx.id)) return false;
       if (filter != null && tx.type != filter) return false;
       if (dateRange != null &&
           (tx.date.isBefore(dateRange.start) || tx.date.isAfter(rangeEnd!))) {
@@ -331,6 +396,57 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     }
     return entries;
   }
+
+  /// Groups by link-cluster (the transitive closure of every manual link —
+  /// `A-B` plus `B-C` become one cluster of 3) instead of by calendar day, so
+  /// the "Linked" chip can draw a connecting rail between members that are
+  /// actually adjacent on screen (GitHub #68). Newest cluster first by its
+  /// most recent transaction; members oldest-to-newest within a cluster, so
+  /// e.g. a charge reads above its later refund.
+  List<_Entry> _groupLinked(
+    List<TransactionRow> filtered,
+    Map<int, int> clusters,
+  ) {
+    final byCluster = <int, List<TransactionRow>>{};
+    for (final tx in filtered) {
+      final root = clusters[tx.id];
+      if (root == null) continue;
+      byCluster.putIfAbsent(root, () => []).add(tx);
+    }
+
+    final clusterIds = byCluster.keys.toList()
+      ..sort((a, b) {
+        final aLatest = byCluster[a]!
+            .map((t) => t.date)
+            .reduce((x, y) => x.isAfter(y) ? x : y);
+        final bLatest = byCluster[b]!
+            .map((t) => t.date)
+            .reduce((x, y) => x.isAfter(y) ? x : y);
+        return bLatest.compareTo(aLatest);
+      });
+
+    final entries = <_Entry>[];
+    for (final id in clusterIds) {
+      final members = byCluster[id]!..sort((a, b) => a.date.compareTo(b.date));
+      entries.add(
+        _ClusterHeaderEntry(
+          members.length,
+          members.first.date,
+          members.last.date,
+        ),
+      );
+      for (var i = 0; i < members.length; i++) {
+        entries.add(
+          _ClusterTxEntry(
+            members[i],
+            isFirst: i == 0,
+            isLast: i == members.length - 1,
+          ),
+        );
+      }
+    }
+    return entries;
+  }
 }
 
 // ── Flattened list model ──────────────────────────────────────────────────────
@@ -344,6 +460,20 @@ class _HeaderEntry extends _Entry {
   final DateTime day;
   final Money net;
   final int count;
+}
+
+class _ClusterHeaderEntry extends _Entry {
+  const _ClusterHeaderEntry(this.count, this.start, this.end);
+  final int count;
+  final DateTime start;
+  final DateTime end;
+}
+
+class _ClusterTxEntry extends _Entry {
+  const _ClusterTxEntry(this.tx, {required this.isFirst, required this.isLast});
+  final TransactionRow tx;
+  final bool isFirst;
+  final bool isLast;
 }
 
 class _TxEntry extends _Entry {
@@ -550,6 +680,71 @@ class _DayHeader extends StatelessWidget {
     if (diff == 0) return 'Today';
     if (diff == 1) return 'Yesterday';
     return DateFormat('EEE, d MMM').format(day);
+  }
+}
+
+/// Header for one link-cluster in the "Linked" view — stands in for
+/// [_DayHeader] there, since clusters replace calendar days as the grouping
+/// (GitHub #68).
+class _ClusterHeader extends StatelessWidget {
+  const _ClusterHeader({
+    required this.count,
+    required this.start,
+    required this.end,
+  });
+
+  final int count;
+  final DateTime start;
+  final DateTime end;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final sameDay =
+        start.year == end.year &&
+        start.month == end.month &&
+        start.day == end.day;
+    final span = sameDay
+        ? DateFormat('d MMM').format(start)
+        : '${DateFormat('d MMM').format(start)} – ${DateFormat('d MMM').format(end)}';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+      child: Row(
+        children: [
+          Icon(Icons.link_rounded, size: 15, color: cs.onSurfaceVariant),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              'Linked · $span',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: cs.onSurface,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              '$count',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+                fontFeatures: kTabularFigures,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -906,6 +1101,94 @@ class _Meta extends StatelessWidget {
   }
 }
 
+/// Wraps a [_TxCard] with a rail connecting it to its neighbours in the same
+/// link-cluster — the "draw a line between linked transactions" part of
+/// GitHub #68, styled after a Reddit reply thread. [_TxCard] itself is
+/// untouched; this only adds a node-and-line column to its left.
+class _LinkedTxRow extends StatelessWidget {
+  const _LinkedTxRow({
+    required this.tx,
+    required this.isFirst,
+    required this.isLast,
+    required this.category,
+    required this.account,
+    required this.toAccount,
+    required this.person,
+    required this.tags,
+    required this.splitCategories,
+    required this.hasReceipt,
+    required this.onDelete,
+  });
+
+  final TransactionRow tx;
+  final bool isFirst;
+  final bool isLast;
+  final CategoryRow? category;
+  final AccountRow? account;
+  final AccountRow? toAccount;
+  final PersonRow? person;
+  final List<TagRow> tags;
+  final List<CategoryRow> splitCategories;
+  final bool hasReceipt;
+  final Future<void> Function(TransactionRow tx, String title) onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 28,
+            child: Column(
+              children: [
+                Expanded(
+                  child: isFirst
+                      ? const SizedBox.shrink()
+                      : Center(
+                          child: Container(width: 2, color: cs.outlineVariant),
+                        ),
+                ),
+                Container(
+                  width: 9,
+                  height: 9,
+                  margin: const EdgeInsets.symmetric(vertical: 6),
+                  decoration: BoxDecoration(
+                    color: cs.secondary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                Expanded(
+                  child: isLast
+                      ? const SizedBox.shrink()
+                      : Center(
+                          child: Container(width: 2, color: cs.outlineVariant),
+                        ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _TxCard(
+              tx: tx,
+              category: category,
+              account: account,
+              toAccount: toAccount,
+              person: person,
+              tags: tags,
+              splitCategories: splitCategories,
+              hasReceipt: hasReceipt,
+              onDelete: onDelete,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ── Empty / error states ─────────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
@@ -969,18 +1252,18 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
   _StickyHeaderDelegate({
     required this.searchActive,
     required this.controller,
-    required this.filter,
+    required this.quickFilter,
     required this.background,
     required this.onQueryChanged,
-    required this.onFilterChanged,
+    required this.onQuickFilterChanged,
   });
 
   final bool searchActive;
   final TextEditingController controller;
-  final TxType? filter;
+  final _QuickFilter quickFilter;
   final Color background;
   final ValueChanged<String> onQueryChanged;
-  final ValueChanged<TxType?> onFilterChanged;
+  final ValueChanged<_QuickFilter> onQuickFilterChanged;
 
   static const double _chipRowHeight = 60;
   static const double _searchRowHeight = 68;
@@ -1028,7 +1311,10 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
             ),
           SizedBox(
             height: _chipRowHeight,
-            child: _FilterChips(filter: filter, onChanged: onFilterChanged),
+            child: _FilterChips(
+              selected: quickFilter,
+              onChanged: onQuickFilterChanged,
+            ),
           ),
         ],
       ),
@@ -1038,22 +1324,31 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
   @override
   bool shouldRebuild(covariant _StickyHeaderDelegate oldDelegate) {
     return oldDelegate.searchActive != searchActive ||
-        oldDelegate.filter != filter ||
+        oldDelegate.quickFilter != quickFilter ||
         oldDelegate.background != background;
   }
 }
 
+/// The chip row's own selection model — a superset of [TxType] with an extra
+/// `linked` case (see the "Linked" chip, GitHub #68). Kept separate from
+/// [TxType] itself since "linked" isn't a transaction type, just a filter,
+/// and the two backing providers (`txQuickFilterProvider`/
+/// `txLinkedOnlyProvider`) are translated to/from this at the one call site
+/// in `_TransactionsScreenState.build`.
+enum _QuickFilter { all, income, expense, transfer, linked }
+
 class _FilterChips extends StatelessWidget {
-  const _FilterChips({required this.filter, required this.onChanged});
+  const _FilterChips({required this.selected, required this.onChanged});
 
-  final TxType? filter;
-  final ValueChanged<TxType?> onChanged;
+  final _QuickFilter selected;
+  final ValueChanged<_QuickFilter> onChanged;
 
-  static const List<(String, IconData, TxType?)> _options = [
-    ('All', Icons.all_inclusive_rounded, null),
-    ('Income', Icons.south_west_rounded, TxType.income),
-    ('Expense', Icons.north_east_rounded, TxType.expense),
-    ('Transfer', Icons.swap_horiz_rounded, TxType.transfer),
+  static const List<(String, IconData, _QuickFilter)> _options = [
+    ('All', Icons.all_inclusive_rounded, _QuickFilter.all),
+    ('Income', Icons.south_west_rounded, _QuickFilter.income),
+    ('Expense', Icons.north_east_rounded, _QuickFilter.expense),
+    ('Transfer', Icons.swap_horiz_rounded, _QuickFilter.transfer),
+    ('Linked', Icons.link_rounded, _QuickFilter.linked),
   ];
 
   @override
@@ -1064,19 +1359,19 @@ class _FilterChips extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       children: [
-        for (final (label, icon, type) in _options)
+        for (final (label, icon, value) in _options)
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: ChoiceChip(
               avatar: Icon(
                 icon,
                 size: 16,
-                color: filter == type ? cs.secondary : cs.onSurfaceVariant,
+                color: selected == value ? cs.secondary : cs.onSurfaceVariant,
               ),
               label: Text(label),
-              selected: filter == type,
+              selected: selected == value,
               showCheckmark: false,
-              onSelected: (_) => onChanged(type),
+              onSelected: (_) => onChanged(value),
             ),
           ),
       ],
