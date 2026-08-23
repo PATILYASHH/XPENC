@@ -135,6 +135,12 @@ class MoreScreen extends ConsumerWidget {
           subtitle: 'Currency · theme · notifications',
         ),
         _Item(
+          Icons.dashboard_customize_outlined,
+          'Customize bottom nav',
+          route: '/more/bottom-nav',
+          subtitle: 'Choose what goes next to the ➕ button',
+        ),
+        _Item(
           Icons.info_outline_rounded,
           'About ${AppInfo.name}',
           route: '/more/about',
