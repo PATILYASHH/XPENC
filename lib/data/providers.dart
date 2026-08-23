@@ -154,6 +154,15 @@ final txAdvancedFiltersProvider = StateProvider<TransactionFilters>(
 /// matters (a `ref.listen` trigger).
 final txScrollToTopProvider = StateProvider<int>((ref) => 0);
 
+/// Bumped by `AppShell`'s top bar when Calendar is the active tab and its
+/// "Today" action is tapped — `CalendarScreen` listens and jumps to today.
+/// The value itself is meaningless, only the change matters, same idiom as
+/// `txScrollToTopProvider` above (GitHub #70).
+final calendarGoToTodaySignalProvider = StateProvider<int>((ref) => 0);
+
+/// Same idiom, for the "New reminder" action.
+final calendarNewReminderSignalProvider = StateProvider<int>((ref) => 0);
+
 /// Same split-aware category aggregation as [spendByCategoryProvider], for a
 /// whole calendar year instead of one month — composed locally so the
 /// shared, month-scoped provider never has to know "year" exists.

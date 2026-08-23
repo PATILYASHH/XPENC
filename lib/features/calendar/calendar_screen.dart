@@ -18,8 +18,16 @@ import '../auto/recurring_rule_sheet.dart';
 ///
 /// This screen keeps its own shown month in [State]; it deliberately never
 /// touches [selectedMonthProvider] so it stays independent of the rest of the app.
+///
+/// [embedded] is true when this screen is a bottom-nav tab (GitHub #70) —
+/// `AppShell`'s shared top bar owns the title/actions then, reached via
+/// [calendarGoToTodaySignalProvider]/[calendarNewReminderSignalProvider]
+/// rather than this widget's own `AppBar`. Default `false` keeps every
+/// existing `/more/calendar` push exactly as it was.
 class CalendarScreen extends ConsumerStatefulWidget {
-  const CalendarScreen({super.key});
+  const CalendarScreen({this.embedded = false, super.key});
+
+  final bool embedded;
 
   @override
   ConsumerState<CalendarScreen> createState() => _CalendarScreenState();
@@ -139,6 +147,40 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final recurringRules =
         ref.watch(recurringRulesProvider).valueOrNull ?? const [];
 
+    if (widget.embedded) {
+      ref.listen<int>(calendarGoToTodaySignalProvider, (_, _) => _goToToday());
+      ref.listen<int>(
+        calendarNewReminderSignalProvider,
+        (_, _) => _openReminderSheet(),
+      );
+    }
+
+    final body = txAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            'Could not load calendar.\n$e',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.error,
+            ),
+          ),
+        ),
+      ),
+      data: (txns) => _content(
+        theme,
+        txns,
+        categoryMap,
+        accountMap,
+        openReminders,
+        recurringRules,
+      ),
+    );
+
+    if (widget.embedded) return body;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Calendar'),
@@ -156,29 +198,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           ),
         ],
       ),
-      body: txAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(
-              'Could not load calendar.\n$e',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.error,
-              ),
-            ),
-          ),
-        ),
-        data: (txns) => _content(
-          theme,
-          txns,
-          categoryMap,
-          accountMap,
-          openReminders,
-          recurringRules,
-        ),
-      ),
+      body: body,
     );
   }
 
