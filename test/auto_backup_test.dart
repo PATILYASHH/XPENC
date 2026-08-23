@@ -69,6 +69,7 @@ void main() {
       preventScreenshots: false,
       hideAmounts: false,
       pinTimeoutMinutes: 0,
+      bottomNavSlots: 'transactions,persons',
     );
 
     final now = DateTime(2026, 8, 5, 12);
