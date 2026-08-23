@@ -6026,6 +6026,18 @@ class $SettingsTable extends Settings
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _bottomNavSlotsMeta = const VerificationMeta(
+    'bottomNavSlots',
+  );
+  @override
+  late final GeneratedColumn<String> bottomNavSlots = GeneratedColumn<String>(
+    'bottom_nav_slots',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('transactions,persons'),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -6057,6 +6069,7 @@ class $SettingsTable extends Settings
     backupRetentionDays,
     preventScreenshots,
     hideAmounts,
+    bottomNavSlots,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6310,6 +6323,15 @@ class $SettingsTable extends Settings
         ),
       );
     }
+    if (data.containsKey('bottom_nav_slots')) {
+      context.handle(
+        _bottomNavSlotsMeta,
+        bottomNavSlots.isAcceptableOrUnknown(
+          data['bottom_nav_slots']!,
+          _bottomNavSlotsMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -6437,6 +6459,10 @@ class $SettingsTable extends Settings
         DriftSqlType.bool,
         data['${effectivePrefix}hide_amounts'],
       )!,
+      bottomNavSlots: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}bottom_nav_slots'],
+      )!,
     );
   }
 
@@ -6557,6 +6583,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// amounts is usually done right before handing the phone to someone, and
   /// should still be hidden the next time the app opens, not reset.
   final bool hideAmounts;
+
+  /// Which of the 7 catalog destinations occupy the two configurable
+  /// bottom-nav slots flanking the ➕ button — left, then right. Dashboard
+  /// and More are pinned and never appear here (see `AppShell`'s
+  /// `BottomNavCatalog`). GitHub #70.
+  final String bottomNavSlots;
   const SettingRow({
     required this.id,
     required this.currencyCode,
@@ -6587,6 +6619,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     required this.backupRetentionDays,
     required this.preventScreenshots,
     required this.hideAmounts,
+    required this.bottomNavSlots,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -6638,6 +6671,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     map['backup_retention_days'] = Variable<int>(backupRetentionDays);
     map['prevent_screenshots'] = Variable<bool>(preventScreenshots);
     map['hide_amounts'] = Variable<bool>(hideAmounts);
+    map['bottom_nav_slots'] = Variable<String>(bottomNavSlots);
     return map;
   }
 
@@ -6684,6 +6718,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       backupRetentionDays: Value(backupRetentionDays),
       preventScreenshots: Value(preventScreenshots),
       hideAmounts: Value(hideAmounts),
+      bottomNavSlots: Value(bottomNavSlots),
     );
   }
 
@@ -6747,6 +6782,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       ),
       preventScreenshots: serializer.fromJson<bool>(json['preventScreenshots']),
       hideAmounts: serializer.fromJson<bool>(json['hideAmounts']),
+      bottomNavSlots: serializer.fromJson<String>(json['bottomNavSlots']),
     );
   }
   @override
@@ -6790,6 +6826,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'backupRetentionDays': serializer.toJson<int>(backupRetentionDays),
       'preventScreenshots': serializer.toJson<bool>(preventScreenshots),
       'hideAmounts': serializer.toJson<bool>(hideAmounts),
+      'bottomNavSlots': serializer.toJson<String>(bottomNavSlots),
     };
   }
 
@@ -6823,6 +6860,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     int? backupRetentionDays,
     bool? preventScreenshots,
     bool? hideAmounts,
+    String? bottomNavSlots,
   }) => SettingRow(
     id: id ?? this.id,
     currencyCode: currencyCode ?? this.currencyCode,
@@ -6864,6 +6902,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     backupRetentionDays: backupRetentionDays ?? this.backupRetentionDays,
     preventScreenshots: preventScreenshots ?? this.preventScreenshots,
     hideAmounts: hideAmounts ?? this.hideAmounts,
+    bottomNavSlots: bottomNavSlots ?? this.bottomNavSlots,
   );
   SettingRow copyWithCompanion(SettingsCompanion data) {
     return SettingRow(
@@ -6948,6 +6987,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       hideAmounts: data.hideAmounts.present
           ? data.hideAmounts.value
           : this.hideAmounts,
+      bottomNavSlots: data.bottomNavSlots.present
+          ? data.bottomNavSlots.value
+          : this.bottomNavSlots,
     );
   }
 
@@ -6982,7 +7024,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('lastAutoBackupAt: $lastAutoBackupAt, ')
           ..write('backupRetentionDays: $backupRetentionDays, ')
           ..write('preventScreenshots: $preventScreenshots, ')
-          ..write('hideAmounts: $hideAmounts')
+          ..write('hideAmounts: $hideAmounts, ')
+          ..write('bottomNavSlots: $bottomNavSlots')
           ..write(')'))
         .toString();
   }
@@ -7018,6 +7061,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     backupRetentionDays,
     preventScreenshots,
     hideAmounts,
+    bottomNavSlots,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -7052,7 +7096,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.lastAutoBackupAt == this.lastAutoBackupAt &&
           other.backupRetentionDays == this.backupRetentionDays &&
           other.preventScreenshots == this.preventScreenshots &&
-          other.hideAmounts == this.hideAmounts);
+          other.hideAmounts == this.hideAmounts &&
+          other.bottomNavSlots == this.bottomNavSlots);
 }
 
 class SettingsCompanion extends UpdateCompanion<SettingRow> {
@@ -7085,6 +7130,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<int> backupRetentionDays;
   final Value<bool> preventScreenshots;
   final Value<bool> hideAmounts;
+  final Value<String> bottomNavSlots;
   const SettingsCompanion({
     this.id = const Value.absent(),
     this.currencyCode = const Value.absent(),
@@ -7115,6 +7161,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.backupRetentionDays = const Value.absent(),
     this.preventScreenshots = const Value.absent(),
     this.hideAmounts = const Value.absent(),
+    this.bottomNavSlots = const Value.absent(),
   });
   SettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -7146,6 +7193,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.backupRetentionDays = const Value.absent(),
     this.preventScreenshots = const Value.absent(),
     this.hideAmounts = const Value.absent(),
+    this.bottomNavSlots = const Value.absent(),
   });
   static Insertable<SettingRow> custom({
     Expression<int>? id,
@@ -7177,6 +7225,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<int>? backupRetentionDays,
     Expression<bool>? preventScreenshots,
     Expression<bool>? hideAmounts,
+    Expression<String>? bottomNavSlots,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -7220,6 +7269,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
         'backup_retention_days': backupRetentionDays,
       if (preventScreenshots != null) 'prevent_screenshots': preventScreenshots,
       if (hideAmounts != null) 'hide_amounts': hideAmounts,
+      if (bottomNavSlots != null) 'bottom_nav_slots': bottomNavSlots,
     });
   }
 
@@ -7253,6 +7303,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<int>? backupRetentionDays,
     Value<bool>? preventScreenshots,
     Value<bool>? hideAmounts,
+    Value<String>? bottomNavSlots,
   }) {
     return SettingsCompanion(
       id: id ?? this.id,
@@ -7290,6 +7341,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       backupRetentionDays: backupRetentionDays ?? this.backupRetentionDays,
       preventScreenshots: preventScreenshots ?? this.preventScreenshots,
       hideAmounts: hideAmounts ?? this.hideAmounts,
+      bottomNavSlots: bottomNavSlots ?? this.bottomNavSlots,
     );
   }
 
@@ -7401,6 +7453,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     if (hideAmounts.present) {
       map['hide_amounts'] = Variable<bool>(hideAmounts.value);
     }
+    if (bottomNavSlots.present) {
+      map['bottom_nav_slots'] = Variable<String>(bottomNavSlots.value);
+    }
     return map;
   }
 
@@ -7435,7 +7490,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('lastAutoBackupAt: $lastAutoBackupAt, ')
           ..write('backupRetentionDays: $backupRetentionDays, ')
           ..write('preventScreenshots: $preventScreenshots, ')
-          ..write('hideAmounts: $hideAmounts')
+          ..write('hideAmounts: $hideAmounts, ')
+          ..write('bottomNavSlots: $bottomNavSlots')
           ..write(')'))
         .toString();
   }
@@ -20888,6 +20944,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<int> backupRetentionDays,
       Value<bool> preventScreenshots,
       Value<bool> hideAmounts,
+      Value<String> bottomNavSlots,
     });
 typedef $$SettingsTableUpdateCompanionBuilder =
     SettingsCompanion Function({
@@ -20920,6 +20977,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<int> backupRetentionDays,
       Value<bool> preventScreenshots,
       Value<bool> hideAmounts,
+      Value<String> bottomNavSlots,
     });
 
 final class $$SettingsTableReferences
@@ -21100,6 +21158,11 @@ class $$SettingsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get bottomNavSlots => $composableBuilder(
+    column: $table.bottomNavSlots,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$AccountsTableFilterComposer get quickAddAccountId {
     final $$AccountsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -21273,6 +21336,11 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get bottomNavSlots => $composableBuilder(
+    column: $table.bottomNavSlots,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$AccountsTableOrderingComposer get quickAddAccountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -21441,6 +21509,11 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get bottomNavSlots => $composableBuilder(
+    column: $table.bottomNavSlots,
+    builder: (column) => column,
+  );
+
   $$AccountsTableAnnotationComposer get quickAddAccountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -21523,6 +21596,7 @@ class $$SettingsTableTableManager
                 Value<int> backupRetentionDays = const Value.absent(),
                 Value<bool> preventScreenshots = const Value.absent(),
                 Value<bool> hideAmounts = const Value.absent(),
+                Value<String> bottomNavSlots = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
                 currencyCode: currencyCode,
@@ -21553,6 +21627,7 @@ class $$SettingsTableTableManager
                 backupRetentionDays: backupRetentionDays,
                 preventScreenshots: preventScreenshots,
                 hideAmounts: hideAmounts,
+                bottomNavSlots: bottomNavSlots,
               ),
           createCompanionCallback:
               ({
@@ -21586,6 +21661,7 @@ class $$SettingsTableTableManager
                 Value<int> backupRetentionDays = const Value.absent(),
                 Value<bool> preventScreenshots = const Value.absent(),
                 Value<bool> hideAmounts = const Value.absent(),
+                Value<String> bottomNavSlots = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
                 currencyCode: currencyCode,
@@ -21616,6 +21692,7 @@ class $$SettingsTableTableManager
                 backupRetentionDays: backupRetentionDays,
                 preventScreenshots: preventScreenshots,
                 hideAmounts: hideAmounts,
+                bottomNavSlots: bottomNavSlots,
               ),
           withReferenceMapper: (p0) => p0
               .map(

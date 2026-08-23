@@ -535,6 +535,13 @@ class Settings extends Table {
   BoolColumn get hideAmounts =>
       boolean().withDefault(const Constant(false))();
 
+  /// Which of the 7 catalog destinations occupy the two configurable
+  /// bottom-nav slots flanking the ➕ button — left, then right. Dashboard
+  /// and More are pinned and never appear here (see `AppShell`'s
+  /// `BottomNavCatalog`). GitHub #70.
+  TextColumn get bottomNavSlots =>
+      text().withDefault(const Constant('transactions,persons'))();
+
   @override
   Set<Column> get primaryKey => {id};
 }
