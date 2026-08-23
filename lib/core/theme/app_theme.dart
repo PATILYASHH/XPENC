@@ -61,6 +61,7 @@ class AppTheme {
           color: p.text,
           fontWeight: shape.headlineWeight,
           letterSpacing: shape.headlineLetterSpacing,
+          fontFamily: shape.displayFontFamily,
         ),
       ),
       cardTheme: CardThemeData(
@@ -127,11 +128,44 @@ class AppTheme {
           borderSide: BorderSide(color: p.accent, width: 1.6),
         ),
       ),
-      textTheme: base.textTheme.apply(bodyColor: p.text, displayColor: p.text),
+      textTheme: _typeset(
+        base.textTheme.apply(bodyColor: p.text, displayColor: p.text),
+        shape,
+      ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
+    );
+  }
+
+  /// Applies [shape]'s two font families to their respective roles.
+  /// display/headline/title-large read as the "showy" text a theme like
+  /// Bold gives its own face; everything from title-medium down is "working"
+  /// text. A `null` family is a no-op `copyWith`, so every preset before
+  /// Bold passes through unchanged.
+  static TextTheme _typeset(TextTheme t, ThemeShape shape) {
+    TextStyle? display(TextStyle? s) =>
+        s?.copyWith(fontFamily: shape.displayFontFamily);
+    TextStyle? body(TextStyle? s) =>
+        s?.copyWith(fontFamily: shape.bodyFontFamily);
+
+    return t.copyWith(
+      displayLarge: display(t.displayLarge),
+      displayMedium: display(t.displayMedium),
+      displaySmall: display(t.displaySmall),
+      headlineLarge: display(t.headlineLarge),
+      headlineMedium: display(t.headlineMedium),
+      headlineSmall: display(t.headlineSmall),
+      titleLarge: display(t.titleLarge),
+      titleMedium: body(t.titleMedium),
+      titleSmall: body(t.titleSmall),
+      bodyLarge: body(t.bodyLarge),
+      bodyMedium: body(t.bodyMedium),
+      bodySmall: body(t.bodySmall),
+      labelLarge: body(t.labelLarge),
+      labelMedium: body(t.labelMedium),
+      labelSmall: body(t.labelSmall),
     );
   }
 }

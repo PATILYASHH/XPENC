@@ -168,6 +168,21 @@ class AppPalettes {
     onPrimary: Color(0xFF071019),
   );
 
+  // ── Bold: near-black, coral & gold accent. Dark only. ───────────────────
+  static const bold = Palette(
+    brightness: Brightness.dark,
+    bg: Color(0xFF0B0A0E),
+    surface: Color(0xFF0B0A0E),
+    surfaceHigh: Color(0xFF18151B),
+    track: Color(0xFF241E28),
+    border: Color(0xFF2E2630),
+    text: Color(0xFFF6F1EC),
+    textMuted: Color(0xFF948C97),
+    accent: Color(0xFFFF9645),
+    primary: Color(0xFFFF9645),
+    onPrimary: Color(0xFF1B1118),
+  );
+
   // ── Midnight: deep navy, cyan accent. Dark only. ─────────────────────────
   static const midnight = Palette(
     brightness: Brightness.dark,

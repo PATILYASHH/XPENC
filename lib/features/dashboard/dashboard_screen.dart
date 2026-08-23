@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../core/app_icons.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/theme_preset.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/motion.dart';
 import '../../data/database.dart';
@@ -262,6 +263,7 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
     // Every metric is rebuilt from the full ledger. Until that stream lands
     // it would report a flat line at the opening balance, which is a lie.
     final trendReady = ref.watch(allTransactionsProvider).hasValue;
+    final isBold = ref.watch(themePresetProvider) == ThemePreset.bold;
 
     final metric = _metric;
     final label = switch (metric) {
@@ -346,15 +348,30 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
           side: BorderSide(color: tint.withValues(alpha: 0.30)),
         ),
         child: DecoratedBox(
+          // Bold's signature wash is fixed — a deep, moody gradient that
+          // marks the card as *this* theme regardless of which metric tab is
+          // selected. Every other theme keeps the tint-following-direction
+          // wash so the card still reads as "the ledger moved this way".
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                tint.withValues(alpha: 0.07),
-                tint.withValues(alpha: 0.0),
-              ],
-            ),
+            gradient: isBold
+                ? const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFF2A1220),
+                      Color(0xFF1B1118),
+                      Color(0xFF17131C),
+                    ],
+                    stops: [0.0, 0.55, 1.0],
+                  )
+                : LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      tint.withValues(alpha: 0.07),
+                      tint.withValues(alpha: 0.0),
+                    ],
+                  ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -374,11 +391,14 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
                     const SizedBox(height: 8),
                     if (metric == null)
                       netWorth!.when(
-                        data: (money) => AnimatedBalanceText(
-                          money,
-                          style: theme.textTheme.displaySmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -1,
+                        data: (money) => _BoldGradientText(
+                          active: isBold,
+                          child: AnimatedBalanceText(
+                            money,
+                            style: theme.textTheme.displaySmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -1,
+                            ),
                           ),
                         ),
                         loading: () => const _InlineLoader(height: 44),
@@ -506,6 +526,29 @@ class _MoneyMetricChip extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Fills [child]'s glyphs with Bold's signature coral→gold gradient instead
+/// of a flat colour, when [active]. The one flourish reserved for the total-
+/// money figure alone — every other number on the card stays plain, so the
+/// gradient still reads as "the hero" rather than a colour applied everywhere.
+class _BoldGradientText extends StatelessWidget {
+  const _BoldGradientText({required this.active, required this.child});
+
+  final bool active;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!active) return child;
+    return ShaderMask(
+      blendMode: BlendMode.srcIn,
+      shaderCallback: (bounds) => const LinearGradient(
+        colors: [Color(0xFFFF5C7A), Color(0xFFFFC15E)],
+      ).createShader(bounds),
+      child: child,
     );
   }
 }
