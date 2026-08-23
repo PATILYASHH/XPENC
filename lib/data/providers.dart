@@ -138,6 +138,12 @@ final txSearchQueryProvider = StateProvider<String>((ref) => '');
 /// `null` == the "All" chip.
 final txQuickFilterProvider = StateProvider<TxType?>((ref) => null);
 
+/// The "Linked" chip — narrows the list to transactions with at least one
+/// manual link and regroups it by link-cluster instead of by day (GitHub
+/// #68). Mutually exclusive with [txQuickFilterProvider] in the UI (see
+/// `_FilterChips` in `transactions_screen.dart`), not enforced here.
+final txLinkedOnlyProvider = StateProvider<bool>((ref) => false);
+
 final txAdvancedFiltersProvider = StateProvider<TransactionFilters>(
   (ref) => const TransactionFilters(),
 );
@@ -708,6 +714,34 @@ final linkedTransactionsProvider =
       ref.watch(_transactionLinkRowsProvider);
       return ref.watch(dbProvider).linkedTransactions(id);
     });
+
+/// Every linked transaction id mapped to a canonical cluster id — a union-find
+/// over [TransactionLinks] so `A-B` and `B-C` collapse into one cluster of 3
+/// even though they're two separate rows (see the Transactions tab's "Linked"
+/// chip, GitHub #68). A transaction absent from this map isn't linked to
+/// anything.
+final txLinkClusterProvider = Provider<Map<int, int>>((ref) {
+  final links =
+      ref.watch(_transactionLinkRowsProvider).valueOrNull ?? const [];
+  final parent = <int, int>{};
+
+  int find(int x) {
+    parent.putIfAbsent(x, () => x);
+    while (parent[x] != x) {
+      parent[x] = parent[parent[x]!]!;
+      x = parent[x]!;
+    }
+    return x;
+  }
+
+  for (final link in links) {
+    final rootA = find(link.transactionAId);
+    final rootB = find(link.transactionBId);
+    if (rootA != rootB) parent[rootA] = rootB;
+  }
+
+  return {for (final id in parent.keys) id: find(id)};
+});
 
 // ── Shopping lists ──────────────────────────────────────────────────────────
 
