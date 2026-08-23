@@ -15,6 +15,8 @@ class Money implements Comparable<Money> {
 
   const Money.zero() : paise = 0;
 
+  const Money.fromPaise(this.paise);
+
   /// Build from a rupee amount. Rounds to the nearest paisa.
   factory Money.fromRupees(num rupees) => Money((rupees * 100).round());
 

@@ -236,17 +236,25 @@ final categoryTransactionsProvider = Provider.family<List<CategoryTx>, int>((
 
   final out = <CategoryTx>[];
   for (final t in txs) {
-    if (t.type != TxType.expense) continue;
     if (t.date.isBefore(start) || t.date.isAfter(end)) continue;
-    if (t.categoryId != null) {
-      if (categoryIds.contains(t.categoryId)) {
-        out.add((tx: t, amount: t.amount, isSplit: false));
+    if (t.type == TxType.expense) {
+      if (t.categoryId != null) {
+        if (categoryIds.contains(t.categoryId)) {
+          out.add((tx: t, amount: t.amount, isSplit: false));
+        }
+        continue;
+      }
+      for (final s in splitsByTx[t.id] ?? const []) {
+        if (categoryIds.contains(s.categoryId)) {
+          out.add((tx: t, amount: s.amount, isSplit: true));
+        }
       }
       continue;
     }
-    for (final s in splitsByTx[t.id] ?? const []) {
-      if (categoryIds.contains(s.categoryId)) {
-        out.add((tx: t, amount: s.amount, isSplit: true));
+    // A categorized goal/loan transfer counts toward category drill-down.
+    if (t.type == TxType.transfer && t.categoryId != null) {
+      if (categoryIds.contains(t.categoryId)) {
+        out.add((tx: t, amount: t.amount, isSplit: false));
       }
     }
   }
@@ -845,6 +853,65 @@ GoalProgress _goalProgressOf(AccountRow account, GoalDetailRow detail) {
     saved: saved,
     fraction: fraction.clamp(0.0, 1.0),
     reached: saved.paise >= detail.targetAmount.paise,
+  );
+}
+
+// ── Loans ────────────────────────────────────────────────────────────────────
+
+final loanDetailsProvider = StreamProvider<List<LoanDetailRow>>(
+  (ref) => ref.watch(dbProvider).watchLoanDetails(),
+);
+
+final loanDetailProvider = Provider.family<LoanDetailRow?, int>((ref, accountId) {
+  final details = ref.watch(loanDetailsProvider).valueOrNull ?? const [];
+  for (final d in details) {
+    if (d.accountId == accountId) return d;
+  }
+  return null;
+});
+
+typedef LoanProgress = ({
+  AccountRow account,
+  LoanDetailRow detail,
+  Money outstanding,
+  Money principal,
+  double fraction,
+});
+
+final loanProgressListProvider = Provider<List<LoanProgress>>((ref) {
+  final details = ref.watch(loanDetailsProvider).valueOrNull ?? const [];
+  final accountMap = ref.watch(accountMapProvider);
+  final out = <LoanProgress>[
+    for (final d in details)
+      if (accountMap[d.accountId] case final account?)
+        _loanProgressOf(account, d),
+  ];
+  out.sort((a, b) => a.account.createdAt.compareTo(b.account.createdAt));
+  return out;
+});
+
+final loanProgressProvider = Provider.family<LoanProgress?, int>((ref, accountId) {
+  final detail = ref.watch(loanDetailProvider(accountId));
+  final account = ref.watch(accountMapProvider)[accountId];
+  if (detail == null || account == null) return null;
+  return _loanProgressOf(account, detail);
+});
+
+LoanProgress _loanProgressOf(AccountRow account, LoanDetailRow detail) {
+  final principal = Money.fromPaise(-account.openingBalance.paise);
+  final currentBalance = account.currentBalance;
+  final outstanding = currentBalance.isNegative
+      ? Money.fromPaise(-currentBalance.paise)
+      : const Money.zero();
+  final paid = principal - outstanding;
+  return (
+    account: account,
+    detail: detail,
+    outstanding: outstanding,
+    principal: principal,
+    fraction: principal.isZero
+        ? 1.0
+        : (paid.paise / principal.paise).clamp(0.0, 1.0),
   );
 }
 

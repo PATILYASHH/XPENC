@@ -239,9 +239,10 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
                     AccountType.card => 'card',
                     AccountType.payLater => 'pay_later',
                     AccountType.prepaidBalance => 'prepaid_balance',
-                    // Not a selectable segment here — a goal is only ever
-                    // created from the Goals hub. Exhaustiveness only.
+                    // Not selectable segments — goals/loans only come from
+                    // their own hubs. Exhaustiveness only.
                     AccountType.goal => 'savings',
+                    AccountType.loan => 'other',
                   };
                 }),
               ),
@@ -356,8 +357,9 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
         ];
 
       // Not a selectable segment here — a goal is only ever created from
-      // the Goals hub. Exhaustiveness only.
+      // Not selectable segments — goals/loans only come from their own hubs.
       case AccountType.goal:
+      case AccountType.loan:
         return const [];
     }
   }
