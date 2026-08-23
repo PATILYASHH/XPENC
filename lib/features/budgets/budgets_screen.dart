@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-
 import '../../core/app_icons.dart';
 import '../../core/money.dart';
+import '../../core/routing/app_router.dart' show appRouter;
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
@@ -38,8 +37,14 @@ List<_CategoryNode> _categoryTree(List<CategoryRow> categories) {
 
 /// Per-category spending limits for the selected month. Only expenses count —
 /// transfers between your own accounts are never budgeted.
+///
+/// [embedded] is true when this screen is a bottom-nav tab (GitHub #70) —
+/// `AppShell`'s shared top bar owns the title/actions then. Default `false`
+/// keeps `/more/budgets` exactly as it was.
 class BudgetsScreen extends ConsumerWidget {
-  const BudgetsScreen({super.key});
+  const BudgetsScreen({this.embedded = false, super.key});
+
+  final bool embedded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -62,6 +67,30 @@ class BudgetsScreen extends ConsumerWidget {
       if (parentId != null && progressById.containsKey(parentId)) continue;
       totalBudgeted += p.budget.amount;
       totalSpent += p.spent;
+    }
+
+    if (embedded) {
+      return categoriesAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'Could not load budgets.\n$e',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(color: cs.error),
+            ),
+          ),
+        ),
+        data: (categories) => _body(
+          theme,
+          cs,
+          categories,
+          progressById,
+          totalBudgeted,
+          totalSpent,
+        ),
+      );
     }
 
     return Scaffold(
@@ -87,62 +116,74 @@ class BudgetsScreen extends ConsumerWidget {
             ),
           ),
         ),
-        data: (categories) => ListView(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-          children: [
-            _SummaryCard(budgeted: totalBudgeted, spent: totalSpent),
-            const SizedBox(height: 24),
-            Text(
-              'Categories',
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: cs.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 12),
-            if (categories.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 24),
-                child: Text(
-                  'No expense categories yet.',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: cs.onSurfaceVariant,
-                  ),
-                ),
-              )
-            else
-              ..._categoryTree(categories).expand(
-                (node) => [
-                  _BudgetTile(
-                    category: node.category,
-                    progress: progressById[node.category.id],
-                    onTap: () => _openDetail(context, node.category.id),
-                  ),
-                  if (node.children.isNotEmpty)
-                    _ChildBudgetThread(
-                      parentColor: Color(node.category.colorValue),
-                      children: node.children,
-                      progressById: progressById,
-                      onTapChild: (c) => _openDetail(context, c.id),
-                    ),
-                ],
-              ),
-            const SizedBox(height: 8),
-            Text(
-              'Budgets only count expenses. Transfers between your own '
-              'accounts are never counted.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: cs.onSurfaceVariant,
-              ),
-            ),
-          ],
+        data: (categories) => _body(
+          theme,
+          cs,
+          categories,
+          progressById,
+          totalBudgeted,
+          totalSpent,
         ),
       ),
     );
   }
 
-  void _openDetail(BuildContext context, int categoryId) {
-    context.push('/more/budgets/$categoryId');
+  Widget _body(
+    ThemeData theme,
+    ColorScheme cs,
+    List<CategoryRow> categories,
+    Map<int, BudgetProgress> progressById,
+    Money totalBudgeted,
+    Money totalSpent,
+  ) => ListView(
+    padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+    children: [
+      _SummaryCard(budgeted: totalBudgeted, spent: totalSpent),
+      const SizedBox(height: 24),
+      Text(
+        'Categories',
+        style: theme.textTheme.titleSmall?.copyWith(color: cs.onSurfaceVariant),
+      ),
+      const SizedBox(height: 12),
+      if (categories.isEmpty)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Text(
+            'No expense categories yet.',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+        )
+      else
+        ..._categoryTree(categories).expand(
+          (node) => [
+            _BudgetTile(
+              category: node.category,
+              progress: progressById[node.category.id],
+              onTap: () => _openDetail(node.category.id),
+            ),
+            if (node.children.isNotEmpty)
+              _ChildBudgetThread(
+                parentColor: Color(node.category.colorValue),
+                children: node.children,
+                progressById: progressById,
+                onTapChild: (c) => _openDetail(c.id),
+              ),
+          ],
+        ),
+      const SizedBox(height: 8),
+      Text(
+        'Budgets only count expenses. Transfers between your own '
+        'accounts are never counted.',
+        style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+      ),
+    ],
+  );
+
+  void _openDetail(int categoryId) {
+    appRouter.push('/more/budgets/$categoryId');
   }
 
   Future<void> _downloadBudgetStatement(
