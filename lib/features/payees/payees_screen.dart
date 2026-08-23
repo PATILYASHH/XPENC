@@ -10,8 +10,14 @@ import '../../data/providers.dart';
 /// Who you pay, or who pays you. Derived from the `payee` typed on each
 /// expense or income (GitHub #62) — there is no separate table, so this
 /// screen is a grouped view, not a CRUD list.
+///
+/// [embedded] is true when this screen is a bottom-nav tab (GitHub #70) —
+/// `AppShell`'s shared top bar owns the title then. Default `false` keeps
+/// `/more/payees` exactly as it was.
 class PayeesScreen extends ConsumerWidget {
-  const PayeesScreen({super.key});
+  const PayeesScreen({this.embedded = false, super.key});
+
+  final bool embedded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -22,7 +28,7 @@ class PayeesScreen extends ConsumerWidget {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(pinned: true, title: const Text('Payees')),
+          if (!embedded) SliverAppBar(pinned: true, title: const Text('Payees')),
           SliverToBoxAdapter(
             child: _TotalsHeader(net: net, count: summaries.length),
           ),
