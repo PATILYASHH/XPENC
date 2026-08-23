@@ -12,14 +12,76 @@ import 'chart_widgets.dart';
 
 /// Read-only insight screen. Every number here is derived from the ledger, so
 /// transfers between your own accounts never register as income or expense.
+///
+/// [embedded] is true when this screen is a bottom-nav tab (GitHub #70) —
+/// `AppShell`'s shared top bar owns the title/actions then. Default `false`
+/// keeps `/more/stats` exactly as it was.
 class StatsScreen extends ConsumerWidget {
-  const StatsScreen({super.key});
+  const StatsScreen({this.embedded = false, super.key});
+
+  final bool embedded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final month = ref.watch(selectedMonthProvider);
     final showYear = ref.watch(statsShowYearProvider);
+
+    final body = ListView(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+      children: [
+        const _Caption('This month'),
+        const _ThisMonthSection(),
+        const SizedBox(height: 28),
+        const _Caption('Net worth'),
+        const _NetWorthSection(),
+        const SizedBox(height: 28),
+        const _Caption('Income vs expense'),
+        const _IncomeExpenseSection(),
+        const SizedBox(height: 28),
+        const _Caption('Spending by category'),
+        _PeriodToggle(
+          showYear: showYear,
+          onChanged: (v) =>
+              ref.read(statsShowYearProvider.notifier).state = v,
+        ),
+        const SizedBox(height: 8),
+        _PeriodStepper(
+          month: month,
+          showYear: showYear,
+          onShift: (delta) =>
+              ref.read(selectedMonthProvider.notifier).state = showYear
+              ? DateTime(month.year + delta, month.month)
+              : DateTime(month.year, month.month + delta),
+        ),
+        const SizedBox(height: 8),
+        _CategoryDetailToggle(
+          showSubcategories: ref.watch(statsShowSubcategoriesProvider),
+          onChanged: (v) =>
+              ref.read(statsShowSubcategoriesProvider.notifier).state = v,
+        ),
+        const SizedBox(height: 12),
+        _CategorySection(
+          showYear: showYear,
+          year: month.year,
+          showSubcategories: ref.watch(statsShowSubcategoriesProvider),
+        ),
+        const SizedBox(height: 28),
+        const _Caption('Highlights'),
+        _HighlightsSection(month: month, showYear: showYear),
+        const SizedBox(height: 24),
+        Text(
+          'Transfers between your own accounts are never counted as income '
+          'or expense.',
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+
+    if (embedded) return body;
 
     return Scaffold(
       appBar: AppBar(
@@ -32,59 +94,7 @@ class StatsScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-        children: [
-          const _Caption('This month'),
-          const _ThisMonthSection(),
-          const SizedBox(height: 28),
-          const _Caption('Net worth'),
-          const _NetWorthSection(),
-          const SizedBox(height: 28),
-          const _Caption('Income vs expense'),
-          const _IncomeExpenseSection(),
-          const SizedBox(height: 28),
-          const _Caption('Spending by category'),
-          _PeriodToggle(
-            showYear: showYear,
-            onChanged: (v) =>
-                ref.read(statsShowYearProvider.notifier).state = v,
-          ),
-          const SizedBox(height: 8),
-          _PeriodStepper(
-            month: month,
-            showYear: showYear,
-            onShift: (delta) =>
-                ref.read(selectedMonthProvider.notifier).state = showYear
-                ? DateTime(month.year + delta, month.month)
-                : DateTime(month.year, month.month + delta),
-          ),
-          const SizedBox(height: 8),
-          _CategoryDetailToggle(
-            showSubcategories: ref.watch(statsShowSubcategoriesProvider),
-            onChanged: (v) =>
-                ref.read(statsShowSubcategoriesProvider.notifier).state = v,
-          ),
-          const SizedBox(height: 12),
-          _CategorySection(
-            showYear: showYear,
-            year: month.year,
-            showSubcategories: ref.watch(statsShowSubcategoriesProvider),
-          ),
-          const SizedBox(height: 28),
-          const _Caption('Highlights'),
-          _HighlightsSection(month: month, showYear: showYear),
-          const SizedBox(height: 24),
-          Text(
-            'Transfers between your own accounts are never counted as income '
-            'or expense.',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
+      body: body,
     );
   }
 }
