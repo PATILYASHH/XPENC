@@ -64,9 +64,9 @@ class MoreScreen extends ConsumerWidget {
         ),
         _Item(
           Icons.savings_outlined,
-          'Savings Goals',
-          route: '/more/savings',
-          subtitle: 'Track progress toward a target',
+          'Goals & Loans',
+          route: '/more/goals',
+          subtitle: 'Savings goals and loans in one place',
         ),
         _Item(
           Icons.checklist_outlined,

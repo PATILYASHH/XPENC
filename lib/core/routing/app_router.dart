@@ -30,6 +30,7 @@ import '../../features/persons/person_detail_screen.dart';
 import '../../features/persons/persons_screen.dart';
 import '../../features/reports/account_reports_screen.dart';
 import '../../features/reports/stats_screen.dart';
+import '../../features/savings/loan_detail_screen.dart';
 import '../../features/savings/savings_goal_detail_screen.dart';
 import '../../features/savings/savings_goals_screen.dart';
 import '../../features/security/set_passcode_screen.dart';
@@ -250,15 +251,22 @@ final appRouter = GoRouter(
                   ],
                 ),
                 GoRoute(
-                  path: 'savings',
+                  path: 'goals',
                   parentNavigatorKey: _rootKey,
                   builder: (_, _) => const SavingsGoalsScreen(),
                   routes: [
                     GoRoute(
-                      path: ':id',
+                      path: 'goal/:id',
                       parentNavigatorKey: _rootKey,
                       builder: (_, state) => SavingsGoalDetailScreen(
                         goalId: int.parse(state.pathParameters['id']!),
+                      ),
+                    ),
+                    GoRoute(
+                      path: 'loan/:id',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, state) => LoanDetailScreen(
+                        accountId: int.parse(state.pathParameters['id']!),
                       ),
                     ),
                   ],

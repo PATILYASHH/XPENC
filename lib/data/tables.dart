@@ -22,7 +22,11 @@ import '../core/money.dart';
 /// [goal] is a savings target that holds its own real balance, exactly like
 /// [prepaidBalance] — see [GoalDetails]. Funded and drawn down only by a
 /// [TxType.transfer] to/from another account, same as every other account.
-enum AccountType { cash, bank, card, payLater, prepaidBalance, goal }
+///
+/// [loan] is a liability account — [openingBalance]/[currentBalance] are both
+/// negative (the principal borrowed), moving toward zero as payments post via
+/// [TxType.transfer] into the loan account. See [LoanDetails].
+enum AccountType { cash, bank, card, payLater, prepaidBalance, goal, loan }
 
 /// A credit card is its own (liability) account. A debit card is an instrument
 /// linked to a bank — it never holds its own balance.
@@ -746,6 +750,29 @@ class GoalDetails extends Table {
   IntColumn get accountId => integer().references(Accounts, #id)();
   IntColumn get targetAmount => integer().map(const MoneyConverter())();
   DateTimeColumn get targetDate => dateTime().nullable()();
+
+  /// The Category a contribution is tagged with by default (GitHub #70-adjacent).
+  /// Null means contributions aren't counted toward any budget.
+  IntColumn get categoryId =>
+      integer().nullable().references(Categories, #id)();
+
+  @override
+  Set<Column> get primaryKey => {accountId};
+}
+
+/// The extra details for a [AccountType.loan] account — principal is
+/// `-Accounts.openingBalance`, outstanding is `-Accounts.currentBalance`.
+@DataClassName('LoanDetailRow')
+class LoanDetails extends Table {
+  IntColumn get accountId => integer().references(Accounts, #id)();
+
+  /// The Category a payment is tagged with by default.
+  IntColumn get categoryId =>
+      integer().nullable().references(Categories, #id)();
+
+  /// Pre-fills the payment sheet amount — informational, never enforced.
+  IntColumn get emiAmount =>
+      integer().map(const MoneyConverter()).nullable()();
 
   @override
   Set<Column> get primaryKey => {accountId};

@@ -369,6 +369,7 @@ String _accountTypeLabel(AccountType type) => switch (type) {
   AccountType.payLater => 'Pay later',
   AccountType.prepaidBalance => 'Prepaid Balance',
   AccountType.goal => 'Goal',
+  AccountType.loan => 'Loan',
 };
 
 /// "HDFC ...1234" — whichever parts the account carries.

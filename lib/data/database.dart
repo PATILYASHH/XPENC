@@ -133,6 +133,7 @@ typedef CombinedStatementLine = ({
     TransactionSplits,
     TransactionLinks,
     GoalDetails,
+    LoanDetails,
     ShoppingLists,
     ShoppingItems,
     BackupRecords,
@@ -163,7 +164,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 34;
+  int get schemaVersion => 36;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -331,6 +332,12 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 34) {
         await _addColumnIfMissing(m, settings, settings.bottomNavSlots);
+      }
+      if (from < 35) {
+        await _addColumnIfMissing(m, goalDetails, goalDetails.categoryId);
+      }
+      if (from < 36) {
+        await m.createTable(loanDetails);
       }
     },
     beforeOpen: (details) async {
@@ -711,16 +718,16 @@ class AppDatabase extends _$AppDatabase {
         'Amount must be positive; direction comes from type.',
       );
     }
-    // A goal is a savings store, not a spendable account — it is only ever
-    // funded or drawn down by a transfer. Every other type moves real money
-    // in or out on its own, which a goal must never do directly.
+    // Goals and loans are not spendable accounts — they are only ever funded
+    // or drawn down by a transfer.
     if (type != TxType.transfer) {
       final account = await (select(
         accounts,
       )..where((a) => a.id.equals(accountId))).getSingleOrNull();
-      if (account?.type == AccountType.goal) {
+      if (account?.type == AccountType.goal ||
+          account?.type == AccountType.loan) {
         throw ArgumentError(
-          'A goal is not a spendable account — transfer funds out of it first.',
+          'A goal or loan account is not spendable — transfer funds instead.',
         );
       }
     }
@@ -742,9 +749,20 @@ class AppDatabase extends _$AppDatabase {
           throw ArgumentError('Cannot transfer to the same account.');
         }
         if (categoryId != null) {
-          throw ArgumentError(
-            'Transfers carry no category — they are neither income nor expense.',
+          final from = await (select(
+            accounts,
+          )..where((a) => a.id.equals(accountId))).getSingleOrNull();
+          final to = await (select(
+            accounts,
+          )..where((a) => a.id.equals(toAccountId))).getSingleOrNull();
+          final touchesGoalOrLoan = {from?.type, to?.type}.any(
+            (t) => t == AccountType.goal || t == AccountType.loan,
           );
+          if (!touchesGoalOrLoan) {
+            throw ArgumentError(
+              'Only a goal or loan contribution can carry a category.',
+            );
+          }
         }
       case TxType.personOut:
       case TxType.personIn:
@@ -1251,6 +1269,7 @@ class AppDatabase extends _$AppDatabase {
     DateTime? targetDate,
     required int colorValue,
     required String iconKey,
+    int? categoryId,
   }) {
     if (!targetAmount.isPositive) {
       throw ArgumentError('Target amount must be greater than zero.');
@@ -1271,6 +1290,7 @@ class AppDatabase extends _$AppDatabase {
           accountId: Value(accountId),
           targetAmount: targetAmount,
           targetDate: Value(targetDate),
+          categoryId: Value(categoryId),
         ),
       );
       return accountId;
@@ -1285,6 +1305,7 @@ class AppDatabase extends _$AppDatabase {
     DateTime? targetDate,
     required int colorValue,
     required String iconKey,
+    int? categoryId,
   }) {
     if (!targetAmount.isPositive) {
       throw ArgumentError('Target amount must be greater than zero.');
@@ -1303,6 +1324,76 @@ class AppDatabase extends _$AppDatabase {
         GoalDetailsCompanion(
           targetAmount: Value(targetAmount),
           targetDate: Value(targetDate),
+          categoryId: Value(categoryId),
+        ),
+      );
+    });
+  }
+
+  // ── Loans ─────────────────────────────────────────────────────────────────
+
+  Stream<List<LoanDetailRow>> watchLoanDetails() => select(loanDetails).watch();
+
+  Future<LoanDetailRow?> getLoanDetail(int accountId) =>
+      (select(loanDetails)..where((l) => l.accountId.equals(accountId)))
+          .getSingleOrNull();
+
+  Future<int> addLoan({
+    required String name,
+    required Money principal,
+    required int colorValue,
+    required String iconKey,
+    int? categoryId,
+    Money? emiAmount,
+  }) {
+    if (!principal.isPositive) {
+      throw ArgumentError('Principal must be greater than zero.');
+    }
+    final negative = Money.fromPaise(-principal.paise);
+    return transaction(() async {
+      final accountId = await into(accounts).insert(
+        AccountsCompanion.insert(
+          name: name,
+          type: AccountType.loan,
+          colorValue: colorValue,
+          iconKey: iconKey,
+          openingBalance: negative,
+          currentBalance: negative,
+        ),
+      );
+      await into(loanDetails).insert(
+        LoanDetailsCompanion.insert(
+          accountId: Value(accountId),
+          categoryId: Value(categoryId),
+          emiAmount: Value(emiAmount),
+        ),
+      );
+      return accountId;
+    });
+  }
+
+  Future<void> updateLoan({
+    required int accountId,
+    required String name,
+    required int colorValue,
+    required String iconKey,
+    int? categoryId,
+    Money? emiAmount,
+  }) {
+    return transaction(() async {
+      await (update(accounts)..where((a) => a.id.equals(accountId))).write(
+        AccountsCompanion(
+          name: Value(name),
+          colorValue: Value(colorValue),
+          iconKey: Value(iconKey),
+        ),
+      );
+      await (update(loanDetails)..where(
+        (l) => l.accountId.equals(accountId),
+      )).write(
+        LoanDetailsCompanion(
+          categoryId: Value(categoryId),
+          emiAmount: Value(emiAmount),
         ),
       );
     });
@@ -1783,15 +1874,23 @@ class AppDatabase extends _$AppDatabase {
       watchTransactionsBetween(start, end).asyncMap((rows) async {
         final out = <int, Money>{};
         for (final t in rows) {
-          if (t.type != TxType.expense) continue;
-          if (t.categoryId != null) {
-            out[t.categoryId!] =
-                (out[t.categoryId!] ?? const Money.zero()) + t.amount;
+          if (t.type == TxType.expense) {
+            if (t.categoryId != null) {
+              out[t.categoryId!] =
+                  (out[t.categoryId!] ?? const Money.zero()) + t.amount;
+              continue;
+            }
+            for (final s in await splitsForTransaction(t.id)) {
+              out[s.categoryId] =
+                  (out[s.categoryId] ?? const Money.zero()) + s.amount;
+            }
             continue;
           }
-          for (final s in await splitsForTransaction(t.id)) {
-            out[s.categoryId] =
-                (out[s.categoryId] ?? const Money.zero()) + s.amount;
+          // A categorized transfer into/from a goal or loan counts toward
+          // that category's budget progress (GitHub #75).
+          if (t.type == TxType.transfer && t.categoryId != null) {
+            out[t.categoryId!] =
+                (out[t.categoryId!] ?? const Money.zero()) + t.amount;
           }
         }
         return out;

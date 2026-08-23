@@ -32,12 +32,67 @@ const _iconKeys = <String>[
   'other',
 ];
 
-/// A savings target that's a real account of its own — see [GoalDetails] in
-/// tables.dart. Progress is that account's own balance; funding it is an
-/// ordinary transfer, either through the normal Add Transaction flow or this
-/// screen's own Add funds / Withdraw shortcut on the goal's detail page.
-class SavingsGoalsScreen extends ConsumerWidget {
+/// Goals & Loans hub — two-tab screen combining savings goals (Goals tab) with
+/// loan tracking (Loans tab). Goals are [AccountType.goal]; loans are
+/// [AccountType.loan]. Both are real accounts in the ledger.
+class SavingsGoalsScreen extends ConsumerStatefulWidget {
   const SavingsGoalsScreen({super.key});
+
+  @override
+  ConsumerState<SavingsGoalsScreen> createState() => _SavingsGoalsScreenState();
+}
+
+class _SavingsGoalsScreenState extends ConsumerState<SavingsGoalsScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isGoalsTab = _tabController.index == 0;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Goals & Loans'),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'Goals'),
+            Tab(text: 'Loans'),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: const [_GoalsTab(), _LoansTab()],
+      ),
+      floatingActionButton: FloatingActionButton(
+        tooltip: isGoalsTab ? 'New goal' : 'New loan',
+        onPressed: isGoalsTab
+            ? () => _openNewGoalChoice(context)
+            : () => _openLoanEditor(context),
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+
+// ── Goals tab ────────────────────────────────────────────────────────────────
+
+class _GoalsTab extends ConsumerWidget {
+  const _GoalsTab();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -45,54 +100,46 @@ class SavingsGoalsScreen extends ConsumerWidget {
     final detailsAsync = ref.watch(goalDetailsProvider);
     final progress = ref.watch(goalProgressListProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Savings Goals')),
-      body: detailsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => Center(
-          child: Text(
-            "Couldn't load savings goals.",
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+    return detailsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (_, _) => Center(
+        child: Text(
+          "Couldn't load savings goals.",
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        data: (_) {
-          if (progress.isEmpty) {
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(32, 48, 32, 24),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.savings_outlined,
-                    size: 48,
+      ),
+      data: (_) {
+        if (progress.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(32, 48, 32, 24),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.savings_outlined,
+                  size: 48,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No savings goals yet — tap + to set one, either fresh '
+                  'or by turning an account you already have into a goal.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No savings goals yet — tap + to set one, either fresh '
-                    'or by turning an account you already have into a goal.',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 96),
-            itemCount: progress.length,
-            itemBuilder: (context, i) => _GoalCard(progress: progress[i]),
+                ),
+              ],
+            ),
           );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        tooltip: 'New goal',
-        onPressed: () => _openNewGoalChoice(context),
-        child: const Icon(Icons.add),
-      ),
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 96),
+          itemCount: progress.length,
+          itemBuilder: (context, i) => _GoalCard(progress: progress[i]),
+        );
+      },
     );
   }
 }
@@ -115,7 +162,7 @@ class _GoalCard extends StatelessWidget {
       child: Card(
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: () => context.push('/more/savings/${account.id}'),
+          onTap: () => context.push('/more/goals/goal/${account.id}'),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -131,10 +178,7 @@ class _GoalCard extends StatelessWidget {
                         color: color.withValues(alpha: 0.14),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(
-                        AppIcons.resolve(account.iconKey),
-                        color: color,
-                      ),
+                      child: Icon(AppIcons.resolve(account.iconKey), color: color),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -214,10 +258,176 @@ class _GoalCard extends StatelessWidget {
   }
 }
 
+// ── Loans tab ────────────────────────────────────────────────────────────────
+
+class _LoansTab extends ConsumerWidget {
+  const _LoansTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final detailsAsync = ref.watch(loanDetailsProvider);
+    final loans = ref.watch(loanProgressListProvider);
+
+    return detailsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (_, _) => Center(
+        child: Text(
+          "Couldn't load loans.",
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ),
+      data: (_) {
+        if (loans.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(32, 48, 32, 24),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.account_balance_outlined,
+                  size: 48,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No loans tracked yet — tap + to add a loan you have taken.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 96),
+          itemCount: loans.length,
+          itemBuilder: (context, i) => _LoanCard(loan: loans[i]),
+        );
+      },
+    );
+  }
+}
+
+class _LoanCard extends StatelessWidget {
+  const _LoanCard({required this.loan});
+
+  final LoanProgress loan;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final account = loan.account;
+    final color = Color(account.colorValue);
+    final paid = loan.fraction;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => context.push('/more/goals/loan/${account.id}'),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.14),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(AppIcons.resolve(account.iconKey), color: color),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        account.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    if (loan.outstanding.isZero)
+                      Icon(
+                        Icons.check_circle_rounded,
+                        color: AppColors.income,
+                        size: 20,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: LinearProgressIndicator(
+                    value: paid,
+                    minHeight: 8,
+                    backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                    color: color,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: MoneyFormat.symbol(loan.outstanding),
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.expense,
+                              ),
+                            ),
+                            TextSpan(
+                              text:
+                                  ' of ${MoneyFormat.symbol(loan.principal)} left',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (loan.detail.emiAmount != null) ...[
+                      const SizedBox(width: 8),
+                      Text(
+                        'EMI ${MoneyFormat.compact(loan.detail.emiAmount!)}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── New goal choice ──────────────────────────────────────────────────────────
+
 enum _NewGoalChoice { fresh, fromAccount }
 
-/// The "+" FAB's first stop: a fresh goal, or an existing account turned
-/// into one. Skipped entirely when editing — only creation forks like this.
 Future<void> _openNewGoalChoice(BuildContext context) async {
   final theme = Theme.of(context);
   final choice = await showModalBottomSheet<_NewGoalChoice>(
@@ -307,6 +517,7 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
   late String _iconKey;
   int? _sourceAccountId;
   DateTime? _targetDate;
+  int? _categoryId;
   bool _submitting = false;
 
   bool get _isEdit => widget.existing != null;
@@ -325,6 +536,7 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
     _colorValue = existing?.account.colorValue ?? _presetColors.first;
     _iconKey = existing?.account.iconKey ?? _iconKeys.first;
     _targetDate = existing?.detail.targetDate;
+    _categoryId = existing?.detail.categoryId;
   }
 
   @override
@@ -355,7 +567,6 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
   void _onSourceAccountChanged(int? id) {
     setState(() {
       _sourceAccountId = id;
-      // A convenience default, not a lock — the name field stays editable.
       if (id != null && _nameController.text.trim().isEmpty) {
         final account = ref.read(accountMapProvider)[id];
         if (account != null) _nameController.text = account.name;
@@ -391,6 +602,7 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
           targetDate: _targetDate,
           colorValue: _colorValue,
           iconKey: _iconKey,
+          categoryId: _categoryId,
         );
       } else {
         final goalAccountId = await db.addGoal(
@@ -399,6 +611,7 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
           targetDate: _targetDate,
           colorValue: _colorValue,
           iconKey: _iconKey,
+          categoryId: _categoryId,
         );
         if (_fromExistingAccount && mounted) {
           await _fundFromSourceAccount(db, goalAccountId);
@@ -417,10 +630,6 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
     }
   }
 
-  /// The two follow-up prompts for "turn an account into a goal": sweep its
-  /// balance in, then optionally archive it. Both are opt-in — declining
-  /// either just leaves the new (empty) goal account and the source account
-  /// exactly as they were.
   Future<void> _fundFromSourceAccount(AppDatabase db, int goalAccountId) async {
     final sourceId = _sourceAccountId;
     if (sourceId == null) return;
@@ -486,6 +695,10 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final categories = [
+      ...ref.watch(categoriesProvider(CategoryKind.expense)).valueOrNull ?? [],
+      ...ref.watch(categoriesProvider(CategoryKind.income)).valueOrNull ?? [],
+    ];
 
     return Padding(
       padding: EdgeInsets.only(
@@ -532,14 +745,27 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
             const SizedBox(height: 16),
             TextField(
               controller: _amountController,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
                 labelText: 'Target amount',
                 prefixText: MoneyFormat.inputPrefix,
                 hintText: '0.00',
               ),
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<int?>(
+              value: _categoryId,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Category (optional)',
+                helperText: 'Tag contributions to this category.',
+              ),
+              items: [
+                const DropdownMenuItem(value: null, child: Text('None')),
+                for (final c in categories)
+                  DropdownMenuItem(value: c.id, child: Text(c.name)),
+              ],
+              onChanged: (v) => setState(() => _categoryId = v),
             ),
             const SizedBox(height: 16),
             OutlinedButton.icon(
@@ -653,9 +879,299 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
   }
 }
 
-/// Any balance-holding account that isn't already a goal — an instrument
-/// (debit card) holds no balance of its own so it's excluded the same way
-/// [balanceAccountsProvider] excludes it everywhere else.
+// ── Loan editor ──────────────────────────────────────────────────────────────
+
+Future<void> _openLoanEditor(BuildContext context, {LoanProgress? existing}) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    showDragHandle: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+    ),
+    builder: (_) => _LoanEditorSheet(existing: existing),
+  );
+}
+
+class _LoanEditorSheet extends ConsumerStatefulWidget {
+  const _LoanEditorSheet({this.existing});
+
+  final LoanProgress? existing;
+
+  @override
+  ConsumerState<_LoanEditorSheet> createState() => _LoanEditorSheetState();
+}
+
+class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _principalController;
+  late final TextEditingController _emiController;
+  late int _colorValue;
+  late String _iconKey;
+  int? _categoryId;
+  bool _submitting = false;
+
+  bool get _isEdit => widget.existing != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final existing = widget.existing;
+    _nameController = TextEditingController(text: existing?.account.name ?? '');
+    _principalController = TextEditingController(
+      text: existing == null ? '' : MoneyFormat.bare(existing.principal),
+    );
+    _emiController = TextEditingController(
+      text: existing?.detail.emiAmount == null
+          ? ''
+          : MoneyFormat.bare(existing!.detail.emiAmount!),
+    );
+    _colorValue = existing?.account.colorValue ?? _presetColors.first;
+    _iconKey = existing?.account.iconKey ?? _iconKeys.first;
+    _categoryId = existing?.detail.categoryId;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _principalController.dispose();
+    _emiController.dispose();
+    super.dispose();
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _save() async {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      _showError('Give the loan a name.');
+      return;
+    }
+    final principal = Money.tryParse(_principalController.text);
+    if (!_isEdit && (principal == null || !principal.isPositive)) {
+      _showError('Enter the amount borrowed (greater than zero).');
+      return;
+    }
+    final emiText = _emiController.text.trim();
+    final emi = emiText.isEmpty ? null : Money.tryParse(emiText);
+    if (emiText.isNotEmpty && (emi == null || !emi.isPositive)) {
+      _showError('EMI must be greater than zero, or leave it blank.');
+      return;
+    }
+
+    setState(() => _submitting = true);
+    final db = ref.read(dbProvider);
+    final navigator = Navigator.of(context);
+    try {
+      if (_isEdit) {
+        await db.updateLoan(
+          accountId: widget.existing!.account.id,
+          name: name,
+          colorValue: _colorValue,
+          iconKey: _iconKey,
+          categoryId: _categoryId,
+          emiAmount: emi,
+        );
+      } else {
+        await db.addLoan(
+          name: name,
+          principal: principal!,
+          colorValue: _colorValue,
+          iconKey: _iconKey,
+          categoryId: _categoryId,
+          emiAmount: emi,
+        );
+      }
+      if (!mounted) return;
+      navigator.pop();
+    } on ArgumentError catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      _showError(e.message?.toString() ?? 'Could not save the loan.');
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      _showError('Could not save the loan.');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final categories = [
+      ...ref.watch(categoriesProvider(CategoryKind.expense)).valueOrNull ?? [],
+      ...ref.watch(categoriesProvider(CategoryKind.income)).valueOrNull ?? [],
+    ];
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        bottom: MediaQuery.of(context).padding.bottom +
+            MediaQuery.of(context).viewInsets.bottom +
+            20,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              _isEdit ? 'Edit loan' : 'New loan',
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: _nameController,
+              autofocus: true,
+              textCapitalization: TextCapitalization.words,
+              maxLength: 60,
+              decoration: const InputDecoration(
+                labelText: 'Name',
+                hintText: 'e.g. Home loan, Car loan',
+                counterText: '',
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (!_isEdit) ...[
+              TextField(
+                controller: _principalController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  labelText: 'Amount borrowed',
+                  prefixText: MoneyFormat.inputPrefix,
+                  hintText: '0.00',
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+            TextField(
+              controller: _emiController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: 'Monthly EMI (optional)',
+                prefixText: MoneyFormat.inputPrefix,
+                hintText: '0.00',
+              ),
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<int?>(
+              value: _categoryId,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Category (optional)',
+                helperText: 'Tag repayments to this category.',
+              ),
+              items: [
+                const DropdownMenuItem(value: null, child: Text('None')),
+                for (final c in categories)
+                  DropdownMenuItem(value: c.id, child: Text(c.name)),
+              ],
+              onChanged: (v) => setState(() => _categoryId = v),
+            ),
+            const SizedBox(height: 16),
+            _fieldLabel(theme, 'Colour'),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 14,
+              runSpacing: 14,
+              children: [for (final c in _presetColors) _colorDot(theme, c)],
+            ),
+            const SizedBox(height: 24),
+            _fieldLabel(theme, 'Icon'),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [for (final k in _iconKeys) _iconTile(theme, k)],
+            ),
+            const SizedBox(height: 28),
+            FilledButton(
+              onPressed: _submitting ? null : _save,
+              child: _submitting
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2.4),
+                    )
+                  : const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _fieldLabel(ThemeData theme, String text) {
+    return Text(
+      text.toUpperCase(),
+      style: theme.textTheme.labelSmall?.copyWith(
+        color: theme.colorScheme.onSurfaceVariant,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.1,
+      ),
+    );
+  }
+
+  Widget _colorDot(ThemeData theme, int value) {
+    final selected = _colorValue == value;
+    return GestureDetector(
+      onTap: () => setState(() => _colorValue = value),
+      child: Container(
+        width: 40,
+        height: 40,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Color(value),
+          shape: BoxShape.circle,
+          border: selected
+              ? Border.all(color: theme.colorScheme.onSurface, width: 2.5)
+              : null,
+        ),
+        child: selected
+            ? const Icon(Icons.check_rounded, color: Colors.white, size: 20)
+            : null,
+      ),
+    );
+  }
+
+  Widget _iconTile(ThemeData theme, String key) {
+    final selected = _iconKey == key;
+    final color = Color(_colorValue);
+    return GestureDetector(
+      onTap: () => setState(() => _iconKey = key),
+      child: Container(
+        width: 52,
+        height: 52,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected
+              ? color.withValues(alpha: 0.15)
+              : theme.colorScheme.surface,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: selected ? color : theme.colorScheme.outline,
+            width: selected ? 2.5 : 1,
+          ),
+        ),
+        child: Icon(
+          AppIcons.resolve(key),
+          color: selected ? color : theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Source account picker (used by goal editor) ──────────────────────────────
+
 class _SourceAccountPicker extends ConsumerWidget {
   const _SourceAccountPicker({required this.selected, required this.onChanged});
 
@@ -687,8 +1203,16 @@ class _SourceAccountPicker extends ConsumerWidget {
   }
 }
 
-/// Opens the editor for an existing goal — used by the detail screen's Edit
-/// action.
+// ── Public API ───────────────────────────────────────────────────────────────
+
+/// Opens the goal editor for an existing goal — used by the detail screen's
+/// Edit action.
 void openGoalEditor(BuildContext context, GoalProgress existing) {
   _openGoalEditor(context, existing: existing);
+}
+
+/// Opens the loan editor for an existing loan — used by the loan detail
+/// screen's Edit action.
+void openLoanEditor(BuildContext context, LoanProgress existing) {
+  _openLoanEditor(context, existing: existing);
 }

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../core/app_icons.dart';
 import '../../core/money.dart';
@@ -10,31 +9,30 @@ import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'savings_goals_screen.dart';
 
-/// One goal: progress ring, target date, and the two shortcuts that move
-/// money in and out of it — each just posts an ordinary transfer, the same
-/// as doing it through Add Transaction. [goalId] is the goal's own account id.
-class SavingsGoalDetailScreen extends ConsumerWidget {
-  const SavingsGoalDetailScreen({required this.goalId, super.key});
+/// One loan: outstanding balance, original amount, repayment progress, and a
+/// "Make a payment" shortcut that posts an ordinary transfer into the loan
+/// account. [accountId] is the loan's own account id.
+class LoanDetailScreen extends ConsumerWidget {
+  const LoanDetailScreen({required this.accountId, super.key});
 
-  final int goalId;
+  final int accountId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final progress = ref.watch(goalProgressProvider(goalId));
+    final loan = ref.watch(loanProgressProvider(accountId));
 
-    if (progress == null) {
+    if (loan == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Savings goal')),
-        body: const Center(child: Text('Goal not found')),
+        appBar: AppBar(title: const Text('Loan')),
+        body: const Center(child: Text('Loan not found')),
       );
     }
 
-    final account = progress.account;
-    final detail = progress.detail;
+    final account = loan.account;
+    final detail = loan.detail;
     final theme = Theme.of(context);
     final color = Color(account.colorValue);
-    final remaining = detail.targetAmount - progress.saved;
-    final daysLeft = detail.targetDate?.difference(DateTime.now()).inDays;
+    final isPaidOff = loan.outstanding.isZero;
 
     return Scaffold(
       appBar: AppBar(
@@ -43,12 +41,12 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.edit_outlined),
             tooltip: 'Edit',
-            onPressed: () => openGoalEditor(context, progress),
+            onPressed: () => openLoanEditor(context, loan),
           ),
           IconButton(
             icon: const Icon(Icons.more_vert_rounded),
             tooltip: 'More',
-            onPressed: () => _showActions(context, ref, progress),
+            onPressed: () => _showActions(context, ref, loan),
           ),
         ],
       ),
@@ -66,26 +64,27 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
                     width: 160,
                     height: 160,
                     child: CircularProgressIndicator(
-                      value: progress.fraction,
+                      value: loan.fraction,
                       strokeWidth: 12,
-                      backgroundColor:
-                          theme.colorScheme.surfaceContainerHighest,
+                      backgroundColor: theme.colorScheme.surfaceContainerHighest,
                       color: color,
                     ),
                   ),
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        AppIcons.resolve(account.iconKey),
-                        color: color,
-                        size: 28,
-                      ),
+                      Icon(AppIcons.resolve(account.iconKey), color: color, size: 28),
                       const SizedBox(height: 6),
                       Text(
-                        '${(progress.fraction * 100).round()}%',
+                        '${(loan.fraction * 100).round()}%',
                         style: theme.textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        'paid',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -99,24 +98,16 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
             children: [
               Expanded(
                 child: FilledButton.tonalIcon(
-                  onPressed: () => _openFundsSheet(
-                    context,
-                    goalId,
-                    isAdd: true,
-                    defaultCategoryId: detail.categoryId,
-                  ),
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text('Add funds'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: progress.saved.isPositive
-                      ? () => _openFundsSheet(context, goalId, isAdd: false)
-                      : null,
-                  icon: const Icon(Icons.remove_rounded),
-                  label: const Text('Withdraw'),
+                  onPressed: isPaidOff
+                      ? null
+                      : () => _openPaymentSheet(
+                            context,
+                            loanAccountId: accountId,
+                            defaultCategoryId: detail.categoryId,
+                            emiAmount: detail.emiAmount,
+                          ),
+                  icon: const Icon(Icons.payments_outlined),
+                  label: const Text('Make a payment'),
                 ),
               ),
             ],
@@ -129,38 +120,52 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
                 children: [
                   _row(
                     context,
-                    'Saved',
-                    MoneyText(progress.saved, color: color),
+                    'Outstanding',
+                    MoneyText(loan.outstanding, color: AppColors.expense),
                   ),
                   _divider(theme),
                   _row(
                     context,
-                    'Target',
+                    'Original amount',
+                    _plainValue(context, MoneyFormat.symbol(loan.principal)),
+                  ),
+                  _divider(theme),
+                  _row(
+                    context,
+                    'Paid so far',
                     _plainValue(
                       context,
-                      MoneyFormat.symbol(detail.targetAmount),
+                      MoneyFormat.symbol(loan.principal - loan.outstanding),
+                      color: AppColors.income,
                     ),
                   ),
-                  _divider(theme),
-                  _row(
-                    context,
-                    progress.reached ? 'Reached' : 'Remaining',
-                    progress.reached
-                        ? Icon(
-                            Icons.check_circle_rounded,
-                            color: AppColors.income,
-                          )
-                        : _plainValue(context, MoneyFormat.symbol(remaining)),
-                  ),
-                  if (detail.targetDate != null) ...[
+                  if (detail.emiAmount != null) ...[
                     _divider(theme),
                     _row(
                       context,
-                      'Target date',
-                      _plainValue(
-                        context,
-                        DateFormat('d MMM yyyy').format(detail.targetDate!),
-                        color: (daysLeft ?? 0) < 0 ? AppColors.expense : null,
+                      'Monthly EMI',
+                      _plainValue(context, MoneyFormat.symbol(detail.emiAmount!)),
+                    ),
+                  ],
+                  if (isPaidOff) ...[
+                    _divider(theme),
+                    _row(
+                      context,
+                      'Status',
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.check_circle_rounded,
+                              color: AppColors.income, size: 18),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Paid off',
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.income,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -211,9 +216,9 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
   Future<void> _showActions(
     BuildContext context,
     WidgetRef ref,
-    GoalProgress progress,
+    LoanProgress loan,
   ) async {
-    final action = await showModalBottomSheet<_GoalAction>(
+    final action = await showModalBottomSheet<_LoanAction>(
       context: context,
       showDragHandle: true,
       shape: const RoundedRectangleBorder(
@@ -225,23 +230,12 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.tune_rounded),
-              title: const Text('Fix starting amount'),
-              subtitle: const Text(
-                'Correct "Saved" if it opened already showing money you '
-                "hadn't actually put in — common right after updating from "
-                '1.3.0.',
-              ),
-              onTap: () =>
-                  Navigator.of(sheetContext).pop(_GoalAction.fixStartingAmount),
-            ),
-            ListTile(
               leading: const Icon(Icons.archive_outlined),
               title: const Text('Archive'),
               subtitle: const Text(
-                'Hides it from active goals. Its money and history stay.',
+                'Hides it from active loans. Its history stays.',
               ),
-              onTap: () => Navigator.of(sheetContext).pop(_GoalAction.archive),
+              onTap: () => Navigator.of(sheetContext).pop(_LoanAction.archive),
             ),
             ListTile(
               leading: Icon(
@@ -255,9 +249,9 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
                 ),
               ),
               subtitle: const Text(
-                'Only for a goal with no funding history yet.',
+                'Only for a loan with no payment history yet.',
               ),
-              onTap: () => Navigator.of(sheetContext).pop(_GoalAction.delete),
+              onTap: () => Navigator.of(sheetContext).pop(_LoanAction.delete),
             ),
             const SizedBox(height: 8),
           ],
@@ -265,112 +259,27 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
       ),
     );
     if (action == null || !context.mounted) return;
-    if (action == _GoalAction.fixStartingAmount) {
-      await _fixStartingAmount(context, ref, progress);
-    } else if (action == _GoalAction.archive) {
-      await _confirmArchive(context, ref, progress);
+    if (action == _LoanAction.archive) {
+      await _confirmArchive(context, ref, loan);
     } else {
-      await _confirmDelete(context, ref, progress);
+      await _confirmDelete(context, ref, loan);
     }
-  }
-
-  Future<void> _fixStartingAmount(
-    BuildContext context,
-    WidgetRef ref,
-    GoalProgress progress,
-  ) async {
-    final controller = TextEditingController(
-      text: MoneyFormat.bare(progress.saved),
-    );
-    final messenger = ScaffoldMessenger.of(context);
-    final newAmount = await showDialog<Money>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Fix starting amount'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Sets "Saved" directly — it does not create or change any '
-              'transaction.',
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              autofocus: true,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              decoration: InputDecoration(
-                labelText: 'Saved so far',
-                prefixText: MoneyFormat.inputPrefix,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final amount = Money.tryParse(controller.text);
-              if (amount == null || amount.isNegative) {
-                messenger
-                  ..hideCurrentSnackBar()
-                  ..showSnackBar(
-                    const SnackBar(
-                      content: Text('Enter a valid amount, zero or more.'),
-                    ),
-                  );
-                return;
-              }
-              Navigator.of(dialogContext).pop(amount);
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-    controller.dispose();
-    if (newAmount == null) return;
-
-    try {
-      await ref
-          .read(dbProvider)
-          .correctGoalOpeningBalance(
-            accountId: progress.account.id,
-            openingBalance: newAmount,
-          );
-    } catch (e) {
-      if (!context.mounted) return;
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text("Couldn't save: $e")));
-      return;
-    }
-    if (!context.mounted) return;
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Starting amount updated')));
   }
 
   Future<void> _confirmArchive(
     BuildContext context,
     WidgetRef ref,
-    GoalProgress progress,
+    LoanProgress loan,
   ) async {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Archive "${progress.account.name}"?'),
+        title: Text('Archive "${loan.account.name}"?'),
         content: const Text(
           "It stays in your history and net worth — this only hides it from "
-          'the active goals list.',
+          'the active loans list.',
         ),
         actions: [
           TextButton(
@@ -385,27 +294,27 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
       ),
     );
     if (confirmed != true) return;
-    await ref.read(dbProvider).archiveAccount(progress.account.id);
+    await ref.read(dbProvider).archiveAccount(loan.account.id);
     if (!navigator.mounted) return;
     navigator.pop();
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Goal archived')));
+      ..showSnackBar(const SnackBar(content: Text('Loan archived')));
   }
 
   Future<void> _confirmDelete(
     BuildContext context,
     WidgetRef ref,
-    GoalProgress progress,
+    LoanProgress loan,
   ) async {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text('Delete "${progress.account.name}"?'),
+        title: Text('Delete "${loan.account.name}"?'),
         content: const Text(
-          'Permanent. A goal that has ever been funded refuses to delete — '
+          'Permanent. A loan that has had payments refuses to delete — '
           'archive it instead.',
         ),
         actions: [
@@ -426,7 +335,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
     if (confirmed != true) return;
 
     try {
-      await ref.read(dbProvider).deleteAccount(progress.account.id);
+      await ref.read(dbProvider).deleteAccount(loan.account.id);
     } on ArgumentError catch (e) {
       messenger
         ..hideCurrentSnackBar()
@@ -439,17 +348,17 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
     navigator.pop();
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Goal deleted')));
+      ..showSnackBar(const SnackBar(content: Text('Loan deleted')));
   }
 }
 
-enum _GoalAction { fixStartingAmount, archive, delete }
+enum _LoanAction { archive, delete }
 
-void _openFundsSheet(
-  BuildContext context,
-  int goalAccountId, {
-  required bool isAdd,
+void _openPaymentSheet(
+  BuildContext context, {
+  required int loanAccountId,
   int? defaultCategoryId,
+  Money? emiAmount,
 }) {
   showModalBottomSheet<void>(
     context: context,
@@ -459,36 +368,32 @@ void _openFundsSheet(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
-    builder: (_) => _FundsSheet(
-      goalAccountId: goalAccountId,
-      isAdd: isAdd,
+    builder: (_) => _LoanPaymentSheet(
+      loanAccountId: loanAccountId,
       defaultCategoryId: defaultCategoryId,
+      emiAmount: emiAmount,
     ),
   );
 }
 
-/// Add funds: pick a source, money moves source → goal. Withdraw: pick a
-/// destination, money moves goal → destination. Either way it's exactly the
-/// transfer the old doc comment said this screen would never offer a
-/// shortcut for — now it does.
-class _FundsSheet extends ConsumerStatefulWidget {
-  const _FundsSheet({
-    required this.goalAccountId,
-    required this.isAdd,
+class _LoanPaymentSheet extends ConsumerStatefulWidget {
+  const _LoanPaymentSheet({
+    required this.loanAccountId,
     this.defaultCategoryId,
+    this.emiAmount,
   });
 
-  final int goalAccountId;
-  final bool isAdd;
+  final int loanAccountId;
   final int? defaultCategoryId;
+  final Money? emiAmount;
 
   @override
-  ConsumerState<_FundsSheet> createState() => _FundsSheetState();
+  ConsumerState<_LoanPaymentSheet> createState() => _LoanPaymentSheetState();
 }
 
-class _FundsSheetState extends ConsumerState<_FundsSheet> {
-  final _amountController = TextEditingController();
-  int? _otherAccountId;
+class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
+  late final TextEditingController _amountController;
+  int? _sourceAccountId;
   late int? _categoryId;
   bool _submitting = false;
 
@@ -496,6 +401,9 @@ class _FundsSheetState extends ConsumerState<_FundsSheet> {
   void initState() {
     super.initState();
     _categoryId = widget.defaultCategoryId;
+    _amountController = TextEditingController(
+      text: widget.emiAmount == null ? '' : MoneyFormat.bare(widget.emiAmount!),
+    );
   }
 
   @override
@@ -516,26 +424,22 @@ class _FundsSheetState extends ConsumerState<_FundsSheet> {
       _showError('Enter an amount greater than zero.');
       return;
     }
-    final otherId = _otherAccountId;
-    if (otherId == null) {
-      _showError(
-        widget.isAdd ? 'Choose a source account.' : 'Choose where it goes.',
-      );
+    final sourceId = _sourceAccountId;
+    if (sourceId == null) {
+      _showError('Choose a source account.');
       return;
     }
 
     setState(() => _submitting = true);
     final navigator = Navigator.of(context);
     try {
-      await ref
-          .read(dbProvider)
-          .addTransaction(
+      await ref.read(dbProvider).addTransaction(
             type: TxType.transfer,
-            accountId: widget.isAdd ? otherId : widget.goalAccountId,
-            toAccountId: widget.isAdd ? widget.goalAccountId : otherId,
+            accountId: sourceId,
+            toAccountId: widget.loanAccountId,
             amount: amount,
             date: DateTime.now(),
-            categoryId: widget.isAdd ? _categoryId : null,
+            categoryId: _categoryId,
           );
       if (!mounted) return;
       navigator.pop();
@@ -556,15 +460,16 @@ class _FundsSheetState extends ConsumerState<_FundsSheet> {
     final accounts =
         (ref.watch(balanceAccountsProvider).valueOrNull ?? const [])
             .where(
-              (a) => a.id != widget.goalAccountId && a.type != AccountType.goal,
+              (a) =>
+                  a.id != widget.loanAccountId &&
+                  a.type != AccountType.goal &&
+                  a.type != AccountType.loan,
             )
             .toList();
-    final categories = widget.isAdd
-        ? [
-            ...ref.watch(categoriesProvider(CategoryKind.expense)).valueOrNull ?? [],
-            ...ref.watch(categoriesProvider(CategoryKind.income)).valueOrNull ?? [],
-          ]
-        : const [];
+    final categories = [
+      ...ref.watch(categoriesProvider(CategoryKind.expense)).valueOrNull ?? [],
+      ...ref.watch(categoriesProvider(CategoryKind.income)).valueOrNull ?? [],
+    ];
 
     return Padding(
       padding: EdgeInsets.only(
@@ -581,23 +486,21 @@ class _FundsSheetState extends ConsumerState<_FundsSheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            widget.isAdd ? 'Add funds' : 'Withdraw',
+            'Make a payment',
             style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 20),
           DropdownButtonFormField<int>(
-            initialValue: _otherAccountId,
+            initialValue: _sourceAccountId,
             isExpanded: true,
-            decoration: InputDecoration(
-              labelText: widget.isAdd ? 'From' : 'To',
-            ),
+            decoration: const InputDecoration(labelText: 'From'),
             items: [
               for (final a in accounts)
                 DropdownMenuItem(value: a.id, child: Text(a.name)),
             ],
-            onChanged: (v) => setState(() => _otherAccountId = v),
+            onChanged: (v) => setState(() => _sourceAccountId = v),
           ),
           const SizedBox(height: 16),
           TextField(
@@ -612,20 +515,18 @@ class _FundsSheetState extends ConsumerState<_FundsSheet> {
               prefixText: MoneyFormat.inputPrefix,
             ),
           ),
-          if (widget.isAdd) ...[
-            const SizedBox(height: 16),
-            DropdownButtonFormField<int?>(
-              value: _categoryId,
-              isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Category (optional)'),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('None')),
-                for (final c in categories)
-                  DropdownMenuItem(value: c.id, child: Text(c.name)),
-              ],
-              onChanged: (v) => setState(() => _categoryId = v),
-            ),
-          ],
+          const SizedBox(height: 16),
+          DropdownButtonFormField<int?>(
+            value: _categoryId,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Category (optional)'),
+            items: [
+              const DropdownMenuItem(value: null, child: Text('None')),
+              for (final c in categories)
+                DropdownMenuItem(value: c.id, child: Text(c.name)),
+            ],
+            onChanged: (v) => setState(() => _categoryId = v),
+          ),
           const SizedBox(height: 20),
           FilledButton(
             onPressed: _submitting ? null : _save,
@@ -635,7 +536,7 @@ class _FundsSheetState extends ConsumerState<_FundsSheet> {
                     width: 22,
                     child: CircularProgressIndicator(strokeWidth: 2.4),
                   )
-                : Text(widget.isAdd ? 'Add funds' : 'Withdraw'),
+                : const Text('Make a payment'),
           ),
         ],
       ),
