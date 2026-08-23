@@ -10,6 +10,7 @@ import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../auto/recurring_rule_sheet.dart';
 
 /// A month calendar built by hand (no calendar package). Each day cell shows the
 /// money in / out for that day and a dot when an open reminder falls on it.
@@ -234,6 +235,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               categoryMap,
               accountMap,
               openReminders,
+              recurringRules,
             ),
           const SizedBox(height: 20),
           Text(
@@ -445,11 +447,20 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     Map<int, CategoryRow> categoryMap,
     Map<int, AccountRow> accountMap,
     List<ReminderRow> openReminders,
+    List<RecurringRuleRow> recurringRules,
   ) {
     final day = _selectedDay!;
     final dayReminders =
         openReminders.where((r) => _dateOnly(r.dueDate) == day).toList()
           ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+    // The yellow/red dot on this day may come from an Auto rule rather than
+    // a Reminder — without this, tapping that day showed nothing at all for
+    // it (GitHub #69), even though the dot promised something was there.
+    final dueRules =
+        recurringRules
+            .where((r) => r.isActive && _dateOnly(r.nextDueDate) == day)
+            .toList()
+          ..sort((a, b) => a.name.compareTo(b.name));
     final dayTx = txns.where((t) => _dateOnly(t.date) == day).toList()
       ..sort((a, b) => b.date.compareTo(a.date));
 
@@ -463,9 +474,17 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       const SizedBox(height: 12),
     ];
 
-    if (dayReminders.isEmpty && dayTx.isEmpty) {
+    if (dayReminders.isEmpty && dueRules.isEmpty && dayTx.isEmpty) {
       widgets.add(_emptyCard(theme, 'Nothing on this day.'));
       return widgets;
+    }
+
+    if (dueRules.isNotEmpty) {
+      widgets
+        ..add(_sectionLabel(theme, 'Auto rules due'))
+        ..add(const SizedBox(height: 8))
+        ..addAll(dueRules.map((r) => _dueRuleTile(theme, r)))
+        ..add(const SizedBox(height: 16));
     }
 
     if (dayReminders.isNotEmpty) {
@@ -585,6 +604,44 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// An Auto rule whose `nextDueDate` lands on the selected day — it posts
+  /// itself on schedule with no confirmation step, so unlike [_reminderTile]
+  /// there's no "mark as paid" here, just a way to see what the dot means
+  /// and jump to the rule if it needs adjusting.
+  Widget _dueRuleTile(ThemeData theme, RecurringRuleRow r) {
+    final cs = theme.colorScheme;
+    final isExpense = r.kind == CategoryKind.expense;
+    final accent = isExpense ? AppColors.expense : AppColors.income;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: accent.withValues(alpha: 0.15),
+          foregroundColor: accent,
+          child: Icon(
+            isExpense ? Icons.north_east_rounded : Icons.south_west_rounded,
+          ),
+        ),
+        title: Text(r.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+        subtitle: Text(
+          r.isEstimate ? 'Auto rule · estimate' : 'Auto rule',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: cs.onSurfaceVariant,
+          ),
+        ),
+        trailing: MoneyText(
+          r.amount,
+          color: accent,
+          style: theme.textTheme.bodyLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        onTap: () => showRecurringRuleSheet(context, existing: r),
       ),
     );
   }
