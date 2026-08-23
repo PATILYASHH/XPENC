@@ -139,6 +139,18 @@ flutter:
     - assets/tessdata/eng.traineddata
     - assets/tessdata_config.json
 
+  # The Bold theme's own typography (see ThemeShape.bold) — bundled once,
+  # offline, rather than fetched at runtime with a package like google_fonts.
+  # Both are variable fonts: one file each covers every weight the app uses,
+  # from the Sora headline at 800 down to Manrope's 400 body text.
+  fonts:
+    - family: Sora
+      fonts:
+        - asset: assets/fonts/Sora-Variable.ttf
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/Manrope-Variable.ttf
+
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

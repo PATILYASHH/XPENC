@@ -14,6 +14,8 @@ class ThemeShape {
     required this.cardRadius,
     required this.headlineWeight,
     required this.headlineLetterSpacing,
+    this.displayFontFamily,
+    this.bodyFontFamily,
   });
 
   /// Buttons, inputs, list tiles.
@@ -25,6 +27,15 @@ class ThemeShape {
 
   final FontWeight headlineWeight;
   final double headlineLetterSpacing;
+
+  /// Font family for display/headline/title-large roles — the big, showy
+  /// text. `null` keeps the platform default; every preset before Bold
+  /// leaves this unset.
+  final String? displayFontFamily;
+
+  /// Font family for title-medium-and-smaller, body and label roles — the
+  /// working text. `null` keeps the platform default.
+  final String? bodyFontFamily;
 
   /// Today's numbers, unchanged — every preset before Cove uses this.
   static const classic = ThemeShape(
@@ -41,5 +52,16 @@ class ThemeShape {
     cardRadius: 32,
     headlineWeight: FontWeight.w800,
     headlineLetterSpacing: -0.6,
+  );
+
+  /// [classic]'s radii, but with the confident geometric pairing Bold builds
+  /// its whole personality around: Sora headlines over Manrope body text.
+  static const bold = ThemeShape(
+    controlRadius: 20,
+    cardRadius: 24,
+    headlineWeight: FontWeight.w800,
+    headlineLetterSpacing: -0.5,
+    displayFontFamily: 'Sora',
+    bodyFontFamily: 'Manrope',
   );
 }

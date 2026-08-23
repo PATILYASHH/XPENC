@@ -63,6 +63,15 @@ enum ThemePreset {
     lightPalette: AppPalettes.coveLight,
     darkPalette: AppPalettes.coveDark,
     shape: ThemeShape.soft,
+  ),
+  bold(
+    label: 'Bold',
+    description: 'Near-black with a coral & gold accent',
+    icon: Icons.bolt_rounded,
+    mode: ThemeMode.dark,
+    lightPalette: AppPalettes.bold,
+    darkPalette: AppPalettes.bold,
+    shape: ThemeShape.bold,
   );
 
   const ThemePreset({
