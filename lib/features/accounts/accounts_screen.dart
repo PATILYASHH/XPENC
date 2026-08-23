@@ -12,8 +12,14 @@ import '../../data/tables.dart';
 import 'add_account_sheet.dart';
 
 /// Total money + per-account balances, grouped Cash · Bank · Cards.
+///
+/// [embedded] is true when this screen is a bottom-nav tab (GitHub #70) —
+/// `AppShell`'s shared top bar owns the title/actions then. Default `false`
+/// keeps `/more/accounts` exactly as it was.
 class AccountsScreen extends ConsumerWidget {
-  const AccountsScreen({super.key});
+  const AccountsScreen({this.embedded = false, super.key});
+
+  final bool embedded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -23,27 +29,28 @@ class AccountsScreen extends ConsumerWidget {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(
-            pinned: true,
-            title: const Text('Accounts'),
-            actions: [
-              IconButton(
-                tooltip: 'Statement',
-                icon: const Icon(Icons.picture_as_pdf_outlined),
-                onPressed: () => _downloadCombinedStatement(context, ref),
-              ),
-              IconButton(
-                tooltip: 'Archived accounts',
-                icon: const Icon(Icons.inventory_2_outlined),
-                onPressed: () => context.push('/more/accounts/archived'),
-              ),
-              IconButton(
-                tooltip: 'Add account',
-                icon: const Icon(Icons.add_rounded),
-                onPressed: () => showAddAccountSheet(context),
-              ),
-            ],
-          ),
+          if (!embedded)
+            SliverAppBar(
+              pinned: true,
+              title: const Text('Accounts'),
+              actions: [
+                IconButton(
+                  tooltip: 'Statement',
+                  icon: const Icon(Icons.picture_as_pdf_outlined),
+                  onPressed: () => _downloadCombinedStatement(context, ref),
+                ),
+                IconButton(
+                  tooltip: 'Archived accounts',
+                  icon: const Icon(Icons.inventory_2_outlined),
+                  onPressed: () => context.push('/more/accounts/archived'),
+                ),
+                IconButton(
+                  tooltip: 'Add account',
+                  icon: const Icon(Icons.add_rounded),
+                  onPressed: () => showAddAccountSheet(context),
+                ),
+              ],
+            ),
           const SliverToBoxAdapter(child: _TotalMoneyCard()),
           ...accountsAsync.when(
             data: (accounts) => _sections(context, ref, accounts, accountMap),
