@@ -163,7 +163,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 33;
+  int get schemaVersion => 34;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -328,6 +328,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 33) {
         await m.createTable(transactionLinks);
+      }
+      if (from < 34) {
+        await _addColumnIfMissing(m, settings, settings.bottomNavSlots);
       }
     },
     beforeOpen: (details) async {
@@ -3062,6 +3065,32 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> setHideAmounts(bool value) =>
       update(settings).write(SettingsCompanion(hideAmounts: Value(value)));
+
+  /// The 7 destinations a configurable bottom-nav slot can hold — Dashboard
+  /// and More are pinned and deliberately excluded (see GitHub #70's design
+  /// spec, "Non-goals").
+  static const bottomNavCatalogIds = {
+    'transactions',
+    'persons',
+    'calendar',
+    'budgets',
+    'accounts',
+    'stats',
+    'payees',
+  };
+
+  Future<void> setBottomNavSlots(String left, String right) async {
+    if (!bottomNavCatalogIds.contains(left) ||
+        !bottomNavCatalogIds.contains(right)) {
+      throw ArgumentError('Unknown bottom-nav item.');
+    }
+    if (left == right) {
+      throw ArgumentError('The two bottom-nav slots must be different.');
+    }
+    await update(
+      settings,
+    ).write(SettingsCompanion(bottomNavSlots: Value('$left,$right')));
+  }
 
   // ── Expense reminder ─────────────────────────────────────────────────────
 
