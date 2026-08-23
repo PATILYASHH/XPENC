@@ -66,35 +66,41 @@ class CategoryPieChart extends StatelessWidget {
       data.addAll(positive);
     }
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          height: 220,
-          child: PieChart(
-            PieChartData(
-              centerSpaceRadius: 46,
-              sectionsSpace: 2,
-              sections: [
-                for (final s in data)
-                  PieChartSectionData(
-                    value: s.value.paise / 100,
-                    color: s.color,
-                    radius: 60,
-                    showTitle: false,
-                  ),
-              ],
+    // See the matching note on BudgetRadialChart: without an explicit full
+    // width, this Column shrink-wraps to its widest child instead of the
+    // card's own width, and drifts left instead of sitting centred in it.
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            height: 220,
+            child: PieChart(
+              PieChartData(
+                centerSpaceRadius: 46,
+                sectionsSpace: 2,
+                sections: [
+                  for (final s in data)
+                    PieChartSectionData(
+                      value: s.value.paise / 100,
+                      color: s.color,
+                      radius: 60,
+                      showTitle: false,
+                    ),
+                ],
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 16,
-          runSpacing: 10,
-          alignment: WrapAlignment.center,
-          children: [for (final s in data) _LegendChip(slice: s)],
-        ),
-      ],
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 16,
+            runSpacing: 10,
+            alignment: WrapAlignment.center,
+            children: [for (final s in data) _LegendChip(slice: s)],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -180,23 +186,39 @@ class BudgetRadialChart extends StatelessWidget {
       }
     }
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          key: const Key('budgetRadialPaintArea'),
-          height: 200,
-          width: 200,
-          child: CustomPaint(painter: _BudgetSectorPainter(data)),
-        ),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 16,
-          runSpacing: 10,
-          alignment: WrapAlignment.center,
-          children: [for (final s in data) _BudgetLegendChip(slice: s)],
-        ),
-      ],
+    // Column alone shrink-wraps to its widest child — here, a 220px circle
+    // and a legend that (unlike a Row of Expanded tiles elsewhere on the
+    // dashboard) never has to claim the full card width. Left unforced, the
+    // whole card ends up narrower than every card around it and drifts to
+    // the left edge of the section instead of sitting centred in it. The
+    // infinite-width SizedBox forces the card back to the section's width,
+    // so Column's own default centring actually has something to centre in.
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            key: const Key('budgetRadialPaintArea'),
+            height: 220,
+            width: 220,
+            child: CustomPaint(painter: _BudgetSectorPainter(data)),
+          ),
+          const SizedBox(height: 20),
+          Column(
+            children: [
+              for (var i = 0; i < data.length; i++) ...[
+                if (i > 0)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 10),
+                    child: Divider(height: 1),
+                  ),
+                _BudgetLegendRow(slice: data[i]),
+              ],
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -285,60 +307,50 @@ class _BudgetSectorPainter extends CustomPainter {
   bool shouldRepaint(_BudgetSectorPainter old) => !identical(old.slices, slices);
 }
 
-class _BudgetLegendChip extends StatelessWidget {
-  const _BudgetLegendChip({required this.slice});
+/// One line per category: a colour dot naming it back to its wedge, the
+/// name, and `spent / budget` in tabular figures — a real list, not a
+/// wrapping cloud of chips, so the eye can scan straight down the amounts.
+class _BudgetLegendRow extends StatelessWidget {
+  const _BudgetLegendRow({required this.slice});
 
   final _BudgetSlice slice;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 170),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 3),
-            child: Container(
-              width: 10,
-              height: 10,
-              decoration:
-                  BoxDecoration(color: slice.color, shape: BoxShape.circle),
+    return Row(
+      children: [
+        Container(
+          width: 11,
+          height: 11,
+          decoration: BoxDecoration(color: slice.color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            slice.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  slice.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                Text(
-                  '${MoneyFormat.compact(slice.spent)}'
-                  ' / ${MoneyFormat.compact(slice.budget)}'
-                  '${slice.overspent ? ' · over' : ''}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: slice.overspent
-                        ? AppColors.expense
-                        : theme.colorScheme.onSurfaceVariant,
-                    fontFeatures: kTabularFigures,
-                  ),
-                ),
-              ],
-            ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          '${MoneyFormat.compact(slice.spent)}'
+          ' / ${MoneyFormat.compact(slice.budget)}'
+          '${slice.overspent ? ' · over' : ''}',
+          maxLines: 1,
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: slice.overspent
+                ? AppColors.expense
+                : theme.colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
+            fontFeatures: kTabularFigures,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
