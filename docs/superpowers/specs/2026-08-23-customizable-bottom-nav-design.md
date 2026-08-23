@@ -17,92 +17,99 @@ Transactions, ➕ (a pushed route, not a tab), Persons, More — backed by a
 
 ## Decisions already made (with the user, before this doc)
 
-- All 4 non-➕ slots become freely configurable — not just the Persons slot.
+- **Dashboard and More stay permanent, non-swappable bar positions** (outer
+  slots 1 and 5). More is the only door to Settings/Backup/Categories/etc.,
+  so it can't be configured away; Dashboard is the app's home screen and
+  stays the fixed landing tab. Neither needs any router/screen change —
+  both keep working exactly as they do today.
+- Only the **two slots flanking the ➕ button** (today: Transactions,
+  Persons) are user-configurable, independently of each other.
 - A swapped-in destination becomes a *real* tab: its own shell branch, no
   back arrow, state/scroll preserved when switching away and back — same
-  tier as Dashboard/Transactions/Persons today, not a shortcut that pushes
-  a route with a back button.
-- The catalog is the "medium" set: today's 4 items plus Calendar & Reminders,
-  Budgets, Accounts, Stats, Payees (8 total).
-- **More is removed from the catalog entirely.** It's the only door to
-  Settings/Backup/Categories/Tags/etc., so if it could be configured away
-  a user could lock themselves out of Settings. Instead it becomes a
-  permanent icon in the top bar, always present regardless of which 4 tabs
-  are configured.
+  tier as Dashboard/Transactions/Persons/More today, not a shortcut that
+  pushes a route with a back button.
+- The catalog for those two slots is the "medium" set: Transactions,
+  Persons, plus Calendar & Reminders, Budgets, Accounts, Stats, Payees
+  (7 total). Dashboard and More are excluded from the catalog — they're
+  pinned, never a choice.
 
 ## Non-goals
 
-- Variable slot count. Always exactly 4 configurable slots (matches the
-  existing 2 + ➕ + 2 layout). Revisit only if actually requested later.
+- Touching the Dashboard or More slots at all — they're out of scope, fixed.
+- Variable slot count. Always exactly the 2 configurable slots (matches the
+  existing 1 + ➕ + 1 layout between the pinned ends). Revisit only if
+  actually requested later.
 - Reordering/removing the ➕ button itself — it stays fixed dead center.
 - Any change to what the More hub itself contains or how it's laid out.
 
 ## Catalog & data model
 
-8 catalog ids, each mapped to a fixed, permanent shell-branch index (assigned
-once, never reordered by user configuration — only *visibility and bar
-position* are user-configurable):
+9 branches total, each mapped to a fixed, permanent shell-branch index
+(assigned once, never reordered by user configuration):
 
-| id | branch index | label | screen |
-|---|---|---|---|
-| `dashboard` | 0 | Dashboard | `DashboardScreen` |
-| `transactions` | 1 | Transactions | `TransactionsScreen` |
-| `persons` | 2 | Persons | `PersonsScreen` |
-| `calendar` | 3 | Calendar | `CalendarScreen` |
-| `budgets` | 4 | Budgets | `BudgetsScreen` |
-| `accounts` | 5 | Accounts | `AccountsScreen` |
-| `stats` | 6 | Stats | `StatsScreen` |
-| `payees` | 7 | Payees | `PayeesScreen` |
+| id | branch index | label | screen | pinned? |
+|---|---|---|---|---|
+| `dashboard` | 0 | Dashboard | `DashboardScreen` | yes — slot 1, fixed |
+| `transactions` | 1 | Transactions | `TransactionsScreen` | no — catalog |
+| `persons` | 2 | Persons | `PersonsScreen` | no — catalog |
+| `more` | 3 | More | `MoreScreen` | yes — slot 5, fixed |
+| `calendar` | 4 | Calendar | `CalendarScreen` | no — catalog |
+| `budgets` | 5 | Budgets | `BudgetsScreen` | no — catalog |
+| `accounts` | 6 | Accounts | `AccountsScreen` | no — catalog |
+| `stats` | 7 | Stats | `StatsScreen` | no — catalog |
+| `payees` | 8 | Payees | `PayeesScreen` | no — catalog |
+
+`dashboard` and `more` are never part of the configurable catalog — they
+render at fixed bar positions 1 and 5 unconditionally, sourced directly
+from the existing `_tabs` entries, untouched.
 
 Keeping branch indices fixed means existing index-based logic (e.g.
 `AppShell._goBranch`'s scroll-to-top special case, hardcoded today as
-`branchIndex == 1` for Transactions) keeps working unchanged — only the
-bar's displayed subset/order changes, never the underlying branch wiring.
+`branchIndex == 1` for Transactions) keeps working unchanged — only which
+catalog item sits in each of the 2 configurable *bar positions* varies,
+never the underlying branch wiring.
 
 New `Settings` column, following the existing `themeName` convention (text,
 not an enum index, so nothing silently breaks if the catalog is reordered
 later):
 
 ```dart
-/// Ordered, comma-separated list of exactly 4 distinct catalog ids —
-/// which bottom-nav slots are visible and in what order. See
-/// `BottomNavCatalog` in app_shell.dart for the valid id set.
-TextColumn get bottomNavItems => text()
-    .withDefault(const Constant('dashboard,transactions,persons,calendar'))();
+/// Comma-separated pair of distinct catalog ids for the two configurable
+/// bar slots — left-of-➕ then right-of-➕. Dashboard and More are fixed
+/// and never appear here. See `BottomNavCatalog` in app_shell.dart for the
+/// valid id set.
+TextColumn get bottomNavSlots => text()
+    .withDefault(const Constant('transactions,persons'))();
 ```
 
 Schema v33 → v34, migration via the existing `_addColumnIfMissing` helper
 in `lib/data/database.dart`.
 
-Default is `dashboard,transactions,persons,calendar` — keeps the first 3
-slots identical to today for every existing user (least-surprise upgrade)
-and fills the old More slot with Calendar, which both resolves #70 as the
-new out-of-the-box default *and* leaves every user free to change it.
+Default is `transactions,persons` — identical to today's layout for every
+existing user (least-surprise upgrade). Resolving #70 is then just the user
+changing their own right-hand slot to `calendar` from the new settings
+screen, exactly what the issue asked for.
 
-`AppDatabase` gains `setBottomNavItems(List<String> ids)` (validates length
-== 4 and all-distinct-from-catalog, same house style as other settings
-setters — no separate repository class).
+`AppDatabase` gains `setBottomNavSlots(String left, String right)`
+(validates both are in the catalog and distinct from each other, same
+house style as other settings setters — no separate repository class).
 
 ## Router / shell restructuring
 
-- `/more` stops being a `StatefulShellBranch`. It becomes a plain pushed
-  `GoRoute` on `_rootKey` (sibling of `/add`, `/inbox`, etc.) — same tier as
-  every screen it already contains. Its existing nested routes
-  (`/more/budgets`, `/more/calendar`, `/more/settings`, ...) are **untouched** —
-  the More hub keeps working exactly as it does today, unconditionally,
-  regardless of nav bar configuration. This is a deliberate dual-path: a
-  catalog item reachable via a configured tab *and* still reachable (fresh,
-  non-preserved, with a back button) via the More hub, same as Dashboard
-  isn't reachable from More today but Budgets already lives happily as a
-  push-only screen.
-- `MoreScreen` gains its own `Scaffold(appBar: AppBar(title: Text('More'), ...))`
-  since it no longer sits inside the shell's shared top bar.
+- `/dashboard`, `/transactions`, `/persons`, and `/more` (plus all of
+  More's existing nested routes) are **completely untouched** — Dashboard
+  and More being pinned means neither needs any restructuring at all.
 - 5 new top-level `StatefulShellBranch`es added at new paths distinct from
-  their `/more/*` siblings: `/calendar`, `/budgets`, `/accounts`, `/stats`,
-  `/payees`. Each builder passes `embedded: true` to the screen (see below).
-- go_router only builds a branch's navigator on first visit, so the 3-5
-  catalog branches a given user never selects cost nothing at startup —
-  no eager preload needed.
+  their `/more/*` siblings (which stay exactly as they are, for the
+  unconditional "reach it via the More hub" path): `/calendar`, `/budgets`,
+  `/accounts`, `/stats`, `/payees`. Each builder passes `embedded: true` to
+  the screen (see below). This is a deliberate dual-path — e.g. Calendar is
+  reachable both as a configured tab (preserved state, no back arrow) and,
+  unconditionally, via the More hub's existing "Calendar & Reminders" tile
+  (fresh each time, with a back arrow) — same as today, unaffected.
+- go_router only builds a branch's navigator on first visit, so the catalog
+  branches a given user doesn't currently have configured into a slot cost
+  nothing at startup — no eager preload needed.
 
 ## Screen changes (embeddable mode)
 
@@ -137,22 +144,20 @@ screen is a tab:
 
 ## AppShell changes
 
-- `_tabs` (today a hardcoded 4-item `const` list) becomes derived at build
-  time from `Settings.bottomNavItems`, resolved through a static
-  `BottomNavCatalog` map (`id -> (icon, activeIcon, label, branchIndex)`)
-  covering all 8 ids.
-- The bar renders exactly the user's 4 configured items, in their chosen
-  order, around the fixed center ➕ — same `Row` structure as today, just
-  built from a variable-length-4 list instead of the literal `_tabs[0..3]`.
-- `_TopBar._titles`/`_tabActions` extend from a 4-case to an 8-case switch
-  (indexed by branch index, same as today — unaffected by bar order).
-- New permanent top-bar icon (a `_TonalIconButton`, same idiom as the
-  existing Review Inbox button) pushes `/more`. Always shown, on every tab,
-  regardless of configuration.
-- Edge case: if the user reconfigures the bar while sitting on a branch
-  that's no longer in the visible 4, redirect to the first visible slot's
-  branch (mirrors what would otherwise be a tab with no bar button pointing
-  at it).
+- Bar layout stays `[Dashboard, slotLeft, ➕, slotRight, More]` — visually
+  identical structure to today, just the middle two positions are now
+  data-driven instead of the literal `_tabs[1]`/`_tabs[2]`.
+- `slotLeft`/`slotRight` are resolved at build time from
+  `Settings.bottomNavSlots`, through a static `BottomNavCatalog` map
+  (`id -> (icon, activeIcon, label, branchIndex)`) covering the 7 catalog
+  ids. Dashboard and More keep coming straight from the existing hardcoded
+  `_tabs` entries, unchanged.
+- `_TopBar._titles`/`_tabActions` extend from a 4-case to a 9-case switch
+  (indexed by branch index, same as today — unaffected by which catalog
+  item currently occupies a slot).
+- Edge case: if the user reconfigures a slot while sitting on the branch
+  that used to occupy it, redirect to Dashboard (mirrors what would
+  otherwise be a tab with no bar button pointing at it).
 
 ## Settings UI
 
@@ -160,27 +165,30 @@ New screen, reachable from the More hub's "Setup" group (a
 `_Item(Icons.dashboard_customize_outlined, 'Customize bottom nav', route: '/more/bottom-nav', ...)`
 tile, alongside Settings):
 
-- Lists the 4 active slots in order with drag handles (`ReorderableListView`,
-  reorders `bottomNavItems` directly).
-- Each row has a "change" action opening a bottom-sheet picker (same visual
-  idiom as `ThemePickerSheet` — radio-style list, checkmark on current)
-  restricted to the 8 catalog ids, excluding whichever 3 are already used in
-  the *other* slots (so the result is always 4 distinct ids — no dedup
+- Shows the bar layout schematically: Dashboard and More labeled as fixed
+  (no picker, just a disabled-looking row so it's clear they can't be
+  changed), with the two configurable rows in between.
+- Each configurable row opens a bottom-sheet picker (same visual idiom as
+  `ThemePickerSheet` — radio-style list, checkmark on current) restricted
+  to the 7 catalog ids, excluding whichever one the *other* configurable
+  slot currently uses (so the result is always 2 distinct ids — no dedup
   logic needed elsewhere).
-- Saves through `AppDatabase.setBottomNavItems` on every change (no separate
+- No reordering needed — with only 2 configurable slots, "which item goes
+  left vs. right" is just picking per-row, not a drag operation.
+- Saves through `AppDatabase.setBottomNavSlots` on every change (no separate
   "Save" button, matching how every other settings toggle in this app
   persists immediately).
 
 ## Testing
 
-- `test/smoke_test.dart`: update for the new default tab set
-  (`dashboard,transactions,persons,calendar`) if it asserts specific tab
-  labels/order.
-- New test: changing the nav customization screen's picker/reorder updates
-  `Settings.bottomNavItems` and is reflected in `AppShell`'s rendered bar on
-  next build.
+- `test/smoke_test.dart`: unaffected if it doesn't assert exact tab
+  contents (default keeps today's layout byte-for-byte); update only if it
+  does.
+- New test: changing a slot's picker updates `Settings.bottomNavSlots` and
+  is reflected in `AppShell`'s rendered bar on next build; Dashboard/More
+  positions never change.
 - New test: a branch no longer in the visible set, while currently active,
-  redirects to the first visible slot.
+  redirects to Dashboard.
 - Existing behavior for Budgets/Stats/Calendar's *pushed* (`embedded: false`)
   path — reached via `/more/*` — must be unaffected; existing tests for
   those screens should pass unchanged since that's the default constructor
@@ -190,6 +198,8 @@ tile, alongside Settings):
 
 Purely additive: one new `Settings` column with a safe default, 5 new
 routes/branches, no existing route removed, no existing table changed,
-`/more/*` deep links untouched. Existing users see identical top-3 tabs
-after upgrade, with Calendar filling the old More slot and More itself one
-tap away via the new permanent icon.
+`/more/*` deep links untouched, Dashboard/Transactions/Persons/More all
+byte-for-byte unchanged in their own screen code. Existing users see an
+*identical* bar after upgrade (default reproduces today's layout exactly);
+#70 is resolved by the reporter opening the new settings screen and putting
+Calendar in their right-hand slot themselves.
