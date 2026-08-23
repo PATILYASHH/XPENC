@@ -8,31 +8,91 @@ import '../../features/transactions/transaction_filters.dart';
 import '../branding/app_info.dart';
 import '../branding/brand_mark.dart';
 
-/// `Dashboard · Transactions · ➕ · Persons · More`
+/// `Dashboard · slotLeft · ➕ · slotRight · More`
 ///
-/// The ➕ slot is not a tab — it pushes the Add Transaction route. Tabs map to
-/// shell branches 0,1,2,3 while sitting at bar slots 0,1,3,4.
+/// The ➕ slot is not a tab — it pushes the Add Transaction route. Dashboard
+/// (branch 0) and More (branch 3) are permanently pinned; `slotLeft`/
+/// `slotRight` are resolved from `Settings.bottomNavSlots` through
+/// [_catalog] — see GitHub #70's design spec for the full branch-index
+/// table (0=dashboard, 1=transactions, 2=persons, 3=more, 4=calendar,
+/// 5=budgets, 6=accounts, 7=stats, 8=payees; the last 5 were added by this
+/// feature and are only reachable when a user picks them into a slot).
 class AppShell extends ConsumerWidget {
   const AppShell({required this.navigationShell, super.key});
 
   final StatefulNavigationShell navigationShell;
 
-  static const _tabs = <_TabSpec>[
-    _TabSpec(
-      0,
-      Icons.pie_chart_outline_rounded,
-      Icons.pie_chart_rounded,
-      'Dashboard',
-    ),
-    _TabSpec(
+  static const _dashboard = _TabSpec(
+    0,
+    Icons.pie_chart_outline_rounded,
+    Icons.pie_chart_rounded,
+    'Dashboard',
+  );
+  static const _more = _TabSpec(
+    3,
+    Icons.grid_view_outlined,
+    Icons.grid_view_rounded,
+    'More',
+  );
+
+  /// The 7 destinations a configurable slot can be set to — must match
+  /// `AppDatabase.bottomNavCatalogIds` exactly (a mismatch would let a slot
+  /// resolve to nothing and silently vanish from the bar).
+  static const _catalog = <String, _TabSpec>{
+    'transactions': _TabSpec(
       1,
       Icons.receipt_long_outlined,
       Icons.receipt_long_rounded,
       'Transactions',
     ),
-    _TabSpec(2, Icons.people_alt_outlined, Icons.people_alt_rounded, 'Persons'),
-    _TabSpec(3, Icons.grid_view_outlined, Icons.grid_view_rounded, 'More'),
-  ];
+    'persons': _TabSpec(
+      2,
+      Icons.people_alt_outlined,
+      Icons.people_alt_rounded,
+      'Persons',
+    ),
+    'calendar': _TabSpec(
+      4,
+      Icons.calendar_month_outlined,
+      Icons.calendar_month_rounded,
+      'Calendar',
+    ),
+    'budgets': _TabSpec(
+      5,
+      Icons.donut_large_outlined,
+      Icons.donut_large_rounded,
+      'Budgets',
+    ),
+    'accounts': _TabSpec(
+      6,
+      Icons.account_balance_wallet_outlined,
+      Icons.account_balance_wallet_rounded,
+      'Accounts',
+    ),
+    'stats': _TabSpec(7, Icons.insights_outlined, Icons.insights_rounded, 'Stats'),
+    'payees': _TabSpec(
+      8,
+      Icons.storefront_outlined,
+      Icons.storefront_rounded,
+      'Payees',
+    ),
+  };
+
+  static (String, String) _slotIds(WidgetRef ref) {
+    final raw =
+        ref.watch(settingsProvider).valueOrNull?.bottomNavSlots ??
+        'transactions,persons';
+    final parts = raw.split(',');
+    if (parts.length != 2 ||
+        !_catalog.containsKey(parts[0]) ||
+        !_catalog.containsKey(parts[1])) {
+      // A value that somehow doesn't parse (shouldn't happen — only
+      // `setBottomNavSlots` ever writes this column, and it validates) falls
+      // back to the same default the column itself defaults to.
+      return ('transactions', 'persons');
+    }
+    return (parts[0], parts[1]);
+  }
 
   /// Re-tapping the tab you're already on doesn't navigate anywhere — instead
   /// it signals that tab's screen to scroll back to the top (GitHub #66).
@@ -48,6 +108,9 @@ class AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final border = theme.colorScheme.outline;
+    final (leftId, rightId) = _slotIds(ref);
+    final left = _catalog[leftId]!;
+    final right = _catalog[rightId]!;
 
     return Scaffold(
       appBar: _TopBar(currentIndex: navigationShell.currentIndex),
@@ -62,11 +125,11 @@ class AppShell extends ConsumerWidget {
             height: 68,
             child: Row(
               children: [
-                _navItem(context, ref, _tabs[0]),
-                _navItem(context, ref, _tabs[1]),
+                _navItem(context, ref, _dashboard),
+                _navItem(context, ref, left),
                 _addButton(context),
-                _navItem(context, ref, _tabs[2]),
-                _navItem(context, ref, _tabs[3]),
+                _navItem(context, ref, right),
+                _navItem(context, ref, _more),
               ],
             ),
           ),
@@ -125,6 +188,20 @@ class AppShell extends ConsumerWidget {
   }
 }
 
+/// `id -> label` for every configurable bottom-nav destination — the same
+/// set as `AppShell._catalog`'s keys, exposed for the "Customize bottom
+/// nav" settings screen's picker (GitHub #70) without making the whole
+/// catalog (icons included) public.
+const bottomNavCatalogLabels = <String, String>{
+  'transactions': 'Transactions',
+  'persons': 'Persons',
+  'calendar': 'Calendar',
+  'budgets': 'Budgets',
+  'accounts': 'Accounts',
+  'stats': 'Stats',
+  'payees': 'Payees',
+};
+
 class _TabSpec {
   const _TabSpec(this.branch, this.icon, this.activeIcon, this.label);
   final int branch;
@@ -133,28 +210,34 @@ class _TabSpec {
   final String label;
 }
 
-/// The app's persistent top bar — fixed on screen across all 4 tabs, sibling
+/// The app's persistent top bar — fixed on screen across every tab, sibling
 /// to the bottom nav bar (a pushed detail route, e.g. a screen reached from
 /// the More hub, covers both the same way, since both live outside the
 /// shell).
 ///
-/// Carries the current tab's own title and actions now — Dashboard, Persons
-/// and More each used to render their *own* large title bar (132dp) stacked
-/// directly underneath this one, so a tab opened under ~190dp of chrome
-/// before any real content. One bar, sized like an ordinary toolbar
-/// (`kToolbarHeight`, same as every pushed screen's bar now — see the
-/// screens under `lib/features/*`), replaces that stack.
+/// Carries the current tab's own title and actions — one bar, sized like an
+/// ordinary toolbar (`kToolbarHeight`, same as every pushed screen's bar —
+/// see the screens under `lib/features/*`).
 ///
-/// Calendar used to sit here too; it's dropped now that a tab-specific
-/// action can claim the slot instead — Calendar is still one tap away from
-/// the More hub's own "Calendar & Reminders" tile, so nothing is lost, only
-/// de-duplicated. Review Inbox stays — it has no other entry point at all.
+/// Indexed by branch, not by bar position — GitHub #70 made which catalog
+/// item sits at bar position 2/4 configurable, but the 9 branch indices
+/// themselves are permanent (see `AppShell`'s class doc).
 class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
   const _TopBar({required this.currentIndex});
 
   final int currentIndex;
 
-  static const _titles = ['Dashboard', 'Transactions', 'Persons', 'More'];
+  static const _titles = [
+    'Dashboard', // 0
+    'Transactions', // 1
+    'Persons', // 2
+    'More', // 3
+    'Calendar', // 4
+    'Budgets', // 5
+    'Accounts', // 6
+    'Stats', // 7
+    'Payees', // 8
+  ];
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -163,11 +246,6 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
 
-    // A hairline border, the same idiom the bottom nav bar already uses
-    // (`Border(top: ...)`) — flat depth, not a shadow, matching the rest of
-    // the app's chrome. `BoxDecoration.border` paints inset within the
-    // existing bounds, so this adds no extra height for `preferredSize` to
-    // account for.
     return DecoratedBox(
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: cs.outline)),
@@ -249,7 +327,29 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
           ),
           const SizedBox(width: 4),
         ];
-      default: // More
+      case 4: // Calendar
+        return [
+          _TonalIconButton(
+            tooltip: 'Today',
+            icon: const Icon(Icons.today_rounded),
+            onPressed: () =>
+                ref.read(calendarGoToTodaySignalProvider.notifier).state++,
+          ),
+          const SizedBox(width: 4),
+          _TonalIconButton(
+            tooltip: 'New reminder',
+            icon: const Icon(Icons.add_rounded),
+            onPressed: () =>
+                ref.read(calendarNewReminderSignalProvider.notifier).state++,
+          ),
+          const SizedBox(width: 4),
+        ];
+      default: // More, Budgets, Accounts, Stats, Payees — no tab-specific
+        // action yet (Budgets/Stats keep their PDF-download action reachable
+        // only via /more/budgets · /more/stats for now; Accounts similarly
+        // keeps Statement/Archived/Add reachable only via /more/accounts —
+        // see Task 5's noted trade-off. Porting them here is optional
+        // follow-up, not required for GitHub #70 itself).
         return const [];
     }
   }
