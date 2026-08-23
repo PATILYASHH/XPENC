@@ -33,6 +33,7 @@ import '../../features/reports/stats_screen.dart';
 import '../../features/savings/savings_goal_detail_screen.dart';
 import '../../features/savings/savings_goals_screen.dart';
 import '../../features/security/set_passcode_screen.dart';
+import '../../features/settings/bottom_nav_settings_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/settings/widgets_screen.dart';
 import '../../features/shopping/shopping_list_screen.dart';
@@ -164,6 +165,11 @@ final appRouter = GoRouter(
                   ],
                 ),
                 GoRoute(
+                  path: 'bottom-nav',
+                  parentNavigatorKey: _rootKey,
+                  builder: (_, _) => const BottomNavSettingsScreen(),
+                ),
+                GoRoute(
                   path: 'about',
                   parentNavigatorKey: _rootKey,
                   builder: (_, _) => const AboutScreen(),
@@ -286,6 +292,46 @@ final appRouter = GoRouter(
                   ],
                 ),
               ],
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/calendar',
+              builder: (_, _) => const CalendarScreen(embedded: true),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/budgets',
+              builder: (_, _) => const BudgetsScreen(embedded: true),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/accounts',
+              builder: (_, _) => const AccountsScreen(embedded: true),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/stats',
+              builder: (_, _) => const StatsScreen(embedded: true),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/payees',
+              builder: (_, _) => const PayeesScreen(embedded: true),
             ),
           ],
         ),
