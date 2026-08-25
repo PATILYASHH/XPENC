@@ -1,8 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/providers.dart';
+import 'hold_menu_geometry.dart';
 import '../../features/persons/persons_screen.dart' show showAddPersonDialog;
 import '../../features/transactions/transaction_filters.dart';
 import '../branding/app_info.dart';
@@ -127,7 +130,12 @@ class AppShell extends ConsumerWidget {
               children: [
                 _navItem(context, ref, _dashboard),
                 _navItem(context, ref, left),
-                _addButton(context),
+                _AddButton(
+                  holdEnabled: ref.watch(holdMenuEnabledProvider),
+                  slotIds: ref.watch(holdMenuSlotsProvider),
+                  catalog: _catalog,
+                  onSelect: (branch) => _goBranch(ref, branch),
+                ),
                 _navItem(context, ref, right),
                 _navItem(context, ref, _more),
               ],
@@ -170,22 +178,237 @@ class AppShell extends ConsumerWidget {
     );
   }
 
-  Widget _addButton(BuildContext context) {
+}
+
+/// The ➕ button — a plain tap always pushes Add Transaction, unchanged. When
+/// [holdEnabled] (`Settings.holdMenuEnabled`) is on, holding it also floats
+/// 3 quick-access destinations (from [slotIds]/[catalog], the same catalog
+/// `bottomNavSlots` uses) in an arc above the button; dragging a finger
+/// toward one and releasing there calls [onSelect] with that destination's
+/// branch index, the same way tapping a pinned/flex tab would. Off by
+/// default — see `Settings.holdMenuEnabled`'s doc comment for why.
+class _AddButton extends StatefulWidget {
+  const _AddButton({
+    required this.holdEnabled,
+    required this.slotIds,
+    required this.catalog,
+    required this.onSelect,
+  });
+
+  final bool holdEnabled;
+  final List<String> slotIds;
+  final Map<String, _TabSpec> catalog;
+  final ValueChanged<int> onSelect;
+
+  @override
+  State<_AddButton> createState() => _AddButtonState();
+}
+
+class _AddButtonState extends State<_AddButton> {
+  /// Degrees, screen convention (0° = right, clockwise, so -90° is
+  /// straight up) — an upward fan so the menu never renders under the nav
+  /// bar it's anchored to.
+  static const _angles = [-150.0, -90.0, -30.0];
+  static const _radius = 92.0;
+  static const _hitRadius = 34.0;
+
+  OverlayEntry? _overlayEntry;
+  final _hoveredIndex = ValueNotifier<int>(-1);
+  Offset _origin = Offset.zero;
+
+  List<_TabSpec> get _specs => widget.slotIds
+      .map((id) => widget.catalog[id])
+      .whereType<_TabSpec>()
+      .toList();
+
+  void _onLongPressStart(LongPressStartDetails details) {
+    final specs = _specs;
+    if (specs.isEmpty) return;
+    _origin = details.globalPosition;
+    _hoveredIndex.value = -1;
+    HapticFeedback.mediumImpact();
+    _overlayEntry = OverlayEntry(
+      builder: (_) => Positioned.fill(
+        child: _HoldMenuOverlay(
+          origin: _origin,
+          specs: specs,
+          angles: _angles,
+          radius: _radius,
+          hoveredIndex: _hoveredIndex,
+        ),
+      ),
+    );
+    Overlay.of(context).insert(_overlayEntry!);
+  }
+
+  void _onLongPressMoveUpdate(LongPressMoveUpdateDetails details) {
+    if (_overlayEntry == null) return;
+    final nearest = holdMenuHoveredIndex(
+      origin: _origin,
+      pointer: details.globalPosition,
+      anglesDegrees: _angles,
+      radius: _radius,
+      hitRadius: _hitRadius,
+      optionCount: _specs.length,
+    );
+    if (nearest != _hoveredIndex.value) {
+      _hoveredIndex.value = nearest;
+      if (nearest != -1) HapticFeedback.selectionClick();
+    }
+  }
+
+  void _endGesture({required bool commit}) {
+    final index = _hoveredIndex.value;
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+    final specs = _specs;
+    if (commit && index >= 0 && index < specs.length) {
+      HapticFeedback.mediumImpact();
+      widget.onSelect(specs[index].branch);
+    }
+    _hoveredIndex.value = -1;
+  }
+
+  @override
+  void dispose() {
+    _overlayEntry?.remove();
+    _hoveredIndex.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final button = Material(
+      color: Theme.of(context).colorScheme.secondary,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: () => context.push('/add'),
+        child: const SizedBox(
+          width: 52,
+          height: 52,
+          child: Icon(Icons.add_rounded, color: Colors.white, size: 28),
+        ),
+      ),
+    );
+
     return Expanded(
       child: Center(
-        child: Material(
-          color: Theme.of(context).colorScheme.secondary,
-          shape: const CircleBorder(),
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: () => context.push('/add'),
-            child: const SizedBox(
-              width: 52,
-              height: 52,
-              child: Icon(Icons.add_rounded, color: Colors.white, size: 28),
+        child: widget.holdEnabled
+            ? GestureDetector(
+                onLongPressStart: _onLongPressStart,
+                onLongPressMoveUpdate: _onLongPressMoveUpdate,
+                onLongPressEnd: (_) => _endGesture(commit: true),
+                onLongPressCancel: () => _endGesture(commit: false),
+                child: button,
+              )
+            : button,
+      ),
+    );
+  }
+}
+
+/// The floating options themselves, inserted into the root [Overlay] for
+/// the duration of the hold gesture. Purely visual — [IgnorePointer]'d,
+/// since the gesture that drives [hoveredIndex] is tracked by the
+/// long-press recognizer on the button itself (Flutter keeps routing a
+/// captured pointer's moves to whichever recognizer won it, regardless of
+/// what's drawn on top), not by this overlay.
+class _HoldMenuOverlay extends StatelessWidget {
+  const _HoldMenuOverlay({
+    required this.origin,
+    required this.specs,
+    required this.angles,
+    required this.radius,
+    required this.hoveredIndex,
+  });
+
+  final Offset origin;
+  final List<_TabSpec> specs;
+  final List<double> angles;
+  final double radius;
+  final ValueListenable<int> hoveredIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: ColoredBox(color: Colors.black.withValues(alpha: 0.35)),
+          ),
+          ValueListenableBuilder<int>(
+            valueListenable: hoveredIndex,
+            builder: (context, hovered, _) => Stack(
+              children: [
+                for (var i = 0; i < specs.length; i++)
+                  _option(context, i, hovered == i),
+              ],
             ),
           ),
-        ),
+        ],
+      ),
+    );
+  }
+
+  Widget _option(BuildContext context, int i, bool isHovered) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final center = holdMenuOptionCenter(origin, angles, radius, i);
+    final size = isHovered ? 64.0 : 52.0;
+    final spec = specs[i];
+
+    return Positioned(
+      left: center.dx - size / 2,
+      top: center.dy - size / 2,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isHovered)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: cs.inverseSurface,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  child: Text(
+                    spec.label,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: cs.onInverseSurface,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isHovered ? cs.secondary : cs.surfaceContainerHighest,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Icon(
+              spec.activeIcon,
+              color: isHovered ? Colors.white : cs.onSurface,
+              size: isHovered ? 26 : 22,
+            ),
+          ),
+        ],
       ),
     );
   }

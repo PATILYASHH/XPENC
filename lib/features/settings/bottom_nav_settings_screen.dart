@@ -24,7 +24,7 @@ class BottomNavSettingsScreen extends ConsumerWidget {
     final extraBottomInset = ref.watch(extraBottomInsetProvider);
 
     Future<void> pick(bool isLeft) async {
-      final excluded = isLeft ? rightId : leftId;
+      final excluded = {isLeft ? rightId : leftId};
       final chosen = await showModalBottomSheet<String>(
         context: context,
         showDragHandle: true,
@@ -40,6 +40,25 @@ class BottomNavSettingsScreen extends ConsumerWidget {
       // this works even in a widget test that pumps this screen standalone,
       // with no GoRouter ancestor in the tree.
       appRouter.go('/dashboard');
+    }
+
+    final holdMenuEnabled = ref.watch(holdMenuEnabledProvider);
+    final holdMenuSlots = ref.watch(holdMenuSlotsProvider);
+
+    Future<void> pickHoldSlot(int index) async {
+      final excluded = {
+        for (var i = 0; i < holdMenuSlots.length; i++)
+          if (i != index) holdMenuSlots[i],
+      };
+      final chosen = await showModalBottomSheet<String>(
+        context: context,
+        showDragHandle: true,
+        builder: (_) => _CatalogPickerSheet(excluded: excluded),
+      );
+      if (chosen == null) return;
+      final updated = [...holdMenuSlots];
+      updated[index] = chosen;
+      await ref.read(dbProvider).setHoldMenuSlots(updated);
     }
 
     return Scaffold(
@@ -129,6 +148,50 @@ class BottomNavSettingsScreen extends ConsumerWidget {
                   ),
                 ],
               ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          _sectionLabel(context, 'Hold options'),
+          Card(
+            margin: EdgeInsets.zero,
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: const Text('Hold ➕ for quick access'),
+                  subtitle: const Text(
+                    'Press and hold the ➕ button — 3 shortcuts float on '
+                    'screen, drag a finger to one and let go to jump there.',
+                  ),
+                  value: holdMenuEnabled,
+                  onChanged: (v) =>
+                      ref.read(dbProvider).setHoldMenuEnabled(v),
+                ),
+                if (holdMenuEnabled) ...[
+                  Divider(
+                    height: 1,
+                    indent: 20,
+                    endIndent: 20,
+                    color: theme.colorScheme.outline,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (var i = 0; i < holdMenuSlots.length; i++) ...[
+                          if (i > 0) const SizedBox(height: 8),
+                          _SlotTile(
+                            label: bottomNavCatalogLabels[holdMenuSlots[i]] ??
+                                holdMenuSlots[i],
+                            onTap: () => pickHoldSlot(i),
+                          ),
+                        ],
+                        const SizedBox(height: 12),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ],
@@ -231,9 +294,9 @@ class _SlotTile extends StatelessWidget {
 class _CatalogPickerSheet extends StatelessWidget {
   const _CatalogPickerSheet({required this.excluded});
 
-  /// The id already used by the *other* slot — omitted so the result is
-  /// always 2 distinct ids, with no dedup logic needed by the caller.
-  final String excluded;
+  /// Ids already used by the *other* slot(s) — omitted so the result is
+  /// always distinct from them, with no dedup logic needed by the caller.
+  final Set<String> excluded;
 
   @override
   Widget build(BuildContext context) {
@@ -244,7 +307,7 @@ class _CatalogPickerSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             for (final entry in bottomNavCatalogLabels.entries)
-              if (entry.key != excluded)
+              if (!excluded.contains(entry.key))
                 ListTile(
                   title: Text(entry.value),
                   onTap: () => Navigator.of(context).pop(entry.key),

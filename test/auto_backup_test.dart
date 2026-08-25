@@ -77,6 +77,8 @@ void main() {
       masterPhraseAttemptThreshold: 5,
       failedPasscodeAttempts: 0,
       extraBottomInset: 0,
+      holdMenuEnabled: false,
+      holdMenuSlots: 'calendar,budgets,stats',
     );
 
     final now = DateTime(2026, 8, 5, 12);

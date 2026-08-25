@@ -164,7 +164,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 44;
+  int get schemaVersion => 45;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -379,6 +379,10 @@ class AppDatabase extends _$AppDatabase {
         await _addColumnIfMissing(m, persons, persons.paypal);
         await _addColumnIfMissing(m, settings, settings.myUpiId);
         await _addColumnIfMissing(m, settings, settings.myUpiName);
+      }
+      if (from < 45) {
+        await _addColumnIfMissing(m, settings, settings.holdMenuEnabled);
+        await _addColumnIfMissing(m, settings, settings.holdMenuSlots);
       }
     },
     beforeOpen: (details) async {
@@ -3362,6 +3366,22 @@ class AppDatabase extends _$AppDatabase {
   Future<void> setShowBottomNavLabels(bool value) => update(
     settings,
   ).write(SettingsCompanion(showBottomNavLabels: Value(value)));
+
+  Future<void> setHoldMenuEnabled(bool value) => update(
+    settings,
+  ).write(SettingsCompanion(holdMenuEnabled: Value(value)));
+
+  Future<void> setHoldMenuSlots(List<String> ids) async {
+    if (ids.length != 3 || ids.toSet().length != 3) {
+      throw ArgumentError('The hold menu needs exactly 3 distinct items.');
+    }
+    if (ids.any((id) => !bottomNavCatalogIds.contains(id))) {
+      throw ArgumentError('Unknown hold-menu item.');
+    }
+    await update(
+      settings,
+    ).write(SettingsCompanion(holdMenuSlots: Value(ids.join(','))));
+  }
 
   /// Clamped to a sane range here, not just in the settings slider — this is
   /// the only path a stray value (a bad restore, a future scripted call)

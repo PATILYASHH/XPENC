@@ -6337,6 +6337,33 @@ class $SettingsTable extends Settings
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _holdMenuEnabledMeta = const VerificationMeta(
+    'holdMenuEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> holdMenuEnabled = GeneratedColumn<bool>(
+    'hold_menu_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("hold_menu_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _holdMenuSlotsMeta = const VerificationMeta(
+    'holdMenuSlots',
+  );
+  @override
+  late final GeneratedColumn<String> holdMenuSlots = GeneratedColumn<String>(
+    'hold_menu_slots',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('calendar,budgets,stats'),
+  );
   static const VerificationMeta _showCalendarDayTotalsMeta =
       const VerificationMeta('showCalendarDayTotals');
   @override
@@ -6438,6 +6465,8 @@ class $SettingsTable extends Settings
     hideAmounts,
     bottomNavSlots,
     showBottomNavLabels,
+    holdMenuEnabled,
+    holdMenuSlots,
     showCalendarDayTotals,
     fontScalePercent,
     fontWeightDelta,
@@ -6762,6 +6791,24 @@ class $SettingsTable extends Settings
         ),
       );
     }
+    if (data.containsKey('hold_menu_enabled')) {
+      context.handle(
+        _holdMenuEnabledMeta,
+        holdMenuEnabled.isAcceptableOrUnknown(
+          data['hold_menu_enabled']!,
+          _holdMenuEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('hold_menu_slots')) {
+      context.handle(
+        _holdMenuSlotsMeta,
+        holdMenuSlots.isAcceptableOrUnknown(
+          data['hold_menu_slots']!,
+          _holdMenuSlotsMeta,
+        ),
+      );
+    }
     if (data.containsKey('show_calendar_day_totals')) {
       context.handle(
         _showCalendarDayTotalsMeta,
@@ -6963,6 +7010,14 @@ class $SettingsTable extends Settings
         DriftSqlType.bool,
         data['${effectivePrefix}show_bottom_nav_labels'],
       )!,
+      holdMenuEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}hold_menu_enabled'],
+      )!,
+      holdMenuSlots: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}hold_menu_slots'],
+      )!,
       showCalendarDayTotals: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}show_calendar_day_totals'],
@@ -7143,6 +7198,21 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// On by default; off collapses the bar to icon-only.
   final bool showBottomNavLabels;
 
+  /// Off by default — press-and-hold the ➕ button is a new, undiscoverable
+  /// gesture on a control every existing user already knows; asking them to
+  /// opt in avoids surprising anyone who just wants to add a transaction.
+  /// When on, holding ➕ floats 3 quick-access options (see
+  /// [holdMenuSlots]) the user drags a finger toward to jump to that
+  /// destination, without lifting.
+  final bool holdMenuEnabled;
+
+  /// The 3 destinations the hold-➕ menu offers, comma-joined, same catalog
+  /// and id set as [bottomNavSlots] (`AppShell._catalog` /
+  /// `AppDatabase.bottomNavCatalogIds`). Deliberately allowed to overlap
+  /// with `bottomNavSlots` — quick access via a hold gesture and a pinned
+  /// tab aren't mutually exclusive.
+  final String holdMenuSlots;
+
   /// Whether the calendar's selected-day section shows an inflow/outflow
   /// total strip. On by default; the on/off toggle lives in Settings
   /// (GitHub #75).
@@ -7210,6 +7280,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     required this.hideAmounts,
     required this.bottomNavSlots,
     required this.showBottomNavLabels,
+    required this.holdMenuEnabled,
+    required this.holdMenuSlots,
     required this.showCalendarDayTotals,
     required this.fontScalePercent,
     required this.fontWeightDelta,
@@ -7284,6 +7356,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     map['hide_amounts'] = Variable<bool>(hideAmounts);
     map['bottom_nav_slots'] = Variable<String>(bottomNavSlots);
     map['show_bottom_nav_labels'] = Variable<bool>(showBottomNavLabels);
+    map['hold_menu_enabled'] = Variable<bool>(holdMenuEnabled);
+    map['hold_menu_slots'] = Variable<String>(holdMenuSlots);
     map['show_calendar_day_totals'] = Variable<bool>(showCalendarDayTotals);
     map['font_scale_percent'] = Variable<int>(fontScalePercent);
     map['font_weight_delta'] = Variable<int>(fontWeightDelta);
@@ -7353,6 +7427,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       hideAmounts: Value(hideAmounts),
       bottomNavSlots: Value(bottomNavSlots),
       showBottomNavLabels: Value(showBottomNavLabels),
+      holdMenuEnabled: Value(holdMenuEnabled),
+      holdMenuSlots: Value(holdMenuSlots),
       showCalendarDayTotals: Value(showCalendarDayTotals),
       fontScalePercent: Value(fontScalePercent),
       fontWeightDelta: Value(fontWeightDelta),
@@ -7437,6 +7513,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       showBottomNavLabels: serializer.fromJson<bool>(
         json['showBottomNavLabels'],
       ),
+      holdMenuEnabled: serializer.fromJson<bool>(json['holdMenuEnabled']),
+      holdMenuSlots: serializer.fromJson<String>(json['holdMenuSlots']),
       showCalendarDayTotals: serializer.fromJson<bool>(
         json['showCalendarDayTotals'],
       ),
@@ -7497,6 +7575,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'hideAmounts': serializer.toJson<bool>(hideAmounts),
       'bottomNavSlots': serializer.toJson<String>(bottomNavSlots),
       'showBottomNavLabels': serializer.toJson<bool>(showBottomNavLabels),
+      'holdMenuEnabled': serializer.toJson<bool>(holdMenuEnabled),
+      'holdMenuSlots': serializer.toJson<String>(holdMenuSlots),
       'showCalendarDayTotals': serializer.toJson<bool>(showCalendarDayTotals),
       'fontScalePercent': serializer.toJson<int>(fontScalePercent),
       'fontWeightDelta': serializer.toJson<int>(fontWeightDelta),
@@ -7543,6 +7623,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     bool? hideAmounts,
     String? bottomNavSlots,
     bool? showBottomNavLabels,
+    bool? holdMenuEnabled,
+    String? holdMenuSlots,
     bool? showCalendarDayTotals,
     int? fontScalePercent,
     int? fontWeightDelta,
@@ -7603,6 +7685,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     hideAmounts: hideAmounts ?? this.hideAmounts,
     bottomNavSlots: bottomNavSlots ?? this.bottomNavSlots,
     showBottomNavLabels: showBottomNavLabels ?? this.showBottomNavLabels,
+    holdMenuEnabled: holdMenuEnabled ?? this.holdMenuEnabled,
+    holdMenuSlots: holdMenuSlots ?? this.holdMenuSlots,
     showCalendarDayTotals: showCalendarDayTotals ?? this.showCalendarDayTotals,
     fontScalePercent: fontScalePercent ?? this.fontScalePercent,
     fontWeightDelta: fontWeightDelta ?? this.fontWeightDelta,
@@ -7712,6 +7796,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       showBottomNavLabels: data.showBottomNavLabels.present
           ? data.showBottomNavLabels.value
           : this.showBottomNavLabels,
+      holdMenuEnabled: data.holdMenuEnabled.present
+          ? data.holdMenuEnabled.value
+          : this.holdMenuEnabled,
+      holdMenuSlots: data.holdMenuSlots.present
+          ? data.holdMenuSlots.value
+          : this.holdMenuSlots,
       showCalendarDayTotals: data.showCalendarDayTotals.present
           ? data.showCalendarDayTotals.value
           : this.showCalendarDayTotals,
@@ -7772,6 +7862,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('hideAmounts: $hideAmounts, ')
           ..write('bottomNavSlots: $bottomNavSlots, ')
           ..write('showBottomNavLabels: $showBottomNavLabels, ')
+          ..write('holdMenuEnabled: $holdMenuEnabled, ')
+          ..write('holdMenuSlots: $holdMenuSlots, ')
           ..write('showCalendarDayTotals: $showCalendarDayTotals, ')
           ..write('fontScalePercent: $fontScalePercent, ')
           ..write('fontWeightDelta: $fontWeightDelta, ')
@@ -7820,6 +7912,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     hideAmounts,
     bottomNavSlots,
     showBottomNavLabels,
+    holdMenuEnabled,
+    holdMenuSlots,
     showCalendarDayTotals,
     fontScalePercent,
     fontWeightDelta,
@@ -7869,6 +7963,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.hideAmounts == this.hideAmounts &&
           other.bottomNavSlots == this.bottomNavSlots &&
           other.showBottomNavLabels == this.showBottomNavLabels &&
+          other.holdMenuEnabled == this.holdMenuEnabled &&
+          other.holdMenuSlots == this.holdMenuSlots &&
           other.showCalendarDayTotals == this.showCalendarDayTotals &&
           other.fontScalePercent == this.fontScalePercent &&
           other.fontWeightDelta == this.fontWeightDelta &&
@@ -7914,6 +8010,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<bool> hideAmounts;
   final Value<String> bottomNavSlots;
   final Value<bool> showBottomNavLabels;
+  final Value<bool> holdMenuEnabled;
+  final Value<String> holdMenuSlots;
   final Value<bool> showCalendarDayTotals;
   final Value<int> fontScalePercent;
   final Value<int> fontWeightDelta;
@@ -7957,6 +8055,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.hideAmounts = const Value.absent(),
     this.bottomNavSlots = const Value.absent(),
     this.showBottomNavLabels = const Value.absent(),
+    this.holdMenuEnabled = const Value.absent(),
+    this.holdMenuSlots = const Value.absent(),
     this.showCalendarDayTotals = const Value.absent(),
     this.fontScalePercent = const Value.absent(),
     this.fontWeightDelta = const Value.absent(),
@@ -8001,6 +8101,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.hideAmounts = const Value.absent(),
     this.bottomNavSlots = const Value.absent(),
     this.showBottomNavLabels = const Value.absent(),
+    this.holdMenuEnabled = const Value.absent(),
+    this.holdMenuSlots = const Value.absent(),
     this.showCalendarDayTotals = const Value.absent(),
     this.fontScalePercent = const Value.absent(),
     this.fontWeightDelta = const Value.absent(),
@@ -8045,6 +8147,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<bool>? hideAmounts,
     Expression<String>? bottomNavSlots,
     Expression<bool>? showBottomNavLabels,
+    Expression<bool>? holdMenuEnabled,
+    Expression<String>? holdMenuSlots,
     Expression<bool>? showCalendarDayTotals,
     Expression<int>? fontScalePercent,
     Expression<int>? fontWeightDelta,
@@ -8104,6 +8208,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       if (bottomNavSlots != null) 'bottom_nav_slots': bottomNavSlots,
       if (showBottomNavLabels != null)
         'show_bottom_nav_labels': showBottomNavLabels,
+      if (holdMenuEnabled != null) 'hold_menu_enabled': holdMenuEnabled,
+      if (holdMenuSlots != null) 'hold_menu_slots': holdMenuSlots,
       if (showCalendarDayTotals != null)
         'show_calendar_day_totals': showCalendarDayTotals,
       if (fontScalePercent != null) 'font_scale_percent': fontScalePercent,
@@ -8151,6 +8257,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<bool>? hideAmounts,
     Value<String>? bottomNavSlots,
     Value<bool>? showBottomNavLabels,
+    Value<bool>? holdMenuEnabled,
+    Value<String>? holdMenuSlots,
     Value<bool>? showCalendarDayTotals,
     Value<int>? fontScalePercent,
     Value<int>? fontWeightDelta,
@@ -8203,6 +8311,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       hideAmounts: hideAmounts ?? this.hideAmounts,
       bottomNavSlots: bottomNavSlots ?? this.bottomNavSlots,
       showBottomNavLabels: showBottomNavLabels ?? this.showBottomNavLabels,
+      holdMenuEnabled: holdMenuEnabled ?? this.holdMenuEnabled,
+      holdMenuSlots: holdMenuSlots ?? this.holdMenuSlots,
       showCalendarDayTotals:
           showCalendarDayTotals ?? this.showCalendarDayTotals,
       fontScalePercent: fontScalePercent ?? this.fontScalePercent,
@@ -8348,6 +8458,12 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     if (showBottomNavLabels.present) {
       map['show_bottom_nav_labels'] = Variable<bool>(showBottomNavLabels.value);
     }
+    if (holdMenuEnabled.present) {
+      map['hold_menu_enabled'] = Variable<bool>(holdMenuEnabled.value);
+    }
+    if (holdMenuSlots.present) {
+      map['hold_menu_slots'] = Variable<String>(holdMenuSlots.value);
+    }
     if (showCalendarDayTotals.present) {
       map['show_calendar_day_totals'] = Variable<bool>(
         showCalendarDayTotals.value,
@@ -8410,6 +8526,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('hideAmounts: $hideAmounts, ')
           ..write('bottomNavSlots: $bottomNavSlots, ')
           ..write('showBottomNavLabels: $showBottomNavLabels, ')
+          ..write('holdMenuEnabled: $holdMenuEnabled, ')
+          ..write('holdMenuSlots: $holdMenuSlots, ')
           ..write('showCalendarDayTotals: $showCalendarDayTotals, ')
           ..write('fontScalePercent: $fontScalePercent, ')
           ..write('fontWeightDelta: $fontWeightDelta, ')
@@ -22622,6 +22740,8 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<bool> hideAmounts,
       Value<String> bottomNavSlots,
       Value<bool> showBottomNavLabels,
+      Value<bool> holdMenuEnabled,
+      Value<String> holdMenuSlots,
       Value<bool> showCalendarDayTotals,
       Value<int> fontScalePercent,
       Value<int> fontWeightDelta,
@@ -22667,6 +22787,8 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<bool> hideAmounts,
       Value<String> bottomNavSlots,
       Value<bool> showBottomNavLabels,
+      Value<bool> holdMenuEnabled,
+      Value<String> holdMenuSlots,
       Value<bool> showCalendarDayTotals,
       Value<int> fontScalePercent,
       Value<int> fontWeightDelta,
@@ -22889,6 +23011,16 @@ class $$SettingsTableFilterComposer
 
   ColumnFilters<bool> get showBottomNavLabels => $composableBuilder(
     column: $table.showBottomNavLabels,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get holdMenuEnabled => $composableBuilder(
+    column: $table.holdMenuEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get holdMenuSlots => $composableBuilder(
+    column: $table.holdMenuSlots,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -23130,6 +23262,16 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get holdMenuEnabled => $composableBuilder(
+    column: $table.holdMenuEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get holdMenuSlots => $composableBuilder(
+    column: $table.holdMenuSlots,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get showCalendarDayTotals => $composableBuilder(
     column: $table.showCalendarDayTotals,
     builder: (column) => ColumnOrderings(column),
@@ -23359,6 +23501,16 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get holdMenuEnabled => $composableBuilder(
+    column: $table.holdMenuEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get holdMenuSlots => $composableBuilder(
+    column: $table.holdMenuSlots,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get showCalendarDayTotals => $composableBuilder(
     column: $table.showCalendarDayTotals,
     builder: (column) => column,
@@ -23474,6 +23626,8 @@ class $$SettingsTableTableManager
                 Value<bool> hideAmounts = const Value.absent(),
                 Value<String> bottomNavSlots = const Value.absent(),
                 Value<bool> showBottomNavLabels = const Value.absent(),
+                Value<bool> holdMenuEnabled = const Value.absent(),
+                Value<String> holdMenuSlots = const Value.absent(),
                 Value<bool> showCalendarDayTotals = const Value.absent(),
                 Value<int> fontScalePercent = const Value.absent(),
                 Value<int> fontWeightDelta = const Value.absent(),
@@ -23517,6 +23671,8 @@ class $$SettingsTableTableManager
                 hideAmounts: hideAmounts,
                 bottomNavSlots: bottomNavSlots,
                 showBottomNavLabels: showBottomNavLabels,
+                holdMenuEnabled: holdMenuEnabled,
+                holdMenuSlots: holdMenuSlots,
                 showCalendarDayTotals: showCalendarDayTotals,
                 fontScalePercent: fontScalePercent,
                 fontWeightDelta: fontWeightDelta,
@@ -23563,6 +23719,8 @@ class $$SettingsTableTableManager
                 Value<bool> hideAmounts = const Value.absent(),
                 Value<String> bottomNavSlots = const Value.absent(),
                 Value<bool> showBottomNavLabels = const Value.absent(),
+                Value<bool> holdMenuEnabled = const Value.absent(),
+                Value<String> holdMenuSlots = const Value.absent(),
                 Value<bool> showCalendarDayTotals = const Value.absent(),
                 Value<int> fontScalePercent = const Value.absent(),
                 Value<int> fontWeightDelta = const Value.absent(),
@@ -23606,6 +23764,8 @@ class $$SettingsTableTableManager
                 hideAmounts: hideAmounts,
                 bottomNavSlots: bottomNavSlots,
                 showBottomNavLabels: showBottomNavLabels,
+                holdMenuEnabled: holdMenuEnabled,
+                holdMenuSlots: holdMenuSlots,
                 showCalendarDayTotals: showCalendarDayTotals,
                 fontScalePercent: fontScalePercent,
                 fontWeightDelta: fontWeightDelta,
