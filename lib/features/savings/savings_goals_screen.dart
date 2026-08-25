@@ -754,7 +754,7 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<int?>(
-              value: _categoryId,
+              initialValue: _categoryId,
               isExpanded: true,
               decoration: const InputDecoration(
                 labelText: 'Category (optional)',
@@ -1063,7 +1063,7 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<int?>(
-              value: _categoryId,
+              initialValue: _categoryId,
               isExpanded: true,
               decoration: const InputDecoration(
                 labelText: 'Category (optional)',

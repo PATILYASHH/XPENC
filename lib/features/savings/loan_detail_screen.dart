@@ -517,7 +517,7 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<int?>(
-            value: _categoryId,
+            initialValue: _categoryId,
             isExpanded: true,
             decoration: const InputDecoration(labelText: 'Category (optional)'),
             items: [

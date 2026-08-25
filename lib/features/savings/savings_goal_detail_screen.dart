@@ -615,7 +615,7 @@ class _FundsSheetState extends ConsumerState<_FundsSheet> {
           if (widget.isAdd) ...[
             const SizedBox(height: 16),
             DropdownButtonFormField<int?>(
-              value: _categoryId,
+              initialValue: _categoryId,
               isExpanded: true,
               decoration: const InputDecoration(labelText: 'Category (optional)'),
               items: [
