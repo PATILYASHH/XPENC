@@ -164,7 +164,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 43;
+  int get schemaVersion => 44;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -372,6 +372,13 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 43) {
         await _addColumnIfMissing(m, settings, settings.extraBottomInset);
+      }
+      if (from < 44) {
+        await _addColumnIfMissing(m, persons, persons.upiId);
+        await _addColumnIfMissing(m, persons, persons.phone);
+        await _addColumnIfMissing(m, persons, persons.paypal);
+        await _addColumnIfMissing(m, settings, settings.myUpiId);
+        await _addColumnIfMissing(m, settings, settings.myUpiName);
       }
     },
     beforeOpen: (details) async {
@@ -2142,6 +2149,28 @@ class AppDatabase extends _$AppDatabase {
         ),
       );
 
+  /// Full edit — unlike [addPersonEntry]'s pattern, every field the edit
+  /// sheet shows is passed every time, so `null` here means "clear this
+  /// field", not "leave unchanged".
+  Future<void> updatePerson({
+    required int id,
+    required String name,
+    String? contact,
+    String? note,
+    String? upiId,
+    String? phone,
+    String? paypal,
+  }) => (update(persons)..where((p) => p.id.equals(id))).write(
+    PersonsCompanion(
+      name: Value(name),
+      contact: Value(contact),
+      note: Value(note),
+      upiId: Value(upiId),
+      phone: Value(phone),
+      paypal: Value(paypal),
+    ),
+  );
+
   Stream<List<PersonRow>> watchPersons() =>
       (select(persons)..where((p) => p.isArchived.equals(false))).watch();
 
@@ -3157,6 +3186,12 @@ class AppDatabase extends _$AppDatabase {
   Future<void> setCountRepaymentsAsIncome(bool value) => update(
     settings,
   ).write(SettingsCompanion(countRepaymentsAsIncome: Value(value)));
+
+  Future<void> setMyUpiId(String? value) =>
+      update(settings).write(SettingsCompanion(myUpiId: Value(value)));
+
+  Future<void> setMyUpiName(String? value) =>
+      update(settings).write(SettingsCompanion(myUpiName: Value(value)));
 
   // ── Passcode ──────────────────────────────────────────────────────────────
 

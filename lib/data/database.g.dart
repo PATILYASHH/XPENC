@@ -1564,6 +1564,33 @@ class $PersonsTable extends Persons with TableInfo<$PersonsTable, PersonRow> {
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _upiIdMeta = const VerificationMeta('upiId');
+  @override
+  late final GeneratedColumn<String> upiId = GeneratedColumn<String>(
+    'upi_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _phoneMeta = const VerificationMeta('phone');
+  @override
+  late final GeneratedColumn<String> phone = GeneratedColumn<String>(
+    'phone',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _paypalMeta = const VerificationMeta('paypal');
+  @override
+  late final GeneratedColumn<String> paypal = GeneratedColumn<String>(
+    'paypal',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1572,6 +1599,9 @@ class $PersonsTable extends Persons with TableInfo<$PersonsTable, PersonRow> {
     note,
     isArchived,
     createdAt,
+    upiId,
+    phone,
+    paypal,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1620,6 +1650,24 @@ class $PersonsTable extends Persons with TableInfo<$PersonsTable, PersonRow> {
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
+    if (data.containsKey('upi_id')) {
+      context.handle(
+        _upiIdMeta,
+        upiId.isAcceptableOrUnknown(data['upi_id']!, _upiIdMeta),
+      );
+    }
+    if (data.containsKey('phone')) {
+      context.handle(
+        _phoneMeta,
+        phone.isAcceptableOrUnknown(data['phone']!, _phoneMeta),
+      );
+    }
+    if (data.containsKey('paypal')) {
+      context.handle(
+        _paypalMeta,
+        paypal.isAcceptableOrUnknown(data['paypal']!, _paypalMeta),
+      );
+    }
     return context;
   }
 
@@ -1653,6 +1701,18 @@ class $PersonsTable extends Persons with TableInfo<$PersonsTable, PersonRow> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      upiId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}upi_id'],
+      ),
+      phone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}phone'],
+      ),
+      paypal: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}paypal'],
+      ),
     );
   }
 
@@ -1669,6 +1729,20 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
   final String? note;
   final bool isArchived;
   final DateTime createdAt;
+
+  /// Their UPI VPA (e.g. "rahul@okhdfcbank"). Powers the "Pay" button on
+  /// their detail screen — used as `pa` on a `upi://pay` deep link when the
+  /// app's user owes them (see `UpiLauncher`).
+  final String? upiId;
+
+  /// Their phone number. Not wired to any deep link yet (UPI links need a
+  /// VPA, not a phone number) — stored for display/contact purposes.
+  final String? phone;
+
+  /// Stored but not wired to any button yet — no deep-link standard is being
+  /// targeted for PayPal in this pass. Present so a future PayPal button
+  /// doesn't need its own migration.
+  final String? paypal;
   const PersonRow({
     required this.id,
     required this.name,
@@ -1676,6 +1750,9 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
     this.note,
     required this.isArchived,
     required this.createdAt,
+    this.upiId,
+    this.phone,
+    this.paypal,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1690,6 +1767,15 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
     }
     map['is_archived'] = Variable<bool>(isArchived);
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || upiId != null) {
+      map['upi_id'] = Variable<String>(upiId);
+    }
+    if (!nullToAbsent || phone != null) {
+      map['phone'] = Variable<String>(phone);
+    }
+    if (!nullToAbsent || paypal != null) {
+      map['paypal'] = Variable<String>(paypal);
+    }
     return map;
   }
 
@@ -1703,6 +1789,15 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       isArchived: Value(isArchived),
       createdAt: Value(createdAt),
+      upiId: upiId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(upiId),
+      phone: phone == null && nullToAbsent
+          ? const Value.absent()
+          : Value(phone),
+      paypal: paypal == null && nullToAbsent
+          ? const Value.absent()
+          : Value(paypal),
     );
   }
 
@@ -1718,6 +1813,9 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
       note: serializer.fromJson<String?>(json['note']),
       isArchived: serializer.fromJson<bool>(json['isArchived']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      upiId: serializer.fromJson<String?>(json['upiId']),
+      phone: serializer.fromJson<String?>(json['phone']),
+      paypal: serializer.fromJson<String?>(json['paypal']),
     );
   }
   @override
@@ -1730,6 +1828,9 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
       'note': serializer.toJson<String?>(note),
       'isArchived': serializer.toJson<bool>(isArchived),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'upiId': serializer.toJson<String?>(upiId),
+      'phone': serializer.toJson<String?>(phone),
+      'paypal': serializer.toJson<String?>(paypal),
     };
   }
 
@@ -1740,6 +1841,9 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
     Value<String?> note = const Value.absent(),
     bool? isArchived,
     DateTime? createdAt,
+    Value<String?> upiId = const Value.absent(),
+    Value<String?> phone = const Value.absent(),
+    Value<String?> paypal = const Value.absent(),
   }) => PersonRow(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -1747,6 +1851,9 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
     note: note.present ? note.value : this.note,
     isArchived: isArchived ?? this.isArchived,
     createdAt: createdAt ?? this.createdAt,
+    upiId: upiId.present ? upiId.value : this.upiId,
+    phone: phone.present ? phone.value : this.phone,
+    paypal: paypal.present ? paypal.value : this.paypal,
   );
   PersonRow copyWithCompanion(PersonsCompanion data) {
     return PersonRow(
@@ -1758,6 +1865,9 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
           ? data.isArchived.value
           : this.isArchived,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      upiId: data.upiId.present ? data.upiId.value : this.upiId,
+      phone: data.phone.present ? data.phone.value : this.phone,
+      paypal: data.paypal.present ? data.paypal.value : this.paypal,
     );
   }
 
@@ -1769,14 +1879,26 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
           ..write('contact: $contact, ')
           ..write('note: $note, ')
           ..write('isArchived: $isArchived, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('upiId: $upiId, ')
+          ..write('phone: $phone, ')
+          ..write('paypal: $paypal')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, name, contact, note, isArchived, createdAt);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    contact,
+    note,
+    isArchived,
+    createdAt,
+    upiId,
+    phone,
+    paypal,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1786,7 +1908,10 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
           other.contact == this.contact &&
           other.note == this.note &&
           other.isArchived == this.isArchived &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.upiId == this.upiId &&
+          other.phone == this.phone &&
+          other.paypal == this.paypal);
 }
 
 class PersonsCompanion extends UpdateCompanion<PersonRow> {
@@ -1796,6 +1921,9 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
   final Value<String?> note;
   final Value<bool> isArchived;
   final Value<DateTime> createdAt;
+  final Value<String?> upiId;
+  final Value<String?> phone;
+  final Value<String?> paypal;
   const PersonsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -1803,6 +1931,9 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
     this.note = const Value.absent(),
     this.isArchived = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.upiId = const Value.absent(),
+    this.phone = const Value.absent(),
+    this.paypal = const Value.absent(),
   });
   PersonsCompanion.insert({
     this.id = const Value.absent(),
@@ -1811,6 +1942,9 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
     this.note = const Value.absent(),
     this.isArchived = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.upiId = const Value.absent(),
+    this.phone = const Value.absent(),
+    this.paypal = const Value.absent(),
   }) : name = Value(name);
   static Insertable<PersonRow> custom({
     Expression<int>? id,
@@ -1819,6 +1953,9 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
     Expression<String>? note,
     Expression<bool>? isArchived,
     Expression<DateTime>? createdAt,
+    Expression<String>? upiId,
+    Expression<String>? phone,
+    Expression<String>? paypal,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1827,6 +1964,9 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
       if (note != null) 'note': note,
       if (isArchived != null) 'is_archived': isArchived,
       if (createdAt != null) 'created_at': createdAt,
+      if (upiId != null) 'upi_id': upiId,
+      if (phone != null) 'phone': phone,
+      if (paypal != null) 'paypal': paypal,
     });
   }
 
@@ -1837,6 +1977,9 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
     Value<String?>? note,
     Value<bool>? isArchived,
     Value<DateTime>? createdAt,
+    Value<String?>? upiId,
+    Value<String?>? phone,
+    Value<String?>? paypal,
   }) {
     return PersonsCompanion(
       id: id ?? this.id,
@@ -1845,6 +1988,9 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
       note: note ?? this.note,
       isArchived: isArchived ?? this.isArchived,
       createdAt: createdAt ?? this.createdAt,
+      upiId: upiId ?? this.upiId,
+      phone: phone ?? this.phone,
+      paypal: paypal ?? this.paypal,
     );
   }
 
@@ -1869,6 +2015,15 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (upiId.present) {
+      map['upi_id'] = Variable<String>(upiId.value);
+    }
+    if (phone.present) {
+      map['phone'] = Variable<String>(phone.value);
+    }
+    if (paypal.present) {
+      map['paypal'] = Variable<String>(paypal.value);
+    }
     return map;
   }
 
@@ -1880,7 +2035,10 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
           ..write('contact: $contact, ')
           ..write('note: $note, ')
           ..write('isArchived: $isArchived, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('upiId: $upiId, ')
+          ..write('phone: $phone, ')
+          ..write('paypal: $paypal')
           ..write(')'))
         .toString();
   }
@@ -5858,6 +6016,28 @@ class $SettingsTable extends Settings
         ),
         defaultValue: const Constant(false),
       );
+  static const VerificationMeta _myUpiIdMeta = const VerificationMeta(
+    'myUpiId',
+  );
+  @override
+  late final GeneratedColumn<String> myUpiId = GeneratedColumn<String>(
+    'my_upi_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _myUpiNameMeta = const VerificationMeta(
+    'myUpiName',
+  );
+  @override
+  late final GeneratedColumn<String> myUpiName = GeneratedColumn<String>(
+    'my_upi_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _passcodeHashMeta = const VerificationMeta(
     'passcodeHash',
   );
@@ -6232,6 +6412,8 @@ class $SettingsTable extends Settings
     themeName,
     showCurrencySymbol,
     countRepaymentsAsIncome,
+    myUpiId,
+    myUpiName,
     passcodeHash,
     passcodeSalt,
     passcodeLength,
@@ -6359,6 +6541,18 @@ class $SettingsTable extends Settings
           data['count_repayments_as_income']!,
           _countRepaymentsAsIncomeMeta,
         ),
+      );
+    }
+    if (data.containsKey('my_upi_id')) {
+      context.handle(
+        _myUpiIdMeta,
+        myUpiId.isAcceptableOrUnknown(data['my_upi_id']!, _myUpiIdMeta),
+      );
+    }
+    if (data.containsKey('my_upi_name')) {
+      context.handle(
+        _myUpiNameMeta,
+        myUpiName.isAcceptableOrUnknown(data['my_upi_name']!, _myUpiNameMeta),
       );
     }
     if (data.containsKey('passcode_hash')) {
@@ -6663,6 +6857,14 @@ class $SettingsTable extends Settings
         DriftSqlType.bool,
         data['${effectivePrefix}count_repayments_as_income'],
       )!,
+      myUpiId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}my_upi_id'],
+      ),
+      myUpiName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}my_upi_name'],
+      ),
       passcodeHash: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}passcode_hash'],
@@ -6826,6 +7028,15 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// asked for.
   final bool countRepaymentsAsIncome;
 
+  /// The app user's own UPI VPA. Required to build a `upi://collect` link
+  /// (the "Request" button on a person who owes the user) — `pa` on a
+  /// collect intent must be the *payee*, i.e. the app's own user, not the
+  /// person being requested from. Null until set in Settings.
+  final String? myUpiId;
+
+  /// The app user's own display name, sent as `pn` on a collect link.
+  final String? myUpiName;
+
   /// A salted SHA-256 hash — never the passcode itself. Null means no
   /// passcode is set, the default, and the app never locks.
   final String? passcodeHash;
@@ -6973,6 +7184,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     required this.themeName,
     required this.showCurrencySymbol,
     required this.countRepaymentsAsIncome,
+    this.myUpiId,
+    this.myUpiName,
     this.passcodeHash,
     this.passcodeSalt,
     this.passcodeLength,
@@ -7019,6 +7232,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     map['theme_name'] = Variable<String>(themeName);
     map['show_currency_symbol'] = Variable<bool>(showCurrencySymbol);
     map['count_repayments_as_income'] = Variable<bool>(countRepaymentsAsIncome);
+    if (!nullToAbsent || myUpiId != null) {
+      map['my_upi_id'] = Variable<String>(myUpiId);
+    }
+    if (!nullToAbsent || myUpiName != null) {
+      map['my_upi_name'] = Variable<String>(myUpiName);
+    }
     if (!nullToAbsent || passcodeHash != null) {
       map['passcode_hash'] = Variable<String>(passcodeHash);
     }
@@ -7090,6 +7309,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       themeName: Value(themeName),
       showCurrencySymbol: Value(showCurrencySymbol),
       countRepaymentsAsIncome: Value(countRepaymentsAsIncome),
+      myUpiId: myUpiId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(myUpiId),
+      myUpiName: myUpiName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(myUpiName),
       passcodeHash: passcodeHash == null && nullToAbsent
           ? const Value.absent()
           : Value(passcodeHash),
@@ -7163,6 +7388,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       countRepaymentsAsIncome: serializer.fromJson<bool>(
         json['countRepaymentsAsIncome'],
       ),
+      myUpiId: serializer.fromJson<String?>(json['myUpiId']),
+      myUpiName: serializer.fromJson<String?>(json['myUpiName']),
       passcodeHash: serializer.fromJson<String?>(json['passcodeHash']),
       passcodeSalt: serializer.fromJson<String?>(json['passcodeSalt']),
       passcodeLength: serializer.fromJson<int?>(json['passcodeLength']),
@@ -7236,6 +7463,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'countRepaymentsAsIncome': serializer.toJson<bool>(
         countRepaymentsAsIncome,
       ),
+      'myUpiId': serializer.toJson<String?>(myUpiId),
+      'myUpiName': serializer.toJson<String?>(myUpiName),
       'passcodeHash': serializer.toJson<String?>(passcodeHash),
       'passcodeSalt': serializer.toJson<String?>(passcodeSalt),
       'passcodeLength': serializer.toJson<int?>(passcodeLength),
@@ -7288,6 +7517,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     String? themeName,
     bool? showCurrencySymbol,
     bool? countRepaymentsAsIncome,
+    Value<String?> myUpiId = const Value.absent(),
+    Value<String?> myUpiName = const Value.absent(),
     Value<String?> passcodeHash = const Value.absent(),
     Value<String?> passcodeSalt = const Value.absent(),
     Value<int?> passcodeLength = const Value.absent(),
@@ -7332,6 +7563,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     showCurrencySymbol: showCurrencySymbol ?? this.showCurrencySymbol,
     countRepaymentsAsIncome:
         countRepaymentsAsIncome ?? this.countRepaymentsAsIncome,
+    myUpiId: myUpiId.present ? myUpiId.value : this.myUpiId,
+    myUpiName: myUpiName.present ? myUpiName.value : this.myUpiName,
     passcodeHash: passcodeHash.present ? passcodeHash.value : this.passcodeHash,
     passcodeSalt: passcodeSalt.present ? passcodeSalt.value : this.passcodeSalt,
     passcodeLength: passcodeLength.present
@@ -7405,6 +7638,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       countRepaymentsAsIncome: data.countRepaymentsAsIncome.present
           ? data.countRepaymentsAsIncome.value
           : this.countRepaymentsAsIncome,
+      myUpiId: data.myUpiId.present ? data.myUpiId.value : this.myUpiId,
+      myUpiName: data.myUpiName.present ? data.myUpiName.value : this.myUpiName,
       passcodeHash: data.passcodeHash.present
           ? data.passcodeHash.value
           : this.passcodeHash,
@@ -7509,6 +7744,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('themeName: $themeName, ')
           ..write('showCurrencySymbol: $showCurrencySymbol, ')
           ..write('countRepaymentsAsIncome: $countRepaymentsAsIncome, ')
+          ..write('myUpiId: $myUpiId, ')
+          ..write('myUpiName: $myUpiName, ')
           ..write('passcodeHash: $passcodeHash, ')
           ..write('passcodeSalt: $passcodeSalt, ')
           ..write('passcodeLength: $passcodeLength, ')
@@ -7557,6 +7794,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     themeName,
     showCurrencySymbol,
     countRepaymentsAsIncome,
+    myUpiId,
+    myUpiName,
     passcodeHash,
     passcodeSalt,
     passcodeLength,
@@ -7602,6 +7841,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.themeName == this.themeName &&
           other.showCurrencySymbol == this.showCurrencySymbol &&
           other.countRepaymentsAsIncome == this.countRepaymentsAsIncome &&
+          other.myUpiId == this.myUpiId &&
+          other.myUpiName == this.myUpiName &&
           other.passcodeHash == this.passcodeHash &&
           other.passcodeSalt == this.passcodeSalt &&
           other.passcodeLength == this.passcodeLength &&
@@ -7647,6 +7888,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<String> themeName;
   final Value<bool> showCurrencySymbol;
   final Value<bool> countRepaymentsAsIncome;
+  final Value<String?> myUpiId;
+  final Value<String?> myUpiName;
   final Value<String?> passcodeHash;
   final Value<String?> passcodeSalt;
   final Value<int?> passcodeLength;
@@ -7688,6 +7931,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.themeName = const Value.absent(),
     this.showCurrencySymbol = const Value.absent(),
     this.countRepaymentsAsIncome = const Value.absent(),
+    this.myUpiId = const Value.absent(),
+    this.myUpiName = const Value.absent(),
     this.passcodeHash = const Value.absent(),
     this.passcodeSalt = const Value.absent(),
     this.passcodeLength = const Value.absent(),
@@ -7730,6 +7975,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.themeName = const Value.absent(),
     this.showCurrencySymbol = const Value.absent(),
     this.countRepaymentsAsIncome = const Value.absent(),
+    this.myUpiId = const Value.absent(),
+    this.myUpiName = const Value.absent(),
     this.passcodeHash = const Value.absent(),
     this.passcodeSalt = const Value.absent(),
     this.passcodeLength = const Value.absent(),
@@ -7772,6 +8019,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<String>? themeName,
     Expression<bool>? showCurrencySymbol,
     Expression<bool>? countRepaymentsAsIncome,
+    Expression<String>? myUpiId,
+    Expression<String>? myUpiName,
     Expression<String>? passcodeHash,
     Expression<String>? passcodeSalt,
     Expression<int>? passcodeLength,
@@ -7818,6 +8067,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
         'show_currency_symbol': showCurrencySymbol,
       if (countRepaymentsAsIncome != null)
         'count_repayments_as_income': countRepaymentsAsIncome,
+      if (myUpiId != null) 'my_upi_id': myUpiId,
+      if (myUpiName != null) 'my_upi_name': myUpiName,
       if (passcodeHash != null) 'passcode_hash': passcodeHash,
       if (passcodeSalt != null) 'passcode_salt': passcodeSalt,
       if (passcodeLength != null) 'passcode_length': passcodeLength,
@@ -7874,6 +8125,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<String>? themeName,
     Value<bool>? showCurrencySymbol,
     Value<bool>? countRepaymentsAsIncome,
+    Value<String?>? myUpiId,
+    Value<String?>? myUpiName,
     Value<String?>? passcodeHash,
     Value<String?>? passcodeSalt,
     Value<int?>? passcodeLength,
@@ -7918,6 +8171,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       showCurrencySymbol: showCurrencySymbol ?? this.showCurrencySymbol,
       countRepaymentsAsIncome:
           countRepaymentsAsIncome ?? this.countRepaymentsAsIncome,
+      myUpiId: myUpiId ?? this.myUpiId,
+      myUpiName: myUpiName ?? this.myUpiName,
       passcodeHash: passcodeHash ?? this.passcodeHash,
       passcodeSalt: passcodeSalt ?? this.passcodeSalt,
       passcodeLength: passcodeLength ?? this.passcodeLength,
@@ -7996,6 +8251,12 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       map['count_repayments_as_income'] = Variable<bool>(
         countRepaymentsAsIncome.value,
       );
+    }
+    if (myUpiId.present) {
+      map['my_upi_id'] = Variable<String>(myUpiId.value);
+    }
+    if (myUpiName.present) {
+      map['my_upi_name'] = Variable<String>(myUpiName.value);
     }
     if (passcodeHash.present) {
       map['passcode_hash'] = Variable<String>(passcodeHash.value);
@@ -8121,6 +8382,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('themeName: $themeName, ')
           ..write('showCurrencySymbol: $showCurrencySymbol, ')
           ..write('countRepaymentsAsIncome: $countRepaymentsAsIncome, ')
+          ..write('myUpiId: $myUpiId, ')
+          ..write('myUpiName: $myUpiName, ')
           ..write('passcodeHash: $passcodeHash, ')
           ..write('passcodeSalt: $passcodeSalt, ')
           ..write('passcodeLength: $passcodeLength, ')
@@ -17615,6 +17878,9 @@ typedef $$PersonsTableCreateCompanionBuilder =
       Value<String?> note,
       Value<bool> isArchived,
       Value<DateTime> createdAt,
+      Value<String?> upiId,
+      Value<String?> phone,
+      Value<String?> paypal,
     });
 typedef $$PersonsTableUpdateCompanionBuilder =
     PersonsCompanion Function({
@@ -17624,6 +17890,9 @@ typedef $$PersonsTableUpdateCompanionBuilder =
       Value<String?> note,
       Value<bool> isArchived,
       Value<DateTime> createdAt,
+      Value<String?> upiId,
+      Value<String?> phone,
+      Value<String?> paypal,
     });
 
 final class $$PersonsTableReferences
@@ -17721,6 +17990,21 @@ class $$PersonsTableFilterComposer
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get upiId => $composableBuilder(
+    column: $table.upiId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get paypal => $composableBuilder(
+    column: $table.paypal,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -17838,6 +18122,21 @@ class $$PersonsTableOrderingComposer
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get upiId => $composableBuilder(
+    column: $table.upiId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get paypal => $composableBuilder(
+    column: $table.paypal,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$PersonsTableAnnotationComposer
@@ -17868,6 +18167,15 @@ class $$PersonsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get upiId =>
+      $composableBuilder(column: $table.upiId, builder: (column) => column);
+
+  GeneratedColumn<String> get phone =>
+      $composableBuilder(column: $table.phone, builder: (column) => column);
+
+  GeneratedColumn<String> get paypal =>
+      $composableBuilder(column: $table.paypal, builder: (column) => column);
 
   Expression<T> transactionsRefs<T extends Object>(
     Expression<T> Function($$TransactionsTableAnnotationComposer a) f,
@@ -17983,6 +18291,9 @@ class $$PersonsTableTableManager
                 Value<String?> note = const Value.absent(),
                 Value<bool> isArchived = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> upiId = const Value.absent(),
+                Value<String?> phone = const Value.absent(),
+                Value<String?> paypal = const Value.absent(),
               }) => PersonsCompanion(
                 id: id,
                 name: name,
@@ -17990,6 +18301,9 @@ class $$PersonsTableTableManager
                 note: note,
                 isArchived: isArchived,
                 createdAt: createdAt,
+                upiId: upiId,
+                phone: phone,
+                paypal: paypal,
               ),
           createCompanionCallback:
               ({
@@ -17999,6 +18313,9 @@ class $$PersonsTableTableManager
                 Value<String?> note = const Value.absent(),
                 Value<bool> isArchived = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> upiId = const Value.absent(),
+                Value<String?> phone = const Value.absent(),
+                Value<String?> paypal = const Value.absent(),
               }) => PersonsCompanion.insert(
                 id: id,
                 name: name,
@@ -18006,6 +18323,9 @@ class $$PersonsTableTableManager
                 note: note,
                 isArchived: isArchived,
                 createdAt: createdAt,
+                upiId: upiId,
+                phone: phone,
+                paypal: paypal,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -22276,6 +22596,8 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<String> themeName,
       Value<bool> showCurrencySymbol,
       Value<bool> countRepaymentsAsIncome,
+      Value<String?> myUpiId,
+      Value<String?> myUpiName,
       Value<String?> passcodeHash,
       Value<String?> passcodeSalt,
       Value<int?> passcodeLength,
@@ -22319,6 +22641,8 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<String> themeName,
       Value<bool> showCurrencySymbol,
       Value<bool> countRepaymentsAsIncome,
+      Value<String?> myUpiId,
+      Value<String?> myUpiName,
       Value<String?> passcodeHash,
       Value<String?> passcodeSalt,
       Value<int?> passcodeLength,
@@ -22435,6 +22759,16 @@ class $$SettingsTableFilterComposer
 
   ColumnFilters<bool> get countRepaymentsAsIncome => $composableBuilder(
     column: $table.countRepaymentsAsIncome,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get myUpiId => $composableBuilder(
+    column: $table.myUpiId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get myUpiName => $composableBuilder(
+    column: $table.myUpiName,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -22671,6 +23005,16 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get myUpiId => $composableBuilder(
+    column: $table.myUpiId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get myUpiName => $composableBuilder(
+    column: $table.myUpiName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get passcodeHash => $composableBuilder(
     column: $table.passcodeHash,
     builder: (column) => ColumnOrderings(column),
@@ -22893,6 +23237,12 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get myUpiId =>
+      $composableBuilder(column: $table.myUpiId, builder: (column) => column);
+
+  GeneratedColumn<String> get myUpiName =>
+      $composableBuilder(column: $table.myUpiName, builder: (column) => column);
+
   GeneratedColumn<String> get passcodeHash => $composableBuilder(
     column: $table.passcodeHash,
     builder: (column) => column,
@@ -23097,6 +23447,8 @@ class $$SettingsTableTableManager
                 Value<String> themeName = const Value.absent(),
                 Value<bool> showCurrencySymbol = const Value.absent(),
                 Value<bool> countRepaymentsAsIncome = const Value.absent(),
+                Value<String?> myUpiId = const Value.absent(),
+                Value<String?> myUpiName = const Value.absent(),
                 Value<String?> passcodeHash = const Value.absent(),
                 Value<String?> passcodeSalt = const Value.absent(),
                 Value<int?> passcodeLength = const Value.absent(),
@@ -23139,6 +23491,8 @@ class $$SettingsTableTableManager
                 themeName: themeName,
                 showCurrencySymbol: showCurrencySymbol,
                 countRepaymentsAsIncome: countRepaymentsAsIncome,
+                myUpiId: myUpiId,
+                myUpiName: myUpiName,
                 passcodeHash: passcodeHash,
                 passcodeSalt: passcodeSalt,
                 passcodeLength: passcodeLength,
@@ -23182,6 +23536,8 @@ class $$SettingsTableTableManager
                 Value<String> themeName = const Value.absent(),
                 Value<bool> showCurrencySymbol = const Value.absent(),
                 Value<bool> countRepaymentsAsIncome = const Value.absent(),
+                Value<String?> myUpiId = const Value.absent(),
+                Value<String?> myUpiName = const Value.absent(),
                 Value<String?> passcodeHash = const Value.absent(),
                 Value<String?> passcodeSalt = const Value.absent(),
                 Value<int?> passcodeLength = const Value.absent(),
@@ -23224,6 +23580,8 @@ class $$SettingsTableTableManager
                 themeName: themeName,
                 showCurrencySymbol: showCurrencySymbol,
                 countRepaymentsAsIncome: countRepaymentsAsIncome,
+                myUpiId: myUpiId,
+                myUpiName: myUpiName,
                 passcodeHash: passcodeHash,
                 passcodeSalt: passcodeSalt,
                 passcodeLength: passcodeLength,

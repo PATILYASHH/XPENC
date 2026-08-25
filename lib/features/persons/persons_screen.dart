@@ -7,6 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
+import 'edit_person_sheet.dart';
 
 /// Who owes you, who you owe. Lending is **not** an expense — the money is
 /// still yours, it's just sitting with someone else.
@@ -297,6 +298,12 @@ class _PersonTile extends ConsumerWidget {
               ),
             ),
             ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('Edit'),
+              subtitle: const Text('Name, UPI ID, phone and more.'),
+              onTap: () => Navigator.of(sheetContext).pop(_PersonAction.edit),
+            ),
+            ListTile(
               leading: const Icon(Icons.archive_outlined),
               title: const Text('Archive'),
               subtitle: const Text('Hide them. History stays intact.'),
@@ -321,7 +328,9 @@ class _PersonTile extends ConsumerWidget {
       ),
     );
     if (action == null || !context.mounted) return;
-    if (action == _PersonAction.archive) {
+    if (action == _PersonAction.edit) {
+      await showEditPersonSheet(context, ref, person);
+    } else if (action == _PersonAction.archive) {
       await _confirmArchive(context, ref);
     } else {
       await _confirmRemove(context, ref);
@@ -411,7 +420,7 @@ class _PersonTile extends ConsumerWidget {
   }
 }
 
-enum _PersonAction { archive, remove }
+enum _PersonAction { edit, archive, remove }
 
 class _EmptyPersons extends StatelessWidget {
   const _EmptyPersons();
