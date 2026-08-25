@@ -164,7 +164,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 41;
+  int get schemaVersion => 42;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -366,6 +366,9 @@ class AppDatabase extends _$AppDatabase {
           settings,
           settings.failedPasscodeAttempts,
         );
+      }
+      if (from < 42) {
+        await _addColumnIfMissing(m, settings, settings.showBottomNavLabels);
       }
     },
     beforeOpen: (details) async {
@@ -3317,6 +3320,10 @@ class AppDatabase extends _$AppDatabase {
       settings,
     ).write(SettingsCompanion(bottomNavSlots: Value('$left,$right')));
   }
+
+  Future<void> setShowBottomNavLabels(bool value) => update(
+    settings,
+  ).write(SettingsCompanion(showBottomNavLabels: Value(value)));
 
   // ── Expense reminder ─────────────────────────────────────────────────────
 

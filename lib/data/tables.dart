@@ -574,6 +574,11 @@ class Settings extends Table {
   TextColumn get bottomNavSlots =>
       text().withDefault(const Constant('transactions,persons'))();
 
+  /// Whether each bottom-nav item shows its small text label under the icon.
+  /// On by default; off collapses the bar to icon-only.
+  BoolColumn get showBottomNavLabels =>
+      boolean().withDefault(const Constant(true))();
+
   /// Whether the calendar's selected-day section shows an inflow/outflow
   /// total strip. On by default; the on/off toggle lives in Settings
   /// (GitHub #75).

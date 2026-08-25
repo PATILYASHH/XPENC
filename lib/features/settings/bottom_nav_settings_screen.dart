@@ -20,6 +20,7 @@ class BottomNavSettingsScreen extends ConsumerWidget {
     final parts = raw.split(',');
     final leftId = parts.length == 2 ? parts[0] : 'transactions';
     final rightId = parts.length == 2 ? parts[1] : 'persons';
+    final showLabels = ref.watch(showBottomNavLabelsProvider);
 
     Future<void> pick(bool isLeft) async {
       final excluded = isLeft ? rightId : leftId;
@@ -68,6 +69,19 @@ class BottomNavSettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           _PinnedRow(label: 'More'),
+          const SizedBox(height: 20),
+          Card(
+            margin: EdgeInsets.zero,
+            child: SwitchListTile(
+              title: const Text('Show labels'),
+              subtitle: const Text(
+                'Show each item\'s text under its icon. Off keeps icons only.',
+              ),
+              value: showLabels,
+              onChanged: (v) =>
+                  ref.read(dbProvider).setShowBottomNavLabels(v),
+            ),
+          ),
         ],
       ),
     );
