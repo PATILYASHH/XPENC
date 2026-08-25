@@ -11107,12 +11107,22 @@ class $GoalDetailsTable extends GoalDetails
       'REFERENCES categories (id)',
     ),
   );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     accountId,
     targetAmount,
     targetDate,
     categoryId,
+    notes,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -11144,6 +11154,12 @@ class $GoalDetailsTable extends GoalDetails
         categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
       );
     }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
     return context;
   }
 
@@ -11171,6 +11187,10 @@ class $GoalDetailsTable extends GoalDetails
         DriftSqlType.int,
         data['${effectivePrefix}category_id'],
       ),
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
     );
   }
 
@@ -11191,11 +11211,16 @@ class GoalDetailRow extends DataClass implements Insertable<GoalDetailRow> {
   /// The Category a contribution is tagged with by default (GitHub #70-adjacent).
   /// Null means contributions aren't counted toward any budget.
   final int? categoryId;
+
+  /// Free-form notes about the goal — e.g. why it exists or what it's for
+  /// (GitHub #76). Purely informational; never read by any calculation.
+  final String? notes;
   const GoalDetailRow({
     required this.accountId,
     required this.targetAmount,
     this.targetDate,
     this.categoryId,
+    this.notes,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -11212,6 +11237,9 @@ class GoalDetailRow extends DataClass implements Insertable<GoalDetailRow> {
     if (!nullToAbsent || categoryId != null) {
       map['category_id'] = Variable<int>(categoryId);
     }
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
     return map;
   }
 
@@ -11225,6 +11253,9 @@ class GoalDetailRow extends DataClass implements Insertable<GoalDetailRow> {
       categoryId: categoryId == null && nullToAbsent
           ? const Value.absent()
           : Value(categoryId),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
     );
   }
 
@@ -11238,6 +11269,7 @@ class GoalDetailRow extends DataClass implements Insertable<GoalDetailRow> {
       targetAmount: serializer.fromJson<Money>(json['targetAmount']),
       targetDate: serializer.fromJson<DateTime?>(json['targetDate']),
       categoryId: serializer.fromJson<int?>(json['categoryId']),
+      notes: serializer.fromJson<String?>(json['notes']),
     );
   }
   @override
@@ -11248,6 +11280,7 @@ class GoalDetailRow extends DataClass implements Insertable<GoalDetailRow> {
       'targetAmount': serializer.toJson<Money>(targetAmount),
       'targetDate': serializer.toJson<DateTime?>(targetDate),
       'categoryId': serializer.toJson<int?>(categoryId),
+      'notes': serializer.toJson<String?>(notes),
     };
   }
 
@@ -11256,11 +11289,13 @@ class GoalDetailRow extends DataClass implements Insertable<GoalDetailRow> {
     Money? targetAmount,
     Value<DateTime?> targetDate = const Value.absent(),
     Value<int?> categoryId = const Value.absent(),
+    Value<String?> notes = const Value.absent(),
   }) => GoalDetailRow(
     accountId: accountId ?? this.accountId,
     targetAmount: targetAmount ?? this.targetAmount,
     targetDate: targetDate.present ? targetDate.value : this.targetDate,
     categoryId: categoryId.present ? categoryId.value : this.categoryId,
+    notes: notes.present ? notes.value : this.notes,
   );
   GoalDetailRow copyWithCompanion(GoalDetailsCompanion data) {
     return GoalDetailRow(
@@ -11274,6 +11309,7 @@ class GoalDetailRow extends DataClass implements Insertable<GoalDetailRow> {
       categoryId: data.categoryId.present
           ? data.categoryId.value
           : this.categoryId,
+      notes: data.notes.present ? data.notes.value : this.notes,
     );
   }
 
@@ -11283,14 +11319,15 @@ class GoalDetailRow extends DataClass implements Insertable<GoalDetailRow> {
           ..write('accountId: $accountId, ')
           ..write('targetAmount: $targetAmount, ')
           ..write('targetDate: $targetDate, ')
-          ..write('categoryId: $categoryId')
+          ..write('categoryId: $categoryId, ')
+          ..write('notes: $notes')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode =>
-      Object.hash(accountId, targetAmount, targetDate, categoryId);
+      Object.hash(accountId, targetAmount, targetDate, categoryId, notes);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -11298,7 +11335,8 @@ class GoalDetailRow extends DataClass implements Insertable<GoalDetailRow> {
           other.accountId == this.accountId &&
           other.targetAmount == this.targetAmount &&
           other.targetDate == this.targetDate &&
-          other.categoryId == this.categoryId);
+          other.categoryId == this.categoryId &&
+          other.notes == this.notes);
 }
 
 class GoalDetailsCompanion extends UpdateCompanion<GoalDetailRow> {
@@ -11306,29 +11344,34 @@ class GoalDetailsCompanion extends UpdateCompanion<GoalDetailRow> {
   final Value<Money> targetAmount;
   final Value<DateTime?> targetDate;
   final Value<int?> categoryId;
+  final Value<String?> notes;
   const GoalDetailsCompanion({
     this.accountId = const Value.absent(),
     this.targetAmount = const Value.absent(),
     this.targetDate = const Value.absent(),
     this.categoryId = const Value.absent(),
+    this.notes = const Value.absent(),
   });
   GoalDetailsCompanion.insert({
     this.accountId = const Value.absent(),
     required Money targetAmount,
     this.targetDate = const Value.absent(),
     this.categoryId = const Value.absent(),
+    this.notes = const Value.absent(),
   }) : targetAmount = Value(targetAmount);
   static Insertable<GoalDetailRow> custom({
     Expression<int>? accountId,
     Expression<int>? targetAmount,
     Expression<DateTime>? targetDate,
     Expression<int>? categoryId,
+    Expression<String>? notes,
   }) {
     return RawValuesInsertable({
       if (accountId != null) 'account_id': accountId,
       if (targetAmount != null) 'target_amount': targetAmount,
       if (targetDate != null) 'target_date': targetDate,
       if (categoryId != null) 'category_id': categoryId,
+      if (notes != null) 'notes': notes,
     });
   }
 
@@ -11337,12 +11380,14 @@ class GoalDetailsCompanion extends UpdateCompanion<GoalDetailRow> {
     Value<Money>? targetAmount,
     Value<DateTime?>? targetDate,
     Value<int?>? categoryId,
+    Value<String?>? notes,
   }) {
     return GoalDetailsCompanion(
       accountId: accountId ?? this.accountId,
       targetAmount: targetAmount ?? this.targetAmount,
       targetDate: targetDate ?? this.targetDate,
       categoryId: categoryId ?? this.categoryId,
+      notes: notes ?? this.notes,
     );
   }
 
@@ -11363,6 +11408,9 @@ class GoalDetailsCompanion extends UpdateCompanion<GoalDetailRow> {
     if (categoryId.present) {
       map['category_id'] = Variable<int>(categoryId.value);
     }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
     return map;
   }
 
@@ -11372,7 +11420,8 @@ class GoalDetailsCompanion extends UpdateCompanion<GoalDetailRow> {
           ..write('accountId: $accountId, ')
           ..write('targetAmount: $targetAmount, ')
           ..write('targetDate: $targetDate, ')
-          ..write('categoryId: $categoryId')
+          ..write('categoryId: $categoryId, ')
+          ..write('notes: $notes')
           ..write(')'))
         .toString();
   }
@@ -25898,6 +25947,7 @@ typedef $$GoalDetailsTableCreateCompanionBuilder =
       required Money targetAmount,
       Value<DateTime?> targetDate,
       Value<int?> categoryId,
+      Value<String?> notes,
     });
 typedef $$GoalDetailsTableUpdateCompanionBuilder =
     GoalDetailsCompanion Function({
@@ -25905,6 +25955,7 @@ typedef $$GoalDetailsTableUpdateCompanionBuilder =
       Value<Money> targetAmount,
       Value<DateTime?> targetDate,
       Value<int?> categoryId,
+      Value<String?> notes,
     });
 
 final class $$GoalDetailsTableReferences
@@ -25967,6 +26018,11 @@ class $$GoalDetailsTableFilterComposer
 
   ColumnFilters<DateTime> get targetDate => $composableBuilder(
     column: $table.targetDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -26036,6 +26092,11 @@ class $$GoalDetailsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$AccountsTableOrderingComposer get accountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -26102,6 +26163,9 @@ class $$GoalDetailsTableAnnotationComposer
     column: $table.targetDate,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
 
   $$AccountsTableAnnotationComposer get accountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
@@ -26182,11 +26246,13 @@ class $$GoalDetailsTableTableManager
                 Value<Money> targetAmount = const Value.absent(),
                 Value<DateTime?> targetDate = const Value.absent(),
                 Value<int?> categoryId = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
               }) => GoalDetailsCompanion(
                 accountId: accountId,
                 targetAmount: targetAmount,
                 targetDate: targetDate,
                 categoryId: categoryId,
+                notes: notes,
               ),
           createCompanionCallback:
               ({
@@ -26194,11 +26260,13 @@ class $$GoalDetailsTableTableManager
                 required Money targetAmount,
                 Value<DateTime?> targetDate = const Value.absent(),
                 Value<int?> categoryId = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
               }) => GoalDetailsCompanion.insert(
                 accountId: accountId,
                 targetAmount: targetAmount,
                 targetDate: targetDate,
                 categoryId: categoryId,
+                notes: notes,
               ),
           withReferenceMapper: (p0) => p0
               .map(

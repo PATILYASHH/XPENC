@@ -513,6 +513,7 @@ class _GoalEditorSheet extends ConsumerStatefulWidget {
 class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
   late final TextEditingController _nameController;
   late final TextEditingController _amountController;
+  late final TextEditingController _notesController;
   late int _colorValue;
   late String _iconKey;
   int? _sourceAccountId;
@@ -533,6 +534,7 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
           ? ''
           : MoneyFormat.bare(existing.detail.targetAmount),
     );
+    _notesController = TextEditingController(text: existing?.detail.notes ?? '');
     _colorValue = existing?.account.colorValue ?? _presetColors.first;
     _iconKey = existing?.account.iconKey ?? _iconKeys.first;
     _targetDate = existing?.detail.targetDate;
@@ -543,6 +545,7 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
   void dispose() {
     _nameController.dispose();
     _amountController.dispose();
+    _notesController.dispose();
     super.dispose();
   }
 
@@ -593,6 +596,7 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
     setState(() => _submitting = true);
     final db = ref.read(dbProvider);
     final navigator = Navigator.of(context);
+    final notes = _notesController.text.trim();
     try {
       if (_isEdit) {
         await db.updateGoal(
@@ -603,6 +607,7 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
           colorValue: _colorValue,
           iconKey: _iconKey,
           categoryId: _categoryId,
+          notes: notes.isEmpty ? null : notes,
         );
       } else {
         final goalAccountId = await db.addGoal(
@@ -612,6 +617,7 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
           colorValue: _colorValue,
           iconKey: _iconKey,
           categoryId: _categoryId,
+          notes: notes.isEmpty ? null : notes,
         );
         if (_fromExistingAccount && mounted) {
           await _fundFromSourceAccount(db, goalAccountId);
@@ -785,6 +791,17 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
                   child: const Text('Clear date'),
                 ),
               ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _notesController,
+              maxLines: 3,
+              maxLength: 500,
+              decoration: const InputDecoration(
+                labelText: 'Notes (optional)',
+                hintText: 'What this goal is for, or anything else worth noting',
+                alignLabelWithHint: true,
+              ),
+            ),
             const SizedBox(height: 12),
             _fieldLabel(theme, 'Colour'),
             const SizedBox(height: 12),

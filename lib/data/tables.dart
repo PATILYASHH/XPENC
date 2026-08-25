@@ -756,6 +756,10 @@ class GoalDetails extends Table {
   IntColumn get categoryId =>
       integer().nullable().references(Categories, #id)();
 
+  /// Free-form notes about the goal — e.g. why it exists or what it's for
+  /// (GitHub #76). Purely informational; never read by any calculation.
+  TextColumn get notes => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {accountId};
 }
