@@ -4,12 +4,16 @@ import 'package:flutter/services.dart';
 import '../../core/money.dart';
 import '../../core/payments/upi_launcher.dart';
 
-/// A "Pay"/"Request" row: a label, a Beta badge, and one button per
-/// supported UPI app (Google Pay, PhonePe). When [payeeUpiId] isn't set yet
-/// (the person has no UPI ID for Pay, or the app's own user hasn't set
-/// theirs for Request), the buttons stay visible but disabled, with a
-/// tappable nudge in their place — never silently hidden, since that reads
-/// as broken rather than "not set up yet".
+/// A "Pay"/"Request" row: a label, a Beta badge, and a single "UPI" button —
+/// the generic `upi://` intent lets Android's own chooser surface whichever
+/// UPI apps (Google Pay, PhonePe, anything else) are actually installed,
+/// rather than this app picking specific ones. Room for other payment
+/// methods (PayPal, for users outside UPI's reach) as additional buttons
+/// alongside this one later. When [payeeUpiId] isn't set yet (the person has
+/// no UPI ID for Pay, or the app's own user hasn't set theirs for Request),
+/// the button stays visible but disabled, with a tappable nudge in its
+/// place — never silently hidden, since that reads as broken rather than
+/// "not set up yet".
 class UpiActionRow extends StatelessWidget {
   const UpiActionRow({
     required this.action,
@@ -38,10 +42,9 @@ class UpiActionRow extends StatelessWidget {
 
   bool get _ready => payeeUpiId != null && payeeUpiId!.trim().isNotEmpty;
 
-  Future<void> _pay(BuildContext context, UpiApp app) async {
+  Future<void> _pay(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
     final opened = await UpiLauncher.launch(
-      app: app,
       action: action,
       payeeUpiId: payeeUpiId!,
       payeeName: payeeName,
@@ -54,7 +57,7 @@ class UpiActionRow extends StatelessWidget {
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        SnackBar(content: Text("Couldn't open ${_appLabel(app)} — copied UPI ID instead")),
+        const SnackBar(content: Text("Couldn't open a UPI app — copied UPI ID instead")),
       );
   }
 
@@ -94,31 +97,16 @@ class UpiActionRow extends StatelessWidget {
               ),
             ),
           ),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: _ready ? () => _pay(context, UpiApp.googlePay) : null,
-                child: const Text('Google Pay'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: OutlinedButton(
-                onPressed: _ready ? () => _pay(context, UpiApp.phonePe) : null,
-                child: const Text('PhonePe'),
-              ),
-            ),
-          ],
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: _ready ? () => _pay(context) : null,
+            child: const Text('UPI'),
+          ),
         ),
       ],
     );
   }
-
-  String _appLabel(UpiApp app) => switch (app) {
-    UpiApp.googlePay => 'Google Pay',
-    UpiApp.phonePe => 'PhonePe',
-  };
 }
 
 class _BetaBadge extends StatelessWidget {

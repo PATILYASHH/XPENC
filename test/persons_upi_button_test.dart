@@ -73,8 +73,7 @@ void main() {
 
       expect(find.text('Request'), findsOneWidget);
       expect(find.text('Pay'), findsNothing);
-      expect(findButton('Google Pay')!.onPressed, isNull);
-      expect(findButton('PhonePe')!.onPressed, isNull);
+      expect(findButton('UPI')!.onPressed, isNull);
       expect(
         find.text('Add your UPI ID in Settings to request money'),
         findsOneWidget,
@@ -102,8 +101,7 @@ void main() {
       await pump(tester, PersonDetailScreen(personId: ram!));
       expect(tester.takeException(), isNull);
 
-      expect(findButton('Google Pay')!.onPressed, isNotNull);
-      expect(findButton('PhonePe')!.onPressed, isNotNull);
+      expect(findButton('UPI')!.onPressed, isNotNull);
       expect(
         find.text('Add your UPI ID in Settings to request money'),
         findsNothing,
@@ -133,7 +131,7 @@ void main() {
 
       expect(find.text('Pay'), findsOneWidget);
       expect(find.text('Request'), findsNothing);
-      expect(findButton('Google Pay')!.onPressed, isNull);
+      expect(findButton('UPI')!.onPressed, isNull);
       expect(
         find.text("Add Ram's UPI ID to pay them directly"),
         findsOneWidget,
@@ -147,8 +145,7 @@ void main() {
         ),
       );
       await pump(tester, PersonDetailScreen(personId: ram));
-      expect(findButton('Google Pay')!.onPressed, isNotNull);
-      expect(findButton('PhonePe')!.onPressed, isNotNull);
+      expect(findButton('UPI')!.onPressed, isNotNull);
       await unmount(tester);
     },
   );
