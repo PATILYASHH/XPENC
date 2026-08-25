@@ -133,4 +133,130 @@ void main() {
       },
     );
   });
+
+  group('AppDatabase master phrase round-trip (GitHub #74)', () {
+    late AppDatabase db;
+    const phrase = [
+      'anchor',
+      'bear',
+      'cliff',
+      'dawn',
+      'ember',
+      'falcon',
+      'garden',
+      'harbor',
+      'island',
+      'jungle',
+    ];
+
+    setUp(() => db = AppDatabase(NativeDatabase.memory()));
+    tearDown(() => db.close());
+
+    test('no master phrase set by default', () async {
+      final settings = await db.getSettings();
+      expect(settings.masterPhraseHash, isNull);
+      expect(await db.verifyMasterPhrase(phrase), isFalse);
+    });
+
+    test('setMasterPhrase then verifyMasterPhrase with the right words', () async {
+      await db.setMasterPhrase(phrase);
+      expect(await db.verifyMasterPhrase(phrase), isTrue);
+    });
+
+    test('verifyMasterPhrase rejects the wrong words', () async {
+      await db.setMasterPhrase(phrase);
+      expect(await db.verifyMasterPhrase(phrase.reversed.toList()), isFalse);
+    });
+
+    test('the words are never stored as plain text', () async {
+      await db.setMasterPhrase(phrase);
+      final settings = await db.getSettings();
+      expect(settings.masterPhraseHash, isNot(contains('anchor')));
+      expect(settings.masterPhraseSalt, isNotNull);
+    });
+
+    test(
+      'clearMasterPhrase removes it and resets the failed-attempt counter',
+      () async {
+        await db.setPasscode('4269');
+        await db.setMasterPhrase(phrase);
+        await db.recordFailedPasscodeAttempt();
+        await db.recordFailedPasscodeAttempt();
+
+        await db.clearMasterPhrase();
+        final settings = await db.getSettings();
+        expect(settings.masterPhraseHash, isNull);
+        expect(settings.masterPhraseSalt, isNull);
+        expect(settings.failedPasscodeAttempts, 0);
+        expect(await db.verifyMasterPhrase(phrase), isFalse);
+      },
+    );
+
+    test(
+      'the attempt threshold cannot be set without a master phrase',
+      () async {
+        await db.setMasterPhraseAttemptThreshold(3);
+        expect((await db.getSettings()).masterPhraseAttemptThreshold, 5);
+      },
+    );
+
+    test('the attempt threshold defaults to 5 and is settable', () async {
+      await db.setMasterPhrase(phrase);
+      expect((await db.getSettings()).masterPhraseAttemptThreshold, 5);
+
+      await db.setMasterPhraseAttemptThreshold(3);
+      expect((await db.getSettings()).masterPhraseAttemptThreshold, 3);
+    });
+
+    test(
+      'recordFailedPasscodeAttempt persists and has no time decay',
+      () async {
+        expect((await db.getSettings()).failedPasscodeAttempts, 0);
+        expect(await db.recordFailedPasscodeAttempt(), 1);
+        expect(await db.recordFailedPasscodeAttempt(), 2);
+        expect((await db.getSettings()).failedPasscodeAttempts, 2);
+      },
+    );
+
+    test('resetFailedPasscodeAttempts zeroes the counter', () async {
+      await db.recordFailedPasscodeAttempt();
+      await db.recordFailedPasscodeAttempt();
+      await db.resetFailedPasscodeAttempts();
+      expect((await db.getSettings()).failedPasscodeAttempts, 0);
+    });
+
+    test(
+      'a backup restore never silently clears or swaps the master phrase',
+      () async {
+        await db.setMasterPhrase(phrase);
+        final backup = await db.exportAll();
+
+        final settingsRows = (backup['settings'] as List)
+            .cast<Map<String, dynamic>>();
+        for (final row in settingsRows) {
+          row.remove('master_phrase_hash');
+          row.remove('master_phrase_salt');
+        }
+
+        await db.importAll(backup);
+
+        expect(await db.verifyMasterPhrase(phrase), isTrue);
+      },
+    );
+
+    test('hasMasterPhraseProvider reflects the stored row', () async {
+      final container = ProviderContainer(
+        overrides: [dbProvider.overrideWithValue(db)],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(dbProvider).getSettings();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(container.read(hasMasterPhraseProvider), isFalse);
+
+      await db.setMasterPhrase(phrase);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(container.read(hasMasterPhraseProvider), isTrue);
+    });
+  });
 }

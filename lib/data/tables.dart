@@ -478,6 +478,28 @@ class Settings extends Table {
   /// backgrounded.
   IntColumn get pinTimeoutMinutes => integer().withDefault(const Constant(0))();
 
+  /// A salted SHA-256 hash of the master recovery phrase (GitHub #74) — same
+  /// scheme as [passcodeHash], never the words themselves. Null means the
+  /// feature is off. There is no "change" flow, only set-when-null and
+  /// clear — like [passcodeHash] it can't be recovered if forgotten, so
+  /// there is nothing a "change" step could safely verify against without
+  /// prompting for the old phrase first, which is exactly what clearing +
+  /// setting again already does.
+  TextColumn get masterPhraseHash => text().nullable()();
+  TextColumn get masterPhraseSalt => text().nullable()();
+
+  /// How many consecutive wrong PINs (with [failedPasscodeAttempts]) force
+  /// the lock screen into master-phrase-only mode. Meaningless without
+  /// [masterPhraseHash] set, same guard pattern as [pinTimeoutMinutes].
+  IntColumn get masterPhraseAttemptThreshold =>
+      integer().withDefault(const Constant(5))();
+
+  /// Consecutive wrong-PIN count on the lock screen — persisted, not reset
+  /// by an app restart or by time passing (GitHub #74 asks for "no time
+  /// decay"). Reset to 0 by a correct PIN or a correct master phrase.
+  IntColumn get failedPasscodeAttempts =>
+      integer().withDefault(const Constant(0))();
+
   /// A daily nudge — "log today's spending" — distinct from [Reminders],
   /// which are always for one specific planned payment.
   BoolColumn get expenseReminderEnabled =>

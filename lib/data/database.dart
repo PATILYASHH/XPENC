@@ -164,7 +164,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 40;
+  int get schemaVersion => 41;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -352,6 +352,20 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 40) {
         await _addColumnIfMissing(m, accounts, accounts.includeInNetWorth);
+      }
+      if (from < 41) {
+        await _addColumnIfMissing(m, settings, settings.masterPhraseHash);
+        await _addColumnIfMissing(m, settings, settings.masterPhraseSalt);
+        await _addColumnIfMissing(
+          m,
+          settings,
+          settings.masterPhraseAttemptThreshold,
+        );
+        await _addColumnIfMissing(
+          m,
+          settings,
+          settings.failedPasscodeAttempts,
+        );
       }
     },
     beforeOpen: (details) async {
@@ -3193,6 +3207,64 @@ class AppDatabase extends _$AppDatabase {
     ).write(SettingsCompanion(pinTimeoutMinutes: Value(minutes)));
   }
 
+  // ── Master recovery phrase (GitHub #74) ─────────────────────────────────
+
+  /// [words] is trusted as-is — the setup screen is what enforces the word
+  /// count and that they came from [RecoveryWords.wordlist].
+  Future<void> setMasterPhrase(List<String> words) {
+    final salt = Passcode.generateSalt();
+    return update(settings).write(
+      SettingsCompanion(
+        masterPhraseHash: Value(Passcode.hash(words.join(' '), salt)),
+        masterPhraseSalt: Value(salt),
+      ),
+    );
+  }
+
+  /// Clears the phrase and resets the attempt counter — otherwise a device
+  /// already past the threshold would stay locked out of a PIN with no
+  /// phrase left to unlock it with.
+  Future<void> clearMasterPhrase() => update(settings).write(
+    const SettingsCompanion(
+      masterPhraseHash: Value(null),
+      masterPhraseSalt: Value(null),
+      failedPasscodeAttempts: Value(0),
+    ),
+  );
+
+  Future<bool> verifyMasterPhrase(List<String> words) async {
+    final row = await getSettings();
+    final hash = row.masterPhraseHash;
+    final salt = row.masterPhraseSalt;
+    if (hash == null || salt == null) return false;
+    return Passcode.verify(words.join(' '), salt, hash);
+  }
+
+  /// A no-op when no master phrase is set — same guard as
+  /// [setPinTimeoutMinutes]; a threshold means nothing without a phrase to
+  /// fall back to.
+  Future<void> setMasterPhraseAttemptThreshold(int attempts) async {
+    if ((await getSettings()).masterPhraseHash == null) return;
+    await update(settings).write(
+      SettingsCompanion(masterPhraseAttemptThreshold: Value(attempts)),
+    );
+  }
+
+  /// Increments the persisted wrong-PIN counter and returns the new count —
+  /// the lock screen compares it against [Settings.masterPhraseAttemptThreshold]
+  /// to decide whether to switch out of PIN entry.
+  Future<int> recordFailedPasscodeAttempt() async {
+    final next = (await getSettings()).failedPasscodeAttempts + 1;
+    await update(
+      settings,
+    ).write(SettingsCompanion(failedPasscodeAttempts: Value(next)));
+    return next;
+  }
+
+  Future<void> resetFailedPasscodeAttempts() => update(
+    settings,
+  ).write(const SettingsCompanion(failedPasscodeAttempts: Value(0)));
+
   Future<void> setHideAmounts(bool value) =>
       update(settings).write(SettingsCompanion(hideAmounts: Value(value)));
 
@@ -3957,6 +4029,15 @@ class AppDatabase extends _$AppDatabase {
     final localPasscodeHash = localSettings?.passcodeHash;
     final localPasscodeSalt = localSettings?.passcodeSalt;
     final localBiometricEnabled = localSettings?.biometricEnabled ?? false;
+    // Same reasoning as the passcode fields above, plus: the phrase can
+    // never be recovered if lost, so importing a backup must never be able
+    // to silently swap in a different (or null) one.
+    final localMasterPhraseHash = localSettings?.masterPhraseHash;
+    final localMasterPhraseSalt = localSettings?.masterPhraseSalt;
+    final localMasterPhraseAttemptThreshold =
+        localSettings?.masterPhraseAttemptThreshold ?? 5;
+    final localFailedPasscodeAttempts =
+        localSettings?.failedPasscodeAttempts ?? 0;
 
     // Foreign keys stay ON throughout (SQLite ignores the `foreign_keys` pragma
     // inside a transaction anyway). That is deliberate: a backup pointing at a
@@ -4081,6 +4162,12 @@ class AppDatabase extends _$AppDatabase {
             passcodeHash: Value(localPasscodeHash),
             passcodeSalt: Value(localPasscodeSalt),
             biometricEnabled: Value(localBiometricEnabled),
+            masterPhraseHash: Value(localMasterPhraseHash),
+            masterPhraseSalt: Value(localMasterPhraseSalt),
+            masterPhraseAttemptThreshold: Value(
+              localMasterPhraseAttemptThreshold,
+            ),
+            failedPasscodeAttempts: Value(localFailedPasscodeAttempts),
           ),
         );
       }
