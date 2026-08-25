@@ -164,7 +164,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 39;
+  int get schemaVersion => 40;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -349,6 +349,9 @@ class AppDatabase extends _$AppDatabase {
         await _addColumnIfMissing(m, settings, settings.fontScalePercent);
         await _addColumnIfMissing(m, settings, settings.fontWeightDelta);
         await _addColumnIfMissing(m, settings, settings.fontFamily);
+      }
+      if (from < 40) {
+        await _addColumnIfMissing(m, accounts, accounts.includeInNetWorth);
       }
     },
     beforeOpen: (details) async {
@@ -1809,9 +1812,21 @@ class AppDatabase extends _$AppDatabase {
           .watch();
 
   /// Total money = Cash + Bank + Credit Card. Instruments never double-count.
+  /// An account with [Accounts.includeInNetWorth] off — opted out from
+  /// Settings > Customize Dashboard — contributes nothing here, though it
+  /// still shows its own balance everywhere else in the app.
   Stream<Money> watchNetWorth() => watchBalanceHoldingAccounts().map(
-    (rows) => rows.fold(const Money.zero(), (sum, a) => sum + a.currentBalance),
+    (rows) => rows
+        .where((a) => a.includeInNetWorth)
+        .fold(const Money.zero(), (sum, a) => sum + a.currentBalance),
   );
+
+  /// Flips whether [id]'s balance counts toward [watchNetWorth] — the toggle
+  /// behind Settings > Customize Dashboard.
+  Future<void> setAccountIncludeInNetWorth(int id, bool value) =>
+      (update(accounts)..where((a) => a.id.equals(id))).write(
+        AccountsCompanion(includeInNetWorth: Value(value)),
+      );
 
   Stream<List<CategoryRow>> watchCategories(CategoryKind kind) =>
       (select(categories)
