@@ -602,6 +602,23 @@ class Settings extends Table {
   BoolColumn get showBottomNavLabels =>
       boolean().withDefault(const Constant(true))();
 
+  /// Off by default — press-and-hold the ➕ button is a new, undiscoverable
+  /// gesture on a control every existing user already knows; asking them to
+  /// opt in avoids surprising anyone who just wants to add a transaction.
+  /// When on, holding ➕ floats 3 quick-access options (see
+  /// [holdMenuSlots]) the user drags a finger toward to jump to that
+  /// destination, without lifting.
+  BoolColumn get holdMenuEnabled =>
+      boolean().withDefault(const Constant(false))();
+
+  /// The 3 destinations the hold-➕ menu offers, comma-joined, same catalog
+  /// and id set as [bottomNavSlots] (`AppShell._catalog` /
+  /// `AppDatabase.bottomNavCatalogIds`). Deliberately allowed to overlap
+  /// with `bottomNavSlots` — quick access via a hold gesture and a pinned
+  /// tab aren't mutually exclusive.
+  TextColumn get holdMenuSlots =>
+      text().withDefault(const Constant('calendar,budgets,stats'))();
+
   /// Whether the calendar's selected-day section shows an inflow/outflow
   /// total strip. On by default; the on/off toggle lives in Settings
   /// (GitHub #75).

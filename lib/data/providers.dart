@@ -644,6 +644,23 @@ final showBottomNavLabelsProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.showBottomNavLabels ?? true;
 });
 
+/// Off by default — see `Settings.holdMenuEnabled`.
+final holdMenuEnabledProvider = Provider<bool>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.holdMenuEnabled ?? false;
+});
+
+/// The 3 destinations the hold-➕ menu offers. Falls back to the same
+/// default `Settings.holdMenuSlots` itself defaults to if the stored value
+/// somehow doesn't parse to exactly 3 ids — mirrors `AppShell._slotIds`'s
+/// defensive fallback for `bottomNavSlots`.
+final holdMenuSlotsProvider = Provider<List<String>>((ref) {
+  final raw =
+      ref.watch(settingsProvider).valueOrNull?.holdMenuSlots ??
+      'calendar,budgets,stats';
+  final parts = raw.split(',');
+  return parts.length == 3 ? parts : const ['calendar', 'budgets', 'stats'];
+});
+
 /// Extra logical pixels of bottom clearance layered over the OS's own
 /// reported nav-bar inset — 0 unless the user turned it up in Settings ▸
 /// Customize bottom nav to fix an overlap the OS didn't account for

@@ -91,4 +91,16 @@ void main() {
       await reopened.close();
     },
   );
+
+  test(
+    'the v45 holdMenuEnabled/holdMenuSlots columns (hold-➕ quick access) '
+    'survive a rolled-back re-open without "duplicate column name"',
+    () async {
+      final file = await buildRolledBackDatabase(44);
+
+      final reopened = AppDatabase(NativeDatabase(file));
+      await expectLater(reopened.select(reopened.settings).get(), completes);
+      await reopened.close();
+    },
+  );
 }
