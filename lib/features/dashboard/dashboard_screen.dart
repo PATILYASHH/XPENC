@@ -1581,6 +1581,7 @@ class _SpendByCategorySection extends ConsumerWidget {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
                     child: CategoryPieChart(
+                      showLegend: false,
                       slices: [
                         for (final e in entries)
                           (

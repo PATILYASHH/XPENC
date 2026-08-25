@@ -39,17 +39,28 @@ class _NoData extends StatelessWidget {
   }
 }
 
-/// Donut of category slices with a legend below. Sorted descending; anything
-/// past the top five is folded into a single grey "Other" slice so the legend
-/// stays readable.
-class CategoryPieChart extends StatelessWidget {
-  const CategoryPieChart({required this.slices, super.key});
+/// Donut of category slices. Sorted descending; anything past the top five
+/// is folded into a single grey "Other" slice. No labels sit on the chart by
+/// default — tap or hover a wedge to see its name and amount in the donut's
+/// hollow centre; [showLegend] additionally puts a legend below (Stats and
+/// Account Reports want that at-a-glance list; the Dashboard's compact card
+/// doesn't).
+class CategoryPieChart extends StatefulWidget {
+  const CategoryPieChart({required this.slices, this.showLegend = true, super.key});
 
   final List<({String label, Money value, Color color})> slices;
+  final bool showLegend;
+
+  @override
+  State<CategoryPieChart> createState() => _CategoryPieChartState();
+}
+
+class _CategoryPieChartState extends State<CategoryPieChart> {
+  int _touchedIndex = -1;
 
   @override
   Widget build(BuildContext context) {
-    final positive = slices.where((s) => s.value.isPositive).toList()
+    final positive = widget.slices.where((s) => s.value.isPositive).toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
     if (positive.isEmpty) return const _NoData(height: 220);
@@ -66,6 +77,10 @@ class CategoryPieChart extends StatelessWidget {
       data.addAll(positive);
     }
 
+    final touched = _touchedIndex >= 0 && _touchedIndex < data.length
+        ? data[_touchedIndex]
+        : null;
+
     // See the matching note on BudgetRadialChart: without an explicit full
     // width, this Column shrink-wraps to its widest child instead of the
     // card's own width, and drifts left instead of sitting centred in it.
@@ -76,28 +91,87 @@ class CategoryPieChart extends StatelessWidget {
         children: [
           SizedBox(
             height: 220,
-            child: PieChart(
-              PieChartData(
-                centerSpaceRadius: 46,
-                sectionsSpace: 2,
-                sections: [
-                  for (final s in data)
-                    PieChartSectionData(
-                      value: s.value.paise / 100,
-                      color: s.color,
-                      radius: 60,
-                      showTitle: false,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Positioned.fill(
+                  child: PieChart(
+                    PieChartData(
+                      centerSpaceRadius: 46,
+                      sectionsSpace: 2,
+                      pieTouchData: PieTouchData(
+                        touchCallback: (event, response) {
+                          final index =
+                              response?.touchedSection?.touchedSectionIndex ??
+                              -1;
+                          if (index == _touchedIndex) return;
+                          setState(() => _touchedIndex = index);
+                        },
+                      ),
+                      sections: [
+                        for (var i = 0; i < data.length; i++)
+                          PieChartSectionData(
+                            value: data[i].value.paise / 100,
+                            color: data[i].color,
+                            radius: i == _touchedIndex ? 68 : 60,
+                            showTitle: false,
+                          ),
+                      ],
                     ),
-                ],
-              ),
+                  ),
+                ),
+                if (touched != null)
+                  IgnorePointer(child: _CenterLabel(slice: touched)),
+              ],
             ),
           ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 16,
-            runSpacing: 10,
-            alignment: WrapAlignment.center,
-            children: [for (final s in data) _LegendChip(slice: s)],
+          if (widget.showLegend) ...[
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 16,
+              runSpacing: 10,
+              alignment: WrapAlignment.center,
+              children: [for (final s in data) _LegendChip(slice: s)],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// The touched/hovered wedge's name and amount, centred in the donut hole.
+class _CenterLabel extends StatelessWidget {
+  const _CenterLabel({required this.slice});
+
+  final ({String label, Money value, Color color}) slice;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SizedBox(
+      width: 84,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            slice.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          Text(
+            MoneyFormat.compact(slice.value),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontFeatures: kTabularFigures,
+            ),
           ),
         ],
       ),
@@ -153,17 +227,55 @@ class _LegendChip extends StatelessWidget {
 /// (not just the radius) matches the spent/budget ratio. The rest of the
 /// wedge stays a faint tint of the same colour rather than blank or black, so
 /// an unspent budget still reads as "this category's slice" at a glance. A
-/// category over its cap gets a thin red ring — its fill is capped at 100%,
-/// so the ring is the only way to see it went over. Sorted by budget size;
-/// past the top five, the tail folds into a grey "Other" slice.
-class BudgetRadialChart extends StatelessWidget {
+/// category over its cap gets a red ring plus a diagonal hazard-stripe
+/// overlay on its fill — its fill is capped at 100%, so those are the only
+/// way to see it went over. Sorted by budget size; past the top five, the
+/// tail folds into a grey "Other" slice. No labels sit on the chart by
+/// default — tap or hover a wedge to see its name and spent/budget in the
+/// centre.
+class BudgetRadialChart extends StatefulWidget {
   const BudgetRadialChart({required this.slices, super.key});
 
   final List<({String label, Money budget, Money spent, Color color})> slices;
 
   @override
+  State<BudgetRadialChart> createState() => _BudgetRadialChartState();
+}
+
+class _BudgetRadialChartState extends State<BudgetRadialChart> {
+  static const _chartSize = Size(220, 220);
+
+  int _touchedIndex = -1;
+
+  void _updateTouch(Offset local, List<_BudgetSlice> data, int total) {
+    final center = _chartSize.center(Offset.zero);
+    final outerRadius = math.min(_chartSize.width, _chartSize.height) / 2 - 2;
+    final delta = local - center;
+
+    if (total <= 0 || delta.distance > outerRadius) {
+      if (_touchedIndex != -1) setState(() => _touchedIndex = -1);
+      return;
+    }
+
+    // Same angle math as the painter, but against the un-gapped share —
+    // the gap between wedges is too thin to matter for hit-testing.
+    var rel = math.atan2(delta.dy, delta.dx) - -math.pi / 2;
+    if (rel < 0) rel += 2 * math.pi;
+
+    var angle = 0.0;
+    for (var i = 0; i < data.length; i++) {
+      final share = data[i].budget.paise / total * 2 * math.pi;
+      if (rel < angle + share) {
+        if (_touchedIndex != i) setState(() => _touchedIndex = i);
+        return;
+      }
+      angle += share;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final positive = slices.where((s) => s.budget.isPositive).toList()
+    final positive = widget.slices.where((s) => s.budget.isPositive).toList()
       ..sort((a, b) => b.budget.compareTo(a.budget));
 
     if (positive.isEmpty) return const _NoData(height: 220);
@@ -186,8 +298,13 @@ class BudgetRadialChart extends StatelessWidget {
       }
     }
 
-    // Column alone shrink-wraps to its widest child — here, a 220px circle
-    // and a legend that (unlike a Row of Expanded tiles elsewhere on the
+    final total = data.fold<int>(0, (sum, s) => sum + s.budget.paise);
+    final touched = _touchedIndex >= 0 && _touchedIndex < data.length
+        ? data[_touchedIndex]
+        : null;
+
+    // Column alone shrink-wraps to its widest child — here, just a 220px
+    // circle, which (unlike a Row of Expanded tiles elsewhere on the
     // dashboard) never has to claim the full card width. Left unforced, the
     // whole card ends up narrower than every card around it and drifts to
     // the left edge of the section instead of sitting centred in it. The
@@ -195,29 +312,32 @@ class BudgetRadialChart extends StatelessWidget {
     // so Column's own default centring actually has something to centre in.
     return SizedBox(
       width: double.infinity,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            key: const Key('budgetRadialPaintArea'),
-            height: 220,
-            width: 220,
-            child: CustomPaint(painter: _BudgetSectorPainter(data)),
-          ),
-          const SizedBox(height: 20),
-          Column(
-            children: [
-              for (var i = 0; i < data.length; i++) ...[
-                if (i > 0)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 10),
-                    child: Divider(height: 1),
+      child: Center(
+        child: MouseRegion(
+          onHover: (event) => _updateTouch(event.localPosition, data, total),
+          onExit: (_) {
+            if (_touchedIndex != -1) setState(() => _touchedIndex = -1);
+          },
+          child: GestureDetector(
+            onTapUp: (details) =>
+                _updateTouch(details.localPosition, data, total),
+            child: SizedBox(
+              key: const Key('budgetRadialPaintArea'),
+              height: _chartSize.height,
+              width: _chartSize.width,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Positioned.fill(
+                    child: CustomPaint(painter: _BudgetSectorPainter(data)),
                   ),
-                _BudgetLegendRow(slice: data[i]),
-              ],
-            ],
+                  if (touched != null)
+                    IgnorePointer(child: _BudgetCenterLabel(slice: touched)),
+                ],
+              ),
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -246,6 +366,9 @@ class _BudgetSectorPainter extends CustomPainter {
   /// spare it, so a small budget doesn't vanish under its own gap.
   static const _gap = 0.035;
 
+  /// Spacing between hazard-stripe lines on an overspent wedge, in pixels.
+  static const _hatchSpacing = 9.0;
+
   @override
   void paint(Canvas canvas, Size size) {
     final total = slices.fold<int>(0, (sum, s) => sum + s.budget.paise);
@@ -261,11 +384,9 @@ class _BudgetSectorPainter extends CustomPainter {
       final gap = share > _gap * 3 ? _gap : 0.0;
       final start = angle + gap / 2;
       final sweep = share - gap;
+      final wedge = _wedge(center, outerRect, start, sweep);
 
-      canvas.drawPath(
-        _wedge(center, outerRect, start, sweep),
-        Paint()..color = slice.color.withValues(alpha: 0.16),
-      );
+      canvas.drawPath(wedge, Paint()..color = slice.color.withValues(alpha: 0.16));
 
       if (slice.fraction > 0) {
         final filledRadius = outerRadius * math.sqrt(slice.fraction);
@@ -281,6 +402,24 @@ class _BudgetSectorPainter extends CustomPainter {
       }
 
       if (slice.overspent) {
+        // Hazard stripes over the (fully-filled, since fraction is capped
+        // at 1.0) wedge — the ring alone reads as decoration at a glance;
+        // a texture change is harder to miss.
+        canvas.save();
+        canvas.clipPath(wedge);
+        final hatchPaint = Paint()
+          ..color = Colors.white.withValues(alpha: 0.24)
+          ..strokeWidth = 2.4;
+        final diag = outerRect.width + outerRect.height;
+        for (var d = -diag; d < diag; d += _hatchSpacing) {
+          canvas.drawLine(
+            Offset(outerRect.left + d, outerRect.top),
+            Offset(outerRect.left + d + outerRect.height, outerRect.bottom),
+            hatchPaint,
+          );
+        }
+        canvas.restore();
+
         canvas.drawArc(
           outerRect,
           start,
@@ -288,7 +427,7 @@ class _BudgetSectorPainter extends CustomPainter {
           false,
           Paint()
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 3
+            ..strokeWidth = 4
             ..strokeCap = StrokeCap.round
             ..color = AppColors.expense,
         );
@@ -307,50 +446,65 @@ class _BudgetSectorPainter extends CustomPainter {
   bool shouldRepaint(_BudgetSectorPainter old) => !identical(old.slices, slices);
 }
 
-/// One line per category: a colour dot naming it back to its wedge, the
-/// name, and `spent / budget` in tabular figures — a real list, not a
-/// wrapping cloud of chips, so the eye can scan straight down the amounts.
-class _BudgetLegendRow extends StatelessWidget {
-  const _BudgetLegendRow({required this.slice});
+/// The touched/hovered wedge's name and spent/budget, centred on the chart.
+/// Unlike [CategoryPieChart]'s donut, this pie has no hollow centre, so a
+/// translucent circular backdrop keeps the text legible over the wedges
+/// behind it.
+class _BudgetCenterLabel extends StatelessWidget {
+  const _BudgetCenterLabel({required this.slice});
 
   final _BudgetSlice slice;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Row(
-      children: [
-        Container(
-          width: 11,
-          height: 11,
-          decoration: BoxDecoration(color: slice.color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
+    return Container(
+      width: 108,
+      height: 108,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: theme.colorScheme.surface.withValues(alpha: 0.88),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
             slice.label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w700,
             ),
           ),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          '${MoneyFormat.compact(slice.spent)}'
-          ' / ${MoneyFormat.compact(slice.budget)}'
-          '${slice.overspent ? ' · over' : ''}',
-          maxLines: 1,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: slice.overspent
-                ? AppColors.expense
-                : theme.colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.w600,
-            fontFeatures: kTabularFigures,
+          const SizedBox(height: 2),
+          Text(
+            '${MoneyFormat.compact(slice.spent)}'
+            ' / ${MoneyFormat.compact(slice.budget)}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: slice.overspent
+                  ? AppColors.expense
+                  : theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+              fontFeatures: kTabularFigures,
+            ),
           ),
-        ),
-      ],
+          if (slice.overspent) ...[
+            const SizedBox(height: 2),
+            Text(
+              'Over budget',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: AppColors.expense,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
