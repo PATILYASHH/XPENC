@@ -44,6 +44,18 @@ class MoreScreen extends ConsumerWidget {
           subtitle: 'Total money: ${MoneyFormat.compact(netWorth)}',
         ),
         _Item(
+          Icons.receipt_long_outlined,
+          'Transactions',
+          route: '/more/transactions',
+          subtitle: 'Every transaction, searchable and filterable',
+        ),
+        _Item(
+          Icons.people_alt_outlined,
+          'Persons',
+          route: '/more/persons',
+          subtitle: 'Who owes you, who you owe',
+        ),
+        _Item(
           Icons.donut_large_rounded,
           'Budgets',
           route: '/more/budgets',

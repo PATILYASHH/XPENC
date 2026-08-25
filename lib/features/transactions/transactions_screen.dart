@@ -16,8 +16,16 @@ import 'transaction_filters.dart';
 
 /// All transactions, grouped day-wise (newest first) with a per-day net total.
 /// Searchable by note / category / account and filterable by [TxType].
+///
+/// [embedded] is true when this screen is a bottom-nav tab (GitHub #70) —
+/// `AppShell`'s shared top bar owns the title/search/filter actions then.
+/// Default `false` keeps `/more/transactions` reachable even if a user swaps
+/// Transactions out of both bottom-nav slots (same dual-route pattern as
+/// Accounts, Budgets, Stats, Payees, Calendar, Persons).
 class TransactionsScreen extends ConsumerStatefulWidget {
-  const TransactionsScreen({super.key});
+  const TransactionsScreen({this.embedded = false, super.key});
+
+  final bool embedded;
 
   @override
   ConsumerState<TransactionsScreen> createState() => _TransactionsScreenState();
@@ -71,6 +79,20 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       ),
     );
     if (ok ?? false) await _deleteTransaction(tx.id);
+  }
+
+  /// Only reachable when [TransactionsScreen.embedded] is false — the shell's
+  /// shared top bar (`AppShell._TransactionsBarActions`) opens the same sheet
+  /// when this screen is a bottom-nav tab instead.
+  Future<void> _openFilters(TransactionFilters current) async {
+    final result = await showModalBottomSheet<TransactionFilters>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => TransactionFiltersSheet(initial: current),
+    );
+    if (result == null) return;
+    ref.read(txAdvancedFiltersProvider.notifier).state = result;
   }
 
   Future<void> _deleteTransaction(int id) async {
@@ -260,6 +282,35 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       body: CustomScrollView(
         controller: _scrollController,
         slivers: [
+          if (!widget.embedded)
+            SliverAppBar(
+              pinned: true,
+              title: const Text('Transactions'),
+              actions: [
+                IconButton(
+                  tooltip: 'Filters',
+                  icon: Badge(
+                    isLabelVisible: advanced.count > 0,
+                    label: Text('${advanced.count}'),
+                    child: const Icon(Icons.tune_rounded),
+                  ),
+                  onPressed: () => _openFilters(advanced),
+                ),
+                IconButton(
+                  tooltip: searchActive ? 'Close search' : 'Search',
+                  icon: Icon(
+                    searchActive ? Icons.close_rounded : Icons.search_rounded,
+                  ),
+                  onPressed: () {
+                    final active = !searchActive;
+                    ref.read(txSearchActiveProvider.notifier).state = active;
+                    if (!active) {
+                      ref.read(txSearchQueryProvider.notifier).state = '';
+                    }
+                  },
+                ),
+              ],
+            ),
           SliverPersistentHeader(
             pinned: true,
             delegate: _StickyHeaderDelegate(

@@ -546,6 +546,12 @@ class Settings extends Table {
   TextColumn get bottomNavSlots =>
       text().withDefault(const Constant('transactions,persons'))();
 
+  /// Whether the calendar's selected-day section shows an inflow/outflow
+  /// total strip. On by default; the on/off toggle lives in Settings
+  /// (GitHub #75).
+  BoolColumn get showCalendarDayTotals =>
+      boolean().withDefault(const Constant(true))();
+
   @override
   Set<Column> get primaryKey => {id};
 }

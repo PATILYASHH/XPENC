@@ -583,6 +583,13 @@ final preventScreenshotsProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.preventScreenshots ?? false;
 });
 
+/// Whether the calendar's selected-day section shows an inflow/outflow total
+/// strip. On by default — see GitHub #75.
+final showCalendarDayTotalsProvider = Provider<bool>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.showCalendarDayTotals ??
+      true;
+});
+
 /// Minutes the app may sit backgrounded before the next resume re-locks it —
 /// `0` means immediately. See GitHub #60.
 final pinTimeoutMinutesProvider = Provider<int>((ref) {
