@@ -601,6 +601,17 @@ class Settings extends Table {
   /// degrade to null on read, same convention as [themeName].
   TextColumn get fontFamily => text().nullable()();
 
+  /// Extra logical pixels of bottom clearance added app-wide, on top of
+  /// whatever the OS reports as the system nav bar's safe-area inset — a
+  /// manual escape hatch for OEM devices that misreport (or don't report at
+  /// all) how much of the screen their on-screen nav bar covers, which left
+  /// the bottom nav bar and the PIN lock screen's keypad overlapped by it
+  /// (GitHub #78). Applied once, in `XpencApp`'s `builder`, to the `padding`
+  /// every `SafeArea` in the app reads from — see `AppShell` and
+  /// `LockScreen`, neither of which needed any change themselves.
+  IntColumn get extraBottomInset =>
+      integer().withDefault(const Constant(0))();
+
   @override
   Set<Column> get primaryKey => {id};
 }

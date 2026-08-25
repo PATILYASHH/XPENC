@@ -164,7 +164,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 42;
+  int get schemaVersion => 43;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -369,6 +369,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 42) {
         await _addColumnIfMissing(m, settings, settings.showBottomNavLabels);
+      }
+      if (from < 43) {
+        await _addColumnIfMissing(m, settings, settings.extraBottomInset);
       }
     },
     beforeOpen: (details) async {
@@ -3324,6 +3327,13 @@ class AppDatabase extends _$AppDatabase {
   Future<void> setShowBottomNavLabels(bool value) => update(
     settings,
   ).write(SettingsCompanion(showBottomNavLabels: Value(value)));
+
+  /// Clamped to a sane range here, not just in the settings slider — this is
+  /// the only path a stray value (a bad restore, a future scripted call)
+  /// could take to reach the column.
+  Future<void> setExtraBottomInset(int px) => update(settings).write(
+    SettingsCompanion(extraBottomInset: Value(px.clamp(0, 40))),
+  );
 
   // ── Expense reminder ─────────────────────────────────────────────────────
 

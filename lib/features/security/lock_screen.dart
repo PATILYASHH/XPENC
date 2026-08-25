@@ -128,25 +128,43 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     return PopScope(
       canPop: false,
       child: Scaffold(
+        // A plain Spacer/Expanded layout would silently clip the keypad's
+        // last row (0 / backspace / fingerprint) under the system navigation
+        // bar on devices where it eats more height than expected (GitHub
+        // #78) — release builds don't show Flutter's overflow banner, so
+        // that clipping is invisible until someone reports it. Wrapping in a
+        // scrollable, intrinsic-height layout keeps the same centered look
+        // when everything fits, and falls back to scrolling instead of
+        // clipping when it doesn't.
         body: SafeArea(
-          child: Column(
-            children: [
-              const Spacer(flex: 2),
-              const BrandMark(size: 48),
-              const SizedBox(height: 12),
-              Text(
-                AppInfo.name,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
+          child: LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: Column(
+                    children: [
+                      const Spacer(flex: 2),
+                      const BrandMark(size: 48),
+                      const SizedBox(height: 12),
+                      Text(
+                        AppInfo.name,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      Expanded(
+                        child: phraseLocked
+                            ? _buildPhraseBody(context)
+                            : _buildPinBody(context),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 32),
-              Expanded(
-                child: phraseLocked
-                    ? _buildPhraseBody(context)
-                    : _buildPinBody(context),
-              ),
-            ],
+            ),
           ),
         ),
       ),

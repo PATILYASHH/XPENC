@@ -256,6 +256,7 @@ class _XpencAppState extends ConsumerState<XpencApp>
     final showSymbol = ref.watch(showCurrencySymbolProvider);
     MoneyFormat.configure(currency: currency, showSymbol: showSymbol);
     final hideAmounts = ref.watch(hideAmountsProvider);
+    final extraBottomInset = ref.watch(extraBottomInsetProvider);
 
     // Fire-and-forget: a platform-channel call, not something the frame
     // waits on. ScreenSecurity itself no-ops if nothing actually changed.
@@ -281,49 +282,63 @@ class _XpencAppState extends ConsumerState<XpencApp>
       themeMode: preset.mode,
       routerConfig: appRouter,
       // A failed database must never look like "still loading".
-      builder: (context, child) => MediaQuery(
-        // Applied here rather than baked into the theme's text styles, so it
-        // scales every widget's text — third-party ones included — not just
-        // the roles `AppTheme` sets a `fontSize` on.
-        data: MediaQuery.of(
-          context,
-        ).copyWith(textScaler: TextScaler.linear(fontScalePercent / 100)),
-        child: CurrencyScope(
-          currency: currency,
-          showSymbol: showSymbol,
-          child: AmountVisibilityScope(
-            hidden: hideAmounts,
-            child: switch (ready) {
-              AsyncError(:final error) => _FatalError(
-                error: error,
-                onRetry: () => ref.invalidate(databaseReadyProvider),
-              ),
-              // The router's subtree stays mounted underneath even while
-              // locked — only stacked, opaque `LockScreen` sits on top of it
-              // — or every relock (immediate, on every backgrounding) would
-              // silently drop whatever the user was in the middle of doing:
-              // a half-typed transaction, a scroll position, anything not
-              // yet saved.
-              AsyncData() =>
-                !_passcodeKnown
-                    ? const _LaunchSplash()
-                    : Stack(
-                        children: [
-                          ?child,
-                          if (_locked)
-                            Positioned.fill(
-                              child: LockScreen(
-                                onUnlocked: () =>
-                                    setState(() => _locked = false),
-                              ),
-                            ),
-                        ],
-                      ),
-              _ => child ?? const SizedBox.shrink(),
-            },
+      builder: (context, child) {
+        final mq = MediaQuery.of(context);
+        return MediaQuery(
+          // Applied here rather than baked into the theme's text styles, so
+          // it scales every widget's text — third-party ones included — not
+          // just the roles `AppTheme` sets a `fontSize` on. `extraBottomInset`
+          // (GitHub #78) rides along the same way: added to `padding`/
+          // `viewPadding` once, here, so every `SafeArea` in the app — the
+          // bottom nav bar, the lock screen's keypad, any bottom sheet —
+          // picks up the extra clearance automatically, with no per-screen
+          // changes.
+          data: mq.copyWith(
+            textScaler: TextScaler.linear(fontScalePercent / 100),
+            padding: mq.padding.copyWith(
+              bottom: mq.padding.bottom + extraBottomInset,
+            ),
+            viewPadding: mq.viewPadding.copyWith(
+              bottom: mq.viewPadding.bottom + extraBottomInset,
+            ),
           ),
-        ),
-      ),
+          child: CurrencyScope(
+            currency: currency,
+            showSymbol: showSymbol,
+            child: AmountVisibilityScope(
+              hidden: hideAmounts,
+              child: switch (ready) {
+                AsyncError(:final error) => _FatalError(
+                  error: error,
+                  onRetry: () => ref.invalidate(databaseReadyProvider),
+                ),
+                // The router's subtree stays mounted underneath even while
+                // locked — only stacked, opaque `LockScreen` sits on top of
+                // it — or every relock (immediate, on every backgrounding)
+                // would silently drop whatever the user was in the middle of
+                // doing: a half-typed transaction, a scroll position,
+                // anything not yet saved.
+                AsyncData() =>
+                  !_passcodeKnown
+                      ? const _LaunchSplash()
+                      : Stack(
+                          children: [
+                            ?child,
+                            if (_locked)
+                              Positioned.fill(
+                                child: LockScreen(
+                                  onUnlocked: () =>
+                                      setState(() => _locked = false),
+                                ),
+                              ),
+                          ],
+                        ),
+                _ => child ?? const SizedBox.shrink(),
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 }
