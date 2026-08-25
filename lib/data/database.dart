@@ -164,7 +164,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 36;
+  int get schemaVersion => 37;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -338,6 +338,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 36) {
         await m.createTable(loanDetails);
+      }
+      if (from < 37) {
+        await _addColumnIfMissing(m, goalDetails, goalDetails.notes);
       }
     },
     beforeOpen: (details) async {
@@ -1270,6 +1273,7 @@ class AppDatabase extends _$AppDatabase {
     required int colorValue,
     required String iconKey,
     int? categoryId,
+    String? notes,
   }) {
     if (!targetAmount.isPositive) {
       throw ArgumentError('Target amount must be greater than zero.');
@@ -1291,6 +1295,7 @@ class AppDatabase extends _$AppDatabase {
           targetAmount: targetAmount,
           targetDate: Value(targetDate),
           categoryId: Value(categoryId),
+          notes: Value(notes),
         ),
       );
       return accountId;
@@ -1306,6 +1311,7 @@ class AppDatabase extends _$AppDatabase {
     required int colorValue,
     required String iconKey,
     int? categoryId,
+    String? notes,
   }) {
     if (!targetAmount.isPositive) {
       throw ArgumentError('Target amount must be greater than zero.');
@@ -1325,6 +1331,7 @@ class AppDatabase extends _$AppDatabase {
           targetAmount: Value(targetAmount),
           targetDate: Value(targetDate),
           categoryId: Value(categoryId),
+          notes: Value(notes),
         ),
       );
     });

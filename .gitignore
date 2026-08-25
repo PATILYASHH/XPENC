@@ -52,3 +52,4 @@ app.*.map.json
 /Images/
 graphify-out
 Temp
+issue.md

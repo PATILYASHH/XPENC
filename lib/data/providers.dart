@@ -828,7 +828,13 @@ final goalProgressListProvider = Provider<List<GoalProgress>>((ref) {
       if (accountMap[d.accountId] case final account?)
         _goalProgressOf(account, d),
   ];
-  out.sort((a, b) => a.account.createdAt.compareTo(b.account.createdAt));
+  // Most-funded goal first (GitHub #77); ties keep creation order so the
+  // list doesn't reshuffle unnecessarily among equally-funded goals.
+  out.sort((a, b) {
+    final byFraction = b.fraction.compareTo(a.fraction);
+    if (byFraction != 0) return byFraction;
+    return a.account.createdAt.compareTo(b.account.createdAt);
+  });
   return out;
 });
 

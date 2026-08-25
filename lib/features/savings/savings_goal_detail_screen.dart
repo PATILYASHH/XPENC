@@ -168,6 +168,29 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
               ),
             ),
           ),
+          if (detail.notes != null && detail.notes!.trim().isNotEmpty) ...[
+            const SizedBox(height: 20),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Notes',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(detail.notes!, style: theme.textTheme.bodyMedium),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
