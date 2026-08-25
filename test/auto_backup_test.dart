@@ -76,6 +76,7 @@ void main() {
       fontWeightDelta: 0,
       masterPhraseAttemptThreshold: 5,
       failedPasscodeAttempts: 0,
+      extraBottomInset: 0,
     );
 
     final now = DateTime(2026, 8, 5, 12);

@@ -632,6 +632,14 @@ final showBottomNavLabelsProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.showBottomNavLabels ?? true;
 });
 
+/// Extra logical pixels of bottom clearance layered over the OS's own
+/// reported nav-bar inset — 0 unless the user turned it up in Settings ▸
+/// Customize bottom nav to fix an overlap the OS didn't account for
+/// (GitHub #78). See `Settings.extraBottomInset`.
+final extraBottomInsetProvider = Provider<int>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.extraBottomInset ?? 0;
+});
+
 /// Minutes the app may sit backgrounded before the next resume re-locks it —
 /// `0` means immediately. See GitHub #60.
 final pinTimeoutMinutesProvider = Provider<int>((ref) {

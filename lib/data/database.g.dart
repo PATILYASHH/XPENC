@@ -6207,6 +6207,18 @@ class $SettingsTable extends Settings
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _extraBottomInsetMeta = const VerificationMeta(
+    'extraBottomInset',
+  );
+  @override
+  late final GeneratedColumn<int> extraBottomInset = GeneratedColumn<int>(
+    'extra_bottom_inset',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -6248,6 +6260,7 @@ class $SettingsTable extends Settings
     fontScalePercent,
     fontWeightDelta,
     fontFamily,
+    extraBottomInset,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6588,6 +6601,15 @@ class $SettingsTable extends Settings
         fontFamily.isAcceptableOrUnknown(data['font_family']!, _fontFamilyMeta),
       );
     }
+    if (data.containsKey('extra_bottom_inset')) {
+      context.handle(
+        _extraBottomInsetMeta,
+        extraBottomInset.isAcceptableOrUnknown(
+          data['extra_bottom_inset']!,
+          _extraBottomInsetMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -6755,6 +6777,10 @@ class $SettingsTable extends Settings
         DriftSqlType.string,
         data['${effectivePrefix}font_family'],
       ),
+      extraBottomInset: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}extra_bottom_inset'],
+      )!,
     );
   }
 
@@ -6925,6 +6951,16 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// (see `ThemeShape.displayFontFamily`/`bodyFontFamily`). Unknown values
   /// degrade to null on read, same convention as [themeName].
   final String? fontFamily;
+
+  /// Extra logical pixels of bottom clearance added app-wide, on top of
+  /// whatever the OS reports as the system nav bar's safe-area inset — a
+  /// manual escape hatch for OEM devices that misreport (or don't report at
+  /// all) how much of the screen their on-screen nav bar covers, which left
+  /// the bottom nav bar and the PIN lock screen's keypad overlapped by it
+  /// (GitHub #78). Applied once, in `XpencApp`'s `builder`, to the `padding`
+  /// every `SafeArea` in the app reads from — see `AppShell` and
+  /// `LockScreen`, neither of which needed any change themselves.
+  final int extraBottomInset;
   const SettingRow({
     required this.id,
     required this.currencyCode,
@@ -6965,6 +7001,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     required this.fontScalePercent,
     required this.fontWeightDelta,
     this.fontFamily,
+    required this.extraBottomInset,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -7034,6 +7071,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     if (!nullToAbsent || fontFamily != null) {
       map['font_family'] = Variable<String>(fontFamily);
     }
+    map['extra_bottom_inset'] = Variable<int>(extraBottomInset);
     return map;
   }
 
@@ -7096,6 +7134,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       fontFamily: fontFamily == null && nullToAbsent
           ? const Value.absent()
           : Value(fontFamily),
+      extraBottomInset: Value(extraBottomInset),
     );
   }
 
@@ -7177,6 +7216,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       fontScalePercent: serializer.fromJson<int>(json['fontScalePercent']),
       fontWeightDelta: serializer.fromJson<int>(json['fontWeightDelta']),
       fontFamily: serializer.fromJson<String?>(json['fontFamily']),
+      extraBottomInset: serializer.fromJson<int>(json['extraBottomInset']),
     );
   }
   @override
@@ -7232,6 +7272,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'fontScalePercent': serializer.toJson<int>(fontScalePercent),
       'fontWeightDelta': serializer.toJson<int>(fontWeightDelta),
       'fontFamily': serializer.toJson<String?>(fontFamily),
+      'extraBottomInset': serializer.toJson<int>(extraBottomInset),
     };
   }
 
@@ -7275,6 +7316,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     int? fontScalePercent,
     int? fontWeightDelta,
     Value<String?> fontFamily = const Value.absent(),
+    int? extraBottomInset,
   }) => SettingRow(
     id: id ?? this.id,
     currencyCode: currencyCode ?? this.currencyCode,
@@ -7332,6 +7374,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     fontScalePercent: fontScalePercent ?? this.fontScalePercent,
     fontWeightDelta: fontWeightDelta ?? this.fontWeightDelta,
     fontFamily: fontFamily.present ? fontFamily.value : this.fontFamily,
+    extraBottomInset: extraBottomInset ?? this.extraBottomInset,
   );
   SettingRow copyWithCompanion(SettingsCompanion data) {
     return SettingRow(
@@ -7446,6 +7489,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       fontFamily: data.fontFamily.present
           ? data.fontFamily.value
           : this.fontFamily,
+      extraBottomInset: data.extraBottomInset.present
+          ? data.extraBottomInset.value
+          : this.extraBottomInset,
     );
   }
 
@@ -7492,7 +7538,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('showCalendarDayTotals: $showCalendarDayTotals, ')
           ..write('fontScalePercent: $fontScalePercent, ')
           ..write('fontWeightDelta: $fontWeightDelta, ')
-          ..write('fontFamily: $fontFamily')
+          ..write('fontFamily: $fontFamily, ')
+          ..write('extraBottomInset: $extraBottomInset')
           ..write(')'))
         .toString();
   }
@@ -7538,6 +7585,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     fontScalePercent,
     fontWeightDelta,
     fontFamily,
+    extraBottomInset,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -7583,7 +7631,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.showCalendarDayTotals == this.showCalendarDayTotals &&
           other.fontScalePercent == this.fontScalePercent &&
           other.fontWeightDelta == this.fontWeightDelta &&
-          other.fontFamily == this.fontFamily);
+          other.fontFamily == this.fontFamily &&
+          other.extraBottomInset == this.extraBottomInset);
 }
 
 class SettingsCompanion extends UpdateCompanion<SettingRow> {
@@ -7626,6 +7675,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<int> fontScalePercent;
   final Value<int> fontWeightDelta;
   final Value<String?> fontFamily;
+  final Value<int> extraBottomInset;
   const SettingsCompanion({
     this.id = const Value.absent(),
     this.currencyCode = const Value.absent(),
@@ -7666,6 +7716,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.fontScalePercent = const Value.absent(),
     this.fontWeightDelta = const Value.absent(),
     this.fontFamily = const Value.absent(),
+    this.extraBottomInset = const Value.absent(),
   });
   SettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -7707,6 +7758,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.fontScalePercent = const Value.absent(),
     this.fontWeightDelta = const Value.absent(),
     this.fontFamily = const Value.absent(),
+    this.extraBottomInset = const Value.absent(),
   });
   static Insertable<SettingRow> custom({
     Expression<int>? id,
@@ -7748,6 +7800,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<int>? fontScalePercent,
     Expression<int>? fontWeightDelta,
     Expression<String>? fontFamily,
+    Expression<int>? extraBottomInset,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -7805,6 +7858,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       if (fontScalePercent != null) 'font_scale_percent': fontScalePercent,
       if (fontWeightDelta != null) 'font_weight_delta': fontWeightDelta,
       if (fontFamily != null) 'font_family': fontFamily,
+      if (extraBottomInset != null) 'extra_bottom_inset': extraBottomInset,
     });
   }
 
@@ -7848,6 +7902,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<int>? fontScalePercent,
     Value<int>? fontWeightDelta,
     Value<String?>? fontFamily,
+    Value<int>? extraBottomInset,
   }) {
     return SettingsCompanion(
       id: id ?? this.id,
@@ -7898,6 +7953,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       fontScalePercent: fontScalePercent ?? this.fontScalePercent,
       fontWeightDelta: fontWeightDelta ?? this.fontWeightDelta,
       fontFamily: fontFamily ?? this.fontFamily,
+      extraBottomInset: extraBottomInset ?? this.extraBottomInset,
     );
   }
 
@@ -8045,6 +8101,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     if (fontFamily.present) {
       map['font_family'] = Variable<String>(fontFamily.value);
     }
+    if (extraBottomInset.present) {
+      map['extra_bottom_inset'] = Variable<int>(extraBottomInset.value);
+    }
     return map;
   }
 
@@ -8091,7 +8150,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('showCalendarDayTotals: $showCalendarDayTotals, ')
           ..write('fontScalePercent: $fontScalePercent, ')
           ..write('fontWeightDelta: $fontWeightDelta, ')
-          ..write('fontFamily: $fontFamily')
+          ..write('fontFamily: $fontFamily, ')
+          ..write('extraBottomInset: $extraBottomInset')
           ..write(')'))
         .toString();
   }
@@ -22244,6 +22304,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<int> fontScalePercent,
       Value<int> fontWeightDelta,
       Value<String?> fontFamily,
+      Value<int> extraBottomInset,
     });
 typedef $$SettingsTableUpdateCompanionBuilder =
     SettingsCompanion Function({
@@ -22286,6 +22347,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<int> fontScalePercent,
       Value<int> fontWeightDelta,
       Value<String?> fontFamily,
+      Value<int> extraBottomInset,
     });
 
 final class $$SettingsTableReferences
@@ -22516,6 +22578,11 @@ class $$SettingsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get extraBottomInset => $composableBuilder(
+    column: $table.extraBottomInset,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$AccountsTableFilterComposer get quickAddAccountId {
     final $$AccountsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -22739,6 +22806,11 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get extraBottomInset => $composableBuilder(
+    column: $table.extraBottomInset,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$AccountsTableOrderingComposer get quickAddAccountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -22957,6 +23029,11 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get extraBottomInset => $composableBuilder(
+    column: $table.extraBottomInset,
+    builder: (column) => column,
+  );
+
   $$AccountsTableAnnotationComposer get quickAddAccountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -23049,6 +23126,7 @@ class $$SettingsTableTableManager
                 Value<int> fontScalePercent = const Value.absent(),
                 Value<int> fontWeightDelta = const Value.absent(),
                 Value<String?> fontFamily = const Value.absent(),
+                Value<int> extraBottomInset = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
                 currencyCode: currencyCode,
@@ -23089,6 +23167,7 @@ class $$SettingsTableTableManager
                 fontScalePercent: fontScalePercent,
                 fontWeightDelta: fontWeightDelta,
                 fontFamily: fontFamily,
+                extraBottomInset: extraBottomInset,
               ),
           createCompanionCallback:
               ({
@@ -23132,6 +23211,7 @@ class $$SettingsTableTableManager
                 Value<int> fontScalePercent = const Value.absent(),
                 Value<int> fontWeightDelta = const Value.absent(),
                 Value<String?> fontFamily = const Value.absent(),
+                Value<int> extraBottomInset = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
                 currencyCode: currencyCode,
@@ -23172,6 +23252,7 @@ class $$SettingsTableTableManager
                 fontScalePercent: fontScalePercent,
                 fontWeightDelta: fontWeightDelta,
                 fontFamily: fontFamily,
+                extraBottomInset: extraBottomInset,
               ),
           withReferenceMapper: (p0) => p0
               .map(

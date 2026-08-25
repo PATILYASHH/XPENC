@@ -21,6 +21,7 @@ class BottomNavSettingsScreen extends ConsumerWidget {
     final leftId = parts.length == 2 ? parts[0] : 'transactions';
     final rightId = parts.length == 2 ? parts[1] : 'persons';
     final showLabels = ref.watch(showBottomNavLabelsProvider);
+    final extraBottomInset = ref.watch(extraBottomInsetProvider);
 
     Future<void> pick(bool isLeft) async {
       final excluded = isLeft ? rightId : leftId;
@@ -82,7 +83,70 @@ class BottomNavSettingsScreen extends ConsumerWidget {
                   ref.read(dbProvider).setShowBottomNavLabels(v),
             ),
           ),
+          const SizedBox(height: 20),
+          _sectionLabel(context, 'Bottom spacing'),
+          Card(
+            margin: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'On some phones the on-screen back/home buttons sit over '
+                    'the bottom nav bar or the PIN unlock keypad. Raise this '
+                    'if either looks cut off or hard to tap.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Extra space',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      Text(
+                        extraBottomInset == 0 ? 'Off' : '${extraBottomInset}px',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Slider(
+                    value: extraBottomInset.toDouble(),
+                    min: 0,
+                    max: 40,
+                    divisions: 10,
+                    label: extraBottomInset == 0 ? 'Off' : '${extraBottomInset}px',
+                    onChanged: (v) =>
+                        ref.read(dbProvider).setExtraBottomInset(v.round()),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _sectionLabel(BuildContext context, String text) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
+      child: Text(
+        text.toUpperCase(),
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.1,
+        ),
       ),
     );
   }
