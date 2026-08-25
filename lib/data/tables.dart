@@ -151,6 +151,14 @@ class Accounts extends Table {
   /// by default and per-account: every other account keeps working exactly
   /// as it does today. See `AppDatabase.categoryBalance` / `readyToAssign`.
   BoolColumn get envelopeMode => boolean().withDefault(const Constant(false))();
+
+  /// Whether this account's balance counts toward Net Worth (dashboard,
+  /// Accounts screen total, More screen subtitle — see
+  /// `AppDatabase.watchNetWorth`). On by default; a user turns a specific
+  /// savings goal or account off if they don't want it inflating the figure
+  /// they treat as their real spendable net worth.
+  BoolColumn get includeInNetWorth =>
+      boolean().withDefault(const Constant(true))();
 }
 
 @DataClassName('CategoryRow')

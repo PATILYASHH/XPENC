@@ -189,6 +189,21 @@ class $AccountsTable extends Accounts
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _includeInNetWorthMeta = const VerificationMeta(
+    'includeInNetWorth',
+  );
+  @override
+  late final GeneratedColumn<bool> includeInNetWorth = GeneratedColumn<bool>(
+    'include_in_net_worth',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("include_in_net_worth" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -206,6 +221,7 @@ class $AccountsTable extends Accounts
     sortOrder,
     createdAt,
     envelopeMode,
+    includeInNetWorth,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -294,6 +310,15 @@ class $AccountsTable extends Accounts
         ),
       );
     }
+    if (data.containsKey('include_in_net_worth')) {
+      context.handle(
+        _includeInNetWorthMeta,
+        includeInNetWorth.isAcceptableOrUnknown(
+          data['include_in_net_worth']!,
+          _includeInNetWorthMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -371,6 +396,10 @@ class $AccountsTable extends Accounts
         DriftSqlType.bool,
         data['${effectivePrefix}envelope_mode'],
       )!,
+      includeInNetWorth: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}include_in_net_worth'],
+      )!,
     );
   }
 
@@ -423,6 +452,13 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   /// by default and per-account: every other account keeps working exactly
   /// as it does today. See `AppDatabase.categoryBalance` / `readyToAssign`.
   final bool envelopeMode;
+
+  /// Whether this account's balance counts toward Net Worth (dashboard,
+  /// Accounts screen total, More screen subtitle — see
+  /// `AppDatabase.watchNetWorth`). On by default; a user turns a specific
+  /// savings goal or account off if they don't want it inflating the figure
+  /// they treat as their real spendable net worth.
+  final bool includeInNetWorth;
   const AccountRow({
     required this.id,
     required this.name,
@@ -439,6 +475,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     required this.sortOrder,
     required this.createdAt,
     required this.envelopeMode,
+    required this.includeInNetWorth,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -478,6 +515,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     map['sort_order'] = Variable<int>(sortOrder);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['envelope_mode'] = Variable<bool>(envelopeMode);
+    map['include_in_net_worth'] = Variable<bool>(includeInNetWorth);
     return map;
   }
 
@@ -506,6 +544,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       sortOrder: Value(sortOrder),
       createdAt: Value(createdAt),
       envelopeMode: Value(envelopeMode),
+      includeInNetWorth: Value(includeInNetWorth),
     );
   }
 
@@ -534,6 +573,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       envelopeMode: serializer.fromJson<bool>(json['envelopeMode']),
+      includeInNetWorth: serializer.fromJson<bool>(json['includeInNetWorth']),
     );
   }
   @override
@@ -559,6 +599,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       'sortOrder': serializer.toJson<int>(sortOrder),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'envelopeMode': serializer.toJson<bool>(envelopeMode),
+      'includeInNetWorth': serializer.toJson<bool>(includeInNetWorth),
     };
   }
 
@@ -578,6 +619,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     int? sortOrder,
     DateTime? createdAt,
     bool? envelopeMode,
+    bool? includeInNetWorth,
   }) => AccountRow(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -596,6 +638,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     sortOrder: sortOrder ?? this.sortOrder,
     createdAt: createdAt ?? this.createdAt,
     envelopeMode: envelopeMode ?? this.envelopeMode,
+    includeInNetWorth: includeInNetWorth ?? this.includeInNetWorth,
   );
   AccountRow copyWithCompanion(AccountsCompanion data) {
     return AccountRow(
@@ -626,6 +669,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       envelopeMode: data.envelopeMode.present
           ? data.envelopeMode.value
           : this.envelopeMode,
+      includeInNetWorth: data.includeInNetWorth.present
+          ? data.includeInNetWorth.value
+          : this.includeInNetWorth,
     );
   }
 
@@ -646,7 +692,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           ..write('isArchived: $isArchived, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('createdAt: $createdAt, ')
-          ..write('envelopeMode: $envelopeMode')
+          ..write('envelopeMode: $envelopeMode, ')
+          ..write('includeInNetWorth: $includeInNetWorth')
           ..write(')'))
         .toString();
   }
@@ -668,6 +715,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     sortOrder,
     createdAt,
     envelopeMode,
+    includeInNetWorth,
   );
   @override
   bool operator ==(Object other) =>
@@ -687,7 +735,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           other.isArchived == this.isArchived &&
           other.sortOrder == this.sortOrder &&
           other.createdAt == this.createdAt &&
-          other.envelopeMode == this.envelopeMode);
+          other.envelopeMode == this.envelopeMode &&
+          other.includeInNetWorth == this.includeInNetWorth);
 }
 
 class AccountsCompanion extends UpdateCompanion<AccountRow> {
@@ -706,6 +755,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
   final Value<int> sortOrder;
   final Value<DateTime> createdAt;
   final Value<bool> envelopeMode;
+  final Value<bool> includeInNetWorth;
   const AccountsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -722,6 +772,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.sortOrder = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.envelopeMode = const Value.absent(),
+    this.includeInNetWorth = const Value.absent(),
   });
   AccountsCompanion.insert({
     this.id = const Value.absent(),
@@ -739,6 +790,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.sortOrder = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.envelopeMode = const Value.absent(),
+    this.includeInNetWorth = const Value.absent(),
   }) : name = Value(name),
        type = Value(type),
        colorValue = Value(colorValue),
@@ -761,6 +813,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Expression<int>? sortOrder,
     Expression<DateTime>? createdAt,
     Expression<bool>? envelopeMode,
+    Expression<bool>? includeInNetWorth,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -778,6 +831,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       if (sortOrder != null) 'sort_order': sortOrder,
       if (createdAt != null) 'created_at': createdAt,
       if (envelopeMode != null) 'envelope_mode': envelopeMode,
+      if (includeInNetWorth != null) 'include_in_net_worth': includeInNetWorth,
     });
   }
 
@@ -797,6 +851,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Value<int>? sortOrder,
     Value<DateTime>? createdAt,
     Value<bool>? envelopeMode,
+    Value<bool>? includeInNetWorth,
   }) {
     return AccountsCompanion(
       id: id ?? this.id,
@@ -814,6 +869,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       sortOrder: sortOrder ?? this.sortOrder,
       createdAt: createdAt ?? this.createdAt,
       envelopeMode: envelopeMode ?? this.envelopeMode,
+      includeInNetWorth: includeInNetWorth ?? this.includeInNetWorth,
     );
   }
 
@@ -873,6 +929,9 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     if (envelopeMode.present) {
       map['envelope_mode'] = Variable<bool>(envelopeMode.value);
     }
+    if (includeInNetWorth.present) {
+      map['include_in_net_worth'] = Variable<bool>(includeInNetWorth.value);
+    }
     return map;
   }
 
@@ -893,7 +952,8 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
           ..write('isArchived: $isArchived, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('createdAt: $createdAt, ')
-          ..write('envelopeMode: $envelopeMode')
+          ..write('envelopeMode: $envelopeMode, ')
+          ..write('includeInNetWorth: $includeInNetWorth')
           ..write(')'))
         .toString();
   }
@@ -14468,6 +14528,7 @@ typedef $$AccountsTableCreateCompanionBuilder =
       Value<int> sortOrder,
       Value<DateTime> createdAt,
       Value<bool> envelopeMode,
+      Value<bool> includeInNetWorth,
     });
 typedef $$AccountsTableUpdateCompanionBuilder =
     AccountsCompanion Function({
@@ -14486,6 +14547,7 @@ typedef $$AccountsTableUpdateCompanionBuilder =
       Value<int> sortOrder,
       Value<DateTime> createdAt,
       Value<bool> envelopeMode,
+      Value<bool> includeInNetWorth,
     });
 
 final class $$AccountsTableReferences
@@ -14763,6 +14825,11 @@ class $$AccountsTableFilterComposer
 
   ColumnFilters<bool> get envelopeMode => $composableBuilder(
     column: $table.envelopeMode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get includeInNetWorth => $composableBuilder(
+    column: $table.includeInNetWorth,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -15094,6 +15161,11 @@ class $$AccountsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get includeInNetWorth => $composableBuilder(
+    column: $table.includeInNetWorth,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$AccountsTableOrderingComposer get linkedAccountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -15178,6 +15250,11 @@ class $$AccountsTableAnnotationComposer
 
   GeneratedColumn<bool> get envelopeMode => $composableBuilder(
     column: $table.envelopeMode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get includeInNetWorth => $composableBuilder(
+    column: $table.includeInNetWorth,
     builder: (column) => column,
   );
 
@@ -15484,6 +15561,7 @@ class $$AccountsTableTableManager
                 Value<int> sortOrder = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<bool> envelopeMode = const Value.absent(),
+                Value<bool> includeInNetWorth = const Value.absent(),
               }) => AccountsCompanion(
                 id: id,
                 name: name,
@@ -15500,6 +15578,7 @@ class $$AccountsTableTableManager
                 sortOrder: sortOrder,
                 createdAt: createdAt,
                 envelopeMode: envelopeMode,
+                includeInNetWorth: includeInNetWorth,
               ),
           createCompanionCallback:
               ({
@@ -15518,6 +15597,7 @@ class $$AccountsTableTableManager
                 Value<int> sortOrder = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<bool> envelopeMode = const Value.absent(),
+                Value<bool> includeInNetWorth = const Value.absent(),
               }) => AccountsCompanion.insert(
                 id: id,
                 name: name,
@@ -15534,6 +15614,7 @@ class $$AccountsTableTableManager
                 sortOrder: sortOrder,
                 createdAt: createdAt,
                 envelopeMode: envelopeMode,
+                includeInNetWorth: includeInNetWorth,
               ),
           withReferenceMapper: (p0) => p0
               .map(

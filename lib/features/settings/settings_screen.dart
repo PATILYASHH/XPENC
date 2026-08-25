@@ -129,6 +129,24 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
 
+          // ── Dashboard ──────────────────────────────────────────────────────
+          _sectionLabel(context, 'Dashboard'),
+          Card(
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              leading: const Icon(Icons.dashboard_customize_outlined),
+              title: const Text('Customize dashboard'),
+              subtitle: Text(
+                'Choose which accounts count toward Net Worth.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => context.push('/more/settings/dashboard'),
+            ),
+          ),
+
           // ── Calendar ───────────────────────────────────────────────────────
           _sectionLabel(context, 'Calendar'),
           Card(
