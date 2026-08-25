@@ -53,3 +53,11 @@ app.*.map.json
 graphify-out
 Temp
 issue.md
+
+# Local build output — real releases are published via GitHub Actions
+# (release.yml / beta-release.yml), never committed from a dev machine.
+/dist/
+
+# Gradle's own cache under the forked Tesseract package — regenerated on
+# every build, not source.
+packages/flutter_tesseract_ocr_floss/android/.gradle/
