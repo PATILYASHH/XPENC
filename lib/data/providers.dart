@@ -626,6 +626,12 @@ final showCalendarDayTotalsProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.showCalendarDayTotals ?? true;
 });
 
+/// Whether the bottom nav bar shows each item's small text label under its
+/// icon. On by default; off collapses the bar to icon-only.
+final showBottomNavLabelsProvider = Provider<bool>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.showBottomNavLabels ?? true;
+});
+
 /// Minutes the app may sit backgrounded before the next resume re-locks it —
 /// `0` means immediately. See GitHub #60.
 final pinTimeoutMinutesProvider = Provider<int>((ref) {

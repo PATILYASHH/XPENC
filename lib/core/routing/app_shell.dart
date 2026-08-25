@@ -144,6 +144,7 @@ class AppShell extends ConsumerWidget {
     final color = selected
         ? theme.colorScheme.onSurface
         : theme.colorScheme.onSurfaceVariant;
+    final showLabels = ref.watch(showBottomNavLabelsProvider);
 
     return Expanded(
       child: InkWell(
@@ -153,14 +154,16 @@ class AppShell extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(selected ? tab.activeIcon : tab.icon, size: 24, color: color),
-            const SizedBox(height: 4),
-            Text(
-              tab.label,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: color,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+            if (showLabels) ...[
+              const SizedBox(height: 4),
+              Text(
+                tab.label,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: color,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),

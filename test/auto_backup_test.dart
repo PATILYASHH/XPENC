@@ -70,6 +70,7 @@ void main() {
       hideAmounts: false,
       pinTimeoutMinutes: 0,
       bottomNavSlots: 'transactions,persons',
+      showBottomNavLabels: true,
       showCalendarDayTotals: true,
       fontScalePercent: 100,
       fontWeightDelta: 0,

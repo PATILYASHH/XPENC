@@ -41,4 +41,13 @@ void main() {
       throwsArgumentError,
     );
   });
+
+  test('showBottomNavLabels defaults to true', () async {
+    expect((await db.getSettings()).showBottomNavLabels, isTrue);
+  });
+
+  test('setShowBottomNavLabels persists the flag', () async {
+    await db.setShowBottomNavLabels(false);
+    expect((await db.getSettings()).showBottomNavLabels, isFalse);
+  });
 }
