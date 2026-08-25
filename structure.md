@@ -499,7 +499,7 @@ reminders (id, title, amount?, direction[pay|receive], due_date,
 | **8 · Insights** | Charting layer → full graphical Dashboard, Stats, Account Reports | One chart engine, several views, no duplicated code |
 | **9 · Data + polish** | Download Data (CSV/JSON), Backup & Restore, theme refinement | Can export/restore; app feels finished |
 | **8 · Data + polish** ✅ | Download Data (CSV/JSON), Backup & Restore, Categories, Onboarding, Tx/Account detail, edit transaction | ✅ Export, restore, edit — all tested |
-| **10 · Release** ✅ | Edge cases, 116 tests, signed APK, `verify_apk.sh` gate | ✅ `dist/money-manager-arm64.apk` |
+| **10 · Release** ✅ | Edge cases, 116 tests, signed APK, `verify_apk.sh` gate | ✅ Published via GitHub Releases (`release.yml` / `beta-release.yml`) |
 | **⏸ Parked** | **Auto Spend** (§9), app-lock, Play Store policy | Auto Spend superseded by Cash Reminders (§9.1) |
 
 ### How to build + ship
