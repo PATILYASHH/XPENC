@@ -6053,6 +6053,41 @@ class $SettingsTable extends Settings
         ),
         defaultValue: const Constant(true),
       );
+  static const VerificationMeta _fontScalePercentMeta = const VerificationMeta(
+    'fontScalePercent',
+  );
+  @override
+  late final GeneratedColumn<int> fontScalePercent = GeneratedColumn<int>(
+    'font_scale_percent',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(100),
+  );
+  static const VerificationMeta _fontWeightDeltaMeta = const VerificationMeta(
+    'fontWeightDelta',
+  );
+  @override
+  late final GeneratedColumn<int> fontWeightDelta = GeneratedColumn<int>(
+    'font_weight_delta',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _fontFamilyMeta = const VerificationMeta(
+    'fontFamily',
+  );
+  @override
+  late final GeneratedColumn<String> fontFamily = GeneratedColumn<String>(
+    'font_family',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -6086,6 +6121,9 @@ class $SettingsTable extends Settings
     hideAmounts,
     bottomNavSlots,
     showCalendarDayTotals,
+    fontScalePercent,
+    fontWeightDelta,
+    fontFamily,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6357,6 +6395,30 @@ class $SettingsTable extends Settings
         ),
       );
     }
+    if (data.containsKey('font_scale_percent')) {
+      context.handle(
+        _fontScalePercentMeta,
+        fontScalePercent.isAcceptableOrUnknown(
+          data['font_scale_percent']!,
+          _fontScalePercentMeta,
+        ),
+      );
+    }
+    if (data.containsKey('font_weight_delta')) {
+      context.handle(
+        _fontWeightDeltaMeta,
+        fontWeightDelta.isAcceptableOrUnknown(
+          data['font_weight_delta']!,
+          _fontWeightDeltaMeta,
+        ),
+      );
+    }
+    if (data.containsKey('font_family')) {
+      context.handle(
+        _fontFamilyMeta,
+        fontFamily.isAcceptableOrUnknown(data['font_family']!, _fontFamilyMeta),
+      );
+    }
     return context;
   }
 
@@ -6492,6 +6554,18 @@ class $SettingsTable extends Settings
         DriftSqlType.bool,
         data['${effectivePrefix}show_calendar_day_totals'],
       )!,
+      fontScalePercent: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}font_scale_percent'],
+      )!,
+      fontWeightDelta: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}font_weight_delta'],
+      )!,
+      fontFamily: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}font_family'],
+      ),
     );
   }
 
@@ -6623,6 +6697,21 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// total strip. On by default; the on/off toggle lives in Settings
   /// (GitHub #75).
   final bool showCalendarDayTotals;
+
+  /// Global text-size multiplier, as a percentage — 100 is the app's normal
+  /// size. Applied as a `TextScaler` over the whole app (see `XpencApp`),
+  /// not baked into the theme, so it also scales third-party widget text.
+  final int fontScalePercent;
+
+  /// How much bolder (positive) or lighter (negative) every text style
+  /// reads versus its theme's own weight — one step is one `FontWeight`
+  /// rung (100 units). See `AppTheme._applyWeightDelta`.
+  final int fontWeightDelta;
+
+  /// An `AppFontFamily.name`, or null to keep each theme's own font choice
+  /// (see `ThemeShape.displayFontFamily`/`bodyFontFamily`). Unknown values
+  /// degrade to null on read, same convention as [themeName].
+  final String? fontFamily;
   const SettingRow({
     required this.id,
     required this.currencyCode,
@@ -6655,6 +6744,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     required this.hideAmounts,
     required this.bottomNavSlots,
     required this.showCalendarDayTotals,
+    required this.fontScalePercent,
+    required this.fontWeightDelta,
+    this.fontFamily,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -6708,6 +6800,11 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     map['hide_amounts'] = Variable<bool>(hideAmounts);
     map['bottom_nav_slots'] = Variable<String>(bottomNavSlots);
     map['show_calendar_day_totals'] = Variable<bool>(showCalendarDayTotals);
+    map['font_scale_percent'] = Variable<int>(fontScalePercent);
+    map['font_weight_delta'] = Variable<int>(fontWeightDelta);
+    if (!nullToAbsent || fontFamily != null) {
+      map['font_family'] = Variable<String>(fontFamily);
+    }
     return map;
   }
 
@@ -6756,6 +6853,11 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       hideAmounts: Value(hideAmounts),
       bottomNavSlots: Value(bottomNavSlots),
       showCalendarDayTotals: Value(showCalendarDayTotals),
+      fontScalePercent: Value(fontScalePercent),
+      fontWeightDelta: Value(fontWeightDelta),
+      fontFamily: fontFamily == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fontFamily),
     );
   }
 
@@ -6823,6 +6925,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       showCalendarDayTotals: serializer.fromJson<bool>(
         json['showCalendarDayTotals'],
       ),
+      fontScalePercent: serializer.fromJson<int>(json['fontScalePercent']),
+      fontWeightDelta: serializer.fromJson<int>(json['fontWeightDelta']),
+      fontFamily: serializer.fromJson<String?>(json['fontFamily']),
     );
   }
   @override
@@ -6868,6 +6973,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'hideAmounts': serializer.toJson<bool>(hideAmounts),
       'bottomNavSlots': serializer.toJson<String>(bottomNavSlots),
       'showCalendarDayTotals': serializer.toJson<bool>(showCalendarDayTotals),
+      'fontScalePercent': serializer.toJson<int>(fontScalePercent),
+      'fontWeightDelta': serializer.toJson<int>(fontWeightDelta),
+      'fontFamily': serializer.toJson<String?>(fontFamily),
     };
   }
 
@@ -6903,6 +7011,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     bool? hideAmounts,
     String? bottomNavSlots,
     bool? showCalendarDayTotals,
+    int? fontScalePercent,
+    int? fontWeightDelta,
+    Value<String?> fontFamily = const Value.absent(),
   }) => SettingRow(
     id: id ?? this.id,
     currencyCode: currencyCode ?? this.currencyCode,
@@ -6946,6 +7057,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     hideAmounts: hideAmounts ?? this.hideAmounts,
     bottomNavSlots: bottomNavSlots ?? this.bottomNavSlots,
     showCalendarDayTotals: showCalendarDayTotals ?? this.showCalendarDayTotals,
+    fontScalePercent: fontScalePercent ?? this.fontScalePercent,
+    fontWeightDelta: fontWeightDelta ?? this.fontWeightDelta,
+    fontFamily: fontFamily.present ? fontFamily.value : this.fontFamily,
   );
   SettingRow copyWithCompanion(SettingsCompanion data) {
     return SettingRow(
@@ -7036,6 +7150,15 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       showCalendarDayTotals: data.showCalendarDayTotals.present
           ? data.showCalendarDayTotals.value
           : this.showCalendarDayTotals,
+      fontScalePercent: data.fontScalePercent.present
+          ? data.fontScalePercent.value
+          : this.fontScalePercent,
+      fontWeightDelta: data.fontWeightDelta.present
+          ? data.fontWeightDelta.value
+          : this.fontWeightDelta,
+      fontFamily: data.fontFamily.present
+          ? data.fontFamily.value
+          : this.fontFamily,
     );
   }
 
@@ -7072,7 +7195,10 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('preventScreenshots: $preventScreenshots, ')
           ..write('hideAmounts: $hideAmounts, ')
           ..write('bottomNavSlots: $bottomNavSlots, ')
-          ..write('showCalendarDayTotals: $showCalendarDayTotals')
+          ..write('showCalendarDayTotals: $showCalendarDayTotals, ')
+          ..write('fontScalePercent: $fontScalePercent, ')
+          ..write('fontWeightDelta: $fontWeightDelta, ')
+          ..write('fontFamily: $fontFamily')
           ..write(')'))
         .toString();
   }
@@ -7110,6 +7236,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     hideAmounts,
     bottomNavSlots,
     showCalendarDayTotals,
+    fontScalePercent,
+    fontWeightDelta,
+    fontFamily,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -7146,7 +7275,10 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.preventScreenshots == this.preventScreenshots &&
           other.hideAmounts == this.hideAmounts &&
           other.bottomNavSlots == this.bottomNavSlots &&
-          other.showCalendarDayTotals == this.showCalendarDayTotals);
+          other.showCalendarDayTotals == this.showCalendarDayTotals &&
+          other.fontScalePercent == this.fontScalePercent &&
+          other.fontWeightDelta == this.fontWeightDelta &&
+          other.fontFamily == this.fontFamily);
 }
 
 class SettingsCompanion extends UpdateCompanion<SettingRow> {
@@ -7181,6 +7313,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<bool> hideAmounts;
   final Value<String> bottomNavSlots;
   final Value<bool> showCalendarDayTotals;
+  final Value<int> fontScalePercent;
+  final Value<int> fontWeightDelta;
+  final Value<String?> fontFamily;
   const SettingsCompanion({
     this.id = const Value.absent(),
     this.currencyCode = const Value.absent(),
@@ -7213,6 +7348,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.hideAmounts = const Value.absent(),
     this.bottomNavSlots = const Value.absent(),
     this.showCalendarDayTotals = const Value.absent(),
+    this.fontScalePercent = const Value.absent(),
+    this.fontWeightDelta = const Value.absent(),
+    this.fontFamily = const Value.absent(),
   });
   SettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -7246,6 +7384,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.hideAmounts = const Value.absent(),
     this.bottomNavSlots = const Value.absent(),
     this.showCalendarDayTotals = const Value.absent(),
+    this.fontScalePercent = const Value.absent(),
+    this.fontWeightDelta = const Value.absent(),
+    this.fontFamily = const Value.absent(),
   });
   static Insertable<SettingRow> custom({
     Expression<int>? id,
@@ -7279,6 +7420,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<bool>? hideAmounts,
     Expression<String>? bottomNavSlots,
     Expression<bool>? showCalendarDayTotals,
+    Expression<int>? fontScalePercent,
+    Expression<int>? fontWeightDelta,
+    Expression<String>? fontFamily,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -7325,6 +7469,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       if (bottomNavSlots != null) 'bottom_nav_slots': bottomNavSlots,
       if (showCalendarDayTotals != null)
         'show_calendar_day_totals': showCalendarDayTotals,
+      if (fontScalePercent != null) 'font_scale_percent': fontScalePercent,
+      if (fontWeightDelta != null) 'font_weight_delta': fontWeightDelta,
+      if (fontFamily != null) 'font_family': fontFamily,
     });
   }
 
@@ -7360,6 +7507,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<bool>? hideAmounts,
     Value<String>? bottomNavSlots,
     Value<bool>? showCalendarDayTotals,
+    Value<int>? fontScalePercent,
+    Value<int>? fontWeightDelta,
+    Value<String?>? fontFamily,
   }) {
     return SettingsCompanion(
       id: id ?? this.id,
@@ -7400,6 +7550,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       bottomNavSlots: bottomNavSlots ?? this.bottomNavSlots,
       showCalendarDayTotals:
           showCalendarDayTotals ?? this.showCalendarDayTotals,
+      fontScalePercent: fontScalePercent ?? this.fontScalePercent,
+      fontWeightDelta: fontWeightDelta ?? this.fontWeightDelta,
+      fontFamily: fontFamily ?? this.fontFamily,
     );
   }
 
@@ -7519,6 +7672,15 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
         showCalendarDayTotals.value,
       );
     }
+    if (fontScalePercent.present) {
+      map['font_scale_percent'] = Variable<int>(fontScalePercent.value);
+    }
+    if (fontWeightDelta.present) {
+      map['font_weight_delta'] = Variable<int>(fontWeightDelta.value);
+    }
+    if (fontFamily.present) {
+      map['font_family'] = Variable<String>(fontFamily.value);
+    }
     return map;
   }
 
@@ -7555,7 +7717,10 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('preventScreenshots: $preventScreenshots, ')
           ..write('hideAmounts: $hideAmounts, ')
           ..write('bottomNavSlots: $bottomNavSlots, ')
-          ..write('showCalendarDayTotals: $showCalendarDayTotals')
+          ..write('showCalendarDayTotals: $showCalendarDayTotals, ')
+          ..write('fontScalePercent: $fontScalePercent, ')
+          ..write('fontWeightDelta: $fontWeightDelta, ')
+          ..write('fontFamily: $fontFamily')
           ..write(')'))
         .toString();
   }
@@ -21679,6 +21844,9 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<bool> hideAmounts,
       Value<String> bottomNavSlots,
       Value<bool> showCalendarDayTotals,
+      Value<int> fontScalePercent,
+      Value<int> fontWeightDelta,
+      Value<String?> fontFamily,
     });
 typedef $$SettingsTableUpdateCompanionBuilder =
     SettingsCompanion Function({
@@ -21713,6 +21881,9 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<bool> hideAmounts,
       Value<String> bottomNavSlots,
       Value<bool> showCalendarDayTotals,
+      Value<int> fontScalePercent,
+      Value<int> fontWeightDelta,
+      Value<String?> fontFamily,
     });
 
 final class $$SettingsTableReferences
@@ -21903,6 +22074,21 @@ class $$SettingsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get fontScalePercent => $composableBuilder(
+    column: $table.fontScalePercent,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get fontWeightDelta => $composableBuilder(
+    column: $table.fontWeightDelta,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fontFamily => $composableBuilder(
+    column: $table.fontFamily,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$AccountsTableFilterComposer get quickAddAccountId {
     final $$AccountsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -22086,6 +22272,21 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get fontScalePercent => $composableBuilder(
+    column: $table.fontScalePercent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get fontWeightDelta => $composableBuilder(
+    column: $table.fontWeightDelta,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fontFamily => $composableBuilder(
+    column: $table.fontFamily,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$AccountsTableOrderingComposer get quickAddAccountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -22264,6 +22465,21 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get fontScalePercent => $composableBuilder(
+    column: $table.fontScalePercent,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get fontWeightDelta => $composableBuilder(
+    column: $table.fontWeightDelta,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get fontFamily => $composableBuilder(
+    column: $table.fontFamily,
+    builder: (column) => column,
+  );
+
   $$AccountsTableAnnotationComposer get quickAddAccountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -22348,6 +22564,9 @@ class $$SettingsTableTableManager
                 Value<bool> hideAmounts = const Value.absent(),
                 Value<String> bottomNavSlots = const Value.absent(),
                 Value<bool> showCalendarDayTotals = const Value.absent(),
+                Value<int> fontScalePercent = const Value.absent(),
+                Value<int> fontWeightDelta = const Value.absent(),
+                Value<String?> fontFamily = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
                 currencyCode: currencyCode,
@@ -22380,6 +22599,9 @@ class $$SettingsTableTableManager
                 hideAmounts: hideAmounts,
                 bottomNavSlots: bottomNavSlots,
                 showCalendarDayTotals: showCalendarDayTotals,
+                fontScalePercent: fontScalePercent,
+                fontWeightDelta: fontWeightDelta,
+                fontFamily: fontFamily,
               ),
           createCompanionCallback:
               ({
@@ -22415,6 +22637,9 @@ class $$SettingsTableTableManager
                 Value<bool> hideAmounts = const Value.absent(),
                 Value<String> bottomNavSlots = const Value.absent(),
                 Value<bool> showCalendarDayTotals = const Value.absent(),
+                Value<int> fontScalePercent = const Value.absent(),
+                Value<int> fontWeightDelta = const Value.absent(),
+                Value<String?> fontFamily = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
                 currencyCode: currencyCode,
@@ -22447,6 +22672,9 @@ class $$SettingsTableTableManager
                 hideAmounts: hideAmounts,
                 bottomNavSlots: bottomNavSlots,
                 showCalendarDayTotals: showCalendarDayTotals,
+                fontScalePercent: fontScalePercent,
+                fontWeightDelta: fontWeightDelta,
+                fontFamily: fontFamily,
               ),
           withReferenceMapper: (p0) => p0
               .map(

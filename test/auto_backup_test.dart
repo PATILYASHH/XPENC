@@ -71,6 +71,8 @@ void main() {
       pinTimeoutMinutes: 0,
       bottomNavSlots: 'transactions,persons',
       showCalendarDayTotals: true,
+      fontScalePercent: 100,
+      fontWeightDelta: 0,
     );
 
     final now = DateTime(2026, 8, 5, 12);

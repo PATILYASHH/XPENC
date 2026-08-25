@@ -4,6 +4,7 @@ import '../core/currency.dart';
 import '../core/home_widget/home_widget_service.dart';
 import '../core/money.dart';
 import '../core/notifications/notification_service.dart';
+import '../core/theme/font_options.dart';
 import '../core/theme/theme_preset.dart';
 import '../features/data_export/backup_service.dart';
 import '../features/message_capture/capture_service.dart';
@@ -544,6 +545,25 @@ final themePresetProvider = Provider<ThemePreset>((ref) {
   return ThemePreset.fromName(name);
 });
 
+/// Text-size multiplier, as a percentage — 100 is normal. See
+/// `Settings.fontScalePercent`.
+final fontScalePercentProvider = Provider<int>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.fontScalePercent ?? 100;
+});
+
+/// How much bolder/lighter than the theme's own weight text reads. See
+/// `Settings.fontWeightDelta`.
+final fontWeightDeltaProvider = Provider<int>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.fontWeightDelta ?? 0;
+});
+
+/// The font family the user picked, or [AppFontFamily.system] to keep each
+/// theme's own choice.
+final fontFamilyProvider = Provider<AppFontFamily>((ref) {
+  final name = ref.watch(settingsProvider).valueOrNull?.fontFamily;
+  return AppFontFamily.fromName(name);
+});
+
 /// The currency the user picked. An unknown code degrades to the default, so a
 /// bad setting never blanks out every amount in the app.
 final currencyProvider = Provider<Currency>((ref) {
@@ -586,8 +606,7 @@ final preventScreenshotsProvider = Provider<bool>((ref) {
 /// Whether the calendar's selected-day section shows an inflow/outflow total
 /// strip. On by default — see GitHub #75.
 final showCalendarDayTotalsProvider = Provider<bool>((ref) {
-  return ref.watch(settingsProvider).valueOrNull?.showCalendarDayTotals ??
-      true;
+  return ref.watch(settingsProvider).valueOrNull?.showCalendarDayTotals ?? true;
 });
 
 /// Minutes the app may sit backgrounded before the next resume re-locks it —
@@ -745,8 +764,7 @@ final linkedTransactionsProvider =
 /// chip, GitHub #68). A transaction absent from this map isn't linked to
 /// anything.
 final txLinkClusterProvider = Provider<Map<int, int>>((ref) {
-  final links =
-      ref.watch(_transactionLinkRowsProvider).valueOrNull ?? const [];
+  final links = ref.watch(_transactionLinkRowsProvider).valueOrNull ?? const [];
   final parent = <int, int>{};
 
   int find(int x) {
@@ -875,7 +893,10 @@ final loanDetailsProvider = StreamProvider<List<LoanDetailRow>>(
   (ref) => ref.watch(dbProvider).watchLoanDetails(),
 );
 
-final loanDetailProvider = Provider.family<LoanDetailRow?, int>((ref, accountId) {
+final loanDetailProvider = Provider.family<LoanDetailRow?, int>((
+  ref,
+  accountId,
+) {
   final details = ref.watch(loanDetailsProvider).valueOrNull ?? const [];
   for (final d in details) {
     if (d.accountId == accountId) return d;
@@ -903,7 +924,10 @@ final loanProgressListProvider = Provider<List<LoanProgress>>((ref) {
   return out;
 });
 
-final loanProgressProvider = Provider.family<LoanProgress?, int>((ref, accountId) {
+final loanProgressProvider = Provider.family<LoanProgress?, int>((
+  ref,
+  accountId,
+) {
   final detail = ref.watch(loanDetailProvider(accountId));
   final account = ref.watch(accountMapProvider)[accountId];
   if (detail == null || account == null) return null;
@@ -1152,49 +1176,50 @@ final netWorthTrendProvider =
 /// A transfer between two accounts of the *same* type nets to zero (the money
 /// never left the group); a transfer across the boundary counts as in/out,
 /// same accounting [netWorthTrendProvider] uses for the whole ledger.
-final accountTypeBalanceTrendProvider = Provider.family<
-    List<({DateTime month, Money value})>, ({AccountType type, int months})>((
-  ref,
-  args,
-) {
-  final accounts = ref.watch(balanceAccountsProvider).valueOrNull ?? const [];
-  final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
+final accountTypeBalanceTrendProvider =
+    Provider.family<
+      List<({DateTime month, Money value})>,
+      ({AccountType type, int months})
+    >((ref, args) {
+      final accounts =
+          ref.watch(balanceAccountsProvider).valueOrNull ?? const [];
+      final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
 
-  final matching = accounts.where((a) => a.type == args.type).toList();
-  final ownIds = {for (final a in matching) a.id};
-  final opening = matching.fold(
-    const Money.zero(),
-    (sum, a) => sum + a.openingBalance,
-  );
+      final matching = accounts.where((a) => a.type == args.type).toList();
+      final ownIds = {for (final a in matching) a.id};
+      final opening = matching.fold(
+        const Money.zero(),
+        (sum, a) => sum + a.openingBalance,
+      );
 
-  final now = DateTime.now();
-  final out = <({DateTime month, Money value})>[];
+      final now = DateTime.now();
+      final out = <({DateTime month, Money value})>[];
 
-  for (var i = args.months - 1; i >= 0; i--) {
-    final end = DateTime(
-      now.year,
-      now.month - i + 1,
-    ).subtract(const Duration(milliseconds: 1));
-    var total = opening;
+      for (var i = args.months - 1; i >= 0; i--) {
+        final end = DateTime(
+          now.year,
+          now.month - i + 1,
+        ).subtract(const Duration(milliseconds: 1));
+        var total = opening;
 
-    for (final t in txs) {
-      if (t.date.isAfter(end)) continue;
-      if (t.type == TxType.transfer) {
-        final fromIn = ownIds.contains(t.accountId);
-        final toIn = t.toAccountId != null && ownIds.contains(t.toAccountId);
-        if (fromIn == toIn) continue;
-        total += fromIn ? -t.amount : t.amount;
-      } else if (ownIds.contains(t.accountId)) {
-        total +=
-            (t.type == TxType.income || t.type == TxType.personIn)
+        for (final t in txs) {
+          if (t.date.isAfter(end)) continue;
+          if (t.type == TxType.transfer) {
+            final fromIn = ownIds.contains(t.accountId);
+            final toIn =
+                t.toAccountId != null && ownIds.contains(t.toAccountId);
+            if (fromIn == toIn) continue;
+            total += fromIn ? -t.amount : t.amount;
+          } else if (ownIds.contains(t.accountId)) {
+            total += (t.type == TxType.income || t.type == TxType.personIn)
                 ? t.amount
                 : -t.amount;
+          }
+        }
+        out.add((month: DateTime(end.year, end.month), value: total));
       }
-    }
-    out.add((month: DateTime(end.year, end.month), value: total));
-  }
-  return out;
-});
+      return out;
+    });
 
 /// Income and expense per month for the last N months, oldest first.
 final monthlyTotalsProvider =

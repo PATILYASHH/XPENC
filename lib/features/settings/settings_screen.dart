@@ -108,6 +108,23 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                   onTap: () => ThemePickerSheet.show(context),
                 ),
+                Divider(height: 1, indent: 60, color: cs.outline),
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  leading: const Icon(Icons.text_fields_rounded),
+                  title: const Text('Font'),
+                  subtitle: Text(
+                    'Text size, boldness and font family',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  trailing: Icon(
+                    Icons.chevron_right_rounded,
+                    color: cs.onSurfaceVariant,
+                  ),
+                  onTap: () => context.push('/more/settings/font'),
+                ),
               ],
             ),
           ),
