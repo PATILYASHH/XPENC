@@ -6038,6 +6038,21 @@ class $SettingsTable extends Settings
     requiredDuringInsert: false,
     defaultValue: const Constant('transactions,persons'),
   );
+  static const VerificationMeta _showCalendarDayTotalsMeta =
+      const VerificationMeta('showCalendarDayTotals');
+  @override
+  late final GeneratedColumn<bool> showCalendarDayTotals =
+      GeneratedColumn<bool>(
+        'show_calendar_day_totals',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("show_calendar_day_totals" IN (0, 1))',
+        ),
+        defaultValue: const Constant(true),
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -6070,6 +6085,7 @@ class $SettingsTable extends Settings
     preventScreenshots,
     hideAmounts,
     bottomNavSlots,
+    showCalendarDayTotals,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6332,6 +6348,15 @@ class $SettingsTable extends Settings
         ),
       );
     }
+    if (data.containsKey('show_calendar_day_totals')) {
+      context.handle(
+        _showCalendarDayTotalsMeta,
+        showCalendarDayTotals.isAcceptableOrUnknown(
+          data['show_calendar_day_totals']!,
+          _showCalendarDayTotalsMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -6463,6 +6488,10 @@ class $SettingsTable extends Settings
         DriftSqlType.string,
         data['${effectivePrefix}bottom_nav_slots'],
       )!,
+      showCalendarDayTotals: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}show_calendar_day_totals'],
+      )!,
     );
   }
 
@@ -6589,6 +6618,11 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// and More are pinned and never appear here (see `AppShell`'s
   /// `BottomNavCatalog`). GitHub #70.
   final String bottomNavSlots;
+
+  /// Whether the calendar's selected-day section shows an inflow/outflow
+  /// total strip. On by default; the on/off toggle lives in Settings
+  /// (GitHub #75).
+  final bool showCalendarDayTotals;
   const SettingRow({
     required this.id,
     required this.currencyCode,
@@ -6620,6 +6654,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     required this.preventScreenshots,
     required this.hideAmounts,
     required this.bottomNavSlots,
+    required this.showCalendarDayTotals,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -6672,6 +6707,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     map['prevent_screenshots'] = Variable<bool>(preventScreenshots);
     map['hide_amounts'] = Variable<bool>(hideAmounts);
     map['bottom_nav_slots'] = Variable<String>(bottomNavSlots);
+    map['show_calendar_day_totals'] = Variable<bool>(showCalendarDayTotals);
     return map;
   }
 
@@ -6719,6 +6755,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       preventScreenshots: Value(preventScreenshots),
       hideAmounts: Value(hideAmounts),
       bottomNavSlots: Value(bottomNavSlots),
+      showCalendarDayTotals: Value(showCalendarDayTotals),
     );
   }
 
@@ -6783,6 +6820,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       preventScreenshots: serializer.fromJson<bool>(json['preventScreenshots']),
       hideAmounts: serializer.fromJson<bool>(json['hideAmounts']),
       bottomNavSlots: serializer.fromJson<String>(json['bottomNavSlots']),
+      showCalendarDayTotals: serializer.fromJson<bool>(
+        json['showCalendarDayTotals'],
+      ),
     );
   }
   @override
@@ -6827,6 +6867,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'preventScreenshots': serializer.toJson<bool>(preventScreenshots),
       'hideAmounts': serializer.toJson<bool>(hideAmounts),
       'bottomNavSlots': serializer.toJson<String>(bottomNavSlots),
+      'showCalendarDayTotals': serializer.toJson<bool>(showCalendarDayTotals),
     };
   }
 
@@ -6861,6 +6902,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     bool? preventScreenshots,
     bool? hideAmounts,
     String? bottomNavSlots,
+    bool? showCalendarDayTotals,
   }) => SettingRow(
     id: id ?? this.id,
     currencyCode: currencyCode ?? this.currencyCode,
@@ -6903,6 +6945,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     preventScreenshots: preventScreenshots ?? this.preventScreenshots,
     hideAmounts: hideAmounts ?? this.hideAmounts,
     bottomNavSlots: bottomNavSlots ?? this.bottomNavSlots,
+    showCalendarDayTotals: showCalendarDayTotals ?? this.showCalendarDayTotals,
   );
   SettingRow copyWithCompanion(SettingsCompanion data) {
     return SettingRow(
@@ -6990,6 +7033,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       bottomNavSlots: data.bottomNavSlots.present
           ? data.bottomNavSlots.value
           : this.bottomNavSlots,
+      showCalendarDayTotals: data.showCalendarDayTotals.present
+          ? data.showCalendarDayTotals.value
+          : this.showCalendarDayTotals,
     );
   }
 
@@ -7025,7 +7071,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('backupRetentionDays: $backupRetentionDays, ')
           ..write('preventScreenshots: $preventScreenshots, ')
           ..write('hideAmounts: $hideAmounts, ')
-          ..write('bottomNavSlots: $bottomNavSlots')
+          ..write('bottomNavSlots: $bottomNavSlots, ')
+          ..write('showCalendarDayTotals: $showCalendarDayTotals')
           ..write(')'))
         .toString();
   }
@@ -7062,6 +7109,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     preventScreenshots,
     hideAmounts,
     bottomNavSlots,
+    showCalendarDayTotals,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -7097,7 +7145,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.backupRetentionDays == this.backupRetentionDays &&
           other.preventScreenshots == this.preventScreenshots &&
           other.hideAmounts == this.hideAmounts &&
-          other.bottomNavSlots == this.bottomNavSlots);
+          other.bottomNavSlots == this.bottomNavSlots &&
+          other.showCalendarDayTotals == this.showCalendarDayTotals);
 }
 
 class SettingsCompanion extends UpdateCompanion<SettingRow> {
@@ -7131,6 +7180,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<bool> preventScreenshots;
   final Value<bool> hideAmounts;
   final Value<String> bottomNavSlots;
+  final Value<bool> showCalendarDayTotals;
   const SettingsCompanion({
     this.id = const Value.absent(),
     this.currencyCode = const Value.absent(),
@@ -7162,6 +7212,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.preventScreenshots = const Value.absent(),
     this.hideAmounts = const Value.absent(),
     this.bottomNavSlots = const Value.absent(),
+    this.showCalendarDayTotals = const Value.absent(),
   });
   SettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -7194,6 +7245,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.preventScreenshots = const Value.absent(),
     this.hideAmounts = const Value.absent(),
     this.bottomNavSlots = const Value.absent(),
+    this.showCalendarDayTotals = const Value.absent(),
   });
   static Insertable<SettingRow> custom({
     Expression<int>? id,
@@ -7226,6 +7278,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<bool>? preventScreenshots,
     Expression<bool>? hideAmounts,
     Expression<String>? bottomNavSlots,
+    Expression<bool>? showCalendarDayTotals,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -7270,6 +7323,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       if (preventScreenshots != null) 'prevent_screenshots': preventScreenshots,
       if (hideAmounts != null) 'hide_amounts': hideAmounts,
       if (bottomNavSlots != null) 'bottom_nav_slots': bottomNavSlots,
+      if (showCalendarDayTotals != null)
+        'show_calendar_day_totals': showCalendarDayTotals,
     });
   }
 
@@ -7304,6 +7359,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<bool>? preventScreenshots,
     Value<bool>? hideAmounts,
     Value<String>? bottomNavSlots,
+    Value<bool>? showCalendarDayTotals,
   }) {
     return SettingsCompanion(
       id: id ?? this.id,
@@ -7342,6 +7398,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       preventScreenshots: preventScreenshots ?? this.preventScreenshots,
       hideAmounts: hideAmounts ?? this.hideAmounts,
       bottomNavSlots: bottomNavSlots ?? this.bottomNavSlots,
+      showCalendarDayTotals:
+          showCalendarDayTotals ?? this.showCalendarDayTotals,
     );
   }
 
@@ -7456,6 +7514,11 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     if (bottomNavSlots.present) {
       map['bottom_nav_slots'] = Variable<String>(bottomNavSlots.value);
     }
+    if (showCalendarDayTotals.present) {
+      map['show_calendar_day_totals'] = Variable<bool>(
+        showCalendarDayTotals.value,
+      );
+    }
     return map;
   }
 
@@ -7491,7 +7554,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('backupRetentionDays: $backupRetentionDays, ')
           ..write('preventScreenshots: $preventScreenshots, ')
           ..write('hideAmounts: $hideAmounts, ')
-          ..write('bottomNavSlots: $bottomNavSlots')
+          ..write('bottomNavSlots: $bottomNavSlots, ')
+          ..write('showCalendarDayTotals: $showCalendarDayTotals')
           ..write(')'))
         .toString();
   }
@@ -21614,6 +21678,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<bool> preventScreenshots,
       Value<bool> hideAmounts,
       Value<String> bottomNavSlots,
+      Value<bool> showCalendarDayTotals,
     });
 typedef $$SettingsTableUpdateCompanionBuilder =
     SettingsCompanion Function({
@@ -21647,6 +21712,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<bool> preventScreenshots,
       Value<bool> hideAmounts,
       Value<String> bottomNavSlots,
+      Value<bool> showCalendarDayTotals,
     });
 
 final class $$SettingsTableReferences
@@ -21832,6 +21898,11 @@ class $$SettingsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get showCalendarDayTotals => $composableBuilder(
+    column: $table.showCalendarDayTotals,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$AccountsTableFilterComposer get quickAddAccountId {
     final $$AccountsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -22010,6 +22081,11 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get showCalendarDayTotals => $composableBuilder(
+    column: $table.showCalendarDayTotals,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$AccountsTableOrderingComposer get quickAddAccountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -22183,6 +22259,11 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get showCalendarDayTotals => $composableBuilder(
+    column: $table.showCalendarDayTotals,
+    builder: (column) => column,
+  );
+
   $$AccountsTableAnnotationComposer get quickAddAccountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -22266,6 +22347,7 @@ class $$SettingsTableTableManager
                 Value<bool> preventScreenshots = const Value.absent(),
                 Value<bool> hideAmounts = const Value.absent(),
                 Value<String> bottomNavSlots = const Value.absent(),
+                Value<bool> showCalendarDayTotals = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
                 currencyCode: currencyCode,
@@ -22297,6 +22379,7 @@ class $$SettingsTableTableManager
                 preventScreenshots: preventScreenshots,
                 hideAmounts: hideAmounts,
                 bottomNavSlots: bottomNavSlots,
+                showCalendarDayTotals: showCalendarDayTotals,
               ),
           createCompanionCallback:
               ({
@@ -22331,6 +22414,7 @@ class $$SettingsTableTableManager
                 Value<bool> preventScreenshots = const Value.absent(),
                 Value<bool> hideAmounts = const Value.absent(),
                 Value<String> bottomNavSlots = const Value.absent(),
+                Value<bool> showCalendarDayTotals = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
                 currencyCode: currencyCode,
@@ -22362,6 +22446,7 @@ class $$SettingsTableTableManager
                 preventScreenshots: preventScreenshots,
                 hideAmounts: hideAmounts,
                 bottomNavSlots: bottomNavSlots,
+                showCalendarDayTotals: showCalendarDayTotals,
               ),
           withReferenceMapper: (p0) => p0
               .map(

@@ -164,7 +164,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 37;
+  int get schemaVersion => 38;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -341,6 +341,13 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 37) {
         await _addColumnIfMissing(m, goalDetails, goalDetails.notes);
+      }
+      if (from < 38) {
+        await _addColumnIfMissing(
+          m,
+          settings,
+          settings.showCalendarDayTotals,
+        );
       }
     },
     beforeOpen: (details) async {
@@ -3171,6 +3178,10 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> setHideAmounts(bool value) =>
       update(settings).write(SettingsCompanion(hideAmounts: Value(value)));
+
+  Future<void> setShowCalendarDayTotals(bool value) => update(settings).write(
+    SettingsCompanion(showCalendarDayTotals: Value(value)),
+  );
 
   /// The 7 destinations a configurable bottom-nav slot can hold — Dashboard
   /// and More are pinned and deliberately excluded (see GitHub #70's design

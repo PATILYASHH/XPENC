@@ -10,8 +10,16 @@ import '../../data/providers.dart';
 
 /// Who owes you, who you owe. Lending is **not** an expense — the money is
 /// still yours, it's just sitting with someone else.
+///
+/// [embedded] is true when this screen is a bottom-nav tab (GitHub #70) —
+/// `AppShell`'s shared top bar owns the title/actions then. Default `false`
+/// keeps `/more/persons` reachable even if a user swaps Persons out of both
+/// bottom-nav slots (GitHub #70's dual-route pattern, same as Accounts,
+/// Budgets, Stats, Payees, Calendar).
 class PersonsScreen extends ConsumerWidget {
-  const PersonsScreen({super.key});
+  const PersonsScreen({this.embedded = false, super.key});
+
+  final bool embedded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -24,6 +32,23 @@ class PersonsScreen extends ConsumerWidget {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
+          if (!embedded)
+            SliverAppBar(
+              pinned: true,
+              title: const Text('Persons'),
+              actions: [
+                IconButton(
+                  tooltip: 'Archived people',
+                  icon: const Icon(Icons.inventory_2_outlined),
+                  onPressed: () => context.push('/persons/archived'),
+                ),
+                IconButton(
+                  tooltip: 'Add person',
+                  icon: const Icon(Icons.person_add_alt_1_outlined),
+                  onPressed: () => showAddPersonDialog(context, ref),
+                ),
+              ],
+            ),
           SliverToBoxAdapter(child: _TotalsHeader(totals: totals)),
           personsAsync.when(
             loading: () => const SliverToBoxAdapter(

@@ -109,13 +109,16 @@ final appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/transactions',
-              builder: (_, _) => const TransactionsScreen(),
+              builder: (_, _) => const TransactionsScreen(embedded: true),
             ),
           ],
         ),
         StatefulShellBranch(
           routes: [
-            GoRoute(path: '/persons', builder: (_, _) => const PersonsScreen()),
+            GoRoute(
+              path: '/persons',
+              builder: (_, _) => const PersonsScreen(embedded: true),
+            ),
           ],
         ),
         StatefulShellBranch(
@@ -298,6 +301,16 @@ final appRouter = GoRouter(
                       ),
                     ),
                   ],
+                ),
+                GoRoute(
+                  path: 'transactions',
+                  parentNavigatorKey: _rootKey,
+                  builder: (_, _) => const TransactionsScreen(),
+                ),
+                GoRoute(
+                  path: 'persons',
+                  parentNavigatorKey: _rootKey,
+                  builder: (_, _) => const PersonsScreen(),
                 ),
               ],
             ),

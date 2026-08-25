@@ -32,6 +32,7 @@ class SettingsScreen extends ConsumerWidget {
     final biometricEnabled = ref.watch(biometricEnabledProvider);
     final pinTimeoutMinutes = ref.watch(pinTimeoutMinutesProvider);
     final preventScreenshots = ref.watch(preventScreenshotsProvider);
+    final showCalendarDayTotals = ref.watch(showCalendarDayTotalsProvider);
     final expenseReminder = ref.watch(expenseReminderProvider);
     final notificationQuickAddEnabled = ref.watch(
       notificationQuickAddEnabledProvider,
@@ -108,6 +109,26 @@ class SettingsScreen extends ConsumerWidget {
                   onTap: () => ThemePickerSheet.show(context),
                 ),
               ],
+            ),
+          ),
+
+          // ── Calendar ───────────────────────────────────────────────────────
+          _sectionLabel(context, 'Calendar'),
+          Card(
+            child: SwitchListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              secondary: const Icon(Icons.calendar_month_outlined),
+              title: const Text('Show day totals'),
+              subtitle: Text(
+                'Selecting a day on the calendar shows its money in/out '
+                'totals.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+              value: showCalendarDayTotals,
+              onChanged: (v) =>
+                  ref.read(dbProvider).setShowCalendarDayTotals(v),
             ),
           ),
 

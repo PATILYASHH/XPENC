@@ -146,6 +146,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final openReminders = ref.watch(openRemindersProvider);
     final recurringRules =
         ref.watch(recurringRulesProvider).valueOrNull ?? const [];
+    final showDayTotals = ref.watch(showCalendarDayTotalsProvider);
 
     if (widget.embedded) {
       ref.listen<int>(calendarGoToTodaySignalProvider, (_, _) => _goToToday());
@@ -176,6 +177,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         accountMap,
         openReminders,
         recurringRules,
+        showDayTotals,
       ),
     );
 
@@ -209,6 +211,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     Map<int, AccountRow> accountMap,
     List<ReminderRow> openReminders,
     List<RecurringRuleRow> recurringRules,
+    bool showDayTotals,
   ) {
     // Per-day money in / out, plus which days carry a transfer (neither
     // income nor expense — a lateral move between the user's own accounts).
@@ -256,6 +259,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               accountMap,
               openReminders,
               recurringRules,
+              showDayTotals,
+              incomeByDay[_selectedDay!],
+              expenseByDay[_selectedDay!],
             ),
           const SizedBox(height: 20),
           Text(
@@ -468,6 +474,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     Map<int, AccountRow> accountMap,
     List<ReminderRow> openReminders,
     List<RecurringRuleRow> recurringRules,
+    bool showDayTotals,
+    Money? dayIncome,
+    Money? dayExpense,
   ) {
     final day = _selectedDay!;
     final dayReminders =
@@ -492,6 +501,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         ),
       ),
       const SizedBox(height: 12),
+      if (showDayTotals &&
+          ((dayIncome != null && !dayIncome.isZero) ||
+              (dayExpense != null && !dayExpense.isZero))) ...[
+        _dayTotalsStrip(theme, dayIncome, dayExpense),
+        const SizedBox(height: 16),
+      ],
     ];
 
     if (dayReminders.isEmpty && dueRules.isEmpty && dayTx.isEmpty) {
@@ -523,6 +538,71 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     }
 
     return widgets;
+  }
+
+  /// The selected day's money in/out — only the sides that actually have
+  /// something, per GitHub #75 (a day with only expenses shows just the
+  /// outflow total, and vice versa). Toggled off entirely from Settings.
+  Widget _dayTotalsStrip(ThemeData theme, Money? income, Money? expense) {
+    final showIncome = income != null && !income.isZero;
+    final showExpense = expense != null && !expense.isZero;
+
+    Widget totalTile(String label, Money amount, Color color, IconData icon) {
+      return Expanded(
+        child: Card(
+          color: color.withValues(alpha: 0.08),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Icon(icon, color: color, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      MoneyText(
+                        amount,
+                        color: color,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        if (showIncome)
+          totalTile(
+            'In',
+            income,
+            AppColors.income,
+            Icons.arrow_downward_rounded,
+          ),
+        if (showIncome && showExpense) const SizedBox(width: 12),
+        if (showExpense)
+          totalTile(
+            'Out',
+            expense,
+            AppColors.expense,
+            Icons.arrow_upward_rounded,
+          ),
+      ],
+    );
   }
 
   Widget _sectionLabel(ThemeData theme, String text) => Text(
