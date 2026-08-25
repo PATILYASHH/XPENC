@@ -1,8 +1,8 @@
 # XPENC
 
-> XPENC is a free, open-source, offline-first personal finance app for Android. It tracks income, expenses, transfers, budgets, savings goals, and dues/loans entirely in an on-device SQLite database — there is no server, no user account, no analytics, and release builds don't even request the INTERNET permission.
+> XPENC is a free, open-source, offline-first personal finance app for Android. It tracks income, expenses, transfers, budgets, savings goals, loans/EMIs, and person-to-person dues entirely in an on-device SQLite database — there is no server, no user account, no analytics, and release builds don't even request the INTERNET permission.
 
-XPENC is built and maintained by one developer, Yash Patil (GitHub: PATILYASHH), and is licensed under the MIT license. The current stable release is v1.4.2 (August 2026).
+XPENC is built and maintained by one developer, Yash Patil (GitHub: PATILYASHH), and is licensed under the MIT license. The current release is v1.5.0 (August 2026).
 
 ## Key facts
 
@@ -17,12 +17,14 @@ XPENC is built and maintained by one developer, Yash Patil (GitHub: PATILYASHH),
 - Accounts: Cash, Bank, Card and Prepaid Balance types with real, non-double-counted balances.
 - Transactions: income, expense and transfer, kept strictly separate; tags and receipt photos supported.
 - Budgets: per-category budgets with live progress and overspend alerts; an opt-in "Envelope Mode" for zero-based, every-rupee-has-a-job budgeting.
-- Dues & loans: track money lent or borrowed, with partial settlements, kept out of budget totals.
+- Dues: track money lent or borrowed between people, with partial settlements, kept out of budget totals.
+- Goals & Loans hub: savings goals with contribution history, plus EMI/loan accounts with an outstanding-balance ring and payment logging.
 - Data entry automation: share a bank SMS or a UPI payment screenshot (Paytm/Google Pay/PhonePe) into the app from the Android Share sheet, or import a CSV bank statement — all parsed entirely on-device.
 - Split payments: one purchase paid from more than one account posts as linked transactions.
-- Savings goals, shopping lists, calendar/reminders, and PDF statement / CSV export.
-- Security: optional 4/5/6-digit PIN with fingerprint/face unlock, and a per-balance "hide amounts" toggle.
-- Six themes including a true-black AMOLED dark mode.
+- Shopping lists, calendar/reminders, and PDF statement / CSV export.
+- Customization: pick which two tabs sit in the bottom nav (and hide their text labels for icon-only), toggle any account out of the dashboard's Net Worth total, and app-wide text size/boldness/font controls.
+- Security: optional 4/5/6-digit PIN with fingerprint/face unlock, a master recovery phrase that backs up the PIN after too many wrong tries, and a per-balance "hide amounts" toggle.
+- Seven themes including a true-black AMOLED dark mode.
 
 ## Pages
 
@@ -35,10 +37,12 @@ XPENC is built and maintained by one developer, Yash Patil (GitHub: PATILYASHH),
 
 ## Support
 
-- Email: support.yashpatil@gmail.com
+- Email: xpenc.app@gmail.com
 - Bug reports and feature requests: [GitHub Issues](https://github.com/PATILYASHH/XPENC/issues/new/choose)
 - Questions and open-ended discussion: [GitHub Discussions](https://github.com/PATILYASHH/XPENC/discussions)
 - Security vulnerabilities: [private reporting](https://github.com/PATILYASHH/XPENC/security)
+- Community discussion (not run by the maintainer alone): [r/XPENC](https://www.reddit.com/r/XPENC/)
+- Instagram: [@xpenc.app](https://www.instagram.com/xpenc.app/)
 
 ## Optional
 
