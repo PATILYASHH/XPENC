@@ -73,6 +73,8 @@ void main() {
       showCalendarDayTotals: true,
       fontScalePercent: 100,
       fontWeightDelta: 0,
+      masterPhraseAttemptThreshold: 5,
+      failedPasscodeAttempts: 0,
     );
 
     final now = DateTime(2026, 8, 5, 12);

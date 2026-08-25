@@ -512,6 +512,28 @@ void main() {
     await unmount(tester);
   });
 
+  testWidgets(
+    'Settings renders the master recovery phrase rows once a passcode and '
+    'phrase are set',
+    (tester) async {
+      await db.setPasscode('1234');
+      await db.setMasterPhrase(const [
+        'anchor', 'bear', 'cliff', 'dawn', 'ember',
+        'falcon', 'garden', 'harbor', 'island', 'jungle',
+      ]);
+      await pump(tester, const SettingsScreen());
+      expect(tester.takeException(), isNull);
+      await tester.scrollUntilVisible(
+        find.text('Master recovery phrase'),
+        240,
+      );
+      expect(find.text('Master recovery phrase'), findsOneWidget);
+      expect(find.text('Require after'), findsOneWidget);
+      expect(find.text('Turn off recovery phrase'), findsOneWidget);
+      await unmount(tester);
+    },
+  );
+
   testWidgets('Widgets renders without a platform channel', (tester) async {
     await pump(tester, const WidgetsScreen());
     expect(tester.takeException(), isNull);

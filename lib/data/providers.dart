@@ -603,6 +603,23 @@ final preventScreenshotsProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.preventScreenshots ?? false;
 });
 
+/// Whether a master recovery phrase is set — the switch the lock screen
+/// checks alongside [failedPasscodeAttemptsProvider] (GitHub #74).
+final hasMasterPhraseProvider = Provider<bool>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.masterPhraseHash != null;
+});
+
+final masterPhraseAttemptThresholdProvider = Provider<int>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.masterPhraseAttemptThreshold ??
+      5;
+});
+
+/// Consecutive wrong-PIN count, persisted with no time decay. The lock
+/// screen forces master-phrase entry once this reaches the threshold.
+final failedPasscodeAttemptsProvider = Provider<int>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.failedPasscodeAttempts ?? 0;
+});
+
 /// Whether the calendar's selected-day section shows an inflow/outflow total
 /// strip. On by default — see GitHub #75.
 final showCalendarDayTotalsProvider = Provider<bool>((ref) {

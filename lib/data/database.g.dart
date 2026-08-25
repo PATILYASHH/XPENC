@@ -5918,6 +5918,51 @@ class $SettingsTable extends Settings
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _masterPhraseHashMeta = const VerificationMeta(
+    'masterPhraseHash',
+  );
+  @override
+  late final GeneratedColumn<String> masterPhraseHash = GeneratedColumn<String>(
+    'master_phrase_hash',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _masterPhraseSaltMeta = const VerificationMeta(
+    'masterPhraseSalt',
+  );
+  @override
+  late final GeneratedColumn<String> masterPhraseSalt = GeneratedColumn<String>(
+    'master_phrase_salt',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _masterPhraseAttemptThresholdMeta =
+      const VerificationMeta('masterPhraseAttemptThreshold');
+  @override
+  late final GeneratedColumn<int> masterPhraseAttemptThreshold =
+      GeneratedColumn<int>(
+        'master_phrase_attempt_threshold',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(5),
+      );
+  static const VerificationMeta _failedPasscodeAttemptsMeta =
+      const VerificationMeta('failedPasscodeAttempts');
+  @override
+  late final GeneratedColumn<int> failedPasscodeAttempts = GeneratedColumn<int>(
+    'failed_passcode_attempts',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _expenseReminderEnabledMeta =
       const VerificationMeta('expenseReminderEnabled');
   @override
@@ -6166,6 +6211,10 @@ class $SettingsTable extends Settings
     passcodeLength,
     biometricEnabled,
     pinTimeoutMinutes,
+    masterPhraseHash,
+    masterPhraseSalt,
+    masterPhraseAttemptThreshold,
+    failedPasscodeAttempts,
     expenseReminderEnabled,
     expenseReminderHour,
     expenseReminderMinute,
@@ -6326,6 +6375,42 @@ class $SettingsTable extends Settings
         pinTimeoutMinutes.isAcceptableOrUnknown(
           data['pin_timeout_minutes']!,
           _pinTimeoutMinutesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('master_phrase_hash')) {
+      context.handle(
+        _masterPhraseHashMeta,
+        masterPhraseHash.isAcceptableOrUnknown(
+          data['master_phrase_hash']!,
+          _masterPhraseHashMeta,
+        ),
+      );
+    }
+    if (data.containsKey('master_phrase_salt')) {
+      context.handle(
+        _masterPhraseSaltMeta,
+        masterPhraseSalt.isAcceptableOrUnknown(
+          data['master_phrase_salt']!,
+          _masterPhraseSaltMeta,
+        ),
+      );
+    }
+    if (data.containsKey('master_phrase_attempt_threshold')) {
+      context.handle(
+        _masterPhraseAttemptThresholdMeta,
+        masterPhraseAttemptThreshold.isAcceptableOrUnknown(
+          data['master_phrase_attempt_threshold']!,
+          _masterPhraseAttemptThresholdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('failed_passcode_attempts')) {
+      context.handle(
+        _failedPasscodeAttemptsMeta,
+        failedPasscodeAttempts.isAcceptableOrUnknown(
+          data['failed_passcode_attempts']!,
+          _failedPasscodeAttemptsMeta,
         ),
       );
     }
@@ -6552,6 +6637,22 @@ class $SettingsTable extends Settings
         DriftSqlType.int,
         data['${effectivePrefix}pin_timeout_minutes'],
       )!,
+      masterPhraseHash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}master_phrase_hash'],
+      ),
+      masterPhraseSalt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}master_phrase_salt'],
+      ),
+      masterPhraseAttemptThreshold: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}master_phrase_attempt_threshold'],
+      )!,
+      failedPasscodeAttempts: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}failed_passcode_attempts'],
+      )!,
       expenseReminderEnabled: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}expense_reminder_enabled'],
@@ -6692,6 +6793,26 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// backgrounded.
   final int pinTimeoutMinutes;
 
+  /// A salted SHA-256 hash of the master recovery phrase (GitHub #74) — same
+  /// scheme as [passcodeHash], never the words themselves. Null means the
+  /// feature is off. There is no "change" flow, only set-when-null and
+  /// clear — like [passcodeHash] it can't be recovered if forgotten, so
+  /// there is nothing a "change" step could safely verify against without
+  /// prompting for the old phrase first, which is exactly what clearing +
+  /// setting again already does.
+  final String? masterPhraseHash;
+  final String? masterPhraseSalt;
+
+  /// How many consecutive wrong PINs (with [failedPasscodeAttempts]) force
+  /// the lock screen into master-phrase-only mode. Meaningless without
+  /// [masterPhraseHash] set, same guard pattern as [pinTimeoutMinutes].
+  final int masterPhraseAttemptThreshold;
+
+  /// Consecutive wrong-PIN count on the lock screen — persisted, not reset
+  /// by an app restart or by time passing (GitHub #74 asks for "no time
+  /// decay"). Reset to 0 by a correct PIN or a correct master phrase.
+  final int failedPasscodeAttempts;
+
   /// A daily nudge — "log today's spending" — distinct from [Reminders],
   /// which are always for one specific planned payment.
   final bool expenseReminderEnabled;
@@ -6789,6 +6910,10 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     this.passcodeLength,
     required this.biometricEnabled,
     required this.pinTimeoutMinutes,
+    this.masterPhraseHash,
+    this.masterPhraseSalt,
+    required this.masterPhraseAttemptThreshold,
+    required this.failedPasscodeAttempts,
     required this.expenseReminderEnabled,
     required this.expenseReminderHour,
     required this.expenseReminderMinute,
@@ -6835,6 +6960,16 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     }
     map['biometric_enabled'] = Variable<bool>(biometricEnabled);
     map['pin_timeout_minutes'] = Variable<int>(pinTimeoutMinutes);
+    if (!nullToAbsent || masterPhraseHash != null) {
+      map['master_phrase_hash'] = Variable<String>(masterPhraseHash);
+    }
+    if (!nullToAbsent || masterPhraseSalt != null) {
+      map['master_phrase_salt'] = Variable<String>(masterPhraseSalt);
+    }
+    map['master_phrase_attempt_threshold'] = Variable<int>(
+      masterPhraseAttemptThreshold,
+    );
+    map['failed_passcode_attempts'] = Variable<int>(failedPasscodeAttempts);
     map['expense_reminder_enabled'] = Variable<bool>(expenseReminderEnabled);
     map['expense_reminder_hour'] = Variable<int>(expenseReminderHour);
     map['expense_reminder_minute'] = Variable<int>(expenseReminderMinute);
@@ -6894,6 +7029,14 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           : Value(passcodeLength),
       biometricEnabled: Value(biometricEnabled),
       pinTimeoutMinutes: Value(pinTimeoutMinutes),
+      masterPhraseHash: masterPhraseHash == null && nullToAbsent
+          ? const Value.absent()
+          : Value(masterPhraseHash),
+      masterPhraseSalt: masterPhraseSalt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(masterPhraseSalt),
+      masterPhraseAttemptThreshold: Value(masterPhraseAttemptThreshold),
+      failedPasscodeAttempts: Value(failedPasscodeAttempts),
       expenseReminderEnabled: Value(expenseReminderEnabled),
       expenseReminderHour: Value(expenseReminderHour),
       expenseReminderMinute: Value(expenseReminderMinute),
@@ -6951,6 +7094,14 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       passcodeLength: serializer.fromJson<int?>(json['passcodeLength']),
       biometricEnabled: serializer.fromJson<bool>(json['biometricEnabled']),
       pinTimeoutMinutes: serializer.fromJson<int>(json['pinTimeoutMinutes']),
+      masterPhraseHash: serializer.fromJson<String?>(json['masterPhraseHash']),
+      masterPhraseSalt: serializer.fromJson<String?>(json['masterPhraseSalt']),
+      masterPhraseAttemptThreshold: serializer.fromJson<int>(
+        json['masterPhraseAttemptThreshold'],
+      ),
+      failedPasscodeAttempts: serializer.fromJson<int>(
+        json['failedPasscodeAttempts'],
+      ),
       expenseReminderEnabled: serializer.fromJson<bool>(
         json['expenseReminderEnabled'],
       ),
@@ -7012,6 +7163,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'passcodeLength': serializer.toJson<int?>(passcodeLength),
       'biometricEnabled': serializer.toJson<bool>(biometricEnabled),
       'pinTimeoutMinutes': serializer.toJson<int>(pinTimeoutMinutes),
+      'masterPhraseHash': serializer.toJson<String?>(masterPhraseHash),
+      'masterPhraseSalt': serializer.toJson<String?>(masterPhraseSalt),
+      'masterPhraseAttemptThreshold': serializer.toJson<int>(
+        masterPhraseAttemptThreshold,
+      ),
+      'failedPasscodeAttempts': serializer.toJson<int>(failedPasscodeAttempts),
       'expenseReminderEnabled': serializer.toJson<bool>(expenseReminderEnabled),
       'expenseReminderHour': serializer.toJson<int>(expenseReminderHour),
       'expenseReminderMinute': serializer.toJson<int>(expenseReminderMinute),
@@ -7056,6 +7213,10 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     Value<int?> passcodeLength = const Value.absent(),
     bool? biometricEnabled,
     int? pinTimeoutMinutes,
+    Value<String?> masterPhraseHash = const Value.absent(),
+    Value<String?> masterPhraseSalt = const Value.absent(),
+    int? masterPhraseAttemptThreshold,
+    int? failedPasscodeAttempts,
     bool? expenseReminderEnabled,
     int? expenseReminderHour,
     int? expenseReminderMinute,
@@ -7096,6 +7257,16 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
         : this.passcodeLength,
     biometricEnabled: biometricEnabled ?? this.biometricEnabled,
     pinTimeoutMinutes: pinTimeoutMinutes ?? this.pinTimeoutMinutes,
+    masterPhraseHash: masterPhraseHash.present
+        ? masterPhraseHash.value
+        : this.masterPhraseHash,
+    masterPhraseSalt: masterPhraseSalt.present
+        ? masterPhraseSalt.value
+        : this.masterPhraseSalt,
+    masterPhraseAttemptThreshold:
+        masterPhraseAttemptThreshold ?? this.masterPhraseAttemptThreshold,
+    failedPasscodeAttempts:
+        failedPasscodeAttempts ?? this.failedPasscodeAttempts,
     expenseReminderEnabled:
         expenseReminderEnabled ?? this.expenseReminderEnabled,
     expenseReminderHour: expenseReminderHour ?? this.expenseReminderHour,
@@ -7165,6 +7336,18 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       pinTimeoutMinutes: data.pinTimeoutMinutes.present
           ? data.pinTimeoutMinutes.value
           : this.pinTimeoutMinutes,
+      masterPhraseHash: data.masterPhraseHash.present
+          ? data.masterPhraseHash.value
+          : this.masterPhraseHash,
+      masterPhraseSalt: data.masterPhraseSalt.present
+          ? data.masterPhraseSalt.value
+          : this.masterPhraseSalt,
+      masterPhraseAttemptThreshold: data.masterPhraseAttemptThreshold.present
+          ? data.masterPhraseAttemptThreshold.value
+          : this.masterPhraseAttemptThreshold,
+      failedPasscodeAttempts: data.failedPasscodeAttempts.present
+          ? data.failedPasscodeAttempts.value
+          : this.failedPasscodeAttempts,
       expenseReminderEnabled: data.expenseReminderEnabled.present
           ? data.expenseReminderEnabled.value
           : this.expenseReminderEnabled,
@@ -7241,6 +7424,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('passcodeLength: $passcodeLength, ')
           ..write('biometricEnabled: $biometricEnabled, ')
           ..write('pinTimeoutMinutes: $pinTimeoutMinutes, ')
+          ..write('masterPhraseHash: $masterPhraseHash, ')
+          ..write('masterPhraseSalt: $masterPhraseSalt, ')
+          ..write(
+            'masterPhraseAttemptThreshold: $masterPhraseAttemptThreshold, ',
+          )
+          ..write('failedPasscodeAttempts: $failedPasscodeAttempts, ')
           ..write('expenseReminderEnabled: $expenseReminderEnabled, ')
           ..write('expenseReminderHour: $expenseReminderHour, ')
           ..write('expenseReminderMinute: $expenseReminderMinute, ')
@@ -7281,6 +7470,10 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     passcodeLength,
     biometricEnabled,
     pinTimeoutMinutes,
+    masterPhraseHash,
+    masterPhraseSalt,
+    masterPhraseAttemptThreshold,
+    failedPasscodeAttempts,
     expenseReminderEnabled,
     expenseReminderHour,
     expenseReminderMinute,
@@ -7320,6 +7513,11 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.passcodeLength == this.passcodeLength &&
           other.biometricEnabled == this.biometricEnabled &&
           other.pinTimeoutMinutes == this.pinTimeoutMinutes &&
+          other.masterPhraseHash == this.masterPhraseHash &&
+          other.masterPhraseSalt == this.masterPhraseSalt &&
+          other.masterPhraseAttemptThreshold ==
+              this.masterPhraseAttemptThreshold &&
+          other.failedPasscodeAttempts == this.failedPasscodeAttempts &&
           other.expenseReminderEnabled == this.expenseReminderEnabled &&
           other.expenseReminderHour == this.expenseReminderHour &&
           other.expenseReminderMinute == this.expenseReminderMinute &&
@@ -7358,6 +7556,10 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<int?> passcodeLength;
   final Value<bool> biometricEnabled;
   final Value<int> pinTimeoutMinutes;
+  final Value<String?> masterPhraseHash;
+  final Value<String?> masterPhraseSalt;
+  final Value<int> masterPhraseAttemptThreshold;
+  final Value<int> failedPasscodeAttempts;
   final Value<bool> expenseReminderEnabled;
   final Value<int> expenseReminderHour;
   final Value<int> expenseReminderMinute;
@@ -7393,6 +7595,10 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.passcodeLength = const Value.absent(),
     this.biometricEnabled = const Value.absent(),
     this.pinTimeoutMinutes = const Value.absent(),
+    this.masterPhraseHash = const Value.absent(),
+    this.masterPhraseSalt = const Value.absent(),
+    this.masterPhraseAttemptThreshold = const Value.absent(),
+    this.failedPasscodeAttempts = const Value.absent(),
     this.expenseReminderEnabled = const Value.absent(),
     this.expenseReminderHour = const Value.absent(),
     this.expenseReminderMinute = const Value.absent(),
@@ -7429,6 +7635,10 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.passcodeLength = const Value.absent(),
     this.biometricEnabled = const Value.absent(),
     this.pinTimeoutMinutes = const Value.absent(),
+    this.masterPhraseHash = const Value.absent(),
+    this.masterPhraseSalt = const Value.absent(),
+    this.masterPhraseAttemptThreshold = const Value.absent(),
+    this.failedPasscodeAttempts = const Value.absent(),
     this.expenseReminderEnabled = const Value.absent(),
     this.expenseReminderHour = const Value.absent(),
     this.expenseReminderMinute = const Value.absent(),
@@ -7465,6 +7675,10 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<int>? passcodeLength,
     Expression<bool>? biometricEnabled,
     Expression<int>? pinTimeoutMinutes,
+    Expression<String>? masterPhraseHash,
+    Expression<String>? masterPhraseSalt,
+    Expression<int>? masterPhraseAttemptThreshold,
+    Expression<int>? failedPasscodeAttempts,
     Expression<bool>? expenseReminderEnabled,
     Expression<int>? expenseReminderHour,
     Expression<int>? expenseReminderMinute,
@@ -7505,6 +7719,12 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       if (passcodeLength != null) 'passcode_length': passcodeLength,
       if (biometricEnabled != null) 'biometric_enabled': biometricEnabled,
       if (pinTimeoutMinutes != null) 'pin_timeout_minutes': pinTimeoutMinutes,
+      if (masterPhraseHash != null) 'master_phrase_hash': masterPhraseHash,
+      if (masterPhraseSalt != null) 'master_phrase_salt': masterPhraseSalt,
+      if (masterPhraseAttemptThreshold != null)
+        'master_phrase_attempt_threshold': masterPhraseAttemptThreshold,
+      if (failedPasscodeAttempts != null)
+        'failed_passcode_attempts': failedPasscodeAttempts,
       if (expenseReminderEnabled != null)
         'expense_reminder_enabled': expenseReminderEnabled,
       if (expenseReminderHour != null)
@@ -7552,6 +7772,10 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<int?>? passcodeLength,
     Value<bool>? biometricEnabled,
     Value<int>? pinTimeoutMinutes,
+    Value<String?>? masterPhraseHash,
+    Value<String?>? masterPhraseSalt,
+    Value<int>? masterPhraseAttemptThreshold,
+    Value<int>? failedPasscodeAttempts,
     Value<bool>? expenseReminderEnabled,
     Value<int>? expenseReminderHour,
     Value<int>? expenseReminderMinute,
@@ -7590,6 +7814,12 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       passcodeLength: passcodeLength ?? this.passcodeLength,
       biometricEnabled: biometricEnabled ?? this.biometricEnabled,
       pinTimeoutMinutes: pinTimeoutMinutes ?? this.pinTimeoutMinutes,
+      masterPhraseHash: masterPhraseHash ?? this.masterPhraseHash,
+      masterPhraseSalt: masterPhraseSalt ?? this.masterPhraseSalt,
+      masterPhraseAttemptThreshold:
+          masterPhraseAttemptThreshold ?? this.masterPhraseAttemptThreshold,
+      failedPasscodeAttempts:
+          failedPasscodeAttempts ?? this.failedPasscodeAttempts,
       expenseReminderEnabled:
           expenseReminderEnabled ?? this.expenseReminderEnabled,
       expenseReminderHour: expenseReminderHour ?? this.expenseReminderHour,
@@ -7670,6 +7900,22 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     }
     if (pinTimeoutMinutes.present) {
       map['pin_timeout_minutes'] = Variable<int>(pinTimeoutMinutes.value);
+    }
+    if (masterPhraseHash.present) {
+      map['master_phrase_hash'] = Variable<String>(masterPhraseHash.value);
+    }
+    if (masterPhraseSalt.present) {
+      map['master_phrase_salt'] = Variable<String>(masterPhraseSalt.value);
+    }
+    if (masterPhraseAttemptThreshold.present) {
+      map['master_phrase_attempt_threshold'] = Variable<int>(
+        masterPhraseAttemptThreshold.value,
+      );
+    }
+    if (failedPasscodeAttempts.present) {
+      map['failed_passcode_attempts'] = Variable<int>(
+        failedPasscodeAttempts.value,
+      );
     }
     if (expenseReminderEnabled.present) {
       map['expense_reminder_enabled'] = Variable<bool>(
@@ -7763,6 +8009,12 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('passcodeLength: $passcodeLength, ')
           ..write('biometricEnabled: $biometricEnabled, ')
           ..write('pinTimeoutMinutes: $pinTimeoutMinutes, ')
+          ..write('masterPhraseHash: $masterPhraseHash, ')
+          ..write('masterPhraseSalt: $masterPhraseSalt, ')
+          ..write(
+            'masterPhraseAttemptThreshold: $masterPhraseAttemptThreshold, ',
+          )
+          ..write('failedPasscodeAttempts: $failedPasscodeAttempts, ')
           ..write('expenseReminderEnabled: $expenseReminderEnabled, ')
           ..write('expenseReminderHour: $expenseReminderHour, ')
           ..write('expenseReminderMinute: $expenseReminderMinute, ')
@@ -21910,6 +22162,10 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<int?> passcodeLength,
       Value<bool> biometricEnabled,
       Value<int> pinTimeoutMinutes,
+      Value<String?> masterPhraseHash,
+      Value<String?> masterPhraseSalt,
+      Value<int> masterPhraseAttemptThreshold,
+      Value<int> failedPasscodeAttempts,
       Value<bool> expenseReminderEnabled,
       Value<int> expenseReminderHour,
       Value<int> expenseReminderMinute,
@@ -21947,6 +22203,10 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<int?> passcodeLength,
       Value<bool> biometricEnabled,
       Value<int> pinTimeoutMinutes,
+      Value<String?> masterPhraseHash,
+      Value<String?> masterPhraseSalt,
+      Value<int> masterPhraseAttemptThreshold,
+      Value<int> failedPasscodeAttempts,
       Value<bool> expenseReminderEnabled,
       Value<int> expenseReminderHour,
       Value<int> expenseReminderMinute,
@@ -22077,6 +22337,26 @@ class $$SettingsTableFilterComposer
 
   ColumnFilters<int> get pinTimeoutMinutes => $composableBuilder(
     column: $table.pinTimeoutMinutes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get masterPhraseHash => $composableBuilder(
+    column: $table.masterPhraseHash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get masterPhraseSalt => $composableBuilder(
+    column: $table.masterPhraseSalt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get masterPhraseAttemptThreshold => $composableBuilder(
+    column: $table.masterPhraseAttemptThreshold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get failedPasscodeAttempts => $composableBuilder(
+    column: $table.failedPasscodeAttempts,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -22283,6 +22563,26 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get masterPhraseHash => $composableBuilder(
+    column: $table.masterPhraseHash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get masterPhraseSalt => $composableBuilder(
+    column: $table.masterPhraseSalt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get masterPhraseAttemptThreshold => $composableBuilder(
+    column: $table.masterPhraseAttemptThreshold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get failedPasscodeAttempts => $composableBuilder(
+    column: $table.failedPasscodeAttempts,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get expenseReminderEnabled => $composableBuilder(
     column: $table.expenseReminderEnabled,
     builder: (column) => ColumnOrderings(column),
@@ -22475,6 +22775,26 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get masterPhraseHash => $composableBuilder(
+    column: $table.masterPhraseHash,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get masterPhraseSalt => $composableBuilder(
+    column: $table.masterPhraseSalt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get masterPhraseAttemptThreshold => $composableBuilder(
+    column: $table.masterPhraseAttemptThreshold,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get failedPasscodeAttempts => $composableBuilder(
+    column: $table.failedPasscodeAttempts,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get expenseReminderEnabled => $composableBuilder(
     column: $table.expenseReminderEnabled,
     builder: (column) => column,
@@ -22629,6 +22949,10 @@ class $$SettingsTableTableManager
                 Value<int?> passcodeLength = const Value.absent(),
                 Value<bool> biometricEnabled = const Value.absent(),
                 Value<int> pinTimeoutMinutes = const Value.absent(),
+                Value<String?> masterPhraseHash = const Value.absent(),
+                Value<String?> masterPhraseSalt = const Value.absent(),
+                Value<int> masterPhraseAttemptThreshold = const Value.absent(),
+                Value<int> failedPasscodeAttempts = const Value.absent(),
                 Value<bool> expenseReminderEnabled = const Value.absent(),
                 Value<int> expenseReminderHour = const Value.absent(),
                 Value<int> expenseReminderMinute = const Value.absent(),
@@ -22665,6 +22989,10 @@ class $$SettingsTableTableManager
                 passcodeLength: passcodeLength,
                 biometricEnabled: biometricEnabled,
                 pinTimeoutMinutes: pinTimeoutMinutes,
+                masterPhraseHash: masterPhraseHash,
+                masterPhraseSalt: masterPhraseSalt,
+                masterPhraseAttemptThreshold: masterPhraseAttemptThreshold,
+                failedPasscodeAttempts: failedPasscodeAttempts,
                 expenseReminderEnabled: expenseReminderEnabled,
                 expenseReminderHour: expenseReminderHour,
                 expenseReminderMinute: expenseReminderMinute,
@@ -22702,6 +23030,10 @@ class $$SettingsTableTableManager
                 Value<int?> passcodeLength = const Value.absent(),
                 Value<bool> biometricEnabled = const Value.absent(),
                 Value<int> pinTimeoutMinutes = const Value.absent(),
+                Value<String?> masterPhraseHash = const Value.absent(),
+                Value<String?> masterPhraseSalt = const Value.absent(),
+                Value<int> masterPhraseAttemptThreshold = const Value.absent(),
+                Value<int> failedPasscodeAttempts = const Value.absent(),
                 Value<bool> expenseReminderEnabled = const Value.absent(),
                 Value<int> expenseReminderHour = const Value.absent(),
                 Value<int> expenseReminderMinute = const Value.absent(),
@@ -22738,6 +23070,10 @@ class $$SettingsTableTableManager
                 passcodeLength: passcodeLength,
                 biometricEnabled: biometricEnabled,
                 pinTimeoutMinutes: pinTimeoutMinutes,
+                masterPhraseHash: masterPhraseHash,
+                masterPhraseSalt: masterPhraseSalt,
+                masterPhraseAttemptThreshold: masterPhraseAttemptThreshold,
+                failedPasscodeAttempts: failedPasscodeAttempts,
                 expenseReminderEnabled: expenseReminderEnabled,
                 expenseReminderHour: expenseReminderHour,
                 expenseReminderMinute: expenseReminderMinute,

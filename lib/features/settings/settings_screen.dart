@@ -7,6 +7,7 @@ import '../../core/branding/brand_mark.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import 'currency_picker_sheet.dart';
+import 'master_phrase_attempts_sheet.dart';
 import 'pin_timeout_sheet.dart';
 import 'theme_picker_sheet.dart';
 
@@ -31,6 +32,10 @@ class SettingsScreen extends ConsumerWidget {
     final hasPasscode = ref.watch(hasPasscodeProvider);
     final biometricEnabled = ref.watch(biometricEnabledProvider);
     final pinTimeoutMinutes = ref.watch(pinTimeoutMinutesProvider);
+    final hasMasterPhrase = ref.watch(hasMasterPhraseProvider);
+    final masterPhraseAttemptThreshold = ref.watch(
+      masterPhraseAttemptThresholdProvider,
+    );
     final preventScreenshots = ref.watch(preventScreenshotsProvider);
     final showCalendarDayTotals = ref.watch(showCalendarDayTotalsProvider);
     final expenseReminder = ref.watch(expenseReminderProvider);
@@ -267,6 +272,87 @@ class SettingsScreen extends ConsumerWidget {
                     onTap: () =>
                         context.push('/more/settings/passcode?remove=true'),
                   ),
+                  Divider(height: 1, indent: 60, color: cs.outline),
+                  if (hasMasterPhrase) ...[
+                    ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                      ),
+                      leading: const Icon(Icons.key_outlined),
+                      title: const Text('Master recovery phrase'),
+                      subtitle: Text(
+                        'Set — required after too many wrong PIN attempts',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    Divider(height: 1, indent: 60, color: cs.outline),
+                    ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                      ),
+                      leading: const Icon(Icons.pin_outlined),
+                      title: const Text('Require after'),
+                      subtitle: Text(
+                        'How many wrong PINs before the recovery phrase is '
+                        'asked for instead',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            MasterPhraseAttemptsSheet.label(
+                              masterPhraseAttemptThreshold,
+                            ),
+                            style: trailingStyle,
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ],
+                      ),
+                      onTap: () => MasterPhraseAttemptsSheet.show(context),
+                    ),
+                    Divider(height: 1, indent: 60, color: cs.outline),
+                    ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                      ),
+                      leading: Icon(Icons.key_off_outlined, color: cs.error),
+                      title: Text(
+                        'Turn off recovery phrase',
+                        style: TextStyle(color: cs.error),
+                      ),
+                      onTap: () =>
+                          context.push('/more/settings/master-phrase/disable'),
+                    ),
+                  ] else
+                    ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                      ),
+                      leading: const Icon(Icons.key_outlined),
+                      title: const Text('Set up master recovery phrase'),
+                      subtitle: Text(
+                        'A 10-word backup that unlocks XPENC if the PIN is '
+                        'entered wrong too many times',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                      trailing: Icon(
+                        Icons.chevron_right_rounded,
+                        color: cs.onSurfaceVariant,
+                      ),
+                      onTap: () =>
+                          context.push('/more/settings/master-phrase/setup'),
+                    ),
                 ],
                 Divider(height: 1, indent: 60, color: cs.outline),
                 SwitchListTile(

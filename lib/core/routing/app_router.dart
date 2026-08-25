@@ -33,6 +33,8 @@ import '../../features/reports/stats_screen.dart';
 import '../../features/savings/loan_detail_screen.dart';
 import '../../features/savings/savings_goal_detail_screen.dart';
 import '../../features/savings/savings_goals_screen.dart';
+import '../../features/security/master_phrase_setup_screen.dart';
+import '../../features/security/master_phrase_verify_screen.dart';
 import '../../features/security/set_passcode_screen.dart';
 import '../../features/settings/bottom_nav_settings_screen.dart';
 import '../../features/settings/dashboard_settings_screen.dart';
@@ -162,6 +164,16 @@ final appRouter = GoRouter(
                         isRemoving:
                             state.uri.queryParameters['remove'] == 'true',
                       ),
+                    ),
+                    GoRoute(
+                      path: 'master-phrase/setup',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const MasterPhraseSetupScreen(),
+                    ),
+                    GoRoute(
+                      path: 'master-phrase/disable',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const MasterPhraseVerifyScreen(),
                     ),
                     GoRoute(
                       path: 'widgets',

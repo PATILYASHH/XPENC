@@ -4,6 +4,7 @@ import 'package:local_auth/local_auth.dart';
 
 import '../../core/branding/app_info.dart';
 import '../../core/branding/brand_mark.dart';
+import '../../core/security/master_phrase_field.dart';
 import '../../core/security/pin_pad.dart';
 import '../../data/providers.dart';
 
@@ -24,6 +25,8 @@ class _LockScreenState extends ConsumerState<LockScreen> {
   bool _error = false;
   bool _checking = false;
   bool _biometricTried = false;
+  String? _phraseError;
+  bool _phraseChecking = false;
 
   @override
   void initState() {
@@ -46,7 +49,10 @@ class _LockScreenState extends ConsumerState<LockScreen> {
         localizedReason: 'Unlock ${AppInfo.name}',
         biometricOnly: true,
       );
-      if (ok && mounted) widget.onUnlocked();
+      if (ok && mounted) {
+        await ref.read(dbProvider).resetFailedPasscodeAttempts();
+        if (mounted) widget.onUnlocked();
+      }
     } catch (_) {
       // Falls through to the PIN pad — biometric is a shortcut, never the
       // only way in.
@@ -70,12 +76,17 @@ class _LockScreenState extends ConsumerState<LockScreen> {
 
   Future<void> _submit() async {
     setState(() => _checking = true);
-    final ok = await ref.read(dbProvider).verifyPasscode(_pin);
+    final db = ref.read(dbProvider);
+    final ok = await db.verifyPasscode(_pin);
     if (!mounted) return;
     if (ok) {
+      await db.resetFailedPasscodeAttempts();
+      if (!mounted) return;
       widget.onUnlocked();
       return;
     }
+    await db.recordFailedPasscodeAttempt();
+    if (!mounted) return;
     setState(() {
       _error = true;
       _checking = false;
@@ -83,11 +94,36 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     });
   }
 
+  Future<void> _submitPhrase(List<String> words) async {
+    setState(() {
+      _phraseChecking = true;
+      _phraseError = null;
+    });
+    final db = ref.read(dbProvider);
+    final ok = await db.verifyMasterPhrase(words);
+    if (!mounted) return;
+    if (ok) {
+      await db.resetFailedPasscodeAttempts();
+      if (!mounted) return;
+      widget.onUnlocked();
+      return;
+    }
+    setState(() {
+      _phraseChecking = false;
+      _phraseError = 'Wrong phrase';
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final biometricEnabled = ref.watch(biometricEnabledProvider);
-    final pinLength = ref.watch(passcodeLengthProvider);
+    final hasMasterPhrase = ref.watch(hasMasterPhraseProvider);
+    final failedAttempts = ref.watch(failedPasscodeAttemptsProvider);
+    final threshold = ref.watch(masterPhraseAttemptThresholdProvider);
+    // No time decay (GitHub #74): once the persisted counter reaches the
+    // threshold, every future launch/resume lands here directly — the PIN
+    // pad below is unreachable again until the phrase is entered correctly.
+    final phraseLocked = hasMasterPhrase && failedAttempts >= threshold;
 
     return PopScope(
       canPop: false,
@@ -105,35 +141,86 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-              Text(
-                _error ? 'Wrong PIN' : 'Enter your PIN',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: _error
-                      ? theme.colorScheme.error
-                      : theme.colorScheme.onSurfaceVariant,
-                ),
+              Expanded(
+                child: phraseLocked
+                    ? _buildPhraseBody(context)
+                    : _buildPinBody(context),
               ),
-              const SizedBox(height: 18),
-              PinDots(entered: _pin.length, length: pinLength, error: _error),
-              const Spacer(flex: 3),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: PinKeypad(
-                  onDigit: _onDigit,
-                  onBackspace: _onBackspace,
-                  extraKey: biometricEnabled
-                      ? IconButton(
-                          icon: const Icon(Icons.fingerprint_rounded, size: 28),
-                          tooltip: 'Use biometric unlock',
-                          onPressed: _tryBiometric,
-                        )
-                      : null,
-                ),
-              ),
-              const Spacer(),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildPinBody(BuildContext context) {
+    final theme = Theme.of(context);
+    final biometricEnabled = ref.watch(biometricEnabledProvider);
+    final pinLength = ref.watch(passcodeLengthProvider);
+
+    return Column(
+      children: [
+        Text(
+          _error ? 'Wrong PIN' : 'Enter your PIN',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: _error
+                ? theme.colorScheme.error
+                : theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 18),
+        PinDots(entered: _pin.length, length: pinLength, error: _error),
+        const Spacer(flex: 3),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: PinKeypad(
+            onDigit: _onDigit,
+            onBackspace: _onBackspace,
+            extraKey: biometricEnabled
+                ? IconButton(
+                    icon: const Icon(Icons.fingerprint_rounded, size: 28),
+                    tooltip: 'Use biometric unlock',
+                    onPressed: _tryBiometric,
+                  )
+                : null,
+          ),
+        ),
+        const Spacer(),
+      ],
+    );
+  }
+
+  Widget _buildPhraseBody(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        children: [
+          Icon(Icons.key_outlined, size: 32, color: cs.primary),
+          const SizedBox(height: 12),
+          Text(
+            'Too many wrong PINs',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Enter your master recovery phrase to unlock XPENC.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          MasterPhraseField(
+            error: _phraseError,
+            busy: _phraseChecking,
+            onSubmit: _submitPhrase,
+          ),
+        ],
       ),
     );
   }
