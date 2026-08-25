@@ -128,39 +128,39 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     return PopScope(
       canPop: false,
       child: Scaffold(
-        // A plain Spacer/Expanded layout would silently clip the keypad's
-        // last row (0 / backspace / fingerprint) under the system navigation
-        // bar on devices where it eats more height than expected (GitHub
-        // #78) — release builds don't show Flutter's overflow banner, so
-        // that clipping is invisible until someone reports it. Wrapping in a
-        // scrollable, intrinsic-height layout keeps the same centered look
-        // when everything fits, and falls back to scrolling instead of
-        // clipping when it doesn't.
+        // Fixed spacing, not flex `Spacer`s — `IntrinsicHeight` (an earlier
+        // attempt at this, GitHub #78) inflates flex children based on their
+        // flex factor rather than their actual content, which ballooned the
+        // computed height and pushed most of the keypad off-screen. `Center`
+        // inside a `minHeight: viewport` box gives the same "vertically
+        // centered when it fits" look with a real, predictable content
+        // height, and still falls back to scrolling — never clipping —
+        // if it doesn't fit at all (tiny screens, large font scale).
         body: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) => SingleChildScrollView(
               child: ConstrainedBox(
                 constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: IntrinsicHeight(
-                  child: Column(
-                    children: [
-                      const Spacer(flex: 2),
-                      const BrandMark(size: 48),
-                      const SizedBox(height: 12),
-                      Text(
-                        AppInfo.name,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const BrandMark(size: 48),
+                        const SizedBox(height: 12),
+                        Text(
+                          AppInfo.name,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 32),
-                      Expanded(
-                        child: phraseLocked
+                        const SizedBox(height: 40),
+                        phraseLocked
                             ? _buildPhraseBody(context)
                             : _buildPinBody(context),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -177,6 +177,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     final pinLength = ref.watch(passcodeLengthProvider);
 
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           _error ? 'Wrong PIN' : 'Enter your PIN',
@@ -188,7 +189,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
         ),
         const SizedBox(height: 18),
         PinDots(entered: _pin.length, length: pinLength, error: _error),
-        const Spacer(flex: 3),
+        const SizedBox(height: 40),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: PinKeypad(
@@ -203,7 +204,6 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                 : null,
           ),
         ),
-        const Spacer(),
       ],
     );
   }
@@ -211,9 +211,10 @@ class _LockScreenState extends ConsumerState<LockScreen> {
   Widget _buildPhraseBody(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    return SingleChildScrollView(
+    return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.key_outlined, size: 32, color: cs.primary),
           const SizedBox(height: 12),
