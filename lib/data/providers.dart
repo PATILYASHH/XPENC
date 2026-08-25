@@ -583,6 +583,18 @@ final countRepaymentsAsIncomeProvider = Provider<bool>((ref) {
       false;
 });
 
+/// The app user's own UPI VPA — set once in Settings, required to build a
+/// `upi://collect` link (the "Request" button on a person who owes the
+/// user). Null until set.
+final myUpiIdProvider = Provider<String?>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.myUpiId;
+});
+
+/// The app user's own display name, sent as `pn` on a collect link.
+final myUpiNameProvider = Provider<String?>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.myUpiName;
+});
+
 /// Whether a passcode is set at all — the switch the app-lock gate checks on
 /// every launch and resume.
 final hasPasscodeProvider = Provider<bool>((ref) {

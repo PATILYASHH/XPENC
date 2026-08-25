@@ -302,6 +302,20 @@ class Persons extends Table {
   TextColumn get note => text().nullable()();
   BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  /// Their UPI VPA (e.g. "rahul@okhdfcbank"). Powers the "Pay" button on
+  /// their detail screen — used as `pa` on a `upi://pay` deep link when the
+  /// app's user owes them (see `UpiLauncher`).
+  TextColumn get upiId => text().nullable()();
+
+  /// Their phone number. Not wired to any deep link yet (UPI links need a
+  /// VPA, not a phone number) — stored for display/contact purposes.
+  TextColumn get phone => text().nullable()();
+
+  /// Stored but not wired to any button yet — no deep-link standard is being
+  /// targeted for PayPal in this pass. Present so a future PayPal button
+  /// doesn't need its own migration.
+  TextColumn get paypal => text().nullable()();
 }
 
 /// Signed ledger per person. Balance = Σ(theyOwe) − Σ(iOwe).
@@ -455,6 +469,15 @@ class Settings extends Table {
   /// asked for.
   BoolColumn get countRepaymentsAsIncome =>
       boolean().withDefault(const Constant(false))();
+
+  /// The app user's own UPI VPA. Required to build a `upi://collect` link
+  /// (the "Request" button on a person who owes the user) — `pa` on a
+  /// collect intent must be the *payee*, i.e. the app's own user, not the
+  /// person being requested from. Null until set in Settings.
+  TextColumn get myUpiId => text().nullable()();
+
+  /// The app user's own display name, sent as `pn` on a collect link.
+  TextColumn get myUpiName => text().nullable()();
 
   /// A salted SHA-256 hash — never the passcode itself. Null means no
   /// passcode is set, the default, and the app never locks.

@@ -29,6 +29,8 @@ class SettingsScreen extends ConsumerWidget {
     final currency = ref.watch(currencyProvider);
     final showSymbol = ref.watch(showCurrencySymbolProvider);
     final countRepaymentsAsIncome = ref.watch(countRepaymentsAsIncomeProvider);
+    final myUpiId = ref.watch(myUpiIdProvider);
+    final myUpiName = ref.watch(myUpiNameProvider);
     final hasPasscode = ref.watch(hasPasscodeProvider);
     final biometricEnabled = ref.watch(biometricEnabledProvider);
     final pinTimeoutMinutes = ref.watch(pinTimeoutMinutesProvider);
@@ -175,21 +177,47 @@ class SettingsScreen extends ConsumerWidget {
           // ── Persons ────────────────────────────────────────────────────────
           _sectionLabel(context, 'Persons'),
           Card(
-            child: SwitchListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              secondary: const Icon(Icons.handshake_outlined),
-              title: const Text('Count repayments as income'),
-              subtitle: Text(
-                'Offers "Mark as repaid" on a person\'s page — a repayment '
-                'posts as income under a category you choose, instead of '
-                'staying off income/expense like lending normally does.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
+            child: Column(
+              children: [
+                SwitchListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  secondary: const Icon(Icons.handshake_outlined),
+                  title: const Text('Count repayments as income'),
+                  subtitle: Text(
+                    'Offers "Mark as repaid" on a person\'s page — a repayment '
+                    'posts as income under a category you choose, instead of '
+                    'staying off income/expense like lending normally does.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  value: countRepaymentsAsIncome,
+                  onChanged: (v) =>
+                      ref.read(dbProvider).setCountRepaymentsAsIncome(v),
                 ),
-              ),
-              value: countRepaymentsAsIncome,
-              onChanged: (v) =>
-                  ref.read(dbProvider).setCountRepaymentsAsIncome(v),
+                Divider(height: 1, indent: 60, color: cs.outline),
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  leading: const Icon(Icons.qr_code_outlined),
+                  title: const Text('My UPI ID'),
+                  subtitle: Text(
+                    (myUpiId?.isNotEmpty ?? false)
+                        ? myUpiId!
+                        : 'Needed for the Beta "Request" button on a person '
+                              'who owes you',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => _showMyUpiDialog(
+                    context,
+                    ref,
+                    currentId: myUpiId,
+                    currentName: myUpiName,
+                  ),
+                ),
+              ],
             ),
           ),
 
@@ -600,6 +628,64 @@ class SettingsScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _showMyUpiDialog(
+    BuildContext context,
+    WidgetRef ref, {
+    required String? currentId,
+    required String? currentName,
+  }) async {
+    final idController = TextEditingController(text: currentId ?? '');
+    final nameController = TextEditingController(text: currentName ?? '');
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('My UPI ID'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: idController,
+              autofocus: true,
+              autocorrect: false,
+              decoration: const InputDecoration(
+                labelText: 'UPI ID',
+                hintText: 'e.g. you@okhdfcbank',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: nameController,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(
+                labelText: 'Your name',
+                hintText: 'Shown to whoever pays your request',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    idController.dispose();
+    nameController.dispose();
+    if (saved != true) return;
+
+    final id = idController.text.trim();
+    final name = nameController.text.trim();
+    final db = ref.read(dbProvider);
+    await db.setMyUpiId(id.isEmpty ? null : id);
+    await db.setMyUpiName(name.isEmpty ? null : name);
   }
 
   Widget _sectionLabel(BuildContext context, String text) {

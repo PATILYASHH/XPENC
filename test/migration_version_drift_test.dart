@@ -78,4 +78,17 @@ void main() {
       await reopened.close();
     },
   );
+
+  test(
+    'the v44 upiId/myUpiId columns (Persons Pay/Request via UPI) survive a '
+    'rolled-back re-open without "duplicate column name"',
+    () async {
+      final file = await buildRolledBackDatabase(43);
+
+      final reopened = AppDatabase(NativeDatabase(file));
+      await expectLater(reopened.select(reopened.persons).get(), completes);
+      await expectLater(reopened.select(reopened.settings).get(), completes);
+      await reopened.close();
+    },
+  );
 }

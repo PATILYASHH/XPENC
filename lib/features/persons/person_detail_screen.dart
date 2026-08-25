@@ -3,13 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:intl/intl.dart';
 
+import 'package:go_router/go_router.dart';
+
 import '../../core/money.dart';
+import '../../core/payments/upi_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../accounts/envelope_outflow.dart';
+import 'edit_person_sheet.dart';
+import 'upi_action_row.dart';
 
 /// One person's ledger. Net balance = Σ(theyOwe) − Σ(iOwe).
 /// `+` they owe you · `-` you owe them.
@@ -59,10 +64,20 @@ class PersonDetailScreen extends ConsumerWidget {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(pinned: true, title: Text(person.name)),
+          SliverAppBar(
+            pinned: true,
+            title: Text(person.name),
+            actions: [
+              IconButton(
+                tooltip: 'Edit person',
+                icon: const Icon(Icons.edit_outlined),
+                onPressed: () => showEditPersonSheet(context, ref, person),
+              ),
+            ],
+          ),
           SliverToBoxAdapter(child: _BalanceHero(balance: balance)),
           SliverToBoxAdapter(
-            child: _ActionButtons(personId: person.id, balance: balance),
+            child: _ActionButtons(person: person, balance: balance),
           ),
           SliverToBoxAdapter(
             child: Padding(
@@ -193,15 +208,19 @@ class _BalanceHero extends StatelessWidget {
 /// overloading 'I owe' — only shows when there's a balance to repay and the
 /// setting is on (see [countRepaymentsAsIncomeProvider]).
 class _ActionButtons extends ConsumerWidget {
-  const _ActionButtons({required this.personId, required this.balance});
+  const _ActionButtons({required this.person, required this.balance});
 
-  final int personId;
+  final PersonRow person;
   final Money balance;
+
+  int get personId => person.id;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final offerRepayment =
         ref.watch(countRepaymentsAsIncomeProvider) && balance.isPositive;
+    final myUpiId = ref.watch(myUpiIdProvider);
+    final myUpiName = ref.watch(myUpiNameProvider);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
@@ -253,6 +272,33 @@ class _ActionButtons extends ConsumerWidget {
                 icon: const Icon(Icons.paid_outlined, size: 18),
                 label: const Text('Mark as repaid'),
               ),
+            ),
+          ],
+          if (balance.isPositive) ...[
+            const SizedBox(height: 16),
+            UpiActionRow(
+              action: UpiAction.collect,
+              label: 'Request',
+              amount: balance,
+              payeeUpiId: myUpiId,
+              payeeName: (myUpiName?.trim().isNotEmpty ?? false)
+                  ? myUpiName!.trim()
+                  : 'XPENC user',
+              missingHint: 'Add your UPI ID in Settings to request money',
+              onMissingTap: () => context.push('/more/settings'),
+              note: 'Requested via XPENC',
+            ),
+          ] else if (balance.isNegative) ...[
+            const SizedBox(height: 16),
+            UpiActionRow(
+              action: UpiAction.pay,
+              label: 'Pay',
+              amount: balance.abs,
+              payeeUpiId: person.upiId,
+              payeeName: person.name,
+              missingHint: "Add ${person.name}'s UPI ID to pay them directly",
+              onMissingTap: () => showEditPersonSheet(context, ref, person),
+              note: 'Settlement via XPENC',
             ),
           ],
         ],
