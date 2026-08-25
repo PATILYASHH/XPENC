@@ -6,6 +6,63 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
+## [1.5.0] — Unreleased
+
+### Added
+- **Persons: Pay/Request via UPI (Beta)** — a person's page offers a "Pay"
+  or "Request" button, whichever way the balance runs, pre-filled with the
+  outstanding amount. One tap opens a `upi://` intent Android hands to
+  whatever app is installed. Google Pay's and PhonePe's own deep-link
+  schemes are tried first, falling back to the generic intent either way.
+- **Edit person** — a real edit flow at last (previously only Add, Archive
+  and Remove existed): UPI ID, phone number, contact and note.
+- **Customizable bottom nav** (#70) — pick which two destinations sit in
+  the two flexible slots next to the ➕ button, from seven choices
+  (Transactions, Persons, Calendar, Budgets, Accounts, Stats, Payees).
+  Dashboard and More stay pinned. Every configurable destination also
+  gained its own `/more/*` route so it's reachable even when swapped out of
+  both slots. Labels under each icon can be turned off.
+- **Goals & Loans hub** — Savings Goals is now Goals & Loans, tracking
+  money borrowed as a loan alongside goals saved toward, in one place.
+- The most-funded goal automatically sorts to the top of the list; goals
+  can also carry their own note.
+- **Font settings** — Settings → Font: text size, boldness and font family,
+  applied app-wide with a live preview.
+- **Bold theme** — a near-black theme with a coral-and-gold accent and
+  Sora/Manrope typography.
+- **Master recovery phrase** (#74) — a 10-word backup unlock method; the
+  number of wrong PIN attempts before it's required instead is configurable.
+- **Customize Dashboard** — choose which accounts count toward the
+  Dashboard's Net Worth figure.
+- **Calendar day totals** — selecting a day shows that day's total money
+  in and out (Settings → Calendar).
+- **Linked transactions** (#68) — link two or more related transactions
+  together, and filter the Transactions list to only linked ones with a
+  new "Linked" quick-filter chip.
+- **Split cash-expense change across two accounts** (#55) — an expense's
+  change no longer has to land entirely in one account.
+- **Interactive dashboard pie charts** — the Budgets and Spending charts
+  drop their permanent legend; tap or hold a wedge to see its name and
+  amount centred on the chart instead. A category over its budget gets a
+  diagonal hazard-stripe pattern on its wedge, not just a thin ring.
+- Redesigned Dashboard hero card, switching between metrics (Total Money,
+  Net Worth) via tabs.
+- **Bottom spacing** (Settings → Customize bottom nav) — a manual slider
+  for phones that misreport their on-screen navigation bar's size, so it
+  doesn't overlap the bottom nav bar or the PIN lock screen's keypad (#78).
+- **What's New** (More hub) — see what shipped in the current version,
+  with where to find it and what it does.
+
+### Changed
+- A paused Auto rule moves to an Archived list instead of cluttering the
+  active one (#61), the same pattern Accounts and Persons already use.
+
+### Fixed
+- The PIN lock screen's keypad could render clipped under the system
+  navigation bar on some devices, or mis-position entirely depending on an
+  earlier fix's own layout approach — replaced with a scrollable,
+  predictably-sized layout (#78).
+
 ## [1.4.5] — 2026-08-20
 
 ### Added

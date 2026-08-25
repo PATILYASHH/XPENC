@@ -153,6 +153,12 @@ class MoreScreen extends ConsumerWidget {
           subtitle: 'Choose what goes next to the ➕ button',
         ),
         _Item(
+          Icons.auto_awesome_outlined,
+          "What's new",
+          route: '/more/whats-new',
+          subtitle: 'See what shipped in ${AppInfo.version}',
+        ),
+        _Item(
           Icons.info_outline_rounded,
           'About ${AppInfo.name}',
           route: '/more/about',

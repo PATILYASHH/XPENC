@@ -29,6 +29,8 @@ import 'package:xpenc/features/savings/savings_goals_screen.dart';
 import 'package:xpenc/features/settings/settings_screen.dart';
 import 'package:xpenc/features/settings/widgets_screen.dart';
 import 'package:xpenc/features/transactions/transaction_detail_screen.dart';
+import 'package:xpenc/features/more/whats_new_data.dart';
+import 'package:xpenc/features/more/whats_new_screen.dart';
 
 /// Every screen must render against a real database, at a real phone size,
 /// without throwing and without overflowing.
@@ -560,6 +562,21 @@ void main() {
     await tester.scrollUntilVisible(find.text('PATILYASHH/XPENC'), 240);
     expect(find.text('xpenc.in'), findsOneWidget);
     expect(find.text('PATILYASHH/XPENC'), findsOneWidget);
+    await unmount(tester);
+  });
+
+  testWidgets('What\'s new renders every entry', (tester) async {
+    await pump(tester, const WhatsNewScreen());
+    expect(tester.takeException(), isNull);
+    expect(
+      find.text("What's new in ${AppInfo.version}"),
+      findsOneWidget,
+    );
+    for (final entry in whatsNewEntries) {
+      await tester.scrollUntilVisible(find.text(entry.title), 300);
+      expect(find.text(entry.title), findsOneWidget);
+      expect(find.text(entry.location), findsOneWidget);
+    }
     await unmount(tester);
   });
 

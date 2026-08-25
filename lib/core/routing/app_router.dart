@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/tables.dart';
 import '../../features/about/about_screen.dart';
+import '../../features/more/whats_new_screen.dart';
 import '../../features/accounts/account_detail_screen.dart';
 import '../../features/accounts/accounts_screen.dart';
 import '../../features/accounts/archived_accounts_screen.dart';
@@ -201,6 +202,11 @@ final appRouter = GoRouter(
                   path: 'about',
                   parentNavigatorKey: _rootKey,
                   builder: (_, _) => const AboutScreen(),
+                ),
+                GoRoute(
+                  path: 'whats-new',
+                  parentNavigatorKey: _rootKey,
+                  builder: (_, _) => const WhatsNewScreen(),
                 ),
                 GoRoute(
                   path: 'capture',
