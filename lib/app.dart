@@ -138,8 +138,7 @@ class _XpencAppState extends ConsumerState<XpencApp>
       // than waiting for resume — otherwise the very next resume, however
       // soon, would still show real data for one frame first.
       final immediate =
-          (ref.read(settingsProvider).valueOrNull?.pinTimeoutMinutes ?? 0) ==
-          0;
+          (ref.read(settingsProvider).valueOrNull?.pinTimeoutMinutes ?? 0) == 0;
       if (hasPasscode && immediate) setState(() => _locked = true);
     }
   }
@@ -237,6 +236,9 @@ class _XpencAppState extends ConsumerState<XpencApp>
 
     final ready = ref.watch(databaseReadyProvider);
     final preset = ref.watch(themePresetProvider);
+    final fontFamily = ref.watch(fontFamilyProvider);
+    final fontWeightDelta = ref.watch(fontWeightDeltaProvider);
+    final fontScalePercent = ref.watch(fontScalePercentProvider);
 
     // Derived once per app run, the instant settings first loads — not with
     // `setState`, since `ref.watch` below already schedules the rebuild that
@@ -264,43 +266,62 @@ class _XpencAppState extends ConsumerState<XpencApp>
       debugShowCheckedModeBanner: false,
       // A preset that forces one brightness stores the same palette in both
       // slots, so `themeMode` alone decides which of these two is used.
-      theme: AppTheme.of(preset.lightPalette, preset.shape),
-      darkTheme: AppTheme.of(preset.darkPalette, preset.shape),
+      theme: AppTheme.of(
+        preset.lightPalette,
+        preset.shape,
+        fontFamily: fontFamily,
+        fontWeightDelta: fontWeightDelta,
+      ),
+      darkTheme: AppTheme.of(
+        preset.darkPalette,
+        preset.shape,
+        fontFamily: fontFamily,
+        fontWeightDelta: fontWeightDelta,
+      ),
       themeMode: preset.mode,
       routerConfig: appRouter,
       // A failed database must never look like "still loading".
-      builder: (context, child) => CurrencyScope(
-        currency: currency,
-        showSymbol: showSymbol,
-        child: AmountVisibilityScope(
-          hidden: hideAmounts,
-          child: switch (ready) {
-            AsyncError(:final error) => _FatalError(
-              error: error,
-              onRetry: () => ref.invalidate(databaseReadyProvider),
-            ),
-            // The router's subtree stays mounted underneath even while locked
-            // — only stacked, opaque `LockScreen` sits on top of it — or
-            // every relock (immediate, on every backgrounding) would
-            // silently drop whatever the user was in the middle of doing: a
-            // half-typed transaction, a scroll position, anything not yet
-            // saved.
-            AsyncData() =>
-              !_passcodeKnown
-                  ? const _LaunchSplash()
-                  : Stack(
-                      children: [
-                        ?child,
-                        if (_locked)
-                          Positioned.fill(
-                            child: LockScreen(
-                              onUnlocked: () => setState(() => _locked = false),
+      builder: (context, child) => MediaQuery(
+        // Applied here rather than baked into the theme's text styles, so it
+        // scales every widget's text — third-party ones included — not just
+        // the roles `AppTheme` sets a `fontSize` on.
+        data: MediaQuery.of(
+          context,
+        ).copyWith(textScaler: TextScaler.linear(fontScalePercent / 100)),
+        child: CurrencyScope(
+          currency: currency,
+          showSymbol: showSymbol,
+          child: AmountVisibilityScope(
+            hidden: hideAmounts,
+            child: switch (ready) {
+              AsyncError(:final error) => _FatalError(
+                error: error,
+                onRetry: () => ref.invalidate(databaseReadyProvider),
+              ),
+              // The router's subtree stays mounted underneath even while
+              // locked — only stacked, opaque `LockScreen` sits on top of it
+              // — or every relock (immediate, on every backgrounding) would
+              // silently drop whatever the user was in the middle of doing:
+              // a half-typed transaction, a scroll position, anything not
+              // yet saved.
+              AsyncData() =>
+                !_passcodeKnown
+                    ? const _LaunchSplash()
+                    : Stack(
+                        children: [
+                          ?child,
+                          if (_locked)
+                            Positioned.fill(
+                              child: LockScreen(
+                                onUnlocked: () =>
+                                    setState(() => _locked = false),
+                              ),
                             ),
-                          ),
-                      ],
-                    ),
-            _ => child ?? const SizedBox.shrink(),
-          },
+                        ],
+                      ),
+              _ => child ?? const SizedBox.shrink(),
+            },
+          ),
         ),
       ),
     );

@@ -35,6 +35,7 @@ import '../../features/savings/savings_goal_detail_screen.dart';
 import '../../features/savings/savings_goals_screen.dart';
 import '../../features/security/set_passcode_screen.dart';
 import '../../features/settings/bottom_nav_settings_screen.dart';
+import '../../features/settings/font_settings_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/settings/widgets_screen.dart';
 import '../../features/shopping/shopping_list_screen.dart';
@@ -165,6 +166,11 @@ final appRouter = GoRouter(
                       path: 'widgets',
                       parentNavigatorKey: _rootKey,
                       builder: (_, _) => const WidgetsScreen(),
+                    ),
+                    GoRoute(
+                      path: 'font',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const FontSettingsScreen(),
                     ),
                   ],
                 ),

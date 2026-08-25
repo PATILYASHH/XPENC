@@ -468,8 +468,7 @@ class Settings extends Table {
   /// — `0` means immediately (see GitHub #60). Checked against how long the
   /// app was actually paused, not a running timer, so it costs nothing while
   /// backgrounded.
-  IntColumn get pinTimeoutMinutes =>
-      integer().withDefault(const Constant(0))();
+  IntColumn get pinTimeoutMinutes => integer().withDefault(const Constant(0))();
 
   /// A daily nudge — "log today's spending" — distinct from [Reminders],
   /// which are always for one specific planned payment.
@@ -536,8 +535,7 @@ class Settings extends Table {
   /// icon in the top bar (`AppShell`). Persisted, not session-only: hiding
   /// amounts is usually done right before handing the phone to someone, and
   /// should still be hidden the next time the app opens, not reset.
-  BoolColumn get hideAmounts =>
-      boolean().withDefault(const Constant(false))();
+  BoolColumn get hideAmounts => boolean().withDefault(const Constant(false))();
 
   /// Which of the 7 catalog destinations occupy the two configurable
   /// bottom-nav slots flanking the ➕ button — left, then right. Dashboard
@@ -551,6 +549,22 @@ class Settings extends Table {
   /// (GitHub #75).
   BoolColumn get showCalendarDayTotals =>
       boolean().withDefault(const Constant(true))();
+
+  /// Global text-size multiplier, as a percentage — 100 is the app's normal
+  /// size. Applied as a `TextScaler` over the whole app (see `XpencApp`),
+  /// not baked into the theme, so it also scales third-party widget text.
+  IntColumn get fontScalePercent =>
+      integer().withDefault(const Constant(100))();
+
+  /// How much bolder (positive) or lighter (negative) every text style
+  /// reads versus its theme's own weight — one step is one `FontWeight`
+  /// rung (100 units). See `AppTheme._applyWeightDelta`.
+  IntColumn get fontWeightDelta => integer().withDefault(const Constant(0))();
+
+  /// An `AppFontFamily.name`, or null to keep each theme's own font choice
+  /// (see `ThemeShape.displayFontFamily`/`bodyFontFamily`). Unknown values
+  /// degrade to null on read, same convention as [themeName].
+  TextColumn get fontFamily => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -781,8 +795,7 @@ class LoanDetails extends Table {
       integer().nullable().references(Categories, #id)();
 
   /// Pre-fills the payment sheet amount — informational, never enforced.
-  IntColumn get emiAmount =>
-      integer().map(const MoneyConverter()).nullable()();
+  IntColumn get emiAmount => integer().map(const MoneyConverter()).nullable()();
 
   @override
   Set<Column> get primaryKey => {accountId};

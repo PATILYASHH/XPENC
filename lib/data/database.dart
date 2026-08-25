@@ -164,7 +164,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 38;
+  int get schemaVersion => 39;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -343,11 +343,12 @@ class AppDatabase extends _$AppDatabase {
         await _addColumnIfMissing(m, goalDetails, goalDetails.notes);
       }
       if (from < 38) {
-        await _addColumnIfMissing(
-          m,
-          settings,
-          settings.showCalendarDayTotals,
-        );
+        await _addColumnIfMissing(m, settings, settings.showCalendarDayTotals);
+      }
+      if (from < 39) {
+        await _addColumnIfMissing(m, settings, settings.fontScalePercent);
+        await _addColumnIfMissing(m, settings, settings.fontWeightDelta);
+        await _addColumnIfMissing(m, settings, settings.fontFamily);
       }
     },
     beforeOpen: (details) async {
@@ -765,9 +766,10 @@ class AppDatabase extends _$AppDatabase {
           final to = await (select(
             accounts,
           )..where((a) => a.id.equals(toAccountId))).getSingleOrNull();
-          final touchesGoalOrLoan = {from?.type, to?.type}.any(
-            (t) => t == AccountType.goal || t == AccountType.loan,
-          );
+          final touchesGoalOrLoan = {
+            from?.type,
+            to?.type,
+          }.any((t) => t == AccountType.goal || t == AccountType.loan);
           if (!touchesGoalOrLoan) {
             throw ArgumentError(
               'Only a goal or loan contribution can carry a category.',
@@ -1025,19 +1027,20 @@ class AppDatabase extends _$AppDatabase {
   /// Every transaction manually linked to [transactionId], either direction
   /// — see [TransactionLinks].
   Future<List<TransactionRow>> linkedTransactions(int transactionId) async {
-    final rows = await (select(transactionLinks)..where(
-          (l) =>
-              l.transactionAId.equals(transactionId) |
-              l.transactionBId.equals(transactionId),
-        ))
-        .get();
+    final rows =
+        await (select(transactionLinks)..where(
+              (l) =>
+                  l.transactionAId.equals(transactionId) |
+                  l.transactionBId.equals(transactionId),
+            ))
+            .get();
     if (rows.isEmpty) return const [];
     final otherIds = rows.map(
-      (r) => r.transactionAId == transactionId ? r.transactionBId : r.transactionAId,
+      (r) => r.transactionAId == transactionId
+          ? r.transactionBId
+          : r.transactionAId,
     );
-    return (select(
-      transactions,
-    )..where((t) => t.id.isIn(otherIds))).get();
+    return (select(transactions)..where((t) => t.id.isIn(otherIds))).get();
   }
 
   Stream<List<TransactionLinkRow>> watchTransactionLinks() =>
@@ -1348,9 +1351,9 @@ class AppDatabase extends _$AppDatabase {
 
   Stream<List<LoanDetailRow>> watchLoanDetails() => select(loanDetails).watch();
 
-  Future<LoanDetailRow?> getLoanDetail(int accountId) =>
-      (select(loanDetails)..where((l) => l.accountId.equals(accountId)))
-          .getSingleOrNull();
+  Future<LoanDetailRow?> getLoanDetail(int accountId) => (select(
+    loanDetails,
+  )..where((l) => l.accountId.equals(accountId))).getSingleOrNull();
 
   Future<int> addLoan({
     required String name,
@@ -1402,9 +1405,9 @@ class AppDatabase extends _$AppDatabase {
           iconKey: Value(iconKey),
         ),
       );
-      await (update(loanDetails)..where(
-        (l) => l.accountId.equals(accountId),
-      )).write(
+      await (update(
+        loanDetails,
+      )..where((l) => l.accountId.equals(accountId))).write(
         LoanDetailsCompanion(
           categoryId: Value(categoryId),
           emiAmount: Value(emiAmount),
@@ -2530,9 +2533,7 @@ class AppDatabase extends _$AppDatabase {
   Future<void> deleteRecurringRule(int id) => transaction(() async {
     await (update(transactions)..where((t) => t.recurringRuleId.equals(id)))
         .write(const TransactionsCompanion(recurringRuleId: Value(null)));
-    await (delete(
-      recurringRuleTags,
-    )..where((t) => t.ruleId.equals(id))).go();
+    await (delete(recurringRuleTags)..where((t) => t.ruleId.equals(id))).go();
     await (delete(recurringRules)..where((r) => r.id.equals(id))).go();
   });
 
@@ -2953,8 +2954,10 @@ class AppDatabase extends _$AppDatabase {
       (select(ocrCorrections)
             ..where((t) => t.sentAt.isNull())
             ..orderBy([
-              (t) =>
-                  OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
+              (t) => OrderingTerm(
+                expression: t.createdAt,
+                mode: OrderingMode.desc,
+              ),
             ]))
           .watch();
 
@@ -2962,15 +2965,14 @@ class AppDatabase extends _$AppDatabase {
       (select(ocrCorrections)
             ..where((t) => t.sentAt.isNotNull())
             ..orderBy([
-              (t) => OrderingTerm(expression: t.sentAt, mode: OrderingMode.desc),
+              (t) =>
+                  OrderingTerm(expression: t.sentAt, mode: OrderingMode.desc),
             ]))
           .watch();
 
   Future<void> markOcrCorrectionsSent(List<int> ids) async {
     if (ids.isEmpty) return;
-    await (update(
-      ocrCorrections,
-    )..where((t) => t.id.isIn(ids))).write(
+    await (update(ocrCorrections)..where((t) => t.id.isIn(ids))).write(
       OcrCorrectionsCompanion(sentAt: Value(DateTime.now())),
     );
   }
@@ -3179,9 +3181,29 @@ class AppDatabase extends _$AppDatabase {
   Future<void> setHideAmounts(bool value) =>
       update(settings).write(SettingsCompanion(hideAmounts: Value(value)));
 
-  Future<void> setShowCalendarDayTotals(bool value) => update(settings).write(
-    SettingsCompanion(showCalendarDayTotals: Value(value)),
-  );
+  Future<void> setShowCalendarDayTotals(bool value) => update(
+    settings,
+  ).write(SettingsCompanion(showCalendarDayTotals: Value(value)));
+
+  // ── Font ──────────────────────────────────────────────────────────────────
+
+  /// [percent] is clamped to the range the picker offers (80–150) so a bad
+  /// caller can never blow text up or down past readable.
+  Future<void> setFontScalePercent(int percent) => update(
+    settings,
+  ).write(SettingsCompanion(fontScalePercent: Value(percent.clamp(80, 150))));
+
+  /// [delta] is clamped to the range the picker offers (-2–+2).
+  Future<void> setFontWeightDelta(int delta) => update(
+    settings,
+  ).write(SettingsCompanion(fontWeightDelta: Value(delta.clamp(-2, 2))));
+
+  /// [name] must be an `AppFontFamily.name`, or null for "match the theme".
+  /// Unknown values are tolerated on read, so a bad write degrades to the
+  /// default rather than bricking the app — same convention as
+  /// [setThemeName].
+  Future<void> setFontFamily(String? name) =>
+      update(settings).write(SettingsCompanion(fontFamily: Value(name)));
 
   /// The 7 destinations a configurable bottom-nav slot can hold — Dashboard
   /// and More are pinned and deliberately excluded (see GitHub #70's design
