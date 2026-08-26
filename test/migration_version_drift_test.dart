@@ -103,4 +103,28 @@ void main() {
       await reopened.close();
     },
   );
+
+  test(
+    'the v46 group tables (Groups/GroupMembers/GroupExpenses/'
+    'GroupExpenseShares) survive a rolled-back re-open',
+    () async {
+      final file = await buildRolledBackDatabase(45);
+
+      final reopened = AppDatabase(NativeDatabase(file));
+      await expectLater(reopened.select(reopened.groups).get(), completes);
+      await expectLater(
+        reopened.select(reopened.groupMembers).get(),
+        completes,
+      );
+      await expectLater(
+        reopened.select(reopened.groupExpenses).get(),
+        completes,
+      );
+      await expectLater(
+        reopened.select(reopened.groupExpenseShares).get(),
+        completes,
+      );
+      await reopened.close();
+    },
+  );
 }

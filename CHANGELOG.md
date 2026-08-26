@@ -9,6 +9,15 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 ## [1.5.0] — Unreleased
 
 ### Added
+- **Persons: Group expense splitting** — a new Group tab alongside Individual:
+  create a group from existing Persons and log a shared expense split
+  equally, by percentage, or by manual amount. Whoever paid — you or a
+  group member — the split is computed and enacted through the same
+  ledger primitives an individual entry already uses, so every affected
+  person's balance stays correct automatically. A debt between two other
+  contacts (neither you nor the payer) can't be represented by this app's
+  ledger — that share is computed and shown for reference, clearly marked
+  "not tracked," never silently saved.
 - **Persons: Pay/Request via UPI (Beta)** — a person's page offers a "Pay"
   or "Request" button, whichever way the balance runs, pre-filled with the
   outstanding amount. One tap opens a `upi://` intent Android hands to

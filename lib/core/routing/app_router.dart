@@ -26,7 +26,9 @@ import '../../features/more/more_screen.dart';
 import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/payees/payee_detail_screen.dart';
 import '../../features/payees/payees_screen.dart';
+import '../../features/persons/add_group_expense_screen.dart';
 import '../../features/persons/archived_persons_screen.dart';
+import '../../features/persons/group_detail_screen.dart';
 import '../../features/persons/person_detail_screen.dart';
 import '../../features/persons/persons_screen.dart';
 import '../../features/reports/account_reports_screen.dart';
@@ -455,6 +457,21 @@ final appRouter = GoRouter(
       path: '/persons/archived',
       parentNavigatorKey: _rootKey,
       builder: (_, _) => const ArchivedPersonsScreen(),
+    ),
+
+    GoRoute(
+      path: '/group/:id',
+      parentNavigatorKey: _rootKey,
+      builder: (_, state) =>
+          GroupDetailScreen(groupId: int.parse(state.pathParameters['id']!)),
+    ),
+
+    GoRoute(
+      path: '/group/:id/add-expense',
+      parentNavigatorKey: _rootKey,
+      builder: (_, state) => AddGroupExpenseScreen(
+        groupId: int.parse(state.pathParameters['id']!),
+      ),
     ),
   ],
 );
