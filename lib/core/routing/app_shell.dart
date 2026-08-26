@@ -134,7 +134,6 @@ class AppShell extends ConsumerWidget {
                   holdEnabled: ref.watch(holdMenuEnabledProvider),
                   slotIds: ref.watch(holdMenuSlotsProvider),
                   catalog: _catalog,
-                  onSelect: (branch) => _goBranch(ref, branch),
                 ),
                 _navItem(context, ref, right),
                 _navItem(context, ref, _more),
@@ -184,21 +183,26 @@ class AppShell extends ConsumerWidget {
 /// [holdEnabled] (`Settings.holdMenuEnabled`) is on, holding it also floats
 /// 3 quick-access destinations (from [slotIds]/[catalog], the same catalog
 /// `bottomNavSlots` uses) in an arc above the button; dragging a finger
-/// toward one and releasing there calls [onSelect] with that destination's
-/// branch index, the same way tapping a pinned/flex tab would. Off by
-/// default — see `Settings.holdMenuEnabled`'s doc comment for why.
+/// toward one and releasing there pushes that destination's full `/more/*`
+/// route — deliberately not `navigationShell.goBranch`, which switches to
+/// the *embedded* tab instead. Several destinations' embedded tab is
+/// missing actions their full route has (Budgets/Stats' PDF download,
+/// Accounts' Statement/Archived/Add — see `_TopBar._tabActions`'s own
+/// `default` case comment, a known trade-off from GitHub #70 this menu
+/// would otherwise silently inherit). Pushing the full route always shows
+/// everything, regardless of which 2 destinations currently occupy the
+/// pinned/flex tab slots. Off by default — see `Settings.holdMenuEnabled`'s
+/// doc comment for why.
 class _AddButton extends StatefulWidget {
   const _AddButton({
     required this.holdEnabled,
     required this.slotIds,
     required this.catalog,
-    required this.onSelect,
   });
 
   final bool holdEnabled;
   final List<String> slotIds;
   final Map<String, _TabSpec> catalog;
-  final ValueChanged<int> onSelect;
 
   @override
   State<_AddButton> createState() => _AddButtonState();
@@ -209,16 +213,28 @@ class _AddButtonState extends State<_AddButton> {
   /// straight up) — an upward fan so the menu never renders under the nav
   /// bar it's anchored to.
   static const _angles = [-150.0, -90.0, -30.0];
-  static const _radius = 92.0;
-  static const _hitRadius = 34.0;
+
+  /// How far out the options are drawn — well clear of the button, not
+  /// hugging it.
+  static const _radius = 150.0;
+
+  /// How far the finger has to move before a direction even counts, far
+  /// smaller than [_radius] on purpose: once past this, the *nearest*
+  /// option by angle is selected regardless of how much further the
+  /// options themselves are drawn — a short flick commits, the finger
+  /// never has to travel all the way out to where an icon actually sits.
+  static const _activationRadius = 26.0;
 
   OverlayEntry? _overlayEntry;
   final _hoveredIndex = ValueNotifier<int>(-1);
   Offset _origin = Offset.zero;
 
-  List<_TabSpec> get _specs => widget.slotIds
-      .map((id) => widget.catalog[id])
-      .whereType<_TabSpec>()
+  List<({String id, _TabSpec spec})> get _specs => widget.slotIds
+      .map((id) {
+        final spec = widget.catalog[id];
+        return spec == null ? null : (id: id, spec: spec);
+      })
+      .whereType<({String id, _TabSpec spec})>()
       .toList();
 
   void _onLongPressStart(LongPressStartDetails details) {
@@ -231,7 +247,7 @@ class _AddButtonState extends State<_AddButton> {
       builder: (_) => Positioned.fill(
         child: _HoldMenuOverlay(
           origin: _origin,
-          specs: specs,
+          specs: specs.map((e) => e.spec).toList(),
           angles: _angles,
           radius: _radius,
           hoveredIndex: _hoveredIndex,
@@ -247,8 +263,7 @@ class _AddButtonState extends State<_AddButton> {
       origin: _origin,
       pointer: details.globalPosition,
       anglesDegrees: _angles,
-      radius: _radius,
-      hitRadius: _hitRadius,
+      activationRadius: _activationRadius,
       optionCount: _specs.length,
     );
     if (nearest != _hoveredIndex.value) {
@@ -262,11 +277,10 @@ class _AddButtonState extends State<_AddButton> {
     _overlayEntry?.remove();
     _overlayEntry = null;
     final specs = _specs;
-    if (commit && index >= 0 && index < specs.length) {
-      HapticFeedback.mediumImpact();
-      widget.onSelect(specs[index].branch);
-    }
     _hoveredIndex.value = -1;
+    if (!commit || index < 0 || index >= specs.length) return;
+    HapticFeedback.mediumImpact();
+    context.push('/more/${specs[index].id}');
   }
 
   @override

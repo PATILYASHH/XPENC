@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:xpenc/core/routing/hold_menu_geometry.dart';
 
@@ -6,8 +8,8 @@ void main() {
   // (not imported, `_AddButtonState`'s fields are private) so a change to
   // either has to be a deliberate edit in both places, not a silent drift.
   const angles = [-150.0, -90.0, -30.0];
-  const radius = 92.0;
-  const hitRadius = 34.0;
+  const radius = 150.0;
+  const activationRadius = 26.0;
   const origin = Offset(200, 800);
 
   group('holdMenuOptionCenter', () {
@@ -34,86 +36,120 @@ void main() {
     });
   });
 
-  group('holdMenuHoveredIndex', () {
-    test('right on an option\'s centre hits that option', () {
-      final center = holdMenuOptionCenter(origin, angles, radius, 1);
-      final hovered = holdMenuHoveredIndex(
-        origin: origin,
-        pointer: center,
-        anglesDegrees: angles,
-        radius: radius,
-        hitRadius: hitRadius,
-        optionCount: 3,
-      );
-      expect(hovered, 1);
-    });
+  /// A point [distance] out from [origin], along [angleDegrees].
+  Offset pointAt(double angleDegrees, double distance) {
+    final rad = angleDegrees * math.pi / 180;
+    return origin + Offset(math.cos(rad), math.sin(rad)) * distance;
+  }
 
-    test('at the origin (finger hasn\'t moved yet) hits nothing', () {
+  group('holdMenuHoveredIndex', () {
+    test(
+      'within the activation radius of origin, no direction is committed '
+      'yet',
+      () {
+        final justInside = pointAt(-90, activationRadius - 1);
+        final hovered = holdMenuHoveredIndex(
+          origin: origin,
+          pointer: justInside,
+          anglesDegrees: angles,
+          activationRadius: activationRadius,
+          optionCount: 3,
+        );
+        expect(hovered, -1);
+      },
+    );
+
+    test('right at the origin, no direction is committed', () {
       final hovered = holdMenuHoveredIndex(
         origin: origin,
         pointer: origin,
         anglesDegrees: angles,
-        radius: radius,
-        hitRadius: hitRadius,
+        activationRadius: activationRadius,
         optionCount: 3,
       );
       expect(hovered, -1);
     });
 
-    test('exactly between two options, closer to neither, hits nothing', () {
-      // Roughly halfway along the arc between option 0 (-150°) and option 1
-      // (-90°) is well outside both hit circles at this radius/hitRadius.
-      final midAngleCenter = holdMenuOptionCenter(origin, [-120.0], radius, 0);
+    test(
+      'a short move just past the activation radius, in an option\'s exact '
+      'direction, selects it — the finger never has to reach anywhere near '
+      'where the option is actually drawn (radius=$radius)',
+      () {
+        final justPast = pointAt(-90, activationRadius + 1);
+        final hovered = holdMenuHoveredIndex(
+          origin: origin,
+          pointer: justPast,
+          anglesDegrees: angles,
+          activationRadius: activationRadius,
+          optionCount: 3,
+        );
+        expect(hovered, 1); // -90° is option 1
+      },
+    );
+
+    test('a short move toward the upper-left selects option 0', () {
       final hovered = holdMenuHoveredIndex(
         origin: origin,
-        pointer: midAngleCenter,
+        pointer: pointAt(-150, activationRadius + 5),
         anglesDegrees: angles,
-        radius: radius,
-        hitRadius: hitRadius,
+        activationRadius: activationRadius,
         optionCount: 3,
       );
-      expect(hovered, -1);
+      expect(hovered, 0);
     });
 
-    test('just inside an option\'s hit radius still counts', () {
-      final center = holdMenuOptionCenter(origin, angles, radius, 2);
-      final justInside = center + const Offset(hitRadius - 1, 0);
+    test('a short move toward the upper-right selects option 2', () {
       final hovered = holdMenuHoveredIndex(
         origin: origin,
-        pointer: justInside,
+        pointer: pointAt(-30, activationRadius + 5),
         anglesDegrees: angles,
-        radius: radius,
-        hitRadius: hitRadius,
+        activationRadius: activationRadius,
         optionCount: 3,
       );
       expect(hovered, 2);
     });
 
-    test('just outside an option\'s hit radius misses', () {
-      final center = holdMenuOptionCenter(origin, angles, radius, 2);
-      final justOutside = center + const Offset(hitRadius + 5, 0);
+    test(
+      'exactly between two options selects the nearer one, never "no '
+      'selection" — every direction past the activation radius resolves to '
+      'something',
+      () {
+        // Halfway between option 0 (-150°) and option 1 (-90°) is -120°,
+        // equidistant — the algorithm's stable tie-break (first match by
+        // iteration order) picks option 0.
+        final hovered = holdMenuHoveredIndex(
+          origin: origin,
+          pointer: pointAt(-120, activationRadius + 5),
+          anglesDegrees: angles,
+          activationRadius: activationRadius,
+          optionCount: 3,
+        );
+        expect(hovered, anyOf(0, 1));
+      },
+    );
+
+    test('far past any option\'s own drawn radius still resolves correctly '
+        '— distance never matters once past the activation threshold', () {
+      final farPast = pointAt(-30, radius * 3);
       final hovered = holdMenuHoveredIndex(
         origin: origin,
-        pointer: justOutside,
+        pointer: farPast,
         anglesDegrees: angles,
-        radius: radius,
-        hitRadius: hitRadius,
+        activationRadius: activationRadius,
         optionCount: 3,
       );
-      expect(hovered, -1);
+      expect(hovered, 2);
     });
 
     test('optionCount limits which options are even considered', () {
-      final center = holdMenuOptionCenter(origin, angles, radius, 2);
       final hovered = holdMenuHoveredIndex(
         origin: origin,
-        pointer: center,
+        pointer: pointAt(-30, activationRadius + 5), // would be option 2
         anglesDegrees: angles,
-        radius: radius,
-        hitRadius: hitRadius,
-        optionCount: 2, // option 2 excluded
+        activationRadius: activationRadius,
+        optionCount: 2, // option 2 excluded — nearest of the remaining 2
       );
-      expect(hovered, -1);
+      expect(hovered, isNot(2));
     });
   });
 }
