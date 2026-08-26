@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
+import '../core/group_split_math.dart';
 import '../core/money.dart';
 import '../core/security/passcode.dart';
 import '../features/message_capture/parser/bank_message.dart';
@@ -120,6 +121,10 @@ typedef CombinedStatementLine = ({
     Budgets,
     Persons,
     PersonEntries,
+    Groups,
+    GroupMembers,
+    GroupExpenses,
+    GroupExpenseShares,
     Reminders,
     Settings,
     PendingTxns,
@@ -164,7 +169,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 45;
+  int get schemaVersion => 46;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -383,6 +388,12 @@ class AppDatabase extends _$AppDatabase {
       if (from < 45) {
         await _addColumnIfMissing(m, settings, settings.holdMenuEnabled);
         await _addColumnIfMissing(m, settings, settings.holdMenuSlots);
+      }
+      if (from < 46) {
+        await m.createTable(groups);
+        await m.createTable(groupMembers);
+        await m.createTable(groupExpenses);
+        await m.createTable(groupExpenseShares);
       }
     },
     beforeOpen: (details) async {
@@ -2420,6 +2431,243 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> deleteAllocation(int id) =>
       (delete(allocations)..where((a) => a.id.equals(id))).go();
+
+  // ── Groups CRUD ───────────────────────────────────────────────────────────
+
+  Future<int> addGroup(String name, {String? note}) => into(groups).insert(
+    GroupsCompanion.insert(name: name, note: Value(note)),
+  );
+
+  Future<void> updateGroup({
+    required int id,
+    required String name,
+    String? note,
+  }) => (update(groups)..where((g) => g.id.equals(id))).write(
+    GroupsCompanion(name: Value(name), note: Value(note)),
+  );
+
+  Stream<List<GroupRow>> watchGroups() =>
+      (select(groups)..where((g) => g.isArchived.equals(false))).watch();
+
+  Stream<List<GroupRow>> watchArchivedGroups() =>
+      (select(groups)..where((g) => g.isArchived.equals(true))).watch();
+
+  Future<void> archiveGroup(int id) =>
+      (update(groups)..where((g) => g.id.equals(id))).write(
+        const GroupsCompanion(isArchived: Value(true)),
+      );
+
+  Future<void> unarchiveGroup(int id) =>
+      (update(groups)..where((g) => g.id.equals(id))).write(
+        const GroupsCompanion(isArchived: Value(false)),
+      );
+
+  Future<int> countExpensesForGroup(int groupId) async {
+    final rows = await (select(
+      groupExpenses,
+    )..where((e) => e.groupId.equals(groupId))).get();
+    return rows.length;
+  }
+
+  /// Mirrors [deletePerson]: only ever succeeds on a group with no expense
+  /// history. Anything used must be archived instead.
+  Future<void> deleteGroup(int id) async {
+    if (await countExpensesForGroup(id) > 0) {
+      throw ArgumentError('This group has expense history — archive it instead.');
+    }
+    await transaction(() async {
+      await (delete(groupMembers)..where((m) => m.groupId.equals(id))).go();
+      await (delete(groups)..where((g) => g.id.equals(id))).go();
+    });
+  }
+
+  /// Replace-all semantics — simplest correct approach at this table's
+  /// scale. `GroupMembers.id`/`addedAt` are not stable across an edit;
+  /// nothing references `GroupMembers.id` as a foreign key elsewhere, so
+  /// that's fine.
+  Future<void> setGroupMembers(int groupId, Set<int> personIds) =>
+      transaction(() async {
+        await (delete(
+          groupMembers,
+        )..where((m) => m.groupId.equals(groupId))).go();
+        for (final personId in personIds) {
+          await into(groupMembers).insert(
+            GroupMembersCompanion.insert(groupId: groupId, personId: personId),
+          );
+        }
+      });
+
+  /// Ordered by [GroupMembers.id] (insertion order) — the same order
+  /// [addGroupExpense] distributes a rounding remainder in, so which member
+  /// gets an extra paisa is stable, not arbitrary.
+  Stream<List<PersonRow>> watchGroupMembers(int groupId) {
+    final query = select(groupMembers).join([
+      innerJoin(persons, persons.id.equalsExp(groupMembers.personId)),
+    ])
+      ..where(groupMembers.groupId.equals(groupId))
+      ..orderBy([OrderingTerm.asc(groupMembers.id)]);
+    return query.watch().map(
+      (rows) => rows.map((r) => r.readTable(persons)).toList(),
+    );
+  }
+
+  Stream<List<GroupExpenseRow>> watchGroupExpenses(int groupId) =>
+      (select(groupExpenses)
+            ..where((e) => e.groupId.equals(groupId))
+            ..orderBy([(e) => OrderingTerm.desc(e.date)]))
+          .watch();
+
+  /// Splits [amount] across [participantIds] (`null` = "me") per
+  /// [splitMethod] via [computeGroupShares], then enacts every share
+  /// through the *existing* [addTransaction]/[addPersonEntry] — this method
+  /// invents no new money-movement logic, only orchestrates.
+  ///
+  /// This app's ledger can only represent a debt between "me" and one named
+  /// Person, never between two other contacts — see the class doc on
+  /// [GroupExpenses]. So: when [payerId] is null (I paid), my own share (if
+  /// I'm a participant) becomes a real expense transaction, and every other
+  /// participant's share becomes a normal "they owe me" entry. When
+  /// [payerId] is set, only *my* share (if I have one) is trackable, as a
+  /// normal "I owe them" entry — the payer's own share and any third
+  /// party's share are recorded in [GroupExpenseShares] with both link
+  /// columns null: real, computed amounts, deliberately never turned into
+  /// a debt.
+  Future<int> addGroupExpense({
+    required int groupId,
+    required Money amount,
+    required GroupSplitMethod splitMethod,
+    required DateTime date,
+    String? note,
+    int? payerId,
+    int? accountId,
+    int? categoryId,
+    required Set<int?> participantIds,
+    Map<int?, int>? percentBasisPoints,
+    Map<int?, Money>? manualAmounts,
+  }) async {
+    if (!amount.isPositive) {
+      throw ArgumentError('Amount must be greater than zero.');
+    }
+
+    final orderedParticipants = participantIds.toList();
+    final shares = computeGroupShares(
+      amount: amount,
+      splitMethod: splitMethod,
+      participantIds: orderedParticipants,
+      percentBasisPoints: percentBasisPoints,
+      manualAmounts: manualAmounts,
+    );
+
+    return transaction(() async {
+      final expenseId = await into(groupExpenses).insert(
+        GroupExpensesCompanion.insert(
+          groupId: groupId,
+          amount: amount,
+          splitMethod: splitMethod,
+          date: date,
+          note: Value(note),
+          payerId: Value(payerId),
+          accountId: Value(payerId == null ? accountId : null),
+          categoryId: Value(payerId == null ? categoryId : null),
+        ),
+      );
+
+      for (final memberId in orderedParticipants) {
+        final share = shares[memberId]!;
+        int? personEntryId;
+        int? txId;
+
+        if (payerId == null) {
+          if (memberId == null) {
+            // My own share: real spending, not a debt.
+            if (accountId == null || categoryId == null) {
+              throw ArgumentError(
+                'Pick an account and category for your own share.',
+              );
+            }
+            txId = await addTransaction(
+              type: TxType.expense,
+              amount: share,
+              accountId: accountId,
+              categoryId: categoryId,
+              date: date,
+              note: note ?? 'Group expense',
+            );
+          } else {
+            // Every other participant owes me.
+            personEntryId = await addPersonEntry(
+              personId: memberId,
+              direction: PersonDirection.theyOwe,
+              amount: share,
+              date: date,
+              accountId: accountId,
+              note: note,
+            );
+          }
+        } else if (memberId == null) {
+          // My share: I owe the payer, tracking only — no money moved yet.
+          personEntryId = await addPersonEntry(
+            personId: payerId,
+            direction: PersonDirection.iOwe,
+            amount: share,
+            date: date,
+            note: note,
+          );
+        }
+        // else: memberId == payerId (their own share, their money, not
+        // tracked) or memberId is a third party (owed to the payer, not to
+        // me — unrepresentable). Either way personEntryId/txId stay null;
+        // the share row below is still inserted so every participant has
+        // exactly one row.
+
+        await into(groupExpenseShares).insert(
+          GroupExpenseSharesCompanion.insert(
+            groupExpenseId: expenseId,
+            personId: Value(memberId),
+            amount: share,
+            percentBasisPoints: Value(percentBasisPoints?[memberId]),
+            personEntryId: Value(personEntryId),
+            transactionId: Value(txId),
+          ),
+        );
+      }
+      return expenseId;
+    });
+  }
+
+  /// Reverses every share of a group expense, then removes the expense
+  /// itself. Checks each linked row still exists before deleting it — a
+  /// share's [PersonEntries]/[Transactions] row may already have been
+  /// deleted directly (e.g. from that person's own ledger page), and a
+  /// stale foreign key must not abort cleanup of the rest.
+  Future<void> deleteGroupExpense(int id) => transaction(() async {
+    final shareRows = await (select(
+      groupExpenseShares,
+    )..where((s) => s.groupExpenseId.equals(id))).get();
+
+    // The share rows themselves foreign-key onto PersonEntries/Transactions
+    // — they must go first, or deleting a still-referenced entry/transaction
+    // below would fail its own foreign key check.
+    await (delete(
+      groupExpenseShares,
+    )..where((s) => s.groupExpenseId.equals(id))).go();
+
+    for (final share in shareRows) {
+      if (share.personEntryId != null) {
+        final exists = await (select(
+          personEntries,
+        )..where((e) => e.id.equals(share.personEntryId!))).getSingleOrNull();
+        if (exists != null) await deletePersonEntry(share.personEntryId!);
+      } else if (share.transactionId != null) {
+        final exists = await (select(
+          transactions,
+        )..where((t) => t.id.equals(share.transactionId!))).getSingleOrNull();
+        if (exists != null) await deleteTransaction(share.transactionId!);
+      }
+    }
+
+    await (delete(groupExpenses)..where((e) => e.id.equals(id))).go();
+  });
 
   // ── Reminders ─────────────────────────────────────────────────────────────
 

@@ -356,6 +356,115 @@ class PersonEntries extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
+@DataClassName('GroupRow')
+class Groups extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text().withLength(min: 1, max: 60)();
+  TextColumn get note => text().nullable()();
+  BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// Junction: who belongs to a group. "Me" (the app's own user) is implicit
+/// and never a row here — only named [Persons] can be members. Ordered by
+/// [id] (insertion order), which is also the deterministic order a group
+/// expense's rounding remainder gets distributed in (see
+/// `computeGroupShares`) — so which member gets an extra paisa is stable
+/// and explainable, not arbitrary.
+@DataClassName('GroupMemberRow')
+class GroupMembers extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get groupId => integer().references(Groups, #id)();
+  IntColumn get personId => integer().references(Persons, #id)();
+  DateTimeColumn get addedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  List<Set<Column>> get uniqueKeys => [
+    {groupId, personId},
+  ];
+}
+
+enum GroupSplitMethod { equal, percentage, manual }
+
+/// One shared-expense event. This row and [GroupExpenseShares] record *how
+/// the split was computed* — they are never a second source of truth for
+/// money. Every dollar this feature moves is a real [Transactions] or
+/// [PersonEntries] row, created through the existing `addTransaction`/
+/// `addPersonEntry` exactly the way any other entry is.
+///
+/// This app's ledger can only represent a debt between "me" and one named
+/// Person — never between two other contacts. So: when [payerId] is null
+/// (I paid), my own share becomes a real expense, and everyone else's
+/// share becomes a normal "they owe me" entry. When [payerId] is set
+/// (someone else paid), only *my* share (if I have one) is trackable, as
+/// a normal "I owe them" entry — any other participant's share is
+/// computed for display only and deliberately never persisted (see
+/// `GroupExpenseShares`).
+@DataClassName('GroupExpenseRow')
+class GroupExpenses extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get groupId => integer().references(Groups, #id)();
+  IntColumn get amount => integer().map(const MoneyConverter())();
+  TextColumn get splitMethod => textEnum<GroupSplitMethod>()();
+  DateTimeColumn get date => dateTime()();
+  TextColumn get note => text().nullable()();
+
+  /// Null = "me" paid. Non-null = that Person paid.
+  IntColumn get payerId => integer().nullable().references(Persons, #id)();
+
+  /// Only set when [payerId] is null (I paid) and I have a share of this
+  /// expense: the account and category my own share's expense transaction
+  /// posted under.
+  IntColumn get accountId => integer().nullable().references(Accounts, #id)();
+  IntColumn get categoryId =>
+      integer().nullable().references(Categories, #id)();
+
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// One participant's computed share of a [GroupExpenses] row. Every
+/// participant gets exactly one row here, whether or not their share ended
+/// up trackable — a row with both [personEntryId] and [transactionId] null
+/// is a real, computed amount that was deliberately never turned into a
+/// debt (the third-party case this schema can't represent — see the class
+/// doc on [GroupExpenses]).
+@DataClassName('GroupExpenseShareRow')
+class GroupExpenseShares extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get groupExpenseId => integer().references(GroupExpenses, #id)();
+
+  /// Null = my own share.
+  IntColumn get personId => integer().nullable().references(Persons, #id)();
+
+  IntColumn get amount => integer().map(const MoneyConverter())();
+
+  /// Informational only, e.g. `3333` = 33.33% — kept for re-displaying a
+  /// percentage split; [amount] is always the money source of truth.
+  IntColumn get percentBasisPoints => integer().nullable()();
+
+  /// Set when this share became a [PersonEntries] row (every "they owe
+  /// me"/"I owe them" case). Exactly one of this and [transactionId] is
+  /// set for a *tracked* share; both null means untracked — either a
+  /// third-party amount, or the payer's own (already-theirs) share.
+  ///
+  /// `onDelete: setNull` deliberately, not the usual "refuse to delete
+  /// while referenced" house style ([deletePerson]/[deleteGroup]): the
+  /// user can still delete this entry directly from the person's own page
+  /// at any time. This share row survives with the link cleared, reading
+  /// exactly like any other untracked share — a graceful downgrade, not a
+  /// dangling reference `deleteGroupExpense` has to work around blind.
+  IntColumn get personEntryId => integer()
+      .nullable()
+      .references(PersonEntries, #id, onDelete: KeyAction.setNull)();
+
+  /// Set (with [personEntryId] null) only for my own share when I'm the
+  /// payer — a real [TxType.expense] transaction, not a debt. Same
+  /// `onDelete: setNull` reasoning as [personEntryId].
+  IntColumn get transactionId => integer()
+      .nullable()
+      .references(Transactions, #id, onDelete: KeyAction.setNull)();
+}
+
 /// Cash Reminders. A reminder **posts nothing on its own** — the user taps
 /// "Mark as paid" and confirms. That is what makes double-counting impossible.
 @DataClassName('ReminderRow')

@@ -23,6 +23,17 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.groups_outlined,
+    title: 'Split group expenses',
+    location: 'Persons → Group tab',
+    description:
+        'Create a group from your people and log a shared expense split '
+        'equally, by percentage, or by manual amount. Whoever paid — you or '
+        'a group member — the split is computed and recorded automatically, '
+        'and each person\'s balance updates right alongside their individual '
+        'one.',
+  ),
+  WhatsNewEntry(
     icon: Icons.currency_rupee_rounded,
     title: 'Pay or Request via UPI (Beta)',
     location: 'Persons → tap a person',

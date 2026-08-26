@@ -451,6 +451,37 @@ final personTotalsProvider = Provider<({Money youGet, Money youPay})>((ref) {
   return (youGet: youGet, youPay: youPay);
 });
 
+// ── Groups ───────────────────────────────────────────────────────────────
+
+final groupsProvider = StreamProvider<List<GroupRow>>(
+  (ref) => ref.watch(dbProvider).watchGroups(),
+);
+
+final archivedGroupsProvider = StreamProvider<List<GroupRow>>(
+  (ref) => ref.watch(dbProvider).watchArchivedGroups(),
+);
+
+final groupMembersProvider = StreamProvider.family<List<PersonRow>, int>(
+  (ref, groupId) => ref.watch(dbProvider).watchGroupMembers(groupId),
+);
+
+final groupExpensesProvider = StreamProvider.family<List<GroupExpenseRow>, int>(
+  (ref, groupId) => ref.watch(dbProvider).watchGroupExpenses(groupId),
+);
+
+/// A group's aggregate balance — the sum of the already-correct, live
+/// [personBalancesProvider] over exactly that group's member ids. Not new
+/// balance math; a group is never a second source of truth for money.
+final groupBalanceProvider = Provider.family<Money, int>((ref, groupId) {
+  final members = ref.watch(groupMembersProvider(groupId)).valueOrNull ?? const [];
+  final balances =
+      ref.watch(personBalancesProvider).valueOrNull ?? const <int, Money>{};
+  return members.fold(
+    const Money.zero(),
+    (sum, m) => sum + (balances[m.id] ?? const Money.zero()),
+  );
+});
+
 // ── Reminders ───────────────────────────────────────────────────────────────
 
 final remindersProvider = StreamProvider<List<ReminderRow>>(
