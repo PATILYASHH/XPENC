@@ -1,38 +1,3 @@
-# Reference copy of the fdroiddata recipe for XPENC — the live version is in
-# the fdroiddata MR (gitlab.com/fdroid/fdroiddata, metadata/com.yash.xpenc.yml).
-# Kept here so the repo documents its own F-Droid packaging. Pulled back into
-# sync with the live GitLab file on 2026-08-19 — it had drifted to 1.1.2 while
-# GitLab was already at 1.4.0 (all disabled). Re-verify with `fdroid lint` +
-# `fdroid rewritemeta` before submitting.
-#
-# Live status as of 2026-08-19: F-Droid users are stuck on 1.2.1/versionCode 73
-# because every 1.3.0 and 1.4.0 build entry upstream carries
-# `disable: https://github.com/PATILYASHH/XPENC/issues/49` — a real database
-# migration crash on upgrade from 1.2.1, fixed in v1.4.1. Nobody's told
-# fdroiddata about the fix since; this file adds the first buildable entry
-# past 1.2.1 to unblock it. The 1.3.0/1.4.0 disables are left in place on
-# purpose — those builds are genuinely broken, don't re-enable them.
-#
-# IMPORTANT — targets v1.4.1, NOT v1.4.2: v1.4.2 (commit 4e0aa46) still
-# depends on google_mlkit_commons/google_mlkit_text_recognition (added for
-# screenshot-OCR intake), which is both non-FLOSS (the original reason F-Droid
-# review flagged #57) and fails to even Gradle-configure in F-Droid's sandbox
-# build environment (NullPointerException evaluating :google_mlkit_commons —
-# confirmed via an actual failed F-Droid build log on 2026-08-19). The switch
-# to Tesseract (flutter_tesseract_ocr, BSD-3, offline traineddata) that
-# removes ML Kit exists ONLY as uncommitted local changes as of this writing
-# — it has never been committed or released. v1.4.1 predates ML Kit entirely
-# (added after 1.4.1, before 1.4.2) and already carries the #49 migration
-# fix, making it the cleanest buildable target until the Tesseract switch is
-# actually committed and shipped in a real release.
-#
-# versionCode scheme (F-Droid standard for Flutter, set in build.gradle.kts):
-#   base versionCode * 10 + ABI  (armeabi-v7a=1, arm64-v8a=2, x86_64=3).
-#   1.1.2+4 -> 41 / 42 / 43, verified with aapt. Encoded in VercodeOperation.
-# commit: uses the full hash (not a tag) per F-Droid review.
-# Flutter version is extracted (digit-anchored sed) from release.yml at build
-# time. No `rm:` — the project is Android-only (no ios/linux/macos/web/windows).
-
 Categories:
   - Finance Manager
 License: MIT
@@ -50,9 +15,9 @@ RepoType: git
 Repo: https://github.com/PATILYASHH/XPENC.git
 
 Builds:
-  - versionName: 1.1.2
-    versionCode: 41
-    commit: 4c2768a0b5d76e034790c8f7864a4e4f46d8a43a
+  - versionName: 1.1.3
+    versionCode: 51
+    commit: 969686d8f9f1291a10d6741ead665c8ce0b1a13a
     output: build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
     srclibs:
       - flutter@stable
@@ -68,10 +33,11 @@ Builds:
     build:
       - export PUB_CACHE=$(pwd)/.pub-cache
       - $$flutter$$/bin/flutter build apk --release --split-per-abi --target-platform=android-arm
+    ndk: 28.2.13676358
 
-  - versionName: 1.1.2
-    versionCode: 42
-    commit: 4c2768a0b5d76e034790c8f7864a4e4f46d8a43a
+  - versionName: 1.1.3
+    versionCode: 52
+    commit: 969686d8f9f1291a10d6741ead665c8ce0b1a13a
     output: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
     srclibs:
       - flutter@stable
@@ -87,10 +53,11 @@ Builds:
     build:
       - export PUB_CACHE=$(pwd)/.pub-cache
       - $$flutter$$/bin/flutter build apk --release --split-per-abi --target-platform=android-arm64
+    ndk: 28.2.13676358
 
-  - versionName: 1.1.2
-    versionCode: 43
-    commit: 4c2768a0b5d76e034790c8f7864a4e4f46d8a43a
+  - versionName: 1.1.3
+    versionCode: 53
+    commit: 969686d8f9f1291a10d6741ead665c8ce0b1a13a
     output: build/app/outputs/flutter-apk/app-x86_64-release.apk
     srclibs:
       - flutter@stable
@@ -106,16 +73,258 @@ Builds:
     build:
       - export PUB_CACHE=$(pwd)/.pub-cache
       - $$flutter$$/bin/flutter build apk --release --split-per-abi --target-platform=android-x64
+    ndk: 28.2.13676358
 
-  # --- Live GitLab file also has entries here for 1.1.3, 1.2.0, 1.2.1
-  # (enabled) and 1.3.0, 1.4.0 (disable: .../issues/49) — pull those three
-  # blocks verbatim from gitlab.com/fdroid/fdroiddata/-/raw/master/metadata/
-  # com.yash.xpenc.yml when assembling the real MR. Not reconstructed here
-  # to avoid silently drifting from the source of truth; only the new 1.4.1
-  # entry below (which doesn't exist upstream yet) is added by hand.
+  - versionName: 1.2.0
+    versionCode: 61
+    commit: 091c8a975d7cc52be1604d161b41f4455657ed06
+    output: build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+    srclibs:
+      - flutter@stable
+    prebuild:
+      - flutterVersion=$(sed -n -E "s/.*flutter-version:\ '([0-9][^']*)'/\1/p" .github/workflows/release.yml)
+      - '[[ $flutterVersion ]]'
+      - git -C $$flutter$$ checkout -f $flutterVersion
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter config --no-analytics
+      - $$flutter$$/bin/flutter pub get --enforce-lockfile
+    scandelete:
+      - .pub-cache
+    build:
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter build apk --release --split-per-abi --target-platform=android-arm
+    ndk: 28.2.13676358
+
+  - versionName: 1.2.0
+    versionCode: 62
+    commit: 091c8a975d7cc52be1604d161b41f4455657ed06
+    output: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+    srclibs:
+      - flutter@stable
+    prebuild:
+      - flutterVersion=$(sed -n -E "s/.*flutter-version:\ '([0-9][^']*)'/\1/p" .github/workflows/release.yml)
+      - '[[ $flutterVersion ]]'
+      - git -C $$flutter$$ checkout -f $flutterVersion
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter config --no-analytics
+      - $$flutter$$/bin/flutter pub get --enforce-lockfile
+    scandelete:
+      - .pub-cache
+    build:
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter build apk --release --split-per-abi --target-platform=android-arm64
+    ndk: 28.2.13676358
+
+  - versionName: 1.2.0
+    versionCode: 63
+    commit: 091c8a975d7cc52be1604d161b41f4455657ed06
+    output: build/app/outputs/flutter-apk/app-x86_64-release.apk
+    srclibs:
+      - flutter@stable
+    prebuild:
+      - flutterVersion=$(sed -n -E "s/.*flutter-version:\ '([0-9][^']*)'/\1/p" .github/workflows/release.yml)
+      - '[[ $flutterVersion ]]'
+      - git -C $$flutter$$ checkout -f $flutterVersion
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter config --no-analytics
+      - $$flutter$$/bin/flutter pub get --enforce-lockfile
+    scandelete:
+      - .pub-cache
+    build:
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter build apk --release --split-per-abi --target-platform=android-x64
+    ndk: 28.2.13676358
+
+  - versionName: 1.2.1
+    versionCode: 71
+    commit: 19c6a3619c11cf913805424cf9c86edcbaf71e13
+    output: build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+    srclibs:
+      - flutter@stable
+    prebuild:
+      - flutterVersion=$(sed -n -E "s/.*flutter-version:\ '([0-9][^']*)'/\1/p" .github/workflows/release.yml)
+      - '[[ $flutterVersion ]]'
+      - git -C $$flutter$$ checkout -f $flutterVersion
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter config --no-analytics
+      - $$flutter$$/bin/flutter pub get --enforce-lockfile
+    scandelete:
+      - .pub-cache
+    build:
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter build apk --release --split-per-abi --target-platform=android-arm
+    ndk: 28.2.13676358
+
+  - versionName: 1.2.1
+    versionCode: 72
+    commit: 19c6a3619c11cf913805424cf9c86edcbaf71e13
+    output: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+    srclibs:
+      - flutter@stable
+    prebuild:
+      - flutterVersion=$(sed -n -E "s/.*flutter-version:\ '([0-9][^']*)'/\1/p" .github/workflows/release.yml)
+      - '[[ $flutterVersion ]]'
+      - git -C $$flutter$$ checkout -f $flutterVersion
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter config --no-analytics
+      - $$flutter$$/bin/flutter pub get --enforce-lockfile
+    scandelete:
+      - .pub-cache
+    build:
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter build apk --release --split-per-abi --target-platform=android-arm64
+    ndk: 28.2.13676358
+
+  - versionName: 1.2.1
+    versionCode: 73
+    commit: 19c6a3619c11cf913805424cf9c86edcbaf71e13
+    output: build/app/outputs/flutter-apk/app-x86_64-release.apk
+    srclibs:
+      - flutter@stable
+    prebuild:
+      - flutterVersion=$(sed -n -E "s/.*flutter-version:\ '([0-9][^']*)'/\1/p" .github/workflows/release.yml)
+      - '[[ $flutterVersion ]]'
+      - git -C $$flutter$$ checkout -f $flutterVersion
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter config --no-analytics
+      - $$flutter$$/bin/flutter pub get --enforce-lockfile
+    scandelete:
+      - .pub-cache
+    build:
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter build apk --release --split-per-abi --target-platform=android-x64
+    ndk: 28.2.13676358
+
+  - versionName: 1.3.0
+    versionCode: 81
+    disable: https://github.com/PATILYASHH/XPENC/issues/49
+    commit: 36cf08807fc67d400f5d655621f40cc081da725d
+    output: build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+    srclibs:
+      - flutter@stable
+    prebuild:
+      - flutterVersion=$(sed -n -E "s/.*flutter-version:\ '([0-9][^']*)'/\1/p" .github/workflows/release.yml)
+      - '[[ $flutterVersion ]]'
+      - git -C $$flutter$$ checkout -f $flutterVersion
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter config --no-analytics
+      - $$flutter$$/bin/flutter pub get --enforce-lockfile
+    scandelete:
+      - .pub-cache
+    build:
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter build apk --release --split-per-abi --target-platform=android-arm
+    ndk: 28.2.13676358
+
+  - versionName: 1.3.0
+    versionCode: 82
+    disable: https://github.com/PATILYASHH/XPENC/issues/49
+    commit: 36cf08807fc67d400f5d655621f40cc081da725d
+    output: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+    srclibs:
+      - flutter@stable
+    prebuild:
+      - flutterVersion=$(sed -n -E "s/.*flutter-version:\ '([0-9][^']*)'/\1/p" .github/workflows/release.yml)
+      - '[[ $flutterVersion ]]'
+      - git -C $$flutter$$ checkout -f $flutterVersion
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter config --no-analytics
+      - $$flutter$$/bin/flutter pub get --enforce-lockfile
+    scandelete:
+      - .pub-cache
+    build:
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter build apk --release --split-per-abi --target-platform=android-arm64
+    ndk: 28.2.13676358
+
+  - versionName: 1.3.0
+    versionCode: 83
+    disable: https://github.com/PATILYASHH/XPENC/issues/49
+    commit: 36cf08807fc67d400f5d655621f40cc081da725d
+    output: build/app/outputs/flutter-apk/app-x86_64-release.apk
+    srclibs:
+      - flutter@stable
+    prebuild:
+      - flutterVersion=$(sed -n -E "s/.*flutter-version:\ '([0-9][^']*)'/\1/p" .github/workflows/release.yml)
+      - '[[ $flutterVersion ]]'
+      - git -C $$flutter$$ checkout -f $flutterVersion
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter config --no-analytics
+      - $$flutter$$/bin/flutter pub get --enforce-lockfile
+    scandelete:
+      - .pub-cache
+    build:
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter build apk --release --split-per-abi --target-platform=android-x64
+    ndk: 28.2.13676358
+
+  - versionName: 1.4.0
+    versionCode: 101
+    disable: https://github.com/PATILYASHH/XPENC/issues/49
+    commit: 2950ce79bd3e710da65ec8cb0ce494f6c689bba6
+    output: build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+    srclibs:
+      - flutter@stable
+    prebuild:
+      - flutterVersion=$(sed -n -E "s/.*flutter-version:\ '([0-9][^']*)'/\1/p" .github/workflows/release.yml)
+      - '[[ $flutterVersion ]]'
+      - git -C $$flutter$$ checkout -f $flutterVersion
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter config --no-analytics
+      - $$flutter$$/bin/flutter pub get --enforce-lockfile
+    scandelete:
+      - .pub-cache
+    build:
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter build apk --release --split-per-abi --target-platform=android-arm
+    ndk: 28.2.13676358
+
+  - versionName: 1.4.0
+    versionCode: 102
+    disable: https://github.com/PATILYASHH/XPENC/issues/49
+    commit: 2950ce79bd3e710da65ec8cb0ce494f6c689bba6
+    output: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+    srclibs:
+      - flutter@stable
+    prebuild:
+      - flutterVersion=$(sed -n -E "s/.*flutter-version:\ '([0-9][^']*)'/\1/p" .github/workflows/release.yml)
+      - '[[ $flutterVersion ]]'
+      - git -C $$flutter$$ checkout -f $flutterVersion
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter config --no-analytics
+      - $$flutter$$/bin/flutter pub get --enforce-lockfile
+    scandelete:
+      - .pub-cache
+    build:
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter build apk --release --split-per-abi --target-platform=android-arm64
+    ndk: 28.2.13676358
+
+  - versionName: 1.4.0
+    versionCode: 103
+    disable: https://github.com/PATILYASHH/XPENC/issues/49
+    commit: 2950ce79bd3e710da65ec8cb0ce494f6c689bba6
+    output: build/app/outputs/flutter-apk/app-x86_64-release.apk
+    srclibs:
+      - flutter@stable
+    prebuild:
+      - flutterVersion=$(sed -n -E "s/.*flutter-version:\ '([0-9][^']*)'/\1/p" .github/workflows/release.yml)
+      - '[[ $flutterVersion ]]'
+      - git -C $$flutter$$ checkout -f $flutterVersion
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter config --no-analytics
+      - $$flutter$$/bin/flutter pub get --enforce-lockfile
+    scandelete:
+      - .pub-cache
+    build:
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter build apk --release --split-per-abi --target-platform=android-x64
+    ndk: 28.2.13676358
 
   - versionName: 1.4.1
     versionCode: 111
+    disable: pubspec.lock at this commit doesn't satisfy pubspec.yaml under the pinned
+      Flutter 3.38.9 (--enforce-lockfile fails) — see gitlab.com/PATILYASHH/data/-/jobs/16030524904
     commit: 6bc6d131444730fcfd58ac04fdf35e1ebc116cc2
     output: build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
     srclibs:
@@ -136,6 +345,8 @@ Builds:
 
   - versionName: 1.4.1
     versionCode: 112
+    disable: pubspec.lock at this commit doesn't satisfy pubspec.yaml under the pinned
+      Flutter 3.38.9 (--enforce-lockfile fails) — see gitlab.com/PATILYASHH/data/-/jobs/16030524904
     commit: 6bc6d131444730fcfd58ac04fdf35e1ebc116cc2
     output: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
     srclibs:
@@ -156,6 +367,8 @@ Builds:
 
   - versionName: 1.4.1
     versionCode: 113
+    disable: pubspec.lock at this commit doesn't satisfy pubspec.yaml under the pinned
+      Flutter 3.38.9 (--enforce-lockfile fails) — see gitlab.com/PATILYASHH/data/-/jobs/16030524904
     commit: 6bc6d131444730fcfd58ac04fdf35e1ebc116cc2
     output: build/app/outputs/flutter-apk/app-x86_64-release.apk
     srclibs:
@@ -237,6 +450,66 @@ Builds:
       - $$flutter$$/bin/flutter build apk --release --split-per-abi --target-platform=android-x64
     ndk: 28.2.13676358
 
+  - versionName: 1.4.5
+    versionCode: 151
+    commit: 541f7ae4db384cdffbd0765cdbcdeb532f55d6c8
+    output: build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+    srclibs:
+      - flutter@stable
+    prebuild:
+      - flutterVersion=$(sed -n -E "s/.*flutter-version:\ '([0-9][^']*)'/\1/p" .github/workflows/release.yml)
+      - '[[ $flutterVersion ]]'
+      - git -C $$flutter$$ checkout -f $flutterVersion
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter config --no-analytics
+      - $$flutter$$/bin/flutter pub get --enforce-lockfile
+    scandelete:
+      - .pub-cache
+    build:
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter build apk --release --split-per-abi --target-platform=android-arm
+    ndk: 28.2.13676358
+
+  - versionName: 1.4.5
+    versionCode: 152
+    commit: 541f7ae4db384cdffbd0765cdbcdeb532f55d6c8
+    output: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+    srclibs:
+      - flutter@stable
+    prebuild:
+      - flutterVersion=$(sed -n -E "s/.*flutter-version:\ '([0-9][^']*)'/\1/p" .github/workflows/release.yml)
+      - '[[ $flutterVersion ]]'
+      - git -C $$flutter$$ checkout -f $flutterVersion
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter config --no-analytics
+      - $$flutter$$/bin/flutter pub get --enforce-lockfile
+    scandelete:
+      - .pub-cache
+    build:
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter build apk --release --split-per-abi --target-platform=android-arm64
+    ndk: 28.2.13676358
+
+  - versionName: 1.4.5
+    versionCode: 153
+    commit: 541f7ae4db384cdffbd0765cdbcdeb532f55d6c8
+    output: build/app/outputs/flutter-apk/app-x86_64-release.apk
+    srclibs:
+      - flutter@stable
+    prebuild:
+      - flutterVersion=$(sed -n -E "s/.*flutter-version:\ '([0-9][^']*)'/\1/p" .github/workflows/release.yml)
+      - '[[ $flutterVersion ]]'
+      - git -C $$flutter$$ checkout -f $flutterVersion
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter config --no-analytics
+      - $$flutter$$/bin/flutter pub get --enforce-lockfile
+    scandelete:
+      - .pub-cache
+    build:
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter build apk --release --split-per-abi --target-platform=android-x64
+    ndk: 28.2.13676358
+
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^v[0-9.]+$
 VercodeOperation:
@@ -244,5 +517,5 @@ VercodeOperation:
   - '%c * 10 + 2'
   - '%c * 10 + 3'
 UpdateCheckData: pubspec.yaml|version:\s.+\+(\d+)|.|version:\s(.+)\+
-CurrentVersion: 1.4.2
-CurrentVersionCode: 123
+CurrentVersion: 1.4.5
+CurrentVersionCode: 153
