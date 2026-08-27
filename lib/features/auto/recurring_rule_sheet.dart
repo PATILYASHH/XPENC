@@ -45,6 +45,9 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
   final _amountController = TextEditingController();
   final _payeeController = TextEditingController();
   final _payeeFocus = FocusNode();
+  final _noteController = TextEditingController();
+  final _promoAmountController = TextEditingController();
+  final _promoOccurrencesController = TextEditingController();
 
   CategoryKind _kind = CategoryKind.expense;
   int? _accountId;
@@ -53,6 +56,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
   late DateTime _dueDate;
   double _notifyDays = 3;
   bool _isEstimate = false;
+  bool _hasPromo = false;
   bool _submitting = false;
   Set<int> _tagIds = {};
 
@@ -69,6 +73,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     _nameController.text = e.name;
     _amountController.text = _bufferFromMoney(e.amount);
     _payeeController.text = e.payee ?? '';
+    _noteController.text = e.note ?? '';
     _kind = e.kind;
     _accountId = e.accountId;
     _categoryId = e.categoryId;
@@ -76,6 +81,13 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     _dueDate = e.nextDueDate;
     _notifyDays = e.notifyDaysBefore.toDouble();
     _isEstimate = e.isEstimate;
+    _hasPromo = e.promoAmount != null;
+    if (e.promoAmount != null) {
+      _promoAmountController.text = _bufferFromMoney(e.promoAmount!);
+    }
+    if (e.promoOccurrencesLeft != null) {
+      _promoOccurrencesController.text = '${e.promoOccurrencesLeft}';
+    }
     _loadTagIds(e.id);
   }
 
@@ -101,6 +113,9 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     _amountController.dispose();
     _payeeController.dispose();
     _payeeFocus.dispose();
+    _noteController.dispose();
+    _promoAmountController.dispose();
+    _promoOccurrencesController.dispose();
     super.dispose();
   }
 
@@ -141,6 +156,23 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     }
     final payeeText = _payeeController.text.trim();
     final payee = payeeText.isEmpty ? null : payeeText;
+    final noteText = _noteController.text.trim();
+    final note = noteText.isEmpty ? null : noteText;
+
+    Money? promoAmount;
+    int? promoOccurrences;
+    if (_hasPromo) {
+      promoAmount = Money.tryParse(_promoAmountController.text);
+      if (promoAmount == null || !promoAmount.isPositive) {
+        _showError('Enter a promo amount greater than zero.');
+        return;
+      }
+      promoOccurrences = int.tryParse(_promoOccurrencesController.text.trim());
+      if (promoOccurrences == null || promoOccurrences < 1) {
+        _showError('Enter how many occurrences the promotion covers.');
+        return;
+      }
+    }
 
     setState(() => _submitting = true);
     final navigator = Navigator.of(context);
@@ -156,10 +188,13 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               accountId: _accountId!,
               categoryId: _categoryId!,
               payee: payee,
+              note: note,
               frequency: _frequency,
               nextDueDate: _dueDate,
               notifyDaysBefore: _notifyDays.round(),
               isEstimate: _isEstimate,
+              promoAmount: promoAmount,
+              promoOccurrences: promoOccurrences,
               tagIds: _tagIds,
             );
       } else {
@@ -172,10 +207,13 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               accountId: _accountId!,
               categoryId: _categoryId!,
               payee: payee,
+              note: note,
               frequency: _frequency,
               startsOn: _dueDate,
               notifyDaysBefore: _notifyDays.round(),
               isEstimate: _isEstimate,
+              promoAmount: promoAmount,
+              promoOccurrences: promoOccurrences,
               tagIds: _tagIds,
             );
       }
@@ -274,7 +312,9 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
                 fontFeatures: kTabularFigures,
               ),
               decoration: InputDecoration(
-                labelText: _isEstimate ? 'Usual amount' : 'Amount',
+                labelText: (_isEstimate || _hasPromo)
+                    ? 'Usual amount'
+                    : 'Amount',
                 prefixText: MoneyFormat.inputPrefix,
                 helperText: _isEstimate
                     ? "You'll be nudged to confirm the exact figure each "
@@ -291,6 +331,49 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               value: _isEstimate,
               onChanged: (v) => setState(() => _isEstimate = v),
             ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Add a promotion'),
+              subtitle: const Text(
+                'A discounted price for the next few occurrences, then back '
+                'to the usual amount automatically.',
+              ),
+              value: _hasPromo,
+              onChanged: (v) => setState(() => _hasPromo = v),
+            ),
+            if (_hasPromo) ...[
+              const SizedBox(height: 4),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: TextField(
+                      controller: _promoAmountController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: InputDecoration(
+                        labelText: 'Promo amount',
+                        prefixText: MoneyFormat.inputPrefix,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: TextField(
+                      controller: _promoOccurrencesController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Occurrences',
+                        hintText: 'e.g. 3',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 4),
             DropdownButtonFormField<int>(
               initialValue: _accountId,
@@ -320,6 +403,18 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
             ),
             const SizedBox(height: 16),
             _payeeField(theme),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _noteController,
+              textCapitalization: TextCapitalization.sentences,
+              maxLines: 3,
+              maxLength: 500,
+              decoration: const InputDecoration(
+                labelText: 'Notes (optional)',
+                hintText: 'Why this rule exists, or anything else worth noting',
+                alignLabelWithHint: true,
+              ),
+            ),
             const SizedBox(height: 16),
             _tagsField(theme),
             const SizedBox(height: 20),

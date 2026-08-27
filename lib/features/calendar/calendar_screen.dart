@@ -716,6 +716,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final cs = theme.colorScheme;
     final isExpense = r.kind == CategoryKind.expense;
     final accent = isExpense ? AppColors.expense : AppColors.income;
+    final onPromo = r.promoAmount != null && (r.promoOccurrencesLeft ?? 0) > 0;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -729,13 +730,17 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         ),
         title: Text(r.name, maxLines: 1, overflow: TextOverflow.ellipsis),
         subtitle: Text(
-          r.isEstimate ? 'Auto rule · estimate' : 'Auto rule',
+          onPromo
+              ? 'Auto rule · promo ×${r.promoOccurrencesLeft}'
+              : r.isEstimate
+              ? 'Auto rule · estimate'
+              : 'Auto rule',
           style: theme.textTheme.bodySmall?.copyWith(
             color: cs.onSurfaceVariant,
           ),
         ),
         trailing: MoneyText(
-          r.amount,
+          onPromo ? r.promoAmount! : r.amount,
           color: accent,
           style: theme.textTheme.bodyLarge?.copyWith(
             fontWeight: FontWeight.w600,

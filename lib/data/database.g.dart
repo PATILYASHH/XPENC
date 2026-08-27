@@ -2135,6 +2135,15 @@ class $RecurringRulesTable extends RecurringRules
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   late final GeneratedColumnWithTypeConverter<RecurringFrequency, String>
   frequency = GeneratedColumn<String>(
@@ -2208,6 +2217,25 @@ class $RecurringRulesTable extends RecurringRules
     ),
     defaultValue: const Constant(false),
   );
+  @override
+  late final GeneratedColumnWithTypeConverter<Money?, int> promoAmount =
+      GeneratedColumn<int>(
+        'promo_amount',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<Money?>($RecurringRulesTable.$converterpromoAmountn);
+  static const VerificationMeta _promoOccurrencesLeftMeta =
+      const VerificationMeta('promoOccurrencesLeft');
+  @override
+  late final GeneratedColumn<int> promoOccurrencesLeft = GeneratedColumn<int>(
+    'promo_occurrences_left',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -2229,12 +2257,15 @@ class $RecurringRulesTable extends RecurringRules
     accountId,
     categoryId,
     payee,
+    note,
     frequency,
     dayOfMonth,
     nextDueDate,
     notifyDaysBefore,
     isActive,
     isEstimate,
+    promoAmount,
+    promoOccurrencesLeft,
     createdAt,
   ];
   @override
@@ -2282,6 +2313,12 @@ class $RecurringRulesTable extends RecurringRules
         payee.isAcceptableOrUnknown(data['payee']!, _payeeMeta),
       );
     }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
     if (data.containsKey('day_of_month')) {
       context.handle(
         _dayOfMonthMeta,
@@ -2321,6 +2358,15 @@ class $RecurringRulesTable extends RecurringRules
       context.handle(
         _isEstimateMeta,
         isEstimate.isAcceptableOrUnknown(data['is_estimate']!, _isEstimateMeta),
+      );
+    }
+    if (data.containsKey('promo_occurrences_left')) {
+      context.handle(
+        _promoOccurrencesLeftMeta,
+        promoOccurrencesLeft.isAcceptableOrUnknown(
+          data['promo_occurrences_left']!,
+          _promoOccurrencesLeftMeta,
+        ),
       );
     }
     if (data.containsKey('created_at')) {
@@ -2370,6 +2416,10 @@ class $RecurringRulesTable extends RecurringRules
         DriftSqlType.string,
         data['${effectivePrefix}payee'],
       ),
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
       frequency: $RecurringRulesTable.$converterfrequency.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
@@ -2396,6 +2446,16 @@ class $RecurringRulesTable extends RecurringRules
         DriftSqlType.bool,
         data['${effectivePrefix}is_estimate'],
       )!,
+      promoAmount: $RecurringRulesTable.$converterpromoAmountn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}promo_amount'],
+        ),
+      ),
+      promoOccurrencesLeft: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}promo_occurrences_left'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -2415,6 +2475,10 @@ class $RecurringRulesTable extends RecurringRules
   $converterfrequency = const EnumNameConverter<RecurringFrequency>(
     RecurringFrequency.values,
   );
+  static TypeConverter<Money, int> $converterpromoAmount =
+      const MoneyConverter();
+  static TypeConverter<Money?, int?> $converterpromoAmountn =
+      NullAwareTypeConverter.wrap($converterpromoAmount);
 }
 
 class RecurringRuleRow extends DataClass
@@ -2433,6 +2497,11 @@ class RecurringRuleRow extends DataClass
   /// expense) or who it's paid by (income, e.g. an employer for a salary
   /// rule). See GitHub #62.
   final String? payee;
+
+  /// Free-form context for the rule itself — why it exists, what it covers.
+  /// Purely informational; never copied onto the transactions it posts (see
+  /// GitHub #84).
+  final String? note;
   final RecurringFrequency frequency;
 
   /// Monthly only. Captured once from whichever "starts on" date is chosen —
@@ -2454,6 +2523,18 @@ class RecurringRuleRow extends DataClass
   /// [Transactions.needsAmountReview] so the user is nudged to correct it to
   /// what actually landed.
   final bool isEstimate;
+
+  /// The discounted per-occurrence price of a running promotion (see GitHub
+  /// #82) — e.g. "€2.49 for the next 3 months" instead of the usual
+  /// [amount]. Null whenever no promotion is active. Always null exactly
+  /// when [promoOccurrencesLeft] is null — never one without the other.
+  final Money? promoAmount;
+
+  /// How many more occurrences still post at [promoAmount] before
+  /// [AppDatabase.runDueRecurringRules] automatically clears both promo
+  /// fields and goes back to posting [amount] — no user action needed once
+  /// the promotion is set up.
+  final int? promoOccurrencesLeft;
   final DateTime createdAt;
   const RecurringRuleRow({
     required this.id,
@@ -2463,12 +2544,15 @@ class RecurringRuleRow extends DataClass
     required this.accountId,
     required this.categoryId,
     this.payee,
+    this.note,
     required this.frequency,
     this.dayOfMonth,
     required this.nextDueDate,
     required this.notifyDaysBefore,
     required this.isActive,
     required this.isEstimate,
+    this.promoAmount,
+    this.promoOccurrencesLeft,
     required this.createdAt,
   });
   @override
@@ -2491,6 +2575,9 @@ class RecurringRuleRow extends DataClass
     if (!nullToAbsent || payee != null) {
       map['payee'] = Variable<String>(payee);
     }
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
     {
       map['frequency'] = Variable<String>(
         $RecurringRulesTable.$converterfrequency.toSql(frequency),
@@ -2503,6 +2590,14 @@ class RecurringRuleRow extends DataClass
     map['notify_days_before'] = Variable<int>(notifyDaysBefore);
     map['is_active'] = Variable<bool>(isActive);
     map['is_estimate'] = Variable<bool>(isEstimate);
+    if (!nullToAbsent || promoAmount != null) {
+      map['promo_amount'] = Variable<int>(
+        $RecurringRulesTable.$converterpromoAmountn.toSql(promoAmount),
+      );
+    }
+    if (!nullToAbsent || promoOccurrencesLeft != null) {
+      map['promo_occurrences_left'] = Variable<int>(promoOccurrencesLeft);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -2518,6 +2613,7 @@ class RecurringRuleRow extends DataClass
       payee: payee == null && nullToAbsent
           ? const Value.absent()
           : Value(payee),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       frequency: Value(frequency),
       dayOfMonth: dayOfMonth == null && nullToAbsent
           ? const Value.absent()
@@ -2526,6 +2622,12 @@ class RecurringRuleRow extends DataClass
       notifyDaysBefore: Value(notifyDaysBefore),
       isActive: Value(isActive),
       isEstimate: Value(isEstimate),
+      promoAmount: promoAmount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(promoAmount),
+      promoOccurrencesLeft: promoOccurrencesLeft == null && nullToAbsent
+          ? const Value.absent()
+          : Value(promoOccurrencesLeft),
       createdAt: Value(createdAt),
     );
   }
@@ -2545,6 +2647,7 @@ class RecurringRuleRow extends DataClass
       accountId: serializer.fromJson<int>(json['accountId']),
       categoryId: serializer.fromJson<int>(json['categoryId']),
       payee: serializer.fromJson<String?>(json['payee']),
+      note: serializer.fromJson<String?>(json['note']),
       frequency: $RecurringRulesTable.$converterfrequency.fromJson(
         serializer.fromJson<String>(json['frequency']),
       ),
@@ -2553,6 +2656,10 @@ class RecurringRuleRow extends DataClass
       notifyDaysBefore: serializer.fromJson<int>(json['notifyDaysBefore']),
       isActive: serializer.fromJson<bool>(json['isActive']),
       isEstimate: serializer.fromJson<bool>(json['isEstimate']),
+      promoAmount: serializer.fromJson<Money?>(json['promoAmount']),
+      promoOccurrencesLeft: serializer.fromJson<int?>(
+        json['promoOccurrencesLeft'],
+      ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -2569,6 +2676,7 @@ class RecurringRuleRow extends DataClass
       'accountId': serializer.toJson<int>(accountId),
       'categoryId': serializer.toJson<int>(categoryId),
       'payee': serializer.toJson<String?>(payee),
+      'note': serializer.toJson<String?>(note),
       'frequency': serializer.toJson<String>(
         $RecurringRulesTable.$converterfrequency.toJson(frequency),
       ),
@@ -2577,6 +2685,8 @@ class RecurringRuleRow extends DataClass
       'notifyDaysBefore': serializer.toJson<int>(notifyDaysBefore),
       'isActive': serializer.toJson<bool>(isActive),
       'isEstimate': serializer.toJson<bool>(isEstimate),
+      'promoAmount': serializer.toJson<Money?>(promoAmount),
+      'promoOccurrencesLeft': serializer.toJson<int?>(promoOccurrencesLeft),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -2589,12 +2699,15 @@ class RecurringRuleRow extends DataClass
     int? accountId,
     int? categoryId,
     Value<String?> payee = const Value.absent(),
+    Value<String?> note = const Value.absent(),
     RecurringFrequency? frequency,
     Value<int?> dayOfMonth = const Value.absent(),
     DateTime? nextDueDate,
     int? notifyDaysBefore,
     bool? isActive,
     bool? isEstimate,
+    Value<Money?> promoAmount = const Value.absent(),
+    Value<int?> promoOccurrencesLeft = const Value.absent(),
     DateTime? createdAt,
   }) => RecurringRuleRow(
     id: id ?? this.id,
@@ -2604,12 +2717,17 @@ class RecurringRuleRow extends DataClass
     accountId: accountId ?? this.accountId,
     categoryId: categoryId ?? this.categoryId,
     payee: payee.present ? payee.value : this.payee,
+    note: note.present ? note.value : this.note,
     frequency: frequency ?? this.frequency,
     dayOfMonth: dayOfMonth.present ? dayOfMonth.value : this.dayOfMonth,
     nextDueDate: nextDueDate ?? this.nextDueDate,
     notifyDaysBefore: notifyDaysBefore ?? this.notifyDaysBefore,
     isActive: isActive ?? this.isActive,
     isEstimate: isEstimate ?? this.isEstimate,
+    promoAmount: promoAmount.present ? promoAmount.value : this.promoAmount,
+    promoOccurrencesLeft: promoOccurrencesLeft.present
+        ? promoOccurrencesLeft.value
+        : this.promoOccurrencesLeft,
     createdAt: createdAt ?? this.createdAt,
   );
   RecurringRuleRow copyWithCompanion(RecurringRulesCompanion data) {
@@ -2623,6 +2741,7 @@ class RecurringRuleRow extends DataClass
           ? data.categoryId.value
           : this.categoryId,
       payee: data.payee.present ? data.payee.value : this.payee,
+      note: data.note.present ? data.note.value : this.note,
       frequency: data.frequency.present ? data.frequency.value : this.frequency,
       dayOfMonth: data.dayOfMonth.present
           ? data.dayOfMonth.value
@@ -2637,6 +2756,12 @@ class RecurringRuleRow extends DataClass
       isEstimate: data.isEstimate.present
           ? data.isEstimate.value
           : this.isEstimate,
+      promoAmount: data.promoAmount.present
+          ? data.promoAmount.value
+          : this.promoAmount,
+      promoOccurrencesLeft: data.promoOccurrencesLeft.present
+          ? data.promoOccurrencesLeft.value
+          : this.promoOccurrencesLeft,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -2651,12 +2776,15 @@ class RecurringRuleRow extends DataClass
           ..write('accountId: $accountId, ')
           ..write('categoryId: $categoryId, ')
           ..write('payee: $payee, ')
+          ..write('note: $note, ')
           ..write('frequency: $frequency, ')
           ..write('dayOfMonth: $dayOfMonth, ')
           ..write('nextDueDate: $nextDueDate, ')
           ..write('notifyDaysBefore: $notifyDaysBefore, ')
           ..write('isActive: $isActive, ')
           ..write('isEstimate: $isEstimate, ')
+          ..write('promoAmount: $promoAmount, ')
+          ..write('promoOccurrencesLeft: $promoOccurrencesLeft, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -2671,12 +2799,15 @@ class RecurringRuleRow extends DataClass
     accountId,
     categoryId,
     payee,
+    note,
     frequency,
     dayOfMonth,
     nextDueDate,
     notifyDaysBefore,
     isActive,
     isEstimate,
+    promoAmount,
+    promoOccurrencesLeft,
     createdAt,
   );
   @override
@@ -2690,12 +2821,15 @@ class RecurringRuleRow extends DataClass
           other.accountId == this.accountId &&
           other.categoryId == this.categoryId &&
           other.payee == this.payee &&
+          other.note == this.note &&
           other.frequency == this.frequency &&
           other.dayOfMonth == this.dayOfMonth &&
           other.nextDueDate == this.nextDueDate &&
           other.notifyDaysBefore == this.notifyDaysBefore &&
           other.isActive == this.isActive &&
           other.isEstimate == this.isEstimate &&
+          other.promoAmount == this.promoAmount &&
+          other.promoOccurrencesLeft == this.promoOccurrencesLeft &&
           other.createdAt == this.createdAt);
 }
 
@@ -2707,12 +2841,15 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
   final Value<int> accountId;
   final Value<int> categoryId;
   final Value<String?> payee;
+  final Value<String?> note;
   final Value<RecurringFrequency> frequency;
   final Value<int?> dayOfMonth;
   final Value<DateTime> nextDueDate;
   final Value<int> notifyDaysBefore;
   final Value<bool> isActive;
   final Value<bool> isEstimate;
+  final Value<Money?> promoAmount;
+  final Value<int?> promoOccurrencesLeft;
   final Value<DateTime> createdAt;
   const RecurringRulesCompanion({
     this.id = const Value.absent(),
@@ -2722,12 +2859,15 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     this.accountId = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.payee = const Value.absent(),
+    this.note = const Value.absent(),
     this.frequency = const Value.absent(),
     this.dayOfMonth = const Value.absent(),
     this.nextDueDate = const Value.absent(),
     this.notifyDaysBefore = const Value.absent(),
     this.isActive = const Value.absent(),
     this.isEstimate = const Value.absent(),
+    this.promoAmount = const Value.absent(),
+    this.promoOccurrencesLeft = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   RecurringRulesCompanion.insert({
@@ -2738,12 +2878,15 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     required int accountId,
     required int categoryId,
     this.payee = const Value.absent(),
+    this.note = const Value.absent(),
     required RecurringFrequency frequency,
     this.dayOfMonth = const Value.absent(),
     required DateTime nextDueDate,
     this.notifyDaysBefore = const Value.absent(),
     this.isActive = const Value.absent(),
     this.isEstimate = const Value.absent(),
+    this.promoAmount = const Value.absent(),
+    this.promoOccurrencesLeft = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : name = Value(name),
        kind = Value(kind),
@@ -2760,12 +2903,15 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     Expression<int>? accountId,
     Expression<int>? categoryId,
     Expression<String>? payee,
+    Expression<String>? note,
     Expression<String>? frequency,
     Expression<int>? dayOfMonth,
     Expression<DateTime>? nextDueDate,
     Expression<int>? notifyDaysBefore,
     Expression<bool>? isActive,
     Expression<bool>? isEstimate,
+    Expression<int>? promoAmount,
+    Expression<int>? promoOccurrencesLeft,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -2776,12 +2922,16 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
       if (accountId != null) 'account_id': accountId,
       if (categoryId != null) 'category_id': categoryId,
       if (payee != null) 'payee': payee,
+      if (note != null) 'note': note,
       if (frequency != null) 'frequency': frequency,
       if (dayOfMonth != null) 'day_of_month': dayOfMonth,
       if (nextDueDate != null) 'next_due_date': nextDueDate,
       if (notifyDaysBefore != null) 'notify_days_before': notifyDaysBefore,
       if (isActive != null) 'is_active': isActive,
       if (isEstimate != null) 'is_estimate': isEstimate,
+      if (promoAmount != null) 'promo_amount': promoAmount,
+      if (promoOccurrencesLeft != null)
+        'promo_occurrences_left': promoOccurrencesLeft,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -2794,12 +2944,15 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     Value<int>? accountId,
     Value<int>? categoryId,
     Value<String?>? payee,
+    Value<String?>? note,
     Value<RecurringFrequency>? frequency,
     Value<int?>? dayOfMonth,
     Value<DateTime>? nextDueDate,
     Value<int>? notifyDaysBefore,
     Value<bool>? isActive,
     Value<bool>? isEstimate,
+    Value<Money?>? promoAmount,
+    Value<int?>? promoOccurrencesLeft,
     Value<DateTime>? createdAt,
   }) {
     return RecurringRulesCompanion(
@@ -2810,12 +2963,15 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
       accountId: accountId ?? this.accountId,
       categoryId: categoryId ?? this.categoryId,
       payee: payee ?? this.payee,
+      note: note ?? this.note,
       frequency: frequency ?? this.frequency,
       dayOfMonth: dayOfMonth ?? this.dayOfMonth,
       nextDueDate: nextDueDate ?? this.nextDueDate,
       notifyDaysBefore: notifyDaysBefore ?? this.notifyDaysBefore,
       isActive: isActive ?? this.isActive,
       isEstimate: isEstimate ?? this.isEstimate,
+      promoAmount: promoAmount ?? this.promoAmount,
+      promoOccurrencesLeft: promoOccurrencesLeft ?? this.promoOccurrencesLeft,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -2848,6 +3004,9 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     if (payee.present) {
       map['payee'] = Variable<String>(payee.value);
     }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
     if (frequency.present) {
       map['frequency'] = Variable<String>(
         $RecurringRulesTable.$converterfrequency.toSql(frequency.value),
@@ -2868,6 +3027,14 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     if (isEstimate.present) {
       map['is_estimate'] = Variable<bool>(isEstimate.value);
     }
+    if (promoAmount.present) {
+      map['promo_amount'] = Variable<int>(
+        $RecurringRulesTable.$converterpromoAmountn.toSql(promoAmount.value),
+      );
+    }
+    if (promoOccurrencesLeft.present) {
+      map['promo_occurrences_left'] = Variable<int>(promoOccurrencesLeft.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -2884,12 +3051,15 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
           ..write('accountId: $accountId, ')
           ..write('categoryId: $categoryId, ')
           ..write('payee: $payee, ')
+          ..write('note: $note, ')
           ..write('frequency: $frequency, ')
           ..write('dayOfMonth: $dayOfMonth, ')
           ..write('nextDueDate: $nextDueDate, ')
           ..write('notifyDaysBefore: $notifyDaysBefore, ')
           ..write('isActive: $isActive, ')
           ..write('isEstimate: $isEstimate, ')
+          ..write('promoAmount: $promoAmount, ')
+          ..write('promoOccurrencesLeft: $promoOccurrencesLeft, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -20865,12 +21035,15 @@ typedef $$RecurringRulesTableCreateCompanionBuilder =
       required int accountId,
       required int categoryId,
       Value<String?> payee,
+      Value<String?> note,
       required RecurringFrequency frequency,
       Value<int?> dayOfMonth,
       required DateTime nextDueDate,
       Value<int> notifyDaysBefore,
       Value<bool> isActive,
       Value<bool> isEstimate,
+      Value<Money?> promoAmount,
+      Value<int?> promoOccurrencesLeft,
       Value<DateTime> createdAt,
     });
 typedef $$RecurringRulesTableUpdateCompanionBuilder =
@@ -20882,12 +21055,15 @@ typedef $$RecurringRulesTableUpdateCompanionBuilder =
       Value<int> accountId,
       Value<int> categoryId,
       Value<String?> payee,
+      Value<String?> note,
       Value<RecurringFrequency> frequency,
       Value<int?> dayOfMonth,
       Value<DateTime> nextDueDate,
       Value<int> notifyDaysBefore,
       Value<bool> isActive,
       Value<bool> isEstimate,
+      Value<Money?> promoAmount,
+      Value<int?> promoOccurrencesLeft,
       Value<DateTime> createdAt,
     });
 
@@ -21020,6 +21196,11 @@ class $$RecurringRulesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnWithTypeConverterFilters<RecurringFrequency, RecurringFrequency, String>
   get frequency => $composableBuilder(
     column: $table.frequency,
@@ -21048,6 +21229,17 @@ class $$RecurringRulesTableFilterComposer
 
   ColumnFilters<bool> get isEstimate => $composableBuilder(
     column: $table.isEstimate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<Money?, Money, int> get promoAmount =>
+      $composableBuilder(
+        column: $table.promoAmount,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<int> get promoOccurrencesLeft => $composableBuilder(
+    column: $table.promoOccurrencesLeft,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -21187,6 +21379,11 @@ class $$RecurringRulesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get frequency => $composableBuilder(
     column: $table.frequency,
     builder: (column) => ColumnOrderings(column),
@@ -21214,6 +21411,16 @@ class $$RecurringRulesTableOrderingComposer
 
   ColumnOrderings<bool> get isEstimate => $composableBuilder(
     column: $table.isEstimate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get promoAmount => $composableBuilder(
+    column: $table.promoAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get promoOccurrencesLeft => $composableBuilder(
+    column: $table.promoOccurrencesLeft,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -21293,6 +21500,9 @@ class $$RecurringRulesTableAnnotationComposer
   GeneratedColumn<String> get payee =>
       $composableBuilder(column: $table.payee, builder: (column) => column);
 
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
   GeneratedColumnWithTypeConverter<RecurringFrequency, String> get frequency =>
       $composableBuilder(column: $table.frequency, builder: (column) => column);
 
@@ -21316,6 +21526,17 @@ class $$RecurringRulesTableAnnotationComposer
 
   GeneratedColumn<bool> get isEstimate => $composableBuilder(
     column: $table.isEstimate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<Money?, int> get promoAmount =>
+      $composableBuilder(
+        column: $table.promoAmount,
+        builder: (column) => column,
+      );
+
+  GeneratedColumn<int> get promoOccurrencesLeft => $composableBuilder(
+    column: $table.promoOccurrencesLeft,
     builder: (column) => column,
   );
 
@@ -21462,12 +21683,15 @@ class $$RecurringRulesTableTableManager
                 Value<int> accountId = const Value.absent(),
                 Value<int> categoryId = const Value.absent(),
                 Value<String?> payee = const Value.absent(),
+                Value<String?> note = const Value.absent(),
                 Value<RecurringFrequency> frequency = const Value.absent(),
                 Value<int?> dayOfMonth = const Value.absent(),
                 Value<DateTime> nextDueDate = const Value.absent(),
                 Value<int> notifyDaysBefore = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<bool> isEstimate = const Value.absent(),
+                Value<Money?> promoAmount = const Value.absent(),
+                Value<int?> promoOccurrencesLeft = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => RecurringRulesCompanion(
                 id: id,
@@ -21477,12 +21701,15 @@ class $$RecurringRulesTableTableManager
                 accountId: accountId,
                 categoryId: categoryId,
                 payee: payee,
+                note: note,
                 frequency: frequency,
                 dayOfMonth: dayOfMonth,
                 nextDueDate: nextDueDate,
                 notifyDaysBefore: notifyDaysBefore,
                 isActive: isActive,
                 isEstimate: isEstimate,
+                promoAmount: promoAmount,
+                promoOccurrencesLeft: promoOccurrencesLeft,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -21494,12 +21721,15 @@ class $$RecurringRulesTableTableManager
                 required int accountId,
                 required int categoryId,
                 Value<String?> payee = const Value.absent(),
+                Value<String?> note = const Value.absent(),
                 required RecurringFrequency frequency,
                 Value<int?> dayOfMonth = const Value.absent(),
                 required DateTime nextDueDate,
                 Value<int> notifyDaysBefore = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<bool> isEstimate = const Value.absent(),
+                Value<Money?> promoAmount = const Value.absent(),
+                Value<int?> promoOccurrencesLeft = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => RecurringRulesCompanion.insert(
                 id: id,
@@ -21509,12 +21739,15 @@ class $$RecurringRulesTableTableManager
                 accountId: accountId,
                 categoryId: categoryId,
                 payee: payee,
+                note: note,
                 frequency: frequency,
                 dayOfMonth: dayOfMonth,
                 nextDueDate: nextDueDate,
                 notifyDaysBefore: notifyDaysBefore,
                 isActive: isActive,
                 isEstimate: isEstimate,
+                promoAmount: promoAmount,
+                promoOccurrencesLeft: promoOccurrencesLeft,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0

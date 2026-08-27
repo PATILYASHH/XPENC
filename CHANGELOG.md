@@ -6,6 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
+## [Unreleased]
+
+Beta track for 1.5.1 — everything below is on the `BETA` branch, not yet
+tagged or released.
+
+### Added
+- **Auto rules: promotions** (#82) — "Add a promotion" on a rule's add/edit
+  sheet: a discounted per-occurrence price plus how many occurrences it
+  covers (e.g. "€2.49 for the next 3 months" instead of the usual €4.99).
+  Posts at the promo price automatically for that many occurrences, then
+  reverts to the usual amount on its own — no need to come back and edit
+  the rule once it ends. The Auto list and the Calendar's due-rule card
+  both show the promo price and how many occurrences are left while one is
+  running.
+- **Auto rules: Notes field** (#84) — a rule's add/edit sheet now has an
+  optional Notes field, same as Budgets and Goals, for jotting down why the
+  rule exists or anything else worth remembering. Purely informational; it's
+  never copied onto the transactions the rule posts.
+
+### Fixed
+- **Tags on a transfer's detail page** (#83) — tags could already be picked
+  for a transfer from the add/edit screen, but its detail page hid the Tags
+  row entirely once there were none, with no way to add any from there. It
+  now always shows, for every transaction type, and tapping it opens the
+  same tag picker to add or change them on the spot.
+
 ## [1.5.0] — 2026-08-27
 
 ### Added

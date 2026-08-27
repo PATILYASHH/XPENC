@@ -1048,6 +1048,156 @@ void main() {
       expect(tx.needsAmountReview, isFalse);
     });
 
+    test('posts at the promo price for N occurrences, then reverts', () async {
+      final cash = await cashId();
+      final food = await expenseCategory('Food');
+      final start = DateTime(2026, 7, 1);
+
+      final ruleId = await db.addRecurringRule(
+        name: 'Lionsgate+',
+        kind: CategoryKind.expense,
+        amount: Money.fromRupees(499),
+        accountId: cash,
+        categoryId: food,
+        frequency: RecurringFrequency.monthly,
+        startsOn: start,
+        promoAmount: Money.fromRupees(249),
+        promoOccurrences: 3,
+      );
+
+      // Post 3 monthly occurrences one at a time, each at the promo price.
+      var day = start;
+      for (var i = 0; i < 3; i++) {
+        await db.runDueRecurringRules(now: day);
+        day = DateTime(day.year, day.month + 1, day.day);
+      }
+      var txs = await db.watchTransactions().first;
+      expect(txs, hasLength(3));
+      expect(txs.every((t) => t.amount == Money.fromRupees(249)), isTrue);
+
+      final rule = (await db.watchRecurringRules().first).firstWhere(
+        (r) => r.id == ruleId,
+      );
+      expect(rule.promoAmount, isNull);
+      expect(rule.promoOccurrencesLeft, isNull);
+
+      // The 4th occurrence has reverted to the usual amount.
+      await db.runDueRecurringRules(now: day);
+      txs = await db.watchTransactions().first;
+      expect(txs, hasLength(4));
+      expect(
+        txs.firstWhere((t) => t.date == day).amount,
+        Money.fromRupees(499),
+      );
+    });
+
+    test(
+      'a promo that runs out mid-backfill reverts on the very next '
+      'occurrence, not just the following call',
+      () async {
+        final cash = await cashId();
+        final food = await expenseCategory('Food');
+        final start = DateTime(2026, 7, 1);
+
+        await db.addRecurringRule(
+          name: 'Mubi-ish',
+          kind: CategoryKind.expense,
+          amount: Money.fromRupees(1199),
+          accountId: cash,
+          categoryId: food,
+          frequency: RecurringFrequency.monthly,
+          startsOn: start,
+          promoAmount: Money.fromRupees(100),
+          promoOccurrences: 1,
+        );
+
+        // Three missed months catch up in a single run — only the first
+        // (earliest) occurrence should land at the promo price.
+        final today = DateTime(2026, 9, 1);
+        final posted = await db.runDueRecurringRules(now: today);
+        expect(posted, 3);
+
+        final txs = (await db.watchTransactions().first)
+          ..sort((a, b) => a.date.compareTo(b.date));
+        expect(txs[0].amount, Money.fromRupees(100));
+        expect(txs[1].amount, Money.fromRupees(1199));
+        expect(txs[2].amount, Money.fromRupees(1199));
+      },
+    );
+
+    test('rejects a promo occurrence count without a promo amount', () async {
+      final cash = await cashId();
+      final food = await expenseCategory('Food');
+      expect(
+        () => db.addRecurringRule(
+          name: 'Broken promo',
+          kind: CategoryKind.expense,
+          amount: Money.fromRupees(499),
+          accountId: cash,
+          categoryId: food,
+          frequency: RecurringFrequency.monthly,
+          startsOn: DateTime(2026, 7, 1),
+          promoOccurrences: 3,
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('rejects a non-positive promo amount', () async {
+      final cash = await cashId();
+      final food = await expenseCategory('Food');
+      expect(
+        () => db.addRecurringRule(
+          name: 'Broken promo',
+          kind: CategoryKind.expense,
+          amount: Money.fromRupees(499),
+          accountId: cash,
+          categoryId: food,
+          frequency: RecurringFrequency.monthly,
+          startsOn: DateTime(2026, 7, 1),
+          promoAmount: const Money.zero(),
+          promoOccurrences: 3,
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('editing a rule can cancel a promo early', () async {
+      final cash = await cashId();
+      final food = await expenseCategory('Food');
+      final today = DateTime(2026, 7, 1);
+
+      final ruleId = await db.addRecurringRule(
+        name: 'Lionsgate+',
+        kind: CategoryKind.expense,
+        amount: Money.fromRupees(499),
+        accountId: cash,
+        categoryId: food,
+        frequency: RecurringFrequency.monthly,
+        startsOn: today,
+        promoAmount: Money.fromRupees(249),
+        promoOccurrences: 3,
+      );
+      final rule = (await db.watchRecurringRules().first).single;
+
+      // Re-saving without a promo (as the sheet does when its "Add a
+      // promotion" switch is turned back off) clears it immediately.
+      await db.updateRecurringRule(
+        id: ruleId,
+        name: rule.name,
+        kind: rule.kind,
+        amount: rule.amount,
+        accountId: rule.accountId,
+        categoryId: rule.categoryId,
+        frequency: rule.frequency,
+        nextDueDate: rule.nextDueDate,
+      );
+
+      await db.runDueRecurringRules(now: today);
+      final tx = (await db.watchTransactions().first).single;
+      expect(tx.amount, Money.fromRupees(499));
+    });
+
     test(
       'monthly rule snaps to month-end, then returns to the target day',
       () async {

@@ -12,6 +12,7 @@ import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../tags/tag_picker_sheet.dart';
 import 'transaction_link_picker_sheet.dart';
 
 /// Read-only view of a single transaction, with edit + delete in the app bar.
@@ -189,10 +190,8 @@ class _TransactionView extends ConsumerWidget {
                     _valueText(context, 'Posted by "${rule.name}"'),
                   ),
                 ],
-                if (tags.isNotEmpty) ...[
-                  _divider(theme),
-                  _detailRow(context, 'Tags', _tagsValue(context, tags)),
-                ],
+                _divider(theme),
+                _TagsRow(transaction: t, tags: tags),
                 _divider(theme),
                 _detailRow(context, 'Note', _valueText(context, noteText)),
                 _divider(theme),
@@ -659,6 +658,43 @@ class _LinkedTxRow extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+/// Always visible, for every transaction type — unlike [_PaymentGroupBanner]
+/// or the old tags row, which used to vanish entirely once empty. That made
+/// a transfer with no tags look like tags weren't an option at all (see
+/// GitHub #83). Tapping opens the same [TagPickerSheet] the add/edit screen
+/// uses and saves immediately, the same "act straight from detail" shape as
+/// [_LinkedTransactionsCard].
+class _TagsRow extends ConsumerWidget {
+  const _TagsRow({required this.transaction, required this.tags});
+
+  final TransactionRow transaction;
+  final List<TagRow> tags;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return InkWell(
+      onTap: () => _pickTags(context, ref),
+      child: _detailRow(
+        context,
+        'Tags',
+        tags.isEmpty ? _valueText(context, '—') : _tagsValue(context, tags),
+      ),
+    );
+  }
+
+  Future<void> _pickTags(BuildContext context, WidgetRef ref) async {
+    final result = await showModalBottomSheet<Set<int>>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) =>
+          TagPickerSheet(initiallySelected: tags.map((t) => t.id).toSet()),
+    );
+    if (result == null) return;
+    await ref.read(dbProvider).setTransactionTags(transaction.id, result);
   }
 }
 

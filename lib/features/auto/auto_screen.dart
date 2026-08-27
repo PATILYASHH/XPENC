@@ -189,6 +189,9 @@ class _RuleTile extends ConsumerWidget {
 
   bool get _isExpense => rule.kind == CategoryKind.expense;
 
+  bool get _onPromo =>
+      rule.promoAmount != null && (rule.promoOccurrencesLeft ?? 0) > 0;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
@@ -211,7 +214,8 @@ class _RuleTile extends ConsumerWidget {
       ),
       subtitle: Text(
         '${_frequencyLabel(rule)} · Next ${DateFormat('d MMM').format(rule.nextDueDate)}'
-        '${rule.isEstimate ? ' · Estimate' : ''}',
+        '${rule.isEstimate ? ' · Estimate' : ''}'
+        '${_onPromo ? ' · Promo ×${rule.promoOccurrencesLeft}' : ''}',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: theme.textTheme.bodySmall?.copyWith(
@@ -224,7 +228,7 @@ class _RuleTile extends ConsumerWidget {
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerRight,
           child: MoneyText(
-            rule.amount,
+            _onPromo ? rule.promoAmount! : rule.amount,
             color: color,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
