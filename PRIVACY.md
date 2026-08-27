@@ -3,7 +3,7 @@
 **Effective date:** 14 August 2026
 **Applies to:** XPENC for Android (package name `com.yash.xpenc`), version 1.1.0 and later
 **Developer:** Yash Patil (individual developer)
-**Contact:** support.yashpatil@gmail.com
+**Contact:** xpenc.app@gmail.com
 
 This policy is published at <https://xpenc.in/privacy> and mirrored in the
 app's source repository at <https://github.com/PATILYASHH/XPENC/blob/master/PRIVACY.md>.
@@ -114,6 +114,6 @@ release notes.
 
 Questions or concerns about privacy:
 
-- Email: **support.yashpatil@gmail.com**
+- Email: **xpenc.app@gmail.com**
 - Bug reports: [GitHub issues](https://github.com/PATILYASHH/XPENC/issues)
 - Security vulnerabilities: [private reporting](https://github.com/PATILYASHH/XPENC/security) — see [SECURITY.md](SECURITY.md)
