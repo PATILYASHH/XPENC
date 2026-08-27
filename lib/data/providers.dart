@@ -1315,8 +1315,8 @@ final netWorthTrendProvider =
     });
 
 /// Combined balance of every account of one [AccountType], at the end of each
-/// of the last N months, oldest first. Dashboard's Investment/Loan sparkline
-/// tabs use this — goal accounts for Investment, pay-later accounts for Loan.
+/// of the last N months, oldest first. Dashboard's Savings/Loan sparkline
+/// tabs use this — goal accounts for Savings, pay-later accounts for Loan.
 ///
 /// A transfer between two accounts of the *same* type nets to zero (the money
 /// never left the group); a transfer across the boundary counts as in/out,

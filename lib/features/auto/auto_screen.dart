@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
@@ -293,6 +294,18 @@ class _RuleTile extends ConsumerWidget {
               ),
             ),
             ListTile(
+              leading: const Icon(Icons.bolt_outlined),
+              title: const Text('Pay now'),
+              subtitle: Text(
+                rule.nextDueDate.isAfter(DateTime.now())
+                    ? "Pay it early, ahead of ${DateFormat('d MMM').format(rule.nextDueDate)} — "
+                          "posts today instead"
+                    : 'Posts today instead of waiting for the app to catch '
+                          'it up',
+              ),
+              onTap: () => Navigator.of(sheetContext).pop(_RuleAction.payNow),
+            ),
+            ListTile(
               leading: const Icon(Icons.pause_circle_outline),
               title: const Text('Pause'),
               subtitle: const Text(
@@ -321,11 +334,49 @@ class _RuleTile extends ConsumerWidget {
       ),
     );
     if (action == null || !context.mounted) return;
-    if (action == _RuleAction.pause) {
-      await ref.read(dbProvider).setRecurringActive(rule.id, false);
-      return;
+    switch (action) {
+      case _RuleAction.payNow:
+        await _confirmPayNow(context, ref);
+      case _RuleAction.pause:
+        await ref.read(dbProvider).setRecurringActive(rule.id, false);
+      case _RuleAction.delete:
+        await _confirmDelete(context, ref);
     }
-    await _confirmDelete(context, ref);
+  }
+
+  /// GitHub #86 — post this rule's next occurrence today rather than
+  /// waiting for its due date (or for the app to next catch it up).
+  Future<void> _confirmPayNow(BuildContext context, WidgetRef ref) async {
+    final amount = _onPromo ? rule.promoAmount! : rule.amount;
+    final accountName = ref.read(accountMapProvider)[rule.accountId]?.name;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Pay "${rule.name}" now?'),
+        content: Text(
+          'Posts ${MoneyFormat.symbol(amount)}'
+          '${accountName != null ? ' from $accountName' : ''} today, '
+          "instead of ${DateFormat('d MMM').format(rule.nextDueDate)}. "
+          'The next one will still be due on schedule.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Pay now'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await ref.read(dbProvider).payRecurringRuleNow(rule.id);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text('"${rule.name}" posted')));
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
@@ -361,4 +412,4 @@ class _RuleTile extends ConsumerWidget {
   }
 }
 
-enum _RuleAction { pause, delete }
+enum _RuleAction { payNow, pause, delete }

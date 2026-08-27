@@ -42,6 +42,20 @@ tagged or released.
   numpad (same big buttons, but the digits land in a random order on every
   attempt, so someone watching your finger can't learn your PIN from its
   shape). Applies to both the lock screen and the set/change-PIN screen.
+- **Auto rules: Pay now** (#86) — long-press a rule on the Auto list for a
+  "Pay now" option, which posts its next occurrence today instead of
+  waiting for the due date — useful when a bill gets paid early and you
+  want the balance to reflect it right away. Posts exactly that one
+  occurrence, dated today; the rule's schedule keeps its original anchor
+  (a rule due on the 5th stays due on the 5th next time), so it isn't
+  double-posted when the real due date arrives.
+
+### Changed
+- **Dashboard: "Investment" tab renamed to "Savings"** (#79) — the hero
+  card's tab tracking goal-account balances (money set aside for something,
+  e.g. a dentist fund) was labelled "Investment", which implies capital at
+  risk of losing value. It's savings, not an investment, so the tab (and
+  its sparkline) is now called "Savings".
 
 ### Fixed
 - **Tags on a transfer's detail page** (#83) — tags could already be picked
@@ -49,6 +63,13 @@ tagged or released.
   row entirely once there were none, with no way to add any from there. It
   now always shows, for every transaction type, and tapping it opens the
   same tag picker to add or change them on the spot.
+- **Auto rules: a 0-amount promotion couldn't be saved** (#87) — "Add a
+  promotion" rejected a promo amount of 0, even though a free trial period
+  (e.g. a service free for the first N months, then billed normally) is a
+  legitimate promo price, not an error. A free occurrence now saves fine
+  and posts no transaction when it comes up (nothing changed hands), while
+  still advancing the schedule and switching back to the usual price
+  afterward, exactly like a discounted promo already did.
 
 ## [1.5.0] — 2026-08-27
 

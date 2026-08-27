@@ -6,8 +6,8 @@ import 'package:xpenc/data/database.dart';
 import 'package:xpenc/data/providers.dart';
 import 'package:xpenc/data/tables.dart';
 
-/// [accountTypeBalanceTrendProvider] backs the dashboard's Investment/Loan
-/// sparkline tabs — Investment sums goal accounts, Loan sums pay-later
+/// [accountTypeBalanceTrendProvider] backs the dashboard's Savings/Loan
+/// sparkline tabs — Savings sums goal accounts, Loan sums pay-later
 /// accounts. Its one subtle rule: a transfer between two accounts of the
 /// *same* type must net to zero, since the money never left the group.
 void main() {
@@ -57,7 +57,7 @@ void main() {
     expect(loan(), const Money.zero());
   });
 
-  test('funding a goal account from cash moves Investment but not Loan',
+  test('funding a goal account from cash moves Savings but not Loan',
       () async {
     final cash = (await db.watchAccounts().first).single.id;
     final goal = await db.addAccount(
@@ -82,7 +82,7 @@ void main() {
     expect(loan(), const Money.zero());
   });
 
-  test('a transfer between two goal accounts never moves Investment',
+  test('a transfer between two goal accounts never moves Savings',
       () async {
     await db.addAccount(
       name: 'Laptop fund',

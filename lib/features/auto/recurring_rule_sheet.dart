@@ -163,8 +163,10 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     int? promoOccurrences;
     if (_hasPromo) {
       promoAmount = Money.tryParse(_promoAmountController.text);
-      if (promoAmount == null || !promoAmount.isPositive) {
-        _showError('Enter a promo amount greater than zero.');
+      // Zero is a valid promo price — a free trial period, not just a
+      // discount (GitHub #87: e.g. a service free for the first N months).
+      if (promoAmount == null || promoAmount.isNegative) {
+        _showError('Enter a valid promo amount.');
         return;
       }
       promoOccurrences = int.tryParse(_promoOccurrencesController.text.trim());

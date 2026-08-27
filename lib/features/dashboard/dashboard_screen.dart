@@ -240,7 +240,7 @@ class _CountBadge extends StatelessWidget {
 /// state — net worth, direction-tinted. Picking a tab pins the card to that
 /// metric's own colour instead, since the colour now names the metric rather
 /// than reporting which way it moved.
-enum _MoneyMetric { income, expense, investment, loan }
+enum _MoneyMetric { income, expense, savings, loan }
 
 /// The hero. One figure, the direction it is heading, and six months of
 /// shape — for net worth by default, or for one metric at a time when a tab
@@ -270,7 +270,7 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
       null => 'Total money',
       _MoneyMetric.income => 'Income',
       _MoneyMetric.expense => 'Expense',
-      _MoneyMetric.investment => 'Investment',
+      _MoneyMetric.savings => 'Savings',
       _MoneyMetric.loan => 'Loan',
     };
 
@@ -307,9 +307,9 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
         headline = trendReady
             ? (values.isEmpty ? const Money.zero() : values.last)
             : null;
-      case _MoneyMetric.investment:
+      case _MoneyMetric.savings:
       case _MoneyMetric.loan:
-        final type = metric == _MoneyMetric.investment
+        final type = metric == _MoneyMetric.savings
             ? AccountType.goal
             : AccountType.payLater;
         final trend = ref.watch(
@@ -335,7 +335,7 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
           : AppColors.income,
       _MoneyMetric.income => AppColors.income,
       _MoneyMetric.expense => AppColors.expense,
-      _MoneyMetric.investment => AppColors.transfer,
+      _MoneyMetric.savings => AppColors.transfer,
       _MoneyMetric.loan => AppColors.person,
     };
 
@@ -446,7 +446,7 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
   }
 }
 
-/// `Income · Expense · Investment · Loan` beneath the hero graph. Tapping a
+/// `Income · Expense · Savings · Loan` beneath the hero graph. Tapping a
 /// tab points the sparkline above at that metric; tapping the active one
 /// again returns to net worth.
 class _MoneyMetricTabs extends StatelessWidget {
@@ -458,7 +458,7 @@ class _MoneyMetricTabs extends StatelessWidget {
   static const _tabs = [
     (_MoneyMetric.income, 'Income', AppColors.income),
     (_MoneyMetric.expense, 'Expense', AppColors.expense),
-    (_MoneyMetric.investment, 'Investment', AppColors.transfer),
+    (_MoneyMetric.savings, 'Savings', AppColors.transfer),
     (_MoneyMetric.loan, 'Loan', AppColors.person),
   ];
 

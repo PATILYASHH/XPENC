@@ -2779,8 +2779,10 @@ class AppDatabase extends _$AppDatabase {
       throw ArgumentError('Only a monthly rule pins a day of the month.');
     }
     if (promoAmount != null) {
-      if (!promoAmount.isPositive) {
-        throw ArgumentError('Promo amount must be positive.');
+      // Zero is valid — a free trial period, not just a discount (GitHub
+      // #87: e.g. a service free for the first N months).
+      if (promoAmount.isNegative) {
+        throw ArgumentError('Promo amount cannot be negative.');
       }
       if (promoOccurrences == null || promoOccurrences < 1) {
         throw ArgumentError('A promotion needs at least 1 occurrence.');
@@ -2983,6 +2985,93 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 
+  /// Posts one occurrence of [rule] dated [date] — the shared step both
+  /// [runDueRecurringRules] (dated the occurrence's own due date, possibly
+  /// backfilling several) and [payRecurringRuleNow] (dated today, exactly
+  /// one — GitHub #86) build on.
+  ///
+  /// A free (₹0) promo occurrence has nothing to post — no money moved, so
+  /// it gets no ledger row, same as a manual entry never logs a ₹0
+  /// transaction (`addTransaction` requires a positive amount) — but the
+  /// promo counter still decrements as normal (GitHub #87). Returns the
+  /// promo state after this occurrence, and whether a transaction was
+  /// actually posted. Must run inside [transaction].
+  Future<({bool posted, Money? promoAmount, int? promoLeft})>
+  _postRecurringOccurrence(
+    RecurringRuleRow rule, {
+    required DateTime date,
+    required Money? promoAmount,
+    required int? promoLeft,
+    required Set<int> tagIds,
+  }) async {
+    final onPromo = promoAmount != null && (promoLeft ?? 0) > 0;
+    var posted = false;
+    if (!(onPromo && promoAmount.isZero)) {
+      final txId = await addTransaction(
+        type: rule.kind == CategoryKind.expense
+            ? TxType.expense
+            : TxType.income,
+        amount: onPromo ? promoAmount : rule.amount,
+        accountId: rule.accountId,
+        categoryId: rule.categoryId,
+        date: date,
+        payee: rule.payee,
+        recurringRuleId: rule.id,
+        needsAmountReview: rule.isEstimate,
+      );
+      if (tagIds.isNotEmpty) {
+        await setTransactionTags(txId, tagIds);
+      }
+      posted = true;
+    }
+    if (onPromo) {
+      promoLeft = promoLeft! - 1;
+      if (promoLeft <= 0) {
+        promoAmount = null;
+        promoLeft = null;
+      }
+    }
+    return (posted: posted, promoAmount: promoAmount, promoLeft: promoLeft);
+  }
+
+  /// Posts [ruleId]'s next occurrence right now, dated today, instead of
+  /// waiting for [RecurringRuleRow.nextDueDate] to arrive — "Pay early"
+  /// (GitHub #86), useful for a bill paid ahead of schedule so the balance
+  /// reflects it immediately. Exactly one occurrence, never a backfill —
+  /// [nextDueDate] moves to whatever follows the *rule's own* due date, not
+  /// today plus its interval, so a monthly rule anchored to the 5th stays
+  /// anchored to the 5th even after an early payment.
+  ///
+  /// [now] exists so tests can pin "today" instead of racing the wall clock
+  /// — real callers never pass it.
+  Future<void> payRecurringRuleNow(int ruleId, {DateTime? now}) async {
+    final ruleTagIds = (await tagIdsForRecurringRule(ruleId)).toSet();
+    await transaction(() async {
+      final rule = await (select(
+        recurringRules,
+      )..where((r) => r.id.equals(ruleId))).getSingle();
+      final result = await _postRecurringOccurrence(
+        rule,
+        date: now ?? DateTime.now(),
+        promoAmount: rule.promoAmount,
+        promoLeft: rule.promoOccurrencesLeft,
+        tagIds: ruleTagIds,
+      );
+      final next = _nextOccurrence(
+        rule.frequency,
+        rule.nextDueDate,
+        dayOfMonth: rule.dayOfMonth,
+      );
+      await (update(recurringRules)..where((r) => r.id.equals(ruleId))).write(
+        RecurringRulesCompanion(
+          nextDueDate: Value(next),
+          promoAmount: Value(result.promoAmount),
+          promoOccurrencesLeft: Value(result.promoLeft),
+        ),
+      );
+    });
+  }
+
   /// Posts every occurrence of every active rule whose [RecurringRuleRow.nextDueDate]
   /// has arrived, backfilling one occurrence at a time — each with its own
   /// correct historical date — until each rule's schedule is caught up to
@@ -3019,30 +3108,16 @@ class AppDatabase extends _$AppDatabase {
           var promoAmount = rule.promoAmount;
           var promoLeft = rule.promoOccurrencesLeft;
           while (!next.isAfter(endOfToday)) {
-            final onPromo = promoAmount != null && (promoLeft ?? 0) > 0;
-            final txId = await addTransaction(
-              type: rule.kind == CategoryKind.expense
-                  ? TxType.expense
-                  : TxType.income,
-              amount: onPromo ? promoAmount : rule.amount,
-              accountId: rule.accountId,
-              categoryId: rule.categoryId,
+            final result = await _postRecurringOccurrence(
+              rule,
               date: next,
-              payee: rule.payee,
-              recurringRuleId: rule.id,
-              needsAmountReview: rule.isEstimate,
+              promoAmount: promoAmount,
+              promoLeft: promoLeft,
+              tagIds: ruleTagIds,
             );
-            if (ruleTagIds.isNotEmpty) {
-              await setTransactionTags(txId, ruleTagIds);
-            }
-            if (onPromo) {
-              promoLeft = promoLeft! - 1;
-              if (promoLeft <= 0) {
-                promoAmount = null;
-                promoLeft = null;
-              }
-            }
-            posted++;
+            promoAmount = result.promoAmount;
+            promoLeft = result.promoLeft;
+            if (result.posted) posted++;
             next = _nextOccurrence(
               rule.frequency,
               next,
