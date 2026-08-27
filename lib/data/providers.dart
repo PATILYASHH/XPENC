@@ -316,6 +316,22 @@ final widgetBudgetSummaryProvider = Provider<List<WidgetBudgetLine>>((ref) {
   ];
 });
 
+/// The "This Month" home-screen widget's content — this calendar month's
+/// income and expense totals. Deliberately not [monthTotalsProvider]: that
+/// one follows [selectedMonthProvider], which Stats/Calendar can point at a
+/// different month, and the widget must always mean "this month", not
+/// "whatever month was last browsed". See `HomeWidgetService`.
+final widgetMonthSummaryProvider = Provider<({Money income, Money expense})>((
+  ref,
+) {
+  final months = ref.watch(monthlyTotalsProvider(1));
+  if (months.isEmpty) {
+    return (income: const Money.zero(), expense: const Money.zero());
+  }
+  final current = months.single;
+  return (income: current.income, expense: current.expense);
+});
+
 // ── Envelope Mode ────────────────────────────────────────────────────────────
 //
 // `category_balance` and `ready_to_assign` are derived here, reactively,

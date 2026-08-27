@@ -801,9 +801,18 @@ class AppDatabase extends _$AppDatabase {
     String? payee,
     int? recurringRuleId,
   }) async {
-    if (!amount.isPositive) {
+    // Zero is a legitimate income/expense (GitHub #87) — a free item, a
+    // discount that fully covers the price, a promo month that costs
+    // nothing. A transfer or person movement of ₹0 has no real meaning
+    // (nothing actually moved), so those stay strictly positive.
+    final amountValid = type.isIncomeOrExpense
+        ? !amount.isNegative
+        : amount.isPositive;
+    if (!amountValid) {
       throw ArgumentError(
-        'Amount must be positive; direction comes from type.',
+        type.isIncomeOrExpense
+            ? 'Amount cannot be negative; direction comes from type.'
+            : 'Amount must be positive; direction comes from type.',
       );
     }
     // Goals and loans are not spendable accounts — they are only ever funded
@@ -2990,14 +2999,12 @@ class AppDatabase extends _$AppDatabase {
   /// backfilling several) and [payRecurringRuleNow] (dated today, exactly
   /// one — GitHub #86) build on.
   ///
-  /// A free (₹0) promo occurrence has nothing to post — no money moved, so
-  /// it gets no ledger row, same as a manual entry never logs a ₹0
-  /// transaction (`addTransaction` requires a positive amount) — but the
-  /// promo counter still decrements as normal (GitHub #87). Returns the
-  /// promo state after this occurrence, and whether a transaction was
-  /// actually posted. Must run inside [transaction].
-  Future<({bool posted, Money? promoAmount, int? promoLeft})>
-  _postRecurringOccurrence(
+  /// A free (₹0) promo occurrence still posts a real ₹0 transaction — a
+  /// legitimate income/expense (GitHub #87), not nothing, so it stays
+  /// visible, taggable and editable in the ledger like any other occurrence.
+  /// Returns the promo state after this occurrence. Must run inside
+  /// [transaction].
+  Future<({Money? promoAmount, int? promoLeft})> _postRecurringOccurrence(
     RecurringRuleRow rule, {
     required DateTime date,
     required Money? promoAmount,
@@ -3005,24 +3012,20 @@ class AppDatabase extends _$AppDatabase {
     required Set<int> tagIds,
   }) async {
     final onPromo = promoAmount != null && (promoLeft ?? 0) > 0;
-    var posted = false;
-    if (!(onPromo && promoAmount.isZero)) {
-      final txId = await addTransaction(
-        type: rule.kind == CategoryKind.expense
-            ? TxType.expense
-            : TxType.income,
-        amount: onPromo ? promoAmount : rule.amount,
-        accountId: rule.accountId,
-        categoryId: rule.categoryId,
-        date: date,
-        payee: rule.payee,
-        recurringRuleId: rule.id,
-        needsAmountReview: rule.isEstimate,
-      );
-      if (tagIds.isNotEmpty) {
-        await setTransactionTags(txId, tagIds);
-      }
-      posted = true;
+    final txId = await addTransaction(
+      type: rule.kind == CategoryKind.expense
+          ? TxType.expense
+          : TxType.income,
+      amount: onPromo ? promoAmount : rule.amount,
+      accountId: rule.accountId,
+      categoryId: rule.categoryId,
+      date: date,
+      payee: rule.payee,
+      recurringRuleId: rule.id,
+      needsAmountReview: rule.isEstimate,
+    );
+    if (tagIds.isNotEmpty) {
+      await setTransactionTags(txId, tagIds);
     }
     if (onPromo) {
       promoLeft = promoLeft! - 1;
@@ -3031,7 +3034,7 @@ class AppDatabase extends _$AppDatabase {
         promoLeft = null;
       }
     }
-    return (posted: posted, promoAmount: promoAmount, promoLeft: promoLeft);
+    return (promoAmount: promoAmount, promoLeft: promoLeft);
   }
 
   /// Posts [ruleId]'s next occurrence right now, dated today, instead of
@@ -3117,7 +3120,7 @@ class AppDatabase extends _$AppDatabase {
             );
             promoAmount = result.promoAmount;
             promoLeft = result.promoLeft;
-            if (result.posted) posted++;
+            posted++;
             next = _nextOccurrence(
               rule.frequency,
               next,

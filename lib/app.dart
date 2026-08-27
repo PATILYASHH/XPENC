@@ -72,6 +72,11 @@ class _XpencAppState extends ConsumerState<XpencApp>
     if (!mounted) return;
     await homeWidget.updateBalance(netWorth);
     await homeWidget.updateBudgetSummary(ref.read(widgetBudgetSummaryProvider));
+    final monthSummary = ref.read(widgetMonthSummaryProvider);
+    await homeWidget.updateMonthSummary(
+      monthSummary.income,
+      monthSummary.expense,
+    );
 
     final notifications = ref.read(notificationServiceProvider);
     await notifications.init();
@@ -232,6 +237,11 @@ class _XpencAppState extends ConsumerState<XpencApp>
     });
     ref.listen(widgetBudgetSummaryProvider, (_, next) {
       ref.read(homeWidgetServiceProvider).updateBudgetSummary(next);
+    });
+    ref.listen(widgetMonthSummaryProvider, (_, next) {
+      ref
+          .read(homeWidgetServiceProvider)
+          .updateMonthSummary(next.income, next.expense);
     });
 
     final ready = ref.watch(databaseReadyProvider);

@@ -49,6 +49,9 @@ tagged or released.
   occurrence, dated today; the rule's schedule keeps its original anchor
   (a rule due on the 5th stays due on the 5th next time), so it isn't
   double-posted when the real due date arrives.
+- **This Month home-screen widget** — income and expense totals for the
+  current calendar month, side by side, alongside the existing Balance,
+  Budgets and Quick Add widgets. Add it from Settings → Widgets.
 
 ### Changed
 - **Dashboard: "Investment" tab renamed to "Savings"** (#79) — the hero
@@ -63,13 +66,15 @@ tagged or released.
   row entirely once there were none, with no way to add any from there. It
   now always shows, for every transaction type, and tapping it opens the
   same tag picker to add or change them on the spot.
-- **Auto rules: a 0-amount promotion couldn't be saved** (#87) — "Add a
-  promotion" rejected a promo amount of 0, even though a free trial period
-  (e.g. a service free for the first N months, then billed normally) is a
-  legitimate promo price, not an error. A free occurrence now saves fine
-  and posts no transaction when it comes up (nothing changed hands), while
-  still advancing the schedule and switching back to the usual price
-  afterward, exactly like a discounted promo already did.
+- **A 0-amount income/expense couldn't be saved anywhere** (#87) — both
+  Add/Edit Transaction and an auto rule's promo-amount field rejected an
+  amount of 0, even though a free item, a discount that fully covers the
+  price, or a free trial period (e.g. a service free for the first N
+  months, then billed normally) is a legitimate ₹0 income/expense, not an
+  error. Both now accept it — a free promo occurrence posts a real ₹0
+  transaction, visible and taggable like any other, before switching back
+  to the usual price on schedule. A transfer of ₹0 still isn't allowed:
+  unlike income/expense, no money actually moving has no real meaning.
 
 ## [1.5.0] — 2026-08-27
 

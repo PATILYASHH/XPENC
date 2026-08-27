@@ -80,6 +80,40 @@ void main() {
       await db.deleteTransaction(id);
       expect(await netWorth(), const Money.zero());
     });
+
+    test(
+      'accepts a zero amount — a free item or a fully-covered discount '
+      '(GitHub #87)',
+      () async {
+        final cash = await cashId();
+        final id = await db.addTransaction(
+          type: TxType.expense,
+          amount: const Money.zero(),
+          accountId: cash,
+          categoryId: await expenseCategory('Food'),
+          date: DateTime(2026, 7, 5),
+        );
+
+        final tx = (await db.watchTransactions().first).single;
+        expect(tx.id, id);
+        expect(tx.amount, const Money.zero());
+        expect(await netWorth(), const Money.zero());
+      },
+    );
+
+    test('rejects a negative amount', () async {
+      final cash = await cashId();
+      expect(
+        () => db.addTransaction(
+          type: TxType.expense,
+          amount: -Money.fromRupees(1),
+          accountId: cash,
+          categoryId: 1,
+          date: DateTime(2026, 7, 5),
+        ),
+        throwsArgumentError,
+      );
+    });
   });
 
   group('transfer — the core invariant', () {
@@ -167,19 +201,30 @@ void main() {
       );
     });
 
-    test('rejects a non-positive amount', () async {
-      final cash = await cashId();
-      expect(
-        () => db.addTransaction(
-          type: TxType.expense,
-          amount: const Money.zero(),
-          accountId: cash,
-          categoryId: 1,
-          date: DateTime(2026, 7, 5),
-        ),
-        throwsArgumentError,
-      );
-    });
+    test(
+      'rejects a zero-amount transfer — unlike income/expense, ₹0 moved '
+      'means nothing happened',
+      () async {
+        final cash = await cashId();
+        final bank = await db.addAccount(
+          name: 'IPPB',
+          type: AccountType.bank,
+          colorValue: 0,
+          iconKey: 'bank',
+          openingBalance: const Money.zero(),
+        );
+        expect(
+          () => db.addTransaction(
+            type: TxType.transfer,
+            amount: const Money.zero(),
+            accountId: cash,
+            toAccountId: bank,
+            date: DateTime(2026, 7, 5),
+          ),
+          throwsArgumentError,
+        );
+      },
+    );
   });
 
   group('debit card — must not double-count', () {
@@ -1189,7 +1234,7 @@ void main() {
     );
 
     test(
-      'a free (₹0) promo occurrence posts no transaction, but still '
+      'a free (₹0) promo occurrence still posts a real ₹0 transaction, and '
       'advances the schedule and clears the promo (GitHub #87)',
       () async {
         final cash = await cashId();
@@ -1209,8 +1254,9 @@ void main() {
         );
 
         final posted = await db.runDueRecurringRules(now: start);
-        expect(posted, 0, reason: 'a free occurrence is not a ledger event');
-        expect(await db.watchTransactions().first, isEmpty);
+        expect(posted, 1);
+        final firstTx = (await db.watchTransactions().first).single;
+        expect(firstTx.amount, const Money.zero());
         expect(await balanceOf(cash), const Money.zero());
 
         final rule = (await db.watchRecurringRules().first).single;
@@ -1221,8 +1267,11 @@ void main() {
         // The next occurrence has reverted to the usual price.
         await db.runDueRecurringRules(now: DateTime(2026, 8, 1));
         final txs = await db.watchTransactions().first;
-        expect(txs, hasLength(1));
-        expect(txs.single.amount, Money.fromRupees(499));
+        expect(txs, hasLength(2));
+        expect(
+          txs.firstWhere((t) => t.date == DateTime(2026, 8, 1)).amount,
+          Money.fromRupees(499),
+        );
       },
     );
 
@@ -1584,8 +1633,8 @@ void main() {
       });
 
       test(
-        'a free (₹0) promo occurrence posts nothing but still advances the '
-        'schedule',
+        'a free (₹0) promo occurrence still posts a real ₹0 transaction, and '
+        'advances the schedule',
         () async {
           final cash = await cashId();
           final food = await expenseCategory('Food');
@@ -1605,7 +1654,8 @@ void main() {
 
           await db.payRecurringRuleNow(ruleId, now: start);
 
-          expect(await db.watchTransactions().first, isEmpty);
+          final tx = (await db.watchTransactions().first).single;
+          expect(tx.amount, const Money.zero());
           final rule = (await db.watchRecurringRules().first).single;
           expect(rule.nextDueDate, DateTime(2026, 8, 1));
           expect(rule.promoAmount, isNull);

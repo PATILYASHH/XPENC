@@ -53,6 +53,15 @@ class WidgetsScreen extends ConsumerWidget {
                 'for a dedicated one-tap-to-log tile.',
             canPin: canPin,
           ),
+          const SizedBox(height: 12),
+          _WidgetCard(
+            widget: HomeScreenWidget.monthSummary,
+            icon: Icons.calendar_month_outlined,
+            title: 'This Month',
+            description:
+                "This month's income and expense totals, side by side.",
+            canPin: canPin,
+          ),
         ],
       ),
     );
