@@ -56,16 +56,17 @@ adversarial audit that hardened it — is in [structure.md](structure.md).
 | 🎯 **Budgets** | Per-category with period windows, live progress, once-per-period alerts at 80% and overspend, and a subcategory cap that can never exceed its parent's. |
 | 📮 **Envelope Mode** | Opt-in per account: "every rupee has a job." Assign money from Ready to Assign into a category before you can spend it — a real value container, not just a ceiling. |
 | 🏷️ **Tags & receipts** | Free-form tags beyond category, plus a photo receipt attached to any transaction — both one tap away in the app bar while adding a transaction. |
-| 🐷 **Savings goals** | Save toward a target amount with running progress and a contribution history. |
+| 🐷 **Goals & Loans** | Save toward a target amount with running progress and a contribution history, or track money borrowed as a loan — in one hub. The most-funded goal sorts to the top. |
 | 🛍️ **Shopping lists** | Named, colour-coded lists, not one flat list. |
 | 🔒 **Passcode lock** | An optional PIN gate on app open, with biometric unlock (fingerprint/face) on top. |
 | 📱 **Home screen widget** | Net worth at a glance on the Android home screen, live-updated with the ledger. |
 | 📩 **Share it in — SMS or screenshot** | Share a bank SMS, or a Paytm/Google Pay/PhonePe payment screenshot, straight from your bank app. Read entirely on-device (no `READ_SMS` permission, no network call) and parsed into the Review Inbox — the same pipeline (dedupe · review cards · Auto-Approve with real Undo) either way. |
-| 👥 **Persons — dues & loans** | They-owe / I-owe with running balances, partial settlements, optional real account movement, editable ledger entries. |
+| 👥 **Persons — dues & loans** | They-owe / I-owe with running balances, partial settlements, optional real account movement, editable ledger entries. Group expenses split equally, by percentage or by manual amount across a group of Persons. Settle up with a Pay/Request button that opens UPI directly. |
 | 📅 **Calendar & cash reminders** | Day-wise in/out grid; EMI/bill reminders that post *nothing* until you confirm. |
 | 📊 **Insights** | Category pie, income vs expense, net-worth trend, per-account reports, and a downloadable Income & Expense PDF report — one chart engine, many views. |
 | 💾 **Backup & export** | Symmetric JSON backup/restore + CSV shaped for accountants / Tally. Backups land in the public `Download/BACKUP XPENC` folder so they survive an uninstall, with an optional automatic schedule and retention. |
-| 🎨 **Six themes** | Material 3, One UI–inspired. True-black AMOLED dark, a violet "Colourful", a navy "Midnight", and Cove — a One UI 9–inspired look with an ocean-blue accent and bigger, softer rounded cards. |
+| 🎨 **Seven themes** | Material 3, One UI–inspired. True-black AMOLED dark, a violet "Colourful", a navy "Midnight", Cove — a One UI 9–inspired look with an ocean-blue accent and bigger, softer rounded cards — and Bold, a near-black theme with a coral-and-gold accent and Sora/Manrope typography. Font size, boldness and family are all separately adjustable app-wide. |
+| ➕ **Customizable bottom nav** | Pick two of seven destinations for the nav bar's flexible slots; optionally hold the ➕ button to fan out three quick-access shortcuts instead of pushing Add Transaction. |
 
 ## Download
 
