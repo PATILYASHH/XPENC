@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
-## [1.5.0] — Unreleased
+## [1.5.0] — 2026-08-27
 
 ### Added
 - **Persons: Group expense splitting** — a new Group tab alongside Individual:
@@ -61,6 +61,13 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   doesn't overlap the bottom nav bar or the PIN lock screen's keypad (#78).
 - **What's New** (More hub) — see what shipped in the current version,
   with where to find it and what it does.
+- **Hold-➕ quick-access menu** (Beta, opt-in) — Settings → Customize bottom
+  nav → "Hold options": holding the ➕ button floats 3 quick-access
+  destinations in an arc above it, from the same 7-item catalog the bottom
+  nav's flexible slots use. Flick a finger toward one and release to jump
+  there via its full route, so every destination's actions are available
+  regardless of which two currently sit in the pinned/flex nav slots. Off by
+  default; a plain tap still always opens Add Transaction.
 
 ### Changed
 - A paused Auto rule moves to an Archived list instead of cluttering the
@@ -577,7 +584,8 @@ First public release. 🎉
 - `tool/verify_apk.sh` gates every shipped APK against the missing
   `libsqlite3.so` class of crash.
 
-[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.4.5...HEAD
+[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/PATILYASHH/XPENC/compare/v1.4.5...v1.5.0
 [1.4.5]: https://github.com/PATILYASHH/XPENC/compare/v1.4.4...v1.4.5
 [1.4.4]: https://github.com/PATILYASHH/XPENC/compare/v1.4.3...v1.4.4
 [1.4.3]: https://github.com/PATILYASHH/XPENC/compare/v1.4.2...v1.4.3
