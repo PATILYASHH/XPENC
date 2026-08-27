@@ -990,9 +990,17 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final navigator = Navigator.of(context);
     final amount = _amount;
 
-    if (!amount.isPositive) {
+    // Zero is a legitimate income/expense (GitHub #87) — a free item, a
+    // discount that fully covers the price, a promo month that costs
+    // nothing. A transfer of ₹0 has no real meaning, so that stays
+    // strictly positive.
+    final amountValid =
+        (_type == TxType.income || _type == TxType.expense) && !_isHybrid
+        ? !amount.isNegative
+        : amount.isPositive;
+    if (!amountValid) {
       messenger.showSnackBar(
-        const SnackBar(content: Text('Enter an amount greater than zero')),
+        const SnackBar(content: Text('Enter a valid amount')),
       );
       return;
     }

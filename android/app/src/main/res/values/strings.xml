@@ -17,4 +17,10 @@
 
     <!-- Quick Add home-screen widget. -->
     <string name="widget_quick_add_description">One-tap shortcuts to log an expense or income — nothing else.</string>
+
+    <!-- This Month home-screen widget. -->
+    <string name="widget_month_title">This month</string>
+    <string name="widget_month_income_label">Income</string>
+    <string name="widget_month_expense_label">Expense</string>
+    <string name="widget_month_description">This month\'s income and expense totals, at a glance.</string>
 </resources>

@@ -136,4 +136,57 @@ void main() {
         const Money.zero(),
         reason: 'lending is not spending');
   });
+
+  group('widgetMonthSummaryProvider — the This Month home-screen widget', () {
+    test('is zero/zero on an empty ledger', () async {
+      await warmUp();
+      final summary = container.read(widgetMonthSummaryProvider);
+      expect(summary.income, const Money.zero());
+      expect(summary.expense, const Money.zero());
+    });
+
+    test('reflects this month regardless of selectedMonthProvider', () async {
+      final cash = (await db.watchAccounts().first).single.id;
+      final salary = (await db.watchCategories(CategoryKind.income).first)
+          .firstWhere((c) => c.name == 'Salary')
+          .id;
+      final food = (await db.watchCategories(CategoryKind.expense).first)
+          .firstWhere((c) => c.name == 'Food')
+          .id;
+      await warmUp();
+
+      await db.addTransaction(
+        type: TxType.income,
+        amount: Money.fromRupees(1000),
+        accountId: cash,
+        categoryId: salary,
+        date: DateTime.now(),
+      );
+      await db.addTransaction(
+        type: TxType.expense,
+        amount: Money.fromRupees(250),
+        accountId: cash,
+        categoryId: food,
+        date: DateTime.now(),
+      );
+      // A transaction dated last year must never leak into "this month".
+      await db.addTransaction(
+        type: TxType.expense,
+        amount: Money.fromRupees(9999),
+        accountId: cash,
+        categoryId: food,
+        date: DateTime.now().subtract(const Duration(days: 400)),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+
+      // Stats/Calendar browsing a different month must not affect the widget.
+      final now = DateTime.now();
+      container.read(selectedMonthProvider.notifier).state =
+          DateTime(now.year - 1, 1);
+
+      final summary = container.read(widgetMonthSummaryProvider);
+      expect(summary.income, Money.fromRupees(1000));
+      expect(summary.expense, Money.fromRupees(250));
+    });
+  });
 }

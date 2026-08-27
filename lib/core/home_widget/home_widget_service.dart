@@ -13,10 +13,10 @@ typedef WidgetBudgetLine = ({String name, Money spent, Money limit});
 
 /// Bridges the app to the Android home-screen widgets — see
 /// `android/app/src/main/kotlin/com/yash/xpenc/` for the native side that
-/// renders whatever this saves. Three widgets share this one service:
-/// Balance (net worth + shortcuts), Budgets (top budgets by usage), and
-/// Quick Add (just the shortcuts, enlarged) — see GitHub's widget-section
-/// request.
+/// renders whatever this saves. Four widgets share this one service:
+/// Balance (net worth + shortcuts), Budgets (top budgets by usage), Quick
+/// Add (just the shortcuts, enlarged), and This Month (income vs expense
+/// for the current calendar month) — see GitHub's widget-section request.
 ///
 /// There is no background refresh: like message capture, this app has no
 /// background service, so a widget only updates while the app itself is
@@ -27,6 +27,7 @@ class HomeWidgetService {
   static const _balanceAndroidName = 'BalanceWidgetProvider';
   static const _budgetAndroidName = 'BudgetWidgetProvider';
   static const _quickAddAndroidName = 'QuickAddWidgetProvider';
+  static const _monthSummaryAndroidName = 'MonthSummaryWidgetProvider';
 
   /// How many lines the Budgets widget's static layout has rows for — see
   /// `budget_widget.xml`.
@@ -67,6 +68,22 @@ class HomeWidgetService {
     }
   }
 
+  Future<void> updateMonthSummary(Money income, Money expense) async {
+    try {
+      await HomeWidget.saveWidgetData<String>(
+        'month_income',
+        MoneyFormat.symbol(income),
+      );
+      await HomeWidget.saveWidgetData<String>(
+        'month_expense',
+        MoneyFormat.symbol(expense),
+      );
+      await HomeWidget.updateWidget(androidName: _monthSummaryAndroidName);
+    } catch (e) {
+      debugPrint('HomeWidgetService.updateMonthSummary failed: $e');
+    }
+  }
+
   /// Prompts the launcher to offer pinning [widget] directly to the home
   /// screen, from inside the app — Settings > Widgets' "Add to home
   /// screen" buttons. Android 8+ and launcher-dependent; callers should
@@ -91,6 +108,7 @@ class HomeWidgetService {
     HomeScreenWidget.balance => _balanceAndroidName,
     HomeScreenWidget.budgets => _budgetAndroidName,
     HomeScreenWidget.quickAdd => _quickAddAndroidName,
+    HomeScreenWidget.monthSummary => _monthSummaryAndroidName,
   };
 
   /// Call once at startup. Covers both a cold start launched *from* a
@@ -111,5 +129,5 @@ class HomeWidgetService {
   }
 }
 
-/// The three preset home-screen widgets — see the doc on [HomeWidgetService].
-enum HomeScreenWidget { balance, budgets, quickAdd }
+/// The four preset home-screen widgets — see the doc on [HomeWidgetService].
+enum HomeScreenWidget { balance, budgets, quickAdd, monthSummary }

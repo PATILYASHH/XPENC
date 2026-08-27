@@ -9,4 +9,8 @@
     <color name="widget_text_secondary">#6B7280</color>
     <color name="widget_chip_background">#F1F1F3</color>
     <color name="widget_chip_text">#0E0E10</color>
+    <!-- Same green/red as AppColors.income/expense in-app — brand colours,
+         not theme-dependent, so identical in the night variant too. -->
+    <color name="widget_income">#16A34A</color>
+    <color name="widget_expense">#DC2626</color>
 </resources>
