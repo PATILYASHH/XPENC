@@ -36,6 +36,12 @@ tagged or released.
   fields from Settings and Edit person, instead of leaving a permanently
   disabled button around; any ID already saved for it is kept, so switching
   it back on later restores it.
+- **Lock screen style** (#81) — Settings → Security → Lock screen style now
+  offers three PIN pad looks: Classic (plain digits, XPENC's original look),
+  Big numpad (large filled buttons, easier to hit and read), and Scrambled
+  numpad (same big buttons, but the digits land in a random order on every
+  attempt, so someone watching your finger can't learn your PIN from its
+  shape). Applies to both the lock screen and the set/change-PIN screen.
 
 ### Fixed
 - **Tags on a transfer's detail page** (#83) — tags could already be picked

@@ -99,6 +99,15 @@ enum RecurringFrequency { daily, weekly, biweekly, monthly }
 /// instead.
 enum AutoBackupFrequency { daily, monthly, custom }
 
+/// Which numpad the lock screen (and the set/change-passcode screen) draws
+/// (GitHub #81). `classic` is plain text digits, no button background —
+/// XPENC's original look. `bigNumpad` is large filled circular buttons in
+/// the usual 1-9,0 order, easier to hit and to read at a glance. `scrambled`
+/// is the same big buttons with their digits reshuffled into random
+/// positions on every fresh attempt, so a shoulder-surfer watching finger
+/// position can't infer the PIN.
+enum LockScreenStyle { classic, bigNumpad, scrambled }
+
 // ─── Converters ─────────────────────────────────────────────────────────────
 
 /// Money crosses the DB boundary as an integer number of paise. Never a double.
@@ -669,6 +678,11 @@ class Settings extends Table {
   /// stays the fallback whenever biometrics fail or aren't enrolled.
   BoolColumn get biometricEnabled =>
       boolean().withDefault(const Constant(false))();
+
+  /// Which numpad style the lock screen draws — see [LockScreenStyle].
+  /// Defaults to `classic` so existing users see no change.
+  TextColumn get lockScreenStyle =>
+      textEnum<LockScreenStyle>().withDefault(const Constant('classic'))();
 
   /// Minutes the app may sit backgrounded before the next resume re-locks it
   /// — `0` means immediately (see GitHub #60). Checked against how long the

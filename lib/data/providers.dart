@@ -753,6 +753,13 @@ final pinTimeoutMinutesProvider = Provider<int>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.pinTimeoutMinutes ?? 0;
 });
 
+/// Which numpad style the lock screen (and set/change-passcode screen) draws.
+/// See GitHub #81.
+final lockScreenStyleProvider = Provider<LockScreenStyle>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.lockScreenStyle ??
+      LockScreenStyle.classic;
+});
+
 /// Whether every amount app-wide is masked — the top bar's eye icon. See
 /// `AmountVisibilityScope` in `money_text.dart`.
 final hideAmountsProvider = Provider<bool>((ref) {
