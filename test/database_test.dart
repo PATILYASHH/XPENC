@@ -1143,7 +1143,7 @@ void main() {
       );
     });
 
-    test('rejects a non-positive promo amount', () async {
+    test('rejects a negative promo amount', () async {
       final cash = await cashId();
       final food = await expenseCategory('Food');
       expect(
@@ -1155,12 +1155,76 @@ void main() {
           categoryId: food,
           frequency: RecurringFrequency.monthly,
           startsOn: DateTime(2026, 7, 1),
-          promoAmount: const Money.zero(),
+          promoAmount: -Money.fromRupees(1),
           promoOccurrences: 3,
         ),
         throwsArgumentError,
       );
     });
+
+    test(
+      'a zero promo amount is valid — a free trial period (GitHub #87)',
+      () async {
+        final cash = await cashId();
+        final food = await expenseCategory('Food');
+        final start = DateTime(2026, 7, 1);
+
+        final ruleId = await db.addRecurringRule(
+          name: 'Glovo Prime',
+          kind: CategoryKind.expense,
+          amount: Money.fromRupees(499),
+          accountId: cash,
+          categoryId: food,
+          frequency: RecurringFrequency.monthly,
+          startsOn: start,
+          promoAmount: const Money.zero(),
+          promoOccurrences: 1,
+        );
+
+        final rule = (await db.watchRecurringRules().first).firstWhere(
+          (r) => r.id == ruleId,
+        );
+        expect(rule.promoAmount, const Money.zero());
+      },
+    );
+
+    test(
+      'a free (₹0) promo occurrence posts no transaction, but still '
+      'advances the schedule and clears the promo (GitHub #87)',
+      () async {
+        final cash = await cashId();
+        final food = await expenseCategory('Food');
+        final start = DateTime(2026, 7, 1);
+
+        await db.addRecurringRule(
+          name: 'Glovo Prime',
+          kind: CategoryKind.expense,
+          amount: Money.fromRupees(499),
+          accountId: cash,
+          categoryId: food,
+          frequency: RecurringFrequency.monthly,
+          startsOn: start,
+          promoAmount: const Money.zero(),
+          promoOccurrences: 1,
+        );
+
+        final posted = await db.runDueRecurringRules(now: start);
+        expect(posted, 0, reason: 'a free occurrence is not a ledger event');
+        expect(await db.watchTransactions().first, isEmpty);
+        expect(await balanceOf(cash), const Money.zero());
+
+        final rule = (await db.watchRecurringRules().first).single;
+        expect(rule.promoAmount, isNull);
+        expect(rule.promoOccurrencesLeft, isNull);
+        expect(rule.nextDueDate, DateTime(2026, 8, 1));
+
+        // The next occurrence has reverted to the usual price.
+        await db.runDueRecurringRules(now: DateTime(2026, 8, 1));
+        final txs = await db.watchTransactions().first;
+        expect(txs, hasLength(1));
+        expect(txs.single.amount, Money.fromRupees(499));
+      },
+    );
 
     test('editing a rule can cancel a promo early', () async {
       final cash = await cashId();
@@ -1448,6 +1512,132 @@ void main() {
       await db.deleteRecurringRule(ruleId);
 
       expect(await db.tagIdsForRecurringRule(ruleId), isEmpty);
+    });
+
+    group('payRecurringRuleNow — Pay early (GitHub #86)', () {
+      test(
+        'posts today, ahead of the due date, without touching the schedule '
+        'anchor',
+        () async {
+          final cash = await cashId();
+          final food = await expenseCategory('Food');
+          // Anchored to the 5th; paid early on the 1st.
+          final dueDate = DateTime(2026, 7, 5);
+          final paidOn = DateTime(2026, 7, 1);
+
+          final ruleId = await db.addRecurringRule(
+            name: 'Rent',
+            kind: CategoryKind.expense,
+            amount: Money.fromRupees(10000),
+            accountId: cash,
+            categoryId: food,
+            frequency: RecurringFrequency.monthly,
+            startsOn: dueDate,
+          );
+
+          await db.payRecurringRuleNow(ruleId, now: paidOn);
+
+          final tx = (await db.watchTransactions().first).single;
+          expect(tx.date, paidOn);
+          expect(tx.amount, Money.fromRupees(10000));
+          expect(await balanceOf(cash), Money.fromRupees(-10000));
+
+          final rule = (await db.watchRecurringRules().first).single;
+          expect(
+            rule.nextDueDate,
+            DateTime(2026, 8, 5),
+            reason: 'the 5th-of-the-month anchor must survive an early pay',
+          );
+
+          // The engine finds nothing due — the early payment already
+          // covered it, so it must not double-post on the real due date.
+          expect(await db.runDueRecurringRules(now: dueDate), 0);
+          expect(await db.watchTransactions().first, hasLength(1));
+        },
+      );
+
+      test('pays at the promo price and decrements it, same as auto-post', () async {
+        final cash = await cashId();
+        final food = await expenseCategory('Food');
+        final start = DateTime(2026, 7, 1);
+
+        final ruleId = await db.addRecurringRule(
+          name: 'Lionsgate+',
+          kind: CategoryKind.expense,
+          amount: Money.fromRupees(499),
+          accountId: cash,
+          categoryId: food,
+          frequency: RecurringFrequency.monthly,
+          startsOn: start,
+          promoAmount: Money.fromRupees(249),
+          promoOccurrences: 1,
+        );
+
+        await db.payRecurringRuleNow(ruleId, now: start);
+
+        final tx = (await db.watchTransactions().first).single;
+        expect(tx.amount, Money.fromRupees(249));
+
+        final rule = (await db.watchRecurringRules().first).single;
+        expect(rule.promoAmount, isNull);
+        expect(rule.promoOccurrencesLeft, isNull);
+      });
+
+      test(
+        'a free (₹0) promo occurrence posts nothing but still advances the '
+        'schedule',
+        () async {
+          final cash = await cashId();
+          final food = await expenseCategory('Food');
+          final start = DateTime(2026, 7, 1);
+
+          final ruleId = await db.addRecurringRule(
+            name: 'Glovo Prime',
+            kind: CategoryKind.expense,
+            amount: Money.fromRupees(499),
+            accountId: cash,
+            categoryId: food,
+            frequency: RecurringFrequency.monthly,
+            startsOn: start,
+            promoAmount: const Money.zero(),
+            promoOccurrences: 1,
+          );
+
+          await db.payRecurringRuleNow(ruleId, now: start);
+
+          expect(await db.watchTransactions().first, isEmpty);
+          final rule = (await db.watchRecurringRules().first).single;
+          expect(rule.nextDueDate, DateTime(2026, 8, 1));
+          expect(rule.promoAmount, isNull);
+        },
+      );
+
+      test('does not backfill — only the one occurrence being paid', () async {
+        final cash = await cashId();
+        final food = await expenseCategory('Food');
+        final start = DateTime(2026, 5, 1);
+
+        final ruleId = await db.addRecurringRule(
+          name: 'Rent',
+          kind: CategoryKind.expense,
+          amount: Money.fromRupees(1000),
+          accountId: cash,
+          categoryId: food,
+          frequency: RecurringFrequency.monthly,
+          startsOn: start,
+        );
+
+        // Two months overdue by the time it's paid.
+        await db.payRecurringRuleNow(ruleId, now: DateTime(2026, 7, 15));
+
+        expect(await db.watchTransactions().first, hasLength(1));
+        final rule = (await db.watchRecurringRules().first).single;
+        expect(
+          rule.nextDueDate,
+          DateTime(2026, 6, 1),
+          reason: 'advances one step from its own due date, not to today',
+        );
+      });
     });
   });
 

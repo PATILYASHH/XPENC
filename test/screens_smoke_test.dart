@@ -224,6 +224,51 @@ void main() {
     await unmount(tester);
   });
 
+  testWidgets(
+    'Auto: Pay now posts the rule today, ahead of its due date (GitHub #86)',
+    (tester) async {
+      late int bank;
+      late int ruleId;
+      await tester.runAsync(() async {
+        bank = (await seed()).bank;
+        ruleId = await addRecurringRuleFixture(bank, name: 'Netflix');
+      });
+      await pump(tester, const AutoScreen());
+      expect(tester.takeException(), isNull);
+
+      await tester.longPress(find.text('Netflix'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.text('Pay now').first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.takeException(), isNull);
+      // The confirmation dialog is up — a second "Pay now" (its button)
+      // alongside the amount it's about to post.
+      expect(find.text('Pay now'), findsWidgets);
+      expect(find.textContaining('649'), findsWidgets);
+
+      await tester.tap(find.text('Pay now').last);
+      await tester.pump();
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 200)),
+      );
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      expect(find.text('"Netflix" posted'), findsOneWidget);
+
+      await tester.runAsync(() async {
+        final txs = await db.watchTransactions().first;
+        final posted = txs.where((t) => t.recurringRuleId == ruleId);
+        expect(posted, hasLength(1));
+        expect(posted.single.amount, Money.fromRupees(649));
+      });
+      await unmount(tester);
+    },
+  );
+
   testWidgets('Archived auto rules lists paused rules and can restore one', (
     tester,
   ) async {
