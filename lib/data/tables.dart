@@ -512,6 +512,11 @@ class RecurringRules extends Table {
   /// rule). See GitHub #62.
   TextColumn get payee => text().withLength(min: 1, max: 80).nullable()();
 
+  /// Free-form context for the rule itself — why it exists, what it covers.
+  /// Purely informational; never copied onto the transactions it posts (see
+  /// GitHub #84).
+  TextColumn get note => text().nullable()();
+
   TextColumn get frequency => textEnum<RecurringFrequency>()();
 
   /// Monthly only. Captured once from whichever "starts on" date is chosen —
@@ -534,6 +539,19 @@ class RecurringRules extends Table {
   /// [Transactions.needsAmountReview] so the user is nudged to correct it to
   /// what actually landed.
   BoolColumn get isEstimate => boolean().withDefault(const Constant(false))();
+
+  /// The discounted per-occurrence price of a running promotion (see GitHub
+  /// #82) — e.g. "€2.49 for the next 3 months" instead of the usual
+  /// [amount]. Null whenever no promotion is active. Always null exactly
+  /// when [promoOccurrencesLeft] is null — never one without the other.
+  IntColumn get promoAmount =>
+      integer().nullable().map(const MoneyConverter())();
+
+  /// How many more occurrences still post at [promoAmount] before
+  /// [AppDatabase.runDueRecurringRules] automatically clears both promo
+  /// fields and goes back to posting [amount] — no user action needed once
+  /// the promotion is set up.
+  IntColumn get promoOccurrencesLeft => integer().nullable()();
 
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }

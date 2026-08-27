@@ -169,7 +169,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 46;
+  int get schemaVersion => 48;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -394,6 +394,17 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(groupMembers);
         await m.createTable(groupExpenses);
         await m.createTable(groupExpenseShares);
+      }
+      if (from < 47) {
+        await _addColumnIfMissing(m, recurringRules, recurringRules.note);
+      }
+      if (from < 48) {
+        await _addColumnIfMissing(m, recurringRules, recurringRules.promoAmount);
+        await _addColumnIfMissing(
+          m,
+          recurringRules,
+          recurringRules.promoOccurrencesLeft,
+        );
       }
     },
     beforeOpen: (details) async {
@@ -2721,6 +2732,8 @@ class AppDatabase extends _$AppDatabase {
     required CategoryRow category,
     required RecurringFrequency frequency,
     int? dayOfMonth,
+    Money? promoAmount,
+    int? promoOccurrences,
   }) {
     if (!amount.isPositive) {
       throw ArgumentError('Amount must be positive.');
@@ -2738,6 +2751,16 @@ class AppDatabase extends _$AppDatabase {
     } else if (dayOfMonth != null) {
       throw ArgumentError('Only a monthly rule pins a day of the month.');
     }
+    if (promoAmount != null) {
+      if (!promoAmount.isPositive) {
+        throw ArgumentError('Promo amount must be positive.');
+      }
+      if (promoOccurrences == null || promoOccurrences < 1) {
+        throw ArgumentError('A promotion needs at least 1 occurrence.');
+      }
+    } else if (promoOccurrences != null) {
+      throw ArgumentError('A promotion needs a promo amount.');
+    }
   }
 
   Future<int> addRecurringRule({
@@ -2747,10 +2770,13 @@ class AppDatabase extends _$AppDatabase {
     required int accountId,
     required int categoryId,
     String? payee,
+    String? note,
     required RecurringFrequency frequency,
     required DateTime startsOn,
     int notifyDaysBefore = 3,
     bool isEstimate = false,
+    Money? promoAmount,
+    int? promoOccurrences,
     Set<int> tagIds = const {},
   }) async {
     final category = await categoryById(categoryId);
@@ -2766,6 +2792,8 @@ class AppDatabase extends _$AppDatabase {
       category: category,
       frequency: frequency,
       dayOfMonth: dayOfMonth,
+      promoAmount: promoAmount,
+      promoOccurrences: promoOccurrences,
     );
 
     return transaction(() async {
@@ -2777,11 +2805,14 @@ class AppDatabase extends _$AppDatabase {
           accountId: accountId,
           categoryId: categoryId,
           payee: Value(payee),
+          note: Value(note),
           frequency: frequency,
           dayOfMonth: Value(dayOfMonth),
           nextDueDate: DateTime(startsOn.year, startsOn.month, startsOn.day),
           notifyDaysBefore: Value(notifyDaysBefore),
           isEstimate: Value(isEstimate),
+          promoAmount: Value(promoAmount),
+          promoOccurrencesLeft: Value(promoOccurrences),
         ),
       );
       await setRecurringRuleTags(id, tagIds);
@@ -2797,10 +2828,13 @@ class AppDatabase extends _$AppDatabase {
     required int accountId,
     required int categoryId,
     String? payee,
+    String? note,
     required RecurringFrequency frequency,
     required DateTime nextDueDate,
     int notifyDaysBefore = 3,
     bool isEstimate = false,
+    Money? promoAmount,
+    int? promoOccurrences,
     Set<int> tagIds = const {},
   }) async {
     final category = await categoryById(categoryId);
@@ -2816,6 +2850,8 @@ class AppDatabase extends _$AppDatabase {
       category: category,
       frequency: frequency,
       dayOfMonth: dayOfMonth,
+      promoAmount: promoAmount,
+      promoOccurrences: promoOccurrences,
     );
 
     await setRecurringRuleTags(id, tagIds);
@@ -2827,6 +2863,7 @@ class AppDatabase extends _$AppDatabase {
         accountId: Value(accountId),
         categoryId: Value(categoryId),
         payee: Value(payee),
+        note: Value(note),
         frequency: Value(frequency),
         dayOfMonth: Value(dayOfMonth),
         nextDueDate: Value(
@@ -2834,6 +2871,8 @@ class AppDatabase extends _$AppDatabase {
         ),
         notifyDaysBefore: Value(notifyDaysBefore),
         isEstimate: Value(isEstimate),
+        promoAmount: Value(promoAmount),
+        promoOccurrencesLeft: Value(promoOccurrences),
       ),
     );
   }
@@ -2946,12 +2985,19 @@ class AppDatabase extends _$AppDatabase {
         final ruleTagIds = (await tagIdsForRecurringRule(rule.id)).toSet();
         await transaction(() async {
           var next = rule.nextDueDate;
+          // A promo can run out mid-backfill (e.g. two missed months catch up
+          // in one run, straddling the last promo occurrence) — tracked
+          // locally so the switch back to [rule.amount] takes effect on the
+          // very next iteration, not just on the following call.
+          var promoAmount = rule.promoAmount;
+          var promoLeft = rule.promoOccurrencesLeft;
           while (!next.isAfter(endOfToday)) {
+            final onPromo = promoAmount != null && (promoLeft ?? 0) > 0;
             final txId = await addTransaction(
               type: rule.kind == CategoryKind.expense
                   ? TxType.expense
                   : TxType.income,
-              amount: rule.amount,
+              amount: onPromo ? promoAmount : rule.amount,
               accountId: rule.accountId,
               categoryId: rule.categoryId,
               date: next,
@@ -2962,6 +3008,13 @@ class AppDatabase extends _$AppDatabase {
             if (ruleTagIds.isNotEmpty) {
               await setTransactionTags(txId, ruleTagIds);
             }
+            if (onPromo) {
+              promoLeft = promoLeft! - 1;
+              if (promoLeft <= 0) {
+                promoAmount = null;
+                promoLeft = null;
+              }
+            }
             posted++;
             next = _nextOccurrence(
               rule.frequency,
@@ -2970,7 +3023,13 @@ class AppDatabase extends _$AppDatabase {
             );
           }
           await (update(recurringRules)..where((r) => r.id.equals(rule.id)))
-              .write(RecurringRulesCompanion(nextDueDate: Value(next)));
+              .write(
+                RecurringRulesCompanion(
+                  nextDueDate: Value(next),
+                  promoAmount: Value(promoAmount),
+                  promoOccurrencesLeft: Value(promoLeft),
+                ),
+              );
         });
       } catch (_) {
         // One rule that can no longer post (its account stopped being
