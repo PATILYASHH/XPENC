@@ -84,6 +84,7 @@ void main() {
       venmoEnabled: true,
       cashappEnabled: true,
       revolutEnabled: true,
+      lockScreenStyle: LockScreenStyle.classic,
     );
 
     final now = DateTime(2026, 8, 5, 12);

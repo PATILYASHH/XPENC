@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/security/pin_pad.dart';
 import '../../data/providers.dart';
+import 'lock_screen_keypad.dart';
 
 const _pinLengthOptions = [4, 5, 6];
 
@@ -25,6 +26,10 @@ class _SetPasscodeScreenState extends ConsumerState<SetPasscodeScreen> {
   String _newPinPending = '';
   bool _error = false;
   bool _checking = false;
+
+  /// Bumped every time [_pin] resets for a fresh attempt, so a `scrambled`
+  /// [LockScreenKeypad] reshuffles — see its `attempt` doc.
+  int _attempt = 0;
 
   /// Only meaningful while entering/confirming a *new* PIN — the length of
   /// the *current* one (verifyCurrent) always comes from what's already
@@ -55,6 +60,7 @@ class _SetPasscodeScreenState extends ConsumerState<SetPasscodeScreen> {
       _newPinLength = length;
       _pin = '';
       _error = false;
+      _attempt++;
     });
   }
 
@@ -83,6 +89,7 @@ class _SetPasscodeScreenState extends ConsumerState<SetPasscodeScreen> {
             _error = true;
             _checking = false;
             _pin = '';
+            _attempt++;
           });
           return;
         }
@@ -99,6 +106,7 @@ class _SetPasscodeScreenState extends ConsumerState<SetPasscodeScreen> {
           _step = _Step.enterNew;
           _checking = false;
           _pin = '';
+          _attempt++;
         });
 
       case _Step.enterNew:
@@ -106,6 +114,7 @@ class _SetPasscodeScreenState extends ConsumerState<SetPasscodeScreen> {
           _newPinPending = _pin;
           _step = _Step.confirmNew;
           _pin = '';
+          _attempt++;
         });
 
       case _Step.confirmNew:
@@ -115,6 +124,7 @@ class _SetPasscodeScreenState extends ConsumerState<SetPasscodeScreen> {
             _pin = '';
             _step = _Step.enterNew;
             _newPinPending = '';
+            _attempt++;
           });
           return;
         }
@@ -174,7 +184,12 @@ class _SetPasscodeScreenState extends ConsumerState<SetPasscodeScreen> {
             const Spacer(flex: 3),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: PinKeypad(onDigit: _onDigit, onBackspace: _onBackspace),
+              child: LockScreenKeypad(
+                style: ref.watch(lockScreenStyleProvider),
+                attempt: _attempt,
+                onDigit: _onDigit,
+                onBackspace: _onBackspace,
+              ),
             ),
             const Spacer(),
           ],

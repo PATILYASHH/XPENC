@@ -8323,6 +8323,16 @@ class $SettingsTable extends Settings
     ),
     defaultValue: const Constant(false),
   );
+  @override
+  late final GeneratedColumnWithTypeConverter<LockScreenStyle, String>
+  lockScreenStyle = GeneratedColumn<String>(
+    'lock_screen_style',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('classic'),
+  ).withConverter<LockScreenStyle>($SettingsTable.$converterlockScreenStyle);
   static const VerificationMeta _pinTimeoutMinutesMeta = const VerificationMeta(
     'pinTimeoutMinutes',
   );
@@ -8691,6 +8701,7 @@ class $SettingsTable extends Settings
     passcodeSalt,
     passcodeLength,
     biometricEnabled,
+    lockScreenStyle,
     pinTimeoutMinutes,
     masterPhraseHash,
     masterPhraseSalt,
@@ -9276,6 +9287,12 @@ class $SettingsTable extends Settings
         DriftSqlType.bool,
         data['${effectivePrefix}biometric_enabled'],
       )!,
+      lockScreenStyle: $SettingsTable.$converterlockScreenStyle.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}lock_screen_style'],
+        )!,
+      ),
       pinTimeoutMinutes: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}pin_timeout_minutes'],
@@ -9394,6 +9411,10 @@ class $SettingsTable extends Settings
     return $SettingsTable(attachedDatabase, alias);
   }
 
+  static JsonTypeConverter2<LockScreenStyle, String, String>
+  $converterlockScreenStyle = const EnumNameConverter<LockScreenStyle>(
+    LockScreenStyle.values,
+  );
   static JsonTypeConverter2<AutoBackupFrequency, String, String>
   $converterautoBackupFrequency = const EnumNameConverter<AutoBackupFrequency>(
     AutoBackupFrequency.values,
@@ -9486,6 +9507,10 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// Only ever offered as a shortcut once [passcodeHash] is set — the PIN
   /// stays the fallback whenever biometrics fail or aren't enrolled.
   final bool biometricEnabled;
+
+  /// Which numpad style the lock screen draws — see [LockScreenStyle].
+  /// Defaults to `classic` so existing users see no change.
+  final LockScreenStyle lockScreenStyle;
 
   /// Minutes the app may sit backgrounded before the next resume re-locks it
   /// — `0` means immediately (see GitHub #60). Checked against how long the
@@ -9649,6 +9674,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     this.passcodeSalt,
     this.passcodeLength,
     required this.biometricEnabled,
+    required this.lockScreenStyle,
     required this.pinTimeoutMinutes,
     this.masterPhraseHash,
     this.masterPhraseSalt,
@@ -9726,6 +9752,11 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       map['passcode_length'] = Variable<int>(passcodeLength);
     }
     map['biometric_enabled'] = Variable<bool>(biometricEnabled);
+    {
+      map['lock_screen_style'] = Variable<String>(
+        $SettingsTable.$converterlockScreenStyle.toSql(lockScreenStyle),
+      );
+    }
     map['pin_timeout_minutes'] = Variable<int>(pinTimeoutMinutes);
     if (!nullToAbsent || masterPhraseHash != null) {
       map['master_phrase_hash'] = Variable<String>(masterPhraseHash);
@@ -9822,6 +9853,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ? const Value.absent()
           : Value(passcodeLength),
       biometricEnabled: Value(biometricEnabled),
+      lockScreenStyle: Value(lockScreenStyle),
       pinTimeoutMinutes: Value(pinTimeoutMinutes),
       masterPhraseHash: masterPhraseHash == null && nullToAbsent
           ? const Value.absent()
@@ -9902,6 +9934,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       passcodeSalt: serializer.fromJson<String?>(json['passcodeSalt']),
       passcodeLength: serializer.fromJson<int?>(json['passcodeLength']),
       biometricEnabled: serializer.fromJson<bool>(json['biometricEnabled']),
+      lockScreenStyle: $SettingsTable.$converterlockScreenStyle.fromJson(
+        serializer.fromJson<String>(json['lockScreenStyle']),
+      ),
       pinTimeoutMinutes: serializer.fromJson<int>(json['pinTimeoutMinutes']),
       masterPhraseHash: serializer.fromJson<String?>(json['masterPhraseHash']),
       masterPhraseSalt: serializer.fromJson<String?>(json['masterPhraseSalt']),
@@ -9988,6 +10023,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'passcodeSalt': serializer.toJson<String?>(passcodeSalt),
       'passcodeLength': serializer.toJson<int?>(passcodeLength),
       'biometricEnabled': serializer.toJson<bool>(biometricEnabled),
+      'lockScreenStyle': serializer.toJson<String>(
+        $SettingsTable.$converterlockScreenStyle.toJson(lockScreenStyle),
+      ),
       'pinTimeoutMinutes': serializer.toJson<int>(pinTimeoutMinutes),
       'masterPhraseHash': serializer.toJson<String?>(masterPhraseHash),
       'masterPhraseSalt': serializer.toJson<String?>(masterPhraseSalt),
@@ -10053,6 +10091,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     Value<String?> passcodeSalt = const Value.absent(),
     Value<int?> passcodeLength = const Value.absent(),
     bool? biometricEnabled,
+    LockScreenStyle? lockScreenStyle,
     int? pinTimeoutMinutes,
     Value<String?> masterPhraseHash = const Value.absent(),
     Value<String?> masterPhraseSalt = const Value.absent(),
@@ -10112,6 +10151,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
         ? passcodeLength.value
         : this.passcodeLength,
     biometricEnabled: biometricEnabled ?? this.biometricEnabled,
+    lockScreenStyle: lockScreenStyle ?? this.lockScreenStyle,
     pinTimeoutMinutes: pinTimeoutMinutes ?? this.pinTimeoutMinutes,
     masterPhraseHash: masterPhraseHash.present
         ? masterPhraseHash.value
@@ -10214,6 +10254,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       biometricEnabled: data.biometricEnabled.present
           ? data.biometricEnabled.value
           : this.biometricEnabled,
+      lockScreenStyle: data.lockScreenStyle.present
+          ? data.lockScreenStyle.value
+          : this.lockScreenStyle,
       pinTimeoutMinutes: data.pinTimeoutMinutes.present
           ? data.pinTimeoutMinutes.value
           : this.pinTimeoutMinutes,
@@ -10327,6 +10370,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('passcodeSalt: $passcodeSalt, ')
           ..write('passcodeLength: $passcodeLength, ')
           ..write('biometricEnabled: $biometricEnabled, ')
+          ..write('lockScreenStyle: $lockScreenStyle, ')
           ..write('pinTimeoutMinutes: $pinTimeoutMinutes, ')
           ..write('masterPhraseHash: $masterPhraseHash, ')
           ..write('masterPhraseSalt: $masterPhraseSalt, ')
@@ -10388,6 +10432,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     passcodeSalt,
     passcodeLength,
     biometricEnabled,
+    lockScreenStyle,
     pinTimeoutMinutes,
     masterPhraseHash,
     masterPhraseSalt,
@@ -10446,6 +10491,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.passcodeSalt == this.passcodeSalt &&
           other.passcodeLength == this.passcodeLength &&
           other.biometricEnabled == this.biometricEnabled &&
+          other.lockScreenStyle == this.lockScreenStyle &&
           other.pinTimeoutMinutes == this.pinTimeoutMinutes &&
           other.masterPhraseHash == this.masterPhraseHash &&
           other.masterPhraseSalt == this.masterPhraseSalt &&
@@ -10504,6 +10550,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<String?> passcodeSalt;
   final Value<int?> passcodeLength;
   final Value<bool> biometricEnabled;
+  final Value<LockScreenStyle> lockScreenStyle;
   final Value<int> pinTimeoutMinutes;
   final Value<String?> masterPhraseHash;
   final Value<String?> masterPhraseSalt;
@@ -10558,6 +10605,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.passcodeSalt = const Value.absent(),
     this.passcodeLength = const Value.absent(),
     this.biometricEnabled = const Value.absent(),
+    this.lockScreenStyle = const Value.absent(),
     this.pinTimeoutMinutes = const Value.absent(),
     this.masterPhraseHash = const Value.absent(),
     this.masterPhraseSalt = const Value.absent(),
@@ -10613,6 +10661,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.passcodeSalt = const Value.absent(),
     this.passcodeLength = const Value.absent(),
     this.biometricEnabled = const Value.absent(),
+    this.lockScreenStyle = const Value.absent(),
     this.pinTimeoutMinutes = const Value.absent(),
     this.masterPhraseHash = const Value.absent(),
     this.masterPhraseSalt = const Value.absent(),
@@ -10668,6 +10717,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<String>? passcodeSalt,
     Expression<int>? passcodeLength,
     Expression<bool>? biometricEnabled,
+    Expression<String>? lockScreenStyle,
     Expression<int>? pinTimeoutMinutes,
     Expression<String>? masterPhraseHash,
     Expression<String>? masterPhraseSalt,
@@ -10727,6 +10777,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       if (passcodeSalt != null) 'passcode_salt': passcodeSalt,
       if (passcodeLength != null) 'passcode_length': passcodeLength,
       if (biometricEnabled != null) 'biometric_enabled': biometricEnabled,
+      if (lockScreenStyle != null) 'lock_screen_style': lockScreenStyle,
       if (pinTimeoutMinutes != null) 'pin_timeout_minutes': pinTimeoutMinutes,
       if (masterPhraseHash != null) 'master_phrase_hash': masterPhraseHash,
       if (masterPhraseSalt != null) 'master_phrase_salt': masterPhraseSalt,
@@ -10796,6 +10847,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<String?>? passcodeSalt,
     Value<int?>? passcodeLength,
     Value<bool>? biometricEnabled,
+    Value<LockScreenStyle>? lockScreenStyle,
     Value<int>? pinTimeoutMinutes,
     Value<String?>? masterPhraseHash,
     Value<String?>? masterPhraseSalt,
@@ -10853,6 +10905,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       passcodeSalt: passcodeSalt ?? this.passcodeSalt,
       passcodeLength: passcodeLength ?? this.passcodeLength,
       biometricEnabled: biometricEnabled ?? this.biometricEnabled,
+      lockScreenStyle: lockScreenStyle ?? this.lockScreenStyle,
       pinTimeoutMinutes: pinTimeoutMinutes ?? this.pinTimeoutMinutes,
       masterPhraseHash: masterPhraseHash ?? this.masterPhraseHash,
       masterPhraseSalt: masterPhraseSalt ?? this.masterPhraseSalt,
@@ -10974,6 +11027,11 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     }
     if (biometricEnabled.present) {
       map['biometric_enabled'] = Variable<bool>(biometricEnabled.value);
+    }
+    if (lockScreenStyle.present) {
+      map['lock_screen_style'] = Variable<String>(
+        $SettingsTable.$converterlockScreenStyle.toSql(lockScreenStyle.value),
+      );
     }
     if (pinTimeoutMinutes.present) {
       map['pin_timeout_minutes'] = Variable<int>(pinTimeoutMinutes.value);
@@ -11108,6 +11166,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('passcodeSalt: $passcodeSalt, ')
           ..write('passcodeLength: $passcodeLength, ')
           ..write('biometricEnabled: $biometricEnabled, ')
+          ..write('lockScreenStyle: $lockScreenStyle, ')
           ..write('pinTimeoutMinutes: $pinTimeoutMinutes, ')
           ..write('masterPhraseHash: $masterPhraseHash, ')
           ..write('masterPhraseSalt: $masterPhraseSalt, ')
@@ -28414,6 +28473,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<String?> passcodeSalt,
       Value<int?> passcodeLength,
       Value<bool> biometricEnabled,
+      Value<LockScreenStyle> lockScreenStyle,
       Value<int> pinTimeoutMinutes,
       Value<String?> masterPhraseHash,
       Value<String?> masterPhraseSalt,
@@ -28470,6 +28530,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<String?> passcodeSalt,
       Value<int?> passcodeLength,
       Value<bool> biometricEnabled,
+      Value<LockScreenStyle> lockScreenStyle,
       Value<int> pinTimeoutMinutes,
       Value<String?> masterPhraseHash,
       Value<String?> masterPhraseSalt,
@@ -28660,6 +28721,12 @@ class $$SettingsTableFilterComposer
   ColumnFilters<bool> get biometricEnabled => $composableBuilder(
     column: $table.biometricEnabled,
     builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<LockScreenStyle, LockScreenStyle, String>
+  get lockScreenStyle => $composableBuilder(
+    column: $table.lockScreenStyle,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
   ColumnFilters<int> get pinTimeoutMinutes => $composableBuilder(
@@ -28960,6 +29027,11 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get lockScreenStyle => $composableBuilder(
+    column: $table.lockScreenStyle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get pinTimeoutMinutes => $composableBuilder(
     column: $table.pinTimeoutMinutes,
     builder: (column) => ColumnOrderings(column),
@@ -29235,6 +29307,12 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumnWithTypeConverter<LockScreenStyle, String>
+  get lockScreenStyle => $composableBuilder(
+    column: $table.lockScreenStyle,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get pinTimeoutMinutes => $composableBuilder(
     column: $table.pinTimeoutMinutes,
     builder: (column) => column,
@@ -29444,6 +29522,7 @@ class $$SettingsTableTableManager
                 Value<String?> passcodeSalt = const Value.absent(),
                 Value<int?> passcodeLength = const Value.absent(),
                 Value<bool> biometricEnabled = const Value.absent(),
+                Value<LockScreenStyle> lockScreenStyle = const Value.absent(),
                 Value<int> pinTimeoutMinutes = const Value.absent(),
                 Value<String?> masterPhraseHash = const Value.absent(),
                 Value<String?> masterPhraseSalt = const Value.absent(),
@@ -29499,6 +29578,7 @@ class $$SettingsTableTableManager
                 passcodeSalt: passcodeSalt,
                 passcodeLength: passcodeLength,
                 biometricEnabled: biometricEnabled,
+                lockScreenStyle: lockScreenStyle,
                 pinTimeoutMinutes: pinTimeoutMinutes,
                 masterPhraseHash: masterPhraseHash,
                 masterPhraseSalt: masterPhraseSalt,
@@ -29555,6 +29635,7 @@ class $$SettingsTableTableManager
                 Value<String?> passcodeSalt = const Value.absent(),
                 Value<int?> passcodeLength = const Value.absent(),
                 Value<bool> biometricEnabled = const Value.absent(),
+                Value<LockScreenStyle> lockScreenStyle = const Value.absent(),
                 Value<int> pinTimeoutMinutes = const Value.absent(),
                 Value<String?> masterPhraseHash = const Value.absent(),
                 Value<String?> masterPhraseSalt = const Value.absent(),
@@ -29610,6 +29691,7 @@ class $$SettingsTableTableManager
                 passcodeSalt: passcodeSalt,
                 passcodeLength: passcodeLength,
                 biometricEnabled: biometricEnabled,
+                lockScreenStyle: lockScreenStyle,
                 pinTimeoutMinutes: pinTimeoutMinutes,
                 masterPhraseHash: masterPhraseHash,
                 masterPhraseSalt: masterPhraseSalt,

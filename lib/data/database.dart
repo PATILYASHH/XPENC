@@ -169,7 +169,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 51;
+  int get schemaVersion => 52;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -423,6 +423,9 @@ class AppDatabase extends _$AppDatabase {
         await _addColumnIfMissing(m, settings, settings.venmoEnabled);
         await _addColumnIfMissing(m, settings, settings.cashappEnabled);
         await _addColumnIfMissing(m, settings, settings.revolutEnabled);
+      }
+      if (from < 52) {
+        await _addColumnIfMissing(m, settings, settings.lockScreenStyle);
       }
     },
     beforeOpen: (details) async {
@@ -3554,6 +3557,10 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> setRevolutEnabled(bool value) =>
       update(settings).write(SettingsCompanion(revolutEnabled: Value(value)));
+
+  Future<void> setLockScreenStyle(LockScreenStyle style) => update(
+    settings,
+  ).write(SettingsCompanion(lockScreenStyle: Value(style)));
 
   // ── Passcode ──────────────────────────────────────────────────────────────
 

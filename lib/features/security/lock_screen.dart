@@ -7,6 +7,7 @@ import '../../core/branding/brand_mark.dart';
 import '../../core/security/master_phrase_field.dart';
 import '../../core/security/pin_pad.dart';
 import '../../data/providers.dart';
+import 'lock_screen_keypad.dart';
 
 /// Rendered directly by [XpencApp]'s `builder`, outside the router — a
 /// blocking overlay, not a route, so there is no back button and no way
@@ -27,6 +28,10 @@ class _LockScreenState extends ConsumerState<LockScreen> {
   bool _biometricTried = false;
   String? _phraseError;
   bool _phraseChecking = false;
+
+  /// Bumped on every wrong PIN so a `scrambled` [LockScreenKeypad]
+  /// reshuffles for the next attempt — see its `attempt` doc.
+  int _attempt = 0;
 
   @override
   void initState() {
@@ -91,6 +96,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
       _error = true;
       _checking = false;
       _pin = '';
+      _attempt++;
     });
   }
 
@@ -175,6 +181,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     final theme = Theme.of(context);
     final biometricEnabled = ref.watch(biometricEnabledProvider);
     final pinLength = ref.watch(passcodeLengthProvider);
+    final lockScreenStyle = ref.watch(lockScreenStyleProvider);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -192,7 +199,9 @@ class _LockScreenState extends ConsumerState<LockScreen> {
         const SizedBox(height: 40),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: PinKeypad(
+          child: LockScreenKeypad(
+            style: lockScreenStyle,
+            attempt: _attempt,
             onDigit: _onDigit,
             onBackspace: _onBackspace,
             extraKey: biometricEnabled

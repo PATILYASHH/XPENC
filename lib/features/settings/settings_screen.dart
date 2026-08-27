@@ -7,6 +7,7 @@ import '../../core/branding/brand_mark.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import 'currency_picker_sheet.dart';
+import 'lock_screen_style_sheet.dart';
 import 'master_phrase_attempts_sheet.dart';
 import 'pin_timeout_sheet.dart';
 import 'theme_picker_sheet.dart';
@@ -43,6 +44,7 @@ class SettingsScreen extends ConsumerWidget {
     final hasPasscode = ref.watch(hasPasscodeProvider);
     final biometricEnabled = ref.watch(biometricEnabledProvider);
     final pinTimeoutMinutes = ref.watch(pinTimeoutMinutesProvider);
+    final lockScreenStyle = ref.watch(lockScreenStyleProvider);
     final hasMasterPhrase = ref.watch(hasMasterPhraseProvider);
     final masterPhraseAttemptThreshold = ref.watch(
       masterPhraseAttemptThresholdProvider,
@@ -472,6 +474,33 @@ class SettingsScreen extends ConsumerWidget {
                       ],
                     ),
                     onTap: () => PinTimeoutSheet.show(context),
+                  ),
+                  Divider(height: 1, indent: 60, color: cs.outline),
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    leading: const Icon(Icons.dialpad_outlined),
+                    title: const Text('Lock screen style'),
+                    subtitle: Text(
+                      'How the PIN pad looks',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          LockScreenStyleSheet.label(lockScreenStyle),
+                          style: trailingStyle,
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ],
+                    ),
+                    onTap: () => LockScreenStyleSheet.show(context),
                   ),
                   Divider(height: 1, indent: 60, color: cs.outline),
                   ListTile(
