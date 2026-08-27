@@ -169,7 +169,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 48;
+  int get schemaVersion => 51;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -405,6 +405,24 @@ class AppDatabase extends _$AppDatabase {
           recurringRules,
           recurringRules.promoOccurrencesLeft,
         );
+      }
+      if (from < 49) {
+        await _addColumnIfMissing(m, settings, settings.myPaypal);
+      }
+      if (from < 50) {
+        await _addColumnIfMissing(m, persons, persons.venmo);
+        await _addColumnIfMissing(m, persons, persons.cashapp);
+        await _addColumnIfMissing(m, persons, persons.revolut);
+        await _addColumnIfMissing(m, settings, settings.myVenmo);
+        await _addColumnIfMissing(m, settings, settings.myCashapp);
+        await _addColumnIfMissing(m, settings, settings.myRevolut);
+      }
+      if (from < 51) {
+        await _addColumnIfMissing(m, settings, settings.upiEnabled);
+        await _addColumnIfMissing(m, settings, settings.paypalEnabled);
+        await _addColumnIfMissing(m, settings, settings.venmoEnabled);
+        await _addColumnIfMissing(m, settings, settings.cashappEnabled);
+        await _addColumnIfMissing(m, settings, settings.revolutEnabled);
       }
     },
     beforeOpen: (details) async {
@@ -2186,6 +2204,9 @@ class AppDatabase extends _$AppDatabase {
     String? upiId,
     String? phone,
     String? paypal,
+    String? venmo,
+    String? cashapp,
+    String? revolut,
   }) => (update(persons)..where((p) => p.id.equals(id))).write(
     PersonsCompanion(
       name: Value(name),
@@ -2194,6 +2215,9 @@ class AppDatabase extends _$AppDatabase {
       upiId: Value(upiId),
       phone: Value(phone),
       paypal: Value(paypal),
+      venmo: Value(venmo),
+      cashapp: Value(cashapp),
+      revolut: Value(revolut),
     ),
   );
 
@@ -3503,6 +3527,33 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> setMyUpiName(String? value) =>
       update(settings).write(SettingsCompanion(myUpiName: Value(value)));
+
+  Future<void> setMyPaypal(String? value) =>
+      update(settings).write(SettingsCompanion(myPaypal: Value(value)));
+
+  Future<void> setMyVenmo(String? value) =>
+      update(settings).write(SettingsCompanion(myVenmo: Value(value)));
+
+  Future<void> setMyCashapp(String? value) =>
+      update(settings).write(SettingsCompanion(myCashapp: Value(value)));
+
+  Future<void> setMyRevolut(String? value) =>
+      update(settings).write(SettingsCompanion(myRevolut: Value(value)));
+
+  Future<void> setUpiEnabled(bool value) =>
+      update(settings).write(SettingsCompanion(upiEnabled: Value(value)));
+
+  Future<void> setPaypalEnabled(bool value) =>
+      update(settings).write(SettingsCompanion(paypalEnabled: Value(value)));
+
+  Future<void> setVenmoEnabled(bool value) =>
+      update(settings).write(SettingsCompanion(venmoEnabled: Value(value)));
+
+  Future<void> setCashappEnabled(bool value) =>
+      update(settings).write(SettingsCompanion(cashappEnabled: Value(value)));
+
+  Future<void> setRevolutEnabled(bool value) =>
+      update(settings).write(SettingsCompanion(revolutEnabled: Value(value)));
 
   // ── Passcode ──────────────────────────────────────────────────────────────
 

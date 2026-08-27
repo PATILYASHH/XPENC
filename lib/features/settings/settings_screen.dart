@@ -31,6 +31,15 @@ class SettingsScreen extends ConsumerWidget {
     final countRepaymentsAsIncome = ref.watch(countRepaymentsAsIncomeProvider);
     final myUpiId = ref.watch(myUpiIdProvider);
     final myUpiName = ref.watch(myUpiNameProvider);
+    final myPaypal = ref.watch(myPaypalProvider);
+    final myVenmo = ref.watch(myVenmoProvider);
+    final myCashapp = ref.watch(myCashappProvider);
+    final myRevolut = ref.watch(myRevolutProvider);
+    final upiEnabled = ref.watch(upiEnabledProvider);
+    final paypalEnabled = ref.watch(paypalEnabledProvider);
+    final venmoEnabled = ref.watch(venmoEnabledProvider);
+    final cashappEnabled = ref.watch(cashappEnabledProvider);
+    final revolutEnabled = ref.watch(revolutEnabledProvider);
     final hasPasscode = ref.watch(hasPasscodeProvider);
     final biometricEnabled = ref.watch(biometricEnabledProvider);
     final pinTimeoutMinutes = ref.watch(pinTimeoutMinutesProvider);
@@ -195,27 +204,202 @@ class SettingsScreen extends ConsumerWidget {
                   onChanged: (v) =>
                       ref.read(dbProvider).setCountRepaymentsAsIncome(v),
                 ),
-                Divider(height: 1, indent: 60, color: cs.outline),
-                ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  leading: const Icon(Icons.qr_code_outlined),
-                  title: const Text('My UPI ID'),
-                  subtitle: Text(
-                    (myUpiId?.isNotEmpty ?? false)
-                        ? myUpiId!
-                        : 'Needed for the Beta "Request" button on a person '
-                              'who owes you',
+                if (upiEnabled) ...[
+                  Divider(height: 1, indent: 60, color: cs.outline),
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                    ),
+                    leading: const Icon(Icons.qr_code_outlined),
+                    title: const Text('My UPI ID'),
+                    subtitle: Text(
+                      (myUpiId?.isNotEmpty ?? false)
+                          ? myUpiId!
+                          : 'Needed for the Beta "Request" button on a '
+                                'person who owes you',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => _showMyUpiDialog(
+                      context,
+                      ref,
+                      currentId: myUpiId,
+                      currentName: myUpiName,
+                    ),
+                  ),
+                ],
+                if (paypalEnabled) ...[
+                  Divider(height: 1, indent: 60, color: cs.outline),
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                    ),
+                    leading: const Icon(Icons.attach_money_rounded),
+                    title: const Text('My PayPal.me ID'),
+                    subtitle: Text(
+                      (myPaypal?.isNotEmpty ?? false)
+                          ? myPaypal!
+                          : 'Needed for the Beta "Request" button on a '
+                                'person who owes you',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => _showMyIdDialog(
+                      context,
+                      ref,
+                      title: 'My PayPal.me ID',
+                      hintText: 'e.g. yourname',
+                      currentId: myPaypal,
+                      onSave: (id) => ref.read(dbProvider).setMyPaypal(id),
+                    ),
+                  ),
+                ],
+                if (venmoEnabled) ...[
+                  Divider(height: 1, indent: 60, color: cs.outline),
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                    ),
+                    leading: const Icon(Icons.attach_money_rounded),
+                    title: const Text('My Venmo username'),
+                    subtitle: Text(
+                      (myVenmo?.isNotEmpty ?? false)
+                          ? myVenmo!
+                          : 'Needed for the Beta "Request" button on a '
+                                'person who owes you (US)',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => _showMyIdDialog(
+                      context,
+                      ref,
+                      title: 'My Venmo username',
+                      hintText: 'e.g. rahul',
+                      currentId: myVenmo,
+                      onSave: (id) => ref.read(dbProvider).setMyVenmo(id),
+                    ),
+                  ),
+                ],
+                if (cashappEnabled) ...[
+                  Divider(height: 1, indent: 60, color: cs.outline),
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                    ),
+                    leading: const Icon(Icons.attach_money_rounded),
+                    title: const Text('My Cash App cashtag'),
+                    subtitle: Text(
+                      (myCashapp?.isNotEmpty ?? false)
+                          ? myCashapp!
+                          : 'Needed for the Beta "Request" button on a '
+                                'person who owes you (US)',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => _showMyIdDialog(
+                      context,
+                      ref,
+                      title: 'My Cash App cashtag',
+                      hintText: r'e.g. $rahul',
+                      currentId: myCashapp,
+                      onSave: (id) => ref.read(dbProvider).setMyCashapp(id),
+                    ),
+                  ),
+                ],
+                if (revolutEnabled) ...[
+                  Divider(height: 1, indent: 60, color: cs.outline),
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                    ),
+                    leading: const Icon(Icons.attach_money_rounded),
+                    title: const Text('My Revolut.me username'),
+                    subtitle: Text(
+                      (myRevolut?.isNotEmpty ?? false)
+                          ? myRevolut!
+                          : 'Needed for the Beta "Request" button on a '
+                                'person who owes you (Europe)',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => _showMyIdDialog(
+                      context,
+                      ref,
+                      title: 'My Revolut.me username',
+                      hintText: 'e.g. rahul',
+                      currentId: myRevolut,
+                      onSave: (id) => ref.read(dbProvider).setMyRevolut(id),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+
+          // ── Payment support ────────────────────────────────────────────────
+          _sectionLabel(context, 'Payment Support'),
+          Card(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  child: Text(
+                    'Turn off any method not used or supported where you '
+                    'are — it disappears from person pages and Settings '
+                    'instead of sitting there disabled.',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: cs.onSurfaceVariant,
                     ),
                   ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () => _showMyUpiDialog(
-                    context,
-                    ref,
-                    currentId: myUpiId,
-                    currentName: myUpiName,
-                  ),
+                ),
+                SwitchListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  title: const Text('UPI'),
+                  subtitle: const Text('India'),
+                  value: upiEnabled,
+                  onChanged: (v) => ref.read(dbProvider).setUpiEnabled(v),
+                ),
+                Divider(height: 1, indent: 16, color: cs.outline),
+                SwitchListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  title: const Text('PayPal'),
+                  subtitle: const Text('Worldwide'),
+                  value: paypalEnabled,
+                  onChanged: (v) => ref.read(dbProvider).setPaypalEnabled(v),
+                ),
+                Divider(height: 1, indent: 16, color: cs.outline),
+                SwitchListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  title: const Text('Venmo'),
+                  subtitle: const Text('US'),
+                  value: venmoEnabled,
+                  onChanged: (v) => ref.read(dbProvider).setVenmoEnabled(v),
+                ),
+                Divider(height: 1, indent: 16, color: cs.outline),
+                SwitchListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  title: const Text('Cash App'),
+                  subtitle: const Text('US'),
+                  value: cashappEnabled,
+                  onChanged: (v) => ref.read(dbProvider).setCashappEnabled(v),
+                ),
+                Divider(height: 1, indent: 16, color: cs.outline),
+                SwitchListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  title: const Text('Revolut'),
+                  subtitle: const Text('Europe'),
+                  value: revolutEnabled,
+                  onChanged: (v) => ref.read(dbProvider).setRevolutEnabled(v),
                 ),
               ],
             ),
@@ -686,6 +870,46 @@ class SettingsScreen extends ConsumerWidget {
     final db = ref.read(dbProvider);
     await db.setMyUpiId(id.isEmpty ? null : id);
     await db.setMyUpiName(name.isEmpty ? null : name);
+  }
+
+  /// Shared single-field "my own payment id" dialog, used by every method
+  /// after UPI (which also needs a display name, so keeps its own dialog).
+  Future<void> _showMyIdDialog(
+    BuildContext context,
+    WidgetRef ref, {
+    required String title,
+    required String hintText,
+    required String? currentId,
+    required Future<void> Function(String? id) onSave,
+  }) async {
+    final idController = TextEditingController(text: currentId ?? '');
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: idController,
+          autofocus: true,
+          autocorrect: false,
+          decoration: InputDecoration(labelText: title, hintText: hintText),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    idController.dispose();
+    if (saved != true) return;
+
+    final id = idController.text.trim();
+    await onSave(id.isEmpty ? null : id);
   }
 
   Widget _sectionLabel(BuildContext context, String text) {

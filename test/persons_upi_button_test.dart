@@ -74,8 +74,15 @@ void main() {
       expect(find.text('Request'), findsOneWidget);
       expect(find.text('Pay'), findsNothing);
       expect(findButton('UPI')!.onPressed, isNull);
+      expect(findButton('PayPal')!.onPressed, isNull);
+      expect(findButton('Venmo')!.onPressed, isNull);
+      expect(findButton('Cash App')!.onPressed, isNull);
+      expect(findButton('Revolut')!.onPressed, isNull);
       expect(
-        find.text('Add your UPI ID in Settings to request money'),
+        find.text(
+          'Add your UPI ID, PayPal.me ID, Venmo username, Cashtag and '
+          'Revolut username in Settings to request money',
+        ),
         findsOneWidget,
       );
       await unmount(tester);
@@ -83,7 +90,8 @@ void main() {
   );
 
   testWidgets(
-    'setting my UPI ID enables the Request app buttons',
+    'setting my UPI ID enables only the UPI Request button, others stay '
+    'disabled',
     (tester) async {
       final ram = await tester.runAsync(() async {
         final id = await db.addPerson('Ram');
@@ -102,9 +110,20 @@ void main() {
       expect(tester.takeException(), isNull);
 
       expect(findButton('UPI')!.onPressed, isNotNull);
+      expect(findButton('PayPal')!.onPressed, isNull);
       expect(
-        find.text('Add your UPI ID in Settings to request money'),
+        find.text(
+          'Add your UPI ID, PayPal.me ID, Venmo username, Cashtag and '
+          'Revolut username in Settings to request money',
+        ),
         findsNothing,
+      );
+      expect(
+        find.text(
+          'Add your PayPal.me ID, Venmo username, Cashtag and Revolut '
+          'username in Settings to request money',
+        ),
+        findsOneWidget,
       );
       await unmount(tester);
     },
@@ -133,7 +152,10 @@ void main() {
       expect(find.text('Request'), findsNothing);
       expect(findButton('UPI')!.onPressed, isNull);
       expect(
-        find.text("Add Ram's UPI ID to pay them directly"),
+        find.text(
+          "Add Ram's UPI ID, PayPal.me ID, Venmo username, Cashtag and "
+          'Revolut username to pay them directly',
+        ),
         findsOneWidget,
       );
 

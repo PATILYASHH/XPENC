@@ -24,6 +24,18 @@ tagged or released.
   optional Notes field, same as Budgets and Goals, for jotting down why the
   rule exists or anything else worth remembering. Purely informational; it's
   never copied onto the transactions the rule posts.
+- **Persons: PayPal, Venmo, Cash App and Revolut (Beta)** — the Pay/Request
+  buttons on a person's page aren't UPI-only anymore. Add PayPal.me, Venmo,
+  Cash App or Revolut.me IDs for a person (Edit person) and your own (Settings
+  → Persons) to pay or request through any of them, the same way UPI already
+  worked — each opens that app's own payment link, pre-filled with the
+  outstanding amount.
+- **Settings → Payment Support** — a switch per payment method (UPI, PayPal,
+  Venmo, Cash App, Revolut) to turn off whichever ones don't apply where you
+  are. Turning one off removes its button from every person's page and its
+  fields from Settings and Edit person, instead of leaving a permanently
+  disabled button around; any ID already saved for it is kept, so switching
+  it back on later restores it.
 
 ### Fixed
 - **Tags on a transfer's detail page** (#83) — tags could already be picked
