@@ -79,6 +79,11 @@ void main() {
       extraBottomInset: 0,
       holdMenuEnabled: false,
       holdMenuSlots: 'calendar,budgets,stats',
+      upiEnabled: true,
+      paypalEnabled: true,
+      venmoEnabled: true,
+      cashappEnabled: true,
+      revolutEnabled: true,
     );
 
     final now = DateTime(2026, 8, 5, 12);

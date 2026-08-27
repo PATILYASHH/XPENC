@@ -626,6 +626,53 @@ final myUpiNameProvider = Provider<String?>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.myUpiName;
 });
 
+/// The app user's own PayPal.me id — set once in Settings, required to
+/// build the "Request" link on a person who owes the user. Null until set.
+final myPaypalProvider = Provider<String?>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.myPaypal;
+});
+
+/// The app user's own Venmo username, for the "Request" link.
+final myVenmoProvider = Provider<String?>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.myVenmo;
+});
+
+/// The app user's own Cash App cashtag, for the "Request" link.
+final myCashappProvider = Provider<String?>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.myCashapp;
+});
+
+/// The app user's own Revolut.me username, for the "Request" link.
+final myRevolutProvider = Provider<String?>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.myRevolut;
+});
+
+/// Whether the UPI button/fields are offered at all — see "Payment
+/// support" in Settings. Defaults true while settings load.
+final upiEnabledProvider = Provider<bool>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.upiEnabled ?? true;
+});
+
+/// Same as [upiEnabledProvider], for PayPal.
+final paypalEnabledProvider = Provider<bool>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.paypalEnabled ?? true;
+});
+
+/// Same as [upiEnabledProvider], for Venmo.
+final venmoEnabledProvider = Provider<bool>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.venmoEnabled ?? true;
+});
+
+/// Same as [upiEnabledProvider], for Cash App.
+final cashappEnabledProvider = Provider<bool>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.cashappEnabled ?? true;
+});
+
+/// Same as [upiEnabledProvider], for Revolut.
+final revolutEnabledProvider = Provider<bool>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.revolutEnabled ?? true;
+});
+
 /// Whether a passcode is set at all — the switch the app-lock gate checks on
 /// every launch and resume.
 final hasPasscodeProvider = Provider<bool>((ref) {

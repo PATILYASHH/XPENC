@@ -312,10 +312,22 @@ class Persons extends Table {
   /// VPA, not a phone number) — stored for display/contact purposes.
   TextColumn get phone => text().nullable()();
 
-  /// Stored but not wired to any button yet — no deep-link standard is being
-  /// targeted for PayPal in this pass. Present so a future PayPal button
-  /// doesn't need its own migration.
+  /// Their PayPal.me id (e.g. "rahul" for paypal.me/rahul). Powers the "Pay"
+  /// button on their detail screen — used to build a `paypal.me` link when
+  /// the app's user owes them (see `PaypalLauncher`).
   TextColumn get paypal => text().nullable()();
+
+  /// Their Venmo username. Powers the "Pay" button — used to build a
+  /// `venmo.com` deep link (see `VenmoLauncher`). US-only in practice.
+  TextColumn get venmo => text().nullable()();
+
+  /// Their Cash App cashtag (e.g. "$rahul"). Powers the "Pay" button — used
+  /// to build a `cash.app` link (see `CashAppLauncher`). US-only in practice.
+  TextColumn get cashapp => text().nullable()();
+
+  /// Their Revolut.me username. Powers the "Pay" button — used to build a
+  /// `revolut.me` link (see `RevolutLauncher`). Mainly useful in Europe.
+  TextColumn get revolut => text().nullable()();
 }
 
 /// Signed ledger per person. Balance = Σ(theyOwe) − Σ(iOwe).
@@ -605,6 +617,42 @@ class Settings extends Table {
 
   /// The app user's own display name, sent as `pn` on a collect link.
   TextColumn get myUpiName => text().nullable()();
+
+  /// The app user's own PayPal.me id. Required to build the "Request" link
+  /// on a person who owes the user — same identity-not-the-person's caveat
+  /// as [myUpiId]. Null until set in Settings.
+  TextColumn get myPaypal => text().nullable()();
+
+  /// The app user's own Venmo username, for the "Request" link.
+  TextColumn get myVenmo => text().nullable()();
+
+  /// The app user's own Cash App cashtag, for the "Request" link.
+  TextColumn get myCashapp => text().nullable()();
+
+  /// The app user's own Revolut.me username, for the "Request" link.
+  TextColumn get myRevolut => text().nullable()();
+
+  /// Whether the UPI button/fields are offered at all. Defaults true so
+  /// existing users see no change; the "Payment support" section in
+  /// Settings lets someone in a country UPI doesn't reach turn it off
+  /// entirely, rather than leaving a permanently-disabled button around.
+  BoolColumn get upiEnabled => boolean().withDefault(const Constant(true))();
+
+  /// Same as [upiEnabled], for PayPal.
+  BoolColumn get paypalEnabled =>
+      boolean().withDefault(const Constant(true))();
+
+  /// Same as [upiEnabled], for Venmo.
+  BoolColumn get venmoEnabled =>
+      boolean().withDefault(const Constant(true))();
+
+  /// Same as [upiEnabled], for Cash App.
+  BoolColumn get cashappEnabled =>
+      boolean().withDefault(const Constant(true))();
+
+  /// Same as [upiEnabled], for Revolut.
+  BoolColumn get revolutEnabled =>
+      boolean().withDefault(const Constant(true))();
 
   /// A salted SHA-256 hash — never the passcode itself. Null means no
   /// passcode is set, the default, and the app never locks.

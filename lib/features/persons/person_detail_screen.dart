@@ -6,7 +6,11 @@ import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/money.dart';
+import '../../core/payments/cashapp_launcher.dart';
+import '../../core/payments/paypal_launcher.dart';
+import '../../core/payments/revolut_launcher.dart';
 import '../../core/payments/upi_launcher.dart';
+import '../../core/payments/venmo_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
@@ -14,7 +18,7 @@ import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../accounts/envelope_outflow.dart';
 import 'edit_person_sheet.dart';
-import 'upi_action_row.dart';
+import 'payment_action_row.dart';
 
 /// One person's ledger. Net balance = Σ(theyOwe) − Σ(iOwe).
 /// `+` they owe you · `-` you owe them.
@@ -221,6 +225,22 @@ class _ActionButtons extends ConsumerWidget {
         ref.watch(countRepaymentsAsIncomeProvider) && balance.isPositive;
     final myUpiId = ref.watch(myUpiIdProvider);
     final myUpiName = ref.watch(myUpiNameProvider);
+    final myPaypal = ref.watch(myPaypalProvider);
+    final myVenmo = ref.watch(myVenmoProvider);
+    final myCashapp = ref.watch(myCashappProvider);
+    final myRevolut = ref.watch(myRevolutProvider);
+    final currencyCode = ref.watch(currencyProvider).code;
+    final upiEnabled = ref.watch(upiEnabledProvider);
+    final paypalEnabled = ref.watch(paypalEnabledProvider);
+    final venmoEnabled = ref.watch(venmoEnabledProvider);
+    final cashappEnabled = ref.watch(cashappEnabledProvider);
+    final revolutEnabled = ref.watch(revolutEnabledProvider);
+    final anyPaymentMethodEnabled =
+        upiEnabled ||
+        paypalEnabled ||
+        venmoEnabled ||
+        cashappEnabled ||
+        revolutEnabled;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
@@ -274,37 +294,152 @@ class _ActionButtons extends ConsumerWidget {
               ),
             ),
           ],
-          if (balance.isPositive) ...[
+          if (balance.isPositive && anyPaymentMethodEnabled) ...[
             const SizedBox(height: 16),
-            UpiActionRow(
-              action: UpiAction.collect,
+            PersonPaymentRow(
               label: 'Request',
-              amount: balance,
-              payeeUpiId: myUpiId,
-              payeeName: (myUpiName?.trim().isNotEmpty ?? false)
-                  ? myUpiName!.trim()
-                  : 'XPENC user',
-              missingHint: 'Add your UPI ID in Settings to request money',
+              methods: [
+                if (upiEnabled)
+                  PaymentMethodSpec(
+                    buttonLabel: 'UPI',
+                    missingLabel: 'UPI ID',
+                    id: myUpiId,
+                    attempt: () => UpiLauncher.launch(
+                      action: UpiAction.collect,
+                      payeeUpiId: myUpiId!,
+                      payeeName: (myUpiName?.trim().isNotEmpty ?? false)
+                          ? myUpiName!.trim()
+                          : 'XPENC user',
+                      amount: balance,
+                      note: 'Requested via XPENC',
+                    ),
+                  ),
+                if (paypalEnabled)
+                  PaymentMethodSpec(
+                    buttonLabel: 'PayPal',
+                    missingLabel: 'PayPal.me ID',
+                    id: myPaypal,
+                    attempt: () => PaypalLauncher.launch(
+                      paypalId: myPaypal!,
+                      amount: balance,
+                      currencyCode: currencyCode,
+                    ),
+                  ),
+                if (venmoEnabled)
+                  PaymentMethodSpec(
+                    buttonLabel: 'Venmo',
+                    missingLabel: 'Venmo username',
+                    id: myVenmo,
+                    attempt: () => VenmoLauncher.launch(
+                      username: myVenmo!,
+                      amount: balance,
+                      note: 'Requested via XPENC',
+                    ),
+                  ),
+                if (cashappEnabled)
+                  PaymentMethodSpec(
+                    buttonLabel: 'Cash App',
+                    missingLabel: 'Cashtag',
+                    id: myCashapp,
+                    attempt: () => CashAppLauncher.launch(
+                      cashtag: myCashapp!,
+                      amount: balance,
+                    ),
+                  ),
+                if (revolutEnabled)
+                  PaymentMethodSpec(
+                    buttonLabel: 'Revolut',
+                    missingLabel: 'Revolut username',
+                    id: myRevolut,
+                    attempt: () => RevolutLauncher.launch(
+                      username: myRevolut!,
+                      amount: balance,
+                    ),
+                  ),
+              ],
+              missingHint: (missing) =>
+                  'Add your ${_joinWithAnd(missing)} in Settings to request '
+                  'money',
               onMissingTap: () => context.push('/more/settings'),
-              note: 'Requested via XPENC',
             ),
-          ] else if (balance.isNegative) ...[
+          ] else if (balance.isNegative && anyPaymentMethodEnabled) ...[
             const SizedBox(height: 16),
-            UpiActionRow(
-              action: UpiAction.pay,
+            PersonPaymentRow(
               label: 'Pay',
-              amount: balance.abs,
-              payeeUpiId: person.upiId,
-              payeeName: person.name,
-              missingHint: "Add ${person.name}'s UPI ID to pay them directly",
+              methods: [
+                if (upiEnabled)
+                  PaymentMethodSpec(
+                    buttonLabel: 'UPI',
+                    missingLabel: 'UPI ID',
+                    id: person.upiId,
+                    attempt: () => UpiLauncher.launch(
+                      action: UpiAction.pay,
+                      payeeUpiId: person.upiId!,
+                      payeeName: person.name,
+                      amount: balance.abs,
+                      note: 'Settlement via XPENC',
+                    ),
+                  ),
+                if (paypalEnabled)
+                  PaymentMethodSpec(
+                    buttonLabel: 'PayPal',
+                    missingLabel: 'PayPal.me ID',
+                    id: person.paypal,
+                    attempt: () => PaypalLauncher.launch(
+                      paypalId: person.paypal!,
+                      amount: balance.abs,
+                      currencyCode: currencyCode,
+                    ),
+                  ),
+                if (venmoEnabled)
+                  PaymentMethodSpec(
+                    buttonLabel: 'Venmo',
+                    missingLabel: 'Venmo username',
+                    id: person.venmo,
+                    attempt: () => VenmoLauncher.launch(
+                      username: person.venmo!,
+                      amount: balance.abs,
+                      note: 'Settlement via XPENC',
+                    ),
+                  ),
+                if (cashappEnabled)
+                  PaymentMethodSpec(
+                    buttonLabel: 'Cash App',
+                    missingLabel: 'Cashtag',
+                    id: person.cashapp,
+                    attempt: () => CashAppLauncher.launch(
+                      cashtag: person.cashapp!,
+                      amount: balance.abs,
+                    ),
+                  ),
+                if (revolutEnabled)
+                  PaymentMethodSpec(
+                    buttonLabel: 'Revolut',
+                    missingLabel: 'Revolut username',
+                    id: person.revolut,
+                    attempt: () => RevolutLauncher.launch(
+                      username: person.revolut!,
+                      amount: balance.abs,
+                    ),
+                  ),
+              ],
+              missingHint: (missing) =>
+                  "Add ${person.name}'s ${_joinWithAnd(missing)} to pay them "
+                  'directly',
               onMissingTap: () => showEditPersonSheet(context, ref, person),
-              note: 'Settlement via XPENC',
             ),
           ],
         ],
       ),
     );
   }
+}
+
+/// Joins method names for a [PersonPaymentRow] nudge, e.g. `['UPI ID']` →
+/// `"UPI ID"`, `['UPI ID', 'PayPal.me ID']` → `"UPI ID and PayPal.me ID"`.
+String _joinWithAnd(List<String> parts) {
+  if (parts.length <= 1) return parts.join();
+  return '${parts.sublist(0, parts.length - 1).join(', ')} and ${parts.last}';
 }
 
 /// One ledger row. The leading icon shows which way *cash* moved:

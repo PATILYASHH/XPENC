@@ -44,6 +44,18 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
   late final _upiIdController = TextEditingController(
     text: widget.person.upiId ?? '',
   );
+  late final _paypalController = TextEditingController(
+    text: widget.person.paypal ?? '',
+  );
+  late final _venmoController = TextEditingController(
+    text: widget.person.venmo ?? '',
+  );
+  late final _cashappController = TextEditingController(
+    text: widget.person.cashapp ?? '',
+  );
+  late final _revolutController = TextEditingController(
+    text: widget.person.revolut ?? '',
+  );
   late final _phoneController = TextEditingController(
     text: widget.person.phone ?? '',
   );
@@ -56,6 +68,10 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
     _contactController.dispose();
     _noteController.dispose();
     _upiIdController.dispose();
+    _paypalController.dispose();
+    _venmoController.dispose();
+    _cashappController.dispose();
+    _revolutController.dispose();
     _phoneController.dispose();
     super.dispose();
   }
@@ -83,9 +99,10 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
           note: _noteController.text.trim().nullIfEmpty,
           upiId: _upiIdController.text.trim().nullIfEmpty,
           phone: _phoneController.text.trim().nullIfEmpty,
-          // Not editable here — stored but not wired to a button yet, so it
-          // must pass through unchanged rather than being cleared.
-          paypal: widget.person.paypal,
+          paypal: _paypalController.text.trim().nullIfEmpty,
+          venmo: _venmoController.text.trim().nullIfEmpty,
+          cashapp: _cashappController.text.trim().nullIfEmpty,
+          revolut: _revolutController.text.trim().nullIfEmpty,
         );
     if (!mounted) return;
     Navigator.of(context).pop();
@@ -94,6 +111,17 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final upiEnabled = ref.watch(upiEnabledProvider);
+    final paypalEnabled = ref.watch(paypalEnabledProvider);
+    final venmoEnabled = ref.watch(venmoEnabledProvider);
+    final cashappEnabled = ref.watch(cashappEnabledProvider);
+    final revolutEnabled = ref.watch(revolutEnabledProvider);
+    final anyPaymentMethodEnabled =
+        upiEnabled ||
+        paypalEnabled ||
+        venmoEnabled ||
+        cashappEnabled ||
+        revolutEnabled;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -128,24 +156,85 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
             ),
             const SizedBox(height: 16),
 
-            TextField(
-              controller: _upiIdController,
-              textInputAction: TextInputAction.next,
-              autocorrect: false,
-              decoration: const InputDecoration(
-                labelText: 'UPI ID',
-                hintText: 'e.g. rahul@okhdfcbank',
+            if (anyPaymentMethodEnabled) ...[
+              Text(
+                'Payment IDs',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              "Lets you pay them directly from their page. Not shared "
-              "anywhere — stored only on this phone.",
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+              const SizedBox(height: 4),
+              Text(
+                "Lets you pay them directly from their page. Not shared "
+                "anywhere — stored only on this phone. Turn a method off in "
+                "Settings → Payment Support if it doesn't apply here.",
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 10),
+              if (upiEnabled) ...[
+                TextField(
+                  controller: _upiIdController,
+                  textInputAction: TextInputAction.next,
+                  autocorrect: false,
+                  decoration: const InputDecoration(
+                    labelText: 'UPI ID',
+                    hintText: 'e.g. rahul@okhdfcbank',
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (paypalEnabled) ...[
+                TextField(
+                  controller: _paypalController,
+                  textInputAction: TextInputAction.next,
+                  autocorrect: false,
+                  decoration: const InputDecoration(
+                    labelText: 'PayPal.me ID',
+                    hintText: 'e.g. rahul',
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (venmoEnabled) ...[
+                TextField(
+                  controller: _venmoController,
+                  textInputAction: TextInputAction.next,
+                  autocorrect: false,
+                  decoration: const InputDecoration(
+                    labelText: 'Venmo username',
+                    hintText: 'e.g. rahul (US)',
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (cashappEnabled) ...[
+                TextField(
+                  controller: _cashappController,
+                  textInputAction: TextInputAction.next,
+                  autocorrect: false,
+                  decoration: const InputDecoration(
+                    labelText: 'Cash App cashtag',
+                    hintText: r'e.g. $rahul (US)',
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (revolutEnabled) ...[
+                TextField(
+                  controller: _revolutController,
+                  textInputAction: TextInputAction.next,
+                  autocorrect: false,
+                  decoration: const InputDecoration(
+                    labelText: 'Revolut.me username',
+                    hintText: 'e.g. rahul (Europe)',
+                  ),
+                ),
+                const SizedBox(height: 4),
+              ],
+              const SizedBox(height: 12),
+            ],
 
             TextField(
               controller: _phoneController,
