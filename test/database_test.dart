@@ -676,6 +676,31 @@ void main() {
     });
   });
 
+  group('renameAccount — GitHub #88', () {
+    test('changes only the name, trimmed', () async {
+      final bank = await db.addAccount(
+        name: 'Old Name',
+        type: AccountType.bank,
+        colorValue: 0,
+        iconKey: 'bank',
+        openingBalance: Money.fromRupees(500),
+      );
+
+      await db.renameAccount(bank, '  IPPB Savings  ');
+
+      final account = (await db.watchAccounts().first).firstWhere(
+        (a) => a.id == bank,
+      );
+      expect(account.name, 'IPPB Savings');
+      expect(account.currentBalance, Money.fromRupees(500));
+    });
+
+    test('rejects a blank name', () async {
+      final cash = await cashId();
+      expect(() => db.renameAccount(cash, '   '), throwsArgumentError);
+    });
+  });
+
   group('deleteAccount — permanent, so it is guarded', () {
     test('removes an account nothing has touched', () async {
       final bank = await db.addAccount(

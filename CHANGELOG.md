@@ -52,6 +52,9 @@ tagged or released.
 - **This Month home-screen widget** — income and expense totals for the
   current calendar month, side by side, alongside the existing Balance,
   Budgets and Quick Add widgets. Add it from Settings → Widgets.
+- **Rename an account** (#88) — long-press an account for a "Rename" option,
+  next to Archive and Remove. Previously the name could only ever be set
+  once, at creation.
 
 ### Changed
 - **Dashboard: "Investment" tab renamed to "Savings"** (#79) — the hero
@@ -75,6 +78,11 @@ tagged or released.
   transaction, visible and taggable like any other, before switching back
   to the usual price on schedule. A transfer of ₹0 still isn't allowed:
   unlike income/expense, no money actually moving has no real meaning.
+- **A dialog closing right after typing could crash** — the "My UPI ID",
+  "My PayPal.me ID"/Venmo/Cash App/Revolut and account-rename dialogs
+  disposed their text field's controller the instant Save was tapped, which
+  could race the dialog's own closing animation and crash mid-close. Each
+  now owns its controller properly, tied to the dialog's real lifetime.
 
 ## [1.5.0] — 2026-08-27
 

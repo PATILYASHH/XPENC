@@ -763,8 +763,8 @@ class SettingsScreen extends ConsumerWidget {
               leading: const Icon(Icons.widgets_outlined),
               title: const Text('Home screen widgets'),
               subtitle: Text(
-                'Balance, Budgets or Quick Add — pick what to put on your '
-                'home screen.',
+                'Balance, Budgets, Quick Add or This Month — pick what to '
+                'put on your home screen.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: cs.onSurfaceVariant,
                 ),
@@ -849,56 +849,18 @@ class SettingsScreen extends ConsumerWidget {
     required String? currentId,
     required String? currentName,
   }) async {
-    final idController = TextEditingController(text: currentId ?? '');
-    final nameController = TextEditingController(text: currentName ?? '');
-    final saved = await showDialog<bool>(
+    final result = await showDialog<({String id, String name})>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('My UPI ID'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: idController,
-              autofocus: true,
-              autocorrect: false,
-              decoration: const InputDecoration(
-                labelText: 'UPI ID',
-                hintText: 'e.g. you@okhdfcbank',
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: nameController,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Your name',
-                hintText: 'Shown to whoever pays your request',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+      builder: (_) =>
+          _MyUpiDialog(currentId: currentId, currentName: currentName),
     );
-    idController.dispose();
-    nameController.dispose();
-    if (saved != true) return;
+    if (result == null) return;
 
-    final id = idController.text.trim();
-    final name = nameController.text.trim();
     final db = ref.read(dbProvider);
-    await db.setMyUpiId(id.isEmpty ? null : id);
-    await db.setMyUpiName(name.isEmpty ? null : name);
+    await db.setMyUpiId(result.id.trim().isEmpty ? null : result.id.trim());
+    await db.setMyUpiName(
+      result.name.trim().isEmpty ? null : result.name.trim(),
+    );
   }
 
   /// Shared single-field "my own payment id" dialog, used by every method
@@ -911,33 +873,14 @@ class SettingsScreen extends ConsumerWidget {
     required String? currentId,
     required Future<void> Function(String? id) onSave,
   }) async {
-    final idController = TextEditingController(text: currentId ?? '');
-    final saved = await showDialog<bool>(
+    final result = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(title),
-        content: TextField(
-          controller: idController,
-          autofocus: true,
-          autocorrect: false,
-          decoration: InputDecoration(labelText: title, hintText: hintText),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+      builder: (_) =>
+          _MyIdDialog(title: title, hintText: hintText, currentId: currentId),
     );
-    idController.dispose();
-    if (saved != true) return;
+    if (result == null) return;
 
-    final id = idController.text.trim();
+    final id = result.trim();
     await onSave(id.isEmpty ? null : id);
   }
 
@@ -1055,6 +998,136 @@ class SettingsScreen extends ConsumerWidget {
     final period = hour < 12 ? 'AM' : 'PM';
     final h = hour % 12 == 0 ? 12 : hour % 12;
     return '$h:${minute.toString().padLeft(2, '0')} $period';
+  }
+}
+
+/// A `StatefulWidget`, not bare controllers disposed right after
+/// `showDialog` resolves — that races the dialog's own closing animation:
+/// the route pops (resolving the `Future`) before the still-visible
+/// `TextField`s finish their exit transition, so controllers disposed
+/// immediately can be torn down while still attached to them. Owning them
+/// in `State.dispose()` ties their lifetime to the framework's own unmount
+/// timing instead, which is always correct.
+class _MyUpiDialog extends StatefulWidget {
+  const _MyUpiDialog({required this.currentId, required this.currentName});
+
+  final String? currentId;
+  final String? currentName;
+
+  @override
+  State<_MyUpiDialog> createState() => _MyUpiDialogState();
+}
+
+class _MyUpiDialogState extends State<_MyUpiDialog> {
+  late final _idController = TextEditingController(
+    text: widget.currentId ?? '',
+  );
+  late final _nameController = TextEditingController(
+    text: widget.currentName ?? '',
+  );
+
+  @override
+  void dispose() {
+    _idController.dispose();
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('My UPI ID'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _idController,
+            autofocus: true,
+            autocorrect: false,
+            decoration: const InputDecoration(
+              labelText: 'UPI ID',
+              hintText: 'e.g. you@okhdfcbank',
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _nameController,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(
+              labelText: 'Your name',
+              hintText: 'Shown to whoever pays your request',
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(
+            context,
+          ).pop((id: _idController.text, name: _nameController.text)),
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Same disposal-timing fix as [_MyUpiDialog], for the shared single-field
+/// "my own payment id" dialog every method after UPI uses.
+class _MyIdDialog extends StatefulWidget {
+  const _MyIdDialog({
+    required this.title,
+    required this.hintText,
+    required this.currentId,
+  });
+
+  final String title;
+  final String hintText;
+  final String? currentId;
+
+  @override
+  State<_MyIdDialog> createState() => _MyIdDialogState();
+}
+
+class _MyIdDialogState extends State<_MyIdDialog> {
+  late final _controller = TextEditingController(
+    text: widget.currentId ?? '',
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        autocorrect: false,
+        decoration: InputDecoration(
+          labelText: widget.title,
+          hintText: widget.hintText,
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_controller.text),
+          child: const Text('Save'),
+        ),
+      ],
+    );
   }
 }
 
