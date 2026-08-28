@@ -136,6 +136,38 @@ void main() {
     await unmount(tester);
   });
 
+  testWidgets(
+    'Accounts: long-press → Rename changes the account name (GitHub #88)',
+    (tester) async {
+      await pump(tester, const AccountsScreen());
+      expect(tester.takeException(), isNull);
+
+      await tester.longPress(find.text('Cash').first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.text('Rename'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.takeException(), isNull);
+
+      await tester.enterText(find.byType(TextField), 'Wallet');
+      await tester.pump();
+      await tester.tap(find.text('Save'));
+      await tester.pump();
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 200)),
+      );
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      expect(find.text('Account renamed'), findsOneWidget);
+      expect(find.text('Wallet'), findsWidgets);
+      expect(find.text('Cash'), findsNothing);
+      await unmount(tester);
+    },
+  );
+
   testWidgets('Accounts shows a debit card as linked, with no balance', (
     tester,
   ) async {

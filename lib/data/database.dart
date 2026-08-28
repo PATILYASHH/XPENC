@@ -2109,6 +2109,20 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
+  /// GitHub #88 — the only account field ever offered for editing after
+  /// creation. Trims and rejects blank, same rule [addAccount] leaves to the
+  /// UI layer today; enforced here too since this is the only path that
+  /// bypasses the add sheet's own validation.
+  Future<void> renameAccount(int id, String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      throw ArgumentError('Give the account a name.');
+    }
+    return (update(accounts)..where((a) => a.id.equals(id))).write(
+      AccountsCompanion(name: Value(trimmed)),
+    );
+  }
+
   Future<void> archiveAccount(int id) =>
       (update(accounts)..where((a) => a.id.equals(id))).write(
         const AccountsCompanion(isArchived: Value(true)),

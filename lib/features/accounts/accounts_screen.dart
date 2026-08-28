@@ -360,8 +360,8 @@ class _AccountTile extends ConsumerWidget {
     );
   }
 
-  /// Hold-to-act: a sheet offering Archive (reversible, hides it) or Remove
-  /// (permanent, only works when nothing points at it).
+  /// Hold-to-act: Rename (just the name), Archive (reversible, hides it) or
+  /// Remove (permanent, only works when nothing points at it).
   Future<void> _showActions(BuildContext context, WidgetRef ref) async {
     final theme = Theme.of(context);
     final action = await showModalBottomSheet<_AccountAction>(
@@ -385,6 +385,12 @@ class _AccountTile extends ConsumerWidget {
                   ),
                 ),
               ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('Rename'),
+              onTap: () =>
+                  Navigator.of(sheetContext).pop(_AccountAction.rename),
             ),
             ListTile(
               leading: const Icon(Icons.archive_outlined),
@@ -412,11 +418,33 @@ class _AccountTile extends ConsumerWidget {
       ),
     );
     if (action == null || !context.mounted) return;
-    if (action == _AccountAction.archive) {
-      await _confirmArchive(context, ref);
-    } else {
-      await _confirmRemove(context, ref);
+    switch (action) {
+      case _AccountAction.rename:
+        await _confirmRename(context, ref);
+      case _AccountAction.archive:
+        await _confirmArchive(context, ref);
+      case _AccountAction.remove:
+        await _confirmRemove(context, ref);
     }
+  }
+
+  /// GitHub #88 — the account name is the only field ever offered for
+  /// editing after creation; a dedicated single-field dialog rather than
+  /// reopening the full Add Account sheet, which sets up type/colour/icon
+  /// fields that don't apply once an account already exists.
+  Future<void> _confirmRename(BuildContext context, WidgetRef ref) async {
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (ctx) => _RenameAccountDialog(currentName: account.name),
+    );
+    if (newName == null || newName.trim().isEmpty) return;
+    if (newName.trim() == account.name) return;
+
+    await ref.read(dbProvider).renameAccount(account.id, newName);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Account renamed')));
   }
 
   Future<void> _confirmArchive(BuildContext context, WidgetRef ref) async {
@@ -502,7 +530,57 @@ class _AccountTile extends ConsumerWidget {
   }
 }
 
-enum _AccountAction { archive, remove }
+/// A `StatefulWidget`, not a bare controller disposed right after
+/// `showDialog` resolves — that races the dialog's own closing animation:
+/// the route pops (resolving the `Future`) before the still-visible
+/// `TextField` finishes its exit transition, so a controller disposed
+/// immediately can be torn down while that `TextField` is still attached
+/// to it. Owning the controller in `State.dispose()` ties its lifetime to
+/// the framework's own unmount timing instead, which is always correct.
+class _RenameAccountDialog extends StatefulWidget {
+  const _RenameAccountDialog({required this.currentName});
+
+  final String currentName;
+
+  @override
+  State<_RenameAccountDialog> createState() => _RenameAccountDialogState();
+}
+
+class _RenameAccountDialogState extends State<_RenameAccountDialog> {
+  late final _controller = TextEditingController(text: widget.currentName);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Rename account'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        textCapitalization: TextCapitalization.words,
+        decoration: const InputDecoration(labelText: 'Name'),
+        onSubmitted: (v) => Navigator.of(context).pop(v),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_controller.text),
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+}
+
+enum _AccountAction { rename, archive, remove }
 
 /// A small outlined chip marking a debit card as an instrument of its bank.
 class _LinkedChip extends StatelessWidget {

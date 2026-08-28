@@ -560,6 +560,44 @@ void main() {
   });
 
   testWidgets(
+    'Settings: saving My UPI ID survives the dialog close animation',
+    (tester) async {
+      await pump(tester, const SettingsScreen());
+      expect(tester.takeException(), isNull);
+
+      await tester.scrollUntilVisible(find.text('My UPI ID'), 300);
+      await tester.ensureVisible(find.text('My UPI ID'));
+      await tester.pump();
+      await tester.tap(find.text('My UPI ID'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.takeException(), isNull);
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'UPI ID'),
+        'me@okhdfcbank',
+      );
+      await tester.pump();
+      await tester.tap(find.text('Save'));
+      // The dialog's own closing animation runs across several frames — a
+      // controller disposed too early crashes partway through it.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 200)),
+      );
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+
+      await tester.runAsync(() async {
+        final settings = await db.getSettings();
+        expect(settings.myUpiId, 'me@okhdfcbank');
+      });
+      await unmount(tester);
+    },
+  );
+
+  testWidgets(
     'Settings renders the master recovery phrase rows once a passcode and '
     'phrase are set',
     (tester) async {
