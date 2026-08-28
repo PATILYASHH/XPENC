@@ -772,6 +772,15 @@ class Settings extends Table {
   BoolColumn get preventScreenshots =>
       boolean().withDefault(const Constant(false))();
 
+  /// A small on-screen reminder whenever [preventScreenshots] is off — easy
+  /// to forget it's still off after taking a screenshot on purpose (GitHub
+  /// #90). Off by default and opt-in, separately from [preventScreenshots]
+  /// itself: someone who deliberately leaves screenshot-blocking off is
+  /// making that choice on purpose and shouldn't be nagged about it unless
+  /// they ask to be.
+  BoolColumn get screenshotReminderEnabled =>
+      boolean().withDefault(const Constant(false))();
+
   /// Masks every amount rendered anywhere in the app (see
   /// `AmountVisibilityScope` in `money_text.dart`) — flipped from the eye
   /// icon in the top bar (`AppShell`). Persisted, not session-only: hiding
@@ -1071,6 +1080,31 @@ class LoanDetails extends Table {
 
   /// Pre-fills the payment sheet amount — informational, never enforced.
   IntColumn get emiAmount => integer().map(const MoneyConverter()).nullable()();
+
+  @override
+  Set<Column> get primaryKey => {accountId};
+}
+
+/// Opt-in statement/due-date tracking for a credit card account (GitHub
+/// #91) — off unless the user turns it on for that card, via
+/// [CreditCardStatementSection]. Absent means "not tracked", same as
+/// [LoanDetails]/[GoalDetails] being absent for an account of the wrong type.
+@DataClassName('CreditCardDetailRow')
+class CreditCardDetails extends Table {
+  IntColumn get accountId => integer().references(Accounts, #id)();
+
+  /// Day of the month the statement closes (1-31). Snapped to the last real
+  /// day of a shorter month, same rule a monthly [RecurringRules] rule uses.
+  IntColumn get statementDay => integer()();
+
+  /// Day of the month payment is due. Whether this falls in the same month
+  /// as the close or the next one is derived from comparing the two days,
+  /// not stored — see `AppDatabase.creditCardNextDueDate`.
+  IntColumn get dueDay => integer()();
+
+  /// How many days before the due date to notify — mirrors
+  /// [RecurringRules.notifyDaysBefore].
+  IntColumn get notifyDaysBefore => integer().withDefault(const Constant(3))();
 
   @override
   Set<Column> get primaryKey => {accountId};

@@ -409,6 +409,74 @@ class NotificationService {
 
   static int _recurringId(int id) => 600000 + id;
 
+  // ── Credit card statements (GitHub #91) ──────────────────────────────────
+
+  /// Reschedules the payment-due reminder for every credit card tracking a
+  /// statement cycle. Safe to call on every app open/resume — unlike a
+  /// stored [ReminderRow], there is nothing to "advance": the due date is
+  /// always recomputed fresh from [AppDatabase.creditCardNextDueDate], so a
+  /// sync after the due date has passed naturally schedules the *next* one.
+  Future<void> syncCreditCardReminders() async {
+    if (!_ready) return;
+    final settings = await _db.getSettings();
+    final details = await _db.allCreditCardDetails();
+
+    for (final d in details) {
+      await _cancel(_creditCardReminderId(d.accountId));
+      if (!settings.notificationsEnabled) continue;
+
+      final dueDate = AppDatabase.creditCardNextDueDate(
+        today: DateTime.now(),
+        statementDay: d.statementDay,
+        dueDay: d.dueDay,
+      );
+      final fireAt = _fireTimeForDueDate(dueDate, d.notifyDaysBefore);
+      if (fireAt == null) continue;
+
+      final account = await _db.watchAccount(d.accountId).first;
+      final cardName = account?.name ?? 'your card';
+
+      try {
+        await _plugin.zonedSchedule(
+          id: _creditCardReminderId(d.accountId),
+          title: '$cardName: payment due ${_dayLabel(dueDate)}',
+          body:
+              'Pay by ${_dayLabel(dueDate)} to avoid interest or a late fee.',
+          scheduledDate: tz.TZDateTime.from(fireAt, tz.local),
+          notificationDetails: _details(_reminderChannel),
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        );
+      } catch (e) {
+        debugPrint('credit card reminder schedule failed: $e');
+      }
+    }
+  }
+
+  /// Mirrors [_fireTimeFor]/[_recurringFireTimeFor]: a same-day due date (or
+  /// one whose warning window already passed) still fires shortly rather
+  /// than silently never firing.
+  static DateTime? _fireTimeForDueDate(DateTime dueDate, int notifyDaysBefore) {
+    final now = DateTime.now();
+    final day = dueDate.subtract(Duration(days: notifyDaysBefore));
+    final at = DateTime(day.year, day.month, day.day, _reminderHour);
+
+    if (at.isAfter(now)) return at;
+
+    final endOfDueDay = DateTime(
+      dueDate.year,
+      dueDate.month,
+      dueDate.day,
+      23,
+      59,
+    );
+    if (endOfDueDay.isAfter(now)) {
+      return now.add(const Duration(minutes: 1));
+    }
+    return null; // genuinely overdue — the account's own page shows it
+  }
+
+  static int _creditCardReminderId(int accountId) => 700000 + accountId;
+
   /// One-shot confirmation after [AppDatabase.runDueRecurringRules] posts
   /// something — nothing about "auto" should ever land in the ledger silently.
   Future<void> notifyAutoPosted(int count) async {

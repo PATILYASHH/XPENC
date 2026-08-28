@@ -8543,6 +8543,21 @@ class $SettingsTable extends Settings
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _screenshotReminderEnabledMeta =
+      const VerificationMeta('screenshotReminderEnabled');
+  @override
+  late final GeneratedColumn<bool> screenshotReminderEnabled =
+      GeneratedColumn<bool>(
+        'screenshot_reminder_enabled',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("screenshot_reminder_enabled" IN (0, 1))',
+        ),
+        defaultValue: const Constant(false),
+      );
   static const VerificationMeta _hideAmountsMeta = const VerificationMeta(
     'hideAmounts',
   );
@@ -8719,6 +8734,7 @@ class $SettingsTable extends Settings
     lastAutoBackupAt,
     backupRetentionDays,
     preventScreenshots,
+    screenshotReminderEnabled,
     hideAmounts,
     bottomNavSlots,
     showBottomNavLabels,
@@ -9087,6 +9103,15 @@ class $SettingsTable extends Settings
         ),
       );
     }
+    if (data.containsKey('screenshot_reminder_enabled')) {
+      context.handle(
+        _screenshotReminderEnabledMeta,
+        screenshotReminderEnabled.isAcceptableOrUnknown(
+          data['screenshot_reminder_enabled']!,
+          _screenshotReminderEnabledMeta,
+        ),
+      );
+    }
     if (data.containsKey('hide_amounts')) {
       context.handle(
         _hideAmountsMeta,
@@ -9363,6 +9388,10 @@ class $SettingsTable extends Settings
         DriftSqlType.bool,
         data['${effectivePrefix}prevent_screenshots'],
       )!,
+      screenshotReminderEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}screenshot_reminder_enabled'],
+      )!,
       hideAmounts: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}hide_amounts'],
@@ -9586,6 +9615,14 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// screenshotting a statement to share it) the user opts into.
   final bool preventScreenshots;
 
+  /// A small on-screen reminder whenever [preventScreenshots] is off — easy
+  /// to forget it's still off after taking a screenshot on purpose (GitHub
+  /// #90). Off by default and opt-in, separately from [preventScreenshots]
+  /// itself: someone who deliberately leaves screenshot-blocking off is
+  /// making that choice on purpose and shouldn't be nagged about it unless
+  /// they ask to be.
+  final bool screenshotReminderEnabled;
+
   /// Masks every amount rendered anywhere in the app (see
   /// `AmountVisibilityScope` in `money_text.dart`) — flipped from the eye
   /// icon in the top bar (`AppShell`). Persisted, not session-only: hiding
@@ -9692,6 +9729,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     this.lastAutoBackupAt,
     required this.backupRetentionDays,
     required this.preventScreenshots,
+    required this.screenshotReminderEnabled,
     required this.hideAmounts,
     required this.bottomNavSlots,
     required this.showBottomNavLabels,
@@ -9790,6 +9828,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     }
     map['backup_retention_days'] = Variable<int>(backupRetentionDays);
     map['prevent_screenshots'] = Variable<bool>(preventScreenshots);
+    map['screenshot_reminder_enabled'] = Variable<bool>(
+      screenshotReminderEnabled,
+    );
     map['hide_amounts'] = Variable<bool>(hideAmounts);
     map['bottom_nav_slots'] = Variable<String>(bottomNavSlots);
     map['show_bottom_nav_labels'] = Variable<bool>(showBottomNavLabels);
@@ -9879,6 +9920,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           : Value(lastAutoBackupAt),
       backupRetentionDays: Value(backupRetentionDays),
       preventScreenshots: Value(preventScreenshots),
+      screenshotReminderEnabled: Value(screenshotReminderEnabled),
       hideAmounts: Value(hideAmounts),
       bottomNavSlots: Value(bottomNavSlots),
       showBottomNavLabels: Value(showBottomNavLabels),
@@ -9975,6 +10017,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
         json['backupRetentionDays'],
       ),
       preventScreenshots: serializer.fromJson<bool>(json['preventScreenshots']),
+      screenshotReminderEnabled: serializer.fromJson<bool>(
+        json['screenshotReminderEnabled'],
+      ),
       hideAmounts: serializer.fromJson<bool>(json['hideAmounts']),
       bottomNavSlots: serializer.fromJson<String>(json['bottomNavSlots']),
       showBottomNavLabels: serializer.fromJson<bool>(
@@ -10051,6 +10096,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'lastAutoBackupAt': serializer.toJson<DateTime?>(lastAutoBackupAt),
       'backupRetentionDays': serializer.toJson<int>(backupRetentionDays),
       'preventScreenshots': serializer.toJson<bool>(preventScreenshots),
+      'screenshotReminderEnabled': serializer.toJson<bool>(
+        screenshotReminderEnabled,
+      ),
       'hideAmounts': serializer.toJson<bool>(hideAmounts),
       'bottomNavSlots': serializer.toJson<String>(bottomNavSlots),
       'showBottomNavLabels': serializer.toJson<bool>(showBottomNavLabels),
@@ -10109,6 +10157,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     Value<DateTime?> lastAutoBackupAt = const Value.absent(),
     int? backupRetentionDays,
     bool? preventScreenshots,
+    bool? screenshotReminderEnabled,
     bool? hideAmounts,
     String? bottomNavSlots,
     bool? showBottomNavLabels,
@@ -10181,6 +10230,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
         : this.lastAutoBackupAt,
     backupRetentionDays: backupRetentionDays ?? this.backupRetentionDays,
     preventScreenshots: preventScreenshots ?? this.preventScreenshots,
+    screenshotReminderEnabled:
+        screenshotReminderEnabled ?? this.screenshotReminderEnabled,
     hideAmounts: hideAmounts ?? this.hideAmounts,
     bottomNavSlots: bottomNavSlots ?? this.bottomNavSlots,
     showBottomNavLabels: showBottomNavLabels ?? this.showBottomNavLabels,
@@ -10308,6 +10359,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       preventScreenshots: data.preventScreenshots.present
           ? data.preventScreenshots.value
           : this.preventScreenshots,
+      screenshotReminderEnabled: data.screenshotReminderEnabled.present
+          ? data.screenshotReminderEnabled.value
+          : this.screenshotReminderEnabled,
       hideAmounts: data.hideAmounts.present
           ? data.hideAmounts.value
           : this.hideAmounts,
@@ -10390,6 +10444,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('lastAutoBackupAt: $lastAutoBackupAt, ')
           ..write('backupRetentionDays: $backupRetentionDays, ')
           ..write('preventScreenshots: $preventScreenshots, ')
+          ..write('screenshotReminderEnabled: $screenshotReminderEnabled, ')
           ..write('hideAmounts: $hideAmounts, ')
           ..write('bottomNavSlots: $bottomNavSlots, ')
           ..write('showBottomNavLabels: $showBottomNavLabels, ')
@@ -10450,6 +10505,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     lastAutoBackupAt,
     backupRetentionDays,
     preventScreenshots,
+    screenshotReminderEnabled,
     hideAmounts,
     bottomNavSlots,
     showBottomNavLabels,
@@ -10511,6 +10567,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.lastAutoBackupAt == this.lastAutoBackupAt &&
           other.backupRetentionDays == this.backupRetentionDays &&
           other.preventScreenshots == this.preventScreenshots &&
+          other.screenshotReminderEnabled == this.screenshotReminderEnabled &&
           other.hideAmounts == this.hideAmounts &&
           other.bottomNavSlots == this.bottomNavSlots &&
           other.showBottomNavLabels == this.showBottomNavLabels &&
@@ -10568,6 +10625,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<DateTime?> lastAutoBackupAt;
   final Value<int> backupRetentionDays;
   final Value<bool> preventScreenshots;
+  final Value<bool> screenshotReminderEnabled;
   final Value<bool> hideAmounts;
   final Value<String> bottomNavSlots;
   final Value<bool> showBottomNavLabels;
@@ -10623,6 +10681,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.lastAutoBackupAt = const Value.absent(),
     this.backupRetentionDays = const Value.absent(),
     this.preventScreenshots = const Value.absent(),
+    this.screenshotReminderEnabled = const Value.absent(),
     this.hideAmounts = const Value.absent(),
     this.bottomNavSlots = const Value.absent(),
     this.showBottomNavLabels = const Value.absent(),
@@ -10679,6 +10738,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.lastAutoBackupAt = const Value.absent(),
     this.backupRetentionDays = const Value.absent(),
     this.preventScreenshots = const Value.absent(),
+    this.screenshotReminderEnabled = const Value.absent(),
     this.hideAmounts = const Value.absent(),
     this.bottomNavSlots = const Value.absent(),
     this.showBottomNavLabels = const Value.absent(),
@@ -10735,6 +10795,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<DateTime>? lastAutoBackupAt,
     Expression<int>? backupRetentionDays,
     Expression<bool>? preventScreenshots,
+    Expression<bool>? screenshotReminderEnabled,
     Expression<bool>? hideAmounts,
     Expression<String>? bottomNavSlots,
     Expression<bool>? showBottomNavLabels,
@@ -10805,6 +10866,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       if (backupRetentionDays != null)
         'backup_retention_days': backupRetentionDays,
       if (preventScreenshots != null) 'prevent_screenshots': preventScreenshots,
+      if (screenshotReminderEnabled != null)
+        'screenshot_reminder_enabled': screenshotReminderEnabled,
       if (hideAmounts != null) 'hide_amounts': hideAmounts,
       if (bottomNavSlots != null) 'bottom_nav_slots': bottomNavSlots,
       if (showBottomNavLabels != null)
@@ -10865,6 +10928,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<DateTime?>? lastAutoBackupAt,
     Value<int>? backupRetentionDays,
     Value<bool>? preventScreenshots,
+    Value<bool>? screenshotReminderEnabled,
     Value<bool>? hideAmounts,
     Value<String>? bottomNavSlots,
     Value<bool>? showBottomNavLabels,
@@ -10929,6 +10993,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       lastAutoBackupAt: lastAutoBackupAt ?? this.lastAutoBackupAt,
       backupRetentionDays: backupRetentionDays ?? this.backupRetentionDays,
       preventScreenshots: preventScreenshots ?? this.preventScreenshots,
+      screenshotReminderEnabled:
+          screenshotReminderEnabled ?? this.screenshotReminderEnabled,
       hideAmounts: hideAmounts ?? this.hideAmounts,
       bottomNavSlots: bottomNavSlots ?? this.bottomNavSlots,
       showBottomNavLabels: showBottomNavLabels ?? this.showBottomNavLabels,
@@ -11102,6 +11168,11 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     if (preventScreenshots.present) {
       map['prevent_screenshots'] = Variable<bool>(preventScreenshots.value);
     }
+    if (screenshotReminderEnabled.present) {
+      map['screenshot_reminder_enabled'] = Variable<bool>(
+        screenshotReminderEnabled.value,
+      );
+    }
     if (hideAmounts.present) {
       map['hide_amounts'] = Variable<bool>(hideAmounts.value);
     }
@@ -11186,6 +11257,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('lastAutoBackupAt: $lastAutoBackupAt, ')
           ..write('backupRetentionDays: $backupRetentionDays, ')
           ..write('preventScreenshots: $preventScreenshots, ')
+          ..write('screenshotReminderEnabled: $screenshotReminderEnabled, ')
           ..write('hideAmounts: $hideAmounts, ')
           ..write('bottomNavSlots: $bottomNavSlots, ')
           ..write('showBottomNavLabels: $showBottomNavLabels, ')
@@ -17859,6 +17931,333 @@ class OcrCorrectionsCompanion extends UpdateCompanion<OcrCorrectionRow> {
   }
 }
 
+class $CreditCardDetailsTable extends CreditCardDetails
+    with TableInfo<$CreditCardDetailsTable, CreditCardDetailRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CreditCardDetailsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _accountIdMeta = const VerificationMeta(
+    'accountId',
+  );
+  @override
+  late final GeneratedColumn<int> accountId = GeneratedColumn<int>(
+    'account_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES accounts (id)',
+    ),
+  );
+  static const VerificationMeta _statementDayMeta = const VerificationMeta(
+    'statementDay',
+  );
+  @override
+  late final GeneratedColumn<int> statementDay = GeneratedColumn<int>(
+    'statement_day',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dueDayMeta = const VerificationMeta('dueDay');
+  @override
+  late final GeneratedColumn<int> dueDay = GeneratedColumn<int>(
+    'due_day',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _notifyDaysBeforeMeta = const VerificationMeta(
+    'notifyDaysBefore',
+  );
+  @override
+  late final GeneratedColumn<int> notifyDaysBefore = GeneratedColumn<int>(
+    'notify_days_before',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(3),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    accountId,
+    statementDay,
+    dueDay,
+    notifyDaysBefore,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'credit_card_details';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CreditCardDetailRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('account_id')) {
+      context.handle(
+        _accountIdMeta,
+        accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta),
+      );
+    }
+    if (data.containsKey('statement_day')) {
+      context.handle(
+        _statementDayMeta,
+        statementDay.isAcceptableOrUnknown(
+          data['statement_day']!,
+          _statementDayMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_statementDayMeta);
+    }
+    if (data.containsKey('due_day')) {
+      context.handle(
+        _dueDayMeta,
+        dueDay.isAcceptableOrUnknown(data['due_day']!, _dueDayMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dueDayMeta);
+    }
+    if (data.containsKey('notify_days_before')) {
+      context.handle(
+        _notifyDaysBeforeMeta,
+        notifyDaysBefore.isAcceptableOrUnknown(
+          data['notify_days_before']!,
+          _notifyDaysBeforeMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {accountId};
+  @override
+  CreditCardDetailRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CreditCardDetailRow(
+      accountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}account_id'],
+      )!,
+      statementDay: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}statement_day'],
+      )!,
+      dueDay: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}due_day'],
+      )!,
+      notifyDaysBefore: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}notify_days_before'],
+      )!,
+    );
+  }
+
+  @override
+  $CreditCardDetailsTable createAlias(String alias) {
+    return $CreditCardDetailsTable(attachedDatabase, alias);
+  }
+}
+
+class CreditCardDetailRow extends DataClass
+    implements Insertable<CreditCardDetailRow> {
+  final int accountId;
+
+  /// Day of the month the statement closes (1-31). Snapped to the last real
+  /// day of a shorter month, same rule a monthly [RecurringRules] rule uses.
+  final int statementDay;
+
+  /// Day of the month payment is due. Whether this falls in the same month
+  /// as the close or the next one is derived from comparing the two days,
+  /// not stored — see `AppDatabase.creditCardNextDueDate`.
+  final int dueDay;
+
+  /// How many days before the due date to notify — mirrors
+  /// [RecurringRules.notifyDaysBefore].
+  final int notifyDaysBefore;
+  const CreditCardDetailRow({
+    required this.accountId,
+    required this.statementDay,
+    required this.dueDay,
+    required this.notifyDaysBefore,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['account_id'] = Variable<int>(accountId);
+    map['statement_day'] = Variable<int>(statementDay);
+    map['due_day'] = Variable<int>(dueDay);
+    map['notify_days_before'] = Variable<int>(notifyDaysBefore);
+    return map;
+  }
+
+  CreditCardDetailsCompanion toCompanion(bool nullToAbsent) {
+    return CreditCardDetailsCompanion(
+      accountId: Value(accountId),
+      statementDay: Value(statementDay),
+      dueDay: Value(dueDay),
+      notifyDaysBefore: Value(notifyDaysBefore),
+    );
+  }
+
+  factory CreditCardDetailRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CreditCardDetailRow(
+      accountId: serializer.fromJson<int>(json['accountId']),
+      statementDay: serializer.fromJson<int>(json['statementDay']),
+      dueDay: serializer.fromJson<int>(json['dueDay']),
+      notifyDaysBefore: serializer.fromJson<int>(json['notifyDaysBefore']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'accountId': serializer.toJson<int>(accountId),
+      'statementDay': serializer.toJson<int>(statementDay),
+      'dueDay': serializer.toJson<int>(dueDay),
+      'notifyDaysBefore': serializer.toJson<int>(notifyDaysBefore),
+    };
+  }
+
+  CreditCardDetailRow copyWith({
+    int? accountId,
+    int? statementDay,
+    int? dueDay,
+    int? notifyDaysBefore,
+  }) => CreditCardDetailRow(
+    accountId: accountId ?? this.accountId,
+    statementDay: statementDay ?? this.statementDay,
+    dueDay: dueDay ?? this.dueDay,
+    notifyDaysBefore: notifyDaysBefore ?? this.notifyDaysBefore,
+  );
+  CreditCardDetailRow copyWithCompanion(CreditCardDetailsCompanion data) {
+    return CreditCardDetailRow(
+      accountId: data.accountId.present ? data.accountId.value : this.accountId,
+      statementDay: data.statementDay.present
+          ? data.statementDay.value
+          : this.statementDay,
+      dueDay: data.dueDay.present ? data.dueDay.value : this.dueDay,
+      notifyDaysBefore: data.notifyDaysBefore.present
+          ? data.notifyDaysBefore.value
+          : this.notifyDaysBefore,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CreditCardDetailRow(')
+          ..write('accountId: $accountId, ')
+          ..write('statementDay: $statementDay, ')
+          ..write('dueDay: $dueDay, ')
+          ..write('notifyDaysBefore: $notifyDaysBefore')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(accountId, statementDay, dueDay, notifyDaysBefore);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CreditCardDetailRow &&
+          other.accountId == this.accountId &&
+          other.statementDay == this.statementDay &&
+          other.dueDay == this.dueDay &&
+          other.notifyDaysBefore == this.notifyDaysBefore);
+}
+
+class CreditCardDetailsCompanion extends UpdateCompanion<CreditCardDetailRow> {
+  final Value<int> accountId;
+  final Value<int> statementDay;
+  final Value<int> dueDay;
+  final Value<int> notifyDaysBefore;
+  const CreditCardDetailsCompanion({
+    this.accountId = const Value.absent(),
+    this.statementDay = const Value.absent(),
+    this.dueDay = const Value.absent(),
+    this.notifyDaysBefore = const Value.absent(),
+  });
+  CreditCardDetailsCompanion.insert({
+    this.accountId = const Value.absent(),
+    required int statementDay,
+    required int dueDay,
+    this.notifyDaysBefore = const Value.absent(),
+  }) : statementDay = Value(statementDay),
+       dueDay = Value(dueDay);
+  static Insertable<CreditCardDetailRow> custom({
+    Expression<int>? accountId,
+    Expression<int>? statementDay,
+    Expression<int>? dueDay,
+    Expression<int>? notifyDaysBefore,
+  }) {
+    return RawValuesInsertable({
+      if (accountId != null) 'account_id': accountId,
+      if (statementDay != null) 'statement_day': statementDay,
+      if (dueDay != null) 'due_day': dueDay,
+      if (notifyDaysBefore != null) 'notify_days_before': notifyDaysBefore,
+    });
+  }
+
+  CreditCardDetailsCompanion copyWith({
+    Value<int>? accountId,
+    Value<int>? statementDay,
+    Value<int>? dueDay,
+    Value<int>? notifyDaysBefore,
+  }) {
+    return CreditCardDetailsCompanion(
+      accountId: accountId ?? this.accountId,
+      statementDay: statementDay ?? this.statementDay,
+      dueDay: dueDay ?? this.dueDay,
+      notifyDaysBefore: notifyDaysBefore ?? this.notifyDaysBefore,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (accountId.present) {
+      map['account_id'] = Variable<int>(accountId.value);
+    }
+    if (statementDay.present) {
+      map['statement_day'] = Variable<int>(statementDay.value);
+    }
+    if (dueDay.present) {
+      map['due_day'] = Variable<int>(dueDay.value);
+    }
+    if (notifyDaysBefore.present) {
+      map['notify_days_before'] = Variable<int>(notifyDaysBefore.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CreditCardDetailsCompanion(')
+          ..write('accountId: $accountId, ')
+          ..write('statementDay: $statementDay, ')
+          ..write('dueDay: $dueDay, ')
+          ..write('notifyDaysBefore: $notifyDaysBefore')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -17898,6 +18297,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $BackupRecordsTable backupRecords = $BackupRecordsTable(this);
   late final $AllocationsTable allocations = $AllocationsTable(this);
   late final $OcrCorrectionsTable ocrCorrections = $OcrCorrectionsTable(this);
+  late final $CreditCardDetailsTable creditCardDetails =
+      $CreditCardDetailsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -17932,6 +18333,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     backupRecords,
     allocations,
     ocrCorrections,
+    creditCardDetails,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -18198,6 +18600,30 @@ final class $$AccountsTableReferences
     ).filter((f) => f.accountId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_allocationsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$CreditCardDetailsTable, List<CreditCardDetailRow>>
+  _creditCardDetailsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.creditCardDetails,
+        aliasName: $_aliasNameGenerator(
+          db.accounts.id,
+          db.creditCardDetails.accountId,
+        ),
+      );
+
+  $$CreditCardDetailsTableProcessedTableManager get creditCardDetailsRefs {
+    final manager = $$CreditCardDetailsTableTableManager(
+      $_db,
+      $_db.creditCardDetails,
+    ).filter((f) => f.accountId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _creditCardDetailsRefsTable($_db),
+    );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -18556,6 +18982,31 @@ class $$AccountsTableFilterComposer
           }) => $$AllocationsTableFilterComposer(
             $db: $db,
             $table: $db.allocations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> creditCardDetailsRefs(
+    Expression<bool> Function($$CreditCardDetailsTableFilterComposer f) f,
+  ) {
+    final $$CreditCardDetailsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.creditCardDetails,
+      getReferencedColumn: (t) => t.accountId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CreditCardDetailsTableFilterComposer(
+            $db: $db,
+            $table: $db.creditCardDetails,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -19014,6 +19465,32 @@ class $$AccountsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> creditCardDetailsRefs<T extends Object>(
+    Expression<T> Function($$CreditCardDetailsTableAnnotationComposer a) f,
+  ) {
+    final $$CreditCardDetailsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.creditCardDetails,
+          getReferencedColumn: (t) => t.accountId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$CreditCardDetailsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.creditCardDetails,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$AccountsTableTableManager
@@ -19041,6 +19518,7 @@ class $$AccountsTableTableManager
             bool goalDetailsRefs,
             bool loanDetailsRefs,
             bool allocationsRefs,
+            bool creditCardDetailsRefs,
           })
         > {
   $$AccountsTableTableManager(_$AppDatabase db, $AccountsTable table)
@@ -19147,6 +19625,7 @@ class $$AccountsTableTableManager
                 goalDetailsRefs = false,
                 loanDetailsRefs = false,
                 allocationsRefs = false,
+                creditCardDetailsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -19161,6 +19640,7 @@ class $$AccountsTableTableManager
                     if (goalDetailsRefs) db.goalDetails,
                     if (loanDetailsRefs) db.loanDetails,
                     if (allocationsRefs) db.allocations,
+                    if (creditCardDetailsRefs) db.creditCardDetails,
                   ],
                   addJoins:
                       <
@@ -19406,6 +19886,27 @@ class $$AccountsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (creditCardDetailsRefs)
+                        await $_getPrefetchedData<
+                          AccountRow,
+                          $AccountsTable,
+                          CreditCardDetailRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$AccountsTableReferences
+                              ._creditCardDetailsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$AccountsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).creditCardDetailsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.accountId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -19438,6 +19939,7 @@ typedef $$AccountsTableProcessedTableManager =
         bool goalDetailsRefs,
         bool loanDetailsRefs,
         bool allocationsRefs,
+        bool creditCardDetailsRefs,
       })
     >;
 typedef $$CategoriesTableCreateCompanionBuilder =
@@ -28491,6 +28993,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<DateTime?> lastAutoBackupAt,
       Value<int> backupRetentionDays,
       Value<bool> preventScreenshots,
+      Value<bool> screenshotReminderEnabled,
       Value<bool> hideAmounts,
       Value<String> bottomNavSlots,
       Value<bool> showBottomNavLabels,
@@ -28548,6 +29051,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<DateTime?> lastAutoBackupAt,
       Value<int> backupRetentionDays,
       Value<bool> preventScreenshots,
+      Value<bool> screenshotReminderEnabled,
       Value<bool> hideAmounts,
       Value<String> bottomNavSlots,
       Value<bool> showBottomNavLabels,
@@ -28811,6 +29315,11 @@ class $$SettingsTableFilterComposer
 
   ColumnFilters<bool> get preventScreenshots => $composableBuilder(
     column: $table.preventScreenshots,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get screenshotReminderEnabled => $composableBuilder(
+    column: $table.screenshotReminderEnabled,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -29112,6 +29621,11 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get screenshotReminderEnabled => $composableBuilder(
+    column: $table.screenshotReminderEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get hideAmounts => $composableBuilder(
     column: $table.hideAmounts,
     builder: (column) => ColumnOrderings(column),
@@ -29394,6 +29908,11 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get screenshotReminderEnabled => $composableBuilder(
+    column: $table.screenshotReminderEnabled,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get hideAmounts => $composableBuilder(
     column: $table.hideAmounts,
     builder: (column) => column,
@@ -29541,6 +30060,7 @@ class $$SettingsTableTableManager
                 Value<DateTime?> lastAutoBackupAt = const Value.absent(),
                 Value<int> backupRetentionDays = const Value.absent(),
                 Value<bool> preventScreenshots = const Value.absent(),
+                Value<bool> screenshotReminderEnabled = const Value.absent(),
                 Value<bool> hideAmounts = const Value.absent(),
                 Value<String> bottomNavSlots = const Value.absent(),
                 Value<bool> showBottomNavLabels = const Value.absent(),
@@ -29596,6 +30116,7 @@ class $$SettingsTableTableManager
                 lastAutoBackupAt: lastAutoBackupAt,
                 backupRetentionDays: backupRetentionDays,
                 preventScreenshots: preventScreenshots,
+                screenshotReminderEnabled: screenshotReminderEnabled,
                 hideAmounts: hideAmounts,
                 bottomNavSlots: bottomNavSlots,
                 showBottomNavLabels: showBottomNavLabels,
@@ -29654,6 +30175,7 @@ class $$SettingsTableTableManager
                 Value<DateTime?> lastAutoBackupAt = const Value.absent(),
                 Value<int> backupRetentionDays = const Value.absent(),
                 Value<bool> preventScreenshots = const Value.absent(),
+                Value<bool> screenshotReminderEnabled = const Value.absent(),
                 Value<bool> hideAmounts = const Value.absent(),
                 Value<String> bottomNavSlots = const Value.absent(),
                 Value<bool> showBottomNavLabels = const Value.absent(),
@@ -29709,6 +30231,7 @@ class $$SettingsTableTableManager
                 lastAutoBackupAt: lastAutoBackupAt,
                 backupRetentionDays: backupRetentionDays,
                 preventScreenshots: preventScreenshots,
+                screenshotReminderEnabled: screenshotReminderEnabled,
                 hideAmounts: hideAmounts,
                 bottomNavSlots: bottomNavSlots,
                 showBottomNavLabels: showBottomNavLabels,
@@ -35742,6 +36265,320 @@ typedef $$OcrCorrectionsTableProcessedTableManager =
       OcrCorrectionRow,
       PrefetchHooks Function()
     >;
+typedef $$CreditCardDetailsTableCreateCompanionBuilder =
+    CreditCardDetailsCompanion Function({
+      Value<int> accountId,
+      required int statementDay,
+      required int dueDay,
+      Value<int> notifyDaysBefore,
+    });
+typedef $$CreditCardDetailsTableUpdateCompanionBuilder =
+    CreditCardDetailsCompanion Function({
+      Value<int> accountId,
+      Value<int> statementDay,
+      Value<int> dueDay,
+      Value<int> notifyDaysBefore,
+    });
+
+final class $$CreditCardDetailsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $CreditCardDetailsTable,
+          CreditCardDetailRow
+        > {
+  $$CreditCardDetailsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $AccountsTable _accountIdTable(_$AppDatabase db) =>
+      db.accounts.createAlias(
+        $_aliasNameGenerator(db.creditCardDetails.accountId, db.accounts.id),
+      );
+
+  $$AccountsTableProcessedTableManager get accountId {
+    final $_column = $_itemColumn<int>('account_id')!;
+
+    final manager = $$AccountsTableTableManager(
+      $_db,
+      $_db.accounts,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_accountIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$CreditCardDetailsTableFilterComposer
+    extends Composer<_$AppDatabase, $CreditCardDetailsTable> {
+  $$CreditCardDetailsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get statementDay => $composableBuilder(
+    column: $table.statementDay,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get dueDay => $composableBuilder(
+    column: $table.dueDay,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get notifyDaysBefore => $composableBuilder(
+    column: $table.notifyDaysBefore,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$AccountsTableFilterComposer get accountId {
+    final $$AccountsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.accountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableFilterComposer(
+            $db: $db,
+            $table: $db.accounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$CreditCardDetailsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CreditCardDetailsTable> {
+  $$CreditCardDetailsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get statementDay => $composableBuilder(
+    column: $table.statementDay,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get dueDay => $composableBuilder(
+    column: $table.dueDay,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get notifyDaysBefore => $composableBuilder(
+    column: $table.notifyDaysBefore,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$AccountsTableOrderingComposer get accountId {
+    final $$AccountsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.accountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableOrderingComposer(
+            $db: $db,
+            $table: $db.accounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$CreditCardDetailsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CreditCardDetailsTable> {
+  $$CreditCardDetailsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get statementDay => $composableBuilder(
+    column: $table.statementDay,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get dueDay =>
+      $composableBuilder(column: $table.dueDay, builder: (column) => column);
+
+  GeneratedColumn<int> get notifyDaysBefore => $composableBuilder(
+    column: $table.notifyDaysBefore,
+    builder: (column) => column,
+  );
+
+  $$AccountsTableAnnotationComposer get accountId {
+    final $$AccountsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.accountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.accounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$CreditCardDetailsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CreditCardDetailsTable,
+          CreditCardDetailRow,
+          $$CreditCardDetailsTableFilterComposer,
+          $$CreditCardDetailsTableOrderingComposer,
+          $$CreditCardDetailsTableAnnotationComposer,
+          $$CreditCardDetailsTableCreateCompanionBuilder,
+          $$CreditCardDetailsTableUpdateCompanionBuilder,
+          (CreditCardDetailRow, $$CreditCardDetailsTableReferences),
+          CreditCardDetailRow,
+          PrefetchHooks Function({bool accountId})
+        > {
+  $$CreditCardDetailsTableTableManager(
+    _$AppDatabase db,
+    $CreditCardDetailsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CreditCardDetailsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CreditCardDetailsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CreditCardDetailsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> accountId = const Value.absent(),
+                Value<int> statementDay = const Value.absent(),
+                Value<int> dueDay = const Value.absent(),
+                Value<int> notifyDaysBefore = const Value.absent(),
+              }) => CreditCardDetailsCompanion(
+                accountId: accountId,
+                statementDay: statementDay,
+                dueDay: dueDay,
+                notifyDaysBefore: notifyDaysBefore,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> accountId = const Value.absent(),
+                required int statementDay,
+                required int dueDay,
+                Value<int> notifyDaysBefore = const Value.absent(),
+              }) => CreditCardDetailsCompanion.insert(
+                accountId: accountId,
+                statementDay: statementDay,
+                dueDay: dueDay,
+                notifyDaysBefore: notifyDaysBefore,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$CreditCardDetailsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({accountId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (accountId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.accountId,
+                                referencedTable:
+                                    $$CreditCardDetailsTableReferences
+                                        ._accountIdTable(db),
+                                referencedColumn:
+                                    $$CreditCardDetailsTableReferences
+                                        ._accountIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$CreditCardDetailsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CreditCardDetailsTable,
+      CreditCardDetailRow,
+      $$CreditCardDetailsTableFilterComposer,
+      $$CreditCardDetailsTableOrderingComposer,
+      $$CreditCardDetailsTableAnnotationComposer,
+      $$CreditCardDetailsTableCreateCompanionBuilder,
+      $$CreditCardDetailsTableUpdateCompanionBuilder,
+      (CreditCardDetailRow, $$CreditCardDetailsTableReferences),
+      CreditCardDetailRow,
+      PrefetchHooks Function({bool accountId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -35803,4 +36640,6 @@ class $AppDatabaseManager {
       $$AllocationsTableTableManager(_db, _db.allocations);
   $$OcrCorrectionsTableTableManager get ocrCorrections =>
       $$OcrCorrectionsTableTableManager(_db, _db.ocrCorrections);
+  $$CreditCardDetailsTableTableManager get creditCardDetails =>
+      $$CreditCardDetailsTableTableManager(_db, _db.creditCardDetails);
 }

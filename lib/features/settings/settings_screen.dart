@@ -50,6 +50,9 @@ class SettingsScreen extends ConsumerWidget {
       masterPhraseAttemptThresholdProvider,
     );
     final preventScreenshots = ref.watch(preventScreenshotsProvider);
+    final screenshotReminderEnabled = ref.watch(
+      screenshotReminderEnabledProvider,
+    );
     final showCalendarDayTotals = ref.watch(showCalendarDayTotalsProvider);
     final expenseReminder = ref.watch(expenseReminderProvider);
     final notificationQuickAddEnabled = ref.watch(
@@ -610,6 +613,23 @@ class SettingsScreen extends ConsumerWidget {
                   value: preventScreenshots,
                   onChanged: (v) =>
                       ref.read(dbProvider).setPreventScreenshots(v),
+                ),
+                Divider(height: 1, indent: 60, color: cs.outline),
+                SwitchListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  secondary: const Icon(Icons.visibility_outlined),
+                  title: const Text('Remind when screenshots are allowed'),
+                  subtitle: Text(
+                    'A small tag in the corner whenever "Block screenshots" '
+                    "is off — easy to forget it's still off. Off by default, "
+                    "so leaving it off on purpose isn't disturbed.",
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  value: screenshotReminderEnabled,
+                  onChanged: (v) =>
+                      ref.read(dbProvider).setScreenshotReminderEnabled(v),
                 ),
               ],
             ),

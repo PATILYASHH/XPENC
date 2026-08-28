@@ -356,6 +356,41 @@ void main() {
     await unmount(tester);
   });
 
+  testWidgets(
+    'Account detail: a credit card can turn on statement & due-date '
+    'tracking (GitHub #91)',
+    (tester) async {
+      late int card;
+      await tester.runAsync(() async => card = (await seed()).card);
+      await pump(tester, AccountDetailScreen(accountId: card));
+      expect(tester.takeException(), isNull);
+      expect(find.text('Track statement & due date'), findsOneWidget);
+
+      await tester.tap(find.text('Track statement & due date'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.takeException(), isNull);
+
+      // Accept the dialog's defaults rather than driving the native date
+      // picker — that calendar UI is a Flutter framework widget, not
+      // something this feature adds.
+      await tester.tap(find.text('Save'));
+      await tester.pump();
+      // The dialog's own closing animation runs across several frames.
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 200)),
+      );
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+
+      expect(find.text('Current statement period'), findsOneWidget);
+      expect(find.text('Payment due'), findsOneWidget);
+      expect(find.text('You currently owe'), findsOneWidget);
+      await unmount(tester);
+    },
+  );
+
   testWidgets('Account detail: a missing account shows an error, not a crash', (
     tester,
   ) async {
@@ -592,6 +627,48 @@ void main() {
       await tester.runAsync(() async {
         final settings = await db.getSettings();
         expect(settings.myUpiId, 'me@okhdfcbank');
+      });
+      await unmount(tester);
+    },
+  );
+
+  testWidgets(
+    'Settings: the screenshot reminder toggle defaults off and persists '
+    'when switched (GitHub #90)',
+    (tester) async {
+      await pump(tester, const SettingsScreen());
+      expect(tester.takeException(), isNull);
+
+      await tester.scrollUntilVisible(
+        find.text('Remind when screenshots are allowed'),
+        300,
+      );
+      await tester.ensureVisible(
+        find.text('Remind when screenshots are allowed'),
+      );
+      await tester.pump();
+
+      final switchFinder = find.widgetWithText(
+        SwitchListTile,
+        'Remind when screenshots are allowed',
+      );
+      expect(
+        tester.widget<SwitchListTile>(switchFinder).value,
+        isFalse,
+        reason: 'opt-in, not a default nag (GitHub #90)',
+      );
+
+      await tester.tap(switchFinder);
+      await tester.pump();
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 200)),
+      );
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+
+      await tester.runAsync(() async {
+        final settings = await db.getSettings();
+        expect(settings.screenshotReminderEnabled, isTrue);
       });
       await unmount(tester);
     },

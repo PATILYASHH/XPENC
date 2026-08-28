@@ -12,6 +12,7 @@ import '../../core/widgets/statement_range_picker.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import 'credit_card_statement_section.dart';
 import 'envelope_section.dart';
 
 /// One account's balance, context and full history.
@@ -102,6 +103,11 @@ class _AccountDetailView extends ConsumerWidget {
           // own — there is no money on it to give a job to.
           if (account.linkedAccountId == null)
             SliverToBoxAdapter(child: EnvelopeSection(account: account)),
+          if (account.type == AccountType.card &&
+              account.cardKind == CardKind.credit)
+            SliverToBoxAdapter(
+              child: CreditCardStatementSection(account: account),
+            ),
           ..._historySlivers(
             context: context,
             txAsync: txAsync,

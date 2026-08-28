@@ -709,6 +709,14 @@ final preventScreenshotsProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.preventScreenshots ?? false;
 });
 
+/// Whether a small on-screen reminder shows whenever [preventScreenshotsProvider]
+/// is off. Off by default — opt-in, since leaving screenshot-blocking off can
+/// be a deliberate choice, not an oversight (GitHub #90).
+final screenshotReminderEnabledProvider = Provider<bool>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.screenshotReminderEnabled ??
+      false;
+});
+
 /// Whether a master recovery phrase is set — the switch the lock screen
 /// checks alongside [failedPasscodeAttemptsProvider] (GitHub #74).
 final hasMasterPhraseProvider = Provider<bool>((ref) {
@@ -1094,6 +1102,44 @@ final loanProgressProvider = Provider.family<LoanProgress?, int>((
   if (detail == null || account == null) return null;
   return _loanProgressOf(account, detail);
 });
+
+// ── Credit card statements (GitHub #91) ─────────────────────────────────────
+
+/// `null` means the card isn't tracking a statement cycle.
+final creditCardDetailsProvider =
+    StreamProvider.family<CreditCardDetailRow?, int>(
+      (ref, accountId) =>
+          ref.watch(dbProvider).watchCreditCardDetails(accountId),
+    );
+
+/// The next payment-due date for a tracked card, recomputed live off
+/// whatever "today" is — `null` means the card isn't tracking a cycle.
+final creditCardNextDueDateProvider = Provider.family<DateTime?, int>((
+  ref,
+  accountId,
+) {
+  final detail = ref.watch(creditCardDetailsProvider(accountId)).valueOrNull;
+  if (detail == null) return null;
+  return AppDatabase.creditCardNextDueDate(
+    today: DateTime.now(),
+    statementDay: detail.statementDay,
+    dueDay: detail.dueDay,
+  );
+});
+
+/// The statement period currently accumulating charges — `null` means the
+/// card isn't tracking a cycle.
+final creditCardStatementPeriodProvider =
+    Provider.family<({DateTime start, DateTime end})?, int>((ref, accountId) {
+      final detail = ref
+          .watch(creditCardDetailsProvider(accountId))
+          .valueOrNull;
+      if (detail == null) return null;
+      return AppDatabase.creditCardStatementPeriod(
+        today: DateTime.now(),
+        statementDay: detail.statementDay,
+      );
+    });
 
 LoanProgress _loanProgressOf(AccountRow account, LoanDetailRow detail) {
   final principal = Money.fromPaise(-account.openingBalance.paise);

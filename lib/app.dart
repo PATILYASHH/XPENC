@@ -81,6 +81,7 @@ class _XpencAppState extends ConsumerState<XpencApp>
     final notifications = ref.read(notificationServiceProvider);
     await notifications.init();
     await notifications.syncReminders();
+    await notifications.syncCreditCardReminders();
     await notifications.syncExpenseReminder();
     await notifications.syncQuickAddNotification();
 
@@ -103,6 +104,10 @@ class _XpencAppState extends ConsumerState<XpencApp>
     if (!mounted) return;
     final notifications = ref.read(notificationServiceProvider);
     await notifications.syncRecurringNotifications();
+    // Recomputed fresh from today on every call, so a long-lived session
+    // that resumes across a month boundary still points at the right due
+    // date, not whatever was true at cold start (GitHub #91).
+    await notifications.syncCreditCardReminders();
     if (posted > 0) await notifications.notifyAutoPosted(posted);
   }
 
@@ -334,6 +339,19 @@ class _XpencAppState extends ConsumerState<XpencApp>
                       : Stack(
                           children: [
                             ?child,
+                            // Opt-in (GitHub #90) — someone who deliberately
+                            // leaves screenshot-blocking off made that choice
+                            // on purpose and shouldn't be nagged about it
+                            // unless they ask to be. Never over the lock
+                            // screen either: nothing sensitive is on it.
+                            if (!_locked &&
+                                !ref.watch(preventScreenshotsProvider) &&
+                                ref.watch(screenshotReminderEnabledProvider))
+                              const Positioned(
+                                left: 12,
+                                bottom: 12,
+                                child: _ScreenshotAllowedTag(),
+                              ),
                             if (_locked)
                               Positioned.fill(
                                 child: LockScreen(
@@ -349,6 +367,30 @@ class _XpencAppState extends ConsumerState<XpencApp>
           ),
         );
       },
+    );
+  }
+}
+
+/// A small, easy-to-ignore reminder that screenshots aren't blocked right
+/// now — opt-in via Settings → Security (GitHub #90), for anyone who wants
+/// the nudge after forgetting to turn "Block screenshots" back on. Tapping
+/// it jumps straight to that setting.
+class _ScreenshotAllowedTag extends StatelessWidget {
+  const _ScreenshotAllowedTag();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SafeArea(
+      child: GestureDetector(
+        onTap: () => appRouter.push('/more/settings'),
+        child: Text(
+          'Screenshots allowed',
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
+          ),
+        ),
+      ),
     );
   }
 }
