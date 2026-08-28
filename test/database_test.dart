@@ -344,6 +344,209 @@ void main() {
     );
   });
 
+  group('creditCardNextDueDate — GitHub #91', () {
+    test('due date in the same month as the close (dueDay > statementDay)', () {
+      // Close on the 5th, due on the 25th — same month.
+      expect(
+        AppDatabase.creditCardNextDueDate(
+          today: DateTime(2026, 7, 1),
+          statementDay: 5,
+          dueDay: 25,
+        ),
+        DateTime(2026, 7, 25),
+        reason: "before this month's close, still due the 25th",
+      );
+      expect(
+        AppDatabase.creditCardNextDueDate(
+          today: DateTime(2026, 7, 10),
+          statementDay: 5,
+          dueDay: 25,
+        ),
+        DateTime(2026, 7, 25),
+        reason: "after the close but before the due date, unchanged",
+      );
+      expect(
+        AppDatabase.creditCardNextDueDate(
+          today: DateTime(2026, 7, 26),
+          statementDay: 5,
+          dueDay: 25,
+        ),
+        DateTime(2026, 8, 25),
+        reason: 'past this due date — rolls to next month',
+      );
+    });
+
+    test(
+      'due date in the month after the close (dueDay <= statementDay)',
+      () {
+        // Close on the 28th, due on the 20th of the *following* month.
+        expect(
+          AppDatabase.creditCardNextDueDate(
+            today: DateTime(2026, 7, 1),
+            statementDay: 28,
+            dueDay: 20,
+          ),
+          DateTime(2026, 7, 20),
+          reason: "the June 28th close's bill is due July 20th",
+        );
+        expect(
+          AppDatabase.creditCardNextDueDate(
+            today: DateTime(2026, 7, 21),
+            statementDay: 28,
+            dueDay: 20,
+          ),
+          DateTime(2026, 8, 20),
+          reason: "past July 20th — the July 28th close is due August 20th",
+        );
+      },
+    );
+
+    test('snaps to month-end in a shorter month', () {
+      expect(
+        AppDatabase.creditCardNextDueDate(
+          today: DateTime(2026, 2, 1),
+          statementDay: 31,
+          dueDay: 15,
+        ),
+        DateTime(2026, 2, 15),
+        reason: "the 31st snaps to Feb 28th (2026 is not a leap year), due "
+            'the 15th of the following month',
+      );
+    });
+
+    test('rolls over the year boundary', () {
+      expect(
+        AppDatabase.creditCardNextDueDate(
+          today: DateTime(2026, 12, 20),
+          statementDay: 28,
+          dueDay: 15,
+        ),
+        DateTime(2027, 1, 15),
+      );
+    });
+  });
+
+  group('creditCardStatementPeriod — GitHub #91', () {
+    test('spans the day after the last close through the next one', () {
+      final period = AppDatabase.creditCardStatementPeriod(
+        today: DateTime(2026, 7, 10),
+        statementDay: 5,
+      );
+      expect(period.start, DateTime(2026, 7, 6));
+      expect(period.end, DateTime(2026, 8, 5));
+    });
+
+    test("today before this month's close ends the period this month", () {
+      final period = AppDatabase.creditCardStatementPeriod(
+        today: DateTime(2026, 7, 1),
+        statementDay: 5,
+      );
+      expect(period.start, DateTime(2026, 6, 6));
+      expect(period.end, DateTime(2026, 7, 5));
+    });
+  });
+
+  group('CreditCardDetails — statement/due-date tracking (GitHub #91)', () {
+    Future<int> creditCard() => db.addAccount(
+      name: 'Yes Bank Credit Card',
+      type: AccountType.card,
+      cardKind: CardKind.credit,
+      colorValue: 0,
+      iconKey: 'card',
+      openingBalance: const Money.zero(),
+    );
+
+    test('upsertCreditCardDetails saves and can be watched', () async {
+      final card = await creditCard();
+      await db.upsertCreditCardDetails(
+        accountId: card,
+        statementDay: 5,
+        dueDay: 25,
+      );
+
+      final detail = await db.getCreditCardDetails(card);
+      expect(detail, isNotNull);
+      expect(detail!.statementDay, 5);
+      expect(detail.dueDay, 25);
+      expect(detail.notifyDaysBefore, 3, reason: 'the default');
+    });
+
+    test('upserting again updates in place rather than duplicating', () async {
+      final card = await creditCard();
+      await db.upsertCreditCardDetails(
+        accountId: card,
+        statementDay: 5,
+        dueDay: 25,
+      );
+      await db.upsertCreditCardDetails(
+        accountId: card,
+        statementDay: 10,
+        dueDay: 28,
+        notifyDaysBefore: 5,
+      );
+
+      expect(await db.allCreditCardDetails(), hasLength(1));
+      final detail = await db.getCreditCardDetails(card);
+      expect(detail!.statementDay, 10);
+      expect(detail.dueDay, 28);
+      expect(detail.notifyDaysBefore, 5);
+    });
+
+    test('rejects a day outside 1-31', () async {
+      final card = await creditCard();
+      expect(
+        () => db.upsertCreditCardDetails(
+          accountId: card,
+          statementDay: 0,
+          dueDay: 25,
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => db.upsertCreditCardDetails(
+          accountId: card,
+          statementDay: 5,
+          dueDay: 32,
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('rejects an account that is not a credit card', () async {
+      final cash = await cashId();
+      expect(
+        () => db.upsertCreditCardDetails(
+          accountId: cash,
+          statementDay: 5,
+          dueDay: 25,
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('deleteCreditCardDetails turns tracking back off', () async {
+      final card = await creditCard();
+      await db.upsertCreditCardDetails(
+        accountId: card,
+        statementDay: 5,
+        dueDay: 25,
+      );
+      await db.deleteCreditCardDetails(card);
+      expect(await db.getCreditCardDetails(card), isNull);
+    });
+
+    test('deleting the account cleans up its statement details too', () async {
+      final card = await creditCard();
+      await db.upsertCreditCardDetails(
+        accountId: card,
+        statementDay: 5,
+        dueDay: 25,
+      );
+      await db.deleteAccount(card);
+      expect(await db.allCreditCardDetails(), isEmpty);
+    });
+  });
+
   group('prepaid balance — a normal spending account', () {
     test(
       'starting balance loads positive and counts toward net worth',

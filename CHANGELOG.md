@@ -55,6 +55,18 @@ tagged or released.
 - **Rename an account** (#88) — long-press an account for a "Rename" option,
   next to Archive and Remove. Previously the name could only ever be set
   once, at creation.
+- **Screenshot reminder** (#90) — Settings → Security → "Remind when
+  screenshots are allowed" (off by default) shows a small tag in the
+  corner whenever "Block screenshots" is off, so it's harder to forget it's
+  still off after taking a screenshot on purpose. Opt-in on purpose:
+  leaving screenshot-blocking off can be a deliberate choice, not an
+  oversight, and this never nags anyone who didn't ask for the reminder.
+- **Credit card statement & due-date tracker** (#91) — a credit card's own
+  page can now track its billing cycle: set the statement close day and
+  payment due day, and it shows the current statement period, the next due
+  date and how many days are left, plus a reminder notification before the
+  due date. Entirely opt-in per card; turning it off only forgets the
+  cycle, never touches the card itself.
 
 ### Changed
 - **Dashboard: "Investment" tab renamed to "Savings"** (#79) — the hero

@@ -144,6 +144,7 @@ typedef CombinedStatementLine = ({
     BackupRecords,
     Allocations,
     OcrCorrections,
+    CreditCardDetails,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -169,7 +170,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 52;
+  int get schemaVersion => 54;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -426,6 +427,16 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 52) {
         await _addColumnIfMissing(m, settings, settings.lockScreenStyle);
+      }
+      if (from < 53) {
+        await _addColumnIfMissing(
+          m,
+          settings,
+          settings.screenshotReminderEnabled,
+        );
+      }
+      if (from < 54) {
+        await m.createTable(creditCardDetails);
       }
     },
     beforeOpen: (details) async {
@@ -736,6 +747,7 @@ class AppDatabase extends _$AppDatabase {
     await delete(transactionSplits).go();
     await delete(transactionTags).go();
     await delete(goalDetails).go();
+    await delete(creditCardDetails).go();
     await delete(shoppingItems).go();
     await delete(shoppingLists).go();
     // transactions references accounts/categories/persons/recurringRules,
@@ -1502,6 +1514,127 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
+  // ── Credit card statements (GitHub #91) ─────────────────────────────────
+
+  Future<CreditCardDetailRow?> getCreditCardDetails(int accountId) =>
+      (select(
+        creditCardDetails,
+      )..where((c) => c.accountId.equals(accountId))).getSingleOrNull();
+
+  Stream<CreditCardDetailRow?> watchCreditCardDetails(int accountId) =>
+      (select(
+        creditCardDetails,
+      )..where((c) => c.accountId.equals(accountId))).watchSingleOrNull();
+
+  /// Every credit card currently tracking a statement cycle — what
+  /// [NotificationService.syncCreditCardReminders] schedules a due-date
+  /// notification for on every app open/resume.
+  Future<List<CreditCardDetailRow>> allCreditCardDetails() =>
+      select(creditCardDetails).get();
+
+  /// Turns statement/due-date tracking on (or updates it) for a credit card
+  /// account. [accountId] must already be a [CardKind.credit] account —
+  /// this never creates the account itself, unlike [addLoan].
+  Future<void> upsertCreditCardDetails({
+    required int accountId,
+    required int statementDay,
+    required int dueDay,
+    int notifyDaysBefore = 3,
+  }) async {
+    if (statementDay < 1 || statementDay > 31 || dueDay < 1 || dueDay > 31) {
+      throw ArgumentError('Pick a day between 1 and 31.');
+    }
+    final account = await (select(
+      accounts,
+    )..where((a) => a.id.equals(accountId))).getSingleOrNull();
+    if (account == null ||
+        account.type != AccountType.card ||
+        account.cardKind != CardKind.credit) {
+      throw ArgumentError('Only a credit card can track a statement cycle.');
+    }
+    await into(creditCardDetails).insertOnConflictUpdate(
+      CreditCardDetailsCompanion.insert(
+        accountId: Value(accountId),
+        statementDay: statementDay,
+        dueDay: dueDay,
+        notifyDaysBefore: Value(notifyDaysBefore),
+      ),
+    );
+  }
+
+  /// Turns tracking back off — the card itself is untouched, only the
+  /// cycle it was reporting against.
+  Future<void> deleteCreditCardDetails(int accountId) =>
+      (delete(
+        creditCardDetails,
+      )..where((c) => c.accountId.equals(accountId))).go();
+
+  /// The last real day of [year]/[month] if [day] overshoots it (e.g. the
+  /// 31st in a 30-day month) — the same snapping [_nextOccurrence] applies
+  /// to a monthly [RecurringRules] rule.
+  static DateTime _snappedDayInMonth(int year, int month, int day) {
+    var y = year;
+    var m = month;
+    while (m > 12) {
+      m -= 12;
+      y++;
+    }
+    while (m < 1) {
+      m += 12;
+      y--;
+    }
+    final lastDay = DateTime(y, m + 1, 0).day;
+    return DateTime(y, m, day > lastDay ? lastDay : day);
+  }
+
+  /// The current open statement period as of [today] — from the day after
+  /// the last close through the upcoming (or just-passed-today) close.
+  static ({DateTime start, DateTime end}) creditCardStatementPeriod({
+    required DateTime today,
+    required int statementDay,
+  }) {
+    final day = DateTime(today.year, today.month, today.day);
+    var end = _snappedDayInMonth(day.year, day.month, statementDay);
+    if (end.isBefore(day)) {
+      end = _snappedDayInMonth(day.year, day.month + 1, statementDay);
+    }
+    final start = _snappedDayInMonth(
+      end.year,
+      end.month - 1,
+      statementDay,
+    ).add(const Duration(days: 1));
+    return (start: start, end: end);
+  }
+
+  /// The next date payment is due, as of [today]. Whether the due date
+  /// lands in the same month as a statement close or the month after is
+  /// derived by comparing the two days-of-month, not stored: if [dueDay]
+  /// comes after [statementDay] within a month, the bill is due that same
+  /// month; otherwise it rolls into the next one (e.g. close on the 28th,
+  /// due on the 20th means the 20th *after* that close, not before it).
+  static DateTime creditCardNextDueDate({
+    required DateTime today,
+    required int statementDay,
+    required int dueDay,
+  }) {
+    final day = DateTime(today.year, today.month, today.day);
+    // Two cycles back is always enough headroom to find the first due date
+    // on or after `day`, whatever statementDay/dueDay turn out to be.
+    var closeYear = day.year;
+    var closeMonth = day.month - 2;
+    while (true) {
+      final close = _snappedDayInMonth(closeYear, closeMonth, statementDay);
+      final dueMonthOffset = dueDay > statementDay ? 0 : 1;
+      final due = _snappedDayInMonth(
+        close.year,
+        close.month + dueMonthOffset,
+        dueDay,
+      );
+      if (!due.isBefore(day)) return due;
+      closeMonth++;
+    }
+  }
+
   /// One-time correction for a goal whose "saved so far" figure is wrong,
   /// not a general balance editor — [updateGoal] above still holds for
   /// everything else ("only a transfer" touches a goal's balance).
@@ -2202,8 +2335,12 @@ class AppDatabase extends _$AppDatabase {
     }
     await transaction(() async {
       // A goal account's own target/deadline row has no reason to outlive
-      // it — nothing else ever references GoalDetails.
+      // it — nothing else ever references GoalDetails. Same for a credit
+      // card's statement-tracking row.
       await (delete(goalDetails)..where((g) => g.accountId.equals(id))).go();
+      await (delete(
+        creditCardDetails,
+      )..where((c) => c.accountId.equals(id))).go();
       await (delete(accounts)..where((a) => a.id.equals(id))).go();
     });
   }
@@ -3700,6 +3837,10 @@ class AppDatabase extends _$AppDatabase {
     settings,
   ).write(SettingsCompanion(preventScreenshots: Value(value)));
 
+  Future<void> setScreenshotReminderEnabled(bool value) => update(
+    settings,
+  ).write(SettingsCompanion(screenshotReminderEnabled: Value(value)));
+
   /// A no-op when no passcode is set — same guard as [setBiometricEnabled];
   /// a timeout means nothing without a lock to defer.
   Future<void> setPinTimeoutMinutes(int minutes) async {
@@ -4513,6 +4654,9 @@ class AppDatabase extends _$AppDatabase {
         transactionLinks,
       ).get()).map(m).toList(),
       'goalDetails': (await select(goalDetails).get()).map(m).toList(),
+      'creditCardDetails': (await select(
+        creditCardDetails,
+      ).get()).map(m).toList(),
       'allocations': (await select(allocations).get()).map(m).toList(),
       'shoppingLists': (await select(shoppingLists).get()).map(m).toList(),
       'shoppingItems': (await select(shoppingItems).get()).map(m).toList(),
@@ -4589,6 +4733,7 @@ class AppDatabase extends _$AppDatabase {
       await delete(allocations).go();
       // References accounts, so it goes before that delete too.
       await delete(goalDetails).go();
+      await delete(creditCardDetails).go();
       await delete(transactions).go();
       // References recurringRules and tags, so it goes before both deletes.
       await delete(recurringRuleTags).go();
@@ -4656,6 +4801,9 @@ class AppDatabase extends _$AppDatabase {
           );
         }
       }
+      // References accounts, already loaded above. An older backup simply
+      // has no rows for it, so `rows()` yields nothing.
+      await load(creditCardDetails, 'creditCardDetails');
       await load(shoppingLists, 'shoppingLists');
       // Before `transactions`, whose `recurringRuleId` references it — and an
       // older backup simply has no rows for it, so `rows()` yields nothing.

@@ -85,6 +85,7 @@ void main() {
       cashappEnabled: true,
       revolutEnabled: true,
       lockScreenStyle: LockScreenStyle.classic,
+      screenshotReminderEnabled: false,
     );
 
     final now = DateTime(2026, 8, 5, 12);

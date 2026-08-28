@@ -306,6 +306,26 @@ void main() {
         date: DateTime(2026, 7, 6),
       );
 
+      // Credit card statement/due-date tracking (GitHub #91).
+      // `seedRealisticData` above already added a "Yes Bank Credit Card",
+      // so this one gets its own distinct name — otherwise the two
+      // same-named accounts make `firstWhere` below ambiguous about which
+      // one actually has statement details attached.
+      final creditCard = await db.addAccount(
+        name: 'HDFC Credit Card',
+        type: AccountType.card,
+        cardKind: CardKind.credit,
+        colorValue: 0xFF442200,
+        iconKey: 'card',
+        openingBalance: const Money.zero(),
+      );
+      await db.upsertCreditCardDetails(
+        accountId: creditCard,
+        statementDay: 5,
+        dueDay: 25,
+        notifyDaysBefore: 2,
+      );
+
       // Archived account and archived person must survive, not just active
       // ones.
       final archivedAccId = await db.addAccount(
@@ -398,6 +418,15 @@ void main() {
           .watchGoalDetail(freshGoalAccount.id)
           .first;
       expect(freshGoalDetail?.targetAmount, Money.fromRupees(20000));
+
+      // Credit card statement/due-date tracking.
+      final freshCard = (await fresh.watchAccounts().first).firstWhere(
+        (a) => a.name == 'HDFC Credit Card',
+      );
+      final freshCardDetail = await fresh.getCreditCardDetails(freshCard.id);
+      expect(freshCardDetail?.statementDay, 5);
+      expect(freshCardDetail?.dueDay, 25);
+      expect(freshCardDetail?.notifyDaysBefore, 2);
 
       // Archived account and person.
       final freshArchivedAccounts = await fresh.watchArchivedAccounts().first;
