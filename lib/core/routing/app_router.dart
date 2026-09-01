@@ -12,6 +12,7 @@ import '../../features/auto/archived_auto_rules_screen.dart';
 import '../../features/auto/auto_screen.dart';
 import '../../features/budgets/budget_detail_screen.dart';
 import '../../features/budgets/budgets_screen.dart';
+import '../../features/budgets/ready_to_assign_screen.dart';
 import '../../features/calendar/calendar_screen.dart';
 import '../../features/categories/categories_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
@@ -155,6 +156,11 @@ final appRouter = GoRouter(
                   path: 'calendar',
                   parentNavigatorKey: _rootKey,
                   builder: (_, _) => const CalendarScreen(),
+                ),
+                GoRoute(
+                  path: 'ready-to-assign',
+                  parentNavigatorKey: _rootKey,
+                  builder: (_, _) => const ReadyToAssignScreen(),
                 ),
                 GoRoute(
                   path: 'settings',

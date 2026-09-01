@@ -243,7 +243,7 @@ void main() {
       await settle();
 
       final balance = container.read(
-        categoryBalanceProvider((accountId: cash, categoryId: food)),
+        categoryBalanceProvider(food),
       );
       expect(balance, Money.fromRupees(1400));
     });
@@ -269,13 +269,14 @@ void main() {
       await settle();
 
       final balance = container.read(
-        categoryBalanceProvider((accountId: cash, categoryId: food)),
+        categoryBalanceProvider(food),
       );
       expect(balance, Money.fromRupees(-300));
     });
 
-    test('the same category in two different envelope accounts never mixes',
-        () async {
+    test(
+        'the same category pools across every Envelope-Mode account '
+        '(GitHub #48 — one shared balance, not one per account)', () async {
       await warmUp();
       final cash = await cashId();
       final bank = await db.addAccount(
@@ -302,16 +303,45 @@ void main() {
       await settle();
 
       expect(
-        container.read(
-          categoryBalanceProvider((accountId: cash, categoryId: food)),
-        ),
-        Money.fromRupees(1000),
+        container.read(categoryBalanceProvider(food)),
+        Money.fromRupees(3500),
       );
+    });
+
+    test(
+        "an account that isn't in Envelope Mode never contributes to the "
+        'shared pool, even sharing a category with one that is', () async {
+      await warmUp();
+      final cash = await cashId();
+      final bank = await db.addAccount(
+        name: 'IPPB',
+        type: AccountType.bank,
+        colorValue: 0,
+        iconKey: 'bank',
+        openingBalance: Money.fromRupees(5000),
+      );
+      final food = await expenseCategory('Food');
+      await db.setEnvelopeMode(cash, true);
+      // bank is never put in Envelope Mode.
+
+      await db.addAllocation(
+        accountId: cash,
+        categoryId: food,
+        amount: Money.fromRupees(1000),
+      );
+      await db.addTransaction(
+        type: TxType.expense,
+        amount: Money.fromRupees(400),
+        accountId: bank,
+        categoryId: food,
+        date: DateTime.now(),
+      );
+      await settle();
+
       expect(
-        container.read(
-          categoryBalanceProvider((accountId: bank, categoryId: food)),
-        ),
-        Money.fromRupees(2500),
+        container.read(categoryBalanceProvider(food)),
+        Money.fromRupees(1000),
+        reason: "bank's ordinary spending must not drain the shared pool",
       );
     });
   });
@@ -333,7 +363,7 @@ void main() {
       await settle();
 
       expect(
-        container.read(readyToAssignProvider(cash)),
+        container.read(readyToAssignProvider),
         Money.fromRupees(5000),
       );
     });
@@ -362,7 +392,7 @@ void main() {
       await settle();
 
       expect(
-        container.read(readyToAssignProvider(cash)),
+        container.read(readyToAssignProvider),
         Money.fromRupees(3800),
       );
     });
@@ -406,13 +436,54 @@ void main() {
       final balance = (await db.watchAccounts().first).single.currentBalance;
       expect(balance, Money.fromRupees(750));
       expect(
-        container.read(readyToAssignProvider(cash)),
+        container.read(readyToAssignProvider),
         Money.fromRupees(750),
       );
       expect(
-        container.read(readyToAssignProvider(cash)).paise <= balance.paise,
+        container.read(readyToAssignProvider).paise <= balance.paise,
         isTrue,
         reason: 'ready-to-assign must never exceed the real account balance',
+      );
+    });
+
+    test(
+        'pools across every Envelope-Mode account (GitHub #48 — one shared '
+        'figure, not one per account)', () async {
+      await warmUp();
+      final cash = await cashId();
+      final bank = await db.addAccount(
+        name: 'IPPB',
+        type: AccountType.bank,
+        colorValue: 0,
+        iconKey: 'bank',
+        openingBalance: Money.fromRupees(2000),
+      );
+      final food = await expenseCategory('Food');
+      await db.setEnvelopeMode(cash, true);
+      await db.setEnvelopeMode(bank, true);
+      final salary = await (db.watchCategories(CategoryKind.income).first)
+          .then((c) => c.firstWhere((c) => c.name == 'Salary').id);
+      await db.addTransaction(
+        type: TxType.income,
+        amount: Money.fromRupees(1000),
+        accountId: cash,
+        categoryId: salary,
+        date: DateTime.now(),
+      );
+      await settle();
+
+      await db.addAllocation(
+        accountId: cash,
+        categoryId: food,
+        amount: Money.fromRupees(600),
+      );
+      await settle();
+
+      // cash: 1000 balance, 600 claimed by Food. bank: 2000 balance,
+      // nothing claimed. Pool RTA = (1000 + 2000) − 600 = 2400.
+      expect(
+        container.read(readyToAssignProvider),
+        Money.fromRupees(2400),
       );
     });
   });

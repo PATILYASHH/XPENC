@@ -14,11 +14,12 @@ import '../../data/tables.dart';
 /// the way it does for an expense. Left unresolved, an envelope would keep
 /// claiming money that has actually already left the account.
 ///
-/// The part of [amount] that [accountId]'s current Ready to Assign already
-/// covers needs nothing: Ready to Assign drops by exactly that much on its
-/// own, since `current_balance` does. Only the **shortfall** — the part that
-/// would otherwise have to come out of an already-claimed category — needs
-/// the user to say which one.
+/// The part of [amount] that the shared Ready to Assign pool (GitHub #48 —
+/// one pool across every Envelope-Mode account, not one per account)
+/// already covers needs nothing: Ready to Assign drops by exactly that much
+/// on its own, since `current_balance` does. Only the **shortfall** — the
+/// part that would otherwise have to come out of an already-claimed
+/// category — needs the user to say which one.
 Money envelopeOutflowShortfall(
   WidgetRef ref, {
   required int accountId,
@@ -27,7 +28,7 @@ Money envelopeOutflowShortfall(
   final account = ref.read(accountMapProvider)[accountId];
   if (account == null || !account.envelopeMode) return const Money.zero();
 
-  final rta = ref.read(readyToAssignProvider(accountId));
+  final rta = ref.read(readyToAssignProvider);
   final available = rta.isPositive ? rta : const Money.zero();
   final shortfall = amount - available;
   return shortfall.isPositive ? shortfall : const Money.zero();
@@ -46,18 +47,13 @@ Future<int?> pickEnvelopeShortfallCategory({
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (_) =>
-        _EnvelopeSourceSheet(accountId: accountId, shortfall: shortfall),
+    builder: (_) => _EnvelopeSourceSheet(shortfall: shortfall),
   );
 }
 
 class _EnvelopeSourceSheet extends ConsumerWidget {
-  const _EnvelopeSourceSheet({
-    required this.accountId,
-    required this.shortfall,
-  });
+  const _EnvelopeSourceSheet({required this.shortfall});
 
-  final int accountId;
   final Money shortfall;
 
   @override
@@ -109,12 +105,7 @@ class _EnvelopeSourceSheet extends ConsumerWidget {
                   itemCount: categories.length,
                   itemBuilder: (context, i) {
                     final c = categories[i];
-                    final balance = ref.watch(
-                      categoryBalanceProvider((
-                        accountId: accountId,
-                        categoryId: c.id,
-                      )),
-                    );
+                    final balance = ref.watch(categoryBalanceProvider(c.id));
                     return ListTile(
                       title: Text(c.name),
                       trailing: MoneyText(

@@ -14,6 +14,7 @@ import 'package:xpenc/features/accounts/accounts_screen.dart';
 import 'package:xpenc/features/auto/archived_auto_rules_screen.dart';
 import 'package:xpenc/features/auto/auto_screen.dart';
 import 'package:xpenc/features/budgets/budget_detail_screen.dart';
+import 'package:xpenc/features/budgets/ready_to_assign_screen.dart';
 import 'package:xpenc/features/calendar/calendar_screen.dart';
 import 'package:xpenc/features/categories/categories_screen.dart';
 import 'package:xpenc/features/data_export/backup_screen.dart';
@@ -422,8 +423,8 @@ void main() {
   });
 
   testWidgets(
-    'Account detail: Envelope Mode shows Ready to Assign and category '
-    'balances once turned on',
+    'Account detail: Envelope Mode links to the shared Ready to Assign '
+    'screen once turned on',
     (tester) async {
       late int cash;
       await tester.runAsync(() async {
@@ -439,7 +440,29 @@ void main() {
       await pump(tester, AccountDetailScreen(accountId: cash));
       expect(tester.takeException(), isNull);
       expect(find.text('Envelope Mode'), findsOneWidget);
-      expect(find.text('Ready to Assign'), findsOneWidget);
+      expect(find.text('View shared budget'), findsOneWidget);
+      await unmount(tester);
+    },
+  );
+
+  testWidgets(
+    'Ready to Assign screen shows the shared pool total and category '
+    'balances',
+    (tester) async {
+      late int cash;
+      await tester.runAsync(() async {
+        cash = (await seed()).cash;
+        await db.setEnvelopeMode(cash, true);
+        await db.addAllocation(
+          accountId: cash,
+          categoryId: await (db.watchCategories(CategoryKind.expense).first)
+              .then((c) => c.firstWhere((c) => c.name == 'Food').id),
+          amount: Money.fromRupees(500),
+        );
+      });
+      await pump(tester, const ReadyToAssignScreen());
+      expect(tester.takeException(), isNull);
+      expect(find.text('Ready to Assign'), findsWidgets);
       expect(find.text('Food'), findsWidgets);
       await unmount(tester);
     },

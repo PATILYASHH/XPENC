@@ -384,48 +384,93 @@ final _envelopeSpentProvider = Provider<Map<(int, int), Money>>((ref) {
   return out;
 });
 
-/// `SUM(allocations) − SUM(expenses)` for one (account, category) pair. Never
-/// touches [Accounts.currentBalance] or `net worth` — Envelope Mode only
-/// re-labels money already correctly tracked by the ledger, it never moves
-/// any.
-final categoryBalanceProvider =
-    Provider.family<Money, ({int accountId, int categoryId})>((ref, key) {
-      final allocated = ref.watch(_envelopeAllocatedProvider);
-      final spent = ref.watch(_envelopeSpentProvider);
-      final pairKey = (key.accountId, key.categoryId);
-      return (allocated[pairKey] ?? const Money.zero()) -
-          (spent[pairKey] ?? const Money.zero());
-    });
+/// Every account currently in Envelope Mode, in the same order
+/// `watchAccounts()` returns (by `sortOrder`) — the shared "which accounts
+/// feed the pool" set behind [categoryBalanceProvider] and
+/// [readyToAssignProvider]. GitHub #48: multiple accounts can each opt in,
+/// but there is exactly one pool across all of them, not one per account.
+final envelopeModeAccountsProvider = Provider<List<AccountRow>>((ref) {
+  final accounts = ref.watch(accountsProvider).valueOrNull ?? const [];
+  return [
+    for (final a in accounts)
+      if (a.envelopeMode) a,
+  ];
+});
 
-/// `account.currentBalance − Σ(category_balance > 0)`, for every category
-/// this account has ever allocated to or spent from. A category that has
-/// gone negative (overspent — allowed, shown in red, never blocked) does
-/// *not* reduce this further: those rupees already left the account and are
-/// already reflected in `currentBalance`, so only a category still holding a
+/// The account [addAllocation]/[moveAllocation] record a manual assign
+/// against when there's no real transaction-level account to attribute it
+/// to (e.g. a move made from the shared Ready to Assign screen rather than
+/// alongside a specific transfer). Purely an audit trail — see
+/// [Allocations.accountId] — never read back by [categoryBalanceProvider]
+/// or [readyToAssignProvider], both of which pool across every account in
+/// [envelopeModeAccountsProvider] regardless of which one a row names.
+final defaultEnvelopeAccountIdProvider = Provider<int?>((ref) {
+  final accounts = ref.watch(envelopeModeAccountsProvider);
+  return accounts.isEmpty ? null : accounts.first.id;
+});
+
+/// `SUM(allocations) − SUM(expenses)` for one category, pooled across every
+/// account in [envelopeModeAccountsProvider] — GitHub #48: one shared
+/// balance per category, not one per account. An account that isn't (or is
+/// no longer) in Envelope Mode never contributes here, even if it shares a
+/// category with an Envelope-Mode account; otherwise an ordinary account's
+/// everyday spending would silently drain the shared pool. Never touches
+/// [Accounts.currentBalance] or `net worth` — Envelope Mode only re-labels
+/// money already correctly tracked by the ledger, it never moves any.
+final categoryBalanceProvider = Provider.family<Money, int>((
+  ref,
+  categoryId,
+) {
+  final poolAccountIds = {
+    for (final a in ref.watch(envelopeModeAccountsProvider)) a.id,
+  };
+  final allocated = ref.watch(_envelopeAllocatedProvider);
+  final spent = ref.watch(_envelopeSpentProvider);
+
+  var balance = const Money.zero();
+  for (final accountId in poolAccountIds) {
+    final pairKey = (accountId, categoryId);
+    balance +=
+        (allocated[pairKey] ?? const Money.zero()) -
+        (spent[pairKey] ?? const Money.zero());
+  }
+  return balance;
+});
+
+/// `Σ(currentBalance) − Σ(category_balance > 0)`, across every account in
+/// [envelopeModeAccountsProvider] — GitHub #48: one shared Ready to Assign
+/// figure, not one per account. A category that has gone negative
+/// (overspent — allowed, shown in red, never blocked) does *not* reduce
+/// this further: those rupees already left an account and are already
+/// reflected in its `currentBalance`, so only a category still holding a
 /// **positive**, unspent balance counts as "claimed". This keeps
-/// `ready_to_assign` bounded by the account's real balance in every case.
-final readyToAssignProvider = Provider.family<Money, int>((ref, accountId) {
-  final account = ref.watch(accountMapProvider)[accountId];
-  if (account == null) return const Money.zero();
+/// `ready_to_assign` bounded by the pool's real combined balance in every
+/// case.
+final readyToAssignProvider = Provider<Money>((ref) {
+  final poolAccounts = ref.watch(envelopeModeAccountsProvider);
+  if (poolAccounts.isEmpty) return const Money.zero();
+  final poolAccountIds = {for (final a in poolAccounts) a.id};
 
   final allocated = ref.watch(_envelopeAllocatedProvider);
   final spent = ref.watch(_envelopeSpentProvider);
   final categoryIds = <int>{
     for (final k in allocated.keys)
-      if (k.$1 == accountId) k.$2,
+      if (poolAccountIds.contains(k.$1)) k.$2,
     for (final k in spent.keys)
-      if (k.$1 == accountId) k.$2,
+      if (poolAccountIds.contains(k.$1)) k.$2,
   };
 
   var claimed = const Money.zero();
   for (final categoryId in categoryIds) {
-    final pairKey = (accountId, categoryId);
-    final balance =
-        (allocated[pairKey] ?? const Money.zero()) -
-        (spent[pairKey] ?? const Money.zero());
+    final balance = ref.watch(categoryBalanceProvider(categoryId));
     if (balance.isPositive) claimed += balance;
   }
-  return account.currentBalance - claimed;
+
+  var totalBalance = const Money.zero();
+  for (final a in poolAccounts) {
+    totalBalance += a.currentBalance;
+  }
+  return totalBalance - claimed;
 });
 
 // ── Persons ─────────────────────────────────────────────────────────────────
