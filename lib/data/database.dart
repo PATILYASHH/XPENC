@@ -2646,6 +2646,12 @@ class AppDatabase extends _$AppDatabase {
   /// separate method for each, the same way [addTransaction] covers
   /// income/expense/transfer with one method rather than three.
   ///
+  /// GitHub #48: category envelope balances and Ready to Assign are pooled
+  /// across every Envelope-Mode account (see `categoryBalanceProvider` /
+  /// `readyToAssignProvider` in `data/providers.dart`), so [accountId] is no
+  /// longer read back for that math — it's kept purely as a historical/audit
+  /// trail of which account a given row was recorded against.
+  ///
   /// Throws [ArgumentError] if [accountId] isn't in Envelope Mode, or if
   /// [amount] is zero.
   Future<int> addAllocation({

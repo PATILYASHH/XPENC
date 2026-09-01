@@ -2209,12 +2209,7 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
           if (envelopeAccountId != null)
             Consumer(
               builder: (context, ref, _) {
-                final balance = ref.watch(
-                  categoryBalanceProvider((
-                    accountId: envelopeAccountId,
-                    categoryId: categoryId,
-                  )),
-                );
+                final balance = ref.watch(categoryBalanceProvider(categoryId));
                 return Text(
                   '${MoneyFormat.symbol(balance)} left',
                   textAlign: TextAlign.center,
