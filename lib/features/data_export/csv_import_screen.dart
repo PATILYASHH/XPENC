@@ -6,10 +6,24 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/app_icons.dart';
 import '../../core/money.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'csv_import.dart';
+
+/// Preset colours assigned round-robin to categories the importer creates
+/// on the fly — same palette `CategoriesScreen` offers by hand.
+const _presetColors = <int>[
+  0xFF16A34A,
+  0xFF2563EB,
+  0xFFDC2626,
+  0xFFA855F7,
+  0xFFF97316,
+  0xFF0EA5E9,
+  0xFF78716C,
+  0xFFEC4899,
+];
 
 /// Import transactions from a bank-exported CSV statement. See
 /// `csv_import.dart` for the parsing/mapping logic this screen is a thin
@@ -28,6 +42,7 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
 
   int? _dateColumn;
   int? _noteColumn;
+  int? _categoryColumn;
   bool _twoColumnMode = false;
   int? _amountColumn;
   int? _debitColumn;
@@ -45,6 +60,7 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
       return CsvColumnMapping(
         dateColumn: dateColumn,
         noteColumn: _noteColumn,
+        categoryColumn: _categoryColumn,
         debitColumn: _debitColumn,
         creditColumn: _creditColumn,
       );
@@ -53,6 +69,7 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
     return CsvColumnMapping(
       dateColumn: dateColumn,
       noteColumn: _noteColumn,
+      categoryColumn: _categoryColumn,
       amountColumn: _amountColumn,
     );
   }
@@ -117,6 +134,7 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
       _summary = null;
       _dateColumn = guess?.dateColumn;
       _noteColumn = guess?.noteColumn;
+      _categoryColumn = guess?.categoryColumn;
       _twoColumnMode = guess?.isTwoColumn ?? false;
       _amountColumn = guess?.amountColumn;
       _debitColumn = guess?.debitColumn;
@@ -136,6 +154,21 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
     var skippedNoDate = 0;
     var skippedNoAmount = 0;
     var skippedOther = 0;
+    var categoriesCreated = 0;
+
+    // Seeded once from the current categories and grown in place as unmapped
+    // names turn up, so repeats of the same name within one file share a
+    // single new category instead of creating a duplicate per row.
+    final categoryIdsByKind = {
+      TxType.expense: {
+        for (final c in await db.watchCategories(CategoryKind.expense).first)
+          c.name.trim().toLowerCase(): c.id,
+      },
+      TxType.income: {
+        for (final c in await db.watchCategories(CategoryKind.income).first)
+          c.name.trim().toLowerCase(): c.id,
+      },
+    };
 
     for (final raw in rows) {
       final row = parseCsvRow(raw, mapping);
@@ -148,11 +181,34 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
         skippedNoAmount++;
         continue;
       }
+      final type = amount.isNegative ? TxType.expense : TxType.income;
+
+      int? categoryId;
+      final categoryName = row.category;
+      if (categoryName != null) {
+        final categoryIds = categoryIdsByKind[type]!;
+        final key = categoryName.toLowerCase();
+        categoryId = categoryIds[key];
+        if (categoryId == null) {
+          categoryId = await db.addCategory(
+            name: categoryName,
+            kind: type == TxType.expense
+                ? CategoryKind.expense
+                : CategoryKind.income,
+            colorValue: _presetColors[categoriesCreated % _presetColors.length],
+            iconKey: AppIcons.allKeys.first,
+          );
+          categoryIds[key] = categoryId;
+          categoriesCreated++;
+        }
+      }
+
       try {
         await db.addTransaction(
-          type: amount.isNegative ? TxType.expense : TxType.income,
+          type: type,
           amount: amount.abs,
           accountId: accountId,
+          categoryId: categoryId,
           date: row.date!,
           note: row.note,
         );
@@ -170,6 +226,7 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
         skippedNoDate: skippedNoDate,
         skippedNoAmount: skippedNoAmount,
         skippedOther: skippedOther,
+        categoriesCreated: categoriesCreated,
       );
     });
   }
@@ -195,6 +252,7 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
               rowCount: _dataRows!.length,
               dateColumn: _dateColumn,
               noteColumn: _noteColumn,
+              categoryColumn: _categoryColumn,
               twoColumnMode: _twoColumnMode,
               amountColumn: _amountColumn,
               debitColumn: _debitColumn,
@@ -212,6 +270,8 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
               },
               onDateColumnChanged: (v) => setState(() => _dateColumn = v),
               onNoteColumnChanged: (v) => setState(() => _noteColumn = v),
+              onCategoryColumnChanged: (v) =>
+                  setState(() => _categoryColumn = v),
               onTwoColumnModeChanged: (v) => setState(() => _twoColumnMode = v),
               onAmountColumnChanged: (v) => setState(() => _amountColumn = v),
               onDebitColumnChanged: (v) => setState(() => _debitColumn = v),
@@ -232,12 +292,14 @@ class _ImportSummary {
     required this.skippedNoDate,
     required this.skippedNoAmount,
     required this.skippedOther,
+    required this.categoriesCreated,
   });
 
   final int imported;
   final int skippedNoDate;
   final int skippedNoAmount;
   final int skippedOther;
+  final int categoriesCreated;
 
   int get skipped => skippedNoDate + skippedNoAmount + skippedOther;
 }
@@ -293,6 +355,7 @@ class _MappingForm extends StatelessWidget {
     required this.rowCount,
     required this.dateColumn,
     required this.noteColumn,
+    required this.categoryColumn,
     required this.twoColumnMode,
     required this.amountColumn,
     required this.debitColumn,
@@ -303,6 +366,7 @@ class _MappingForm extends StatelessWidget {
     required this.previewRows,
     required this.onDateColumnChanged,
     required this.onNoteColumnChanged,
+    required this.onCategoryColumnChanged,
     required this.onTwoColumnModeChanged,
     required this.onAmountColumnChanged,
     required this.onDebitColumnChanged,
@@ -317,6 +381,7 @@ class _MappingForm extends StatelessWidget {
   final int rowCount;
   final int? dateColumn;
   final int? noteColumn;
+  final int? categoryColumn;
   final bool twoColumnMode;
   final int? amountColumn;
   final int? debitColumn;
@@ -327,6 +392,7 @@ class _MappingForm extends StatelessWidget {
   final List<CsvImportRow> previewRows;
   final ValueChanged<int?> onDateColumnChanged;
   final ValueChanged<int?> onNoteColumnChanged;
+  final ValueChanged<int?> onCategoryColumnChanged;
   final ValueChanged<bool> onTwoColumnModeChanged;
   final ValueChanged<int?> onAmountColumnChanged;
   final ValueChanged<int?> onDebitColumnChanged;
@@ -393,6 +459,22 @@ class _MappingForm extends StatelessWidget {
               value: noteColumn,
               allowNone: true,
               onChanged: busy ? null : onNoteColumnChanged,
+            ),
+            const SizedBox(height: 12),
+            _ColumnDropdown(
+              label: 'Category (optional)',
+              headers: headers,
+              value: categoryColumn,
+              allowNone: true,
+              onChanged: busy ? null : onCategoryColumnChanged,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              "Matched against your existing categories by name — anything "
+              "that doesn't match is created automatically.",
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 16),
             SegmentedButton<bool>(
@@ -503,6 +585,10 @@ class _PreviewRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final ok = row.date != null && row.amount != null;
+    final subtitle = [
+      if (row.note != null) row.note!,
+      if (row.category != null) '#${row.category}',
+    ].join(' · ');
     return ListTile(
       dense: true,
       leading: Icon(
@@ -515,7 +601,7 @@ class _PreviewRow extends StatelessWidget {
             ? 'Unrecognised date'
             : row.date!.toIso8601String().split('T').first,
       ),
-      subtitle: row.note == null ? null : Text(row.note!),
+      subtitle: subtitle.isEmpty ? null : Text(subtitle),
       trailing: Text(
         row.amount == null ? '—' : MoneyFormat.symbol(row.amount!),
         style: TextStyle(
@@ -557,6 +643,17 @@ class _SummaryCard extends StatelessWidget {
               '${summary.imported == 1 ? '' : 's'} imported from $fileName',
               style: theme.textTheme.titleMedium,
             ),
+            if (summary.categoriesCreated > 0) ...[
+              const SizedBox(height: 8),
+              Text(
+                '${summary.categoriesCreated} new categor'
+                '${summary.categoriesCreated == 1 ? 'y' : 'ies'} created from '
+                "the file's category column.",
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
             if (summary.skipped > 0) ...[
               const SizedBox(height: 8),
               Text(

@@ -10,6 +10,7 @@ class CsvColumnMapping {
   const CsvColumnMapping({
     required this.dateColumn,
     this.noteColumn,
+    this.categoryColumn,
     this.amountColumn,
     this.debitColumn,
     this.creditColumn,
@@ -20,6 +21,11 @@ class CsvColumnMapping {
 
   final int dateColumn;
   final int? noteColumn;
+
+  /// Free-text category name — matched case-insensitively against the
+  /// app's existing categories (of whichever kind the row's amount sign
+  /// implies), or created fresh when nothing matches. See GitHub #96.
+  final int? categoryColumn;
 
   /// Single-column mode: negative = expense, positive = income.
   final int? amountColumn;
@@ -35,7 +41,7 @@ class CsvColumnMapping {
 /// One row, mapped but not yet validated — `date`/`amount` are null when
 /// that cell couldn't be read, which the caller treats as a skipped row.
 class CsvImportRow {
-  const CsvImportRow({this.date, this.amount, this.note});
+  const CsvImportRow({this.date, this.amount, this.note, this.category});
 
   final DateTime? date;
 
@@ -43,6 +49,10 @@ class CsvImportRow {
   /// whose debit and credit cells are both blank/zero parses as null.
   final Money? amount;
   final String? note;
+
+  /// Raw category text from the file, unresolved — the importer still has
+  /// to match/create an actual category against it.
+  final String? category;
 }
 
 /// Header names this app's own CSV export uses (`transactionsCsv`), plus
@@ -57,6 +67,7 @@ const _noteHeaders = [
   'details',
   'remarks',
 ];
+const _categoryHeaders = ['category', 'category name', 'tag', 'tags', 'label'];
 const _amountHeaders = ['amount', 'transaction amount', 'amt'];
 const _debitHeaders = [
   'debit',
@@ -100,6 +111,7 @@ CsvColumnMapping? guessMapping(List<dynamic> headers) {
   return CsvColumnMapping(
     dateColumn: dateCol,
     noteColumn: _findColumn(headers, _noteHeaders),
+    categoryColumn: _findColumn(headers, _categoryHeaders),
     amountColumn: amountCol,
     debitColumn: debitCol,
     creditColumn: creditCol,
@@ -174,5 +186,6 @@ CsvImportRow parseCsvRow(List<dynamic> row, CsvColumnMapping mapping) {
     date: date,
     amount: amount,
     note: _cell(row, mapping.noteColumn),
+    category: _cell(row, mapping.categoryColumn),
   );
 }

@@ -46,6 +46,18 @@ void main() {
     test('returns null with a date but no amount-shaped column at all', () {
       expect(guessMapping(['Date', 'Description']), isNull);
     });
+
+    test('finds a Category column', () {
+      final mapping = guessMapping(['Date', 'Description', 'Amount', 'Category']);
+      expect(mapping, isNotNull);
+      expect(mapping!.categoryColumn, 3);
+    });
+
+    test('leaves categoryColumn null when there is no category-shaped column', () {
+      final mapping = guessMapping(['Date', 'Description', 'Amount']);
+      expect(mapping, isNotNull);
+      expect(mapping!.categoryColumn, isNull);
+    });
   });
 
   group('parseCsvDate', () {
@@ -138,6 +150,30 @@ void main() {
     test('a stray currency symbol/comma in the cell is tolerated', () {
       final row = parseCsvRow(['09/07/2026', 'X', '', '₹1,250.50'], mapping);
       expect(row.amount, Money.fromRupees(1250.50));
+    });
+  });
+
+  group('parseCsvRow — category column', () {
+    const mapping = CsvColumnMapping(
+      dateColumn: 0,
+      noteColumn: 1,
+      categoryColumn: 3,
+      amountColumn: 2,
+    );
+
+    test('reads the category text alongside the other fields', () {
+      final row = parseCsvRow([
+        '09/07/2026',
+        'Swiggy',
+        '-500.00',
+        'Food',
+      ], mapping);
+      expect(row.category, 'Food');
+    });
+
+    test('a blank category cell parses as null', () {
+      final row = parseCsvRow(['09/07/2026', 'Swiggy', '-500.00', ''], mapping);
+      expect(row.category, isNull);
     });
   });
 }
