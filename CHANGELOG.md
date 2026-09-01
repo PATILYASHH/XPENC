@@ -8,8 +8,7 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
-Beta track for 1.5.1 — everything below is on the `BETA` branch, not yet
-tagged or released.
+## [1.5.1] — 2026-09-01
 
 ### Added
 - **Auto rules: promotions** (#82) — "Add a promotion" on a rule's add/edit
@@ -67,6 +66,11 @@ tagged or released.
   date and how many days are left, plus a reminder notification before the
   due date. Entirely opt-in per card; turning it off only forgets the
   cycle, never touches the card itself.
+- **CSV import: Category column** (#96) — the bank-statement importer can
+  now map an optional Category column alongside date/note/amount. Text is
+  matched case-insensitively against your existing categories (scoped to
+  expense or income by the row's amount sign); anything that doesn't match
+  is created automatically and reused for repeats in the same file.
 
 ### Changed
 - **Dashboard: "Investment" tab renamed to "Savings"** (#79) — the hero
@@ -95,6 +99,10 @@ tagged or released.
   disposed their text field's controller the instant Save was tapped, which
   could race the dialog's own closing animation and crash mid-close. Each
   now owns its controller properly, tied to the dialog's real lifetime.
+- **Dashboard Upcoming strip ignored an active promo** (#94) — it always
+  quoted a recurring rule's usual amount, even during a promotion (#82),
+  so a rule due at ₹0 for its first occurrence still showed its normal
+  price there while the Auto tab correctly showed ₹0. Both now agree.
 
 ## [1.5.0] — 2026-08-27
 
@@ -674,7 +682,8 @@ First public release. 🎉
 - `tool/verify_apk.sh` gates every shipped APK against the missing
   `libsqlite3.so` class of crash.
 
-[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.5.1...HEAD
+[1.5.1]: https://github.com/PATILYASHH/XPENC/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/PATILYASHH/XPENC/compare/v1.4.5...v1.5.0
 [1.4.5]: https://github.com/PATILYASHH/XPENC/compare/v1.4.4...v1.4.5
 [1.4.4]: https://github.com/PATILYASHH/XPENC/compare/v1.4.3...v1.4.4
