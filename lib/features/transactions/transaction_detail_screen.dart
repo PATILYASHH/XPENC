@@ -33,6 +33,11 @@ class TransactionDetailScreen extends ConsumerWidget {
         title: const Text('Transaction'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.content_copy_outlined),
+            tooltip: 'Duplicate',
+            onPressed: () => context.push('/add?duplicate=$transactionId'),
+          ),
+          IconButton(
             icon: const Icon(Icons.edit_outlined),
             tooltip: 'Edit',
             onPressed: () => context.push('/add?id=$transactionId'),

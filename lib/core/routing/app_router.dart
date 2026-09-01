@@ -46,6 +46,7 @@ import '../../features/settings/settings_screen.dart';
 import '../../features/settings/widgets_screen.dart';
 import '../../features/shopping/shopping_list_screen.dart';
 import '../../features/shopping/shopping_lists_screen.dart';
+import '../../features/tags/tag_groups_screen.dart';
 import '../../features/tags/tags_screen.dart';
 import '../../features/transactions/transaction_detail_screen.dart';
 import '../../features/transactions/transactions_screen.dart';
@@ -238,6 +239,13 @@ final appRouter = GoRouter(
                   path: 'tags',
                   parentNavigatorKey: _rootKey,
                   builder: (_, _) => const TagsScreen(),
+                  routes: [
+                    GoRoute(
+                      path: 'groups',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const TagGroupsScreen(),
+                    ),
+                  ],
                 ),
                 GoRoute(
                   path: 'stats',
@@ -399,12 +407,15 @@ final appRouter = GoRouter(
     ),
 
     // The ➕ button — a route pushed above the shell, not a tab.
-    // With an `id` it edits that transaction instead of creating one.
+    // With an `id` it edits that transaction instead of creating one. With a
+    // `duplicate` id instead, it prefills from that transaction but still
+    // creates a new one on save — see GitHub #92.
     GoRoute(
       path: '/add',
       parentNavigatorKey: _rootKey,
       builder: (_, state) {
         final id = state.uri.queryParameters['id'];
+        final duplicateId = state.uri.queryParameters['duplicate'];
         final type = switch (state.uri.queryParameters['type']) {
           'expense' => TxType.expense,
           'income' => TxType.income,
@@ -412,6 +423,9 @@ final appRouter = GoRouter(
         };
         return AddTransactionScreen(
           transactionId: id == null ? null : int.tryParse(id),
+          duplicateFromId: duplicateId == null
+              ? null
+              : int.tryParse(duplicateId),
           initialType: type,
         );
       },

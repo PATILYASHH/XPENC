@@ -108,6 +108,11 @@ enum AutoBackupFrequency { daily, monthly, custom }
 /// position can't infer the PIN.
 enum LockScreenStyle { classic, bigNumpad, scrambled }
 
+/// How the More hub (`MoreScreen`) lays out its items. `list` is the
+/// original one-column row layout. `cards` shows two square-ish cards per
+/// row instead, still grouped the same way.
+enum MoreScreenViewMode { list, cards }
+
 // ─── Converters ─────────────────────────────────────────────────────────────
 
 /// Money crosses the DB boundary as an integer number of paise. Never a double.
@@ -521,12 +526,28 @@ class RecurringRules extends Table {
   TextColumn get name => text().withLength(min: 1, max: 60)();
 
   /// Reuses [CategoryKind] rather than a bespoke enum — a rule is exactly as
-  /// income-or-expense as the category it posts under.
+  /// income-or-expense as the category it posts under. For a G&L rule (see
+  /// [toAccountId]) this is always [CategoryKind.expense] — money leaves
+  /// [accountId] the same direction as an expense — but it's otherwise
+  /// unread: every code path branches on [toAccountId] first.
   TextColumn get kind => textEnum<CategoryKind>()();
 
   IntColumn get amount => integer().map(const MoneyConverter())();
   IntColumn get accountId => integer().references(Accounts, #id)();
-  IntColumn get categoryId => integer().references(Categories, #id)();
+
+  /// Null for a G&L rule (see [toAccountId]) — a transfer into a goal or
+  /// loan is only ever optionally tagged, exactly like
+  /// [GoalDetails.categoryId]/[LoanDetails.categoryId]. Required for an
+  /// expense/income rule.
+  IntColumn get categoryId =>
+      integer().nullable().references(Categories, #id)();
+
+  /// Non-null makes this a "G&L" rule: it posts a [TxType.transfer] from
+  /// [accountId] to this goal or loan account instead of an
+  /// income/expense transaction. Null (the common case) means the rule
+  /// posts an ordinary expense/income per [kind].
+  IntColumn get toAccountId =>
+      integer().nullable().references(Accounts, #id)();
 
   /// Same free-text field as [Transactions.payee] — who the rule pays (an
   /// expense) or who it's paid by (income, e.g. an employer for a salary
@@ -683,6 +704,11 @@ class Settings extends Table {
   /// Defaults to `classic` so existing users see no change.
   TextColumn get lockScreenStyle =>
       textEnum<LockScreenStyle>().withDefault(const Constant('classic'))();
+
+  /// How the More hub lays out its items — see [MoreScreenViewMode].
+  /// Defaults to `list` so existing users see no change.
+  TextColumn get moreScreenViewMode =>
+      textEnum<MoreScreenViewMode>().withDefault(const Constant('list'))();
 
   /// Minutes the app may sit backgrounded before the next resume re-locks it
   /// — `0` means immediately (see GitHub #60). Checked against how long the
@@ -1007,6 +1033,36 @@ class RecurringRuleTags extends Table {
 
   @override
   Set<Column> get primaryKey => {ruleId, tagId};
+}
+
+/// A named bundle of [Tags] (e.g. "Work trip" = Travel + Meals + Client) —
+/// picked as one unit from [TagPickerSheet] instead of hunting down each tag
+/// individually every time the same combination gets used. See GitHub #92.
+///
+/// Purely a shortcut for *selecting* tags: applying a group to a transaction
+/// still just writes ordinary [TransactionTags] rows, so nothing downstream
+/// (filters, stats, exports) needs to know groups exist at all.
+@DataClassName('TagGroupRow')
+class TagGroups extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text().withLength(min: 1, max: 30)();
+  IntColumn get colorValue => integer()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  List<Set<Column>> get uniqueKeys => [
+    {name},
+  ];
+}
+
+/// Many-to-many join: which tags belong to a [TagGroups] bundle.
+@DataClassName('TagGroupTagRow')
+class TagGroupTags extends Table {
+  IntColumn get groupId => integer().references(TagGroups, #id)();
+  IntColumn get tagId => integer().references(Tags, #id)();
+
+  @override
+  Set<Column> get primaryKey => {groupId, tagId};
 }
 
 /// One named shopping list (e.g. "Weekly groceries", "Diwali"). A user can

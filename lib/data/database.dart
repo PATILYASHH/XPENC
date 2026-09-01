@@ -135,6 +135,8 @@ typedef CombinedStatementLine = ({
     Tags,
     TransactionTags,
     RecurringRuleTags,
+    TagGroups,
+    TagGroupTags,
     TransactionSplits,
     TransactionLinks,
     GoalDetails,
@@ -170,7 +172,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 54;
+  int get schemaVersion => 57;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -437,6 +439,26 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 54) {
         await m.createTable(creditCardDetails);
+      }
+      if (from < 55) {
+        // Adds RecurringRules.toAccountId and loosens categoryId to
+        // nullable (a G&L rule's transfer carries neither) — SQLite can't
+        // relax a NOT NULL via a plain ALTER TABLE, so this recreates the
+        // table against the current Dart schema, copying existing rows by
+        // column name.
+        await m.alterTable(
+          TableMigration(
+            recurringRules,
+            newColumns: [recurringRules.toAccountId],
+          ),
+        );
+      }
+      if (from < 56) {
+        await _addColumnIfMissing(m, settings, settings.moreScreenViewMode);
+      }
+      if (from < 57) {
+        await m.createTable(tagGroups);
+        await m.createTable(tagGroupTags);
       }
     },
     beforeOpen: (details) async {
@@ -846,8 +868,12 @@ class AppDatabase extends _$AppDatabase {
     if (!type.isIncomeOrExpense && payee != null) {
       throw ArgumentError('Only an income or expense names a payee.');
     }
-    if (!type.isIncomeOrExpense && recurringRuleId != null) {
-      throw ArgumentError('Only income or expense can come from a rule.');
+    if (!type.isIncomeOrExpense &&
+        type != TxType.transfer &&
+        recurringRuleId != null) {
+      throw ArgumentError(
+        'Only income, expense or a transfer can come from a rule.',
+      );
     }
     switch (type) {
       case TxType.transfer:
@@ -1353,6 +1379,65 @@ class AppDatabase extends _$AppDatabase {
             transactionId: transactionId,
             tagId: tagId,
           ),
+        );
+      }
+    });
+  }
+
+  // ── Tag groups ───────────────────────────────────────────────────────────
+  //
+  // A shortcut for [TagPickerSheet]: pick one group and every tag in it gets
+  // selected at once, instead of hunting each one down individually every
+  // time the same combination is used (GitHub #92). A group is never itself
+  // written to a transaction — only the [Tags] it names are.
+
+  Stream<List<TagGroupRow>> watchTagGroups() => (select(
+    tagGroups,
+  )..orderBy([(g) => OrderingTerm(expression: g.name)])).watch();
+
+  Future<int> addTagGroup({required String name, required int colorValue}) =>
+      into(tagGroups).insert(
+        TagGroupsCompanion.insert(name: name, colorValue: colorValue),
+      );
+
+  Future<void> updateTagGroup({
+    required int id,
+    required String name,
+    required int colorValue,
+  }) => (update(tagGroups)..where((g) => g.id.equals(id))).write(
+    TagGroupsCompanion(name: Value(name), colorValue: Value(colorValue)),
+  );
+
+  /// Same hard-delete shape as [deleteTag]: a group is only ever a picker
+  /// shortcut, so dropping it touches no transaction — just its own tag list.
+  Future<void> deleteTagGroup(int id) => transaction(() async {
+    await (delete(tagGroupTags)..where((t) => t.groupId.equals(id))).go();
+    await (delete(tagGroups)..where((g) => g.id.equals(id))).go();
+  });
+
+  /// Every group's tag link, across every group — composed with
+  /// [watchTagGroups] by the provider layer, same shape as
+  /// [watchAllTransactionTags].
+  Stream<List<TagGroupTagRow>> watchAllTagGroupTags() =>
+      select(tagGroupTags).watch();
+
+  Future<List<int>> tagIdsForGroup(int groupId) async {
+    final rows = await (select(
+      tagGroupTags,
+    )..where((t) => t.groupId.equals(groupId))).get();
+    return rows.map((r) => r.tagId).toList();
+  }
+
+  /// Replaces every tag in [groupId] with exactly [tagIds] — same
+  /// whole-set-rewrite shape as [setTransactionTags].
+  Future<void> setTagGroupTags(int groupId, Set<int> tagIds) {
+    return transaction(() async {
+      await (delete(
+        tagGroupTags,
+      )..where((t) => t.groupId.equals(groupId))).go();
+      for (final tagId in tagIds) {
+        await into(tagGroupTags).insert(
+          TagGroupTagsCompanion.insert(groupId: groupId, tagId: tagId),
         );
       }
     });
@@ -2916,7 +3001,7 @@ class AppDatabase extends _$AppDatabase {
   void _validateRecurringRule({
     required Money amount,
     required CategoryKind kind,
-    required CategoryRow category,
+    required CategoryRow? category,
     required RecurringFrequency frequency,
     int? dayOfMonth,
     Money? promoAmount,
@@ -2925,7 +3010,7 @@ class AppDatabase extends _$AppDatabase {
     if (!amount.isPositive) {
       throw ArgumentError('Amount must be positive.');
     }
-    if (category.kind != kind) {
+    if (category != null && category.kind != kind) {
       throw ArgumentError(
         'That category is ${category.kind == CategoryKind.income ? 'an income' : 'an expense'} '
         'category — pick one that matches.',
@@ -2952,12 +3037,42 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 
+  /// A G&L rule's [RecurringRules.toAccountId] must be a real goal/loan
+  /// account, its [RecurringRules.accountId] must be a real non-goal/loan
+  /// (spendable) account, and the two must differ — the same shape
+  /// [_validateTx] enforces for a one-off transfer, checked up front here so
+  /// a bad rule can never be saved.
+  Future<void> _validateGoalOrLoanTarget({
+    required int accountId,
+    required int toAccountId,
+  }) async {
+    if (accountId == toAccountId) {
+      throw ArgumentError('The source and destination must be different.');
+    }
+    final to = await (select(
+      accounts,
+    )..where((a) => a.id.equals(toAccountId))).getSingleOrNull();
+    if (to == null ||
+        (to.type != AccountType.goal && to.type != AccountType.loan)) {
+      throw ArgumentError('Choose a goal or loan to fund.');
+    }
+    final from = await (select(
+      accounts,
+    )..where((a) => a.id.equals(accountId))).getSingleOrNull();
+    if (from == null ||
+        from.type == AccountType.goal ||
+        from.type == AccountType.loan) {
+      throw ArgumentError('Choose a spendable account to fund it from.');
+    }
+  }
+
   Future<int> addRecurringRule({
     required String name,
     required CategoryKind kind,
     required Money amount,
     required int accountId,
-    required int categoryId,
+    int? categoryId,
+    int? toAccountId,
     String? payee,
     String? note,
     required RecurringFrequency frequency,
@@ -2968,9 +3083,20 @@ class AppDatabase extends _$AppDatabase {
     int? promoOccurrences,
     Set<int> tagIds = const {},
   }) async {
-    final category = await categoryById(categoryId);
-    if (category == null) {
-      throw ArgumentError('That category no longer exists.');
+    CategoryRow? category;
+    if (toAccountId != null) {
+      await _validateGoalOrLoanTarget(
+        accountId: accountId,
+        toAccountId: toAccountId,
+      );
+    } else {
+      if (categoryId == null) {
+        throw ArgumentError('Choose a category.');
+      }
+      category = await categoryById(categoryId);
+      if (category == null) {
+        throw ArgumentError('That category no longer exists.');
+      }
     }
     final dayOfMonth = frequency == RecurringFrequency.monthly
         ? startsOn.day
@@ -2992,7 +3118,8 @@ class AppDatabase extends _$AppDatabase {
           kind: kind,
           amount: amount,
           accountId: accountId,
-          categoryId: categoryId,
+          categoryId: Value(categoryId),
+          toAccountId: Value(toAccountId),
           payee: Value(payee),
           note: Value(note),
           frequency: frequency,
@@ -3015,7 +3142,8 @@ class AppDatabase extends _$AppDatabase {
     required CategoryKind kind,
     required Money amount,
     required int accountId,
-    required int categoryId,
+    int? categoryId,
+    int? toAccountId,
     String? payee,
     String? note,
     required RecurringFrequency frequency,
@@ -3026,9 +3154,20 @@ class AppDatabase extends _$AppDatabase {
     int? promoOccurrences,
     Set<int> tagIds = const {},
   }) async {
-    final category = await categoryById(categoryId);
-    if (category == null) {
-      throw ArgumentError('That category no longer exists.');
+    CategoryRow? category;
+    if (toAccountId != null) {
+      await _validateGoalOrLoanTarget(
+        accountId: accountId,
+        toAccountId: toAccountId,
+      );
+    } else {
+      if (categoryId == null) {
+        throw ArgumentError('Choose a category.');
+      }
+      category = await categoryById(categoryId);
+      if (category == null) {
+        throw ArgumentError('That category no longer exists.');
+      }
     }
     final dayOfMonth = frequency == RecurringFrequency.monthly
         ? nextDueDate.day
@@ -3051,6 +3190,7 @@ class AppDatabase extends _$AppDatabase {
         amount: Value(amount),
         accountId: Value(accountId),
         categoryId: Value(categoryId),
+        toAccountId: Value(toAccountId),
         payee: Value(payee),
         note: Value(note),
         frequency: Value(frequency),
@@ -3163,15 +3303,19 @@ class AppDatabase extends _$AppDatabase {
     required Set<int> tagIds,
   }) async {
     final onPromo = promoAmount != null && (promoLeft ?? 0) > 0;
+    final isGoalOrLoan = rule.toAccountId != null;
     final txId = await addTransaction(
-      type: rule.kind == CategoryKind.expense
-          ? TxType.expense
-          : TxType.income,
+      type: isGoalOrLoan
+          ? TxType.transfer
+          : (rule.kind == CategoryKind.expense
+                ? TxType.expense
+                : TxType.income),
       amount: onPromo ? promoAmount : rule.amount,
       accountId: rule.accountId,
+      toAccountId: rule.toAccountId,
       categoryId: rule.categoryId,
       date: date,
-      payee: rule.payee,
+      payee: isGoalOrLoan ? null : rule.payee,
       recurringRuleId: rule.id,
       needsAmountReview: rule.isEstimate,
     );
@@ -3790,6 +3934,10 @@ class AppDatabase extends _$AppDatabase {
   Future<void> setLockScreenStyle(LockScreenStyle style) => update(
     settings,
   ).write(SettingsCompanion(lockScreenStyle: Value(style)));
+
+  Future<void> setMoreScreenViewMode(MoreScreenViewMode mode) => update(
+    settings,
+  ).write(SettingsCompanion(moreScreenViewMode: Value(mode)));
 
   // ── Passcode ──────────────────────────────────────────────────────────────
 
@@ -4647,6 +4795,8 @@ class AppDatabase extends _$AppDatabase {
       'recurringRuleTags': (await select(
         recurringRuleTags,
       ).get()).map(m).toList(),
+      'tagGroups': (await select(tagGroups).get()).map(m).toList(),
+      'tagGroupTags': (await select(tagGroupTags).get()).map(m).toList(),
       'transactionSplits': (await select(
         transactionSplits,
       ).get()).map(m).toList(),
@@ -4744,6 +4894,9 @@ class AppDatabase extends _$AppDatabase {
       await delete(categories).go();
       await delete(accounts).go();
       await delete(senderRules).go();
+      // References tags and tagGroups, so it goes before both deletes.
+      await delete(tagGroupTags).go();
+      await delete(tagGroups).go();
       await delete(tags).go();
       // Items reference lists, so they go first.
       await delete(shoppingItems).go();
@@ -4775,6 +4928,10 @@ class AppDatabase extends _$AppDatabase {
       await load(categories, 'categories');
       await load(persons, 'persons');
       await load(tags, 'tags');
+      // References tags, already loaded above. An older backup simply has no
+      // rows for either, so `rows()` yields nothing.
+      await load(tagGroups, 'tagGroups');
+      await load(tagGroupTags, 'tagGroupTags');
       // A backup taken before v21 has no `goalDetails` key — its (old-shaped)
       // goals live under `savingsGoals` instead. `accounts` is already
       // loaded above, so the linked account's balance is there to snapshot.

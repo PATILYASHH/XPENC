@@ -801,6 +801,62 @@ class _ClusterHeader extends StatelessWidget {
 
 // ── One transaction, one card ────────────────────────────────────────────────
 
+/// Long-press quick actions: Duplicate ("publish another one" of this
+/// transaction with today's date, GitHub #92), Edit, Delete — the same three
+/// destinations already reachable one at a time from the detail screen, just
+/// surfaced without leaving the list.
+Future<void> _openQuickActions(
+  BuildContext context,
+  TransactionRow tx,
+  String title,
+  Future<void> Function(TransactionRow tx, String title) onDelete,
+) async {
+  final theme = Theme.of(context);
+  await showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (sheetContext) => SafeArea(
+      top: false,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.content_copy_outlined),
+            title: const Text('Duplicate'),
+            subtitle: const Text('Add a new transaction with these details'),
+            onTap: () {
+              Navigator.of(sheetContext).pop();
+              context.push('/add?duplicate=${tx.id}');
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.edit_outlined),
+            title: const Text('Edit'),
+            onTap: () {
+              Navigator.of(sheetContext).pop();
+              context.push('/add?id=${tx.id}');
+            },
+          ),
+          ListTile(
+            leading: Icon(
+              Icons.delete_outline_rounded,
+              color: theme.colorScheme.error,
+            ),
+            title: Text(
+              'Delete',
+              style: TextStyle(color: theme.colorScheme.error),
+            ),
+            onTap: () {
+              Navigator.of(sheetContext).pop();
+              onDelete(tx, title);
+            },
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 class _TxCard extends StatelessWidget {
   const _TxCard({
     required this.tx,
@@ -900,6 +956,7 @@ class _TxCard extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             child: InkWell(
               onTap: () => context.push('/transaction/${tx.id}'),
+              onLongPress: () => _openQuickActions(context, tx, title, onDelete),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
                 child: Row(

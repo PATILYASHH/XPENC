@@ -257,6 +257,14 @@ void main() {
         tagIds: {tagId},
       );
 
+      // A tag group bundling that same tag (#92) — its own join table
+      // (`tagGroupTags`), separate from both tag joins above.
+      final tagGroupId = await db.addTagGroup(
+        name: 'Work trip',
+        colorValue: 0xFF0000FF,
+      );
+      await db.setTagGroupTags(tagGroupId, {tagId});
+
       // A manual link between two transactions (#64).
       final incomeTx = (await db.watchTransactions().first)
           .firstWhere((t) => t.type == TxType.income);
@@ -388,6 +396,15 @@ void main() {
         await fresh.tagIdsForRecurringRule(freshSpotify.id),
         hasLength(1),
         reason: 'the preset tag on a recurring rule must survive too',
+      );
+
+      // Tag group bundling that tag (tagGroupTags, #92).
+      final freshGroup = (await fresh.watchTagGroups().first)
+          .firstWhere((g) => g.name == 'Work trip');
+      expect(
+        await fresh.tagIdsForGroup(freshGroup.id),
+        hasLength(1),
+        reason: 'the tag link on the group must survive too',
       );
 
       // Manual link between two transactions (transactionLinks, #64).

@@ -65,10 +65,19 @@ class AutoScreen extends ConsumerWidget {
                 return const SliverToBoxAdapter(child: _EmptyAuto());
               }
               final expenses = rules
-                  .where((r) => r.kind == CategoryKind.expense)
+                  .where(
+                    (r) =>
+                        r.toAccountId == null && r.kind == CategoryKind.expense,
+                  )
                   .toList();
               final income = rules
-                  .where((r) => r.kind == CategoryKind.income)
+                  .where(
+                    (r) =>
+                        r.toAccountId == null && r.kind == CategoryKind.income,
+                  )
+                  .toList();
+              final goalOrLoan = rules
+                  .where((r) => r.toAccountId != null)
                   .toList();
               return SliverList.list(
                 children: [
@@ -79,6 +88,10 @@ class AutoScreen extends ConsumerWidget {
                   if (income.isNotEmpty) ...[
                     _sectionHeader(theme, 'Auto Income'),
                     _section(context, theme, income),
+                  ],
+                  if (goalOrLoan.isNotEmpty) ...[
+                    _sectionHeader(theme, 'G&L'),
+                    _section(context, theme, goalOrLoan),
                   ],
                 ],
               );
@@ -168,7 +181,8 @@ class _EmptyAuto extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             'Nothing set up yet — tap + to automate a fixed expense like '
-            'rent or a subscription, or income like salary.',
+            'rent or a subscription, income like salary, or a fixed '
+            'contribution toward a goal or loan payment.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -190,22 +204,32 @@ class _RuleTile extends ConsumerWidget {
 
   bool get _isExpense => rule.kind == CategoryKind.expense;
 
+  bool get _isGoalOrLoan => rule.toAccountId != null;
+
   bool get _onPromo =>
       rule.promoAmount != null && (rule.promoOccurrencesLeft ?? 0) > 0;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final color = _isExpense ? AppColors.expense : AppColors.income;
+    final destination = _isGoalOrLoan
+        ? ref.watch(accountMapProvider)[rule.toAccountId]
+        : null;
+    final color = _isGoalOrLoan
+        ? AppColors.transfer
+        : (_isExpense ? AppColors.expense : AppColors.income);
+    final icon = _isGoalOrLoan
+        ? (destination?.type == AccountType.loan
+              ? Icons.account_balance_rounded
+              : Icons.savings_rounded)
+        : (_isExpense ? Icons.north_east_rounded : Icons.south_west_rounded);
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: CircleAvatar(
         backgroundColor: color.withValues(alpha: 0.14),
         foregroundColor: color,
-        child: Icon(
-          _isExpense ? Icons.north_east_rounded : Icons.south_west_rounded,
-        ),
+        child: Icon(icon),
       ),
       title: Text(
         rule.name,
@@ -215,6 +239,7 @@ class _RuleTile extends ConsumerWidget {
       ),
       subtitle: Text(
         '${_frequencyLabel(rule)} · Next ${DateFormat('d MMM').format(rule.nextDueDate)}'
+        '${destination != null ? ' → ${destination.name}' : ''}'
         '${rule.isEstimate ? ' · Estimate' : ''}'
         '${_onPromo ? ' · Promo ×${rule.promoOccurrencesLeft}' : ''}',
         maxLines: 1,

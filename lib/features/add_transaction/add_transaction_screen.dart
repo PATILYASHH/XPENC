@@ -78,14 +78,30 @@ class _PaymentLegEntry {
 ///
 /// With a [transactionId] the screen edits that existing transaction instead
 /// of creating a new one.
+///
+/// With a [duplicateFromId] instead, every field is prefilled from that
+/// transaction — same as editing — but [transactionId] stays null, so Save
+/// creates a brand-new row rather than touching the source (GitHub #92:
+/// "publish another one" of an existing transaction). The date resets to
+/// today rather than copying the source's, nudging the user to notice this
+/// is a separate entry and pick the date it actually happened on; the
+/// receipt photo is never copied, since it's evidence of the original
+/// purchase, not this new one.
 class AddTransactionScreen extends ConsumerStatefulWidget {
-  const AddTransactionScreen({this.transactionId, this.initialType, super.key});
+  const AddTransactionScreen({
+    this.transactionId,
+    this.duplicateFromId,
+    this.initialType,
+    super.key,
+  });
 
   final int? transactionId;
+  final int? duplicateFromId;
 
   /// Preselects Expense or Income — used by the home-screen widget's "+
   /// Expense" / "+ Income" shortcuts to skip the type-picker step. Ignored
-  /// when [transactionId] is set, since editing loads its own type.
+  /// when [transactionId] or [duplicateFromId] is set, since both load their
+  /// own type.
   final TxType? initialType;
 
   @override
@@ -211,6 +227,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     if (_isEditing) {
       _loading = true;
       WidgetsBinding.instance.addPostFrameCallback((_) => _loadForEdit());
+    } else if (widget.duplicateFromId != null) {
+      _loading = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadForDuplicate());
     }
   }
 
@@ -289,6 +308,70 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       _payeeController.text = row.payee ?? '';
       _tagIds = tagIds.toSet();
       _imagePath = row.imagePath;
+      _isSplit = splits.isNotEmpty;
+      for (final s in splits) {
+        _splitRows.add(
+          _SplitEntry(
+            categoryId: s.categoryId,
+            amountText: _bufferFromMoney(s.amount),
+            onFocusChange: _onFieldFocusChanged,
+          ),
+        );
+      }
+      _loading = false;
+    });
+  }
+
+  /// Fetch the transaction being duplicated and prefill every field from it,
+  /// same as [_loadForEdit] — except [_date] resets to today instead of
+  /// copying the source's, and the receipt (if any) is never carried over.
+  /// [widget.transactionId] stays null throughout, so `_save` inserts a new
+  /// row instead of updating the source.
+  Future<void> _loadForDuplicate() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+
+    final db = ref.read(dbProvider);
+    final sourceId = widget.duplicateFromId!;
+    final row = await db.transactionById(sourceId);
+    final tagIds = await db.tagIdsForTransaction(sourceId);
+    final splits = await db.splitsForTransaction(sourceId);
+    if (!mounted) return;
+
+    if (row == null) {
+      navigator.pop();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Transaction not found')),
+      );
+      return;
+    }
+
+    // Same restriction as `_loadForEdit`: this screen has no shape for a
+    // person movement (or a repayment counted as income), so there is
+    // nothing sensible to prefill it into.
+    final isPersonLinked =
+        row.type.isPersonMovement ||
+        (row.type.isIncomeOrExpense &&
+            await db.isPersonLinkedTransaction(row.id));
+    if (!mounted) return;
+    if (isPersonLinked) {
+      navigator.pop();
+      messenger.showSnackBar(
+        const SnackBar(content: Text("This can't be duplicated from here.")),
+      );
+      return;
+    }
+
+    setState(() {
+      _type = row.type;
+      _buffer = _bufferFromMoney(row.amount);
+      _freshAmountEntry = true;
+      _accountId = row.accountId;
+      _toAccountId = row.toAccountId;
+      _categoryId = row.categoryId;
+      _noteController.text = row.note ?? '';
+      _payeeController.text = row.payee ?? '';
+      _tagIds = tagIds.toSet();
       _isSplit = splits.isNotEmpty;
       for (final s in splits) {
         _splitRows.add(

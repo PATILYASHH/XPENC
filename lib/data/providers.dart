@@ -789,6 +789,12 @@ final lockScreenStyleProvider = Provider<LockScreenStyle>((ref) {
       LockScreenStyle.classic;
 });
 
+/// How the More hub lays out its items — see [MoreScreenViewMode].
+final moreScreenViewModeProvider = Provider<MoreScreenViewMode>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.moreScreenViewMode ??
+      MoreScreenViewMode.list;
+});
+
 /// Whether every amount app-wide is masked — the top bar's eye icon. See
 /// `AmountVisibilityScope` in `money_text.dart`.
 final hideAmountsProvider = Provider<bool>((ref) {
@@ -1189,6 +1195,30 @@ final transactionTagsByTxProvider = Provider<Map<int, List<TagRow>>>((ref) {
     final tag = tagMap[link.tagId];
     if (tag == null) continue;
     (out[link.transactionId] ??= []).add(tag);
+  }
+  return out;
+});
+
+// ── Tag groups ──────────────────────────────────────────────────────────────
+
+final tagGroupsProvider = StreamProvider<List<TagGroupRow>>(
+  (ref) => ref.watch(dbProvider).watchTagGroups(),
+);
+
+final _tagGroupTagLinksProvider = StreamProvider<List<TagGroupTagRow>>(
+  (ref) => ref.watch(dbProvider).watchAllTagGroupTags(),
+);
+
+/// Every group's member tags, keyed by group id — same compose-don't-
+/// resubscribe shape as [transactionTagsByTxProvider].
+final tagGroupTagsByGroupProvider = Provider<Map<int, List<TagRow>>>((ref) {
+  final links = ref.watch(_tagGroupTagLinksProvider).valueOrNull ?? const [];
+  final tagMap = ref.watch(tagMapProvider);
+  final out = <int, List<TagRow>>{};
+  for (final link in links) {
+    final tag = tagMap[link.tagId];
+    if (tag == null) continue;
+    (out[link.groupId] ??= []).add(tag);
   }
   return out;
 });
