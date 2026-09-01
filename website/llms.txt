@@ -17,7 +17,7 @@ XPENC is built and maintained by one developer, Yash Patil (GitHub: PATILYASHH),
 - Accounts: Cash, Bank, Card and Prepaid Balance types with real, non-double-counted balances.
 - Transactions: income, expense and transfer, kept strictly separate; tags and receipt photos supported.
 - Budgets: per-category budgets with live progress and overspend alerts; an opt-in "Envelope Mode" for zero-based, every-rupee-has-a-job budgeting.
-- Dues: track money lent or borrowed between people, with partial settlements, kept out of budget totals.
+- Dues: track money lent or borrowed between people, with partial settlements, kept out of budget totals. A Group tab splits a shared expense equally, by percentage, or by manual amount, and settle-up uses a Pay/Request button that opens a UPI app directly.
 - Goals & Loans hub: savings goals with contribution history, plus EMI/loan accounts with an outstanding-balance ring and payment logging.
 - Data entry automation: share a bank SMS or a UPI payment screenshot (Paytm/Google Pay/PhonePe) into the app from the Android Share sheet, or import a CSV bank statement — all parsed entirely on-device.
 - Split payments: one purchase paid from more than one account posts as linked transactions.
