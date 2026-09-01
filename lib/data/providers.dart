@@ -549,7 +549,12 @@ final upcomingPaymentsProvider = Provider.family<List<UpcomingItem>, int>((
         (
           date: r.nextDueDate,
           title: r.name,
-          amount: r.amount,
+          // A promo in its window quotes at the promo price — same check as
+          // `_RuleTile._onPromo` in the Auto tab, so the two never disagree
+          // about what the next occurrence actually costs (GitHub #94).
+          amount: r.promoAmount != null && (r.promoOccurrencesLeft ?? 0) > 0
+              ? r.promoAmount
+              : r.amount,
           isOutgoing: r.kind == CategoryKind.expense,
           isReminder: false,
           id: r.id,
