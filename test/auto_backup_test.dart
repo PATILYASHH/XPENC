@@ -86,6 +86,7 @@ void main() {
       revolutEnabled: true,
       lockScreenStyle: LockScreenStyle.classic,
       screenshotReminderEnabled: false,
+      moreScreenViewMode: MoreScreenViewMode.list,
     );
 
     final now = DateTime(2026, 8, 5, 12);

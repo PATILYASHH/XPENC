@@ -2269,11 +2269,25 @@ class $RecurringRulesTable extends RecurringRules
   late final GeneratedColumn<int> categoryId = GeneratedColumn<int>(
     'category_id',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.int,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
       'REFERENCES categories (id)',
+    ),
+  );
+  static const VerificationMeta _toAccountIdMeta = const VerificationMeta(
+    'toAccountId',
+  );
+  @override
+  late final GeneratedColumn<int> toAccountId = GeneratedColumn<int>(
+    'to_account_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES accounts (id)',
     ),
   );
   static const VerificationMeta _payeeMeta = const VerificationMeta('payee');
@@ -2410,6 +2424,7 @@ class $RecurringRulesTable extends RecurringRules
     amount,
     accountId,
     categoryId,
+    toAccountId,
     payee,
     note,
     frequency,
@@ -2458,8 +2473,15 @@ class $RecurringRulesTable extends RecurringRules
         _categoryIdMeta,
         categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
       );
-    } else if (isInserting) {
-      context.missing(_categoryIdMeta);
+    }
+    if (data.containsKey('to_account_id')) {
+      context.handle(
+        _toAccountIdMeta,
+        toAccountId.isAcceptableOrUnknown(
+          data['to_account_id']!,
+          _toAccountIdMeta,
+        ),
+      );
     }
     if (data.containsKey('payee')) {
       context.handle(
@@ -2565,7 +2587,11 @@ class $RecurringRulesTable extends RecurringRules
       categoryId: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}category_id'],
-      )!,
+      ),
+      toAccountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}to_account_id'],
+      ),
       payee: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}payee'],
@@ -2641,11 +2667,25 @@ class RecurringRuleRow extends DataClass
   final String name;
 
   /// Reuses [CategoryKind] rather than a bespoke enum — a rule is exactly as
-  /// income-or-expense as the category it posts under.
+  /// income-or-expense as the category it posts under. For a G&L rule (see
+  /// [toAccountId]) this is always [CategoryKind.expense] — money leaves
+  /// [accountId] the same direction as an expense — but it's otherwise
+  /// unread: every code path branches on [toAccountId] first.
   final CategoryKind kind;
   final Money amount;
   final int accountId;
-  final int categoryId;
+
+  /// Null for a G&L rule (see [toAccountId]) — a transfer into a goal or
+  /// loan is only ever optionally tagged, exactly like
+  /// [GoalDetails.categoryId]/[LoanDetails.categoryId]. Required for an
+  /// expense/income rule.
+  final int? categoryId;
+
+  /// Non-null makes this a "G&L" rule: it posts a [TxType.transfer] from
+  /// [accountId] to this goal or loan account instead of an
+  /// income/expense transaction. Null (the common case) means the rule
+  /// posts an ordinary expense/income per [kind].
+  final int? toAccountId;
 
   /// Same free-text field as [Transactions.payee] — who the rule pays (an
   /// expense) or who it's paid by (income, e.g. an employer for a salary
@@ -2696,7 +2736,8 @@ class RecurringRuleRow extends DataClass
     required this.kind,
     required this.amount,
     required this.accountId,
-    required this.categoryId,
+    this.categoryId,
+    this.toAccountId,
     this.payee,
     this.note,
     required this.frequency,
@@ -2725,7 +2766,12 @@ class RecurringRuleRow extends DataClass
       );
     }
     map['account_id'] = Variable<int>(accountId);
-    map['category_id'] = Variable<int>(categoryId);
+    if (!nullToAbsent || categoryId != null) {
+      map['category_id'] = Variable<int>(categoryId);
+    }
+    if (!nullToAbsent || toAccountId != null) {
+      map['to_account_id'] = Variable<int>(toAccountId);
+    }
     if (!nullToAbsent || payee != null) {
       map['payee'] = Variable<String>(payee);
     }
@@ -2763,7 +2809,12 @@ class RecurringRuleRow extends DataClass
       kind: Value(kind),
       amount: Value(amount),
       accountId: Value(accountId),
-      categoryId: Value(categoryId),
+      categoryId: categoryId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(categoryId),
+      toAccountId: toAccountId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(toAccountId),
       payee: payee == null && nullToAbsent
           ? const Value.absent()
           : Value(payee),
@@ -2799,7 +2850,8 @@ class RecurringRuleRow extends DataClass
       ),
       amount: serializer.fromJson<Money>(json['amount']),
       accountId: serializer.fromJson<int>(json['accountId']),
-      categoryId: serializer.fromJson<int>(json['categoryId']),
+      categoryId: serializer.fromJson<int?>(json['categoryId']),
+      toAccountId: serializer.fromJson<int?>(json['toAccountId']),
       payee: serializer.fromJson<String?>(json['payee']),
       note: serializer.fromJson<String?>(json['note']),
       frequency: $RecurringRulesTable.$converterfrequency.fromJson(
@@ -2828,7 +2880,8 @@ class RecurringRuleRow extends DataClass
       ),
       'amount': serializer.toJson<Money>(amount),
       'accountId': serializer.toJson<int>(accountId),
-      'categoryId': serializer.toJson<int>(categoryId),
+      'categoryId': serializer.toJson<int?>(categoryId),
+      'toAccountId': serializer.toJson<int?>(toAccountId),
       'payee': serializer.toJson<String?>(payee),
       'note': serializer.toJson<String?>(note),
       'frequency': serializer.toJson<String>(
@@ -2851,7 +2904,8 @@ class RecurringRuleRow extends DataClass
     CategoryKind? kind,
     Money? amount,
     int? accountId,
-    int? categoryId,
+    Value<int?> categoryId = const Value.absent(),
+    Value<int?> toAccountId = const Value.absent(),
     Value<String?> payee = const Value.absent(),
     Value<String?> note = const Value.absent(),
     RecurringFrequency? frequency,
@@ -2869,7 +2923,8 @@ class RecurringRuleRow extends DataClass
     kind: kind ?? this.kind,
     amount: amount ?? this.amount,
     accountId: accountId ?? this.accountId,
-    categoryId: categoryId ?? this.categoryId,
+    categoryId: categoryId.present ? categoryId.value : this.categoryId,
+    toAccountId: toAccountId.present ? toAccountId.value : this.toAccountId,
     payee: payee.present ? payee.value : this.payee,
     note: note.present ? note.value : this.note,
     frequency: frequency ?? this.frequency,
@@ -2894,6 +2949,9 @@ class RecurringRuleRow extends DataClass
       categoryId: data.categoryId.present
           ? data.categoryId.value
           : this.categoryId,
+      toAccountId: data.toAccountId.present
+          ? data.toAccountId.value
+          : this.toAccountId,
       payee: data.payee.present ? data.payee.value : this.payee,
       note: data.note.present ? data.note.value : this.note,
       frequency: data.frequency.present ? data.frequency.value : this.frequency,
@@ -2929,6 +2987,7 @@ class RecurringRuleRow extends DataClass
           ..write('amount: $amount, ')
           ..write('accountId: $accountId, ')
           ..write('categoryId: $categoryId, ')
+          ..write('toAccountId: $toAccountId, ')
           ..write('payee: $payee, ')
           ..write('note: $note, ')
           ..write('frequency: $frequency, ')
@@ -2952,6 +3011,7 @@ class RecurringRuleRow extends DataClass
     amount,
     accountId,
     categoryId,
+    toAccountId,
     payee,
     note,
     frequency,
@@ -2974,6 +3034,7 @@ class RecurringRuleRow extends DataClass
           other.amount == this.amount &&
           other.accountId == this.accountId &&
           other.categoryId == this.categoryId &&
+          other.toAccountId == this.toAccountId &&
           other.payee == this.payee &&
           other.note == this.note &&
           other.frequency == this.frequency &&
@@ -2993,7 +3054,8 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
   final Value<CategoryKind> kind;
   final Value<Money> amount;
   final Value<int> accountId;
-  final Value<int> categoryId;
+  final Value<int?> categoryId;
+  final Value<int?> toAccountId;
   final Value<String?> payee;
   final Value<String?> note;
   final Value<RecurringFrequency> frequency;
@@ -3012,6 +3074,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     this.amount = const Value.absent(),
     this.accountId = const Value.absent(),
     this.categoryId = const Value.absent(),
+    this.toAccountId = const Value.absent(),
     this.payee = const Value.absent(),
     this.note = const Value.absent(),
     this.frequency = const Value.absent(),
@@ -3030,7 +3093,8 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     required CategoryKind kind,
     required Money amount,
     required int accountId,
-    required int categoryId,
+    this.categoryId = const Value.absent(),
+    this.toAccountId = const Value.absent(),
     this.payee = const Value.absent(),
     this.note = const Value.absent(),
     required RecurringFrequency frequency,
@@ -3046,7 +3110,6 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
        kind = Value(kind),
        amount = Value(amount),
        accountId = Value(accountId),
-       categoryId = Value(categoryId),
        frequency = Value(frequency),
        nextDueDate = Value(nextDueDate);
   static Insertable<RecurringRuleRow> custom({
@@ -3056,6 +3119,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     Expression<int>? amount,
     Expression<int>? accountId,
     Expression<int>? categoryId,
+    Expression<int>? toAccountId,
     Expression<String>? payee,
     Expression<String>? note,
     Expression<String>? frequency,
@@ -3075,6 +3139,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
       if (amount != null) 'amount': amount,
       if (accountId != null) 'account_id': accountId,
       if (categoryId != null) 'category_id': categoryId,
+      if (toAccountId != null) 'to_account_id': toAccountId,
       if (payee != null) 'payee': payee,
       if (note != null) 'note': note,
       if (frequency != null) 'frequency': frequency,
@@ -3096,7 +3161,8 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     Value<CategoryKind>? kind,
     Value<Money>? amount,
     Value<int>? accountId,
-    Value<int>? categoryId,
+    Value<int?>? categoryId,
+    Value<int?>? toAccountId,
     Value<String?>? payee,
     Value<String?>? note,
     Value<RecurringFrequency>? frequency,
@@ -3116,6 +3182,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
       amount: amount ?? this.amount,
       accountId: accountId ?? this.accountId,
       categoryId: categoryId ?? this.categoryId,
+      toAccountId: toAccountId ?? this.toAccountId,
       payee: payee ?? this.payee,
       note: note ?? this.note,
       frequency: frequency ?? this.frequency,
@@ -3154,6 +3221,9 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     }
     if (categoryId.present) {
       map['category_id'] = Variable<int>(categoryId.value);
+    }
+    if (toAccountId.present) {
+      map['to_account_id'] = Variable<int>(toAccountId.value);
     }
     if (payee.present) {
       map['payee'] = Variable<String>(payee.value);
@@ -3204,6 +3274,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
           ..write('amount: $amount, ')
           ..write('accountId: $accountId, ')
           ..write('categoryId: $categoryId, ')
+          ..write('toAccountId: $toAccountId, ')
           ..write('payee: $payee, ')
           ..write('note: $note, ')
           ..write('frequency: $frequency, ')
@@ -8333,6 +8404,19 @@ class $SettingsTable extends Settings
     requiredDuringInsert: false,
     defaultValue: const Constant('classic'),
   ).withConverter<LockScreenStyle>($SettingsTable.$converterlockScreenStyle);
+  @override
+  late final GeneratedColumnWithTypeConverter<MoreScreenViewMode, String>
+  moreScreenViewMode =
+      GeneratedColumn<String>(
+        'more_screen_view_mode',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('list'),
+      ).withConverter<MoreScreenViewMode>(
+        $SettingsTable.$convertermoreScreenViewMode,
+      );
   static const VerificationMeta _pinTimeoutMinutesMeta = const VerificationMeta(
     'pinTimeoutMinutes',
   );
@@ -8717,6 +8801,7 @@ class $SettingsTable extends Settings
     passcodeLength,
     biometricEnabled,
     lockScreenStyle,
+    moreScreenViewMode,
     pinTimeoutMinutes,
     masterPhraseHash,
     masterPhraseSalt,
@@ -9318,6 +9403,12 @@ class $SettingsTable extends Settings
           data['${effectivePrefix}lock_screen_style'],
         )!,
       ),
+      moreScreenViewMode: $SettingsTable.$convertermoreScreenViewMode.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}more_screen_view_mode'],
+        )!,
+      ),
       pinTimeoutMinutes: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}pin_timeout_minutes'],
@@ -9444,6 +9535,10 @@ class $SettingsTable extends Settings
   $converterlockScreenStyle = const EnumNameConverter<LockScreenStyle>(
     LockScreenStyle.values,
   );
+  static JsonTypeConverter2<MoreScreenViewMode, String, String>
+  $convertermoreScreenViewMode = const EnumNameConverter<MoreScreenViewMode>(
+    MoreScreenViewMode.values,
+  );
   static JsonTypeConverter2<AutoBackupFrequency, String, String>
   $converterautoBackupFrequency = const EnumNameConverter<AutoBackupFrequency>(
     AutoBackupFrequency.values,
@@ -9540,6 +9635,10 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// Which numpad style the lock screen draws — see [LockScreenStyle].
   /// Defaults to `classic` so existing users see no change.
   final LockScreenStyle lockScreenStyle;
+
+  /// How the More hub lays out its items — see [MoreScreenViewMode].
+  /// Defaults to `list` so existing users see no change.
+  final MoreScreenViewMode moreScreenViewMode;
 
   /// Minutes the app may sit backgrounded before the next resume re-locks it
   /// — `0` means immediately (see GitHub #60). Checked against how long the
@@ -9712,6 +9811,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     this.passcodeLength,
     required this.biometricEnabled,
     required this.lockScreenStyle,
+    required this.moreScreenViewMode,
     required this.pinTimeoutMinutes,
     this.masterPhraseHash,
     this.masterPhraseSalt,
@@ -9793,6 +9893,11 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     {
       map['lock_screen_style'] = Variable<String>(
         $SettingsTable.$converterlockScreenStyle.toSql(lockScreenStyle),
+      );
+    }
+    {
+      map['more_screen_view_mode'] = Variable<String>(
+        $SettingsTable.$convertermoreScreenViewMode.toSql(moreScreenViewMode),
       );
     }
     map['pin_timeout_minutes'] = Variable<int>(pinTimeoutMinutes);
@@ -9895,6 +10000,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           : Value(passcodeLength),
       biometricEnabled: Value(biometricEnabled),
       lockScreenStyle: Value(lockScreenStyle),
+      moreScreenViewMode: Value(moreScreenViewMode),
       pinTimeoutMinutes: Value(pinTimeoutMinutes),
       masterPhraseHash: masterPhraseHash == null && nullToAbsent
           ? const Value.absent()
@@ -9978,6 +10084,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       biometricEnabled: serializer.fromJson<bool>(json['biometricEnabled']),
       lockScreenStyle: $SettingsTable.$converterlockScreenStyle.fromJson(
         serializer.fromJson<String>(json['lockScreenStyle']),
+      ),
+      moreScreenViewMode: $SettingsTable.$convertermoreScreenViewMode.fromJson(
+        serializer.fromJson<String>(json['moreScreenViewMode']),
       ),
       pinTimeoutMinutes: serializer.fromJson<int>(json['pinTimeoutMinutes']),
       masterPhraseHash: serializer.fromJson<String?>(json['masterPhraseHash']),
@@ -10071,6 +10180,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'lockScreenStyle': serializer.toJson<String>(
         $SettingsTable.$converterlockScreenStyle.toJson(lockScreenStyle),
       ),
+      'moreScreenViewMode': serializer.toJson<String>(
+        $SettingsTable.$convertermoreScreenViewMode.toJson(moreScreenViewMode),
+      ),
       'pinTimeoutMinutes': serializer.toJson<int>(pinTimeoutMinutes),
       'masterPhraseHash': serializer.toJson<String?>(masterPhraseHash),
       'masterPhraseSalt': serializer.toJson<String?>(masterPhraseSalt),
@@ -10140,6 +10252,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     Value<int?> passcodeLength = const Value.absent(),
     bool? biometricEnabled,
     LockScreenStyle? lockScreenStyle,
+    MoreScreenViewMode? moreScreenViewMode,
     int? pinTimeoutMinutes,
     Value<String?> masterPhraseHash = const Value.absent(),
     Value<String?> masterPhraseSalt = const Value.absent(),
@@ -10201,6 +10314,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
         : this.passcodeLength,
     biometricEnabled: biometricEnabled ?? this.biometricEnabled,
     lockScreenStyle: lockScreenStyle ?? this.lockScreenStyle,
+    moreScreenViewMode: moreScreenViewMode ?? this.moreScreenViewMode,
     pinTimeoutMinutes: pinTimeoutMinutes ?? this.pinTimeoutMinutes,
     masterPhraseHash: masterPhraseHash.present
         ? masterPhraseHash.value
@@ -10308,6 +10422,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       lockScreenStyle: data.lockScreenStyle.present
           ? data.lockScreenStyle.value
           : this.lockScreenStyle,
+      moreScreenViewMode: data.moreScreenViewMode.present
+          ? data.moreScreenViewMode.value
+          : this.moreScreenViewMode,
       pinTimeoutMinutes: data.pinTimeoutMinutes.present
           ? data.pinTimeoutMinutes.value
           : this.pinTimeoutMinutes,
@@ -10425,6 +10542,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('passcodeLength: $passcodeLength, ')
           ..write('biometricEnabled: $biometricEnabled, ')
           ..write('lockScreenStyle: $lockScreenStyle, ')
+          ..write('moreScreenViewMode: $moreScreenViewMode, ')
           ..write('pinTimeoutMinutes: $pinTimeoutMinutes, ')
           ..write('masterPhraseHash: $masterPhraseHash, ')
           ..write('masterPhraseSalt: $masterPhraseSalt, ')
@@ -10488,6 +10606,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     passcodeLength,
     biometricEnabled,
     lockScreenStyle,
+    moreScreenViewMode,
     pinTimeoutMinutes,
     masterPhraseHash,
     masterPhraseSalt,
@@ -10548,6 +10667,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.passcodeLength == this.passcodeLength &&
           other.biometricEnabled == this.biometricEnabled &&
           other.lockScreenStyle == this.lockScreenStyle &&
+          other.moreScreenViewMode == this.moreScreenViewMode &&
           other.pinTimeoutMinutes == this.pinTimeoutMinutes &&
           other.masterPhraseHash == this.masterPhraseHash &&
           other.masterPhraseSalt == this.masterPhraseSalt &&
@@ -10608,6 +10728,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<int?> passcodeLength;
   final Value<bool> biometricEnabled;
   final Value<LockScreenStyle> lockScreenStyle;
+  final Value<MoreScreenViewMode> moreScreenViewMode;
   final Value<int> pinTimeoutMinutes;
   final Value<String?> masterPhraseHash;
   final Value<String?> masterPhraseSalt;
@@ -10664,6 +10785,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.passcodeLength = const Value.absent(),
     this.biometricEnabled = const Value.absent(),
     this.lockScreenStyle = const Value.absent(),
+    this.moreScreenViewMode = const Value.absent(),
     this.pinTimeoutMinutes = const Value.absent(),
     this.masterPhraseHash = const Value.absent(),
     this.masterPhraseSalt = const Value.absent(),
@@ -10721,6 +10843,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.passcodeLength = const Value.absent(),
     this.biometricEnabled = const Value.absent(),
     this.lockScreenStyle = const Value.absent(),
+    this.moreScreenViewMode = const Value.absent(),
     this.pinTimeoutMinutes = const Value.absent(),
     this.masterPhraseHash = const Value.absent(),
     this.masterPhraseSalt = const Value.absent(),
@@ -10778,6 +10901,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<int>? passcodeLength,
     Expression<bool>? biometricEnabled,
     Expression<String>? lockScreenStyle,
+    Expression<String>? moreScreenViewMode,
     Expression<int>? pinTimeoutMinutes,
     Expression<String>? masterPhraseHash,
     Expression<String>? masterPhraseSalt,
@@ -10839,6 +10963,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       if (passcodeLength != null) 'passcode_length': passcodeLength,
       if (biometricEnabled != null) 'biometric_enabled': biometricEnabled,
       if (lockScreenStyle != null) 'lock_screen_style': lockScreenStyle,
+      if (moreScreenViewMode != null)
+        'more_screen_view_mode': moreScreenViewMode,
       if (pinTimeoutMinutes != null) 'pin_timeout_minutes': pinTimeoutMinutes,
       if (masterPhraseHash != null) 'master_phrase_hash': masterPhraseHash,
       if (masterPhraseSalt != null) 'master_phrase_salt': masterPhraseSalt,
@@ -10911,6 +11037,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<int?>? passcodeLength,
     Value<bool>? biometricEnabled,
     Value<LockScreenStyle>? lockScreenStyle,
+    Value<MoreScreenViewMode>? moreScreenViewMode,
     Value<int>? pinTimeoutMinutes,
     Value<String?>? masterPhraseHash,
     Value<String?>? masterPhraseSalt,
@@ -10970,6 +11097,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       passcodeLength: passcodeLength ?? this.passcodeLength,
       biometricEnabled: biometricEnabled ?? this.biometricEnabled,
       lockScreenStyle: lockScreenStyle ?? this.lockScreenStyle,
+      moreScreenViewMode: moreScreenViewMode ?? this.moreScreenViewMode,
       pinTimeoutMinutes: pinTimeoutMinutes ?? this.pinTimeoutMinutes,
       masterPhraseHash: masterPhraseHash ?? this.masterPhraseHash,
       masterPhraseSalt: masterPhraseSalt ?? this.masterPhraseSalt,
@@ -11097,6 +11225,13 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     if (lockScreenStyle.present) {
       map['lock_screen_style'] = Variable<String>(
         $SettingsTable.$converterlockScreenStyle.toSql(lockScreenStyle.value),
+      );
+    }
+    if (moreScreenViewMode.present) {
+      map['more_screen_view_mode'] = Variable<String>(
+        $SettingsTable.$convertermoreScreenViewMode.toSql(
+          moreScreenViewMode.value,
+        ),
       );
     }
     if (pinTimeoutMinutes.present) {
@@ -11238,6 +11373,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('passcodeLength: $passcodeLength, ')
           ..write('biometricEnabled: $biometricEnabled, ')
           ..write('lockScreenStyle: $lockScreenStyle, ')
+          ..write('moreScreenViewMode: $moreScreenViewMode, ')
           ..write('pinTimeoutMinutes: $pinTimeoutMinutes, ')
           ..write('masterPhraseHash: $masterPhraseHash, ')
           ..write('masterPhraseSalt: $masterPhraseSalt, ')
@@ -14220,6 +14356,530 @@ class RecurringRuleTagsCompanion extends UpdateCompanion<RecurringRuleTagRow> {
   String toString() {
     return (StringBuffer('RecurringRuleTagsCompanion(')
           ..write('ruleId: $ruleId, ')
+          ..write('tagId: $tagId, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TagGroupsTable extends TagGroups
+    with TableInfo<$TagGroupsTable, TagGroupRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TagGroupsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 30,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _colorValueMeta = const VerificationMeta(
+    'colorValue',
+  );
+  @override
+  late final GeneratedColumn<int> colorValue = GeneratedColumn<int>(
+    'color_value',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name, colorValue, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'tag_groups';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TagGroupRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('color_value')) {
+      context.handle(
+        _colorValueMeta,
+        colorValue.isAcceptableOrUnknown(data['color_value']!, _colorValueMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_colorValueMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {name},
+  ];
+  @override
+  TagGroupRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TagGroupRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      colorValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}color_value'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $TagGroupsTable createAlias(String alias) {
+    return $TagGroupsTable(attachedDatabase, alias);
+  }
+}
+
+class TagGroupRow extends DataClass implements Insertable<TagGroupRow> {
+  final int id;
+  final String name;
+  final int colorValue;
+  final DateTime createdAt;
+  const TagGroupRow({
+    required this.id,
+    required this.name,
+    required this.colorValue,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    map['color_value'] = Variable<int>(colorValue);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  TagGroupsCompanion toCompanion(bool nullToAbsent) {
+    return TagGroupsCompanion(
+      id: Value(id),
+      name: Value(name),
+      colorValue: Value(colorValue),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory TagGroupRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TagGroupRow(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      colorValue: serializer.fromJson<int>(json['colorValue']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'colorValue': serializer.toJson<int>(colorValue),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  TagGroupRow copyWith({
+    int? id,
+    String? name,
+    int? colorValue,
+    DateTime? createdAt,
+  }) => TagGroupRow(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    colorValue: colorValue ?? this.colorValue,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  TagGroupRow copyWithCompanion(TagGroupsCompanion data) {
+    return TagGroupRow(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      colorValue: data.colorValue.present
+          ? data.colorValue.value
+          : this.colorValue,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TagGroupRow(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('colorValue: $colorValue, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, colorValue, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TagGroupRow &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.colorValue == this.colorValue &&
+          other.createdAt == this.createdAt);
+}
+
+class TagGroupsCompanion extends UpdateCompanion<TagGroupRow> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<int> colorValue;
+  final Value<DateTime> createdAt;
+  const TagGroupsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.colorValue = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  TagGroupsCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    required int colorValue,
+    this.createdAt = const Value.absent(),
+  }) : name = Value(name),
+       colorValue = Value(colorValue);
+  static Insertable<TagGroupRow> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<int>? colorValue,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (colorValue != null) 'color_value': colorValue,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  TagGroupsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<int>? colorValue,
+    Value<DateTime>? createdAt,
+  }) {
+    return TagGroupsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      colorValue: colorValue ?? this.colorValue,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (colorValue.present) {
+      map['color_value'] = Variable<int>(colorValue.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TagGroupsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('colorValue: $colorValue, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TagGroupTagsTable extends TagGroupTags
+    with TableInfo<$TagGroupTagsTable, TagGroupTagRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TagGroupTagsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _groupIdMeta = const VerificationMeta(
+    'groupId',
+  );
+  @override
+  late final GeneratedColumn<int> groupId = GeneratedColumn<int>(
+    'group_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES tag_groups (id)',
+    ),
+  );
+  static const VerificationMeta _tagIdMeta = const VerificationMeta('tagId');
+  @override
+  late final GeneratedColumn<int> tagId = GeneratedColumn<int>(
+    'tag_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES tags (id)',
+    ),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [groupId, tagId];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'tag_group_tags';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TagGroupTagRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('group_id')) {
+      context.handle(
+        _groupIdMeta,
+        groupId.isAcceptableOrUnknown(data['group_id']!, _groupIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_groupIdMeta);
+    }
+    if (data.containsKey('tag_id')) {
+      context.handle(
+        _tagIdMeta,
+        tagId.isAcceptableOrUnknown(data['tag_id']!, _tagIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_tagIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {groupId, tagId};
+  @override
+  TagGroupTagRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TagGroupTagRow(
+      groupId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}group_id'],
+      )!,
+      tagId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}tag_id'],
+      )!,
+    );
+  }
+
+  @override
+  $TagGroupTagsTable createAlias(String alias) {
+    return $TagGroupTagsTable(attachedDatabase, alias);
+  }
+}
+
+class TagGroupTagRow extends DataClass implements Insertable<TagGroupTagRow> {
+  final int groupId;
+  final int tagId;
+  const TagGroupTagRow({required this.groupId, required this.tagId});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['group_id'] = Variable<int>(groupId);
+    map['tag_id'] = Variable<int>(tagId);
+    return map;
+  }
+
+  TagGroupTagsCompanion toCompanion(bool nullToAbsent) {
+    return TagGroupTagsCompanion(groupId: Value(groupId), tagId: Value(tagId));
+  }
+
+  factory TagGroupTagRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TagGroupTagRow(
+      groupId: serializer.fromJson<int>(json['groupId']),
+      tagId: serializer.fromJson<int>(json['tagId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'groupId': serializer.toJson<int>(groupId),
+      'tagId': serializer.toJson<int>(tagId),
+    };
+  }
+
+  TagGroupTagRow copyWith({int? groupId, int? tagId}) => TagGroupTagRow(
+    groupId: groupId ?? this.groupId,
+    tagId: tagId ?? this.tagId,
+  );
+  TagGroupTagRow copyWithCompanion(TagGroupTagsCompanion data) {
+    return TagGroupTagRow(
+      groupId: data.groupId.present ? data.groupId.value : this.groupId,
+      tagId: data.tagId.present ? data.tagId.value : this.tagId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TagGroupTagRow(')
+          ..write('groupId: $groupId, ')
+          ..write('tagId: $tagId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(groupId, tagId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TagGroupTagRow &&
+          other.groupId == this.groupId &&
+          other.tagId == this.tagId);
+}
+
+class TagGroupTagsCompanion extends UpdateCompanion<TagGroupTagRow> {
+  final Value<int> groupId;
+  final Value<int> tagId;
+  final Value<int> rowid;
+  const TagGroupTagsCompanion({
+    this.groupId = const Value.absent(),
+    this.tagId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TagGroupTagsCompanion.insert({
+    required int groupId,
+    required int tagId,
+    this.rowid = const Value.absent(),
+  }) : groupId = Value(groupId),
+       tagId = Value(tagId);
+  static Insertable<TagGroupTagRow> custom({
+    Expression<int>? groupId,
+    Expression<int>? tagId,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (groupId != null) 'group_id': groupId,
+      if (tagId != null) 'tag_id': tagId,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TagGroupTagsCompanion copyWith({
+    Value<int>? groupId,
+    Value<int>? tagId,
+    Value<int>? rowid,
+  }) {
+    return TagGroupTagsCompanion(
+      groupId: groupId ?? this.groupId,
+      tagId: tagId ?? this.tagId,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (groupId.present) {
+      map['group_id'] = Variable<int>(groupId.value);
+    }
+    if (tagId.present) {
+      map['tag_id'] = Variable<int>(tagId.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TagGroupTagsCompanion(')
+          ..write('groupId: $groupId, ')
           ..write('tagId: $tagId, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -18285,6 +18945,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $RecurringRuleTagsTable recurringRuleTags =
       $RecurringRuleTagsTable(this);
+  late final $TagGroupsTable tagGroups = $TagGroupsTable(this);
+  late final $TagGroupTagsTable tagGroupTags = $TagGroupTagsTable(this);
   late final $TransactionSplitsTable transactionSplits =
       $TransactionSplitsTable(this);
   late final $TransactionLinksTable transactionLinks = $TransactionLinksTable(
@@ -18324,6 +18986,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     tags,
     transactionTags,
     recurringRuleTags,
+    tagGroups,
+    tagGroupTags,
     transactionSplits,
     transactionLinks,
     goalDetails,
@@ -18413,27 +19077,6 @@ final class $$AccountsTableReferences
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
-    );
-  }
-
-  static MultiTypedResultKey<$RecurringRulesTable, List<RecurringRuleRow>>
-  _recurringRulesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-    db.recurringRules,
-    aliasName: $_aliasNameGenerator(
-      db.accounts.id,
-      db.recurringRules.accountId,
-    ),
-  );
-
-  $$RecurringRulesTableProcessedTableManager get recurringRulesRefs {
-    final manager = $$RecurringRulesTableTableManager(
-      $_db,
-      $_db.recurringRules,
-    ).filter((f) => f.accountId.id.sqlEquals($_itemColumn<int>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(_recurringRulesRefsTable($_db));
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
     );
   }
 
@@ -18739,31 +19382,6 @@ class $$AccountsTableFilterComposer
           ),
     );
     return composer;
-  }
-
-  Expression<bool> recurringRulesRefs(
-    Expression<bool> Function($$RecurringRulesTableFilterComposer f) f,
-  ) {
-    final $$RecurringRulesTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.recurringRules,
-      getReferencedColumn: (t) => t.accountId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$RecurringRulesTableFilterComposer(
-            $db: $db,
-            $table: $db.recurringRules,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
   }
 
   Expression<bool> personEntriesRefs(
@@ -19216,31 +19834,6 @@ class $$AccountsTableAnnotationComposer
     return composer;
   }
 
-  Expression<T> recurringRulesRefs<T extends Object>(
-    Expression<T> Function($$RecurringRulesTableAnnotationComposer a) f,
-  ) {
-    final $$RecurringRulesTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.recurringRules,
-      getReferencedColumn: (t) => t.accountId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$RecurringRulesTableAnnotationComposer(
-            $db: $db,
-            $table: $db.recurringRules,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-
   Expression<T> personEntriesRefs<T extends Object>(
     Expression<T> Function($$PersonEntriesTableAnnotationComposer a) f,
   ) {
@@ -19508,7 +20101,6 @@ class $$AccountsTableTableManager
           AccountRow,
           PrefetchHooks Function({
             bool linkedAccountId,
-            bool recurringRulesRefs,
             bool personEntriesRefs,
             bool groupExpensesRefs,
             bool remindersRefs,
@@ -19615,7 +20207,6 @@ class $$AccountsTableTableManager
           prefetchHooksCallback:
               ({
                 linkedAccountId = false,
-                recurringRulesRefs = false,
                 personEntriesRefs = false,
                 groupExpensesRefs = false,
                 remindersRefs = false,
@@ -19630,7 +20221,6 @@ class $$AccountsTableTableManager
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
-                    if (recurringRulesRefs) db.recurringRules,
                     if (personEntriesRefs) db.personEntries,
                     if (groupExpensesRefs) db.groupExpenses,
                     if (remindersRefs) db.reminders,
@@ -19676,27 +20266,6 @@ class $$AccountsTableTableManager
                       },
                   getPrefetchedDataCallback: (items) async {
                     return [
-                      if (recurringRulesRefs)
-                        await $_getPrefetchedData<
-                          AccountRow,
-                          $AccountsTable,
-                          RecurringRuleRow
-                        >(
-                          currentTable: table,
-                          referencedTable: $$AccountsTableReferences
-                              ._recurringRulesRefsTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$AccountsTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).recurringRulesRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.accountId == item.id,
-                              ),
-                          typedResults: items,
-                        ),
                       if (personEntriesRefs)
                         await $_getPrefetchedData<
                           AccountRow,
@@ -19929,7 +20498,6 @@ typedef $$AccountsTableProcessedTableManager =
       AccountRow,
       PrefetchHooks Function({
         bool linkedAccountId,
-        bool recurringRulesRefs,
         bool personEntriesRefs,
         bool groupExpensesRefs,
         bool remindersRefs,
@@ -22291,7 +22859,8 @@ typedef $$RecurringRulesTableCreateCompanionBuilder =
       required CategoryKind kind,
       required Money amount,
       required int accountId,
-      required int categoryId,
+      Value<int?> categoryId,
+      Value<int?> toAccountId,
       Value<String?> payee,
       Value<String?> note,
       required RecurringFrequency frequency,
@@ -22311,7 +22880,8 @@ typedef $$RecurringRulesTableUpdateCompanionBuilder =
       Value<CategoryKind> kind,
       Value<Money> amount,
       Value<int> accountId,
-      Value<int> categoryId,
+      Value<int?> categoryId,
+      Value<int?> toAccountId,
       Value<String?> payee,
       Value<String?> note,
       Value<RecurringFrequency> frequency,
@@ -22358,14 +22928,33 @@ final class $$RecurringRulesTableReferences
         $_aliasNameGenerator(db.recurringRules.categoryId, db.categories.id),
       );
 
-  $$CategoriesTableProcessedTableManager get categoryId {
-    final $_column = $_itemColumn<int>('category_id')!;
-
+  $$CategoriesTableProcessedTableManager? get categoryId {
+    final $_column = $_itemColumn<int>('category_id');
+    if ($_column == null) return null;
     final manager = $$CategoriesTableTableManager(
       $_db,
       $_db.categories,
     ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_categoryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $AccountsTable _toAccountIdTable(_$AppDatabase db) =>
+      db.accounts.createAlias(
+        $_aliasNameGenerator(db.recurringRules.toAccountId, db.accounts.id),
+      );
+
+  $$AccountsTableProcessedTableManager? get toAccountId {
+    final $_column = $_itemColumn<int>('to_account_id');
+    if ($_column == null) return null;
+    final manager = $$AccountsTableTableManager(
+      $_db,
+      $_db.accounts,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_toAccountIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -22543,6 +23132,29 @@ class $$RecurringRulesTableFilterComposer
           }) => $$CategoriesTableFilterComposer(
             $db: $db,
             $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$AccountsTableFilterComposer get toAccountId {
+    final $$AccountsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.toAccountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableFilterComposer(
+            $db: $db,
+            $table: $db.accounts,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -22732,6 +23344,29 @@ class $$RecurringRulesTableOrderingComposer
     );
     return composer;
   }
+
+  $$AccountsTableOrderingComposer get toAccountId {
+    final $$AccountsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.toAccountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableOrderingComposer(
+            $db: $db,
+            $table: $db.accounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$RecurringRulesTableAnnotationComposer
@@ -22847,6 +23482,29 @@ class $$RecurringRulesTableAnnotationComposer
     return composer;
   }
 
+  $$AccountsTableAnnotationComposer get toAccountId {
+    final $$AccountsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.toAccountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.accounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
   Expression<T> transactionsRefs<T extends Object>(
     Expression<T> Function($$TransactionsTableAnnotationComposer a) f,
   ) {
@@ -22915,6 +23573,7 @@ class $$RecurringRulesTableTableManager
           PrefetchHooks Function({
             bool accountId,
             bool categoryId,
+            bool toAccountId,
             bool transactionsRefs,
             bool recurringRuleTagsRefs,
           })
@@ -22939,7 +23598,8 @@ class $$RecurringRulesTableTableManager
                 Value<CategoryKind> kind = const Value.absent(),
                 Value<Money> amount = const Value.absent(),
                 Value<int> accountId = const Value.absent(),
-                Value<int> categoryId = const Value.absent(),
+                Value<int?> categoryId = const Value.absent(),
+                Value<int?> toAccountId = const Value.absent(),
                 Value<String?> payee = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<RecurringFrequency> frequency = const Value.absent(),
@@ -22958,6 +23618,7 @@ class $$RecurringRulesTableTableManager
                 amount: amount,
                 accountId: accountId,
                 categoryId: categoryId,
+                toAccountId: toAccountId,
                 payee: payee,
                 note: note,
                 frequency: frequency,
@@ -22977,7 +23638,8 @@ class $$RecurringRulesTableTableManager
                 required CategoryKind kind,
                 required Money amount,
                 required int accountId,
-                required int categoryId,
+                Value<int?> categoryId = const Value.absent(),
+                Value<int?> toAccountId = const Value.absent(),
                 Value<String?> payee = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 required RecurringFrequency frequency,
@@ -22996,6 +23658,7 @@ class $$RecurringRulesTableTableManager
                 amount: amount,
                 accountId: accountId,
                 categoryId: categoryId,
+                toAccountId: toAccountId,
                 payee: payee,
                 note: note,
                 frequency: frequency,
@@ -23020,6 +23683,7 @@ class $$RecurringRulesTableTableManager
               ({
                 accountId = false,
                 categoryId = false,
+                toAccountId = false,
                 transactionsRefs = false,
                 recurringRuleTagsRefs = false,
               }) {
@@ -23071,6 +23735,21 @@ class $$RecurringRulesTableTableManager
                                     referencedColumn:
                                         $$RecurringRulesTableReferences
                                             ._categoryIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (toAccountId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.toAccountId,
+                                    referencedTable:
+                                        $$RecurringRulesTableReferences
+                                            ._toAccountIdTable(db),
+                                    referencedColumn:
+                                        $$RecurringRulesTableReferences
+                                            ._toAccountIdTable(db)
                                             .id,
                                   )
                                   as T;
@@ -23145,6 +23824,7 @@ typedef $$RecurringRulesTableProcessedTableManager =
       PrefetchHooks Function({
         bool accountId,
         bool categoryId,
+        bool toAccountId,
         bool transactionsRefs,
         bool recurringRuleTagsRefs,
       })
@@ -28976,6 +29656,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<int?> passcodeLength,
       Value<bool> biometricEnabled,
       Value<LockScreenStyle> lockScreenStyle,
+      Value<MoreScreenViewMode> moreScreenViewMode,
       Value<int> pinTimeoutMinutes,
       Value<String?> masterPhraseHash,
       Value<String?> masterPhraseSalt,
@@ -29034,6 +29715,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<int?> passcodeLength,
       Value<bool> biometricEnabled,
       Value<LockScreenStyle> lockScreenStyle,
+      Value<MoreScreenViewMode> moreScreenViewMode,
       Value<int> pinTimeoutMinutes,
       Value<String?> masterPhraseHash,
       Value<String?> masterPhraseSalt,
@@ -29230,6 +29912,12 @@ class $$SettingsTableFilterComposer
   ColumnWithTypeConverterFilters<LockScreenStyle, LockScreenStyle, String>
   get lockScreenStyle => $composableBuilder(
     column: $table.lockScreenStyle,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<MoreScreenViewMode, MoreScreenViewMode, String>
+  get moreScreenViewMode => $composableBuilder(
+    column: $table.moreScreenViewMode,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
@@ -29541,6 +30229,11 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get moreScreenViewMode => $composableBuilder(
+    column: $table.moreScreenViewMode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get pinTimeoutMinutes => $composableBuilder(
     column: $table.pinTimeoutMinutes,
     builder: (column) => ColumnOrderings(column),
@@ -29827,6 +30520,12 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumnWithTypeConverter<MoreScreenViewMode, String>
+  get moreScreenViewMode => $composableBuilder(
+    column: $table.moreScreenViewMode,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get pinTimeoutMinutes => $composableBuilder(
     column: $table.pinTimeoutMinutes,
     builder: (column) => column,
@@ -30042,6 +30741,8 @@ class $$SettingsTableTableManager
                 Value<int?> passcodeLength = const Value.absent(),
                 Value<bool> biometricEnabled = const Value.absent(),
                 Value<LockScreenStyle> lockScreenStyle = const Value.absent(),
+                Value<MoreScreenViewMode> moreScreenViewMode =
+                    const Value.absent(),
                 Value<int> pinTimeoutMinutes = const Value.absent(),
                 Value<String?> masterPhraseHash = const Value.absent(),
                 Value<String?> masterPhraseSalt = const Value.absent(),
@@ -30099,6 +30800,7 @@ class $$SettingsTableTableManager
                 passcodeLength: passcodeLength,
                 biometricEnabled: biometricEnabled,
                 lockScreenStyle: lockScreenStyle,
+                moreScreenViewMode: moreScreenViewMode,
                 pinTimeoutMinutes: pinTimeoutMinutes,
                 masterPhraseHash: masterPhraseHash,
                 masterPhraseSalt: masterPhraseSalt,
@@ -30157,6 +30859,8 @@ class $$SettingsTableTableManager
                 Value<int?> passcodeLength = const Value.absent(),
                 Value<bool> biometricEnabled = const Value.absent(),
                 Value<LockScreenStyle> lockScreenStyle = const Value.absent(),
+                Value<MoreScreenViewMode> moreScreenViewMode =
+                    const Value.absent(),
                 Value<int> pinTimeoutMinutes = const Value.absent(),
                 Value<String?> masterPhraseHash = const Value.absent(),
                 Value<String?> masterPhraseSalt = const Value.absent(),
@@ -30214,6 +30918,7 @@ class $$SettingsTableTableManager
                 passcodeLength: passcodeLength,
                 biometricEnabled: biometricEnabled,
                 lockScreenStyle: lockScreenStyle,
+                moreScreenViewMode: moreScreenViewMode,
                 pinTimeoutMinutes: pinTimeoutMinutes,
                 masterPhraseHash: masterPhraseHash,
                 masterPhraseSalt: masterPhraseSalt,
@@ -31993,6 +32698,24 @@ final class $$TagsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$TagGroupTagsTable, List<TagGroupTagRow>>
+  _tagGroupTagsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.tagGroupTags,
+    aliasName: $_aliasNameGenerator(db.tags.id, db.tagGroupTags.tagId),
+  );
+
+  $$TagGroupTagsTableProcessedTableManager get tagGroupTagsRefs {
+    final manager = $$TagGroupTagsTableTableManager(
+      $_db,
+      $_db.tagGroupTags,
+    ).filter((f) => f.tagId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_tagGroupTagsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$TagsTableFilterComposer extends Composer<_$AppDatabase, $TagsTable> {
@@ -32059,6 +32782,31 @@ class $$TagsTableFilterComposer extends Composer<_$AppDatabase, $TagsTable> {
           }) => $$RecurringRuleTagsTableFilterComposer(
             $db: $db,
             $table: $db.recurringRuleTags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> tagGroupTagsRefs(
+    Expression<bool> Function($$TagGroupTagsTableFilterComposer f) f,
+  ) {
+    final $$TagGroupTagsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.tagGroupTags,
+      getReferencedColumn: (t) => t.tagId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagGroupTagsTableFilterComposer(
+            $db: $db,
+            $table: $db.tagGroupTags,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -32163,6 +32911,31 @@ class $$TagsTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> tagGroupTagsRefs<T extends Object>(
+    Expression<T> Function($$TagGroupTagsTableAnnotationComposer a) f,
+  ) {
+    final $$TagGroupTagsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.tagGroupTags,
+      getReferencedColumn: (t) => t.tagId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagGroupTagsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.tagGroupTags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$TagsTableTableManager
@@ -32181,6 +32954,7 @@ class $$TagsTableTableManager
           PrefetchHooks Function({
             bool transactionTagsRefs,
             bool recurringRuleTagsRefs,
+            bool tagGroupTagsRefs,
           })
         > {
   $$TagsTableTableManager(_$AppDatabase db, $TagsTable table)
@@ -32217,12 +32991,17 @@ class $$TagsTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({transactionTagsRefs = false, recurringRuleTagsRefs = false}) {
+              ({
+                transactionTagsRefs = false,
+                recurringRuleTagsRefs = false,
+                tagGroupTagsRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (transactionTagsRefs) db.transactionTags,
                     if (recurringRuleTagsRefs) db.recurringRuleTags,
+                    if (tagGroupTagsRefs) db.tagGroupTags,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -32267,6 +33046,26 @@ class $$TagsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (tagGroupTagsRefs)
+                        await $_getPrefetchedData<
+                          TagRow,
+                          $TagsTable,
+                          TagGroupTagRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$TagsTableReferences
+                              ._tagGroupTagsRefsTable(db),
+                          managerFromTypedResult: (p0) => $$TagsTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).tagGroupTagsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.tagId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -32290,6 +33089,7 @@ typedef $$TagsTableProcessedTableManager =
       PrefetchHooks Function({
         bool transactionTagsRefs,
         bool recurringRuleTagsRefs,
+        bool tagGroupTagsRefs,
       })
     >;
 typedef $$TransactionTagsTableCreateCompanionBuilder =
@@ -33025,6 +33825,633 @@ typedef $$RecurringRuleTagsTableProcessedTableManager =
       (RecurringRuleTagRow, $$RecurringRuleTagsTableReferences),
       RecurringRuleTagRow,
       PrefetchHooks Function({bool ruleId, bool tagId})
+    >;
+typedef $$TagGroupsTableCreateCompanionBuilder =
+    TagGroupsCompanion Function({
+      Value<int> id,
+      required String name,
+      required int colorValue,
+      Value<DateTime> createdAt,
+    });
+typedef $$TagGroupsTableUpdateCompanionBuilder =
+    TagGroupsCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<int> colorValue,
+      Value<DateTime> createdAt,
+    });
+
+final class $$TagGroupsTableReferences
+    extends BaseReferences<_$AppDatabase, $TagGroupsTable, TagGroupRow> {
+  $$TagGroupsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$TagGroupTagsTable, List<TagGroupTagRow>>
+  _tagGroupTagsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.tagGroupTags,
+    aliasName: $_aliasNameGenerator(db.tagGroups.id, db.tagGroupTags.groupId),
+  );
+
+  $$TagGroupTagsTableProcessedTableManager get tagGroupTagsRefs {
+    final manager = $$TagGroupTagsTableTableManager(
+      $_db,
+      $_db.tagGroupTags,
+    ).filter((f) => f.groupId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_tagGroupTagsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$TagGroupsTableFilterComposer
+    extends Composer<_$AppDatabase, $TagGroupsTable> {
+  $$TagGroupsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get colorValue => $composableBuilder(
+    column: $table.colorValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> tagGroupTagsRefs(
+    Expression<bool> Function($$TagGroupTagsTableFilterComposer f) f,
+  ) {
+    final $$TagGroupTagsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.tagGroupTags,
+      getReferencedColumn: (t) => t.groupId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagGroupTagsTableFilterComposer(
+            $db: $db,
+            $table: $db.tagGroupTags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$TagGroupsTableOrderingComposer
+    extends Composer<_$AppDatabase, $TagGroupsTable> {
+  $$TagGroupsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get colorValue => $composableBuilder(
+    column: $table.colorValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TagGroupsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TagGroupsTable> {
+  $$TagGroupsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<int> get colorValue => $composableBuilder(
+    column: $table.colorValue,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  Expression<T> tagGroupTagsRefs<T extends Object>(
+    Expression<T> Function($$TagGroupTagsTableAnnotationComposer a) f,
+  ) {
+    final $$TagGroupTagsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.tagGroupTags,
+      getReferencedColumn: (t) => t.groupId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagGroupTagsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.tagGroupTags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$TagGroupsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TagGroupsTable,
+          TagGroupRow,
+          $$TagGroupsTableFilterComposer,
+          $$TagGroupsTableOrderingComposer,
+          $$TagGroupsTableAnnotationComposer,
+          $$TagGroupsTableCreateCompanionBuilder,
+          $$TagGroupsTableUpdateCompanionBuilder,
+          (TagGroupRow, $$TagGroupsTableReferences),
+          TagGroupRow,
+          PrefetchHooks Function({bool tagGroupTagsRefs})
+        > {
+  $$TagGroupsTableTableManager(_$AppDatabase db, $TagGroupsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TagGroupsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TagGroupsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TagGroupsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<int> colorValue = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => TagGroupsCompanion(
+                id: id,
+                name: name,
+                colorValue: colorValue,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                required int colorValue,
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => TagGroupsCompanion.insert(
+                id: id,
+                name: name,
+                colorValue: colorValue,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$TagGroupsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({tagGroupTagsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (tagGroupTagsRefs) db.tagGroupTags],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (tagGroupTagsRefs)
+                    await $_getPrefetchedData<
+                      TagGroupRow,
+                      $TagGroupsTable,
+                      TagGroupTagRow
+                    >(
+                      currentTable: table,
+                      referencedTable: $$TagGroupsTableReferences
+                          ._tagGroupTagsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$TagGroupsTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).tagGroupTagsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.groupId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$TagGroupsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TagGroupsTable,
+      TagGroupRow,
+      $$TagGroupsTableFilterComposer,
+      $$TagGroupsTableOrderingComposer,
+      $$TagGroupsTableAnnotationComposer,
+      $$TagGroupsTableCreateCompanionBuilder,
+      $$TagGroupsTableUpdateCompanionBuilder,
+      (TagGroupRow, $$TagGroupsTableReferences),
+      TagGroupRow,
+      PrefetchHooks Function({bool tagGroupTagsRefs})
+    >;
+typedef $$TagGroupTagsTableCreateCompanionBuilder =
+    TagGroupTagsCompanion Function({
+      required int groupId,
+      required int tagId,
+      Value<int> rowid,
+    });
+typedef $$TagGroupTagsTableUpdateCompanionBuilder =
+    TagGroupTagsCompanion Function({
+      Value<int> groupId,
+      Value<int> tagId,
+      Value<int> rowid,
+    });
+
+final class $$TagGroupTagsTableReferences
+    extends BaseReferences<_$AppDatabase, $TagGroupTagsTable, TagGroupTagRow> {
+  $$TagGroupTagsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $TagGroupsTable _groupIdTable(_$AppDatabase db) =>
+      db.tagGroups.createAlias(
+        $_aliasNameGenerator(db.tagGroupTags.groupId, db.tagGroups.id),
+      );
+
+  $$TagGroupsTableProcessedTableManager get groupId {
+    final $_column = $_itemColumn<int>('group_id')!;
+
+    final manager = $$TagGroupsTableTableManager(
+      $_db,
+      $_db.tagGroups,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_groupIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $TagsTable _tagIdTable(_$AppDatabase db) => db.tags.createAlias(
+    $_aliasNameGenerator(db.tagGroupTags.tagId, db.tags.id),
+  );
+
+  $$TagsTableProcessedTableManager get tagId {
+    final $_column = $_itemColumn<int>('tag_id')!;
+
+    final manager = $$TagsTableTableManager(
+      $_db,
+      $_db.tags,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_tagIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$TagGroupTagsTableFilterComposer
+    extends Composer<_$AppDatabase, $TagGroupTagsTable> {
+  $$TagGroupTagsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  $$TagGroupsTableFilterComposer get groupId {
+    final $$TagGroupsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.groupId,
+      referencedTable: $db.tagGroups,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagGroupsTableFilterComposer(
+            $db: $db,
+            $table: $db.tagGroups,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TagsTableFilterComposer get tagId {
+    final $$TagsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tagId,
+      referencedTable: $db.tags,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagsTableFilterComposer(
+            $db: $db,
+            $table: $db.tags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TagGroupTagsTableOrderingComposer
+    extends Composer<_$AppDatabase, $TagGroupTagsTable> {
+  $$TagGroupTagsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  $$TagGroupsTableOrderingComposer get groupId {
+    final $$TagGroupsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.groupId,
+      referencedTable: $db.tagGroups,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagGroupsTableOrderingComposer(
+            $db: $db,
+            $table: $db.tagGroups,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TagsTableOrderingComposer get tagId {
+    final $$TagsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tagId,
+      referencedTable: $db.tags,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagsTableOrderingComposer(
+            $db: $db,
+            $table: $db.tags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TagGroupTagsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TagGroupTagsTable> {
+  $$TagGroupTagsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  $$TagGroupsTableAnnotationComposer get groupId {
+    final $$TagGroupsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.groupId,
+      referencedTable: $db.tagGroups,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagGroupsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.tagGroups,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TagsTableAnnotationComposer get tagId {
+    final $$TagsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tagId,
+      referencedTable: $db.tags,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.tags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TagGroupTagsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TagGroupTagsTable,
+          TagGroupTagRow,
+          $$TagGroupTagsTableFilterComposer,
+          $$TagGroupTagsTableOrderingComposer,
+          $$TagGroupTagsTableAnnotationComposer,
+          $$TagGroupTagsTableCreateCompanionBuilder,
+          $$TagGroupTagsTableUpdateCompanionBuilder,
+          (TagGroupTagRow, $$TagGroupTagsTableReferences),
+          TagGroupTagRow,
+          PrefetchHooks Function({bool groupId, bool tagId})
+        > {
+  $$TagGroupTagsTableTableManager(_$AppDatabase db, $TagGroupTagsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TagGroupTagsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TagGroupTagsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TagGroupTagsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> groupId = const Value.absent(),
+                Value<int> tagId = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TagGroupTagsCompanion(
+                groupId: groupId,
+                tagId: tagId,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required int groupId,
+                required int tagId,
+                Value<int> rowid = const Value.absent(),
+              }) => TagGroupTagsCompanion.insert(
+                groupId: groupId,
+                tagId: tagId,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$TagGroupTagsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({groupId = false, tagId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (groupId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.groupId,
+                                referencedTable: $$TagGroupTagsTableReferences
+                                    ._groupIdTable(db),
+                                referencedColumn: $$TagGroupTagsTableReferences
+                                    ._groupIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+                    if (tagId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.tagId,
+                                referencedTable: $$TagGroupTagsTableReferences
+                                    ._tagIdTable(db),
+                                referencedColumn: $$TagGroupTagsTableReferences
+                                    ._tagIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$TagGroupTagsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TagGroupTagsTable,
+      TagGroupTagRow,
+      $$TagGroupTagsTableFilterComposer,
+      $$TagGroupTagsTableOrderingComposer,
+      $$TagGroupTagsTableAnnotationComposer,
+      $$TagGroupTagsTableCreateCompanionBuilder,
+      $$TagGroupTagsTableUpdateCompanionBuilder,
+      (TagGroupTagRow, $$TagGroupTagsTableReferences),
+      TagGroupTagRow,
+      PrefetchHooks Function({bool groupId, bool tagId})
     >;
 typedef $$TransactionSplitsTableCreateCompanionBuilder =
     TransactionSplitsCompanion Function({
@@ -36622,6 +38049,10 @@ class $AppDatabaseManager {
       $$TransactionTagsTableTableManager(_db, _db.transactionTags);
   $$RecurringRuleTagsTableTableManager get recurringRuleTags =>
       $$RecurringRuleTagsTableTableManager(_db, _db.recurringRuleTags);
+  $$TagGroupsTableTableManager get tagGroups =>
+      $$TagGroupsTableTableManager(_db, _db.tagGroups);
+  $$TagGroupTagsTableTableManager get tagGroupTags =>
+      $$TagGroupTagsTableTableManager(_db, _db.tagGroupTags);
   $$TransactionSplitsTableTableManager get transactionSplits =>
       $$TransactionSplitsTableTableManager(_db, _db.transactionSplits);
   $$TransactionLinksTableTableManager get transactionLinks =>

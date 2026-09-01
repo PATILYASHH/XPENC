@@ -6,6 +6,7 @@ import '../../core/branding/app_info.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/providers.dart';
+import '../../data/tables.dart';
 
 /// Hub page. Grouped, not a flat dump. Every tile navigates to a real route.
 class MoreScreen extends ConsumerWidget {
@@ -167,6 +168,9 @@ class MoreScreen extends ConsumerWidget {
       ]),
     ];
 
+    final viewMode = ref.watch(moreScreenViewModeProvider);
+    final isCards = viewMode == MoreScreenViewMode.cards;
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -185,22 +189,40 @@ class MoreScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            SliverToBoxAdapter(
-              child: Padding(
+            if (isCards)
+              SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Card(
-                  child: Column(
-                    children: [
-                      for (var i = 0; i < group.items.length; i++) ...[
-                        if (i > 0)
-                          Divider(height: 1, indent: 60, color: cs.outline),
-                        _MoreTile(item: group.items[i]),
+                sliver: SliverGrid(
+                  gridDelegate:
+                      const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                        childAspectRatio: 1.35,
+                      ),
+                  delegate: SliverChildBuilderDelegate(
+                    (context, i) => _MoreCard(item: group.items[i]),
+                    childCount: group.items.length,
+                  ),
+                ),
+              )
+            else
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Card(
+                    child: Column(
+                      children: [
+                        for (var i = 0; i < group.items.length; i++) ...[
+                          if (i > 0)
+                            Divider(height: 1, indent: 60, color: cs.outline),
+                          _MoreTile(item: group.items[i]),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
           ],
           const SliverToBoxAdapter(child: SizedBox(height: 32)),
         ],
@@ -235,6 +257,55 @@ class _MoreTile extends StatelessWidget {
       ),
       trailing: const Icon(Icons.chevron_right_rounded),
       onTap: () => context.push(item.route),
+    );
+  }
+}
+
+/// A single hub card — two per row, see [MoreScreen]. Same destination and
+/// content as [_MoreTile], just laid out for a grid instead of a list row.
+class _MoreCard extends StatelessWidget {
+  const _MoreCard({required this.item});
+
+  final _Item item;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => context.push(item.route),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(item.icon, color: cs.primary),
+              const Spacer(),
+              Text(
+                item.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                item.subtitle,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: item.subtitleColor ?? cs.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

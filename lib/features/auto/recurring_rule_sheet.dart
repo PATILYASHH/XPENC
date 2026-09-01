@@ -40,6 +40,10 @@ class RecurringRuleSheet extends ConsumerStatefulWidget {
   ConsumerState<RecurringRuleSheet> createState() => _RecurringRuleSheetState();
 }
 
+/// What a rule posts. [goalOrLoan] is the "G&L" option — a transfer into a
+/// goal or loan account instead of a category-tagged income/expense.
+enum _RuleKind { expense, income, goalOrLoan }
+
 class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
   final _nameController = TextEditingController();
   final _amountController = TextEditingController();
@@ -49,9 +53,10 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
   final _promoAmountController = TextEditingController();
   final _promoOccurrencesController = TextEditingController();
 
-  CategoryKind _kind = CategoryKind.expense;
+  _RuleKind _ruleKind = _RuleKind.expense;
   int? _accountId;
   int? _categoryId;
+  int? _toAccountId;
   RecurringFrequency _frequency = RecurringFrequency.monthly;
   late DateTime _dueDate;
   double _notifyDays = 3;
@@ -61,6 +66,12 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
   Set<int> _tagIds = {};
 
   bool get _isEditing => widget.existing != null;
+
+  /// The [CategoryKind] the database call needs — meaningless for
+  /// [_RuleKind.goalOrLoan] (see [RecurringRules.kind]), so pinned to
+  /// [CategoryKind.expense] there.
+  CategoryKind get _kind =>
+      _ruleKind == _RuleKind.income ? CategoryKind.income : CategoryKind.expense;
 
   @override
   void initState() {
@@ -74,9 +85,12 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     _amountController.text = _bufferFromMoney(e.amount);
     _payeeController.text = e.payee ?? '';
     _noteController.text = e.note ?? '';
-    _kind = e.kind;
+    _ruleKind = e.toAccountId != null
+        ? _RuleKind.goalOrLoan
+        : (e.kind == CategoryKind.income ? _RuleKind.income : _RuleKind.expense);
     _accountId = e.accountId;
     _categoryId = e.categoryId;
+    _toAccountId = e.toAccountId;
     _frequency = e.frequency;
     _dueDate = e.nextDueDate;
     _notifyDays = e.notifyDaysBefore.toDouble();
@@ -146,15 +160,21 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
       _showError('Enter an amount greater than zero.');
       return;
     }
+    final isGoalOrLoan = _ruleKind == _RuleKind.goalOrLoan;
     if (_accountId == null) {
-      _showError('Choose an account.');
+      _showError(isGoalOrLoan ? 'Choose a from account.' : 'Choose an account.');
       return;
     }
-    if (_categoryId == null) {
+    if (isGoalOrLoan) {
+      if (_toAccountId == null) {
+        _showError('Choose a goal or loan.');
+        return;
+      }
+    } else if (_categoryId == null) {
       _showError('Choose a category.');
       return;
     }
-    final payeeText = _payeeController.text.trim();
+    final payeeText = isGoalOrLoan ? '' : _payeeController.text.trim();
     final payee = payeeText.isEmpty ? null : payeeText;
     final noteText = _noteController.text.trim();
     final note = noteText.isEmpty ? null : noteText;
@@ -188,7 +208,8 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               kind: _kind,
               amount: amount,
               accountId: _accountId!,
-              categoryId: _categoryId!,
+              categoryId: _categoryId,
+              toAccountId: isGoalOrLoan ? _toAccountId : null,
               payee: payee,
               note: note,
               frequency: _frequency,
@@ -207,7 +228,8 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               kind: _kind,
               amount: amount,
               accountId: _accountId!,
-              categoryId: _categoryId!,
+              categoryId: _categoryId,
+              toAccountId: isGoalOrLoan ? _toAccountId : null,
               payee: payee,
               note: note,
               frequency: _frequency,
@@ -237,13 +259,34 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    // A goal is a savings store, not a spendable/depositable account — a
-    // recurring rule always posts as income or expense, never a transfer.
-    final accounts = (ref.watch(accountsProvider).valueOrNull ?? const [])
-        .where((a) => a.type != AccountType.goal)
+    final isGoalOrLoan = _ruleKind == _RuleKind.goalOrLoan;
+    final allAccounts = ref.watch(accountsProvider).valueOrNull ?? const [];
+    // A goal/loan is not a spendable/depositable account — an expense/income
+    // rule (or the "from" side of a G&L rule) never posts against one; only
+    // a transfer can.
+    final fromAccounts = allAccounts
+        .where(
+          (a) => a.type != AccountType.goal && a.type != AccountType.loan,
+        )
         .toList();
-    final categories =
-        ref.watch(categoriesProvider(_kind)).valueOrNull ?? const [];
+    // A rule saved before loan accounts were excluded here may still point
+    // at one — keep it selectable in its own dropdown rather than crashing
+    // on a value with no matching item.
+    if (_accountId != null && !fromAccounts.any((a) => a.id == _accountId)) {
+      final stale = allAccounts.where((a) => a.id == _accountId);
+      fromAccounts.addAll(stale);
+    }
+    final toAccounts = allAccounts
+        .where((a) => a.type == AccountType.goal || a.type == AccountType.loan)
+        .toList();
+    final categories = isGoalOrLoan
+        ? [
+            ...ref.watch(categoriesProvider(CategoryKind.expense)).valueOrNull ??
+                const [],
+            ...ref.watch(categoriesProvider(CategoryKind.income)).valueOrNull ??
+                const [],
+          ]
+        : ref.watch(categoriesProvider(_kind)).valueOrNull ?? const [];
     final categoryMap = ref.watch(categoryMapProvider);
 
     // The chosen category may no longer match the kind after toggling —
@@ -251,6 +294,13 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     if (_categoryId != null && !categories.any((c) => c.id == _categoryId)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) setState(() => _categoryId = null);
+      });
+    }
+    // The chosen destination may no longer be a goal/loan account (deleted,
+    // converted) — clear it the same way.
+    if (_toAccountId != null && !toAccounts.any((a) => a.id == _toAccountId)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _toAccountId = null);
       });
     }
 
@@ -276,21 +326,32 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               ),
             ),
             const SizedBox(height: 20),
-            SegmentedButton<CategoryKind>(
+            SegmentedButton<_RuleKind>(
               segments: const [
                 ButtonSegment(
-                  value: CategoryKind.expense,
+                  value: _RuleKind.expense,
                   label: Text('Expense'),
                 ),
+                ButtonSegment(value: _RuleKind.income, label: Text('Income')),
                 ButtonSegment(
-                  value: CategoryKind.income,
-                  label: Text('Income'),
+                  value: _RuleKind.goalOrLoan,
+                  label: Text('G&L'),
                 ),
               ],
-              selected: {_kind},
+              selected: {_ruleKind},
               showSelectedIcon: false,
-              onSelectionChanged: (s) => setState(() => _kind = s.first),
+              onSelectionChanged: (s) => setState(() => _ruleKind = s.first),
             ),
+            if (isGoalOrLoan) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Automatically moves money into a goal or pays down a loan '
+                'on schedule.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             TextField(
               controller: _nameController,
@@ -298,9 +359,11 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               textCapitalization: TextCapitalization.words,
               decoration: InputDecoration(
                 labelText: 'Name',
-                hintText: _kind == CategoryKind.expense
-                    ? 'e.g. Netflix, Rent'
-                    : 'e.g. Salary',
+                hintText: isGoalOrLoan
+                    ? 'e.g. Emergency Fund, Car Loan EMI'
+                    : (_kind == CategoryKind.expense
+                          ? 'e.g. Netflix, Rent'
+                          : 'e.g. Salary'),
               ),
             ),
             const SizedBox(height: 16),
@@ -380,21 +443,48 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
             DropdownButtonFormField<int>(
               initialValue: _accountId,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Account'),
+              decoration: InputDecoration(
+                labelText: isGoalOrLoan ? 'From account' : 'Account',
+              ),
               items: [
-                for (final a in accounts)
+                for (final a in fromAccounts)
                   DropdownMenuItem(value: a.id, child: Text(a.name)),
               ],
               onChanged: (v) => setState(() => _accountId = v),
             ),
+            if (isGoalOrLoan) ...[
+              const SizedBox(height: 16),
+              DropdownButtonFormField<int>(
+                initialValue: toAccounts.any((a) => a.id == _toAccountId)
+                    ? _toAccountId
+                    : null,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Goal or loan'),
+                items: [
+                  for (final a in toAccounts)
+                    DropdownMenuItem(
+                      value: a.id,
+                      child: Text(
+                        '${a.name} '
+                        '(${a.type == AccountType.goal ? 'Goal' : 'Loan'})',
+                      ),
+                    ),
+                ],
+                onChanged: (v) => setState(() => _toAccountId = v),
+              ),
+            ],
             const SizedBox(height: 16),
-            DropdownButtonFormField<int>(
+            DropdownButtonFormField<int?>(
               initialValue: categories.any((c) => c.id == _categoryId)
                   ? _categoryId
                   : null,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Category'),
+              decoration: InputDecoration(
+                labelText: isGoalOrLoan ? 'Category (optional)' : 'Category',
+              ),
               items: [
+                if (isGoalOrLoan)
+                  const DropdownMenuItem(value: null, child: Text('None')),
                 for (final c in categories)
                   DropdownMenuItem(
                     value: c.id,
@@ -403,8 +493,10 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               ],
               onChanged: (v) => setState(() => _categoryId = v),
             ),
-            const SizedBox(height: 16),
-            _payeeField(theme),
+            if (!isGoalOrLoan) ...[
+              const SizedBox(height: 16),
+              _payeeField(theme),
+            ],
             const SizedBox(height: 16),
             TextField(
               controller: _noteController,

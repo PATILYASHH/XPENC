@@ -26,8 +26,10 @@ import 'package:xpenc/features/reports/account_reports_screen.dart';
 import 'package:xpenc/features/reports/stats_screen.dart';
 import 'package:xpenc/features/savings/savings_goal_detail_screen.dart';
 import 'package:xpenc/features/savings/savings_goals_screen.dart';
+import 'package:xpenc/features/settings/more_screen_layout_sheet.dart';
 import 'package:xpenc/features/settings/settings_screen.dart';
 import 'package:xpenc/features/settings/widgets_screen.dart';
+import 'package:xpenc/features/tags/tag_groups_screen.dart';
 import 'package:xpenc/features/transactions/transaction_detail_screen.dart';
 import 'package:xpenc/features/more/whats_new_data.dart';
 import 'package:xpenc/features/more/whats_new_screen.dart';
@@ -183,6 +185,26 @@ void main() {
     await pump(tester, const CategoriesScreen());
     expect(tester.takeException(), isNull);
     expect(find.text('Categories'), findsWidgets);
+    await unmount(tester);
+  });
+
+  testWidgets('Tag groups screen renders empty, then with a group', (
+    tester,
+  ) async {
+    await pump(tester, const TagGroupsScreen());
+    expect(tester.takeException(), isNull);
+    expect(find.text('Tag groups'), findsOneWidget);
+    expect(find.textContaining('No tag groups yet'), findsOneWidget);
+    await unmount(tester);
+
+    final tagId = await db.addTag(name: 'Travel', colorValue: 0xFF16A34A);
+    final groupId = await db.addTagGroup(name: 'Work trip', colorValue: 0);
+    await db.setTagGroupTags(groupId, {tagId});
+
+    await pump(tester, const TagGroupsScreen());
+    expect(tester.takeException(), isNull);
+    expect(find.text('Work trip'), findsOneWidget);
+    expect(find.text('Travel'), findsOneWidget);
     await unmount(tester);
   });
 
@@ -585,6 +607,47 @@ void main() {
     // Sits below the fold at phone size — bring it into the viewport first.
     await tester.scrollUntilVisible(find.text('Backup & Restore'), 240);
     expect(find.text('Backup & Restore'), findsOneWidget);
+    await unmount(tester);
+  });
+
+  testWidgets('More hub renders every tile in cards layout', (tester) async {
+    await db.setMoreScreenViewMode(MoreScreenViewMode.cards);
+    await pump(tester, const MoreScreen());
+    expect(tester.takeException(), isNull);
+    expect(find.text('Stats'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Backup & Restore'), 240);
+    expect(find.text('Backup & Restore'), findsOneWidget);
+    await unmount(tester);
+  });
+
+  testWidgets(
+    'Settings: More screen layout row shows the stored mode',
+    (tester) async {
+      await pump(tester, const SettingsScreen());
+      expect(tester.takeException(), isNull);
+
+      await tester.scrollUntilVisible(find.text('More screen layout'), 300);
+      expect(find.text('List'), findsOneWidget);
+      await unmount(tester);
+    },
+  );
+
+  testWidgets('picking Cards on the More screen layout sheet writes it to '
+      'the database', (tester) async {
+    await pump(tester, const Scaffold(body: MoreScreenLayoutSheet()));
+
+    await tester.tap(find.text('Cards'));
+    await tester.pump();
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 200)),
+    );
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+
+    await tester.runAsync(() async {
+      final settings = await db.getSettings();
+      expect(settings.moreScreenViewMode, MoreScreenViewMode.cards);
+    });
     await unmount(tester);
   });
 

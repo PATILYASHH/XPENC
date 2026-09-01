@@ -9,6 +9,7 @@ import '../../data/providers.dart';
 import 'currency_picker_sheet.dart';
 import 'lock_screen_style_sheet.dart';
 import 'master_phrase_attempts_sheet.dart';
+import 'more_screen_layout_sheet.dart';
 import 'pin_timeout_sheet.dart';
 import 'theme_picker_sheet.dart';
 
@@ -45,6 +46,7 @@ class SettingsScreen extends ConsumerWidget {
     final biometricEnabled = ref.watch(biometricEnabledProvider);
     final pinTimeoutMinutes = ref.watch(pinTimeoutMinutesProvider);
     final lockScreenStyle = ref.watch(lockScreenStyleProvider);
+    final moreScreenViewMode = ref.watch(moreScreenViewModeProvider);
     final hasMasterPhrase = ref.watch(hasMasterPhraseProvider);
     final masterPhraseAttemptThreshold = ref.watch(
       masterPhraseAttemptThresholdProvider,
@@ -145,6 +147,27 @@ class SettingsScreen extends ConsumerWidget {
                     color: cs.onSurfaceVariant,
                   ),
                   onTap: () => context.push('/more/settings/font'),
+                ),
+                Divider(height: 1, indent: 60, color: cs.outline),
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  leading: const Icon(Icons.dashboard_outlined),
+                  title: const Text('More screen layout'),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        MoreScreenLayoutSheet.label(moreScreenViewMode),
+                        style: trailingStyle,
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ],
+                  ),
+                  onTap: () => MoreScreenLayoutSheet.show(context),
                 ),
               ],
             ),
