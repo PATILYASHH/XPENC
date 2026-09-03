@@ -128,6 +128,19 @@ final statsShowYearProvider = StateProvider<bool>((ref) => false);
 /// or a per-subcategory breakdown. See GitHub #40.
 final statsShowSubcategoriesProvider = StateProvider<bool>((ref) => false);
 
+/// Stats "Standings" section: ranks either individual transactions or
+/// categories (the latter respecting [statsShowSubcategoriesProvider], same
+/// grouping as the pie above). See GitHub #95.
+enum StandingsMetric { transactions, categories }
+
+final statsStandingsMetricProvider = StateProvider<StandingsMetric>(
+  (ref) => StandingsMetric.transactions,
+);
+
+/// Standings sort direction: false (the default) ranks the highest amount
+/// first; true reverses it to lowest first.
+final statsStandingsAscendingProvider = StateProvider<bool>((ref) => false);
+
 // ── Transactions search & filter ───────────────────────────────────────────
 // Shared between the shared top bar (which owns the search/filter buttons —
 // see `AppShell`) and `TransactionsScreen` (which applies them to the list),
