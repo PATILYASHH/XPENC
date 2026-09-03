@@ -262,6 +262,18 @@ class Transactions extends Table {
   /// both at once.
   IntColumn get paymentGroupId =>
       integer().nullable().references(Transactions, #id)();
+
+  /// What this cost in another currency, manually entered — e.g. "$9.99" for
+  /// a subscription actually charged as [amount] home-currency rupees
+  /// (GitHub #85). [amount] stays authoritative for every balance/net-worth/
+  /// envelope computation; this is a purely informational annotation. Always
+  /// null exactly when [foreignAmount] is null — never one without the
+  /// other, same pairing as [RecurringRules.promoAmount]/
+  /// [RecurringRules.promoOccurrencesLeft]. The implied conversion rate is
+  /// `amount / foreignAmount`, recomputed for display rather than stored.
+  TextColumn get foreignCurrencyCode => text().nullable()();
+  IntColumn get foreignAmount =>
+      integer().nullable().map(const MoneyConverter())();
 }
 
 @DataClassName('BudgetRow')
@@ -596,6 +608,17 @@ class RecurringRules extends Table {
   IntColumn get promoOccurrencesLeft => integer().nullable()();
 
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  /// Same annotation as [Transactions.foreignCurrencyCode]/
+  /// [Transactions.foreignAmount] (GitHub #85), carried on the rule so every
+  /// occurrence it posts keeps showing its original foreign-currency price
+  /// (e.g. a $9.99 subscription). Copied onto each posted transaction by
+  /// [AppDatabase.runDueRecurringRules] — except while a promo price is
+  /// active, since there is no tracked foreign equivalent for [promoAmount].
+  /// Always null exactly when [foreignAmount] is null.
+  TextColumn get foreignCurrencyCode => text().nullable()();
+  IntColumn get foreignAmount =>
+      integer().nullable().map(const MoneyConverter())();
 }
 
 /// Single-row app settings.
