@@ -480,8 +480,11 @@ void main() {
       final csv = await db.transactionsCsv();
       final lines = csv.trim().split('\n');
 
-      expect(lines.first,
-          'Date,Type,Amount,Account,To Account,Category,Person,Note');
+      expect(
+        lines.first,
+        'Date,Type,Amount,Account,To Account,Category,Person,Note,'
+        'Foreign Amount,Foreign Currency',
+      );
       // header + 3 manual transactions + the personOut row for lending Ram 500
       expect(lines, hasLength(5));
 

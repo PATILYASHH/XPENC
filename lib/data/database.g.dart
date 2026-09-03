@@ -2416,6 +2416,26 @@ class $RecurringRulesTable extends RecurringRules
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _foreignCurrencyCodeMeta =
+      const VerificationMeta('foreignCurrencyCode');
+  @override
+  late final GeneratedColumn<String> foreignCurrencyCode =
+      GeneratedColumn<String>(
+        'foreign_currency_code',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  @override
+  late final GeneratedColumnWithTypeConverter<Money?, int> foreignAmount =
+      GeneratedColumn<int>(
+        'foreign_amount',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<Money?>($RecurringRulesTable.$converterforeignAmountn);
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2436,6 +2456,8 @@ class $RecurringRulesTable extends RecurringRules
     promoAmount,
     promoOccurrencesLeft,
     createdAt,
+    foreignCurrencyCode,
+    foreignAmount,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2551,6 +2573,15 @@ class $RecurringRulesTable extends RecurringRules
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
+    if (data.containsKey('foreign_currency_code')) {
+      context.handle(
+        _foreignCurrencyCodeMeta,
+        foreignCurrencyCode.isAcceptableOrUnknown(
+          data['foreign_currency_code']!,
+          _foreignCurrencyCodeMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -2640,6 +2671,16 @@ class $RecurringRulesTable extends RecurringRules
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      foreignCurrencyCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}foreign_currency_code'],
+      ),
+      foreignAmount: $RecurringRulesTable.$converterforeignAmountn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}foreign_amount'],
+        ),
+      ),
     );
   }
 
@@ -2659,6 +2700,10 @@ class $RecurringRulesTable extends RecurringRules
       const MoneyConverter();
   static TypeConverter<Money?, int?> $converterpromoAmountn =
       NullAwareTypeConverter.wrap($converterpromoAmount);
+  static TypeConverter<Money, int> $converterforeignAmount =
+      const MoneyConverter();
+  static TypeConverter<Money?, int?> $converterforeignAmountn =
+      NullAwareTypeConverter.wrap($converterforeignAmount);
 }
 
 class RecurringRuleRow extends DataClass
@@ -2730,6 +2775,16 @@ class RecurringRuleRow extends DataClass
   /// the promotion is set up.
   final int? promoOccurrencesLeft;
   final DateTime createdAt;
+
+  /// Same annotation as [Transactions.foreignCurrencyCode]/
+  /// [Transactions.foreignAmount] (GitHub #85), carried on the rule so every
+  /// occurrence it posts keeps showing its original foreign-currency price
+  /// (e.g. a $9.99 subscription). Copied onto each posted transaction by
+  /// [AppDatabase.runDueRecurringRules] — except while a promo price is
+  /// active, since there is no tracked foreign equivalent for [promoAmount].
+  /// Always null exactly when [foreignAmount] is null.
+  final String? foreignCurrencyCode;
+  final Money? foreignAmount;
   const RecurringRuleRow({
     required this.id,
     required this.name,
@@ -2749,6 +2804,8 @@ class RecurringRuleRow extends DataClass
     this.promoAmount,
     this.promoOccurrencesLeft,
     required this.createdAt,
+    this.foreignCurrencyCode,
+    this.foreignAmount,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2799,6 +2856,14 @@ class RecurringRuleRow extends DataClass
       map['promo_occurrences_left'] = Variable<int>(promoOccurrencesLeft);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || foreignCurrencyCode != null) {
+      map['foreign_currency_code'] = Variable<String>(foreignCurrencyCode);
+    }
+    if (!nullToAbsent || foreignAmount != null) {
+      map['foreign_amount'] = Variable<int>(
+        $RecurringRulesTable.$converterforeignAmountn.toSql(foreignAmount),
+      );
+    }
     return map;
   }
 
@@ -2834,6 +2899,12 @@ class RecurringRuleRow extends DataClass
           ? const Value.absent()
           : Value(promoOccurrencesLeft),
       createdAt: Value(createdAt),
+      foreignCurrencyCode: foreignCurrencyCode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(foreignCurrencyCode),
+      foreignAmount: foreignAmount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(foreignAmount),
     );
   }
 
@@ -2867,6 +2938,10 @@ class RecurringRuleRow extends DataClass
         json['promoOccurrencesLeft'],
       ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      foreignCurrencyCode: serializer.fromJson<String?>(
+        json['foreignCurrencyCode'],
+      ),
+      foreignAmount: serializer.fromJson<Money?>(json['foreignAmount']),
     );
   }
   @override
@@ -2895,6 +2970,8 @@ class RecurringRuleRow extends DataClass
       'promoAmount': serializer.toJson<Money?>(promoAmount),
       'promoOccurrencesLeft': serializer.toJson<int?>(promoOccurrencesLeft),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'foreignCurrencyCode': serializer.toJson<String?>(foreignCurrencyCode),
+      'foreignAmount': serializer.toJson<Money?>(foreignAmount),
     };
   }
 
@@ -2917,6 +2994,8 @@ class RecurringRuleRow extends DataClass
     Value<Money?> promoAmount = const Value.absent(),
     Value<int?> promoOccurrencesLeft = const Value.absent(),
     DateTime? createdAt,
+    Value<String?> foreignCurrencyCode = const Value.absent(),
+    Value<Money?> foreignAmount = const Value.absent(),
   }) => RecurringRuleRow(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -2938,6 +3017,12 @@ class RecurringRuleRow extends DataClass
         ? promoOccurrencesLeft.value
         : this.promoOccurrencesLeft,
     createdAt: createdAt ?? this.createdAt,
+    foreignCurrencyCode: foreignCurrencyCode.present
+        ? foreignCurrencyCode.value
+        : this.foreignCurrencyCode,
+    foreignAmount: foreignAmount.present
+        ? foreignAmount.value
+        : this.foreignAmount,
   );
   RecurringRuleRow copyWithCompanion(RecurringRulesCompanion data) {
     return RecurringRuleRow(
@@ -2975,6 +3060,12 @@ class RecurringRuleRow extends DataClass
           ? data.promoOccurrencesLeft.value
           : this.promoOccurrencesLeft,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      foreignCurrencyCode: data.foreignCurrencyCode.present
+          ? data.foreignCurrencyCode.value
+          : this.foreignCurrencyCode,
+      foreignAmount: data.foreignAmount.present
+          ? data.foreignAmount.value
+          : this.foreignAmount,
     );
   }
 
@@ -2998,7 +3089,9 @@ class RecurringRuleRow extends DataClass
           ..write('isEstimate: $isEstimate, ')
           ..write('promoAmount: $promoAmount, ')
           ..write('promoOccurrencesLeft: $promoOccurrencesLeft, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('foreignCurrencyCode: $foreignCurrencyCode, ')
+          ..write('foreignAmount: $foreignAmount')
           ..write(')'))
         .toString();
   }
@@ -3023,6 +3116,8 @@ class RecurringRuleRow extends DataClass
     promoAmount,
     promoOccurrencesLeft,
     createdAt,
+    foreignCurrencyCode,
+    foreignAmount,
   );
   @override
   bool operator ==(Object other) =>
@@ -3045,7 +3140,9 @@ class RecurringRuleRow extends DataClass
           other.isEstimate == this.isEstimate &&
           other.promoAmount == this.promoAmount &&
           other.promoOccurrencesLeft == this.promoOccurrencesLeft &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.foreignCurrencyCode == this.foreignCurrencyCode &&
+          other.foreignAmount == this.foreignAmount);
 }
 
 class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
@@ -3067,6 +3164,8 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
   final Value<Money?> promoAmount;
   final Value<int?> promoOccurrencesLeft;
   final Value<DateTime> createdAt;
+  final Value<String?> foreignCurrencyCode;
+  final Value<Money?> foreignAmount;
   const RecurringRulesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -3086,6 +3185,8 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     this.promoAmount = const Value.absent(),
     this.promoOccurrencesLeft = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.foreignCurrencyCode = const Value.absent(),
+    this.foreignAmount = const Value.absent(),
   });
   RecurringRulesCompanion.insert({
     this.id = const Value.absent(),
@@ -3106,6 +3207,8 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     this.promoAmount = const Value.absent(),
     this.promoOccurrencesLeft = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.foreignCurrencyCode = const Value.absent(),
+    this.foreignAmount = const Value.absent(),
   }) : name = Value(name),
        kind = Value(kind),
        amount = Value(amount),
@@ -3131,6 +3234,8 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     Expression<int>? promoAmount,
     Expression<int>? promoOccurrencesLeft,
     Expression<DateTime>? createdAt,
+    Expression<String>? foreignCurrencyCode,
+    Expression<int>? foreignAmount,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3152,6 +3257,9 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
       if (promoOccurrencesLeft != null)
         'promo_occurrences_left': promoOccurrencesLeft,
       if (createdAt != null) 'created_at': createdAt,
+      if (foreignCurrencyCode != null)
+        'foreign_currency_code': foreignCurrencyCode,
+      if (foreignAmount != null) 'foreign_amount': foreignAmount,
     });
   }
 
@@ -3174,6 +3282,8 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     Value<Money?>? promoAmount,
     Value<int?>? promoOccurrencesLeft,
     Value<DateTime>? createdAt,
+    Value<String?>? foreignCurrencyCode,
+    Value<Money?>? foreignAmount,
   }) {
     return RecurringRulesCompanion(
       id: id ?? this.id,
@@ -3194,6 +3304,8 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
       promoAmount: promoAmount ?? this.promoAmount,
       promoOccurrencesLeft: promoOccurrencesLeft ?? this.promoOccurrencesLeft,
       createdAt: createdAt ?? this.createdAt,
+      foreignCurrencyCode: foreignCurrencyCode ?? this.foreignCurrencyCode,
+      foreignAmount: foreignAmount ?? this.foreignAmount,
     );
   }
 
@@ -3262,6 +3374,18 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (foreignCurrencyCode.present) {
+      map['foreign_currency_code'] = Variable<String>(
+        foreignCurrencyCode.value,
+      );
+    }
+    if (foreignAmount.present) {
+      map['foreign_amount'] = Variable<int>(
+        $RecurringRulesTable.$converterforeignAmountn.toSql(
+          foreignAmount.value,
+        ),
+      );
+    }
     return map;
   }
 
@@ -3285,7 +3409,9 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
           ..write('isEstimate: $isEstimate, ')
           ..write('promoAmount: $promoAmount, ')
           ..write('promoOccurrencesLeft: $promoOccurrencesLeft, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('foreignCurrencyCode: $foreignCurrencyCode, ')
+          ..write('foreignAmount: $foreignAmount')
           ..write(')'))
         .toString();
   }
@@ -3493,6 +3619,26 @@ class $TransactionsTable extends Transactions
       'REFERENCES transactions (id)',
     ),
   );
+  static const VerificationMeta _foreignCurrencyCodeMeta =
+      const VerificationMeta('foreignCurrencyCode');
+  @override
+  late final GeneratedColumn<String> foreignCurrencyCode =
+      GeneratedColumn<String>(
+        'foreign_currency_code',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  @override
+  late final GeneratedColumnWithTypeConverter<Money?, int> foreignAmount =
+      GeneratedColumn<int>(
+        'foreign_amount',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<Money?>($TransactionsTable.$converterforeignAmountn);
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -3511,6 +3657,8 @@ class $TransactionsTable extends Transactions
     updatedAt,
     needsAmountReview,
     paymentGroupId,
+    foreignCurrencyCode,
+    foreignAmount,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3621,6 +3769,15 @@ class $TransactionsTable extends Transactions
         ),
       );
     }
+    if (data.containsKey('foreign_currency_code')) {
+      context.handle(
+        _foreignCurrencyCodeMeta,
+        foreignCurrencyCode.isAcceptableOrUnknown(
+          data['foreign_currency_code']!,
+          _foreignCurrencyCodeMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -3698,6 +3855,16 @@ class $TransactionsTable extends Transactions
         DriftSqlType.int,
         data['${effectivePrefix}payment_group_id'],
       ),
+      foreignCurrencyCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}foreign_currency_code'],
+      ),
+      foreignAmount: $TransactionsTable.$converterforeignAmountn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}foreign_amount'],
+        ),
+      ),
     );
   }
 
@@ -3709,6 +3876,10 @@ class $TransactionsTable extends Transactions
   static JsonTypeConverter2<TxType, String, String> $convertertype =
       const EnumNameConverter<TxType>(TxType.values);
   static TypeConverter<Money, int> $converteramount = const MoneyConverter();
+  static TypeConverter<Money, int> $converterforeignAmount =
+      const MoneyConverter();
+  static TypeConverter<Money?, int?> $converterforeignAmountn =
+      NullAwareTypeConverter.wrap($converterforeignAmount);
 }
 
 class TransactionRow extends DataClass implements Insertable<TransactionRow> {
@@ -3769,6 +3940,17 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   /// mutually exclusive in the UI, to avoid the 2-D matrix of splitting
   /// both at once.
   final int? paymentGroupId;
+
+  /// What this cost in another currency, manually entered — e.g. "$9.99" for
+  /// a subscription actually charged as [amount] home-currency rupees
+  /// (GitHub #85). [amount] stays authoritative for every balance/net-worth/
+  /// envelope computation; this is a purely informational annotation. Always
+  /// null exactly when [foreignAmount] is null — never one without the
+  /// other, same pairing as [RecurringRules.promoAmount]/
+  /// [RecurringRules.promoOccurrencesLeft]. The implied conversion rate is
+  /// `amount / foreignAmount`, recomputed for display rather than stored.
+  final String? foreignCurrencyCode;
+  final Money? foreignAmount;
   const TransactionRow({
     required this.id,
     required this.type,
@@ -3786,6 +3968,8 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     required this.updatedAt,
     required this.needsAmountReview,
     this.paymentGroupId,
+    this.foreignCurrencyCode,
+    this.foreignAmount,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3830,6 +4014,14 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     if (!nullToAbsent || paymentGroupId != null) {
       map['payment_group_id'] = Variable<int>(paymentGroupId);
     }
+    if (!nullToAbsent || foreignCurrencyCode != null) {
+      map['foreign_currency_code'] = Variable<String>(foreignCurrencyCode);
+    }
+    if (!nullToAbsent || foreignAmount != null) {
+      map['foreign_amount'] = Variable<int>(
+        $TransactionsTable.$converterforeignAmountn.toSql(foreignAmount),
+      );
+    }
     return map;
   }
 
@@ -3865,6 +4057,12 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       paymentGroupId: paymentGroupId == null && nullToAbsent
           ? const Value.absent()
           : Value(paymentGroupId),
+      foreignCurrencyCode: foreignCurrencyCode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(foreignCurrencyCode),
+      foreignAmount: foreignAmount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(foreignAmount),
     );
   }
 
@@ -3892,6 +4090,10 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       needsAmountReview: serializer.fromJson<bool>(json['needsAmountReview']),
       paymentGroupId: serializer.fromJson<int?>(json['paymentGroupId']),
+      foreignCurrencyCode: serializer.fromJson<String?>(
+        json['foreignCurrencyCode'],
+      ),
+      foreignAmount: serializer.fromJson<Money?>(json['foreignAmount']),
     );
   }
   @override
@@ -3916,6 +4118,8 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'needsAmountReview': serializer.toJson<bool>(needsAmountReview),
       'paymentGroupId': serializer.toJson<int?>(paymentGroupId),
+      'foreignCurrencyCode': serializer.toJson<String?>(foreignCurrencyCode),
+      'foreignAmount': serializer.toJson<Money?>(foreignAmount),
     };
   }
 
@@ -3936,6 +4140,8 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     DateTime? updatedAt,
     bool? needsAmountReview,
     Value<int?> paymentGroupId = const Value.absent(),
+    Value<String?> foreignCurrencyCode = const Value.absent(),
+    Value<Money?> foreignAmount = const Value.absent(),
   }) => TransactionRow(
     id: id ?? this.id,
     type: type ?? this.type,
@@ -3957,6 +4163,12 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     paymentGroupId: paymentGroupId.present
         ? paymentGroupId.value
         : this.paymentGroupId,
+    foreignCurrencyCode: foreignCurrencyCode.present
+        ? foreignCurrencyCode.value
+        : this.foreignCurrencyCode,
+    foreignAmount: foreignAmount.present
+        ? foreignAmount.value
+        : this.foreignAmount,
   );
   TransactionRow copyWithCompanion(TransactionsCompanion data) {
     return TransactionRow(
@@ -3986,6 +4198,12 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       paymentGroupId: data.paymentGroupId.present
           ? data.paymentGroupId.value
           : this.paymentGroupId,
+      foreignCurrencyCode: data.foreignCurrencyCode.present
+          ? data.foreignCurrencyCode.value
+          : this.foreignCurrencyCode,
+      foreignAmount: data.foreignAmount.present
+          ? data.foreignAmount.value
+          : this.foreignAmount,
     );
   }
 
@@ -4007,7 +4225,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('needsAmountReview: $needsAmountReview, ')
-          ..write('paymentGroupId: $paymentGroupId')
+          ..write('paymentGroupId: $paymentGroupId, ')
+          ..write('foreignCurrencyCode: $foreignCurrencyCode, ')
+          ..write('foreignAmount: $foreignAmount')
           ..write(')'))
         .toString();
   }
@@ -4030,6 +4250,8 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     updatedAt,
     needsAmountReview,
     paymentGroupId,
+    foreignCurrencyCode,
+    foreignAmount,
   );
   @override
   bool operator ==(Object other) =>
@@ -4050,7 +4272,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.needsAmountReview == this.needsAmountReview &&
-          other.paymentGroupId == this.paymentGroupId);
+          other.paymentGroupId == this.paymentGroupId &&
+          other.foreignCurrencyCode == this.foreignCurrencyCode &&
+          other.foreignAmount == this.foreignAmount);
 }
 
 class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
@@ -4070,6 +4294,8 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   final Value<DateTime> updatedAt;
   final Value<bool> needsAmountReview;
   final Value<int?> paymentGroupId;
+  final Value<String?> foreignCurrencyCode;
+  final Value<Money?> foreignAmount;
   const TransactionsCompanion({
     this.id = const Value.absent(),
     this.type = const Value.absent(),
@@ -4087,6 +4313,8 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.updatedAt = const Value.absent(),
     this.needsAmountReview = const Value.absent(),
     this.paymentGroupId = const Value.absent(),
+    this.foreignCurrencyCode = const Value.absent(),
+    this.foreignAmount = const Value.absent(),
   });
   TransactionsCompanion.insert({
     this.id = const Value.absent(),
@@ -4105,6 +4333,8 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.updatedAt = const Value.absent(),
     this.needsAmountReview = const Value.absent(),
     this.paymentGroupId = const Value.absent(),
+    this.foreignCurrencyCode = const Value.absent(),
+    this.foreignAmount = const Value.absent(),
   }) : type = Value(type),
        amount = Value(amount),
        accountId = Value(accountId),
@@ -4126,6 +4356,8 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Expression<DateTime>? updatedAt,
     Expression<bool>? needsAmountReview,
     Expression<int>? paymentGroupId,
+    Expression<String>? foreignCurrencyCode,
+    Expression<int>? foreignAmount,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -4144,6 +4376,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       if (updatedAt != null) 'updated_at': updatedAt,
       if (needsAmountReview != null) 'needs_amount_review': needsAmountReview,
       if (paymentGroupId != null) 'payment_group_id': paymentGroupId,
+      if (foreignCurrencyCode != null)
+        'foreign_currency_code': foreignCurrencyCode,
+      if (foreignAmount != null) 'foreign_amount': foreignAmount,
     });
   }
 
@@ -4164,6 +4399,8 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Value<DateTime>? updatedAt,
     Value<bool>? needsAmountReview,
     Value<int?>? paymentGroupId,
+    Value<String?>? foreignCurrencyCode,
+    Value<Money?>? foreignAmount,
   }) {
     return TransactionsCompanion(
       id: id ?? this.id,
@@ -4182,6 +4419,8 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       updatedAt: updatedAt ?? this.updatedAt,
       needsAmountReview: needsAmountReview ?? this.needsAmountReview,
       paymentGroupId: paymentGroupId ?? this.paymentGroupId,
+      foreignCurrencyCode: foreignCurrencyCode ?? this.foreignCurrencyCode,
+      foreignAmount: foreignAmount ?? this.foreignAmount,
     );
   }
 
@@ -4240,6 +4479,16 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     if (paymentGroupId.present) {
       map['payment_group_id'] = Variable<int>(paymentGroupId.value);
     }
+    if (foreignCurrencyCode.present) {
+      map['foreign_currency_code'] = Variable<String>(
+        foreignCurrencyCode.value,
+      );
+    }
+    if (foreignAmount.present) {
+      map['foreign_amount'] = Variable<int>(
+        $TransactionsTable.$converterforeignAmountn.toSql(foreignAmount.value),
+      );
+    }
     return map;
   }
 
@@ -4261,7 +4510,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('needsAmountReview: $needsAmountReview, ')
-          ..write('paymentGroupId: $paymentGroupId')
+          ..write('paymentGroupId: $paymentGroupId, ')
+          ..write('foreignCurrencyCode: $foreignCurrencyCode, ')
+          ..write('foreignAmount: $foreignAmount')
           ..write(')'))
         .toString();
   }
@@ -22928,6 +23179,8 @@ typedef $$RecurringRulesTableCreateCompanionBuilder =
       Value<Money?> promoAmount,
       Value<int?> promoOccurrencesLeft,
       Value<DateTime> createdAt,
+      Value<String?> foreignCurrencyCode,
+      Value<Money?> foreignAmount,
     });
 typedef $$RecurringRulesTableUpdateCompanionBuilder =
     RecurringRulesCompanion Function({
@@ -22949,6 +23202,8 @@ typedef $$RecurringRulesTableUpdateCompanionBuilder =
       Value<Money?> promoAmount,
       Value<int?> promoOccurrencesLeft,
       Value<DateTime> createdAt,
+      Value<String?> foreignCurrencyCode,
+      Value<Money?> foreignAmount,
     });
 
 final class $$RecurringRulesTableReferences
@@ -23150,6 +23405,17 @@ class $$RecurringRulesTableFilterComposer
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<String> get foreignCurrencyCode => $composableBuilder(
+    column: $table.foreignCurrencyCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<Money?, Money, int> get foreignAmount =>
+      $composableBuilder(
+        column: $table.foreignAmount,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
 
   $$AccountsTableFilterComposer get accountId {
     final $$AccountsTableFilterComposer composer = $composerBuilder(
@@ -23355,6 +23621,16 @@ class $$RecurringRulesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get foreignCurrencyCode => $composableBuilder(
+    column: $table.foreignCurrencyCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get foreignAmount => $composableBuilder(
+    column: $table.foreignAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$AccountsTableOrderingComposer get accountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -23491,6 +23767,17 @@ class $$RecurringRulesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get foreignCurrencyCode => $composableBuilder(
+    column: $table.foreignCurrencyCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<Money?, int> get foreignAmount =>
+      $composableBuilder(
+        column: $table.foreignAmount,
+        builder: (column) => column,
+      );
 
   $$AccountsTableAnnotationComposer get accountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
@@ -23667,6 +23954,8 @@ class $$RecurringRulesTableTableManager
                 Value<Money?> promoAmount = const Value.absent(),
                 Value<int?> promoOccurrencesLeft = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> foreignCurrencyCode = const Value.absent(),
+                Value<Money?> foreignAmount = const Value.absent(),
               }) => RecurringRulesCompanion(
                 id: id,
                 name: name,
@@ -23686,6 +23975,8 @@ class $$RecurringRulesTableTableManager
                 promoAmount: promoAmount,
                 promoOccurrencesLeft: promoOccurrencesLeft,
                 createdAt: createdAt,
+                foreignCurrencyCode: foreignCurrencyCode,
+                foreignAmount: foreignAmount,
               ),
           createCompanionCallback:
               ({
@@ -23707,6 +23998,8 @@ class $$RecurringRulesTableTableManager
                 Value<Money?> promoAmount = const Value.absent(),
                 Value<int?> promoOccurrencesLeft = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> foreignCurrencyCode = const Value.absent(),
+                Value<Money?> foreignAmount = const Value.absent(),
               }) => RecurringRulesCompanion.insert(
                 id: id,
                 name: name,
@@ -23726,6 +24019,8 @@ class $$RecurringRulesTableTableManager
                 promoAmount: promoAmount,
                 promoOccurrencesLeft: promoOccurrencesLeft,
                 createdAt: createdAt,
+                foreignCurrencyCode: foreignCurrencyCode,
+                foreignAmount: foreignAmount,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -23903,6 +24198,8 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<DateTime> updatedAt,
       Value<bool> needsAmountReview,
       Value<int?> paymentGroupId,
+      Value<String?> foreignCurrencyCode,
+      Value<Money?> foreignAmount,
     });
 typedef $$TransactionsTableUpdateCompanionBuilder =
     TransactionsCompanion Function({
@@ -23922,6 +24219,8 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<DateTime> updatedAt,
       Value<bool> needsAmountReview,
       Value<int?> paymentGroupId,
+      Value<String?> foreignCurrencyCode,
+      Value<Money?> foreignAmount,
     });
 
 final class $$TransactionsTableReferences
@@ -24246,6 +24545,17 @@ class $$TransactionsTableFilterComposer
     column: $table.needsAmountReview,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<String> get foreignCurrencyCode => $composableBuilder(
+    column: $table.foreignCurrencyCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<Money?, Money, int> get foreignAmount =>
+      $composableBuilder(
+        column: $table.foreignAmount,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
 
   $$AccountsTableFilterComposer get accountId {
     final $$AccountsTableFilterComposer composer = $composerBuilder(
@@ -24595,6 +24905,16 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get foreignCurrencyCode => $composableBuilder(
+    column: $table.foreignCurrencyCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get foreignAmount => $composableBuilder(
+    column: $table.foreignAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$AccountsTableOrderingComposer get accountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -24774,6 +25094,17 @@ class $$TransactionsTableAnnotationComposer
     column: $table.needsAmountReview,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get foreignCurrencyCode => $composableBuilder(
+    column: $table.foreignCurrencyCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<Money?, int> get foreignAmount =>
+      $composableBuilder(
+        column: $table.foreignAmount,
+        builder: (column) => column,
+      );
 
   $$AccountsTableAnnotationComposer get accountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
@@ -25123,6 +25454,8 @@ class $$TransactionsTableTableManager
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> needsAmountReview = const Value.absent(),
                 Value<int?> paymentGroupId = const Value.absent(),
+                Value<String?> foreignCurrencyCode = const Value.absent(),
+                Value<Money?> foreignAmount = const Value.absent(),
               }) => TransactionsCompanion(
                 id: id,
                 type: type,
@@ -25140,6 +25473,8 @@ class $$TransactionsTableTableManager
                 updatedAt: updatedAt,
                 needsAmountReview: needsAmountReview,
                 paymentGroupId: paymentGroupId,
+                foreignCurrencyCode: foreignCurrencyCode,
+                foreignAmount: foreignAmount,
               ),
           createCompanionCallback:
               ({
@@ -25159,6 +25494,8 @@ class $$TransactionsTableTableManager
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> needsAmountReview = const Value.absent(),
                 Value<int?> paymentGroupId = const Value.absent(),
+                Value<String?> foreignCurrencyCode = const Value.absent(),
+                Value<Money?> foreignAmount = const Value.absent(),
               }) => TransactionsCompanion.insert(
                 id: id,
                 type: type,
@@ -25176,6 +25513,8 @@ class $$TransactionsTableTableManager
                 updatedAt: updatedAt,
                 needsAmountReview: needsAmountReview,
                 paymentGroupId: paymentGroupId,
+                foreignCurrencyCode: foreignCurrencyCode,
+                foreignAmount: foreignAmount,
               ),
           withReferenceMapper: (p0) => p0
               .map(
