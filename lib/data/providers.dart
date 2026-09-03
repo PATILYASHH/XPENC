@@ -821,6 +821,13 @@ final extraBottomInsetProvider = Provider<int>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.extraBottomInset ?? 0;
 });
 
+/// Icon keys most recently picked from the icon sheet, newest first — see
+/// `Settings.frequentIconKeys` and `AppDatabase.recordIconUsed`.
+final frequentIconKeysProvider = Provider<List<String>>((ref) {
+  final raw = ref.watch(settingsProvider).valueOrNull?.frequentIconKeys ?? '';
+  return raw.isEmpty ? const [] : raw.split(',');
+});
+
 /// Minutes the app may sit backgrounded before the next resume re-locks it —
 /// `0` means immediately. See GitHub #60.
 final pinTimeoutMinutesProvider = Provider<int>((ref) {

@@ -87,6 +87,7 @@ void main() {
       lockScreenStyle: LockScreenStyle.classic,
       screenshotReminderEnabled: false,
       moreScreenViewMode: MoreScreenViewMode.list,
+      frequentIconKeys: '',
     );
 
     final now = DateTime(2026, 8, 5, 12);
