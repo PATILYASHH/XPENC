@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_icons.dart';
 import '../../core/widgets/error_view.dart';
+import '../../core/widgets/icon_picker_sheet.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
@@ -496,13 +497,7 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
             const SizedBox(height: 24),
             _fieldLabel(theme, 'Icon'),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                for (final k in AppIcons.allKeys) _iconCircle(theme, k),
-              ],
-            ),
+            _iconField(theme),
             const SizedBox(height: 28),
             FilledButton(
               onPressed: _submitting ? null : _save,
@@ -626,28 +621,51 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
     );
   }
 
-  Widget _iconCircle(ThemeData theme, String key) {
-    final selected = _iconKey == key;
+  /// A single tile showing the chosen icon; tapping it opens the searchable
+  /// icon sheet (GitHub #102) instead of laying every icon out inline.
+  Widget _iconField(ThemeData theme) {
     final color = Color(_colorValue);
     return GestureDetector(
-      onTap: () => setState(() => _iconKey = key),
+      onTap: () async {
+        final picked = await showIconPickerSheet(
+          context,
+          selected: _iconKey,
+          accentColor: color,
+        );
+        if (picked != null) setState(() => _iconKey = picked);
+      },
       child: Container(
-        width: 52,
-        height: 52,
-        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: selected
-              ? color.withValues(alpha: 0.15)
-              : theme.colorScheme.surface,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: selected ? color : theme.colorScheme.outline,
-            width: selected ? 2.5 : 1,
-          ),
+          border: Border.all(color: theme.colorScheme.outline),
+          borderRadius: BorderRadius.circular(16),
         ),
-        child: Icon(
-          AppIcons.resolve(key),
-          color: selected ? color : theme.colorScheme.onSurfaceVariant,
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(AppIcons.resolve(_iconKey), color: color),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                'Tap to change',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ],
         ),
       ),
     );

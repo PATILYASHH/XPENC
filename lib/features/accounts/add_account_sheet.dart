@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_icons.dart';
 import '../../core/money.dart';
+import '../../core/widgets/icon_picker_sheet.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
@@ -19,16 +20,6 @@ const _presetColors = <int>[
   0xFF0EA5E9,
   0xFF78716C,
   0xFFEC4899,
-];
-
-const _iconKeys = <String>[
-  'cash',
-  'bank',
-  'card',
-  'wallet',
-  'savings',
-  'pay_later',
-  'prepaid_balance',
 ];
 
 /// Opens the "add account" bottom sheet.
@@ -262,11 +253,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
 
             _fieldLabel(theme, 'Icon'),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [for (final k in _iconKeys) _iconTile(theme, k)],
-            ),
+            _iconField(theme),
             const SizedBox(height: 28),
 
             FilledButton(
@@ -504,30 +491,51 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
     );
   }
 
-  Widget _iconTile(ThemeData theme, String key) {
-    final selected = _iconKey == key;
+  /// A single tile showing the chosen icon; tapping it opens the searchable
+  /// icon sheet instead of a fixed row limited to the account types above.
+  Widget _iconField(ThemeData theme) {
+    final color = Color(_colorValue);
     return GestureDetector(
-      onTap: () => setState(() => _iconKey = key),
+      onTap: () async {
+        final picked = await showIconPickerSheet(
+          context,
+          selected: _iconKey,
+          accentColor: color,
+        );
+        if (picked != null) setState(() => _iconKey = picked);
+      },
       child: Container(
-        width: 52,
-        height: 52,
-        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: selected
-              ? theme.colorScheme.onSurface
-              : theme.colorScheme.surface,
+          border: Border.all(color: theme.colorScheme.outline),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: selected
-                ? theme.colorScheme.onSurface
-                : theme.colorScheme.outline,
-          ),
         ),
-        child: Icon(
-          AppIcons.resolve(key),
-          color: selected
-              ? theme.colorScheme.surface
-              : theme.colorScheme.onSurfaceVariant,
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(AppIcons.resolve(_iconKey), color: color),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                'Tap to change',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ],
         ),
       ),
     );

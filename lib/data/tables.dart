@@ -876,6 +876,12 @@ class Settings extends Table {
   IntColumn get extraBottomInset =>
       integer().withDefault(const Constant(0))();
 
+  /// Icon keys (see `AppIcons`) picked from the icon sheet, most-recent-first,
+  /// comma-joined — same convention as [bottomNavSlots]. Powers the
+  /// "Frequently used" row so the icon someone reaches for constantly (their
+  /// coffee cup, their gym) surfaces without scrolling or typing a search.
+  TextColumn get frequentIconKeys => text().withDefault(const Constant(''))();
+
   @override
   Set<Column> get primaryKey => {id};
 }

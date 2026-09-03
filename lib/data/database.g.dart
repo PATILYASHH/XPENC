@@ -8772,6 +8772,18 @@ class $SettingsTable extends Settings
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _frequentIconKeysMeta = const VerificationMeta(
+    'frequentIconKeys',
+  );
+  @override
+  late final GeneratedColumn<String> frequentIconKeys = GeneratedColumn<String>(
+    'frequent_icon_keys',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -8830,6 +8842,7 @@ class $SettingsTable extends Settings
     fontWeightDelta,
     fontFamily,
     extraBottomInset,
+    frequentIconKeys,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -9284,6 +9297,15 @@ class $SettingsTable extends Settings
         ),
       );
     }
+    if (data.containsKey('frequent_icon_keys')) {
+      context.handle(
+        _frequentIconKeysMeta,
+        frequentIconKeys.isAcceptableOrUnknown(
+          data['frequent_icon_keys']!,
+          _frequentIconKeysMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -9522,6 +9544,10 @@ class $SettingsTable extends Settings
       extraBottomInset: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}extra_bottom_inset'],
+      )!,
+      frequentIconKeys: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}frequent_icon_keys'],
       )!,
     );
   }
@@ -9783,6 +9809,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// every `SafeArea` in the app reads from — see `AppShell` and
   /// `LockScreen`, neither of which needed any change themselves.
   final int extraBottomInset;
+
+  /// Icon keys (see `AppIcons`) picked from the icon sheet, most-recent-first,
+  /// comma-joined — same convention as [bottomNavSlots]. Powers the
+  /// "Frequently used" row so the icon someone reaches for constantly (their
+  /// coffee cup, their gym) surfaces without scrolling or typing a search.
+  final String frequentIconKeys;
   const SettingRow({
     required this.id,
     required this.currencyCode,
@@ -9840,6 +9872,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     required this.fontWeightDelta,
     this.fontFamily,
     required this.extraBottomInset,
+    required this.frequentIconKeys,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -9948,6 +9981,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       map['font_family'] = Variable<String>(fontFamily);
     }
     map['extra_bottom_inset'] = Variable<int>(extraBottomInset);
+    map['frequent_icon_keys'] = Variable<String>(frequentIconKeys);
     return map;
   }
 
@@ -10039,6 +10073,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ? const Value.absent()
           : Value(fontFamily),
       extraBottomInset: Value(extraBottomInset),
+      frequentIconKeys: Value(frequentIconKeys),
     );
   }
 
@@ -10143,6 +10178,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       fontWeightDelta: serializer.fromJson<int>(json['fontWeightDelta']),
       fontFamily: serializer.fromJson<String?>(json['fontFamily']),
       extraBottomInset: serializer.fromJson<int>(json['extraBottomInset']),
+      frequentIconKeys: serializer.fromJson<String>(json['frequentIconKeys']),
     );
   }
   @override
@@ -10221,6 +10257,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'fontWeightDelta': serializer.toJson<int>(fontWeightDelta),
       'fontFamily': serializer.toJson<String?>(fontFamily),
       'extraBottomInset': serializer.toJson<int>(extraBottomInset),
+      'frequentIconKeys': serializer.toJson<String>(frequentIconKeys),
     };
   }
 
@@ -10281,6 +10318,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     int? fontWeightDelta,
     Value<String?> fontFamily = const Value.absent(),
     int? extraBottomInset,
+    String? frequentIconKeys,
   }) => SettingRow(
     id: id ?? this.id,
     currencyCode: currencyCode ?? this.currencyCode,
@@ -10356,6 +10394,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     fontWeightDelta: fontWeightDelta ?? this.fontWeightDelta,
     fontFamily: fontFamily.present ? fontFamily.value : this.fontFamily,
     extraBottomInset: extraBottomInset ?? this.extraBottomInset,
+    frequentIconKeys: frequentIconKeys ?? this.frequentIconKeys,
   );
   SettingRow copyWithCompanion(SettingsCompanion data) {
     return SettingRow(
@@ -10509,6 +10548,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       extraBottomInset: data.extraBottomInset.present
           ? data.extraBottomInset.value
           : this.extraBottomInset,
+      frequentIconKeys: data.frequentIconKeys.present
+          ? data.frequentIconKeys.value
+          : this.frequentIconKeys,
     );
   }
 
@@ -10572,7 +10614,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('fontScalePercent: $fontScalePercent, ')
           ..write('fontWeightDelta: $fontWeightDelta, ')
           ..write('fontFamily: $fontFamily, ')
-          ..write('extraBottomInset: $extraBottomInset')
+          ..write('extraBottomInset: $extraBottomInset, ')
+          ..write('frequentIconKeys: $frequentIconKeys')
           ..write(')'))
         .toString();
   }
@@ -10635,6 +10678,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     fontWeightDelta,
     fontFamily,
     extraBottomInset,
+    frequentIconKeys,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -10697,7 +10741,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.fontScalePercent == this.fontScalePercent &&
           other.fontWeightDelta == this.fontWeightDelta &&
           other.fontFamily == this.fontFamily &&
-          other.extraBottomInset == this.extraBottomInset);
+          other.extraBottomInset == this.extraBottomInset &&
+          other.frequentIconKeys == this.frequentIconKeys);
 }
 
 class SettingsCompanion extends UpdateCompanion<SettingRow> {
@@ -10757,6 +10802,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<int> fontWeightDelta;
   final Value<String?> fontFamily;
   final Value<int> extraBottomInset;
+  final Value<String> frequentIconKeys;
   const SettingsCompanion({
     this.id = const Value.absent(),
     this.currencyCode = const Value.absent(),
@@ -10814,6 +10860,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.fontWeightDelta = const Value.absent(),
     this.fontFamily = const Value.absent(),
     this.extraBottomInset = const Value.absent(),
+    this.frequentIconKeys = const Value.absent(),
   });
   SettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -10872,6 +10919,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.fontWeightDelta = const Value.absent(),
     this.fontFamily = const Value.absent(),
     this.extraBottomInset = const Value.absent(),
+    this.frequentIconKeys = const Value.absent(),
   });
   static Insertable<SettingRow> custom({
     Expression<int>? id,
@@ -10930,6 +10978,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<int>? fontWeightDelta,
     Expression<String>? fontFamily,
     Expression<int>? extraBottomInset,
+    Expression<String>? frequentIconKeys,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -11006,6 +11055,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       if (fontWeightDelta != null) 'font_weight_delta': fontWeightDelta,
       if (fontFamily != null) 'font_family': fontFamily,
       if (extraBottomInset != null) 'extra_bottom_inset': extraBottomInset,
+      if (frequentIconKeys != null) 'frequent_icon_keys': frequentIconKeys,
     });
   }
 
@@ -11066,6 +11116,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<int>? fontWeightDelta,
     Value<String?>? fontFamily,
     Value<int>? extraBottomInset,
+    Value<String>? frequentIconKeys,
   }) {
     return SettingsCompanion(
       id: id ?? this.id,
@@ -11134,6 +11185,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       fontWeightDelta: fontWeightDelta ?? this.fontWeightDelta,
       fontFamily: fontFamily ?? this.fontFamily,
       extraBottomInset: extraBottomInset ?? this.extraBottomInset,
+      frequentIconKeys: frequentIconKeys ?? this.frequentIconKeys,
     );
   }
 
@@ -11340,6 +11392,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     if (extraBottomInset.present) {
       map['extra_bottom_inset'] = Variable<int>(extraBottomInset.value);
     }
+    if (frequentIconKeys.present) {
+      map['frequent_icon_keys'] = Variable<String>(frequentIconKeys.value);
+    }
     return map;
   }
 
@@ -11403,7 +11458,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('fontScalePercent: $fontScalePercent, ')
           ..write('fontWeightDelta: $fontWeightDelta, ')
           ..write('fontFamily: $fontFamily, ')
-          ..write('extraBottomInset: $extraBottomInset')
+          ..write('extraBottomInset: $extraBottomInset, ')
+          ..write('frequentIconKeys: $frequentIconKeys')
           ..write(')'))
         .toString();
   }
@@ -29685,6 +29741,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<int> fontWeightDelta,
       Value<String?> fontFamily,
       Value<int> extraBottomInset,
+      Value<String> frequentIconKeys,
     });
 typedef $$SettingsTableUpdateCompanionBuilder =
     SettingsCompanion Function({
@@ -29744,6 +29801,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<int> fontWeightDelta,
       Value<String?> fontFamily,
       Value<int> extraBottomInset,
+      Value<String> frequentIconKeys,
     });
 
 final class $$SettingsTableReferences
@@ -30061,6 +30119,11 @@ class $$SettingsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get frequentIconKeys => $composableBuilder(
+    column: $table.frequentIconKeys,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$AccountsTableFilterComposer get quickAddAccountId {
     final $$AccountsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -30369,6 +30432,11 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get frequentIconKeys => $composableBuilder(
+    column: $table.frequentIconKeys,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$AccountsTableOrderingComposer get quickAddAccountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -30662,6 +30730,11 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get frequentIconKeys => $composableBuilder(
+    column: $table.frequentIconKeys,
+    builder: (column) => column,
+  );
+
   $$AccountsTableAnnotationComposer get quickAddAccountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -30772,6 +30845,7 @@ class $$SettingsTableTableManager
                 Value<int> fontWeightDelta = const Value.absent(),
                 Value<String?> fontFamily = const Value.absent(),
                 Value<int> extraBottomInset = const Value.absent(),
+                Value<String> frequentIconKeys = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
                 currencyCode: currencyCode,
@@ -30829,6 +30903,7 @@ class $$SettingsTableTableManager
                 fontWeightDelta: fontWeightDelta,
                 fontFamily: fontFamily,
                 extraBottomInset: extraBottomInset,
+                frequentIconKeys: frequentIconKeys,
               ),
           createCompanionCallback:
               ({
@@ -30890,6 +30965,7 @@ class $$SettingsTableTableManager
                 Value<int> fontWeightDelta = const Value.absent(),
                 Value<String?> fontFamily = const Value.absent(),
                 Value<int> extraBottomInset = const Value.absent(),
+                Value<String> frequentIconKeys = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
                 currencyCode: currencyCode,
@@ -30947,6 +31023,7 @@ class $$SettingsTableTableManager
                 fontWeightDelta: fontWeightDelta,
                 fontFamily: fontFamily,
                 extraBottomInset: extraBottomInset,
+                frequentIconKeys: frequentIconKeys,
               ),
           withReferenceMapper: (p0) => p0
               .map(

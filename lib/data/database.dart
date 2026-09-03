@@ -172,7 +172,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 57;
+  int get schemaVersion => 58;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -459,6 +459,9 @@ class AppDatabase extends _$AppDatabase {
       if (from < 57) {
         await m.createTable(tagGroups);
         await m.createTable(tagGroupTags);
+      }
+      if (from < 58) {
+        await _addColumnIfMissing(m, settings, settings.frequentIconKeys);
       }
     },
     beforeOpen: (details) async {
@@ -4141,6 +4144,21 @@ class AppDatabase extends _$AppDatabase {
   Future<void> setExtraBottomInset(int px) => update(settings).write(
     SettingsCompanion(extraBottomInset: Value(px.clamp(0, 40))),
   );
+
+  /// Bumps [key] to the front of `Settings.frequentIconKeys` — the icon sheet
+  /// calls this whenever an icon is picked. Capped at 12 so the "Frequently
+  /// used" row stays a single scroll, not a second copy of the full grid.
+  Future<void> recordIconUsed(String key) async {
+    final current = await select(settings).getSingle();
+    final keys = current.frequentIconKeys
+        .split(',')
+        .where((k) => k.isNotEmpty && k != key)
+        .toList();
+    keys.insert(0, key);
+    await update(settings).write(
+      SettingsCompanion(frequentIconKeys: Value(keys.take(12).join(','))),
+    );
+  }
 
   // ── Expense reminder ─────────────────────────────────────────────────────
 
