@@ -6,7 +6,6 @@ import '../../core/branding/app_info.dart';
 import '../../core/branding/brand_mark.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
-import 'currency_picker_sheet.dart';
 import 'lock_screen_style_sheet.dart';
 import 'master_phrase_attempts_sheet.dart';
 import 'more_screen_layout_sheet.dart';
@@ -93,7 +92,7 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  onTap: () => CurrencyPickerSheet.show(context, ref),
+                  onTap: () => context.push('/more/settings/currency'),
                 ),
                 Divider(height: 1, indent: 60, color: cs.outline),
                 SwitchListTile(
