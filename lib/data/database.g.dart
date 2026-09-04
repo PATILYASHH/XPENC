@@ -204,6 +204,21 @@ class $AccountsTable extends Accounts
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _currencyCodeMeta = const VerificationMeta(
+    'currencyCode',
+  );
+  @override
+  late final GeneratedColumn<String> currencyCode = GeneratedColumn<String>(
+    'currency_code',
+    aliasedName,
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 3,
+      maxTextLength: 3,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -222,6 +237,7 @@ class $AccountsTable extends Accounts
     createdAt,
     envelopeMode,
     includeInNetWorth,
+    currencyCode,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -319,6 +335,15 @@ class $AccountsTable extends Accounts
         ),
       );
     }
+    if (data.containsKey('currency_code')) {
+      context.handle(
+        _currencyCodeMeta,
+        currencyCode.isAcceptableOrUnknown(
+          data['currency_code']!,
+          _currencyCodeMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -400,6 +425,10 @@ class $AccountsTable extends Accounts
         DriftSqlType.bool,
         data['${effectivePrefix}include_in_net_worth'],
       )!,
+      currencyCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}currency_code'],
+      ),
     );
   }
 
@@ -459,6 +488,15 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   /// savings goal or account off if they don't want it inflating the figure
   /// they treat as their real spendable net worth.
   final bool includeInNetWorth;
+
+  /// Null = this account is in the parent currency (`Settings.currencyCode`)
+  /// — true for every account that existed before this feature, and for
+  /// every account a user never explicitly changes. Locked once the account
+  /// has a transaction (enforced in `AppDatabase.setAccountCurrency`, not
+  /// here — Drift columns can't express that rule). A debit-card/UPI
+  /// instrument (non-null `linkedAccountId`) never gets its own value here —
+  /// it always mirrors its linked account's currency.
+  final String? currencyCode;
   const AccountRow({
     required this.id,
     required this.name,
@@ -476,6 +514,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     required this.createdAt,
     required this.envelopeMode,
     required this.includeInNetWorth,
+    this.currencyCode,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -516,6 +555,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     map['created_at'] = Variable<DateTime>(createdAt);
     map['envelope_mode'] = Variable<bool>(envelopeMode);
     map['include_in_net_worth'] = Variable<bool>(includeInNetWorth);
+    if (!nullToAbsent || currencyCode != null) {
+      map['currency_code'] = Variable<String>(currencyCode);
+    }
     return map;
   }
 
@@ -545,6 +587,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       createdAt: Value(createdAt),
       envelopeMode: Value(envelopeMode),
       includeInNetWorth: Value(includeInNetWorth),
+      currencyCode: currencyCode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(currencyCode),
     );
   }
 
@@ -574,6 +619,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       envelopeMode: serializer.fromJson<bool>(json['envelopeMode']),
       includeInNetWorth: serializer.fromJson<bool>(json['includeInNetWorth']),
+      currencyCode: serializer.fromJson<String?>(json['currencyCode']),
     );
   }
   @override
@@ -600,6 +646,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'envelopeMode': serializer.toJson<bool>(envelopeMode),
       'includeInNetWorth': serializer.toJson<bool>(includeInNetWorth),
+      'currencyCode': serializer.toJson<String?>(currencyCode),
     };
   }
 
@@ -620,6 +667,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     DateTime? createdAt,
     bool? envelopeMode,
     bool? includeInNetWorth,
+    Value<String?> currencyCode = const Value.absent(),
   }) => AccountRow(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -639,6 +687,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     createdAt: createdAt ?? this.createdAt,
     envelopeMode: envelopeMode ?? this.envelopeMode,
     includeInNetWorth: includeInNetWorth ?? this.includeInNetWorth,
+    currencyCode: currencyCode.present ? currencyCode.value : this.currencyCode,
   );
   AccountRow copyWithCompanion(AccountsCompanion data) {
     return AccountRow(
@@ -672,6 +721,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       includeInNetWorth: data.includeInNetWorth.present
           ? data.includeInNetWorth.value
           : this.includeInNetWorth,
+      currencyCode: data.currencyCode.present
+          ? data.currencyCode.value
+          : this.currencyCode,
     );
   }
 
@@ -693,7 +745,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           ..write('sortOrder: $sortOrder, ')
           ..write('createdAt: $createdAt, ')
           ..write('envelopeMode: $envelopeMode, ')
-          ..write('includeInNetWorth: $includeInNetWorth')
+          ..write('includeInNetWorth: $includeInNetWorth, ')
+          ..write('currencyCode: $currencyCode')
           ..write(')'))
         .toString();
   }
@@ -716,6 +769,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     createdAt,
     envelopeMode,
     includeInNetWorth,
+    currencyCode,
   );
   @override
   bool operator ==(Object other) =>
@@ -736,7 +790,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           other.sortOrder == this.sortOrder &&
           other.createdAt == this.createdAt &&
           other.envelopeMode == this.envelopeMode &&
-          other.includeInNetWorth == this.includeInNetWorth);
+          other.includeInNetWorth == this.includeInNetWorth &&
+          other.currencyCode == this.currencyCode);
 }
 
 class AccountsCompanion extends UpdateCompanion<AccountRow> {
@@ -756,6 +811,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
   final Value<DateTime> createdAt;
   final Value<bool> envelopeMode;
   final Value<bool> includeInNetWorth;
+  final Value<String?> currencyCode;
   const AccountsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -773,6 +829,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.createdAt = const Value.absent(),
     this.envelopeMode = const Value.absent(),
     this.includeInNetWorth = const Value.absent(),
+    this.currencyCode = const Value.absent(),
   });
   AccountsCompanion.insert({
     this.id = const Value.absent(),
@@ -791,6 +848,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.createdAt = const Value.absent(),
     this.envelopeMode = const Value.absent(),
     this.includeInNetWorth = const Value.absent(),
+    this.currencyCode = const Value.absent(),
   }) : name = Value(name),
        type = Value(type),
        colorValue = Value(colorValue),
@@ -814,6 +872,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Expression<DateTime>? createdAt,
     Expression<bool>? envelopeMode,
     Expression<bool>? includeInNetWorth,
+    Expression<String>? currencyCode,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -832,6 +891,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       if (createdAt != null) 'created_at': createdAt,
       if (envelopeMode != null) 'envelope_mode': envelopeMode,
       if (includeInNetWorth != null) 'include_in_net_worth': includeInNetWorth,
+      if (currencyCode != null) 'currency_code': currencyCode,
     });
   }
 
@@ -852,6 +912,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Value<DateTime>? createdAt,
     Value<bool>? envelopeMode,
     Value<bool>? includeInNetWorth,
+    Value<String?>? currencyCode,
   }) {
     return AccountsCompanion(
       id: id ?? this.id,
@@ -870,6 +931,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       createdAt: createdAt ?? this.createdAt,
       envelopeMode: envelopeMode ?? this.envelopeMode,
       includeInNetWorth: includeInNetWorth ?? this.includeInNetWorth,
+      currencyCode: currencyCode ?? this.currencyCode,
     );
   }
 
@@ -932,6 +994,9 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     if (includeInNetWorth.present) {
       map['include_in_net_worth'] = Variable<bool>(includeInNetWorth.value);
     }
+    if (currencyCode.present) {
+      map['currency_code'] = Variable<String>(currencyCode.value);
+    }
     return map;
   }
 
@@ -953,7 +1018,8 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
           ..write('sortOrder: $sortOrder, ')
           ..write('createdAt: $createdAt, ')
           ..write('envelopeMode: $envelopeMode, ')
-          ..write('includeInNetWorth: $includeInNetWorth')
+          ..write('includeInNetWorth: $includeInNetWorth, ')
+          ..write('currencyCode: $currencyCode')
           ..write(')'))
         .toString();
   }
@@ -3639,6 +3705,65 @@ class $TransactionsTable extends Transactions
         type: DriftSqlType.int,
         requiredDuringInsert: false,
       ).withConverter<Money?>($TransactionsTable.$converterforeignAmountn);
+  static const VerificationMeta _currencyCodeMeta = const VerificationMeta(
+    'currencyCode',
+  );
+  @override
+  late final GeneratedColumn<String> currencyCode = GeneratedColumn<String>(
+    'currency_code',
+    aliasedName,
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 3,
+      maxTextLength: 3,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _fxRateToBaseMicrosMeta =
+      const VerificationMeta('fxRateToBaseMicros');
+  @override
+  late final GeneratedColumn<int> fxRateToBaseMicros = GeneratedColumn<int>(
+    'fx_rate_to_base_micros',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<Money?, int> toAmount =
+      GeneratedColumn<int>(
+        'to_amount',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<Money?>($TransactionsTable.$convertertoAmountn);
+  static const VerificationMeta _toCurrencyCodeMeta = const VerificationMeta(
+    'toCurrencyCode',
+  );
+  @override
+  late final GeneratedColumn<String> toCurrencyCode = GeneratedColumn<String>(
+    'to_currency_code',
+    aliasedName,
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 3,
+      maxTextLength: 3,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _toFxRateToBaseMicrosMeta =
+      const VerificationMeta('toFxRateToBaseMicros');
+  @override
+  late final GeneratedColumn<int> toFxRateToBaseMicros = GeneratedColumn<int>(
+    'to_fx_rate_to_base_micros',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -3659,6 +3784,11 @@ class $TransactionsTable extends Transactions
     paymentGroupId,
     foreignCurrencyCode,
     foreignAmount,
+    currencyCode,
+    fxRateToBaseMicros,
+    toAmount,
+    toCurrencyCode,
+    toFxRateToBaseMicros,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3778,6 +3908,42 @@ class $TransactionsTable extends Transactions
         ),
       );
     }
+    if (data.containsKey('currency_code')) {
+      context.handle(
+        _currencyCodeMeta,
+        currencyCode.isAcceptableOrUnknown(
+          data['currency_code']!,
+          _currencyCodeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('fx_rate_to_base_micros')) {
+      context.handle(
+        _fxRateToBaseMicrosMeta,
+        fxRateToBaseMicros.isAcceptableOrUnknown(
+          data['fx_rate_to_base_micros']!,
+          _fxRateToBaseMicrosMeta,
+        ),
+      );
+    }
+    if (data.containsKey('to_currency_code')) {
+      context.handle(
+        _toCurrencyCodeMeta,
+        toCurrencyCode.isAcceptableOrUnknown(
+          data['to_currency_code']!,
+          _toCurrencyCodeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('to_fx_rate_to_base_micros')) {
+      context.handle(
+        _toFxRateToBaseMicrosMeta,
+        toFxRateToBaseMicros.isAcceptableOrUnknown(
+          data['to_fx_rate_to_base_micros']!,
+          _toFxRateToBaseMicrosMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -3865,6 +4031,28 @@ class $TransactionsTable extends Transactions
           data['${effectivePrefix}foreign_amount'],
         ),
       ),
+      currencyCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}currency_code'],
+      ),
+      fxRateToBaseMicros: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}fx_rate_to_base_micros'],
+      ),
+      toAmount: $TransactionsTable.$convertertoAmountn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}to_amount'],
+        ),
+      ),
+      toCurrencyCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}to_currency_code'],
+      ),
+      toFxRateToBaseMicros: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}to_fx_rate_to_base_micros'],
+      ),
     );
   }
 
@@ -3880,6 +4068,9 @@ class $TransactionsTable extends Transactions
       const MoneyConverter();
   static TypeConverter<Money?, int?> $converterforeignAmountn =
       NullAwareTypeConverter.wrap($converterforeignAmount);
+  static TypeConverter<Money, int> $convertertoAmount = const MoneyConverter();
+  static TypeConverter<Money?, int?> $convertertoAmountn =
+      NullAwareTypeConverter.wrap($convertertoAmount);
 }
 
 class TransactionRow extends DataClass implements Insertable<TransactionRow> {
@@ -3951,6 +4142,32 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   /// `amount / foreignAmount`, recomputed for display rather than stored.
   final String? foreignCurrencyCode;
   final Money? foreignAmount;
+
+  /// This transaction's own ledger currency, snapshotted from its account's
+  /// [Accounts.currencyCode] at post time. Null = parent currency, which
+  /// matches [amount]'s existing meaning exactly (no conversion needed).
+  /// Distinct from the #85 [foreignCurrencyCode]/[foreignAmount] pair above,
+  /// which is a manual informational annotation on a parent-currency
+  /// transaction — this pair instead describes the transaction's *real*
+  /// native currency, inherited from its account.
+  final String? currencyCode;
+
+  /// Snapshot of `CurrencyRates.rateToBaseMicros` as of [date], for
+  /// [currencyCode]. Null iff [currencyCode] is null.
+  final int? fxRateToBaseMicros;
+
+  /// Transfer only, and only when the source and destination accounts don't
+  /// share a currency: the amount credited to [toAccountId], in *its own*
+  /// currency. Null for a same-currency transfer, where crediting [amount]
+  /// unchanged is already correct — see `AppDatabase._applyTxEffect`.
+  final Money? toAmount;
+
+  /// Transfer only, mirrors [currencyCode]/[fxRateToBaseMicros] for the
+  /// destination leg — the two accounts can each be a different currency
+  /// from the parent (and from each other), so the destination needs its
+  /// own independent snapshot.
+  final String? toCurrencyCode;
+  final int? toFxRateToBaseMicros;
   const TransactionRow({
     required this.id,
     required this.type,
@@ -3970,6 +4187,11 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     this.paymentGroupId,
     this.foreignCurrencyCode,
     this.foreignAmount,
+    this.currencyCode,
+    this.fxRateToBaseMicros,
+    this.toAmount,
+    this.toCurrencyCode,
+    this.toFxRateToBaseMicros,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4022,6 +4244,23 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
         $TransactionsTable.$converterforeignAmountn.toSql(foreignAmount),
       );
     }
+    if (!nullToAbsent || currencyCode != null) {
+      map['currency_code'] = Variable<String>(currencyCode);
+    }
+    if (!nullToAbsent || fxRateToBaseMicros != null) {
+      map['fx_rate_to_base_micros'] = Variable<int>(fxRateToBaseMicros);
+    }
+    if (!nullToAbsent || toAmount != null) {
+      map['to_amount'] = Variable<int>(
+        $TransactionsTable.$convertertoAmountn.toSql(toAmount),
+      );
+    }
+    if (!nullToAbsent || toCurrencyCode != null) {
+      map['to_currency_code'] = Variable<String>(toCurrencyCode);
+    }
+    if (!nullToAbsent || toFxRateToBaseMicros != null) {
+      map['to_fx_rate_to_base_micros'] = Variable<int>(toFxRateToBaseMicros);
+    }
     return map;
   }
 
@@ -4063,6 +4302,21 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       foreignAmount: foreignAmount == null && nullToAbsent
           ? const Value.absent()
           : Value(foreignAmount),
+      currencyCode: currencyCode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(currencyCode),
+      fxRateToBaseMicros: fxRateToBaseMicros == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fxRateToBaseMicros),
+      toAmount: toAmount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(toAmount),
+      toCurrencyCode: toCurrencyCode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(toCurrencyCode),
+      toFxRateToBaseMicros: toFxRateToBaseMicros == null && nullToAbsent
+          ? const Value.absent()
+          : Value(toFxRateToBaseMicros),
     );
   }
 
@@ -4094,6 +4348,13 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
         json['foreignCurrencyCode'],
       ),
       foreignAmount: serializer.fromJson<Money?>(json['foreignAmount']),
+      currencyCode: serializer.fromJson<String?>(json['currencyCode']),
+      fxRateToBaseMicros: serializer.fromJson<int?>(json['fxRateToBaseMicros']),
+      toAmount: serializer.fromJson<Money?>(json['toAmount']),
+      toCurrencyCode: serializer.fromJson<String?>(json['toCurrencyCode']),
+      toFxRateToBaseMicros: serializer.fromJson<int?>(
+        json['toFxRateToBaseMicros'],
+      ),
     );
   }
   @override
@@ -4120,6 +4381,11 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       'paymentGroupId': serializer.toJson<int?>(paymentGroupId),
       'foreignCurrencyCode': serializer.toJson<String?>(foreignCurrencyCode),
       'foreignAmount': serializer.toJson<Money?>(foreignAmount),
+      'currencyCode': serializer.toJson<String?>(currencyCode),
+      'fxRateToBaseMicros': serializer.toJson<int?>(fxRateToBaseMicros),
+      'toAmount': serializer.toJson<Money?>(toAmount),
+      'toCurrencyCode': serializer.toJson<String?>(toCurrencyCode),
+      'toFxRateToBaseMicros': serializer.toJson<int?>(toFxRateToBaseMicros),
     };
   }
 
@@ -4142,6 +4408,11 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     Value<int?> paymentGroupId = const Value.absent(),
     Value<String?> foreignCurrencyCode = const Value.absent(),
     Value<Money?> foreignAmount = const Value.absent(),
+    Value<String?> currencyCode = const Value.absent(),
+    Value<int?> fxRateToBaseMicros = const Value.absent(),
+    Value<Money?> toAmount = const Value.absent(),
+    Value<String?> toCurrencyCode = const Value.absent(),
+    Value<int?> toFxRateToBaseMicros = const Value.absent(),
   }) => TransactionRow(
     id: id ?? this.id,
     type: type ?? this.type,
@@ -4169,6 +4440,17 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     foreignAmount: foreignAmount.present
         ? foreignAmount.value
         : this.foreignAmount,
+    currencyCode: currencyCode.present ? currencyCode.value : this.currencyCode,
+    fxRateToBaseMicros: fxRateToBaseMicros.present
+        ? fxRateToBaseMicros.value
+        : this.fxRateToBaseMicros,
+    toAmount: toAmount.present ? toAmount.value : this.toAmount,
+    toCurrencyCode: toCurrencyCode.present
+        ? toCurrencyCode.value
+        : this.toCurrencyCode,
+    toFxRateToBaseMicros: toFxRateToBaseMicros.present
+        ? toFxRateToBaseMicros.value
+        : this.toFxRateToBaseMicros,
   );
   TransactionRow copyWithCompanion(TransactionsCompanion data) {
     return TransactionRow(
@@ -4204,6 +4486,19 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       foreignAmount: data.foreignAmount.present
           ? data.foreignAmount.value
           : this.foreignAmount,
+      currencyCode: data.currencyCode.present
+          ? data.currencyCode.value
+          : this.currencyCode,
+      fxRateToBaseMicros: data.fxRateToBaseMicros.present
+          ? data.fxRateToBaseMicros.value
+          : this.fxRateToBaseMicros,
+      toAmount: data.toAmount.present ? data.toAmount.value : this.toAmount,
+      toCurrencyCode: data.toCurrencyCode.present
+          ? data.toCurrencyCode.value
+          : this.toCurrencyCode,
+      toFxRateToBaseMicros: data.toFxRateToBaseMicros.present
+          ? data.toFxRateToBaseMicros.value
+          : this.toFxRateToBaseMicros,
     );
   }
 
@@ -4227,13 +4522,18 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           ..write('needsAmountReview: $needsAmountReview, ')
           ..write('paymentGroupId: $paymentGroupId, ')
           ..write('foreignCurrencyCode: $foreignCurrencyCode, ')
-          ..write('foreignAmount: $foreignAmount')
+          ..write('foreignAmount: $foreignAmount, ')
+          ..write('currencyCode: $currencyCode, ')
+          ..write('fxRateToBaseMicros: $fxRateToBaseMicros, ')
+          ..write('toAmount: $toAmount, ')
+          ..write('toCurrencyCode: $toCurrencyCode, ')
+          ..write('toFxRateToBaseMicros: $toFxRateToBaseMicros')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     type,
     amount,
@@ -4252,7 +4552,12 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     paymentGroupId,
     foreignCurrencyCode,
     foreignAmount,
-  );
+    currencyCode,
+    fxRateToBaseMicros,
+    toAmount,
+    toCurrencyCode,
+    toFxRateToBaseMicros,
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -4274,7 +4579,12 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           other.needsAmountReview == this.needsAmountReview &&
           other.paymentGroupId == this.paymentGroupId &&
           other.foreignCurrencyCode == this.foreignCurrencyCode &&
-          other.foreignAmount == this.foreignAmount);
+          other.foreignAmount == this.foreignAmount &&
+          other.currencyCode == this.currencyCode &&
+          other.fxRateToBaseMicros == this.fxRateToBaseMicros &&
+          other.toAmount == this.toAmount &&
+          other.toCurrencyCode == this.toCurrencyCode &&
+          other.toFxRateToBaseMicros == this.toFxRateToBaseMicros);
 }
 
 class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
@@ -4296,6 +4606,11 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   final Value<int?> paymentGroupId;
   final Value<String?> foreignCurrencyCode;
   final Value<Money?> foreignAmount;
+  final Value<String?> currencyCode;
+  final Value<int?> fxRateToBaseMicros;
+  final Value<Money?> toAmount;
+  final Value<String?> toCurrencyCode;
+  final Value<int?> toFxRateToBaseMicros;
   const TransactionsCompanion({
     this.id = const Value.absent(),
     this.type = const Value.absent(),
@@ -4315,6 +4630,11 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.paymentGroupId = const Value.absent(),
     this.foreignCurrencyCode = const Value.absent(),
     this.foreignAmount = const Value.absent(),
+    this.currencyCode = const Value.absent(),
+    this.fxRateToBaseMicros = const Value.absent(),
+    this.toAmount = const Value.absent(),
+    this.toCurrencyCode = const Value.absent(),
+    this.toFxRateToBaseMicros = const Value.absent(),
   });
   TransactionsCompanion.insert({
     this.id = const Value.absent(),
@@ -4335,6 +4655,11 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.paymentGroupId = const Value.absent(),
     this.foreignCurrencyCode = const Value.absent(),
     this.foreignAmount = const Value.absent(),
+    this.currencyCode = const Value.absent(),
+    this.fxRateToBaseMicros = const Value.absent(),
+    this.toAmount = const Value.absent(),
+    this.toCurrencyCode = const Value.absent(),
+    this.toFxRateToBaseMicros = const Value.absent(),
   }) : type = Value(type),
        amount = Value(amount),
        accountId = Value(accountId),
@@ -4358,6 +4683,11 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Expression<int>? paymentGroupId,
     Expression<String>? foreignCurrencyCode,
     Expression<int>? foreignAmount,
+    Expression<String>? currencyCode,
+    Expression<int>? fxRateToBaseMicros,
+    Expression<int>? toAmount,
+    Expression<String>? toCurrencyCode,
+    Expression<int>? toFxRateToBaseMicros,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -4379,6 +4709,13 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       if (foreignCurrencyCode != null)
         'foreign_currency_code': foreignCurrencyCode,
       if (foreignAmount != null) 'foreign_amount': foreignAmount,
+      if (currencyCode != null) 'currency_code': currencyCode,
+      if (fxRateToBaseMicros != null)
+        'fx_rate_to_base_micros': fxRateToBaseMicros,
+      if (toAmount != null) 'to_amount': toAmount,
+      if (toCurrencyCode != null) 'to_currency_code': toCurrencyCode,
+      if (toFxRateToBaseMicros != null)
+        'to_fx_rate_to_base_micros': toFxRateToBaseMicros,
     });
   }
 
@@ -4401,6 +4738,11 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Value<int?>? paymentGroupId,
     Value<String?>? foreignCurrencyCode,
     Value<Money?>? foreignAmount,
+    Value<String?>? currencyCode,
+    Value<int?>? fxRateToBaseMicros,
+    Value<Money?>? toAmount,
+    Value<String?>? toCurrencyCode,
+    Value<int?>? toFxRateToBaseMicros,
   }) {
     return TransactionsCompanion(
       id: id ?? this.id,
@@ -4421,6 +4763,11 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       paymentGroupId: paymentGroupId ?? this.paymentGroupId,
       foreignCurrencyCode: foreignCurrencyCode ?? this.foreignCurrencyCode,
       foreignAmount: foreignAmount ?? this.foreignAmount,
+      currencyCode: currencyCode ?? this.currencyCode,
+      fxRateToBaseMicros: fxRateToBaseMicros ?? this.fxRateToBaseMicros,
+      toAmount: toAmount ?? this.toAmount,
+      toCurrencyCode: toCurrencyCode ?? this.toCurrencyCode,
+      toFxRateToBaseMicros: toFxRateToBaseMicros ?? this.toFxRateToBaseMicros,
     );
   }
 
@@ -4489,6 +4836,25 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
         $TransactionsTable.$converterforeignAmountn.toSql(foreignAmount.value),
       );
     }
+    if (currencyCode.present) {
+      map['currency_code'] = Variable<String>(currencyCode.value);
+    }
+    if (fxRateToBaseMicros.present) {
+      map['fx_rate_to_base_micros'] = Variable<int>(fxRateToBaseMicros.value);
+    }
+    if (toAmount.present) {
+      map['to_amount'] = Variable<int>(
+        $TransactionsTable.$convertertoAmountn.toSql(toAmount.value),
+      );
+    }
+    if (toCurrencyCode.present) {
+      map['to_currency_code'] = Variable<String>(toCurrencyCode.value);
+    }
+    if (toFxRateToBaseMicros.present) {
+      map['to_fx_rate_to_base_micros'] = Variable<int>(
+        toFxRateToBaseMicros.value,
+      );
+    }
     return map;
   }
 
@@ -4512,7 +4878,12 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
           ..write('needsAmountReview: $needsAmountReview, ')
           ..write('paymentGroupId: $paymentGroupId, ')
           ..write('foreignCurrencyCode: $foreignCurrencyCode, ')
-          ..write('foreignAmount: $foreignAmount')
+          ..write('foreignAmount: $foreignAmount, ')
+          ..write('currencyCode: $currencyCode, ')
+          ..write('fxRateToBaseMicros: $fxRateToBaseMicros, ')
+          ..write('toAmount: $toAmount, ')
+          ..write('toCurrencyCode: $toCurrencyCode, ')
+          ..write('toFxRateToBaseMicros: $toFxRateToBaseMicros')
           ..write(')'))
         .toString();
   }
@@ -19225,6 +19596,383 @@ class CreditCardDetailsCompanion extends UpdateCompanion<CreditCardDetailRow> {
   }
 }
 
+class $CurrencyRatesTable extends CurrencyRates
+    with TableInfo<$CurrencyRatesTable, CurrencyRateRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CurrencyRatesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _currencyCodeMeta = const VerificationMeta(
+    'currencyCode',
+  );
+  @override
+  late final GeneratedColumn<String> currencyCode = GeneratedColumn<String>(
+    'currency_code',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 3,
+      maxTextLength: 3,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _rateToBaseMicrosMeta = const VerificationMeta(
+    'rateToBaseMicros',
+  );
+  @override
+  late final GeneratedColumn<int> rateToBaseMicros = GeneratedColumn<int>(
+    'rate_to_base_micros',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _effectiveAtMeta = const VerificationMeta(
+    'effectiveAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> effectiveAt = GeneratedColumn<DateTime>(
+    'effective_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    currencyCode,
+    rateToBaseMicros,
+    effectiveAt,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'currency_rates';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CurrencyRateRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('currency_code')) {
+      context.handle(
+        _currencyCodeMeta,
+        currencyCode.isAcceptableOrUnknown(
+          data['currency_code']!,
+          _currencyCodeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_currencyCodeMeta);
+    }
+    if (data.containsKey('rate_to_base_micros')) {
+      context.handle(
+        _rateToBaseMicrosMeta,
+        rateToBaseMicros.isAcceptableOrUnknown(
+          data['rate_to_base_micros']!,
+          _rateToBaseMicrosMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_rateToBaseMicrosMeta);
+    }
+    if (data.containsKey('effective_at')) {
+      context.handle(
+        _effectiveAtMeta,
+        effectiveAt.isAcceptableOrUnknown(
+          data['effective_at']!,
+          _effectiveAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_effectiveAtMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CurrencyRateRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CurrencyRateRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      currencyCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}currency_code'],
+      )!,
+      rateToBaseMicros: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}rate_to_base_micros'],
+      )!,
+      effectiveAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}effective_at'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CurrencyRatesTable createAlias(String alias) {
+    return $CurrencyRatesTable(attachedDatabase, alias);
+  }
+}
+
+class CurrencyRateRow extends DataClass implements Insertable<CurrencyRateRow> {
+  final int id;
+
+  /// The non-parent currency this rate prices, e.g. `USD`. Never the parent
+  /// currency itself, which is always 1:1 with itself.
+  final String currencyCode;
+
+  /// Units of the parent currency per 1 unit of [currencyCode], scaled by
+  /// [currencyRateScale] so it's an exact integer — never a `double`, the
+  /// same rule [Money] follows. `83_120_000` means 1 unit = 83.12 parent.
+  final int rateToBaseMicros;
+  final DateTime effectiveAt;
+  final DateTime createdAt;
+  const CurrencyRateRow({
+    required this.id,
+    required this.currencyCode,
+    required this.rateToBaseMicros,
+    required this.effectiveAt,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['currency_code'] = Variable<String>(currencyCode);
+    map['rate_to_base_micros'] = Variable<int>(rateToBaseMicros);
+    map['effective_at'] = Variable<DateTime>(effectiveAt);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  CurrencyRatesCompanion toCompanion(bool nullToAbsent) {
+    return CurrencyRatesCompanion(
+      id: Value(id),
+      currencyCode: Value(currencyCode),
+      rateToBaseMicros: Value(rateToBaseMicros),
+      effectiveAt: Value(effectiveAt),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory CurrencyRateRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CurrencyRateRow(
+      id: serializer.fromJson<int>(json['id']),
+      currencyCode: serializer.fromJson<String>(json['currencyCode']),
+      rateToBaseMicros: serializer.fromJson<int>(json['rateToBaseMicros']),
+      effectiveAt: serializer.fromJson<DateTime>(json['effectiveAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'currencyCode': serializer.toJson<String>(currencyCode),
+      'rateToBaseMicros': serializer.toJson<int>(rateToBaseMicros),
+      'effectiveAt': serializer.toJson<DateTime>(effectiveAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  CurrencyRateRow copyWith({
+    int? id,
+    String? currencyCode,
+    int? rateToBaseMicros,
+    DateTime? effectiveAt,
+    DateTime? createdAt,
+  }) => CurrencyRateRow(
+    id: id ?? this.id,
+    currencyCode: currencyCode ?? this.currencyCode,
+    rateToBaseMicros: rateToBaseMicros ?? this.rateToBaseMicros,
+    effectiveAt: effectiveAt ?? this.effectiveAt,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  CurrencyRateRow copyWithCompanion(CurrencyRatesCompanion data) {
+    return CurrencyRateRow(
+      id: data.id.present ? data.id.value : this.id,
+      currencyCode: data.currencyCode.present
+          ? data.currencyCode.value
+          : this.currencyCode,
+      rateToBaseMicros: data.rateToBaseMicros.present
+          ? data.rateToBaseMicros.value
+          : this.rateToBaseMicros,
+      effectiveAt: data.effectiveAt.present
+          ? data.effectiveAt.value
+          : this.effectiveAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CurrencyRateRow(')
+          ..write('id: $id, ')
+          ..write('currencyCode: $currencyCode, ')
+          ..write('rateToBaseMicros: $rateToBaseMicros, ')
+          ..write('effectiveAt: $effectiveAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, currencyCode, rateToBaseMicros, effectiveAt, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CurrencyRateRow &&
+          other.id == this.id &&
+          other.currencyCode == this.currencyCode &&
+          other.rateToBaseMicros == this.rateToBaseMicros &&
+          other.effectiveAt == this.effectiveAt &&
+          other.createdAt == this.createdAt);
+}
+
+class CurrencyRatesCompanion extends UpdateCompanion<CurrencyRateRow> {
+  final Value<int> id;
+  final Value<String> currencyCode;
+  final Value<int> rateToBaseMicros;
+  final Value<DateTime> effectiveAt;
+  final Value<DateTime> createdAt;
+  const CurrencyRatesCompanion({
+    this.id = const Value.absent(),
+    this.currencyCode = const Value.absent(),
+    this.rateToBaseMicros = const Value.absent(),
+    this.effectiveAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  CurrencyRatesCompanion.insert({
+    this.id = const Value.absent(),
+    required String currencyCode,
+    required int rateToBaseMicros,
+    required DateTime effectiveAt,
+    this.createdAt = const Value.absent(),
+  }) : currencyCode = Value(currencyCode),
+       rateToBaseMicros = Value(rateToBaseMicros),
+       effectiveAt = Value(effectiveAt);
+  static Insertable<CurrencyRateRow> custom({
+    Expression<int>? id,
+    Expression<String>? currencyCode,
+    Expression<int>? rateToBaseMicros,
+    Expression<DateTime>? effectiveAt,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (currencyCode != null) 'currency_code': currencyCode,
+      if (rateToBaseMicros != null) 'rate_to_base_micros': rateToBaseMicros,
+      if (effectiveAt != null) 'effective_at': effectiveAt,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  CurrencyRatesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? currencyCode,
+    Value<int>? rateToBaseMicros,
+    Value<DateTime>? effectiveAt,
+    Value<DateTime>? createdAt,
+  }) {
+    return CurrencyRatesCompanion(
+      id: id ?? this.id,
+      currencyCode: currencyCode ?? this.currencyCode,
+      rateToBaseMicros: rateToBaseMicros ?? this.rateToBaseMicros,
+      effectiveAt: effectiveAt ?? this.effectiveAt,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (currencyCode.present) {
+      map['currency_code'] = Variable<String>(currencyCode.value);
+    }
+    if (rateToBaseMicros.present) {
+      map['rate_to_base_micros'] = Variable<int>(rateToBaseMicros.value);
+    }
+    if (effectiveAt.present) {
+      map['effective_at'] = Variable<DateTime>(effectiveAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CurrencyRatesCompanion(')
+          ..write('id: $id, ')
+          ..write('currencyCode: $currencyCode, ')
+          ..write('rateToBaseMicros: $rateToBaseMicros, ')
+          ..write('effectiveAt: $effectiveAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -19268,6 +20016,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $OcrCorrectionsTable ocrCorrections = $OcrCorrectionsTable(this);
   late final $CreditCardDetailsTable creditCardDetails =
       $CreditCardDetailsTable(this);
+  late final $CurrencyRatesTable currencyRates = $CurrencyRatesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -19305,6 +20054,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     allocations,
     ocrCorrections,
     creditCardDetails,
+    currencyRates,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -19343,6 +20093,7 @@ typedef $$AccountsTableCreateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<bool> envelopeMode,
       Value<bool> includeInNetWorth,
+      Value<String?> currencyCode,
     });
 typedef $$AccountsTableUpdateCompanionBuilder =
     AccountsCompanion Function({
@@ -19362,6 +20113,7 @@ typedef $$AccountsTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<bool> envelopeMode,
       Value<bool> includeInNetWorth,
+      Value<String?> currencyCode,
     });
 
 final class $$AccountsTableReferences
@@ -19665,6 +20417,11 @@ class $$AccountsTableFilterComposer
 
   ColumnFilters<bool> get includeInNetWorth => $composableBuilder(
     column: $table.includeInNetWorth,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -20026,6 +20783,11 @@ class $$AccountsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$AccountsTableOrderingComposer get linkedAccountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -20115,6 +20877,11 @@ class $$AccountsTableAnnotationComposer
 
   GeneratedColumn<bool> get includeInNetWorth => $composableBuilder(
     column: $table.includeInNetWorth,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
     builder: (column) => column,
   );
 
@@ -20449,6 +21216,7 @@ class $$AccountsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<bool> envelopeMode = const Value.absent(),
                 Value<bool> includeInNetWorth = const Value.absent(),
+                Value<String?> currencyCode = const Value.absent(),
               }) => AccountsCompanion(
                 id: id,
                 name: name,
@@ -20466,6 +21234,7 @@ class $$AccountsTableTableManager
                 createdAt: createdAt,
                 envelopeMode: envelopeMode,
                 includeInNetWorth: includeInNetWorth,
+                currencyCode: currencyCode,
               ),
           createCompanionCallback:
               ({
@@ -20485,6 +21254,7 @@ class $$AccountsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<bool> envelopeMode = const Value.absent(),
                 Value<bool> includeInNetWorth = const Value.absent(),
+                Value<String?> currencyCode = const Value.absent(),
               }) => AccountsCompanion.insert(
                 id: id,
                 name: name,
@@ -20502,6 +21272,7 @@ class $$AccountsTableTableManager
                 createdAt: createdAt,
                 envelopeMode: envelopeMode,
                 includeInNetWorth: includeInNetWorth,
+                currencyCode: currencyCode,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -24200,6 +24971,11 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<int?> paymentGroupId,
       Value<String?> foreignCurrencyCode,
       Value<Money?> foreignAmount,
+      Value<String?> currencyCode,
+      Value<int?> fxRateToBaseMicros,
+      Value<Money?> toAmount,
+      Value<String?> toCurrencyCode,
+      Value<int?> toFxRateToBaseMicros,
     });
 typedef $$TransactionsTableUpdateCompanionBuilder =
     TransactionsCompanion Function({
@@ -24221,6 +24997,11 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<int?> paymentGroupId,
       Value<String?> foreignCurrencyCode,
       Value<Money?> foreignAmount,
+      Value<String?> currencyCode,
+      Value<int?> fxRateToBaseMicros,
+      Value<Money?> toAmount,
+      Value<String?> toCurrencyCode,
+      Value<int?> toFxRateToBaseMicros,
     });
 
 final class $$TransactionsTableReferences
@@ -24556,6 +25337,32 @@ class $$TransactionsTableFilterComposer
         column: $table.foreignAmount,
         builder: (column) => ColumnWithTypeConverterFilters(column),
       );
+
+  ColumnFilters<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get fxRateToBaseMicros => $composableBuilder(
+    column: $table.fxRateToBaseMicros,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<Money?, Money, int> get toAmount =>
+      $composableBuilder(
+        column: $table.toAmount,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<String> get toCurrencyCode => $composableBuilder(
+    column: $table.toCurrencyCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get toFxRateToBaseMicros => $composableBuilder(
+    column: $table.toFxRateToBaseMicros,
+    builder: (column) => ColumnFilters(column),
+  );
 
   $$AccountsTableFilterComposer get accountId {
     final $$AccountsTableFilterComposer composer = $composerBuilder(
@@ -24915,6 +25722,31 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get fxRateToBaseMicros => $composableBuilder(
+    column: $table.fxRateToBaseMicros,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get toAmount => $composableBuilder(
+    column: $table.toAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get toCurrencyCode => $composableBuilder(
+    column: $table.toCurrencyCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get toFxRateToBaseMicros => $composableBuilder(
+    column: $table.toFxRateToBaseMicros,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$AccountsTableOrderingComposer get accountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -25105,6 +25937,29 @@ class $$TransactionsTableAnnotationComposer
         column: $table.foreignAmount,
         builder: (column) => column,
       );
+
+  GeneratedColumn<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get fxRateToBaseMicros => $composableBuilder(
+    column: $table.fxRateToBaseMicros,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<Money?, int> get toAmount =>
+      $composableBuilder(column: $table.toAmount, builder: (column) => column);
+
+  GeneratedColumn<String> get toCurrencyCode => $composableBuilder(
+    column: $table.toCurrencyCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get toFxRateToBaseMicros => $composableBuilder(
+    column: $table.toFxRateToBaseMicros,
+    builder: (column) => column,
+  );
 
   $$AccountsTableAnnotationComposer get accountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
@@ -25456,6 +26311,11 @@ class $$TransactionsTableTableManager
                 Value<int?> paymentGroupId = const Value.absent(),
                 Value<String?> foreignCurrencyCode = const Value.absent(),
                 Value<Money?> foreignAmount = const Value.absent(),
+                Value<String?> currencyCode = const Value.absent(),
+                Value<int?> fxRateToBaseMicros = const Value.absent(),
+                Value<Money?> toAmount = const Value.absent(),
+                Value<String?> toCurrencyCode = const Value.absent(),
+                Value<int?> toFxRateToBaseMicros = const Value.absent(),
               }) => TransactionsCompanion(
                 id: id,
                 type: type,
@@ -25475,6 +26335,11 @@ class $$TransactionsTableTableManager
                 paymentGroupId: paymentGroupId,
                 foreignCurrencyCode: foreignCurrencyCode,
                 foreignAmount: foreignAmount,
+                currencyCode: currencyCode,
+                fxRateToBaseMicros: fxRateToBaseMicros,
+                toAmount: toAmount,
+                toCurrencyCode: toCurrencyCode,
+                toFxRateToBaseMicros: toFxRateToBaseMicros,
               ),
           createCompanionCallback:
               ({
@@ -25496,6 +26361,11 @@ class $$TransactionsTableTableManager
                 Value<int?> paymentGroupId = const Value.absent(),
                 Value<String?> foreignCurrencyCode = const Value.absent(),
                 Value<Money?> foreignAmount = const Value.absent(),
+                Value<String?> currencyCode = const Value.absent(),
+                Value<int?> fxRateToBaseMicros = const Value.absent(),
+                Value<Money?> toAmount = const Value.absent(),
+                Value<String?> toCurrencyCode = const Value.absent(),
+                Value<int?> toFxRateToBaseMicros = const Value.absent(),
               }) => TransactionsCompanion.insert(
                 id: id,
                 type: type,
@@ -25515,6 +26385,11 @@ class $$TransactionsTableTableManager
                 paymentGroupId: paymentGroupId,
                 foreignCurrencyCode: foreignCurrencyCode,
                 foreignAmount: foreignAmount,
+                currencyCode: currencyCode,
+                fxRateToBaseMicros: fxRateToBaseMicros,
+                toAmount: toAmount,
+                toCurrencyCode: toCurrencyCode,
+                toFxRateToBaseMicros: toFxRateToBaseMicros,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -38422,6 +39297,206 @@ typedef $$CreditCardDetailsTableProcessedTableManager =
       CreditCardDetailRow,
       PrefetchHooks Function({bool accountId})
     >;
+typedef $$CurrencyRatesTableCreateCompanionBuilder =
+    CurrencyRatesCompanion Function({
+      Value<int> id,
+      required String currencyCode,
+      required int rateToBaseMicros,
+      required DateTime effectiveAt,
+      Value<DateTime> createdAt,
+    });
+typedef $$CurrencyRatesTableUpdateCompanionBuilder =
+    CurrencyRatesCompanion Function({
+      Value<int> id,
+      Value<String> currencyCode,
+      Value<int> rateToBaseMicros,
+      Value<DateTime> effectiveAt,
+      Value<DateTime> createdAt,
+    });
+
+class $$CurrencyRatesTableFilterComposer
+    extends Composer<_$AppDatabase, $CurrencyRatesTable> {
+  $$CurrencyRatesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get rateToBaseMicros => $composableBuilder(
+    column: $table.rateToBaseMicros,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get effectiveAt => $composableBuilder(
+    column: $table.effectiveAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CurrencyRatesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CurrencyRatesTable> {
+  $$CurrencyRatesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get rateToBaseMicros => $composableBuilder(
+    column: $table.rateToBaseMicros,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get effectiveAt => $composableBuilder(
+    column: $table.effectiveAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CurrencyRatesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CurrencyRatesTable> {
+  $$CurrencyRatesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get rateToBaseMicros => $composableBuilder(
+    column: $table.rateToBaseMicros,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get effectiveAt => $composableBuilder(
+    column: $table.effectiveAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$CurrencyRatesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CurrencyRatesTable,
+          CurrencyRateRow,
+          $$CurrencyRatesTableFilterComposer,
+          $$CurrencyRatesTableOrderingComposer,
+          $$CurrencyRatesTableAnnotationComposer,
+          $$CurrencyRatesTableCreateCompanionBuilder,
+          $$CurrencyRatesTableUpdateCompanionBuilder,
+          (
+            CurrencyRateRow,
+            BaseReferences<_$AppDatabase, $CurrencyRatesTable, CurrencyRateRow>,
+          ),
+          CurrencyRateRow,
+          PrefetchHooks Function()
+        > {
+  $$CurrencyRatesTableTableManager(_$AppDatabase db, $CurrencyRatesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CurrencyRatesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CurrencyRatesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CurrencyRatesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> currencyCode = const Value.absent(),
+                Value<int> rateToBaseMicros = const Value.absent(),
+                Value<DateTime> effectiveAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => CurrencyRatesCompanion(
+                id: id,
+                currencyCode: currencyCode,
+                rateToBaseMicros: rateToBaseMicros,
+                effectiveAt: effectiveAt,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String currencyCode,
+                required int rateToBaseMicros,
+                required DateTime effectiveAt,
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => CurrencyRatesCompanion.insert(
+                id: id,
+                currencyCode: currencyCode,
+                rateToBaseMicros: rateToBaseMicros,
+                effectiveAt: effectiveAt,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CurrencyRatesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CurrencyRatesTable,
+      CurrencyRateRow,
+      $$CurrencyRatesTableFilterComposer,
+      $$CurrencyRatesTableOrderingComposer,
+      $$CurrencyRatesTableAnnotationComposer,
+      $$CurrencyRatesTableCreateCompanionBuilder,
+      $$CurrencyRatesTableUpdateCompanionBuilder,
+      (
+        CurrencyRateRow,
+        BaseReferences<_$AppDatabase, $CurrencyRatesTable, CurrencyRateRow>,
+      ),
+      CurrencyRateRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -38489,4 +39564,6 @@ class $AppDatabaseManager {
       $$OcrCorrectionsTableTableManager(_db, _db.ocrCorrections);
   $$CreditCardDetailsTableTableManager get creditCardDetails =>
       $$CreditCardDetailsTableTableManager(_db, _db.creditCardDetails);
+  $$CurrencyRatesTableTableManager get currencyRates =>
+      $$CurrencyRatesTableTableManager(_db, _db.currencyRates);
 }

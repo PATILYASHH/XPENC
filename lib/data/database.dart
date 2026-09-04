@@ -148,6 +148,7 @@ typedef CombinedStatementLine = ({
     Allocations,
     OcrCorrections,
     CreditCardDetails,
+    CurrencyRates,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -173,7 +174,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 59;
+  int get schemaVersion => 60;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -483,6 +484,29 @@ class AppDatabase extends _$AppDatabase {
           m,
           recurringRules,
           recurringRules.foreignAmount,
+        );
+      }
+      if (from < 60) {
+        // Multi-currency accounts — see
+        // docs/superpowers/specs/2026-09-04-multi-currency-accounts-design.md.
+        await m.createTable(currencyRates);
+        await _addColumnIfMissing(m, accounts, accounts.currencyCode);
+        await _addColumnIfMissing(m, transactions, transactions.currencyCode);
+        await _addColumnIfMissing(
+          m,
+          transactions,
+          transactions.fxRateToBaseMicros,
+        );
+        await _addColumnIfMissing(m, transactions, transactions.toAmount);
+        await _addColumnIfMissing(
+          m,
+          transactions,
+          transactions.toCurrencyCode,
+        );
+        await _addColumnIfMissing(
+          m,
+          transactions,
+          transactions.toFxRateToBaseMicros,
         );
       }
     },

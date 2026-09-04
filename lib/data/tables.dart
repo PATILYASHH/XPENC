@@ -126,6 +126,31 @@ class MoneyConverter extends TypeConverter<Money, int> {
   int toSql(Money value) => value.paise;
 }
 
+/// A manually-entered exchange rate: how many units of the parent currency
+/// (`Settings.currencyCode`) equal one unit of some other currency, as of a
+/// given date. Never fetched live — see the design spec's "Non-goals".
+///
+/// Rows accumulate as history; adding a new rate is always an insert, never
+/// an update, so a transaction posted under an old rate stays resolvable
+/// (`AppDatabase.latestRate`) even after the rate moves on. This is what
+/// makes converted historical totals stable when the rate changes later.
+@DataClassName('CurrencyRateRow')
+class CurrencyRates extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  /// The non-parent currency this rate prices, e.g. `USD`. Never the parent
+  /// currency itself, which is always 1:1 with itself.
+  TextColumn get currencyCode => text().withLength(min: 3, max: 3)();
+
+  /// Units of the parent currency per 1 unit of [currencyCode], scaled by
+  /// [currencyRateScale] so it's an exact integer — never a `double`, the
+  /// same rule [Money] follows. `83_120_000` means 1 unit = 83.12 parent.
+  IntColumn get rateToBaseMicros => integer()();
+
+  DateTimeColumn get effectiveAt => dateTime()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
 // ─── Tables ─────────────────────────────────────────────────────────────────
 
 @DataClassName('AccountRow')
@@ -173,6 +198,15 @@ class Accounts extends Table {
   /// they treat as their real spendable net worth.
   BoolColumn get includeInNetWorth =>
       boolean().withDefault(const Constant(true))();
+
+  /// Null = this account is in the parent currency (`Settings.currencyCode`)
+  /// — true for every account that existed before this feature, and for
+  /// every account a user never explicitly changes. Locked once the account
+  /// has a transaction (enforced in `AppDatabase.setAccountCurrency`, not
+  /// here — Drift columns can't express that rule). A debit-card/UPI
+  /// instrument (non-null `linkedAccountId`) never gets its own value here —
+  /// it always mirrors its linked account's currency.
+  TextColumn get currencyCode => text().withLength(min: 3, max: 3).nullable()();
 }
 
 @DataClassName('CategoryRow')
@@ -274,6 +308,32 @@ class Transactions extends Table {
   TextColumn get foreignCurrencyCode => text().nullable()();
   IntColumn get foreignAmount =>
       integer().nullable().map(const MoneyConverter())();
+
+  /// This transaction's own ledger currency, snapshotted from its account's
+  /// [Accounts.currencyCode] at post time. Null = parent currency, which
+  /// matches [amount]'s existing meaning exactly (no conversion needed).
+  /// Distinct from the #85 [foreignCurrencyCode]/[foreignAmount] pair above,
+  /// which is a manual informational annotation on a parent-currency
+  /// transaction — this pair instead describes the transaction's *real*
+  /// native currency, inherited from its account.
+  TextColumn get currencyCode => text().withLength(min: 3, max: 3).nullable()();
+
+  /// Snapshot of `CurrencyRates.rateToBaseMicros` as of [date], for
+  /// [currencyCode]. Null iff [currencyCode] is null.
+  IntColumn get fxRateToBaseMicros => integer().nullable()();
+
+  /// Transfer only, and only when the source and destination accounts don't
+  /// share a currency: the amount credited to [toAccountId], in *its own*
+  /// currency. Null for a same-currency transfer, where crediting [amount]
+  /// unchanged is already correct — see `AppDatabase._applyTxEffect`.
+  IntColumn get toAmount => integer().map(const MoneyConverter()).nullable()();
+
+  /// Transfer only, mirrors [currencyCode]/[fxRateToBaseMicros] for the
+  /// destination leg — the two accounts can each be a different currency
+  /// from the parent (and from each other), so the destination needs its
+  /// own independent snapshot.
+  TextColumn get toCurrencyCode => text().withLength(min: 3, max: 3).nullable()();
+  IntColumn get toFxRateToBaseMicros => integer().nullable()();
 }
 
 @DataClassName('BudgetRow')
