@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/app_icons.dart';
+import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/widgets/error_view.dart';
 import '../../core/widgets/money_text.dart';
@@ -174,6 +175,15 @@ class _TransactionView extends ConsumerWidget {
                   'Account',
                   _accountValue(context, t, accountMap),
                 ),
+                if (t.foreignCurrencyCode != null &&
+                    t.foreignAmount != null) ...[
+                  _divider(theme),
+                  _detailRow(
+                    context,
+                    'Original amount',
+                    _valueText(context, _foreignAmountValue(t)),
+                  ),
+                ],
                 if (t.type == TxType.expense) ...[
                   _divider(theme),
                   _detailRow(
@@ -922,4 +932,16 @@ Widget _accountValue(
       ],
     ],
   );
+}
+
+/// "9.99 USD (1 USD ≈ ₹83.08)" — [t.foreignAmount]/[t.foreignCurrencyCode]
+/// must both be non-null; the implied rate is recomputed from [t.amount],
+/// never stored (GitHub #85).
+String _foreignAmountValue(TransactionRow t) {
+  final currency = currencyForCode(t.foreignCurrencyCode);
+  final foreignAmount = t.foreignAmount!;
+  final formatted = MoneyFormat.forCurrency(foreignAmount, currency);
+  if (!foreignAmount.isPositive) return formatted;
+  final rate = Money.fromRupees(t.amount.rupees / foreignAmount.rupees);
+  return '$formatted (1 ${currency.code} ≈ ${MoneyFormat.symbol(rate)})';
 }

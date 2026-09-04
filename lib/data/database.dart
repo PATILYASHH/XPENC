@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
+import '../core/currency.dart';
 import '../core/group_split_math.dart';
 import '../core/money.dart';
 import '../core/security/passcode.dart';
@@ -172,7 +173,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 58;
+  int get schemaVersion => 59;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -462,6 +463,27 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 58) {
         await _addColumnIfMissing(m, settings, settings.frequentIconKeys);
+      }
+      if (from < 59) {
+        // GitHub #85 — a purely informational "originally paid in another
+        // currency" annotation on transactions and the auto rules that post
+        // them. Both columns on each table are always null together.
+        await _addColumnIfMissing(
+          m,
+          transactions,
+          transactions.foreignCurrencyCode,
+        );
+        await _addColumnIfMissing(m, transactions, transactions.foreignAmount);
+        await _addColumnIfMissing(
+          m,
+          recurringRules,
+          recurringRules.foreignCurrencyCode,
+        );
+        await _addColumnIfMissing(
+          m,
+          recurringRules,
+          recurringRules.foreignAmount,
+        );
       }
     },
     beforeOpen: (details) async {
@@ -828,6 +850,24 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 
+  /// Shared by [_validateTx] and [_validateRecurringRule] — the foreign
+  /// currency annotation (GitHub #85) is optional, but never half-set.
+  void _validateForeignCurrency(String? code, Money? amount) {
+    if (code == null && amount == null) return;
+    if (code == null || amount == null) {
+      throw ArgumentError(
+        'A foreign amount needs a currency, and a foreign currency needs an '
+        'amount.',
+      );
+    }
+    if (!amount.isPositive) {
+      throw ArgumentError('Foreign amount must be positive.');
+    }
+    if (currencyForCode(code).code != code) {
+      throw ArgumentError('Unknown currency code: $code.');
+    }
+  }
+
   Future<void> _validateTx({
     required TxType type,
     required Money amount,
@@ -837,7 +877,10 @@ class AppDatabase extends _$AppDatabase {
     int? personId,
     String? payee,
     int? recurringRuleId,
+    String? foreignCurrencyCode,
+    Money? foreignAmount,
   }) async {
+    _validateForeignCurrency(foreignCurrencyCode, foreignAmount);
     // Zero is a legitimate income/expense (GitHub #87) — a free item, a
     // discount that fully covers the price, a promo month that costs
     // nothing. A transfer or person movement of ₹0 has no real meaning
@@ -952,6 +995,8 @@ class AppDatabase extends _$AppDatabase {
     int? recurringRuleId,
     String? imagePath,
     bool needsAmountReview = false,
+    String? foreignCurrencyCode,
+    Money? foreignAmount,
   }) async {
     await _validateTx(
       type: type,
@@ -962,6 +1007,8 @@ class AppDatabase extends _$AppDatabase {
       personId: personId,
       payee: payee,
       recurringRuleId: recurringRuleId,
+      foreignCurrencyCode: foreignCurrencyCode,
+      foreignAmount: foreignAmount,
     );
 
     return transaction(() async {
@@ -979,6 +1026,8 @@ class AppDatabase extends _$AppDatabase {
           recurringRuleId: Value(recurringRuleId),
           imagePath: Value(imagePath),
           needsAmountReview: Value(needsAmountReview),
+          foreignCurrencyCode: Value(foreignCurrencyCode),
+          foreignAmount: Value(foreignAmount),
         ),
       );
       final row = await (select(
@@ -1267,6 +1316,8 @@ class AppDatabase extends _$AppDatabase {
     String? note,
     String? payee,
     String? imagePath,
+    String? foreignCurrencyCode,
+    Money? foreignAmount,
   }) async {
     await _validateTx(
       type: type,
@@ -1276,6 +1327,8 @@ class AppDatabase extends _$AppDatabase {
       categoryId: categoryId,
       personId: personId,
       payee: payee,
+      foreignCurrencyCode: foreignCurrencyCode,
+      foreignAmount: foreignAmount,
     );
 
     return transaction(() async {
@@ -1306,6 +1359,8 @@ class AppDatabase extends _$AppDatabase {
           // Editing and saving *is* the confirmation — whatever amount is
           // typed here is now the real one, estimate or not.
           needsAmountReview: const Value(false),
+          foreignCurrencyCode: Value(foreignCurrencyCode),
+          foreignAmount: Value(foreignAmount),
         ),
       );
 
@@ -3015,10 +3070,13 @@ class AppDatabase extends _$AppDatabase {
     int? dayOfMonth,
     Money? promoAmount,
     int? promoOccurrences,
+    String? foreignCurrencyCode,
+    Money? foreignAmount,
   }) {
     if (!amount.isPositive) {
       throw ArgumentError('Amount must be positive.');
     }
+    _validateForeignCurrency(foreignCurrencyCode, foreignAmount);
     if (category != null && category.kind != kind) {
       throw ArgumentError(
         'That category is ${category.kind == CategoryKind.income ? 'an income' : 'an expense'} '
@@ -3091,6 +3149,8 @@ class AppDatabase extends _$AppDatabase {
     Money? promoAmount,
     int? promoOccurrences,
     Set<int> tagIds = const {},
+    String? foreignCurrencyCode,
+    Money? foreignAmount,
   }) async {
     CategoryRow? category;
     if (toAccountId != null) {
@@ -3118,6 +3178,8 @@ class AppDatabase extends _$AppDatabase {
       dayOfMonth: dayOfMonth,
       promoAmount: promoAmount,
       promoOccurrences: promoOccurrences,
+      foreignCurrencyCode: foreignCurrencyCode,
+      foreignAmount: foreignAmount,
     );
 
     return transaction(() async {
@@ -3138,6 +3200,8 @@ class AppDatabase extends _$AppDatabase {
           isEstimate: Value(isEstimate),
           promoAmount: Value(promoAmount),
           promoOccurrencesLeft: Value(promoOccurrences),
+          foreignCurrencyCode: Value(foreignCurrencyCode),
+          foreignAmount: Value(foreignAmount),
         ),
       );
       await setRecurringRuleTags(id, tagIds);
@@ -3162,6 +3226,8 @@ class AppDatabase extends _$AppDatabase {
     Money? promoAmount,
     int? promoOccurrences,
     Set<int> tagIds = const {},
+    String? foreignCurrencyCode,
+    Money? foreignAmount,
   }) async {
     CategoryRow? category;
     if (toAccountId != null) {
@@ -3189,6 +3255,8 @@ class AppDatabase extends _$AppDatabase {
       dayOfMonth: dayOfMonth,
       promoAmount: promoAmount,
       promoOccurrences: promoOccurrences,
+      foreignCurrencyCode: foreignCurrencyCode,
+      foreignAmount: foreignAmount,
     );
 
     await setRecurringRuleTags(id, tagIds);
@@ -3211,6 +3279,8 @@ class AppDatabase extends _$AppDatabase {
         isEstimate: Value(isEstimate),
         promoAmount: Value(promoAmount),
         promoOccurrencesLeft: Value(promoOccurrences),
+        foreignCurrencyCode: Value(foreignCurrencyCode),
+        foreignAmount: Value(foreignAmount),
       ),
     );
   }
@@ -3327,6 +3397,11 @@ class AppDatabase extends _$AppDatabase {
       payee: isGoalOrLoan ? null : rule.payee,
       recurringRuleId: rule.id,
       needsAmountReview: rule.isEstimate,
+      // No tracked foreign equivalent for a promo price, so a promo
+      // occurrence posts with no foreign-currency annotation rather than a
+      // misleading one (GitHub #85).
+      foreignCurrencyCode: onPromo ? null : rule.foreignCurrencyCode,
+      foreignAmount: onPromo ? null : rule.foreignAmount,
     );
     if (tagIds.isNotEmpty) {
       await setTransactionTags(txId, tagIds);
@@ -4542,7 +4617,18 @@ class AppDatabase extends _$AppDatabase {
               : categoriesById[t.categoryId];
           final base = category?.name ?? 'Uncategorised';
           final payee = t.payee?.trim();
-          return (payee != null && payee.isNotEmpty) ? '$base - $payee' : base;
+          var desc = (payee != null && payee.isNotEmpty)
+              ? '$base - $payee'
+              : base;
+          // Folded into the description rather than a new PDF column, and
+          // kept plain ASCII (no symbol/rate) — this file's fonts can't
+          // reliably render non-ASCII glyphs (GitHub #85).
+          if (t.foreignCurrencyCode != null && t.foreignAmount != null) {
+            desc +=
+                ' (${(t.foreignAmount!.paise / 100).toStringAsFixed(2)} '
+                '${t.foreignCurrencyCode})';
+          }
+          return desc;
       }
     }
 
@@ -5054,7 +5140,8 @@ class AppDatabase extends _$AppDatabase {
     }
 
     final b = StringBuffer(
-      'Date,Type,Amount,Account,To Account,Category,Person,Note\n',
+      'Date,Type,Amount,Account,To Account,Category,Person,Note,'
+      'Foreign Amount,Foreign Currency\n',
     );
     for (final t in txs) {
       final d = t.date;
@@ -5077,6 +5164,14 @@ class AppDatabase extends _$AppDatabase {
         ..write(esc(t.personId == null ? '' : ppl[t.personId]))
         ..write(',')
         ..write(esc(t.note))
+        ..write(',')
+        ..write(
+          t.foreignAmount == null
+              ? ''
+              : (t.foreignAmount!.paise / 100).toStringAsFixed(2),
+        )
+        ..write(',')
+        ..write(esc(t.foreignCurrencyCode))
         ..write('\n');
     }
     return b.toString();
