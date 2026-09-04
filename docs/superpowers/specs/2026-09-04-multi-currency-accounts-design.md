@@ -60,6 +60,39 @@ assuming a single ambient currency — not a UI-only feature.
   editable only while the account is empty. Prevents its existing native
   amounts from becoming ambiguous.
 
+## Relationship to the already-shipped per-transaction annotation (GitHub #85)
+
+Since this spec was first drafted, `feat: foreign-currency annotation for
+transactions & auto rules (#85)` landed on `BETA` (schema v58→v59,
+`tables.dart:274-285,608-620`). It lets any transaction/recurring rule
+carry an optional `foreignCurrencyCode`/`foreignAmount` pair — "this ₹830
+charge was really $9.99" — purely as a display annotation; the rate is
+computed live (`amount / foreignAmount`), never stored, and `amount` stays
+the only figure that moves balances, Net Worth, envelopes or budgets. That
+issue's own author said explicitly they didn't need per-account currencies,
+just this — and the repo owner replied a fuller version was still coming
+separately. This spec is that fuller version, and schema v59 means this
+spec's migration starts at **v60**, not v59 (see Migration, below).
+
+The two features are complementary, not overlapping, and require exactly
+one small interaction fix: `foreignCurrencyCode`/`foreignAmount` exist to
+annotate a transaction on a **parent-currency** account. Once an account
+has its own native `currencyCode` (this spec), its transactions are
+already, natively, in that foreign currency — annotating one with a
+*second* foreign currency would be confusing and serves no purpose. So the
+add/edit transaction screen's existing "Foreign currency" toggle
+(`add_transaction_screen.dart`, added by #85) is hidden whenever the
+selected account itself has a non-null `currencyCode`. Nothing about the
+#85 columns, validation, or CSV/PDF export changes — this is a one-line
+UI condition, not a data-model change to that feature.
+
+`CurrencyPickerSheet` also already gained a reusable `pick()` static method
+and `initialCode`/`onSelected` constructor params as part of #85
+(`currency_picker_sheet.dart:32-46`), specifically so a caller can pick an
+arbitrary currency without touching `Settings.currencyCode`. This spec
+reuses that method as-is for both the account currency picker and the
+Currency module's "add a currency" action — no new picker widget needed.
+
 ## Non-goals
 
 - Live/fetched exchange rates (no API integration) — rates are entered
@@ -178,11 +211,11 @@ than pushing conversion into SQL.
 
 ### Migration
 
-Schema v58 → v59, appended to `onUpgrade` after the existing `if (from < 58)`
-block (`database.dart:463`):
+Schema v59 → v60, appended to `onUpgrade` after the #85 `if (from < 59)`
+block (`database.dart:467-487`):
 
 ```dart
-if (from < 59) {
+if (from < 60) {
   await m.createTable(currencyRates);
   await _addColumnIfMissing(m, accounts, accounts.currencyCode);
   await _addColumnIfMissing(m, transactions, transactions.currencyCode);
@@ -259,9 +292,9 @@ from `settings_screen.dart` next to the existing entries. Shows:
   relabelled "Parent currency" in this screen's copy — the underlying
   setting and `setCurrencyCode` call are unchanged).
 - One row per currency currently used by any account, its latest rate
-  ("1 USD = 83.12 INR"), and when it was last updated. Reuses
-  `CurrencyPickerSheet`'s search list (`currency_picker_sheet.dart:9`) to
-  add a currency not yet in use.
+  ("1 USD = 83.12 INR"), and when it was last updated. "Add a currency"
+  calls `CurrencyPickerSheet.pick()` (`currency_picker_sheet.dart:32`,
+  added by #85) to choose a code without touching `Settings.currencyCode`.
 - Tapping a row opens a small history list (every `CurrencyRates` row for
   that code, newest first) plus an "Add rate" action: pick an effective
   date (defaults to today) and enter the new rate. This always inserts,
@@ -271,7 +304,7 @@ from `settings_screen.dart` next to the existing entries. Shows:
 
 `add_account_sheet.dart` (fields currently built around
 `_type`/`_colorValue`/`_iconKey`, lines 54–143) gains a currency picker
-(reusing `CurrencyPickerSheet`'s list), defaulting to the parent currency,
+using `CurrencyPickerSheet.pick()`, defaulting to the parent currency,
 shown for every account type except a debit card / UPI instrument (which
 mirrors its linked account instead — no picker shown). Once the account has
 at least one transaction, the field becomes read-only with a short
@@ -324,7 +357,9 @@ selected account's currency and:
 - Widget tests: Currency settings screen lists rates and accepts a new one;
   account creation offers/hides the currency picker correctly for a
   debit-card account; the transfer sheet's auto-converted "≈ received"
-  field appears only when currencies differ and remains editable.
+  field appears only when currencies differ and remains editable; the
+  add/edit transaction screen's #85 "Foreign currency" toggle is hidden
+  once the selected account has its own non-null `currencyCode`.
 
 ## Migration/back-compat summary
 
