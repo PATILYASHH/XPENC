@@ -3,11 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_icons.dart';
+import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/widgets/icon_picker_sheet.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../settings/currency_picker_sheet.dart';
 
 /// Preset colours for an account. Plain ints — colour here is decorative,
 /// not a money-direction signal.
@@ -57,6 +59,11 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
   int _colorValue = _presetColors.first;
   String _iconKey = 'cash';
   bool _submitting = false;
+
+  /// Null = parent currency (the default for every account). Never offered
+  /// for a debit card / UPI instrument, which always mirrors the account it
+  /// draws from.
+  String? _currencyCode;
 
   @override
   void dispose() {
@@ -142,6 +149,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
             colorValue: _colorValue,
             iconKey: _iconKey,
             openingBalance: openingBalance,
+            currencyCode: _isDebitCard ? null : _currencyCode,
           );
       if (!mounted) return;
       Navigator.of(context).pop();
@@ -241,6 +249,11 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
             const SizedBox(height: 20),
 
             ..._typeSpecificFields(theme, banks),
+
+            if (!_isDebitCard) ...[
+              _currencyField(theme),
+              const SizedBox(height: 20),
+            ],
 
             _fieldLabel(theme, 'Colour'),
             const SizedBox(height: 12),
@@ -410,6 +423,58 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
         labelText: label,
         prefixText: MoneyFormat.inputPrefix,
         hintText: '0.00',
+      ),
+    );
+  }
+
+  /// Only ever offered for an account that will hold its own balance — see
+  /// the `if (!_isDebitCard)` guard around this field's only call site. Null
+  /// [_currencyCode] (the default) means the parent currency
+  /// (`Settings.currencyCode`); an unset field submits `null` to
+  /// `AppDatabase.addAccount`, identical to every account created before
+  /// this feature existed.
+  Widget _currencyField(ThemeData theme) {
+    final selected = _currencyCode == null
+        ? null
+        : currencyForCode(_currencyCode!);
+    return GestureDetector(
+      onTap: () async {
+        final picked = await CurrencyPickerSheet.pick(
+          context,
+          initialCode: _currencyCode,
+        );
+        if (picked != null) setState(() => _currencyCode = picked.code);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          border: Border.all(color: theme.colorScheme.outline),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            const Text('Currency'),
+            const Spacer(),
+            Flexible(
+              child: Text(
+                selected == null
+                    ? '${ref.watch(currencyProvider).symbol} '
+                          '${ref.watch(currencyProvider).code}'
+                    : '${selected.symbol} ${selected.code}',
+                textAlign: TextAlign.right,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ],
+        ),
       ),
     );
   }
