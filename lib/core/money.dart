@@ -131,6 +131,14 @@ class MoneyFormat {
     return _buildWithSymbol(currency).format(m.rupees);
   }
 
+  /// [bare], but against an explicit [currency] instead of the globally
+  /// configured one — for a PDF statement's account-specific figures, where
+  /// [symbolIn]'s glyph can't be trusted to render (see `statement_pdf.dart`)
+  /// but the decimal-place/grouping rule still needs to match that account's
+  /// own currency, not the parent's.
+  static String bareIn(Money m, Currency currency) =>
+      _buildBare(currency).format(m.rupees);
+
   /// `12,50,000.00` — never carries a symbol, whatever the setting.
   static String bare(Money m) => _bare.format(m.rupees);
 
