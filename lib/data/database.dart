@@ -2313,11 +2313,30 @@ class AppDatabase extends _$AppDatabase {
   /// An account with [Accounts.includeInNetWorth] off — opted out from
   /// Settings > Customize Dashboard — contributes nothing here, though it
   /// still shows its own balance everywhere else in the app.
-  Stream<Money> watchNetWorth() => watchBalanceHoldingAccounts().map(
-    (rows) => rows
-        .where((a) => a.includeInNetWorth)
-        .fold(const Money.zero(), (sum, a) => sum + a.currentBalance),
-  );
+  ///
+  /// A foreign-currency account's balance is converted using **today's**
+  /// rate, not a snapshot — Net Worth is a "right now" figure, unlike a
+  /// transaction's historical [TransactionBaseValue.baseAmount]. If no rate
+  /// has been entered for its currency yet, its raw balance is added
+  /// unconverted rather than dropping it or throwing, so an incomplete
+  /// Currency setup never breaks the dashboard.
+  Stream<Money> watchNetWorth() => watchBalanceHoldingAccounts().asyncMap((
+    rows,
+  ) async {
+    var total = const Money.zero();
+    for (final a in rows) {
+      if (!a.includeInNetWorth) continue;
+      if (a.currencyCode == null) {
+        total += a.currentBalance;
+        continue;
+      }
+      final rate = await latestRate(a.currencyCode!);
+      total += rate == null
+          ? a.currentBalance
+          : convertUsingRate(a.currentBalance, rate.rateToBaseMicros);
+    }
+    return total;
+  });
 
   /// Flips whether [id]'s balance counts toward [watchNetWorth] — the toggle
   /// behind Settings > Customize Dashboard.
