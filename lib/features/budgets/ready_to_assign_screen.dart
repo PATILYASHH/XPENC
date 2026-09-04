@@ -69,7 +69,7 @@ class ReadyToAssignScreen extends ConsumerWidget {
     final poolAccounts = ref.watch(envelopeModeAccountsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Ready to Assign')),
+      appBar: AppBar(title: const Text('Envelope')),
       body: poolAccounts.isEmpty
           ? const _EmptyState()
           : ListView(
@@ -103,7 +103,8 @@ class _EmptyState extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Text(
-          'Turn on Envelope Mode for an account to start assigning money.',
+          'Add an account, then come back here to start assigning money '
+          'into categories.',
           textAlign: TextAlign.center,
           style: Theme.of(
             context,
@@ -186,9 +187,13 @@ class _CategoryEnvelopeRow extends ConsumerWidget {
 /// Move money between this category's shared envelope and the shared Ready
 /// to Assign pool — a positive amount assigns in, a negative one unassigns
 /// back out. Both are the same [AppDatabase.addAllocation] call; only the
-/// sign differs. The `accountId` that call still requires is nominal here
-/// (see [defaultEnvelopeAccountIdProvider]) — there's no real "which
-/// account" question once every Envelope-Mode account shares one pool.
+/// sign differs. Since the pool is shared (GitHub #48), the `accountId` that
+/// call requires doesn't change the math — [categoryBalanceProvider] and
+/// [readyToAssignProvider] sum across every pool account regardless. It's
+/// still offered as a picker (GitHub #100) so the historical/audit trail
+/// records which real account this particular movement came from, defaulting
+/// to [defaultEnvelopeAccountIdProvider] and hidden entirely when there's
+/// only one pool account to begin with.
 class _AssignSheet extends ConsumerStatefulWidget {
   const _AssignSheet({required this.category, required this.currentBalance});
 
@@ -202,6 +207,13 @@ class _AssignSheet extends ConsumerStatefulWidget {
 class _AssignSheetState extends ConsumerState<_AssignSheet> {
   final _amountCtrl = TextEditingController();
   bool _unassign = false;
+  int? _accountId;
+
+  @override
+  void initState() {
+    super.initState();
+    _accountId = ref.read(defaultEnvelopeAccountIdProvider);
+  }
 
   @override
   void dispose() {
@@ -217,7 +229,7 @@ class _AssignSheetState extends ConsumerState<_AssignSheet> {
       );
       return;
     }
-    final accountId = ref.read(defaultEnvelopeAccountIdProvider);
+    final accountId = _accountId ?? ref.read(defaultEnvelopeAccountIdProvider);
     if (accountId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No account is in Envelope Mode')),
@@ -245,6 +257,7 @@ class _AssignSheetState extends ConsumerState<_AssignSheet> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final rta = ref.watch(readyToAssignProvider);
+    final poolAccounts = ref.watch(envelopeModeAccountsProvider);
 
     return Padding(
       padding: EdgeInsets.only(
@@ -295,6 +308,25 @@ class _AssignSheetState extends ConsumerState<_AssignSheet> {
             onSelectionChanged: (s) => setState(() => _unassign = s.first),
           ),
           const SizedBox(height: 16),
+          if (poolAccounts.length > 1)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: DropdownButtonFormField<int>(
+                initialValue: poolAccounts.any((a) => a.id == _accountId)
+                    ? _accountId
+                    : poolAccounts.first.id,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Account'),
+                items: [
+                  for (final account in poolAccounts)
+                    DropdownMenuItem(
+                      value: account.id,
+                      child: Text(account.name),
+                    ),
+                ],
+                onChanged: (v) => setState(() => _accountId = v),
+              ),
+            ),
           TextField(
             controller: _amountCtrl,
             autofocus: true,

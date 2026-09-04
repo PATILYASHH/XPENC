@@ -135,10 +135,11 @@ void main() {
 
       await pump(tester, const DashboardScreen());
       expect(tester.takeException(), isNull);
-      // Appears twice: the section header and the pooled RTA card's own
-      // label (GitHub #48 — one shared card, not one per account, so the
-      // account name itself is no longer shown here).
-      expect(find.text('Ready to Assign'), findsNWidgets(2));
+      expect(find.text('Envelope'), findsOneWidget);
+      // The pooled RTA card's own label (GitHub #48 — one shared card, not
+      // one per account, so the account name itself is no longer shown
+      // here).
+      expect(find.text('Ready to Assign'), findsOneWidget);
       await unmount(tester);
     },
   );

@@ -991,7 +991,7 @@ class _ReadyToAssignSection extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _SectionHeader('Ready to Assign'),
+          const _SectionHeader('Envelope'),
           InkWell(
             borderRadius: BorderRadius.circular(_cardRadius),
             onTap: () => context.push('/more/ready-to-assign'),

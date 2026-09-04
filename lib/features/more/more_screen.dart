@@ -29,7 +29,7 @@ class MoreScreen extends ConsumerWidget {
     final Color budgetSubtitleColor;
     if (budgetingMode == BudgetingMode.envelope) {
       final readyToAssign = ref.watch(readyToAssignProvider);
-      budgetTileLabel = 'Ready to Assign';
+      budgetTileLabel = 'Envelope';
       budgetTileRoute = '/more/ready-to-assign';
       budgetTileIcon = Icons.savings_outlined;
       budgetSubtitle = '${MoneyFormat.compact(readyToAssign)} unassigned';
