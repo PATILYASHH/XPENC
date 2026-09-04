@@ -9039,6 +9039,16 @@ class $SettingsTable extends Settings
       ).withConverter<MoreScreenViewMode>(
         $SettingsTable.$convertermoreScreenViewMode,
       );
+  @override
+  late final GeneratedColumnWithTypeConverter<BudgetingMode, String>
+  budgetingMode = GeneratedColumn<String>(
+    'budgeting_mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('budgets'),
+  ).withConverter<BudgetingMode>($SettingsTable.$converterbudgetingMode);
   static const VerificationMeta _pinTimeoutMinutesMeta = const VerificationMeta(
     'pinTimeoutMinutes',
   );
@@ -9436,6 +9446,7 @@ class $SettingsTable extends Settings
     biometricEnabled,
     lockScreenStyle,
     moreScreenViewMode,
+    budgetingMode,
     pinTimeoutMinutes,
     masterPhraseHash,
     masterPhraseSalt,
@@ -10053,6 +10064,12 @@ class $SettingsTable extends Settings
           data['${effectivePrefix}more_screen_view_mode'],
         )!,
       ),
+      budgetingMode: $SettingsTable.$converterbudgetingMode.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}budgeting_mode'],
+        )!,
+      ),
       pinTimeoutMinutes: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}pin_timeout_minutes'],
@@ -10187,6 +10204,10 @@ class $SettingsTable extends Settings
   $convertermoreScreenViewMode = const EnumNameConverter<MoreScreenViewMode>(
     MoreScreenViewMode.values,
   );
+  static JsonTypeConverter2<BudgetingMode, String, String>
+  $converterbudgetingMode = const EnumNameConverter<BudgetingMode>(
+    BudgetingMode.values,
+  );
   static JsonTypeConverter2<AutoBackupFrequency, String, String>
   $converterautoBackupFrequency = const EnumNameConverter<AutoBackupFrequency>(
     AutoBackupFrequency.values,
@@ -10287,6 +10308,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// How the More hub lays out its items — see [MoreScreenViewMode].
   /// Defaults to `list` so existing users see no change.
   final MoreScreenViewMode moreScreenViewMode;
+
+  /// Which budgeting system is primary — see [BudgetingMode] (GitHub #100).
+  /// Defaults to `budgets` so existing users see no change; switching to
+  /// `envelope` doesn't touch either system's data, it only changes which
+  /// one the Dashboard and More hub's "Budgets" tile surface.
+  final BudgetingMode budgetingMode;
 
   /// Minutes the app may sit backgrounded before the next resume re-locks it
   /// — `0` means immediately (see GitHub #60). Checked against how long the
@@ -10466,6 +10493,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     required this.biometricEnabled,
     required this.lockScreenStyle,
     required this.moreScreenViewMode,
+    required this.budgetingMode,
     required this.pinTimeoutMinutes,
     this.masterPhraseHash,
     this.masterPhraseSalt,
@@ -10553,6 +10581,11 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     {
       map['more_screen_view_mode'] = Variable<String>(
         $SettingsTable.$convertermoreScreenViewMode.toSql(moreScreenViewMode),
+      );
+    }
+    {
+      map['budgeting_mode'] = Variable<String>(
+        $SettingsTable.$converterbudgetingMode.toSql(budgetingMode),
       );
     }
     map['pin_timeout_minutes'] = Variable<int>(pinTimeoutMinutes);
@@ -10657,6 +10690,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       biometricEnabled: Value(biometricEnabled),
       lockScreenStyle: Value(lockScreenStyle),
       moreScreenViewMode: Value(moreScreenViewMode),
+      budgetingMode: Value(budgetingMode),
       pinTimeoutMinutes: Value(pinTimeoutMinutes),
       masterPhraseHash: masterPhraseHash == null && nullToAbsent
           ? const Value.absent()
@@ -10744,6 +10778,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       ),
       moreScreenViewMode: $SettingsTable.$convertermoreScreenViewMode.fromJson(
         serializer.fromJson<String>(json['moreScreenViewMode']),
+      ),
+      budgetingMode: $SettingsTable.$converterbudgetingMode.fromJson(
+        serializer.fromJson<String>(json['budgetingMode']),
       ),
       pinTimeoutMinutes: serializer.fromJson<int>(json['pinTimeoutMinutes']),
       masterPhraseHash: serializer.fromJson<String?>(json['masterPhraseHash']),
@@ -10841,6 +10878,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'moreScreenViewMode': serializer.toJson<String>(
         $SettingsTable.$convertermoreScreenViewMode.toJson(moreScreenViewMode),
       ),
+      'budgetingMode': serializer.toJson<String>(
+        $SettingsTable.$converterbudgetingMode.toJson(budgetingMode),
+      ),
       'pinTimeoutMinutes': serializer.toJson<int>(pinTimeoutMinutes),
       'masterPhraseHash': serializer.toJson<String?>(masterPhraseHash),
       'masterPhraseSalt': serializer.toJson<String?>(masterPhraseSalt),
@@ -10912,6 +10952,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     bool? biometricEnabled,
     LockScreenStyle? lockScreenStyle,
     MoreScreenViewMode? moreScreenViewMode,
+    BudgetingMode? budgetingMode,
     int? pinTimeoutMinutes,
     Value<String?> masterPhraseHash = const Value.absent(),
     Value<String?> masterPhraseSalt = const Value.absent(),
@@ -10975,6 +11016,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     biometricEnabled: biometricEnabled ?? this.biometricEnabled,
     lockScreenStyle: lockScreenStyle ?? this.lockScreenStyle,
     moreScreenViewMode: moreScreenViewMode ?? this.moreScreenViewMode,
+    budgetingMode: budgetingMode ?? this.budgetingMode,
     pinTimeoutMinutes: pinTimeoutMinutes ?? this.pinTimeoutMinutes,
     masterPhraseHash: masterPhraseHash.present
         ? masterPhraseHash.value
@@ -11086,6 +11128,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       moreScreenViewMode: data.moreScreenViewMode.present
           ? data.moreScreenViewMode.value
           : this.moreScreenViewMode,
+      budgetingMode: data.budgetingMode.present
+          ? data.budgetingMode.value
+          : this.budgetingMode,
       pinTimeoutMinutes: data.pinTimeoutMinutes.present
           ? data.pinTimeoutMinutes.value
           : this.pinTimeoutMinutes,
@@ -11207,6 +11252,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('biometricEnabled: $biometricEnabled, ')
           ..write('lockScreenStyle: $lockScreenStyle, ')
           ..write('moreScreenViewMode: $moreScreenViewMode, ')
+          ..write('budgetingMode: $budgetingMode, ')
           ..write('pinTimeoutMinutes: $pinTimeoutMinutes, ')
           ..write('masterPhraseHash: $masterPhraseHash, ')
           ..write('masterPhraseSalt: $masterPhraseSalt, ')
@@ -11272,6 +11318,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     biometricEnabled,
     lockScreenStyle,
     moreScreenViewMode,
+    budgetingMode,
     pinTimeoutMinutes,
     masterPhraseHash,
     masterPhraseSalt,
@@ -11334,6 +11381,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.biometricEnabled == this.biometricEnabled &&
           other.lockScreenStyle == this.lockScreenStyle &&
           other.moreScreenViewMode == this.moreScreenViewMode &&
+          other.budgetingMode == this.budgetingMode &&
           other.pinTimeoutMinutes == this.pinTimeoutMinutes &&
           other.masterPhraseHash == this.masterPhraseHash &&
           other.masterPhraseSalt == this.masterPhraseSalt &&
@@ -11396,6 +11444,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<bool> biometricEnabled;
   final Value<LockScreenStyle> lockScreenStyle;
   final Value<MoreScreenViewMode> moreScreenViewMode;
+  final Value<BudgetingMode> budgetingMode;
   final Value<int> pinTimeoutMinutes;
   final Value<String?> masterPhraseHash;
   final Value<String?> masterPhraseSalt;
@@ -11454,6 +11503,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.biometricEnabled = const Value.absent(),
     this.lockScreenStyle = const Value.absent(),
     this.moreScreenViewMode = const Value.absent(),
+    this.budgetingMode = const Value.absent(),
     this.pinTimeoutMinutes = const Value.absent(),
     this.masterPhraseHash = const Value.absent(),
     this.masterPhraseSalt = const Value.absent(),
@@ -11513,6 +11563,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.biometricEnabled = const Value.absent(),
     this.lockScreenStyle = const Value.absent(),
     this.moreScreenViewMode = const Value.absent(),
+    this.budgetingMode = const Value.absent(),
     this.pinTimeoutMinutes = const Value.absent(),
     this.masterPhraseHash = const Value.absent(),
     this.masterPhraseSalt = const Value.absent(),
@@ -11572,6 +11623,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<bool>? biometricEnabled,
     Expression<String>? lockScreenStyle,
     Expression<String>? moreScreenViewMode,
+    Expression<String>? budgetingMode,
     Expression<int>? pinTimeoutMinutes,
     Expression<String>? masterPhraseHash,
     Expression<String>? masterPhraseSalt,
@@ -11636,6 +11688,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       if (lockScreenStyle != null) 'lock_screen_style': lockScreenStyle,
       if (moreScreenViewMode != null)
         'more_screen_view_mode': moreScreenViewMode,
+      if (budgetingMode != null) 'budgeting_mode': budgetingMode,
       if (pinTimeoutMinutes != null) 'pin_timeout_minutes': pinTimeoutMinutes,
       if (masterPhraseHash != null) 'master_phrase_hash': masterPhraseHash,
       if (masterPhraseSalt != null) 'master_phrase_salt': masterPhraseSalt,
@@ -11710,6 +11763,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<bool>? biometricEnabled,
     Value<LockScreenStyle>? lockScreenStyle,
     Value<MoreScreenViewMode>? moreScreenViewMode,
+    Value<BudgetingMode>? budgetingMode,
     Value<int>? pinTimeoutMinutes,
     Value<String?>? masterPhraseHash,
     Value<String?>? masterPhraseSalt,
@@ -11771,6 +11825,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       biometricEnabled: biometricEnabled ?? this.biometricEnabled,
       lockScreenStyle: lockScreenStyle ?? this.lockScreenStyle,
       moreScreenViewMode: moreScreenViewMode ?? this.moreScreenViewMode,
+      budgetingMode: budgetingMode ?? this.budgetingMode,
       pinTimeoutMinutes: pinTimeoutMinutes ?? this.pinTimeoutMinutes,
       masterPhraseHash: masterPhraseHash ?? this.masterPhraseHash,
       masterPhraseSalt: masterPhraseSalt ?? this.masterPhraseSalt,
@@ -11906,6 +11961,11 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
         $SettingsTable.$convertermoreScreenViewMode.toSql(
           moreScreenViewMode.value,
         ),
+      );
+    }
+    if (budgetingMode.present) {
+      map['budgeting_mode'] = Variable<String>(
+        $SettingsTable.$converterbudgetingMode.toSql(budgetingMode.value),
       );
     }
     if (pinTimeoutMinutes.present) {
@@ -12051,6 +12111,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('biometricEnabled: $biometricEnabled, ')
           ..write('lockScreenStyle: $lockScreenStyle, ')
           ..write('moreScreenViewMode: $moreScreenViewMode, ')
+          ..write('budgetingMode: $budgetingMode, ')
           ..write('pinTimeoutMinutes: $pinTimeoutMinutes, ')
           ..write('masterPhraseHash: $masterPhraseHash, ')
           ..write('masterPhraseSalt: $masterPhraseSalt, ')
@@ -30927,6 +30988,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<bool> biometricEnabled,
       Value<LockScreenStyle> lockScreenStyle,
       Value<MoreScreenViewMode> moreScreenViewMode,
+      Value<BudgetingMode> budgetingMode,
       Value<int> pinTimeoutMinutes,
       Value<String?> masterPhraseHash,
       Value<String?> masterPhraseSalt,
@@ -30987,6 +31049,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<bool> biometricEnabled,
       Value<LockScreenStyle> lockScreenStyle,
       Value<MoreScreenViewMode> moreScreenViewMode,
+      Value<BudgetingMode> budgetingMode,
       Value<int> pinTimeoutMinutes,
       Value<String?> masterPhraseHash,
       Value<String?> masterPhraseSalt,
@@ -31190,6 +31253,12 @@ class $$SettingsTableFilterComposer
   ColumnWithTypeConverterFilters<MoreScreenViewMode, MoreScreenViewMode, String>
   get moreScreenViewMode => $composableBuilder(
     column: $table.moreScreenViewMode,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<BudgetingMode, BudgetingMode, String>
+  get budgetingMode => $composableBuilder(
+    column: $table.budgetingMode,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
@@ -31511,6 +31580,11 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get budgetingMode => $composableBuilder(
+    column: $table.budgetingMode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get pinTimeoutMinutes => $composableBuilder(
     column: $table.pinTimeoutMinutes,
     builder: (column) => ColumnOrderings(column),
@@ -31808,6 +31882,12 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumnWithTypeConverter<BudgetingMode, String> get budgetingMode =>
+      $composableBuilder(
+        column: $table.budgetingMode,
+        builder: (column) => column,
+      );
+
   GeneratedColumn<int> get pinTimeoutMinutes => $composableBuilder(
     column: $table.pinTimeoutMinutes,
     builder: (column) => column,
@@ -32030,6 +32110,7 @@ class $$SettingsTableTableManager
                 Value<LockScreenStyle> lockScreenStyle = const Value.absent(),
                 Value<MoreScreenViewMode> moreScreenViewMode =
                     const Value.absent(),
+                Value<BudgetingMode> budgetingMode = const Value.absent(),
                 Value<int> pinTimeoutMinutes = const Value.absent(),
                 Value<String?> masterPhraseHash = const Value.absent(),
                 Value<String?> masterPhraseSalt = const Value.absent(),
@@ -32089,6 +32170,7 @@ class $$SettingsTableTableManager
                 biometricEnabled: biometricEnabled,
                 lockScreenStyle: lockScreenStyle,
                 moreScreenViewMode: moreScreenViewMode,
+                budgetingMode: budgetingMode,
                 pinTimeoutMinutes: pinTimeoutMinutes,
                 masterPhraseHash: masterPhraseHash,
                 masterPhraseSalt: masterPhraseSalt,
@@ -32150,6 +32232,7 @@ class $$SettingsTableTableManager
                 Value<LockScreenStyle> lockScreenStyle = const Value.absent(),
                 Value<MoreScreenViewMode> moreScreenViewMode =
                     const Value.absent(),
+                Value<BudgetingMode> budgetingMode = const Value.absent(),
                 Value<int> pinTimeoutMinutes = const Value.absent(),
                 Value<String?> masterPhraseHash = const Value.absent(),
                 Value<String?> masterPhraseSalt = const Value.absent(),
@@ -32209,6 +32292,7 @@ class $$SettingsTableTableManager
                 biometricEnabled: biometricEnabled,
                 lockScreenStyle: lockScreenStyle,
                 moreScreenViewMode: moreScreenViewMode,
+                budgetingMode: budgetingMode,
                 pinTimeoutMinutes: pinTimeoutMinutes,
                 masterPhraseHash: masterPhraseHash,
                 masterPhraseSalt: masterPhraseSalt,

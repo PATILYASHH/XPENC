@@ -980,6 +980,9 @@ class _ReadyToAssignSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (ref.watch(budgetingModeProvider) != BudgetingMode.envelope) {
+      return const SizedBox.shrink();
+    }
     final poolAccounts = ref.watch(envelopeModeAccountsProvider);
     if (poolAccounts.isEmpty) return const SizedBox.shrink();
 
@@ -1371,6 +1374,9 @@ class _BudgetsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (ref.watch(budgetingModeProvider) != BudgetingMode.budgets) {
+      return const SizedBox.shrink();
+    }
     final progress = ref.watch(budgetProgressProvider);
 
     if (progress.isEmpty) return const _SetBudgetCard();

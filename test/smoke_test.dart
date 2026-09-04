@@ -108,8 +108,8 @@ void main() {
   });
 
   testWidgets(
-    'Dashboard shows the shared Ready to Assign pool only once an account '
-    'is in Envelope Mode',
+    'Dashboard shows the shared Ready to Assign pool only in Envelope '
+    'budgeting mode, once an account is in Envelope Mode (GitHub #100)',
     (tester) async {
       await pump(tester, const DashboardScreen());
       expect(tester.takeException(), isNull);
@@ -120,6 +120,18 @@ void main() {
         final cash = await cashId();
         await db.setEnvelopeMode(cash, true);
       });
+
+      // Still hidden under the default Budgets mode, even with a pool
+      // account — the Settings switch decides which system the Dashboard
+      // surfaces.
+      await pump(tester, const DashboardScreen());
+      expect(tester.takeException(), isNull);
+      expect(find.text('Ready to Assign'), findsNothing);
+      await unmount(tester);
+
+      await tester.runAsync(
+        () => db.setBudgetingMode(BudgetingMode.envelope),
+      );
 
       await pump(tester, const DashboardScreen());
       expect(tester.takeException(), isNull);

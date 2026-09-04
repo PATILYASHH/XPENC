@@ -113,6 +113,16 @@ enum LockScreenStyle { classic, bigNumpad, scrambled }
 /// row instead, still grouped the same way.
 enum MoreScreenViewMode { list, cards }
 
+/// Which budgeting system the Dashboard and More hub surface as primary
+/// (GitHub #100). `budgets` shows the classic per-category spending-ceiling
+/// system (`BudgetsScreen`). `envelope` shows Ready to Assign / category
+/// envelopes instead. Both systems keep working and keep their own data
+/// either way — this only decides which one the Dashboard highlights and
+/// which one the More hub's "Budgets" tile opens; a user can still reach
+/// the other from wherever it's already linked from today (Account Detail's
+/// Envelope Mode toggle, or `/more/budgets` directly).
+enum BudgetingMode { budgets, envelope }
+
 // ─── Converters ─────────────────────────────────────────────────────────────
 
 /// Money crosses the DB boundary as an integer number of paise. Never a double.
@@ -792,6 +802,13 @@ class Settings extends Table {
   /// Defaults to `list` so existing users see no change.
   TextColumn get moreScreenViewMode =>
       textEnum<MoreScreenViewMode>().withDefault(const Constant('list'))();
+
+  /// Which budgeting system is primary — see [BudgetingMode] (GitHub #100).
+  /// Defaults to `budgets` so existing users see no change; switching to
+  /// `envelope` doesn't touch either system's data, it only changes which
+  /// one the Dashboard and More hub's "Budgets" tile surface.
+  TextColumn get budgetingMode =>
+      textEnum<BudgetingMode>().withDefault(const Constant('budgets'))();
 
   /// Minutes the app may sit backgrounded before the next resume re-locks it
   /// — `0` means immediately (see GitHub #60). Checked against how long the

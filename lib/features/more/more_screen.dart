@@ -18,14 +18,33 @@ class MoreScreen extends ConsumerWidget {
     final cs = theme.colorScheme;
 
     // ── Live badges ──────────────────────────────────────────────────────────
+    final budgetingMode = ref.watch(budgetingModeProvider);
     final progress = ref.watch(budgetProgressProvider);
     final overCount = progress.where((p) => p.overspent).length;
-    final budgetSubtitle = overCount > 0
-        ? '$overCount over budget'
-        : '${progress.length} active';
-    final budgetSubtitleColor = overCount > 0
-        ? AppColors.expense
-        : cs.onSurfaceVariant;
+
+    final String budgetTileLabel;
+    final String budgetTileRoute;
+    final IconData budgetTileIcon;
+    final String budgetSubtitle;
+    final Color budgetSubtitleColor;
+    if (budgetingMode == BudgetingMode.envelope) {
+      final readyToAssign = ref.watch(readyToAssignProvider);
+      budgetTileLabel = 'Ready to Assign';
+      budgetTileRoute = '/more/ready-to-assign';
+      budgetTileIcon = Icons.savings_outlined;
+      budgetSubtitle = '${MoneyFormat.compact(readyToAssign)} unassigned';
+      budgetSubtitleColor = cs.onSurfaceVariant;
+    } else {
+      budgetTileLabel = 'Budgets';
+      budgetTileRoute = '/more/budgets';
+      budgetTileIcon = Icons.donut_large_rounded;
+      budgetSubtitle = overCount > 0
+          ? '$overCount over budget'
+          : '${progress.length} active';
+      budgetSubtitleColor = overCount > 0
+          ? AppColors.expense
+          : cs.onSurfaceVariant;
+    }
 
     final netWorth =
         ref.watch(netWorthProvider).valueOrNull ?? const Money.zero();
@@ -57,9 +76,9 @@ class MoreScreen extends ConsumerWidget {
           subtitle: 'Who owes you, who you owe',
         ),
         _Item(
-          Icons.donut_large_rounded,
-          'Budgets',
-          route: '/more/budgets',
+          budgetTileIcon,
+          budgetTileLabel,
+          route: budgetTileRoute,
           subtitle: budgetSubtitle,
           subtitleColor: budgetSubtitleColor,
         ),
