@@ -177,7 +177,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 60;
+  int get schemaVersion => 61;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -511,6 +511,12 @@ class AppDatabase extends _$AppDatabase {
           transactions,
           transactions.toFxRateToBaseMicros,
         );
+      }
+      if (from < 61) {
+        // GitHub #100 — a Settings-level switch between the classic Budgets
+        // screen and Envelope Mode's Ready to Assign as the primary
+        // budgeting system. Neither system's own data changes.
+        await _addColumnIfMissing(m, settings, settings.budgetingMode);
       }
     },
     beforeOpen: (details) async {
@@ -4220,6 +4226,10 @@ class AppDatabase extends _$AppDatabase {
   Future<void> setMoreScreenViewMode(MoreScreenViewMode mode) => update(
     settings,
   ).write(SettingsCompanion(moreScreenViewMode: Value(mode)));
+
+  Future<void> setBudgetingMode(BudgetingMode mode) => update(
+    settings,
+  ).write(SettingsCompanion(budgetingMode: Value(mode)));
 
   // ── Passcode ──────────────────────────────────────────────────────────────
 

@@ -6,6 +6,7 @@ import '../../core/branding/app_info.dart';
 import '../../core/branding/brand_mark.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
+import '../../data/tables.dart' show BudgetingMode;
 import 'lock_screen_style_sheet.dart';
 import 'master_phrase_attempts_sheet.dart';
 import 'more_screen_layout_sheet.dart';
@@ -46,6 +47,7 @@ class SettingsScreen extends ConsumerWidget {
     final pinTimeoutMinutes = ref.watch(pinTimeoutMinutesProvider);
     final lockScreenStyle = ref.watch(lockScreenStyleProvider);
     final moreScreenViewMode = ref.watch(moreScreenViewModeProvider);
+    final budgetingMode = ref.watch(budgetingModeProvider);
     final hasMasterPhrase = ref.watch(hasMasterPhraseProvider);
     final masterPhraseAttemptThreshold = ref.watch(
       masterPhraseAttemptThresholdProvider,
@@ -187,6 +189,59 @@ class SettingsScreen extends ConsumerWidget {
               ),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => context.push('/more/settings/dashboard'),
+            ),
+          ),
+
+          // ── Budgeting ──────────────────────────────────────────────────────
+          _sectionLabel(context, 'Budgeting'),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.donut_large_outlined),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Budgeting mode',
+                        style: theme.textTheme.titleSmall,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Budgets sets a spending ceiling per category. Envelope '
+                    '(Ready to Assign) instead assigns money you actually '
+                    'have into categories first. Both keep working either '
+                    'way — this only picks which one the Dashboard and More '
+                    'hub show.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SegmentedButton<BudgetingMode>(
+                    segments: const [
+                      ButtonSegment(
+                        value: BudgetingMode.budgets,
+                        label: Text('Budgets'),
+                        icon: Icon(Icons.donut_large_outlined),
+                      ),
+                      ButtonSegment(
+                        value: BudgetingMode.envelope,
+                        label: Text('Envelope'),
+                        icon: Icon(Icons.savings_outlined),
+                      ),
+                    ],
+                    selected: {budgetingMode},
+                    onSelectionChanged: (selection) => ref
+                        .read(dbProvider)
+                        .setBudgetingMode(selection.first),
+                  ),
+                ],
+              ),
             ),
           ),
 

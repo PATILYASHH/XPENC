@@ -872,6 +872,12 @@ final hideAmountsProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.hideAmounts ?? false;
 });
 
+/// Which budgeting system is primary — see [BudgetingMode] (GitHub #100).
+final budgetingModeProvider = Provider<BudgetingMode>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.budgetingMode ??
+      BudgetingMode.budgets;
+});
+
 /// A standing notification with "Add expense" / "Add income" shortcuts —
 /// off by default. See GitHub #38.
 final notificationQuickAddEnabledProvider = Provider<bool>((ref) {

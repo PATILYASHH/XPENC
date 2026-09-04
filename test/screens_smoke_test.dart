@@ -674,6 +674,51 @@ void main() {
     await unmount(tester);
   });
 
+  testWidgets(
+    'Settings: Budgeting mode defaults to Budgets and switching to '
+    'Envelope persists (GitHub #100)',
+    (tester) async {
+      await pump(tester, const SettingsScreen());
+      expect(tester.takeException(), isNull);
+
+      await tester.scrollUntilVisible(find.text('Envelope'), 300);
+      await tester.ensureVisible(find.text('Envelope'));
+      await tester.pumpAndSettle();
+      expect(find.text('Budgets'), findsWidgets);
+      expect(find.text('Envelope'), findsOneWidget);
+
+      final initial = await db.getSettings();
+      expect(initial.budgetingMode, BudgetingMode.budgets);
+
+      await tester.tap(find.text('Envelope'));
+      await tester.pump();
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 200)),
+      );
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+
+      await tester.runAsync(() async {
+        final updated = await db.getSettings();
+        expect(updated.budgetingMode, BudgetingMode.envelope);
+      });
+      await unmount(tester);
+    },
+  );
+
+  testWidgets(
+    'More hub: the Budgets tile becomes Ready to Assign in Envelope mode '
+    '(GitHub #100)',
+    (tester) async {
+      await db.setBudgetingMode(BudgetingMode.envelope);
+      await pump(tester, const MoreScreen());
+      expect(tester.takeException(), isNull);
+      expect(find.text('Ready to Assign'), findsOneWidget);
+      expect(find.text('Budgets'), findsNothing);
+      await unmount(tester);
+    },
+  );
+
   testWidgets('Settings renders', (tester) async {
     await pump(tester, const SettingsScreen());
     expect(tester.takeException(), isNull);
