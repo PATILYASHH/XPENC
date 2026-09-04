@@ -10,6 +10,7 @@ import '../core/money.dart';
 import '../core/security/passcode.dart';
 import '../features/message_capture/parser/bank_message.dart';
 import '../features/message_capture/parser/message_parser.dart';
+import 'currency_conversion.dart';
 import 'tables.dart';
 
 part 'database.g.dart';
@@ -2176,6 +2177,70 @@ class AppDatabase extends _$AppDatabase {
       }
     });
   }
+
+  // ── Currency rates ───────────────────────────────────────────────────────
+
+  /// The most recent rate for [currencyCode] at or before [asOf] (defaults
+  /// to now) — `null` if none has been entered yet as of that date. This is
+  /// what a transaction snapshots at post time, and what a live figure
+  /// (Net Worth) resolves with `asOf` left at its default.
+  Future<CurrencyRateRow?> latestRate(
+    String currencyCode, {
+    DateTime? asOf,
+  }) {
+    final cutoff = asOf ?? DateTime.now();
+    return (select(currencyRates)
+          ..where(
+            (r) =>
+                r.currencyCode.equals(currencyCode) &
+                r.effectiveAt.isSmallerOrEqualValue(cutoff),
+          )
+          ..orderBy([
+            (r) =>
+                OrderingTerm(expression: r.effectiveAt, mode: OrderingMode.desc),
+          ])
+          ..limit(1))
+        .getSingleOrNull();
+  }
+
+  /// Records a new rate. Always an insert, never an update — see
+  /// [CurrencyRates]'s doc for why history must never be overwritten.
+  Future<int> addCurrencyRate({
+    required String currencyCode,
+    required int rateToBaseMicros,
+    required DateTime effectiveAt,
+  }) {
+    if (rateToBaseMicros <= 0) {
+      throw ArgumentError('Rate must be positive.');
+    }
+    if (currencyForCode(currencyCode).code != currencyCode) {
+      throw ArgumentError('Unknown currency code: $currencyCode.');
+    }
+    return into(currencyRates).insert(
+      CurrencyRatesCompanion.insert(
+        currencyCode: currencyCode,
+        rateToBaseMicros: rateToBaseMicros,
+        effectiveAt: effectiveAt,
+      ),
+    );
+  }
+
+  /// One row per currency that has ever had a rate entered, each the most
+  /// recent — the list the Currency settings screen renders. Folds in Dart
+  /// rather than SQL, same style as [recalculateBalances]/[watchNetWorth].
+  Stream<List<CurrencyRateRow>> watchCurrentRates() =>
+      select(currencyRates).watch().map((rows) {
+        final latest = <String, CurrencyRateRow>{};
+        for (final r in rows) {
+          final existing = latest[r.currencyCode];
+          if (existing == null || r.effectiveAt.isAfter(existing.effectiveAt)) {
+            latest[r.currencyCode] = r;
+          }
+        }
+        final list = latest.values.toList()
+          ..sort((a, b) => a.currencyCode.compareTo(b.currencyCode));
+        return list;
+      });
 
   // ── Queries ───────────────────────────────────────────────────────────────
 
