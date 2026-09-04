@@ -871,7 +871,9 @@ class AppDatabase extends _$AppDatabase {
         await _adjust(t.accountId, -amt);
       case TxType.transfer:
         await _adjust(t.accountId, -amt);
-        await _adjust(t.toAccountId!, amt);
+        final creditAmt =
+            t.toAmount == null ? amt : Money(t.toAmount!.paise * sign);
+        await _adjust(t.toAccountId!, creditAmt);
     }
   }
 
@@ -2211,7 +2213,7 @@ class AppDatabase extends _$AppDatabase {
             bump(t.accountId, -t.amount);
           case TxType.transfer:
             bump(t.accountId, -t.amount);
-            bump(t.toAccountId!, t.amount);
+            bump(t.toAccountId!, t.toAmount ?? t.amount);
         }
       }
 
