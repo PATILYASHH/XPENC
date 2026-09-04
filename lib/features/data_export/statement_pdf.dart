@@ -5,6 +5,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../../core/branding/app_info.dart';
+import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../data/database.dart';
 import '../../data/tables.dart';
@@ -27,6 +28,13 @@ Future<Uint8List> buildAccountStatementPdf({
   required DateTime end,
 }) async {
   final doc = pw.Document(title: '${account.name} statement');
+  // This account's own currency, not the app-wide parent one — a foreign-
+  // currency account's statement must state (and format) figures in the
+  // currency they actually happened in. Null means the parent currency,
+  // same convention as [Accounts.currencyCode] itself.
+  final currency = account.currencyCode == null
+      ? MoneyFormat.currency
+      : currencyForCode(account.currencyCode!);
 
   doc.addPage(
     pw.MultiPage(
@@ -38,9 +46,12 @@ Future<Uint8List> buildAccountStatementPdf({
         _kv('Type', _accountTypeLabel(account.type)),
         if (_bankLine(account) case final line?) _kv('Bank', line),
         _kv('Period', '${_dateLabel(start)} to ${_dateLabel(end)}'),
-        _kv('Currency', MoneyFormat.currency.code),
+        _kv('Currency', currency.code),
         pw.SizedBox(height: 12),
-        _kv('Opening balance', MoneyFormat.bare(statement.openingBalance)),
+        _kv(
+          'Opening balance',
+          MoneyFormat.bareIn(statement.openingBalance, currency),
+        ),
         pw.SizedBox(height: 12),
         if (statement.lines.isEmpty)
           pw.Text(
@@ -61,9 +72,13 @@ Future<Uint8List> buildAccountStatementPdf({
                 [
                   _dateLabel(line.date),
                   line.description,
-                  line.debit.isZero ? '' : MoneyFormat.bare(line.debit),
-                  line.credit.isZero ? '' : MoneyFormat.bare(line.credit),
-                  MoneyFormat.bare(line.balance),
+                  line.debit.isZero
+                      ? ''
+                      : MoneyFormat.bareIn(line.debit, currency),
+                  line.credit.isZero
+                      ? ''
+                      : MoneyFormat.bareIn(line.credit, currency),
+                  MoneyFormat.bareIn(line.balance, currency),
                 ],
             ],
             cellAlignments: const {
@@ -82,7 +97,10 @@ Future<Uint8List> buildAccountStatementPdf({
             headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
           ),
         pw.SizedBox(height: 12),
-        _kv('Closing balance', MoneyFormat.bare(statement.closingBalance)),
+        _kv(
+          'Closing balance',
+          MoneyFormat.bareIn(statement.closingBalance, currency),
+        ),
       ],
     ),
   );
