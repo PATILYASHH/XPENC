@@ -81,6 +81,27 @@ void main() {
       expect(MoneyFormat.signed(const Money(50000)), startsWith('+'));
       expect(MoneyFormat.signed(const Money(50000)), isNot(contains(r'$')));
     });
+
+    test('symbolIn formats against an explicit currency, ignoring the '
+        'globally configured one', () {
+      MoneyFormat.configure(
+        currency: currencyForCode('INR'),
+        showSymbol: true,
+      );
+      final out = MoneyFormat.symbolIn(const Money(125050), currencyForCode('USD'));
+      expect(out, contains(r'$'));
+      expect(out, contains('1,250.50'));
+      expect(out, isNot(contains('₹')));
+    });
+
+    test('symbolIn respects a zero-decimal currency', () {
+      final out = MoneyFormat.symbolIn(
+        const Money(125000),
+        currencyForCode('JPY'),
+      );
+      expect(out, contains('¥'));
+      expect(out, isNot(contains('.00')));
+    });
   });
 
   group('settings persistence', () {

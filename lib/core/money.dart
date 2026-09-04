@@ -119,6 +119,18 @@ class MoneyFormat {
   static String symbol(Money m) =>
       _showSymbol ? _withSymbol.format(m.rupees) : _bare.format(m.rupees);
 
+  /// Formats [m] against an explicit [currency], ignoring whatever
+  /// [MoneyFormat] is globally configured to. For rendering one specific
+  /// account's or transaction's own (possibly foreign) amount — every
+  /// aggregate total (Dashboard, Net Worth, Reports, Budgets) stays on
+  /// [symbol] as before, since those are always parent-currency figures.
+  /// Not cached like [_withSymbol] — this path is only ever used per-row,
+  /// not hot enough to need it.
+  static String symbolIn(Money m, Currency currency) {
+    if (!_showSymbol) return _buildBare(currency).format(m.rupees);
+    return _buildWithSymbol(currency).format(m.rupees);
+  }
+
   /// `12,50,000.00` — never carries a symbol, whatever the setting.
   static String bare(Money m) => _bare.format(m.rupees);
 
