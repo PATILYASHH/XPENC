@@ -27,7 +27,9 @@ part 'database.g.dart';
 Money accountMovement(TransactionRow tx, Set<int> ownIds) => switch (tx.type) {
   TxType.income || TxType.personIn => tx.amount,
   TxType.expense || TxType.personOut => -tx.amount,
-  TxType.transfer => ownIds.contains(tx.accountId) ? -tx.amount : tx.amount,
+  TxType.transfer => ownIds.contains(tx.accountId)
+      ? -tx.amount
+      : (tx.toAmount ?? tx.amount),
 };
 
 /// The gap between automatic backups for a given schedule. `monthly` is
