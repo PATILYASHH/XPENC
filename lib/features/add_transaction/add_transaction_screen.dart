@@ -10,6 +10,7 @@ import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/money_text.dart';
+import '../../data/currency_conversion.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
@@ -503,6 +504,76 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     );
     if (selected == null || !mounted) return;
     setState(() => _categoryId = selected);
+  }
+
+  /// The currency [accountId] actually posts in — null for the parent
+  /// currency, same "null means parent" convention as
+  /// [AccountRow.currencyCode] itself. A debit/UPI instrument has no
+  /// currency of its own (see `tables.dart`'s doc on `Accounts.currencyCode`)
+  /// so this follows [AccountRow.linkedAccountId] once to the account that
+  /// actually holds the money.
+  Currency? _currencyForAccount(int? accountId, Map<int, AccountRow> accountMap) {
+    final account = accountMap[accountId];
+    if (account == null) return null;
+    final code = account.linkedAccountId == null
+        ? account.currencyCode
+        : accountMap[account.linkedAccountId]?.currencyCode;
+    return code == null ? null : currencyForCode(code);
+  }
+
+  /// An informational "≈ X received" line for a transfer between two
+  /// accounts that don't share a currency — read-only, purely a preview of
+  /// what `AppDatabase.addTransaction` will itself compute and store as
+  /// `toAmount` at save time (see its `_resolveTxCurrency`/cross-currency
+  /// logic), using whatever rate is current right now. `null` whenever
+  /// there's nothing to preview: not a transfer, no destination picked yet,
+  /// both legs share a currency, the amount is still zero, or a needed rate
+  /// hasn't loaded/been entered yet — the save button itself is the one
+  /// source of truth for whether posting will actually succeed.
+  Widget? _crossCurrencyTransferPreview(Map<int, AccountRow> accountMap) {
+    if (_type != TxType.transfer || _toAccountId == null) return null;
+    final sourceCurrency = _currencyForAccount(_accountId, accountMap);
+    final destCurrency = _currencyForAccount(_toAccountId, accountMap);
+    if (sourceCurrency?.code == destCurrency?.code) return null;
+
+    final amount = _amount;
+    if (!amount.isPositive) return null;
+
+    final rates = ref.watch(currencyRatesProvider).valueOrNull;
+    if (rates == null) return null;
+    final rateFor = {for (final r in rates) r.currencyCode: r.rateToBaseMicros};
+
+    Money sourceBase;
+    if (sourceCurrency == null) {
+      sourceBase = amount;
+    } else {
+      final rate = rateFor[sourceCurrency.code];
+      if (rate == null) return null;
+      sourceBase = convertUsingRate(amount, rate);
+    }
+
+    Money destAmount;
+    if (destCurrency == null) {
+      destAmount = sourceBase;
+    } else {
+      final rate = rateFor[destCurrency.code];
+      if (rate == null) return null;
+      destAmount = Money((sourceBase.paise * currencyRateScale) ~/ rate);
+    }
+
+    final theme = Theme.of(context);
+    final formatted = destCurrency == null
+        ? MoneyFormat.symbol(destAmount)
+        : MoneyFormat.symbolIn(destAmount, destCurrency);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Text(
+        '≈ $formatted received, at today\'s rate',
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
   }
 
   /// Non-null only for an expense on an Envelope Mode account — the signal
@@ -1600,6 +1671,12 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     // else here watches only starts loading on its first read.
     ref.watch(allAllocationsProvider);
     final amount = _amount;
+    // The amount always debits/credits _accountId — the source account for
+    // every type, transfer included — so that's whose currency the hero
+    // figure and its keypad are in. Null means the parent currency, which
+    // is also what every existing screen already renders (no account
+    // selected yet defaults to the same thing it always has).
+    final txCurrency = _currencyForAccount(_accountId, accountMap);
 
     return Scaffold(
       appBar: AppBar(
@@ -1678,7 +1755,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                         fit: BoxFit.scaleDown,
                         child: Text(
                           key: const Key('amountDisplay'),
-                          MoneyFormat.symbol(amount),
+                          txCurrency == null
+                              ? MoneyFormat.symbol(amount)
+                              : MoneyFormat.symbolIn(amount, txCurrency),
                           style: theme.textTheme.displayMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                             color: colorForTxType(_type),
@@ -1732,6 +1811,11 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           onTap: () => _pickAccount(isFrom: false),
         ),
       );
+      final preview = _crossCurrencyTransferPreview(accountMap);
+      if (preview != null) {
+        tiles.add(const SizedBox(height: 8));
+        tiles.add(preview);
+      }
     } else {
       // A hybrid payment has no single "paid via" account of its own — its
       // editor below picks each leg's account instead.
@@ -1749,9 +1833,14 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       }
       // Foreign currency applies to both income and expense (unlike
       // split/hybrid/change, which are expense-only) and stays available
-      // while editing.
-      tiles.add(_foreignToggleTile());
-      tiles.add(const SizedBox(height: 12));
+      // while editing. Hidden once the account itself already carries a
+      // non-parent currency — the transaction's real amount is already
+      // natively foreign then, so a second manual foreign-currency
+      // annotation on top would be redundant and confusing.
+      if (_currencyForAccount(_accountId, accountMap) == null) {
+        tiles.add(_foreignToggleTile());
+        tiles.add(const SizedBox(height: 12));
+      }
       if (_type == TxType.expense) {
         tiles.add(_splitToggleTile());
         tiles.add(const SizedBox(height: 12));
