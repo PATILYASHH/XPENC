@@ -832,6 +832,7 @@ class AppDatabase extends _$AppDatabase {
     await delete(categories).go();
     await delete(accounts).go();
     await delete(tags).go();
+    await delete(currencyRates).go();
     await _seedDefaultAccountsAndCategories();
   });
 
@@ -5088,6 +5089,7 @@ class AppDatabase extends _$AppDatabase {
       'schemaVersion': schemaVersion,
       'exportedAt': DateTime.now().toIso8601String(),
       'accounts': (await select(accounts).get()).map(m).toList(),
+      'currencyRates': (await select(currencyRates).get()).map(m).toList(),
       'categories': (await select(categories).get()).map(m).toList(),
       'recurringRules': (await select(recurringRules).get()).map(m).toList(),
       'transactions': (await select(transactions).get()).map(m).toList(),
@@ -5209,6 +5211,7 @@ class AppDatabase extends _$AppDatabase {
       await delete(shoppingItems).go();
       await delete(shoppingLists).go();
       await delete(settings).go();
+      await delete(currencyRates).go();
 
       Future<void> load<T extends Table, D>(
         TableInfo<T, D> table,
@@ -5232,6 +5235,10 @@ class AppDatabase extends _$AppDatabase {
       // `persons` before `transactions` (transactions.person_id), and
       // `transactions` before `person_entries` (person_entries.transaction_id).
       await load(accounts, 'accounts');
+      // No foreign key references currencyRates, so it can load anywhere —
+      // grouped with accounts since that's the other half of "an account's
+      // currency resolves to a rate" (AppDatabase.latestRate).
+      await load(currencyRates, 'currencyRates');
       await load(categories, 'categories');
       await load(persons, 'persons');
       await load(tags, 'tags');
