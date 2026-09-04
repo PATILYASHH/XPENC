@@ -56,6 +56,87 @@ void main() {
           .firstWhere((c) => c.name == name)
           .id;
 
+  group('setBudgetingMode — GitHub #100', () {
+    test(
+      'switching to envelope enrolls every existing account, including one '
+      'never touched before',
+      () async {
+        final cash = await cashId();
+        final bank = await db.addAccount(
+          name: 'IPPB',
+          type: AccountType.bank,
+          colorValue: 0,
+          iconKey: 'bank',
+          openingBalance: Money.fromRupees(5000),
+        );
+
+        await db.setBudgetingMode(BudgetingMode.envelope);
+
+        final accounts = await db.watchAccounts().first;
+        expect(
+          accounts.firstWhere((a) => a.id == cash).envelopeMode,
+          isTrue,
+        );
+        expect(
+          accounts.firstWhere((a) => a.id == bank).envelopeMode,
+          isTrue,
+        );
+      },
+    );
+
+    test(
+      'switching back to budgets leaves every account\'s flag untouched',
+      () async {
+        final cash = await cashId();
+        await db.setBudgetingMode(BudgetingMode.envelope);
+        await db.setBudgetingMode(BudgetingMode.budgets);
+
+        final after = await db.watchAccounts().first;
+        expect(after.firstWhere((a) => a.id == cash).envelopeMode, isTrue);
+      },
+    );
+
+    test(
+      'a new account created while Envelope is the active mode joins the '
+      'pool automatically',
+      () async {
+        await db.setBudgetingMode(BudgetingMode.envelope);
+
+        final newAccount = await db.addAccount(
+          name: 'New Wallet',
+          type: AccountType.cash,
+          colorValue: 0,
+          iconKey: 'wallet',
+          openingBalance: const Money.zero(),
+        );
+
+        final row = await (db.select(
+          db.accounts,
+        )..where((a) => a.id.equals(newAccount))).getSingle();
+        expect(row.envelopeMode, isTrue);
+      },
+    );
+
+    test(
+      'a new account created while Budgets is the active mode does not '
+      'join the pool',
+      () async {
+        final newAccount = await db.addAccount(
+          name: 'New Wallet',
+          type: AccountType.cash,
+          colorValue: 0,
+          iconKey: 'wallet',
+          openingBalance: const Money.zero(),
+        );
+
+        final row = await (db.select(
+          db.accounts,
+        )..where((a) => a.id.equals(newAccount))).getSingle();
+        expect(row.envelopeMode, isFalse);
+      },
+    );
+  });
+
   group('addAllocation', () {
     test('rejects an account with Envelope Mode off', () async {
       final cash = await cashId();

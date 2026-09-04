@@ -2543,21 +2543,29 @@ class AppDatabase extends _$AppDatabase {
       throw ArgumentError('Unknown currency code: $resolvedCurrencyCode.');
     }
 
-    return into(accounts).insert(
-      AccountsCompanion.insert(
-        name: name,
-        type: type,
-        cardKind: Value(cardKind),
-        linkedAccountId: Value(linkedAccountId),
-        bankName: Value(bankName),
-        last4: Value(last4),
-        colorValue: colorValue,
-        currencyCode: Value(resolvedCurrencyCode),
-        iconKey: iconKey,
-        openingBalance: opening,
-        currentBalance: opening,
-      ),
-    );
+    return transaction(() async {
+      // GitHub #100 — while Envelope is the primary budgeting system, every
+      // account joins the shared pool automatically, including a new one;
+      // there's no separate "turn on Envelope Mode" step to remember.
+      final envelopeByDefault =
+          (await getSettings()).budgetingMode == BudgetingMode.envelope;
+      return into(accounts).insert(
+        AccountsCompanion.insert(
+          name: name,
+          type: type,
+          cardKind: Value(cardKind),
+          linkedAccountId: Value(linkedAccountId),
+          bankName: Value(bankName),
+          last4: Value(last4),
+          colorValue: colorValue,
+          currencyCode: Value(resolvedCurrencyCode),
+          iconKey: iconKey,
+          openingBalance: opening,
+          currentBalance: opening,
+          envelopeMode: Value(envelopeByDefault),
+        ),
+      );
+    });
   }
 
   /// GitHub #88 — the only account field ever offered for editing after
@@ -4227,9 +4235,22 @@ class AppDatabase extends _$AppDatabase {
     settings,
   ).write(SettingsCompanion(moreScreenViewMode: Value(mode)));
 
-  Future<void> setBudgetingMode(BudgetingMode mode) => update(
-    settings,
-  ).write(SettingsCompanion(budgetingMode: Value(mode)));
+  /// Switching to [BudgetingMode.envelope] is meant to be the only step —
+  /// GitHub #100 asked that every account join the shared pool at once
+  /// rather than needing its own trip to Account Detail's Envelope Mode
+  /// toggle. Switching back to `budgets` leaves every account's flag as-is
+  /// (nothing here reads it while Budgets is the active mode), so flipping
+  /// back to Envelope later doesn't lose anything.
+  Future<void> setBudgetingMode(BudgetingMode mode) => transaction(() async {
+    await update(
+      settings,
+    ).write(SettingsCompanion(budgetingMode: Value(mode)));
+    if (mode == BudgetingMode.envelope) {
+      await update(
+        accounts,
+      ).write(const AccountsCompanion(envelopeMode: Value(true)));
+    }
+  });
 
   // ── Passcode ──────────────────────────────────────────────────────────────
 

@@ -446,6 +446,46 @@ void main() {
   );
 
   testWidgets(
+    'Assign sheet offers an account picker once more than one account is '
+    'in the pool (GitHub #100)',
+    (tester) async {
+      late int cash;
+      await tester.runAsync(() async {
+        final seeded = await seed();
+        cash = seeded.cash;
+        await db.setEnvelopeMode(cash, true);
+      });
+      await pump(tester, const ReadyToAssignScreen());
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.text('Food').first);
+      await tester.pumpAndSettle();
+      // Only one pool account so far — no need to ask which one.
+      expect(find.text('Account'), findsNothing);
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+
+      await tester.runAsync(() async {
+        final bank = await db.addAccount(
+          name: 'IPPB',
+          type: AccountType.bank,
+          colorValue: 0,
+          iconKey: 'bank',
+          openingBalance: Money.fromRupees(5000),
+        );
+        await db.setEnvelopeMode(bank, true);
+      });
+      await pump(tester, const ReadyToAssignScreen());
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.text('Food').first);
+      await tester.pumpAndSettle();
+      expect(find.text('Account'), findsOneWidget);
+      await unmount(tester);
+    },
+  );
+
+  testWidgets(
     'Ready to Assign screen shows the shared pool total and category '
     'balances',
     (tester) async {
@@ -707,17 +747,18 @@ void main() {
   );
 
   testWidgets(
-    'More hub: the Budgets tile becomes Ready to Assign in Envelope mode '
+    'More hub: the Budgets tile becomes Envelope in Envelope mode '
     '(GitHub #100)',
     (tester) async {
       await db.setBudgetingMode(BudgetingMode.envelope);
       await pump(tester, const MoreScreen());
       expect(tester.takeException(), isNull);
-      expect(find.text('Ready to Assign'), findsOneWidget);
+      expect(find.text('Envelope'), findsOneWidget);
       expect(find.text('Budgets'), findsNothing);
       await unmount(tester);
     },
   );
+
 
   testWidgets('Settings renders', (tester) async {
     await pump(tester, const SettingsScreen());
