@@ -2444,6 +2444,7 @@ class AppDatabase extends _$AppDatabase {
     required int colorValue,
     required String iconKey,
     required Money openingBalance,
+    String? currencyCode,
   }) {
     if (type == AccountType.card && cardKind == null) {
       throw ArgumentError('A card must be credit or debit.');
@@ -2453,10 +2454,16 @@ class AppDatabase extends _$AppDatabase {
         'A debit card must be linked to the bank account it draws from.',
       );
     }
-    // An instrument (debit card) holds no balance of its own.
+    // An instrument (debit card) holds no balance, and no currency, of its
+    // own — it always mirrors the account it draws from.
     final opening = linkedAccountId == null
         ? openingBalance
         : const Money.zero();
+    final resolvedCurrencyCode = linkedAccountId == null ? currencyCode : null;
+    if (resolvedCurrencyCode != null &&
+        currencyForCode(resolvedCurrencyCode).code != resolvedCurrencyCode) {
+      throw ArgumentError('Unknown currency code: $resolvedCurrencyCode.');
+    }
 
     return into(accounts).insert(
       AccountsCompanion.insert(
@@ -2467,6 +2474,7 @@ class AppDatabase extends _$AppDatabase {
         bankName: Value(bankName),
         last4: Value(last4),
         colorValue: colorValue,
+        currencyCode: Value(resolvedCurrencyCode),
         iconKey: iconKey,
         openingBalance: opening,
         currentBalance: opening,
@@ -2485,6 +2493,35 @@ class AppDatabase extends _$AppDatabase {
     }
     return (update(accounts)..where((a) => a.id.equals(id))).write(
       AccountsCompanion(name: Value(trimmed)),
+    );
+  }
+
+  /// Changes an account's currency. Only ever allowed before it has a
+  /// transaction — once one exists, its native amount is only meaningful
+  /// under the currency it was posted in, so the field locks (see the
+  /// design spec's "an account's currency locks once it has its first
+  /// transaction" decision). A linked card can never set its own currency —
+  /// it always mirrors the account it draws from.
+  Future<void> setAccountCurrency(int id, String? currencyCode) async {
+    if (currencyCode != null &&
+        currencyForCode(currencyCode).code != currencyCode) {
+      throw ArgumentError('Unknown currency code: $currencyCode.');
+    }
+    final account = await (select(
+      accounts,
+    )..where((a) => a.id.equals(id))).getSingle();
+    if (account.linkedAccountId != null) {
+      throw ArgumentError(
+        "A linked card always uses its bank account's currency.",
+      );
+    }
+    if (await countTransactionsForAccount(id) > 0) {
+      throw ArgumentError(
+        'This account already has transactions — its currency is locked.',
+      );
+    }
+    await (update(accounts)..where((a) => a.id.equals(id))).write(
+      AccountsCompanion(currencyCode: Value(currencyCode)),
     );
   }
 
