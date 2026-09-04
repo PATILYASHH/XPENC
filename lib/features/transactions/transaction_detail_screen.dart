@@ -340,6 +340,13 @@ class _Hero extends StatelessWidget {
         (t.type == TxType.expense || t.type == TxType.personOut)
         ? -t.amount
         : t.amount;
+    // The row's own snapshotted currency — authoritative regardless of
+    // whether the account it was posted from could somehow have a
+    // different currency today (it can't, once posted, but the
+    // transaction is self-describing either way).
+    final currency = t.currencyCode == null
+        ? null
+        : currencyForCode(t.currencyCode!);
 
     final (String label, IconData icon) = switch (t.type) {
       TxType.income => ('Income', Icons.arrow_downward_rounded),
@@ -358,6 +365,7 @@ class _Hero extends StatelessWidget {
             displayAmount,
             signed: !isTransfer,
             color: color,
+            currency: currency,
             style: theme.textTheme.displaySmall?.copyWith(
               fontWeight: FontWeight.w700,
             ),
@@ -628,6 +636,9 @@ class _LinkedTxRow extends StatelessWidget {
         (linked.type == TxType.expense || linked.type == TxType.personOut)
         ? -linked.amount
         : linked.amount;
+    final currency = linked.currencyCode == null
+        ? null
+        : currencyForCode(linked.currencyCode!);
 
     return Row(
       children: [
@@ -651,6 +662,7 @@ class _LinkedTxRow extends StatelessWidget {
                     displayAmount,
                     signed: !isTransfer,
                     color: colorForTxType(linked.type),
+                    currency: currency,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
