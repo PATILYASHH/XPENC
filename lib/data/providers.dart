@@ -686,6 +686,12 @@ final showCurrencySymbolProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.showCurrencySymbol ?? true;
 });
 
+/// One row per currency that has a rate entered, each the most recent — the
+/// Currency settings screen's list.
+final currencyRatesProvider = StreamProvider<List<CurrencyRateRow>>(
+  (ref) => ref.watch(dbProvider).watchCurrentRates(),
+);
+
 /// Whether "Mark as repaid" (Persons) is offered at all. Off by default —
 /// lending/borrowing stays out of income/expense unless asked for.
 final countRepaymentsAsIncomeProvider = Provider<bool>((ref) {
