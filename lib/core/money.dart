@@ -134,6 +134,12 @@ class MoneyFormat {
   /// `₹ ` — for an amount [TextField]'s `prefixText`. Empty when the symbol
   /// is hidden, so the field never shows a stale currency the user turned off.
   static String get inputPrefix => _showSymbol ? '${_currency.symbol} ' : '';
+
+  /// Formats [amount] using [currency]'s own symbol/decimal digits, without
+  /// touching the app-wide [configure]d currency — for displaying a foreign-
+  /// currency annotation (GitHub #85) alongside the home-currency amount.
+  static String forCurrency(Money amount, Currency currency) =>
+      _buildWithSymbol(currency).format(amount.rupees);
 }
 
 /// Amounts must render with tabular figures so columns of numbers line up.

@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../settings/currency_picker_sheet.dart';
 import '../tags/tag_picker_sheet.dart';
 
 /// Opens the add/edit sheet. Pass [existing] to edit that rule instead of
@@ -52,6 +54,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
   final _noteController = TextEditingController();
   final _promoAmountController = TextEditingController();
   final _promoOccurrencesController = TextEditingController();
+  final _foreignAmountController = TextEditingController();
 
   _RuleKind _ruleKind = _RuleKind.expense;
   int? _accountId;
@@ -64,6 +67,13 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
   bool _hasPromo = false;
   bool _submitting = false;
   Set<int> _tagIds = {};
+
+  /// Same annotation as a transaction's own (GitHub #85) — "this is really a
+  /// $9.99 subscription" — carried on the rule so every occurrence it posts
+  /// keeps showing it. Not offered for a goal/loan rule: a transfer into a
+  /// goal or loan has no external "cost" to record.
+  bool _hasForeignCurrency = false;
+  String? _foreignCurrencyCode;
 
   bool get _isEditing => widget.existing != null;
 
@@ -102,6 +112,11 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     if (e.promoOccurrencesLeft != null) {
       _promoOccurrencesController.text = '${e.promoOccurrencesLeft}';
     }
+    _hasForeignCurrency = e.foreignAmount != null;
+    _foreignCurrencyCode = e.foreignCurrencyCode;
+    if (e.foreignAmount != null) {
+      _foreignAmountController.text = _bufferFromMoney(e.foreignAmount!);
+    }
     _loadTagIds(e.id);
   }
 
@@ -130,6 +145,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     _noteController.dispose();
     _promoAmountController.dispose();
     _promoOccurrencesController.dispose();
+    _foreignAmountController.dispose();
     super.dispose();
   }
 
@@ -196,6 +212,19 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
       }
     }
 
+    String? foreignCurrencyCode;
+    Money? foreignAmount;
+    if (_hasForeignCurrency && !isGoalOrLoan) {
+      foreignCurrencyCode = _foreignCurrencyCode;
+      foreignAmount = Money.tryParse(_foreignAmountController.text);
+      if (foreignCurrencyCode == null ||
+          foreignAmount == null ||
+          !foreignAmount.isPositive) {
+        _showError('Choose a currency and enter its amount.');
+        return;
+      }
+    }
+
     setState(() => _submitting = true);
     final navigator = Navigator.of(context);
     try {
@@ -219,6 +248,8 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               promoAmount: promoAmount,
               promoOccurrences: promoOccurrences,
               tagIds: _tagIds,
+              foreignCurrencyCode: foreignCurrencyCode,
+              foreignAmount: foreignAmount,
             );
       } else {
         await ref
@@ -239,6 +270,8 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               promoAmount: promoAmount,
               promoOccurrences: promoOccurrences,
               tagIds: _tagIds,
+              foreignCurrencyCode: foreignCurrencyCode,
+              foreignAmount: foreignAmount,
             );
       }
     } on ArgumentError catch (e) {
@@ -438,6 +471,55 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
                   ),
                 ],
               ),
+            ],
+            if (!isGoalOrLoan) ...[
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Foreign currency'),
+                subtitle: const Text(
+                  'Record what this really costs in another currency.',
+                ),
+                value: _hasForeignCurrency,
+                onChanged: (v) => setState(() => _hasForeignCurrency = v),
+              ),
+              if (_hasForeignCurrency) ...[
+                const SizedBox(height: 4),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () async {
+                          final picked = await CurrencyPickerSheet.pick(
+                            context,
+                            initialCode:
+                                _foreignCurrencyCode ??
+                                MoneyFormat.currency.code,
+                          );
+                          if (picked == null || !mounted) return;
+                          setState(() => _foreignCurrencyCode = picked.code);
+                        },
+                        child: Text(
+                          currencyForCode(_foreignCurrencyCode).code,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: TextField(
+                        controller: _foreignAmountController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: 'Foreign amount',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
             const SizedBox(height: 4),
             DropdownButtonFormField<int>(

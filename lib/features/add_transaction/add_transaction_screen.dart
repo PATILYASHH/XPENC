@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/app_icons.dart';
+import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/money_text.dart';
@@ -13,6 +14,7 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../accounts/envelope_outflow.dart';
+import '../settings/currency_picker_sheet.dart';
 import '../tags/tag_picker_sheet.dart';
 import 'amount_buffer.dart';
 import 'receipt_storage.dart';
@@ -163,6 +165,17 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   final _changeAmountController = TextEditingController();
   final _changeAmountFocus = FocusNode();
 
+  /// Income/expense only — "this was originally paid in another currency"
+  /// (GitHub #85), purely informational: [_amount] stays what actually moved
+  /// through the account. Unlike hybrid payment/change, this can be edited
+  /// after the fact, so it isn't gated on `!_isEditing`. Mutually exclusive
+  /// with hybrid payment and change (same toggle group); coexists with
+  /// split, since a split doesn't touch the transaction's own amount/currency.
+  bool _hasForeignCurrency = false;
+  String? _foreignCurrencyCode;
+  final _foreignAmountController = TextEditingController();
+  final _foreignAmountFocus = FocusNode();
+
   /// The receipt path that will be saved — an existing one loaded for
   /// editing, a freshly picked one, or null.
   String? _imagePath;
@@ -201,6 +214,16 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   Money get _changeAmount =>
       Money.tryParse(_changeAmountController.text) ?? const Money.zero();
 
+  /// Foreign currency only ever applies to an income or expense — a transfer
+  /// moves money between the user's own accounts, with nothing "paid" in
+  /// another currency.
+  bool get _isForeignCurrency =>
+      (_type == TxType.income || _type == TxType.expense) &&
+      _hasForeignCurrency;
+
+  Money get _foreignAmount =>
+      Money.tryParse(_foreignAmountController.text) ?? const Money.zero();
+
   /// The on-screen keypad and the system keyboard must never both be up —
   /// they'd fight over the same strip of screen and hide whatever the user
   /// just typed. The keypad only shows while no text field has focus,
@@ -210,7 +233,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       _payeeFocus.hasFocus ||
       _splitRows.any((r) => r.focusNode.hasFocus) ||
       _hybridLegs.any((r) => r.focusNode.hasFocus) ||
-      _changeAmountFocus.hasFocus;
+      _changeAmountFocus.hasFocus ||
+      _foreignAmountFocus.hasFocus;
 
   @override
   void initState() {
@@ -253,6 +277,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     }
     _changeAmountController.dispose();
     _changeAmountFocus.dispose();
+    _foreignAmountController.dispose();
+    _foreignAmountFocus.dispose();
     // Best-effort: leaving without saving shouldn't leak the copy made on
     // pick. Fire-and-forget — nothing in this widget survives to await it.
     if (_unsavedPickedPath != null) _deleteQuietly(_unsavedPickedPath!);
@@ -318,6 +344,11 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           ),
         );
       }
+      _hasForeignCurrency = row.foreignAmount != null;
+      _foreignCurrencyCode = row.foreignCurrencyCode;
+      if (row.foreignAmount != null) {
+        _foreignAmountController.text = _bufferFromMoney(row.foreignAmount!);
+      }
       _loading = false;
     });
   }
@@ -381,6 +412,11 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             onFocusChange: _onFieldFocusChanged,
           ),
         );
+      }
+      _hasForeignCurrency = row.foreignAmount != null;
+      _foreignCurrencyCode = row.foreignCurrencyCode;
+      if (row.foreignAmount != null) {
+        _foreignAmountController.text = _bufferFromMoney(row.foreignAmount!);
       }
       _loading = false;
     });
@@ -676,6 +712,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           if (v) {
             _isSplit = false;
             _hasChange = false;
+            _hasForeignCurrency = false;
           }
           while (v && _hybridLegs.length < 2) {
             _hybridLegs.add(
@@ -852,6 +889,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           if (v) {
             _isSplit = false;
             _isHybridPayment = false;
+            _hasForeignCurrency = false;
           }
         }),
         secondary: Icon(
@@ -862,6 +900,124 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         subtitle: _hasChange
             ? null
             : const Text('Part of the change lands in another account'),
+      ),
+    );
+  }
+
+  // ── Foreign currency ─────────────────────────────────────────────────────
+
+  Future<void> _pickForeignCurrency() async {
+    final picked = await CurrencyPickerSheet.pick(
+      context,
+      initialCode: _foreignCurrencyCode ?? MoneyFormat.currency.code,
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _foreignCurrencyCode = picked.code);
+  }
+
+  Widget _foreignToggleTile() {
+    final theme = Theme.of(context);
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: SwitchListTile(
+        value: _hasForeignCurrency,
+        onChanged: (v) => setState(() {
+          _hasForeignCurrency = v;
+          if (v) {
+            _isHybridPayment = false;
+            _hasChange = false;
+          }
+        }),
+        secondary: Icon(
+          Icons.public_rounded,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+        title: const Text('Foreign currency'),
+        subtitle: _hasForeignCurrency
+            ? null
+            : const Text('Record what this cost in another currency'),
+      ),
+    );
+  }
+
+  Widget _foreignCurrencyEditorCard() {
+    final theme = Theme.of(context);
+    final currency = currencyForCode(_foreignCurrencyCode);
+    final foreignAmount = _foreignAmount;
+    final rateLine = foreignAmount.isPositive
+        ? '1 ${currency.code} ≈ '
+              '${MoneyFormat.symbol(Money.fromRupees(_amount.rupees / foreignAmount.rupees))}'
+        : null;
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: _pickForeignCurrency,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: theme.colorScheme.outline),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          currency.symbol,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(currency.code, style: theme.textTheme.bodyMedium),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: _foreignAmountController,
+                    focusNode: _foreignAmountFocus,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                    ],
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      hintText: '0.00',
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+              ],
+            ),
+            if (rateLine != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                rateLine,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -1287,6 +1443,15 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       );
       return;
     }
+    if (_isForeignCurrency &&
+        (_foreignCurrencyCode == null || !_foreignAmount.isPositive)) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Choose a currency and enter its amount'),
+        ),
+      );
+      return;
+    }
 
     final note = _noteController.text.trim();
     final payeeText = _payeeController.text.trim();
@@ -1300,6 +1465,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final categoryId = (_type == TxType.transfer || _isSplitting)
         ? null
         : _categoryId;
+    final foreignCurrencyCode = _isForeignCurrency ? _foreignCurrencyCode : null;
+    final foreignAmount = _isForeignCurrency ? _foreignAmount : null;
     try {
       final db = ref.read(dbProvider);
       int id;
@@ -1316,6 +1483,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           note: note.isEmpty ? null : note,
           payee: payee,
           imagePath: _imagePath,
+          foreignCurrencyCode: foreignCurrencyCode,
+          foreignAmount: foreignAmount,
         );
       } else {
         id = await db.addTransaction(
@@ -1328,6 +1497,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           note: note.isEmpty ? null : note,
           payee: payee,
           imagePath: _imagePath,
+          foreignCurrencyCode: foreignCurrencyCode,
+          foreignAmount: foreignAmount,
         );
       }
       // The receipt (if any) is now referenced by a saved row — no longer an
@@ -1576,6 +1747,11 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         );
         tiles.add(const SizedBox(height: 12));
       }
+      // Foreign currency applies to both income and expense (unlike
+      // split/hybrid/change, which are expense-only) and stays available
+      // while editing.
+      tiles.add(_foreignToggleTile());
+      tiles.add(const SizedBox(height: 12));
       if (_type == TxType.expense) {
         tiles.add(_splitToggleTile());
         tiles.add(const SizedBox(height: 12));
@@ -1601,6 +1777,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       }
       if (_isChange) {
         tiles.add(_changeEditorCard(accountMap));
+        tiles.add(const SizedBox(height: 12));
+      }
+      if (_isForeignCurrency) {
+        tiles.add(_foreignCurrencyEditorCard());
         tiles.add(const SizedBox(height: 12));
       }
       if (_isSplitting) {

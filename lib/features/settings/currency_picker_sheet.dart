@@ -6,8 +6,15 @@ import '../../data/providers.dart';
 
 /// A searchable list of every currency the app knows. Picking one writes it to
 /// settings; the whole app reformats immediately (see [CurrencyScope]).
+///
+/// [initialCode]/[onSelected] let this same sheet be reused to pick an
+/// arbitrary currency that has nothing to do with the app-wide setting — see
+/// [pick] — without touching [Settings.currencyCode] at all.
 class CurrencyPickerSheet extends ConsumerStatefulWidget {
-  const CurrencyPickerSheet({super.key});
+  const CurrencyPickerSheet({this.initialCode, this.onSelected, super.key});
+
+  final String? initialCode;
+  final ValueChanged<Currency>? onSelected;
 
   static Future<void> show(BuildContext context, WidgetRef ref) {
     return showModalBottomSheet<void>(
@@ -19,6 +26,25 @@ class CurrencyPickerSheet extends ConsumerStatefulWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (_) => const CurrencyPickerSheet(),
+    );
+  }
+
+  /// Picks a currency without touching the app's home-currency setting — for
+  /// a transaction or auto rule's own foreign-currency annotation (GitHub
+  /// #85). Returns `null` if the sheet is dismissed without a pick.
+  static Future<Currency?> pick(BuildContext context, {String? initialCode}) {
+    return showModalBottomSheet<Currency>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (context) => CurrencyPickerSheet(
+        initialCode: initialCode,
+        onSelected: (c) => Navigator.of(context).pop(c),
+      ),
     );
   }
 
@@ -53,7 +79,7 @@ class _CurrencyPickerSheetState extends ConsumerState<CurrencyPickerSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final selected = ref.watch(currencyProvider).code;
+    final selected = widget.initialCode ?? ref.watch(currencyProvider).code;
     final results = _filtered;
 
     return ConstrainedBox(
@@ -129,6 +155,10 @@ class _CurrencyPickerSheetState extends ConsumerState<CurrencyPickerSheet> {
                               : null,
                           selected: isSelected,
                           onTap: () async {
+                            if (widget.onSelected != null) {
+                              widget.onSelected!(c);
+                              return;
+                            }
                             await ref.read(dbProvider).setCurrencyCode(c.code);
                             if (context.mounted) Navigator.of(context).pop();
                           },
