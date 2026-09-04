@@ -1007,6 +1007,30 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 
+  /// Resolves what [accountId] should stamp onto a transaction posted on
+  /// [date]: `(null, null)` for a parent-currency account, or its currency
+  /// code plus the rate snapshot for a foreign-currency one. Throws if the
+  /// account is foreign-currency but no rate has been entered yet as of
+  /// that date — silently falling back to 1:1 would quietly corrupt every
+  /// downstream total, so this fails loudly instead and the UI is
+  /// responsible for steering the user to the Currency settings screen
+  /// first.
+  Future<(String?, int?)> _resolveTxCurrency(int accountId, DateTime date) async {
+    final account = await (select(
+      accounts,
+    )..where((a) => a.id.equals(accountId))).getSingle();
+    final code = account.currencyCode;
+    if (code == null) return (null, null);
+    final rate = await latestRate(code, asOf: date);
+    if (rate == null) {
+      throw ArgumentError(
+        'No exchange rate set for $code yet — add one in Settings > '
+        'Currency before posting this transaction.',
+      );
+    }
+    return (code, rate.rateToBaseMicros);
+  }
+
   Future<int> addTransaction({
     required TxType type,
     required Money amount,
@@ -1036,6 +1060,25 @@ class AppDatabase extends _$AppDatabase {
       foreignAmount: foreignAmount,
     );
 
+    final (sourceCode, sourceRate) = await _resolveTxCurrency(accountId, date);
+
+    String? toCode;
+    int? toRate;
+    Money? toAmt;
+    if (type == TxType.transfer && toAccountId != null) {
+      final resolved = await _resolveTxCurrency(toAccountId, date);
+      toCode = resolved.$1;
+      toRate = resolved.$2;
+      if (toCode != sourceCode) {
+        final sourceBase = sourceCode == null
+            ? amount
+            : convertUsingRate(amount, sourceRate!);
+        toAmt = toCode == null
+            ? sourceBase
+            : Money((sourceBase.paise * currencyRateScale) ~/ toRate!);
+      }
+    }
+
     return transaction(() async {
       final id = await into(transactions).insert(
         TransactionsCompanion.insert(
@@ -1053,6 +1096,11 @@ class AppDatabase extends _$AppDatabase {
           needsAmountReview: Value(needsAmountReview),
           foreignCurrencyCode: Value(foreignCurrencyCode),
           foreignAmount: Value(foreignAmount),
+          currencyCode: Value(sourceCode),
+          fxRateToBaseMicros: Value(sourceRate),
+          toAmount: Value(toAmt),
+          toCurrencyCode: Value(toCode),
+          toFxRateToBaseMicros: Value(toRate),
         ),
       );
       final row = await (select(
