@@ -8908,6 +8908,21 @@ class $SettingsTable extends Settings
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _rtaEnabledMeta = const VerificationMeta(
+    'rtaEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> rtaEnabled = GeneratedColumn<bool>(
+    'rta_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("rta_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _paypalEnabledMeta = const VerificationMeta(
     'paypalEnabled',
   );
@@ -9436,6 +9451,7 @@ class $SettingsTable extends Settings
     myCashapp,
     myRevolut,
     upiEnabled,
+    rtaEnabled,
     paypalEnabled,
     venmoEnabled,
     cashappEnabled,
@@ -9616,6 +9632,12 @@ class $SettingsTable extends Settings
       context.handle(
         _upiEnabledMeta,
         upiEnabled.isAcceptableOrUnknown(data['upi_enabled']!, _upiEnabledMeta),
+      );
+    }
+    if (data.containsKey('rta_enabled')) {
+      context.handle(
+        _rtaEnabledMeta,
+        rtaEnabled.isAcceptableOrUnknown(data['rta_enabled']!, _rtaEnabledMeta),
       );
     }
     if (data.containsKey('paypal_enabled')) {
@@ -10020,6 +10042,10 @@ class $SettingsTable extends Settings
         DriftSqlType.bool,
         data['${effectivePrefix}upi_enabled'],
       )!,
+      rtaEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}rta_enabled'],
+      )!,
       paypalEnabled: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}paypal_enabled'],
@@ -10274,6 +10300,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// entirely, rather than leaving a permanently-disabled button around.
   final bool upiEnabled;
 
+  /// Whether Ready to Assign is turned on globally.
+  final bool rtaEnabled;
+
   /// Same as [upiEnabled], for PayPal.
   final bool paypalEnabled;
 
@@ -10483,6 +10512,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     this.myCashapp,
     this.myRevolut,
     required this.upiEnabled,
+    required this.rtaEnabled,
     required this.paypalEnabled,
     required this.venmoEnabled,
     required this.cashappEnabled,
@@ -10559,6 +10589,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       map['my_revolut'] = Variable<String>(myRevolut);
     }
     map['upi_enabled'] = Variable<bool>(upiEnabled);
+    map['rta_enabled'] = Variable<bool>(rtaEnabled);
     map['paypal_enabled'] = Variable<bool>(paypalEnabled);
     map['venmo_enabled'] = Variable<bool>(venmoEnabled);
     map['cashapp_enabled'] = Variable<bool>(cashappEnabled);
@@ -10674,6 +10705,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ? const Value.absent()
           : Value(myRevolut),
       upiEnabled: Value(upiEnabled),
+      rtaEnabled: Value(rtaEnabled),
       paypalEnabled: Value(paypalEnabled),
       venmoEnabled: Value(venmoEnabled),
       cashappEnabled: Value(cashappEnabled),
@@ -10765,6 +10797,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       myCashapp: serializer.fromJson<String?>(json['myCashapp']),
       myRevolut: serializer.fromJson<String?>(json['myRevolut']),
       upiEnabled: serializer.fromJson<bool>(json['upiEnabled']),
+      rtaEnabled: serializer.fromJson<bool>(json['rtaEnabled']),
       paypalEnabled: serializer.fromJson<bool>(json['paypalEnabled']),
       venmoEnabled: serializer.fromJson<bool>(json['venmoEnabled']),
       cashappEnabled: serializer.fromJson<bool>(json['cashappEnabled']),
@@ -10864,6 +10897,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'myCashapp': serializer.toJson<String?>(myCashapp),
       'myRevolut': serializer.toJson<String?>(myRevolut),
       'upiEnabled': serializer.toJson<bool>(upiEnabled),
+      'rtaEnabled': serializer.toJson<bool>(rtaEnabled),
       'paypalEnabled': serializer.toJson<bool>(paypalEnabled),
       'venmoEnabled': serializer.toJson<bool>(venmoEnabled),
       'cashappEnabled': serializer.toJson<bool>(cashappEnabled),
@@ -10942,6 +10976,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     Value<String?> myCashapp = const Value.absent(),
     Value<String?> myRevolut = const Value.absent(),
     bool? upiEnabled,
+    bool? rtaEnabled,
     bool? paypalEnabled,
     bool? venmoEnabled,
     bool? cashappEnabled,
@@ -11004,6 +11039,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     myCashapp: myCashapp.present ? myCashapp.value : this.myCashapp,
     myRevolut: myRevolut.present ? myRevolut.value : this.myRevolut,
     upiEnabled: upiEnabled ?? this.upiEnabled,
+    rtaEnabled: rtaEnabled ?? this.rtaEnabled,
     paypalEnabled: paypalEnabled ?? this.paypalEnabled,
     venmoEnabled: venmoEnabled ?? this.venmoEnabled,
     cashappEnabled: cashappEnabled ?? this.cashappEnabled,
@@ -11098,6 +11134,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       upiEnabled: data.upiEnabled.present
           ? data.upiEnabled.value
           : this.upiEnabled,
+      rtaEnabled: data.rtaEnabled.present
+          ? data.rtaEnabled.value
+          : this.rtaEnabled,
       paypalEnabled: data.paypalEnabled.present
           ? data.paypalEnabled.value
           : this.paypalEnabled,
@@ -11242,6 +11281,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('myCashapp: $myCashapp, ')
           ..write('myRevolut: $myRevolut, ')
           ..write('upiEnabled: $upiEnabled, ')
+          ..write('rtaEnabled: $rtaEnabled, ')
           ..write('paypalEnabled: $paypalEnabled, ')
           ..write('venmoEnabled: $venmoEnabled, ')
           ..write('cashappEnabled: $cashappEnabled, ')
@@ -11308,6 +11348,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     myCashapp,
     myRevolut,
     upiEnabled,
+    rtaEnabled,
     paypalEnabled,
     venmoEnabled,
     cashappEnabled,
@@ -11371,6 +11412,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.myCashapp == this.myCashapp &&
           other.myRevolut == this.myRevolut &&
           other.upiEnabled == this.upiEnabled &&
+          other.rtaEnabled == this.rtaEnabled &&
           other.paypalEnabled == this.paypalEnabled &&
           other.venmoEnabled == this.venmoEnabled &&
           other.cashappEnabled == this.cashappEnabled &&
@@ -11434,6 +11476,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<String?> myCashapp;
   final Value<String?> myRevolut;
   final Value<bool> upiEnabled;
+  final Value<bool> rtaEnabled;
   final Value<bool> paypalEnabled;
   final Value<bool> venmoEnabled;
   final Value<bool> cashappEnabled;
@@ -11493,6 +11536,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.myCashapp = const Value.absent(),
     this.myRevolut = const Value.absent(),
     this.upiEnabled = const Value.absent(),
+    this.rtaEnabled = const Value.absent(),
     this.paypalEnabled = const Value.absent(),
     this.venmoEnabled = const Value.absent(),
     this.cashappEnabled = const Value.absent(),
@@ -11553,6 +11597,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.myCashapp = const Value.absent(),
     this.myRevolut = const Value.absent(),
     this.upiEnabled = const Value.absent(),
+    this.rtaEnabled = const Value.absent(),
     this.paypalEnabled = const Value.absent(),
     this.venmoEnabled = const Value.absent(),
     this.cashappEnabled = const Value.absent(),
@@ -11613,6 +11658,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<String>? myCashapp,
     Expression<String>? myRevolut,
     Expression<bool>? upiEnabled,
+    Expression<bool>? rtaEnabled,
     Expression<bool>? paypalEnabled,
     Expression<bool>? venmoEnabled,
     Expression<bool>? cashappEnabled,
@@ -11677,6 +11723,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       if (myCashapp != null) 'my_cashapp': myCashapp,
       if (myRevolut != null) 'my_revolut': myRevolut,
       if (upiEnabled != null) 'upi_enabled': upiEnabled,
+      if (rtaEnabled != null) 'rta_enabled': rtaEnabled,
       if (paypalEnabled != null) 'paypal_enabled': paypalEnabled,
       if (venmoEnabled != null) 'venmo_enabled': venmoEnabled,
       if (cashappEnabled != null) 'cashapp_enabled': cashappEnabled,
@@ -11753,6 +11800,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<String?>? myCashapp,
     Value<String?>? myRevolut,
     Value<bool>? upiEnabled,
+    Value<bool>? rtaEnabled,
     Value<bool>? paypalEnabled,
     Value<bool>? venmoEnabled,
     Value<bool>? cashappEnabled,
@@ -11815,6 +11863,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       myCashapp: myCashapp ?? this.myCashapp,
       myRevolut: myRevolut ?? this.myRevolut,
       upiEnabled: upiEnabled ?? this.upiEnabled,
+      rtaEnabled: rtaEnabled ?? this.rtaEnabled,
       paypalEnabled: paypalEnabled ?? this.paypalEnabled,
       venmoEnabled: venmoEnabled ?? this.venmoEnabled,
       cashappEnabled: cashappEnabled ?? this.cashappEnabled,
@@ -11926,6 +11975,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     }
     if (upiEnabled.present) {
       map['upi_enabled'] = Variable<bool>(upiEnabled.value);
+    }
+    if (rtaEnabled.present) {
+      map['rta_enabled'] = Variable<bool>(rtaEnabled.value);
     }
     if (paypalEnabled.present) {
       map['paypal_enabled'] = Variable<bool>(paypalEnabled.value);
@@ -12101,6 +12153,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('myCashapp: $myCashapp, ')
           ..write('myRevolut: $myRevolut, ')
           ..write('upiEnabled: $upiEnabled, ')
+          ..write('rtaEnabled: $rtaEnabled, ')
           ..write('paypalEnabled: $paypalEnabled, ')
           ..write('venmoEnabled: $venmoEnabled, ')
           ..write('cashappEnabled: $cashappEnabled, ')
@@ -30978,6 +31031,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<String?> myCashapp,
       Value<String?> myRevolut,
       Value<bool> upiEnabled,
+      Value<bool> rtaEnabled,
       Value<bool> paypalEnabled,
       Value<bool> venmoEnabled,
       Value<bool> cashappEnabled,
@@ -31039,6 +31093,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<String?> myCashapp,
       Value<String?> myRevolut,
       Value<bool> upiEnabled,
+      Value<bool> rtaEnabled,
       Value<bool> paypalEnabled,
       Value<bool> venmoEnabled,
       Value<bool> cashappEnabled,
@@ -31201,6 +31256,11 @@ class $$SettingsTableFilterComposer
 
   ColumnFilters<bool> get upiEnabled => $composableBuilder(
     column: $table.upiEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get rtaEnabled => $composableBuilder(
+    column: $table.rtaEnabled,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -31530,6 +31590,11 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get rtaEnabled => $composableBuilder(
+    column: $table.rtaEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get paypalEnabled => $composableBuilder(
     column: $table.paypalEnabled,
     builder: (column) => ColumnOrderings(column),
@@ -31830,6 +31895,11 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get rtaEnabled => $composableBuilder(
+    column: $table.rtaEnabled,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get paypalEnabled => $composableBuilder(
     column: $table.paypalEnabled,
     builder: (column) => column,
@@ -32099,6 +32169,7 @@ class $$SettingsTableTableManager
                 Value<String?> myCashapp = const Value.absent(),
                 Value<String?> myRevolut = const Value.absent(),
                 Value<bool> upiEnabled = const Value.absent(),
+                Value<bool> rtaEnabled = const Value.absent(),
                 Value<bool> paypalEnabled = const Value.absent(),
                 Value<bool> venmoEnabled = const Value.absent(),
                 Value<bool> cashappEnabled = const Value.absent(),
@@ -32160,6 +32231,7 @@ class $$SettingsTableTableManager
                 myCashapp: myCashapp,
                 myRevolut: myRevolut,
                 upiEnabled: upiEnabled,
+                rtaEnabled: rtaEnabled,
                 paypalEnabled: paypalEnabled,
                 venmoEnabled: venmoEnabled,
                 cashappEnabled: cashappEnabled,
@@ -32221,6 +32293,7 @@ class $$SettingsTableTableManager
                 Value<String?> myCashapp = const Value.absent(),
                 Value<String?> myRevolut = const Value.absent(),
                 Value<bool> upiEnabled = const Value.absent(),
+                Value<bool> rtaEnabled = const Value.absent(),
                 Value<bool> paypalEnabled = const Value.absent(),
                 Value<bool> venmoEnabled = const Value.absent(),
                 Value<bool> cashappEnabled = const Value.absent(),
@@ -32282,6 +32355,7 @@ class $$SettingsTableTableManager
                 myCashapp: myCashapp,
                 myRevolut: myRevolut,
                 upiEnabled: upiEnabled,
+                rtaEnabled: rtaEnabled,
                 paypalEnabled: paypalEnabled,
                 venmoEnabled: venmoEnabled,
                 cashappEnabled: cashappEnabled,

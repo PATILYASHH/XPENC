@@ -450,6 +450,34 @@ final categoryBalanceProvider = Provider.family<Money, int>((
   return balance;
 });
 
+/// The three-state (RTA on) / two-state (RTA off) funding indicator for a
+/// category with a [Budgets] ceiling — GitHub #100 v2. `overspent` always
+/// wins regardless of funding; `funded`/`underfunded` only distinguish
+/// whether the pooled envelope balance ([categoryBalanceProvider]) fully
+/// backs the ceiling yet. Callers should only use this while
+/// [rtaEnabledProvider] is on — with RTA off, fall back to
+/// [BudgetProgress.nearingLimit] instead, which this deliberately doesn't
+/// touch or replace.
+enum CategoryFundingState { overspent, funded, underfunded }
+
+/// Returns null when [categoryId] has no [Budgets] row — there's nothing to
+/// color either way, in RTA on or off.
+final categoryFundingStateProvider = Provider.family<CategoryFundingState?, int>((
+  ref,
+  categoryId,
+) {
+  final p = ref
+      .watch(budgetProgressProvider)
+      .where((p) => p.budget.categoryId == categoryId)
+      .firstOrNull;
+  if (p == null) return null;
+  if (p.overspent) return CategoryFundingState.overspent;
+  final balance = ref.watch(categoryBalanceProvider(categoryId));
+  return balance >= p.budget.amount
+      ? CategoryFundingState.funded
+      : CategoryFundingState.underfunded;
+});
+
 /// `Σ(currentBalance) − Σ(category_balance > 0)`, across every account in
 /// [envelopeModeAccountsProvider] — GitHub #48: one shared Ready to Assign
 /// figure, not one per account. A category that has gone negative
@@ -872,10 +900,12 @@ final hideAmountsProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.hideAmounts ?? false;
 });
 
-/// Which budgeting system is primary — see [BudgetingMode] (GitHub #100).
-final budgetingModeProvider = Provider<BudgetingMode>((ref) {
-  return ref.watch(settingsProvider).valueOrNull?.budgetingMode ??
-      BudgetingMode.budgets;
+/// Whether Ready to Assign — the shared envelope pool — is turned on
+/// globally (GitHub #100 v2). Budget (the per-category ceiling system) is
+/// always on regardless of this flag; see [BudgetingMode]'s doc comment for
+/// the superseded enum this replaces.
+final rtaEnabledProvider = Provider<bool>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.rtaEnabled ?? false;
 });
 
 /// A standing notification with "Add expense" / "Add income" shortcuts —

@@ -89,6 +89,7 @@ void main() {
       moreScreenViewMode: MoreScreenViewMode.list,
       frequentIconKeys: '',
       budgetingMode: BudgetingMode.budgets,
+      rtaEnabled: false,
     );
 
     final now = DateTime(2026, 8, 5, 12);

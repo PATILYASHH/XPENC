@@ -518,8 +518,9 @@ class _AccountTile extends ConsumerWidget {
     );
     if (confirmed != true) return;
 
+    bool rtaAutoDisabled;
     try {
-      await ref.read(dbProvider).deleteAccount(account.id);
+      rtaAutoDisabled = await ref.read(dbProvider).deleteAccount(account.id);
     } on ArgumentError catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context)
@@ -534,7 +535,16 @@ class _AccountTile extends ConsumerWidget {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Account removed')));
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            rtaAutoDisabled
+                ? 'Account removed. Ready to Assign turned off — no '
+                      'accounts left in the pool.'
+                : 'Account removed',
+          ),
+        ),
+      );
   }
 }
 

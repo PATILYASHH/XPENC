@@ -236,7 +236,14 @@ class _LegendChip extends StatelessWidget {
 class BudgetRadialChart extends StatefulWidget {
   const BudgetRadialChart({required this.slices, super.key});
 
-  final List<({String label, Money budget, Money spent, Color color})> slices;
+  /// [fundingColor], when set (GitHub #100 v2, only while Ready to Assign is
+  /// on), overrides [color] for this slice's fill — green/amber for
+  /// funded/underfunded. The overspent hazard-stripe + red ring stays
+  /// keyed off [spent]/[budget] regardless, so it still overlays either way.
+  final List<
+    ({String label, Money budget, Money spent, Color color, Color? fundingColor})
+  >
+  slices;
 
   @override
   State<BudgetRadialChart> createState() => _BudgetRadialChartState();
@@ -283,7 +290,9 @@ class _BudgetRadialChartState extends State<BudgetRadialChart> {
     final data = <_BudgetSlice>[];
     if (positive.length > 6) {
       for (final s in positive.take(5)) {
-        data.add(_BudgetSlice(s.label, s.budget, s.spent, s.color));
+        data.add(
+          _BudgetSlice(s.label, s.budget, s.spent, s.color, s.fundingColor),
+        );
       }
       var restBudget = const Money.zero();
       var restSpent = const Money.zero();
@@ -291,10 +300,14 @@ class _BudgetRadialChartState extends State<BudgetRadialChart> {
         restBudget += s.budget;
         restSpent += s.spent;
       }
+      // Folded into "Other": a single funding color can't represent several
+      // categories at once, so this tail always falls back to its own grey.
       data.add(_BudgetSlice('Other', restBudget, restSpent, Colors.grey));
     } else {
       for (final s in positive) {
-        data.add(_BudgetSlice(s.label, s.budget, s.spent, s.color));
+        data.add(
+          _BudgetSlice(s.label, s.budget, s.spent, s.color, s.fundingColor),
+        );
       }
     }
 
@@ -344,12 +357,23 @@ class _BudgetRadialChartState extends State<BudgetRadialChart> {
 }
 
 class _BudgetSlice {
-  const _BudgetSlice(this.label, this.budget, this.spent, this.color);
+  const _BudgetSlice(
+    this.label,
+    this.budget,
+    this.spent,
+    this.color, [
+    this.fundingColor,
+  ]);
 
   final String label;
   final Money budget;
   final Money spent;
   final Color color;
+  final Color? fundingColor;
+
+  /// The color actually painted for the wedge fill — [fundingColor] when
+  /// set, else the category's own [color].
+  Color get fillColor => fundingColor ?? color;
 
   bool get overspent => spent > budget;
 
@@ -386,7 +410,10 @@ class _BudgetSectorPainter extends CustomPainter {
       final sweep = share - gap;
       final wedge = _wedge(center, outerRect, start, sweep);
 
-      canvas.drawPath(wedge, Paint()..color = slice.color.withValues(alpha: 0.16));
+      canvas.drawPath(
+        wedge,
+        Paint()..color = slice.fillColor.withValues(alpha: 0.16),
+      );
 
       if (slice.fraction > 0) {
         final filledRadius = outerRadius * math.sqrt(slice.fraction);
@@ -397,7 +424,7 @@ class _BudgetSectorPainter extends CustomPainter {
             start,
             sweep,
           ),
-          Paint()..color = slice.color,
+          Paint()..color = slice.fillColor,
         );
       }
 
