@@ -63,6 +63,7 @@ void main() {
                       budget: budget,
                       spent: spent,
                       color: categoryColor,
+                      fundingColor: null,
                     ),
                   ],
                 ),

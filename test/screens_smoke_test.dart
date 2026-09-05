@@ -423,13 +423,13 @@ void main() {
   });
 
   testWidgets(
-    'Account detail: Envelope Mode links to the shared Ready to Assign '
-    'screen once turned on',
+    'Account detail: On-budget links to the shared Ready to Assign screen '
+    'once turned on',
     (tester) async {
       late int cash;
       await tester.runAsync(() async {
         cash = (await seed()).cash;
-        await db.setEnvelopeMode(cash, true);
+        await db.setRtaEnabled(true);
         await db.addAllocation(
           accountId: cash,
           categoryId: await (db.watchCategories(CategoryKind.expense).first)
@@ -439,7 +439,7 @@ void main() {
       });
       await pump(tester, AccountDetailScreen(accountId: cash));
       expect(tester.takeException(), isNull);
-      expect(find.text('Envelope Mode'), findsOneWidget);
+      expect(find.text('On-budget'), findsOneWidget);
       expect(find.text('View shared budget'), findsOneWidget);
       await unmount(tester);
     },
@@ -509,16 +509,22 @@ void main() {
   );
 
   testWidgets(
-    'Account detail: turning Envelope Mode on asks for confirmation first',
+    'Account detail: turning On-budget on asks for confirmation first',
     (tester) async {
       late int cash;
-      await tester.runAsync(() async => cash = (await seed()).cash);
+      await tester.runAsync(() async {
+        cash = (await seed()).cash;
+        // RTA has to be on for the On-budget toggle to render at all — then
+        // opt this one account back out so there's something to turn on.
+        await db.setRtaEnabled(true);
+        await db.setEnvelopeMode(cash, false);
+      });
       await pump(tester, AccountDetailScreen(accountId: cash));
       expect(tester.takeException(), isNull);
 
-      await tester.tap(find.text('Envelope Mode'));
+      await tester.tap(find.text('On-budget'));
       await tester.pump();
-      expect(find.text('Turn on Envelope Mode?'), findsOneWidget);
+      expect(find.text('Mark this account on-budget?'), findsOneWidget);
 
       late List<AccountRow> account;
       await tester.runAsync(
@@ -715,22 +721,24 @@ void main() {
   });
 
   testWidgets(
-    'Settings: Budgeting mode defaults to Budgets and switching to '
-    'Envelope persists (GitHub #100)',
+    'Settings: Ready to Assign defaults off and turning it on persists '
+    '(GitHub #100 v2)',
     (tester) async {
       await pump(tester, const SettingsScreen());
       expect(tester.takeException(), isNull);
 
-      await tester.scrollUntilVisible(find.text('Envelope'), 300);
-      await tester.ensureVisible(find.text('Envelope'));
+      await tester.scrollUntilVisible(find.text('Ready to Assign'), 300);
+      await tester.ensureVisible(find.text('Ready to Assign'));
       await tester.pumpAndSettle();
-      expect(find.text('Budgets'), findsWidgets);
-      expect(find.text('Envelope'), findsOneWidget);
+      expect(find.text('Ready to Assign'), findsOneWidget);
 
       final initial = await db.getSettings();
-      expect(initial.budgetingMode, BudgetingMode.budgets);
+      expect(initial.rtaEnabled, isFalse);
 
-      await tester.tap(find.text('Envelope'));
+      await tester.tap(find.text('Ready to Assign'));
+      await tester.pump();
+      expect(find.text('Turn on Ready to Assign?'), findsOneWidget);
+      await tester.tap(find.text('Turn on'));
       await tester.pump();
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 200)),
@@ -740,21 +748,32 @@ void main() {
 
       await tester.runAsync(() async {
         final updated = await db.getSettings();
-        expect(updated.budgetingMode, BudgetingMode.envelope);
+        expect(updated.rtaEnabled, isTrue);
       });
       await unmount(tester);
     },
   );
 
   testWidgets(
-    'More hub: the Budgets tile becomes Envelope in Envelope mode '
-    '(GitHub #100)',
+    'More hub: a Ready to Assign tile appears alongside Budgets once RTA '
+    'is on (GitHub #100 v2)',
     (tester) async {
-      await db.setBudgetingMode(BudgetingMode.envelope);
+      await db.setRtaEnabled(true);
       await pump(tester, const MoreScreen());
       expect(tester.takeException(), isNull);
-      expect(find.text('Envelope'), findsOneWidget);
-      expect(find.text('Budgets'), findsNothing);
+      expect(find.text('Ready to Assign'), findsOneWidget);
+      expect(find.text('Budgets'), findsOneWidget);
+      await unmount(tester);
+    },
+  );
+
+  testWidgets(
+    'More hub: only the Budgets tile shows while RTA is off',
+    (tester) async {
+      await pump(tester, const MoreScreen());
+      expect(tester.takeException(), isNull);
+      expect(find.text('Budgets'), findsOneWidget);
+      expect(find.text('Ready to Assign'), findsNothing);
       await unmount(tester);
     },
   );

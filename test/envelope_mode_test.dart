@@ -56,10 +56,10 @@ void main() {
           .firstWhere((c) => c.name == name)
           .id;
 
-  group('setBudgetingMode — GitHub #100', () {
+  group('setRtaEnabled — GitHub #100 v2', () {
     test(
-      'switching to envelope enrolls every existing account, including one '
-      'never touched before',
+      'turning RTA on enrolls every existing account, including one never '
+      'touched before',
       () async {
         final cash = await cashId();
         final bank = await db.addAccount(
@@ -70,7 +70,7 @@ void main() {
           openingBalance: Money.fromRupees(5000),
         );
 
-        await db.setBudgetingMode(BudgetingMode.envelope);
+        await db.setRtaEnabled(true);
 
         final accounts = await db.watchAccounts().first;
         expect(
@@ -85,22 +85,22 @@ void main() {
     );
 
     test(
-      'switching back to budgets leaves every account\'s flag untouched',
+      'turning RTA off leaves every account\'s flag untouched',
       () async {
         final cash = await cashId();
-        await db.setBudgetingMode(BudgetingMode.envelope);
-        await db.setBudgetingMode(BudgetingMode.budgets);
+        await db.setRtaEnabled(true);
+        await db.setRtaEnabled(false);
 
         final after = await db.watchAccounts().first;
         expect(after.firstWhere((a) => a.id == cash).envelopeMode, isTrue);
+        expect((await db.getSettings()).rtaEnabled, isFalse);
       },
     );
 
     test(
-      'a new account created while Envelope is the active mode joins the '
-      'pool automatically',
+      'a new account created while RTA is on joins the pool automatically',
       () async {
-        await db.setBudgetingMode(BudgetingMode.envelope);
+        await db.setRtaEnabled(true);
 
         final newAccount = await db.addAccount(
           name: 'New Wallet',
@@ -118,8 +118,7 @@ void main() {
     );
 
     test(
-      'a new account created while Budgets is the active mode does not '
-      'join the pool',
+      'a new account created while RTA is off does not join the pool',
       () async {
         final newAccount = await db.addAccount(
           name: 'New Wallet',
@@ -135,6 +134,76 @@ void main() {
         expect(row.envelopeMode, isFalse);
       },
     );
+  });
+
+  group('auto-disable RTA — GitHub #100 v2', () {
+    test(
+      'turning off the last pool account via setEnvelopeMode while RTA is '
+      'on also turns RTA off, and reports it',
+      () async {
+        final cash = await cashId();
+        await db.setRtaEnabled(true);
+
+        final autoDisabled = await db.setEnvelopeMode(cash, false);
+
+        expect(autoDisabled, isTrue);
+        expect((await db.getSettings()).rtaEnabled, isFalse);
+      },
+    );
+
+    test(
+      'turning off a non-last pool account leaves RTA on, and reports '
+      'nothing happened',
+      () async {
+        final cash = await cashId();
+        final bank = await db.addAccount(
+          name: 'IPPB',
+          type: AccountType.bank,
+          colorValue: 0,
+          iconKey: 'bank',
+          openingBalance: Money.fromRupees(5000),
+        );
+        await db.setRtaEnabled(true);
+
+        final autoDisabled = await db.setEnvelopeMode(cash, false);
+
+        expect(autoDisabled, isFalse);
+        expect((await db.getSettings()).rtaEnabled, isTrue);
+        final bankRow = await (db.select(
+          db.accounts,
+        )..where((a) => a.id.equals(bank))).getSingle();
+        expect(bankRow.envelopeMode, isTrue);
+      },
+    );
+
+    test(
+      'deleting the last pool account also turns RTA off, and reports it',
+      () async {
+        final newAccount = await db.addAccount(
+          name: 'New Wallet',
+          type: AccountType.cash,
+          colorValue: 0,
+          iconKey: 'wallet',
+          openingBalance: const Money.zero(),
+        );
+        await db.setRtaEnabled(true);
+        // Every other pool account has to stop being on-budget first, or
+        // deleting this one wouldn't actually empty the pool.
+        final cash = await cashId();
+        await db.setEnvelopeMode(cash, false);
+
+        final autoDisabled = await db.deleteAccount(newAccount);
+
+        expect(autoDisabled, isTrue);
+        expect((await db.getSettings()).rtaEnabled, isFalse);
+      },
+    );
+
+    test('is a no-op while RTA is already off', () async {
+      final cash = await cashId();
+      final autoDisabled = await db.setEnvelopeMode(cash, false);
+      expect(autoDisabled, isFalse);
+    });
   });
 
   group('addAllocation', () {
