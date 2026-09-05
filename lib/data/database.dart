@@ -177,7 +177,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 61;
+  int get schemaVersion => 62;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -517,6 +517,20 @@ class AppDatabase extends _$AppDatabase {
         // screen and Envelope Mode's Ready to Assign as the primary
         // budgeting system. Neither system's own data changes.
         await _addColumnIfMissing(m, settings, settings.budgetingMode);
+      }
+      if (from < 62) {
+        // GitHub #100 v2 — Budget (the ceiling system) is now always on for
+        // everyone; the old Budgets-vs-Envelope choice becomes a single
+        // Ready to Assign on/off switch instead. Backfill from the old
+        // enum rather than defaulting everyone to off, so an existing
+        // Envelope-mode user's accounts don't silently fall out of the pool.
+        await _addColumnIfMissing(m, settings, settings.rtaEnabled);
+        final current = await select(settings).getSingleOrNull();
+        if (current != null && current.budgetingMode == BudgetingMode.envelope) {
+          await update(
+            settings,
+          ).write(const SettingsCompanion(rtaEnabled: Value(true)));
+        }
       }
     },
     beforeOpen: (details) async {
@@ -2544,11 +2558,10 @@ class AppDatabase extends _$AppDatabase {
     }
 
     return transaction(() async {
-      // GitHub #100 — while Envelope is the primary budgeting system, every
-      // account joins the shared pool automatically, including a new one;
-      // there's no separate "turn on Envelope Mode" step to remember.
-      final envelopeByDefault =
-          (await getSettings()).budgetingMode == BudgetingMode.envelope;
+      // GitHub #100 v2 — while Ready to Assign is on, every account joins
+      // the shared pool automatically, including a new one; there's no
+      // separate "turn on" step to remember.
+      final envelopeByDefault = (await getSettings()).rtaEnabled;
       return into(accounts).insert(
         AccountsCompanion.insert(
           name: name,
@@ -2644,8 +2657,10 @@ class AppDatabase extends _$AppDatabase {
   /// with transaction history would orphan every row that named it, exactly
   /// like [archiveCategory] above. Removal only ever succeeds on an account
   /// nothing has touched yet — no transaction, no debit card drawing from it,
-  /// no reminder or merchant rule naming it.
-  Future<void> deleteAccount(int id) async {
+  /// no reminder or merchant rule naming it. Returns whether deleting it
+  /// also auto-disabled Ready to Assign (it was the last pool account) — see
+  /// [_maybeAutoDisableRta].
+  Future<bool> deleteAccount(int id) async {
     final linkedCard = await (select(
       accounts,
     )..where((a) => a.linkedAccountId.equals(id))).getSingleOrNull();
@@ -2688,7 +2703,7 @@ class AppDatabase extends _$AppDatabase {
         'that in Settings first.',
       );
     }
-    await transaction(() async {
+    return transaction(() async {
       // A goal account's own target/deadline row has no reason to outlive
       // it — nothing else ever references GoalDetails. Same for a credit
       // card's statement-tracking row.
@@ -2697,6 +2712,7 @@ class AppDatabase extends _$AppDatabase {
         creditCardDetails,
       )..where((c) => c.accountId.equals(id))).go();
       await (delete(accounts)..where((a) => a.id.equals(id))).go();
+      return _maybeAutoDisableRta();
     });
   }
 
@@ -2891,11 +2907,36 @@ class AppDatabase extends _$AppDatabase {
   /// Per-account, not global — every other account keeps working exactly as
   /// it does today. Switching this off never deletes [Allocations] rows (see
   /// [Allocations] doc); they simply stop being read while it's off, and
-  /// reappear if it's switched back on.
-  Future<void> setEnvelopeMode(int accountId, bool enabled) =>
-      (update(accounts)..where((a) => a.id.equals(accountId))).write(
-        AccountsCompanion(envelopeMode: Value(enabled)),
-      );
+  /// reappear if it's switched back on. Returns whether turning it off also
+  /// auto-disabled Ready to Assign (it was the last pool account) — see
+  /// [_maybeAutoDisableRta].
+  Future<bool> setEnvelopeMode(int accountId, bool enabled) =>
+      transaction(() async {
+        await (update(accounts)..where((a) => a.id.equals(accountId))).write(
+          AccountsCompanion(envelopeMode: Value(enabled)),
+        );
+        return enabled ? false : _maybeAutoDisableRta();
+      });
+
+  /// Turns Ready to Assign off, automatically, the moment its pool would
+  /// otherwise go empty — called from inside the same [transaction] as
+  /// whatever just removed the last pool account ([setEnvelopeMode] turning
+  /// one off, or [deleteAccount] removing one). Returns whether it actually
+  /// fired, so the caller can surface a non-blocking notice; never throws
+  /// and never blocks the action that triggered it (GitHub #100 v2 — no
+  /// confirmation prompt on the account-side action, only a heads-up after).
+  Future<bool> _maybeAutoDisableRta() async {
+    final settingsRow = await getSettings();
+    if (!settingsRow.rtaEnabled) return false;
+    final remaining = await (select(
+      accounts,
+    )..where((a) => a.envelopeMode.equals(true))).get();
+    if (remaining.isNotEmpty) return false;
+    await update(
+      settings,
+    ).write(const SettingsCompanion(rtaEnabled: Value(false)));
+    return true;
+  }
 
   /// Every allocation, across every account — the provider layer sums these
   /// per (account, category) rather than this querying once per pair.
@@ -4235,17 +4276,18 @@ class AppDatabase extends _$AppDatabase {
     settings,
   ).write(SettingsCompanion(moreScreenViewMode: Value(mode)));
 
-  /// Switching to [BudgetingMode.envelope] is meant to be the only step —
-  /// GitHub #100 asked that every account join the shared pool at once
-  /// rather than needing its own trip to Account Detail's Envelope Mode
-  /// toggle. Switching back to `budgets` leaves every account's flag as-is
-  /// (nothing here reads it while Budgets is the active mode), so flipping
-  /// back to Envelope later doesn't lose anything.
-  Future<void> setBudgetingMode(BudgetingMode mode) => transaction(() async {
+  /// Turning Ready to Assign on is meant to be the only step — GitHub #100
+  /// asked that every account join the shared pool at once rather than
+  /// needing its own trip to Account Detail's on-budget toggle; users opt
+  /// individual accounts back out from there afterward. Turning it off
+  /// leaves every account's [Accounts.envelopeMode] flag as-is (nothing
+  /// reads it while RTA is off), so turning it back on re-enrolls everyone
+  /// anyway per the branch below — no data is lost either direction.
+  Future<void> setRtaEnabled(bool enabled) => transaction(() async {
     await update(
       settings,
-    ).write(SettingsCompanion(budgetingMode: Value(mode)));
-    if (mode == BudgetingMode.envelope) {
+    ).write(SettingsCompanion(rtaEnabled: Value(enabled)));
+    if (enabled) {
       await update(
         accounts,
       ).write(const AccountsCompanion(envelopeMode: Value(true)));
