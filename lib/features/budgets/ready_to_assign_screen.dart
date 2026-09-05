@@ -69,7 +69,7 @@ class ReadyToAssignScreen extends ConsumerWidget {
     final poolAccounts = ref.watch(envelopeModeAccountsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Envelope')),
+      appBar: AppBar(title: const Text('Ready to Assign')),
       body: poolAccounts.isEmpty
           ? const _EmptyState()
           : ListView(
@@ -153,7 +153,17 @@ class _CategoryEnvelopeRow extends ConsumerWidget {
     final theme = Theme.of(context);
     final catColor = Color(category.colorValue);
     final balance = ref.watch(categoryBalanceProvider(category.id));
-    final overspent = balance.isNegative;
+    // A category with a Budgets ceiling gets the full three-state funding
+    // color; one with only an envelope balance and no ceiling (still
+    // possible — the two systems are independent) falls back to today's
+    // red-if-negative/plain look.
+    final fundingState = ref.watch(categoryFundingStateProvider(category.id));
+    final balanceColor = switch (fundingState) {
+      CategoryFundingState.overspent => AppColors.expense,
+      CategoryFundingState.funded => AppColors.income,
+      CategoryFundingState.underfunded => Colors.amber,
+      null => balance.isNegative ? AppColors.expense : null,
+    };
 
     return ListTile(
       leading: Container(
@@ -171,7 +181,7 @@ class _CategoryEnvelopeRow extends ConsumerWidget {
         balance,
         style: theme.textTheme.titleMedium?.copyWith(
           fontWeight: FontWeight.w600,
-          color: overspent ? AppColors.expense : null,
+          color: balanceColor,
         ),
       ),
       onTap: () => showModalBottomSheet<void>(

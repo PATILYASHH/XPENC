@@ -5,11 +5,13 @@ import 'package:go_router/go_router.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 
-/// The Envelope Mode toggle for [account]. The shared Ready to Assign figure
-/// and category envelope list this account feeds once it's on live on
+/// The on-budget (pool participation) toggle for [account] — only shown
+/// while Ready to Assign is on globally (GitHub #100 v2); there's nothing to
+/// configure here until then. The shared Ready to Assign figure and category
+/// envelope list this account feeds once it's on-budget live on
 /// [lib/features/budgets/ready_to_assign_screen.dart] instead — GitHub #48:
-/// every Envelope-Mode account pools into one figure and one balance per
-/// category, so there's nothing account-scoped left to show here.
+/// every pool account pools into one figure and one balance per category, so
+/// there's nothing account-scoped left to show here.
 class EnvelopeSection extends ConsumerWidget {
   const EnvelopeSection({required this.account, super.key});
 
@@ -17,6 +19,7 @@ class EnvelopeSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (!ref.watch(rtaEnabledProvider)) return const SizedBox.shrink();
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final poolSize = ref.watch(envelopeModeAccountsProvider).length;
@@ -27,12 +30,13 @@ class EnvelopeSection extends ConsumerWidget {
         Card(
           margin: const EdgeInsets.fromLTRB(20, 8, 20, 4),
           child: SwitchListTile(
-            title: const Text('Envelope Mode'),
+            title: const Text('On-budget'),
             subtitle: Text(
               account.envelopeMode
-                  ? 'Every rupee here has a job. An expense needs a category.'
-                  : 'Optional — "every rupee has a job" budgeting for just '
-                        'this account.',
+                  ? 'In the shared Ready to Assign pool. An expense needs a '
+                        'category.'
+                  : 'Off-budget — balance-only, like a vending-machine key '
+                        'fob. Outside the shared pool.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: cs.onSurfaceVariant,
               ),
@@ -73,7 +77,7 @@ class EnvelopeSection extends ConsumerWidget {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('Turn on Envelope Mode?'),
+          title: const Text('Mark this account on-budget?'),
           content: const Text(
             'Money you assign to a category becomes reserved for it. '
             'Unassigned money sits in Ready to Assign. From now on, an '
@@ -93,6 +97,18 @@ class EnvelopeSection extends ConsumerWidget {
       );
       if (confirmed != true) return;
     }
-    await ref.read(dbProvider).setEnvelopeMode(account.id, enabled);
+    final rtaAutoDisabled = await ref
+        .read(dbProvider)
+        .setEnvelopeMode(account.id, enabled);
+    if (rtaAutoDisabled && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Ready to Assign turned off — this was the last account in the '
+            'pool.',
+          ),
+        ),
+      );
+    }
   }
 }
