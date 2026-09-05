@@ -113,14 +113,13 @@ enum LockScreenStyle { classic, bigNumpad, scrambled }
 /// row instead, still grouped the same way.
 enum MoreScreenViewMode { list, cards }
 
-/// Which budgeting system the Dashboard and More hub surface as primary
-/// (GitHub #100). `budgets` shows the classic per-category spending-ceiling
-/// system (`BudgetsScreen`). `envelope` shows Ready to Assign / category
-/// envelopes instead. Both systems keep working and keep their own data
-/// either way — this only decides which one the Dashboard highlights and
-/// which one the More hub's "Budgets" tile opens; a user can still reach
-/// the other from wherever it's already linked from today (Account Detail's
-/// Envelope Mode toggle, or `/more/budgets` directly).
+/// Legacy — superseded by `Settings.rtaEnabled` (GitHub #100 v2). Budget
+/// (the per-category ceiling system) is now always on for everyone, and
+/// Ready to Assign is a single on/off layer on top of it rather than a
+/// mutually-exclusive alternative. This enum/column is kept only so the
+/// `from < 62` migration can read a pre-existing user's choice once, to
+/// decide whether to backfill `rtaEnabled = true` — nothing writes to it
+/// anymore.
 enum BudgetingMode { budgets, envelope }
 
 // ─── Converters ─────────────────────────────────────────────────────────────
@@ -194,11 +193,16 @@ class Accounts extends Table {
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
-  /// Turns this one account into "every rupee has a job" budgeting — an
-  /// expense on it must carry a category, and that category's balance is
-  /// funded from this account's own Ready to Assign via [Allocations]. Off
-  /// by default and per-account: every other account keeps working exactly
-  /// as it does today. See `AppDatabase.categoryBalance` / `readyToAssign`.
+  /// Whether this account is "on-budget" — inside the shared Ready to
+  /// Assign pool — rather than off-budget/tracking-only (a balance-only
+  /// account, outside the pool, like a vending-machine key fob). Only
+  /// meaningful while `Settings.rtaEnabled` is on: turning RTA on globally
+  /// sets this to true for every account at once, and turning it off for
+  /// the last pool account while RTA is on turns RTA off automatically
+  /// (see `AppDatabase.setRtaEnabled` / `_maybeAutoDisableRta`). An
+  /// on-budget account's expenses are funded from the pool via
+  /// [Allocations] — see `categoryBalanceProvider` / `readyToAssignProvider`
+  /// in `data/providers.dart`.
   BoolColumn get envelopeMode => boolean().withDefault(const Constant(false))();
 
   /// Whether this account's balance counts toward Net Worth (dashboard,
@@ -803,12 +807,22 @@ class Settings extends Table {
   TextColumn get moreScreenViewMode =>
       textEnum<MoreScreenViewMode>().withDefault(const Constant('list'))();
 
-  /// Which budgeting system is primary — see [BudgetingMode] (GitHub #100).
-  /// Defaults to `budgets` so existing users see no change; switching to
-  /// `envelope` doesn't touch either system's data, it only changes which
-  /// one the Dashboard and More hub's "Budgets" tile surface.
+  /// Legacy — see [BudgetingMode]. Superseded by [rtaEnabled]; kept only for
+  /// the `from < 62` migration's one-time backfill read. Nothing writes to
+  /// this column anymore.
   TextColumn get budgetingMode =>
       textEnum<BudgetingMode>().withDefault(const Constant('budgets'))();
+
+  /// Whether Ready to Assign — the shared envelope pool — is turned on
+  /// globally (GitHub #100 v2). Off by default. Budget (the per-category
+  /// spending ceiling) is always on regardless of this flag; this only
+  /// decides whether accounts also participate in the shared RTA pool via
+  /// [Accounts.envelopeMode]. Replaces [BudgetingMode] as a mutually
+  /// exclusive Budgets-vs-Envelope choice — enabling this auto-enrolls
+  /// every account into the pool (see `AppDatabase.setRtaEnabled`), and it
+  /// turns itself back off automatically the moment the pool would
+  /// otherwise go empty (see `AppDatabase._maybeAutoDisableRta`).
+  BoolColumn get rtaEnabled => boolean().withDefault(const Constant(false))();
 
   /// Minutes the app may sit backgrounded before the next resume re-locks it
   /// — `0` means immediately (see GitHub #60). Checked against how long the

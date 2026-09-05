@@ -6,7 +6,6 @@ import '../../core/branding/app_info.dart';
 import '../../core/branding/brand_mark.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
-import '../../data/tables.dart' show BudgetingMode;
 import 'lock_screen_style_sheet.dart';
 import 'master_phrase_attempts_sheet.dart';
 import 'more_screen_layout_sheet.dart';
@@ -47,7 +46,7 @@ class SettingsScreen extends ConsumerWidget {
     final pinTimeoutMinutes = ref.watch(pinTimeoutMinutesProvider);
     final lockScreenStyle = ref.watch(lockScreenStyleProvider);
     final moreScreenViewMode = ref.watch(moreScreenViewModeProvider);
-    final budgetingMode = ref.watch(budgetingModeProvider);
+    final rtaEnabled = ref.watch(rtaEnabledProvider);
     final hasMasterPhrase = ref.watch(hasMasterPhraseProvider);
     final masterPhraseAttemptThreshold = ref.watch(
       masterPhraseAttemptThresholdProvider,
@@ -195,53 +194,23 @@ class SettingsScreen extends ConsumerWidget {
           // ── Budgeting ──────────────────────────────────────────────────────
           _sectionLabel(context, 'Budgeting'),
           Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.donut_large_outlined),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Budgeting mode',
-                        style: theme.textTheme.titleSmall,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Budgets sets a spending ceiling per category. Envelope '
-                    '(Ready to Assign) instead assigns money you actually '
-                    'have into categories first. Both keep working either '
-                    'way — this only picks which one the Dashboard and More '
-                    'hub show.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SegmentedButton<BudgetingMode>(
-                    segments: const [
-                      ButtonSegment(
-                        value: BudgetingMode.budgets,
-                        label: Text('Budgets'),
-                        icon: Icon(Icons.donut_large_outlined),
-                      ),
-                      ButtonSegment(
-                        value: BudgetingMode.envelope,
-                        label: Text('Envelope'),
-                        icon: Icon(Icons.savings_outlined),
-                      ),
-                    ],
-                    selected: {budgetingMode},
-                    onSelectionChanged: (selection) => ref
-                        .read(dbProvider)
-                        .setBudgetingMode(selection.first),
-                  ),
-                ],
+            child: SwitchListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              secondary: const Icon(Icons.savings_outlined),
+              title: const Text('Ready to Assign'),
+              subtitle: Text(
+                'Budget (a spending ceiling per category) is always on. '
+                'Ready to Assign adds an optional layer on top: assign the '
+                'money you actually have into categories first, pooled '
+                'across every on-budget account. Turning this on enrolls '
+                'every account at once — opt individual ones out from '
+                'their own Account Detail screen.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
               ),
+              value: rtaEnabled,
+              onChanged: (v) => _onRtaToggle(context, ref, v),
             ),
           ),
 
@@ -1044,6 +1013,42 @@ class SettingsScreen extends ConsumerWidget {
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text("Couldn't clear data: $e")));
     }
+  }
+
+  /// Turning Ready to Assign on is a bulk action — every account joins the
+  /// shared pool at once — so it gets the same confirm-on-enable treatment
+  /// as the per-account on-budget toggle; turning it off needs no
+  /// confirmation, same as there.
+  Future<void> _onRtaToggle(
+    BuildContext context,
+    WidgetRef ref,
+    bool enabled,
+  ) async {
+    if (enabled) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Turn on Ready to Assign?'),
+          content: const Text(
+            'Every account joins the shared pool right away. You can opt '
+            'individual accounts back out afterward from their own Account '
+            'Detail screen.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Turn on'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    }
+    await ref.read(dbProvider).setRtaEnabled(enabled);
   }
 
   Future<void> _toggleNotifications(WidgetRef ref, bool value) async {
