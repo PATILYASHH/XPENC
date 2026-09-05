@@ -970,17 +970,17 @@ class _AccountCard extends StatelessWidget {
   }
 }
 
-// ── 3¼. Ready to Assign (Envelope Mode) ──────────────────────────────────
+// ── 3¼. Ready to Assign ──────────────────────────────────────────────────
 
-/// The one shared Ready to Assign figure, pooled across every account with
-/// Envelope Mode on (GitHub #48 — one pool, not one per account). Hidden
-/// entirely when no account has Envelope Mode on.
+/// The one shared Ready to Assign figure, pooled across every on-budget
+/// account (GitHub #48 — one pool, not one per account). Hidden entirely
+/// while Ready to Assign is off globally, or no account is on-budget yet.
 class _ReadyToAssignSection extends ConsumerWidget {
   const _ReadyToAssignSection();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (ref.watch(budgetingModeProvider) != BudgetingMode.envelope) {
+    if (!ref.watch(rtaEnabledProvider)) {
       return const SizedBox.shrink();
     }
     final poolAccounts = ref.watch(envelopeModeAccountsProvider);
@@ -991,7 +991,7 @@ class _ReadyToAssignSection extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _SectionHeader('Envelope'),
+          const _SectionHeader('Ready to Assign'),
           InkWell(
             borderRadius: BorderRadius.circular(_cardRadius),
             onTap: () => context.push('/more/ready-to-assign'),
@@ -1374,12 +1374,11 @@ class _BudgetsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (ref.watch(budgetingModeProvider) != BudgetingMode.budgets) {
-      return const SizedBox.shrink();
-    }
     final progress = ref.watch(budgetProgressProvider);
 
     if (progress.isEmpty) return const _SetBudgetCard();
+
+    final rtaOn = ref.watch(rtaEnabledProvider);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
@@ -1407,6 +1406,13 @@ class _BudgetsSection extends ConsumerWidget {
                         budget: p.budget.amount,
                         spent: p.spent,
                         color: Color(p.category.colorValue),
+                        fundingColor: rtaOn
+                            ? _fundingColor(
+                                ref.watch(
+                                  categoryFundingStateProvider(p.category.id),
+                                ),
+                              )
+                            : null,
                       ),
                   ],
                 ),
@@ -1417,6 +1423,13 @@ class _BudgetsSection extends ConsumerWidget {
       ),
     );
   }
+
+  static Color? _fundingColor(CategoryFundingState? state) => switch (state) {
+    CategoryFundingState.overspent => AppColors.expense,
+    CategoryFundingState.funded => AppColors.income,
+    CategoryFundingState.underfunded => Colors.amber,
+    null => null,
+  };
 }
 
 class _SetBudgetCard extends StatelessWidget {
