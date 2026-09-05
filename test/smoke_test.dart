@@ -108,8 +108,8 @@ void main() {
   });
 
   testWidgets(
-    'Dashboard shows the shared Ready to Assign pool only in Envelope '
-    'budgeting mode, once an account is in Envelope Mode (GitHub #100)',
+    'Dashboard shows the shared Ready to Assign pool only once RTA is on '
+    'globally and an account is on-budget (GitHub #100 v2)',
     (tester) async {
       await pump(tester, const DashboardScreen());
       expect(tester.takeException(), isNull);
@@ -121,25 +121,21 @@ void main() {
         await db.setEnvelopeMode(cash, true);
       });
 
-      // Still hidden under the default Budgets mode, even with a pool
-      // account — the Settings switch decides which system the Dashboard
-      // surfaces.
+      // Still hidden while RTA is off globally, even with an on-budget
+      // account — the Settings switch is what surfaces this section.
       await pump(tester, const DashboardScreen());
       expect(tester.takeException(), isNull);
       expect(find.text('Ready to Assign'), findsNothing);
       await unmount(tester);
 
-      await tester.runAsync(
-        () => db.setBudgetingMode(BudgetingMode.envelope),
-      );
+      await tester.runAsync(() => db.setRtaEnabled(true));
 
       await pump(tester, const DashboardScreen());
       expect(tester.takeException(), isNull);
-      expect(find.text('Envelope'), findsOneWidget);
-      // The pooled RTA card's own label (GitHub #48 — one shared card, not
-      // one per account, so the account name itself is no longer shown
-      // here).
-      expect(find.text('Ready to Assign'), findsOneWidget);
+      // The section header and the pooled RTA card's own label (GitHub
+      // #48 — one shared card, not one per account, so the account name
+      // itself is no longer shown here).
+      expect(find.text('Ready to Assign'), findsNWidgets(2));
       await unmount(tester);
     },
   );
