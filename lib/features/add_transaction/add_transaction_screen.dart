@@ -255,7 +255,19 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     } else if (widget.duplicateFromId != null) {
       _loading = true;
       WidgetsBinding.instance.addPostFrameCallback((_) => _loadForDuplicate());
+    } else {
+      // Pre-select the last-used account on a brand-new transaction, once the
+      // one-shot query resolves. Still freely changeable via "Paid via", and
+      // the guard on `_accountId` below means it never overwrites a
+      // selection the user already made while this was loading.
+      _seedLastUsedAccount();
     }
+  }
+
+  Future<void> _seedLastUsedAccount() async {
+    final txs = await ref.read(dbProvider).watchTransactions(limit: 1).first;
+    if (!mounted || _accountId != null || txs.isEmpty) return;
+    setState(() => _accountId = txs.first.accountId);
   }
 
   void _onFieldFocusChanged() => setState(() {});
