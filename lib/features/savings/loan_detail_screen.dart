@@ -334,9 +334,8 @@ class LoanDetailScreen extends ConsumerWidget {
     );
     if (confirmed != true) return;
 
-    bool rtaAutoDisabled;
     try {
-      rtaAutoDisabled = await ref.read(dbProvider).deleteAccount(loan.account.id);
+      await ref.read(dbProvider).deleteAccount(loan.account.id);
     } on ArgumentError catch (e) {
       messenger
         ..hideCurrentSnackBar()
@@ -349,16 +348,7 @@ class LoanDetailScreen extends ConsumerWidget {
     navigator.pop();
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            rtaAutoDisabled
-                ? 'Loan deleted. Ready to Assign turned off — no accounts '
-                      'left in the pool.'
-                : 'Loan deleted',
-          ),
-        ),
-      );
+      ..showSnackBar(const SnackBar(content: Text('Loan deleted')));
   }
 }
 

@@ -5,12 +5,10 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/app_icons.dart';
-import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/motion.dart';
-import '../../data/currency_conversion.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
@@ -434,14 +432,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final entries = <_Entry>[];
     for (final day in days) {
       final rows = groups[day]!;
-      // Same reasoning as _SummaryStrip: fold baseAmount, since a day's
-      // rows can span accounts in different currencies.
       var net = const Money.zero();
       for (final tx in rows) {
         if (tx.type == TxType.income) {
-          net += tx.baseAmount;
+          net += tx.amount;
         } else if (tx.type == TxType.expense) {
-          net -= tx.baseAmount;
+          net -= tx.amount;
         }
       }
       entries.add(_HeaderEntry(day, net, rows.length));
@@ -549,15 +545,11 @@ class _SummaryStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     if (txns.isEmpty) return const SizedBox.shrink();
 
-    // Folds each transaction's parent-currency baseAmount, not its raw
-    // native amount — this strip mixes transactions from every account, so
-    // a foreign-currency one must be converted first or it silently
-    // corrupts the total (see TransactionBaseValue).
     var income = const Money.zero();
     var expense = const Money.zero();
     for (final tx in txns) {
-      if (tx.type == TxType.income) income += tx.baseAmount;
-      if (tx.type == TxType.expense) expense += tx.baseAmount;
+      if (tx.type == TxType.income) income += tx.amount;
+      if (tx.type == TxType.expense) expense += tx.amount;
     }
 
     return Padding(
@@ -809,62 +801,6 @@ class _ClusterHeader extends StatelessWidget {
 
 // ── One transaction, one card ────────────────────────────────────────────────
 
-/// Long-press quick actions: Duplicate ("publish another one" of this
-/// transaction with today's date, GitHub #92), Edit, Delete — the same three
-/// destinations already reachable one at a time from the detail screen, just
-/// surfaced without leaving the list.
-Future<void> _openQuickActions(
-  BuildContext context,
-  TransactionRow tx,
-  String title,
-  Future<void> Function(TransactionRow tx, String title) onDelete,
-) async {
-  final theme = Theme.of(context);
-  await showModalBottomSheet<void>(
-    context: context,
-    showDragHandle: true,
-    builder: (sheetContext) => SafeArea(
-      top: false,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.content_copy_outlined),
-            title: const Text('Duplicate'),
-            subtitle: const Text('Add a new transaction with these details'),
-            onTap: () {
-              Navigator.of(sheetContext).pop();
-              context.push('/add?duplicate=${tx.id}');
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.edit_outlined),
-            title: const Text('Edit'),
-            onTap: () {
-              Navigator.of(sheetContext).pop();
-              context.push('/add?id=${tx.id}');
-            },
-          ),
-          ListTile(
-            leading: Icon(
-              Icons.delete_outline_rounded,
-              color: theme.colorScheme.error,
-            ),
-            title: Text(
-              'Delete',
-              style: TextStyle(color: theme.colorScheme.error),
-            ),
-            onTap: () {
-              Navigator.of(sheetContext).pop();
-              onDelete(tx, title);
-            },
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
 class _TxCard extends StatelessWidget {
   const _TxCard({
     required this.tx,
@@ -933,14 +869,6 @@ class _TxCard extends StatelessWidget {
         (tx.type == TxType.expense || tx.type == TxType.personOut)
         ? -tx.amount
         : tx.amount;
-    // The source account's own currency — this row always shows tx.amount,
-    // which is native to accountId regardless of type (a transfer's amount
-    // is its source leg). Doesn't follow a debit card to its linked bank
-    // here, unlike account_detail_screen's fuller resolution — this list
-    // only has the single AccountRow, not the whole map, to check with.
-    final displayCurrency = account?.currencyCode == null
-        ? null
-        : currencyForCode(account!.currencyCode!);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
@@ -972,7 +900,6 @@ class _TxCard extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             child: InkWell(
               onTap: () => context.push('/transaction/${tx.id}'),
-              onLongPress: () => _openQuickActions(context, tx, title, onDelete),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
                 child: Row(
@@ -1059,7 +986,6 @@ class _TxCard extends StatelessWidget {
                               displayAmount,
                               signed: !isTransfer,
                               color: colorForTxType(tx.type),
-                              currency: displayCurrency,
                               style: theme.textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.w700,
                               ),

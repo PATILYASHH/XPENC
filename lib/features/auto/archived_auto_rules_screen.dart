@@ -58,24 +58,17 @@ class _ArchivedRuleTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final isGoalOrLoan = rule.toAccountId != null;
     final isExpense = rule.kind == CategoryKind.expense;
-    final color = isGoalOrLoan
-        ? AppColors.transfer
-        : (isExpense ? AppColors.expense : AppColors.income);
-    final icon = isGoalOrLoan
-        ? (ref.watch(accountMapProvider)[rule.toAccountId]?.type ==
-                  AccountType.loan
-              ? Icons.account_balance_rounded
-              : Icons.savings_rounded)
-        : (isExpense ? Icons.north_east_rounded : Icons.south_west_rounded);
+    final color = isExpense ? AppColors.expense : AppColors.income;
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: CircleAvatar(
         backgroundColor: theme.colorScheme.surfaceContainerHighest,
         foregroundColor: theme.colorScheme.onSurfaceVariant,
-        child: Icon(icon),
+        child: Icon(
+          isExpense ? Icons.north_east_rounded : Icons.south_west_rounded,
+        ),
       ),
       title: Text(
         rule.name,

@@ -119,26 +119,6 @@ class MoneyFormat {
   static String symbol(Money m) =>
       _showSymbol ? _withSymbol.format(m.rupees) : _bare.format(m.rupees);
 
-  /// Formats [m] against an explicit [currency], ignoring whatever
-  /// [MoneyFormat] is globally configured to. For rendering one specific
-  /// account's or transaction's own (possibly foreign) amount — every
-  /// aggregate total (Dashboard, Net Worth, Reports, Budgets) stays on
-  /// [symbol] as before, since those are always parent-currency figures.
-  /// Not cached like [_withSymbol] — this path is only ever used per-row,
-  /// not hot enough to need it.
-  static String symbolIn(Money m, Currency currency) {
-    if (!_showSymbol) return _buildBare(currency).format(m.rupees);
-    return _buildWithSymbol(currency).format(m.rupees);
-  }
-
-  /// [bare], but against an explicit [currency] instead of the globally
-  /// configured one — for a PDF statement's account-specific figures, where
-  /// [symbolIn]'s glyph can't be trusted to render (see `statement_pdf.dart`)
-  /// but the decimal-place/grouping rule still needs to match that account's
-  /// own currency, not the parent's.
-  static String bareIn(Money m, Currency currency) =>
-      _buildBare(currency).format(m.rupees);
-
   /// `12,50,000.00` — never carries a symbol, whatever the setting.
   static String bare(Money m) => _bare.format(m.rupees);
 
@@ -154,12 +134,6 @@ class MoneyFormat {
   /// `₹ ` — for an amount [TextField]'s `prefixText`. Empty when the symbol
   /// is hidden, so the field never shows a stale currency the user turned off.
   static String get inputPrefix => _showSymbol ? '${_currency.symbol} ' : '';
-
-  /// Formats [amount] using [currency]'s own symbol/decimal digits, without
-  /// touching the app-wide [configure]d currency — for displaying a foreign-
-  /// currency annotation (GitHub #85) alongside the home-currency amount.
-  static String forCurrency(Money amount, Currency currency) =>
-      _buildWithSymbol(currency).format(amount.rupees);
 }
 
 /// Amounts must render with tabular figures so columns of numbers line up.

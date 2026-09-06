@@ -448,11 +448,8 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
     );
     if (confirmed != true) return;
 
-    bool rtaAutoDisabled;
     try {
-      rtaAutoDisabled = await ref
-          .read(dbProvider)
-          .deleteAccount(progress.account.id);
+      await ref.read(dbProvider).deleteAccount(progress.account.id);
     } on ArgumentError catch (e) {
       messenger
         ..hideCurrentSnackBar()
@@ -465,16 +462,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
     navigator.pop();
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            rtaAutoDisabled
-                ? 'Goal deleted. Ready to Assign turned off — no accounts '
-                      'left in the pool.'
-                : 'Goal deleted',
-          ),
-        ),
-      );
+      ..showSnackBar(const SnackBar(content: Text('Goal deleted')));
   }
 }
 
