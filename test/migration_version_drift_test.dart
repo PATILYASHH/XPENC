@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:xpenc/data/database.dart';
+import 'package:xpenc/data/tables.dart' show UnlockMethod;
 
 /// GitHub #49 / #50: some real devices ended up with a database whose
 /// stored `PRAGMA user_version` was *lower* than the schema version its
@@ -150,6 +151,34 @@ void main() {
 
       final reopened = AppDatabase(NativeDatabase(file));
       await expectLater(reopened.select(reopened.settings).get(), completes);
+      await reopened.close();
+    },
+  );
+
+  test(
+    'GitHub #112: a settings row whose stored unlock_method is not a '
+    "current UnlockMethod name (e.g. a rolling-BETA build's stale value) "
+    'no longer crashes "Couldn\'t open your data" on reopen, and is '
+    'repaired back to pin',
+    () async {
+      final file = File('${tempDir.path}/stale_unlock_method.sqlite');
+      final db = AppDatabase(NativeDatabase(file));
+      // Fully migrated already (schemaVersion == 64), but the stored text
+      // doesn't match any current UnlockMethod.values name — as if an
+      // earlier beta iteration of #104/#111 wrote a value under a name
+      // since renamed. Written with raw SQL so this doesn't itself throw
+      // going through the typed enum converter.
+      await db.customStatement(
+        "UPDATE settings SET unlock_method = 'stale_value_from_old_beta'",
+      );
+      await db.close();
+
+      final reopened = AppDatabase(NativeDatabase(file));
+      // Before the fix, `EnumNameConverter.fromSql`'s `.byName(...)` threw
+      // here, surfacing as the app's "Couldn't open your data" screen with
+      // no way for the user to recover.
+      final row = await reopened.select(reopened.settings).getSingle();
+      expect(row.unlockMethod, UnlockMethod.pin);
       await reopened.close();
     },
   );
