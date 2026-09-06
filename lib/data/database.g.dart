@@ -9042,6 +9042,16 @@ class $SettingsTable extends Settings
     defaultValue: const Constant('classic'),
   ).withConverter<LockScreenStyle>($SettingsTable.$converterlockScreenStyle);
   @override
+  late final GeneratedColumnWithTypeConverter<UnlockMethod, String>
+  unlockMethod = GeneratedColumn<String>(
+    'unlock_method',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pin'),
+  ).withConverter<UnlockMethod>($SettingsTable.$converterunlockMethod);
+  @override
   late final GeneratedColumnWithTypeConverter<MoreScreenViewMode, String>
   moreScreenViewMode =
       GeneratedColumn<String>(
@@ -9093,6 +9103,17 @@ class $SettingsTable extends Settings
   @override
   late final GeneratedColumn<String> masterPhraseSalt = GeneratedColumn<String>(
     'master_phrase_salt',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _totpSecretMeta = const VerificationMeta(
+    'totpSecret',
+  );
+  @override
+  late final GeneratedColumn<String> totpSecret = GeneratedColumn<String>(
+    'totp_secret',
     aliasedName,
     true,
     type: DriftSqlType.string,
@@ -9461,11 +9482,13 @@ class $SettingsTable extends Settings
     passcodeLength,
     biometricEnabled,
     lockScreenStyle,
+    unlockMethod,
     moreScreenViewMode,
     budgetingMode,
     pinTimeoutMinutes,
     masterPhraseHash,
     masterPhraseSalt,
+    totpSecret,
     masterPhraseAttemptThreshold,
     failedPasscodeAttempts,
     expenseReminderEnabled,
@@ -9737,6 +9760,12 @@ class $SettingsTable extends Settings
           data['master_phrase_salt']!,
           _masterPhraseSaltMeta,
         ),
+      );
+    }
+    if (data.containsKey('totp_secret')) {
+      context.handle(
+        _totpSecretMeta,
+        totpSecret.isAcceptableOrUnknown(data['totp_secret']!, _totpSecretMeta),
       );
     }
     if (data.containsKey('master_phrase_attempt_threshold')) {
@@ -10084,6 +10113,12 @@ class $SettingsTable extends Settings
           data['${effectivePrefix}lock_screen_style'],
         )!,
       ),
+      unlockMethod: $SettingsTable.$converterunlockMethod.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}unlock_method'],
+        )!,
+      ),
       moreScreenViewMode: $SettingsTable.$convertermoreScreenViewMode.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
@@ -10107,6 +10142,10 @@ class $SettingsTable extends Settings
       masterPhraseSalt: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}master_phrase_salt'],
+      ),
+      totpSecret: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}totp_secret'],
       ),
       masterPhraseAttemptThreshold: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
@@ -10226,6 +10265,10 @@ class $SettingsTable extends Settings
   $converterlockScreenStyle = const EnumNameConverter<LockScreenStyle>(
     LockScreenStyle.values,
   );
+  static JsonTypeConverter2<UnlockMethod, String, String>
+  $converterunlockMethod = const EnumNameConverter<UnlockMethod>(
+    UnlockMethod.values,
+  );
   static JsonTypeConverter2<MoreScreenViewMode, String, String>
   $convertermoreScreenViewMode = const EnumNameConverter<MoreScreenViewMode>(
     MoreScreenViewMode.values,
@@ -10334,6 +10377,10 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// Defaults to `classic` so existing users see no change.
   final LockScreenStyle lockScreenStyle;
 
+  /// Which credential is the active front door — see [UnlockMethod]. Default
+  /// `pin` so every existing install keeps today's exact behavior.
+  final UnlockMethod unlockMethod;
+
   /// How the More hub lays out its items — see [MoreScreenViewMode].
   /// Defaults to `list` so existing users see no change.
   final MoreScreenViewMode moreScreenViewMode;
@@ -10359,6 +10406,10 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// setting again already does.
   final String? masterPhraseHash;
   final String? masterPhraseSalt;
+
+  /// A base32 TOTP secret (GitHub #104) — not hashed, unlike
+  /// [passcodeHash]/[masterPhraseHash]. Null means the feature is off.
+  final String? totpSecret;
 
   /// How many consecutive wrong PINs (with [failedPasscodeAttempts]) force
   /// the lock screen into master-phrase-only mode. Meaningless without
@@ -10522,11 +10573,13 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     this.passcodeLength,
     required this.biometricEnabled,
     required this.lockScreenStyle,
+    required this.unlockMethod,
     required this.moreScreenViewMode,
     required this.budgetingMode,
     required this.pinTimeoutMinutes,
     this.masterPhraseHash,
     this.masterPhraseSalt,
+    this.totpSecret,
     required this.masterPhraseAttemptThreshold,
     required this.failedPasscodeAttempts,
     required this.expenseReminderEnabled,
@@ -10610,6 +10663,11 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       );
     }
     {
+      map['unlock_method'] = Variable<String>(
+        $SettingsTable.$converterunlockMethod.toSql(unlockMethod),
+      );
+    }
+    {
       map['more_screen_view_mode'] = Variable<String>(
         $SettingsTable.$convertermoreScreenViewMode.toSql(moreScreenViewMode),
       );
@@ -10625,6 +10683,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     }
     if (!nullToAbsent || masterPhraseSalt != null) {
       map['master_phrase_salt'] = Variable<String>(masterPhraseSalt);
+    }
+    if (!nullToAbsent || totpSecret != null) {
+      map['totp_secret'] = Variable<String>(totpSecret);
     }
     map['master_phrase_attempt_threshold'] = Variable<int>(
       masterPhraseAttemptThreshold,
@@ -10721,6 +10782,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           : Value(passcodeLength),
       biometricEnabled: Value(biometricEnabled),
       lockScreenStyle: Value(lockScreenStyle),
+      unlockMethod: Value(unlockMethod),
       moreScreenViewMode: Value(moreScreenViewMode),
       budgetingMode: Value(budgetingMode),
       pinTimeoutMinutes: Value(pinTimeoutMinutes),
@@ -10730,6 +10792,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       masterPhraseSalt: masterPhraseSalt == null && nullToAbsent
           ? const Value.absent()
           : Value(masterPhraseSalt),
+      totpSecret: totpSecret == null && nullToAbsent
+          ? const Value.absent()
+          : Value(totpSecret),
       masterPhraseAttemptThreshold: Value(masterPhraseAttemptThreshold),
       failedPasscodeAttempts: Value(failedPasscodeAttempts),
       expenseReminderEnabled: Value(expenseReminderEnabled),
@@ -10809,6 +10874,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       lockScreenStyle: $SettingsTable.$converterlockScreenStyle.fromJson(
         serializer.fromJson<String>(json['lockScreenStyle']),
       ),
+      unlockMethod: $SettingsTable.$converterunlockMethod.fromJson(
+        serializer.fromJson<String>(json['unlockMethod']),
+      ),
       moreScreenViewMode: $SettingsTable.$convertermoreScreenViewMode.fromJson(
         serializer.fromJson<String>(json['moreScreenViewMode']),
       ),
@@ -10818,6 +10886,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       pinTimeoutMinutes: serializer.fromJson<int>(json['pinTimeoutMinutes']),
       masterPhraseHash: serializer.fromJson<String?>(json['masterPhraseHash']),
       masterPhraseSalt: serializer.fromJson<String?>(json['masterPhraseSalt']),
+      totpSecret: serializer.fromJson<String?>(json['totpSecret']),
       masterPhraseAttemptThreshold: serializer.fromJson<int>(
         json['masterPhraseAttemptThreshold'],
       ),
@@ -10909,6 +10978,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'lockScreenStyle': serializer.toJson<String>(
         $SettingsTable.$converterlockScreenStyle.toJson(lockScreenStyle),
       ),
+      'unlockMethod': serializer.toJson<String>(
+        $SettingsTable.$converterunlockMethod.toJson(unlockMethod),
+      ),
       'moreScreenViewMode': serializer.toJson<String>(
         $SettingsTable.$convertermoreScreenViewMode.toJson(moreScreenViewMode),
       ),
@@ -10918,6 +10990,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'pinTimeoutMinutes': serializer.toJson<int>(pinTimeoutMinutes),
       'masterPhraseHash': serializer.toJson<String?>(masterPhraseHash),
       'masterPhraseSalt': serializer.toJson<String?>(masterPhraseSalt),
+      'totpSecret': serializer.toJson<String?>(totpSecret),
       'masterPhraseAttemptThreshold': serializer.toJson<int>(
         masterPhraseAttemptThreshold,
       ),
@@ -10986,11 +11059,13 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     Value<int?> passcodeLength = const Value.absent(),
     bool? biometricEnabled,
     LockScreenStyle? lockScreenStyle,
+    UnlockMethod? unlockMethod,
     MoreScreenViewMode? moreScreenViewMode,
     BudgetingMode? budgetingMode,
     int? pinTimeoutMinutes,
     Value<String?> masterPhraseHash = const Value.absent(),
     Value<String?> masterPhraseSalt = const Value.absent(),
+    Value<String?> totpSecret = const Value.absent(),
     int? masterPhraseAttemptThreshold,
     int? failedPasscodeAttempts,
     bool? expenseReminderEnabled,
@@ -11051,6 +11126,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
         : this.passcodeLength,
     biometricEnabled: biometricEnabled ?? this.biometricEnabled,
     lockScreenStyle: lockScreenStyle ?? this.lockScreenStyle,
+    unlockMethod: unlockMethod ?? this.unlockMethod,
     moreScreenViewMode: moreScreenViewMode ?? this.moreScreenViewMode,
     budgetingMode: budgetingMode ?? this.budgetingMode,
     pinTimeoutMinutes: pinTimeoutMinutes ?? this.pinTimeoutMinutes,
@@ -11060,6 +11136,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     masterPhraseSalt: masterPhraseSalt.present
         ? masterPhraseSalt.value
         : this.masterPhraseSalt,
+    totpSecret: totpSecret.present ? totpSecret.value : this.totpSecret,
     masterPhraseAttemptThreshold:
         masterPhraseAttemptThreshold ?? this.masterPhraseAttemptThreshold,
     failedPasscodeAttempts:
@@ -11164,6 +11241,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       lockScreenStyle: data.lockScreenStyle.present
           ? data.lockScreenStyle.value
           : this.lockScreenStyle,
+      unlockMethod: data.unlockMethod.present
+          ? data.unlockMethod.value
+          : this.unlockMethod,
       moreScreenViewMode: data.moreScreenViewMode.present
           ? data.moreScreenViewMode.value
           : this.moreScreenViewMode,
@@ -11179,6 +11259,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       masterPhraseSalt: data.masterPhraseSalt.present
           ? data.masterPhraseSalt.value
           : this.masterPhraseSalt,
+      totpSecret: data.totpSecret.present
+          ? data.totpSecret.value
+          : this.totpSecret,
       masterPhraseAttemptThreshold: data.masterPhraseAttemptThreshold.present
           ? data.masterPhraseAttemptThreshold.value
           : this.masterPhraseAttemptThreshold,
@@ -11291,11 +11374,13 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('passcodeLength: $passcodeLength, ')
           ..write('biometricEnabled: $biometricEnabled, ')
           ..write('lockScreenStyle: $lockScreenStyle, ')
+          ..write('unlockMethod: $unlockMethod, ')
           ..write('moreScreenViewMode: $moreScreenViewMode, ')
           ..write('budgetingMode: $budgetingMode, ')
           ..write('pinTimeoutMinutes: $pinTimeoutMinutes, ')
           ..write('masterPhraseHash: $masterPhraseHash, ')
           ..write('masterPhraseSalt: $masterPhraseSalt, ')
+          ..write('totpSecret: $totpSecret, ')
           ..write(
             'masterPhraseAttemptThreshold: $masterPhraseAttemptThreshold, ',
           )
@@ -11358,11 +11443,13 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     passcodeLength,
     biometricEnabled,
     lockScreenStyle,
+    unlockMethod,
     moreScreenViewMode,
     budgetingMode,
     pinTimeoutMinutes,
     masterPhraseHash,
     masterPhraseSalt,
+    totpSecret,
     masterPhraseAttemptThreshold,
     failedPasscodeAttempts,
     expenseReminderEnabled,
@@ -11422,11 +11509,13 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.passcodeLength == this.passcodeLength &&
           other.biometricEnabled == this.biometricEnabled &&
           other.lockScreenStyle == this.lockScreenStyle &&
+          other.unlockMethod == this.unlockMethod &&
           other.moreScreenViewMode == this.moreScreenViewMode &&
           other.budgetingMode == this.budgetingMode &&
           other.pinTimeoutMinutes == this.pinTimeoutMinutes &&
           other.masterPhraseHash == this.masterPhraseHash &&
           other.masterPhraseSalt == this.masterPhraseSalt &&
+          other.totpSecret == this.totpSecret &&
           other.masterPhraseAttemptThreshold ==
               this.masterPhraseAttemptThreshold &&
           other.failedPasscodeAttempts == this.failedPasscodeAttempts &&
@@ -11486,11 +11575,13 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<int?> passcodeLength;
   final Value<bool> biometricEnabled;
   final Value<LockScreenStyle> lockScreenStyle;
+  final Value<UnlockMethod> unlockMethod;
   final Value<MoreScreenViewMode> moreScreenViewMode;
   final Value<BudgetingMode> budgetingMode;
   final Value<int> pinTimeoutMinutes;
   final Value<String?> masterPhraseHash;
   final Value<String?> masterPhraseSalt;
+  final Value<String?> totpSecret;
   final Value<int> masterPhraseAttemptThreshold;
   final Value<int> failedPasscodeAttempts;
   final Value<bool> expenseReminderEnabled;
@@ -11546,11 +11637,13 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.passcodeLength = const Value.absent(),
     this.biometricEnabled = const Value.absent(),
     this.lockScreenStyle = const Value.absent(),
+    this.unlockMethod = const Value.absent(),
     this.moreScreenViewMode = const Value.absent(),
     this.budgetingMode = const Value.absent(),
     this.pinTimeoutMinutes = const Value.absent(),
     this.masterPhraseHash = const Value.absent(),
     this.masterPhraseSalt = const Value.absent(),
+    this.totpSecret = const Value.absent(),
     this.masterPhraseAttemptThreshold = const Value.absent(),
     this.failedPasscodeAttempts = const Value.absent(),
     this.expenseReminderEnabled = const Value.absent(),
@@ -11607,11 +11700,13 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.passcodeLength = const Value.absent(),
     this.biometricEnabled = const Value.absent(),
     this.lockScreenStyle = const Value.absent(),
+    this.unlockMethod = const Value.absent(),
     this.moreScreenViewMode = const Value.absent(),
     this.budgetingMode = const Value.absent(),
     this.pinTimeoutMinutes = const Value.absent(),
     this.masterPhraseHash = const Value.absent(),
     this.masterPhraseSalt = const Value.absent(),
+    this.totpSecret = const Value.absent(),
     this.masterPhraseAttemptThreshold = const Value.absent(),
     this.failedPasscodeAttempts = const Value.absent(),
     this.expenseReminderEnabled = const Value.absent(),
@@ -11668,11 +11763,13 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<int>? passcodeLength,
     Expression<bool>? biometricEnabled,
     Expression<String>? lockScreenStyle,
+    Expression<String>? unlockMethod,
     Expression<String>? moreScreenViewMode,
     Expression<String>? budgetingMode,
     Expression<int>? pinTimeoutMinutes,
     Expression<String>? masterPhraseHash,
     Expression<String>? masterPhraseSalt,
+    Expression<String>? totpSecret,
     Expression<int>? masterPhraseAttemptThreshold,
     Expression<int>? failedPasscodeAttempts,
     Expression<bool>? expenseReminderEnabled,
@@ -11733,12 +11830,14 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       if (passcodeLength != null) 'passcode_length': passcodeLength,
       if (biometricEnabled != null) 'biometric_enabled': biometricEnabled,
       if (lockScreenStyle != null) 'lock_screen_style': lockScreenStyle,
+      if (unlockMethod != null) 'unlock_method': unlockMethod,
       if (moreScreenViewMode != null)
         'more_screen_view_mode': moreScreenViewMode,
       if (budgetingMode != null) 'budgeting_mode': budgetingMode,
       if (pinTimeoutMinutes != null) 'pin_timeout_minutes': pinTimeoutMinutes,
       if (masterPhraseHash != null) 'master_phrase_hash': masterPhraseHash,
       if (masterPhraseSalt != null) 'master_phrase_salt': masterPhraseSalt,
+      if (totpSecret != null) 'totp_secret': totpSecret,
       if (masterPhraseAttemptThreshold != null)
         'master_phrase_attempt_threshold': masterPhraseAttemptThreshold,
       if (failedPasscodeAttempts != null)
@@ -11810,11 +11909,13 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<int?>? passcodeLength,
     Value<bool>? biometricEnabled,
     Value<LockScreenStyle>? lockScreenStyle,
+    Value<UnlockMethod>? unlockMethod,
     Value<MoreScreenViewMode>? moreScreenViewMode,
     Value<BudgetingMode>? budgetingMode,
     Value<int>? pinTimeoutMinutes,
     Value<String?>? masterPhraseHash,
     Value<String?>? masterPhraseSalt,
+    Value<String?>? totpSecret,
     Value<int>? masterPhraseAttemptThreshold,
     Value<int>? failedPasscodeAttempts,
     Value<bool>? expenseReminderEnabled,
@@ -11873,11 +11974,13 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       passcodeLength: passcodeLength ?? this.passcodeLength,
       biometricEnabled: biometricEnabled ?? this.biometricEnabled,
       lockScreenStyle: lockScreenStyle ?? this.lockScreenStyle,
+      unlockMethod: unlockMethod ?? this.unlockMethod,
       moreScreenViewMode: moreScreenViewMode ?? this.moreScreenViewMode,
       budgetingMode: budgetingMode ?? this.budgetingMode,
       pinTimeoutMinutes: pinTimeoutMinutes ?? this.pinTimeoutMinutes,
       masterPhraseHash: masterPhraseHash ?? this.masterPhraseHash,
       masterPhraseSalt: masterPhraseSalt ?? this.masterPhraseSalt,
+      totpSecret: totpSecret ?? this.totpSecret,
       masterPhraseAttemptThreshold:
           masterPhraseAttemptThreshold ?? this.masterPhraseAttemptThreshold,
       failedPasscodeAttempts:
@@ -12008,6 +12111,11 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
         $SettingsTable.$converterlockScreenStyle.toSql(lockScreenStyle.value),
       );
     }
+    if (unlockMethod.present) {
+      map['unlock_method'] = Variable<String>(
+        $SettingsTable.$converterunlockMethod.toSql(unlockMethod.value),
+      );
+    }
     if (moreScreenViewMode.present) {
       map['more_screen_view_mode'] = Variable<String>(
         $SettingsTable.$convertermoreScreenViewMode.toSql(
@@ -12028,6 +12136,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     }
     if (masterPhraseSalt.present) {
       map['master_phrase_salt'] = Variable<String>(masterPhraseSalt.value);
+    }
+    if (totpSecret.present) {
+      map['totp_secret'] = Variable<String>(totpSecret.value);
     }
     if (masterPhraseAttemptThreshold.present) {
       map['master_phrase_attempt_threshold'] = Variable<int>(
@@ -12163,11 +12274,13 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('passcodeLength: $passcodeLength, ')
           ..write('biometricEnabled: $biometricEnabled, ')
           ..write('lockScreenStyle: $lockScreenStyle, ')
+          ..write('unlockMethod: $unlockMethod, ')
           ..write('moreScreenViewMode: $moreScreenViewMode, ')
           ..write('budgetingMode: $budgetingMode, ')
           ..write('pinTimeoutMinutes: $pinTimeoutMinutes, ')
           ..write('masterPhraseHash: $masterPhraseHash, ')
           ..write('masterPhraseSalt: $masterPhraseSalt, ')
+          ..write('totpSecret: $totpSecret, ')
           ..write(
             'masterPhraseAttemptThreshold: $masterPhraseAttemptThreshold, ',
           )
@@ -20681,9 +20794,7 @@ class CategoryTemplateItemRow extends DataClass
     colorValue: colorValue ?? this.colorValue,
     iconKey: iconKey ?? this.iconKey,
     sortOrder: sortOrder ?? this.sortOrder,
-    parentItemId: parentItemId.present
-        ? parentItemId.value
-        : this.parentItemId,
+    parentItemId: parentItemId.present ? parentItemId.value : this.parentItemId,
   );
   CategoryTemplateItemRow copyWithCompanion(
     CategoryTemplateItemsCompanion data,

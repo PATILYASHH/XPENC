@@ -4,6 +4,7 @@ import '../core/currency.dart';
 import '../core/home_widget/home_widget_service.dart';
 import '../core/money.dart';
 import '../core/notifications/notification_service.dart';
+import '../core/security/unlock_method.dart';
 import '../core/theme/font_options.dart';
 import '../core/theme/theme_preset.dart';
 import '../features/data_export/backup_service.dart';
@@ -826,6 +827,29 @@ final screenshotReminderEnabledProvider = Provider<bool>((ref) {
 /// checks alongside [failedPasscodeAttemptsProvider] (GitHub #74).
 final hasMasterPhraseProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.masterPhraseHash != null;
+});
+
+/// Which credential is the active front-door lock (GitHub #104). Defaults to
+/// `pin`, matching [Settings.unlockMethod]'s own default.
+final unlockMethodProvider = Provider<UnlockMethod>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.unlockMethod ??
+      UnlockMethod.pin;
+});
+
+/// Whether an authenticator-app (TOTP) secret is set — alongside
+/// [hasPasscodeProvider]/[hasMasterPhraseProvider], the third method's own
+/// "is its credential configured" switch.
+final hasTotpProvider = Provider<bool>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.totpSecret != null;
+});
+
+/// Whether the credential [unlockMethodProvider] currently points at is
+/// actually configured — the single "is the app really locked right now"
+/// answer from [hasUnlockCredential], exposed as a provider so widgets don't
+/// each reconstruct the same switch over [settingsProvider].
+final hasUnlockCredentialProvider = Provider<bool>((ref) {
+  final settings = ref.watch(settingsProvider).valueOrNull;
+  return settings != null && hasUnlockCredential(settings);
 });
 
 final masterPhraseAttemptThresholdProvider = Provider<int>((ref) {

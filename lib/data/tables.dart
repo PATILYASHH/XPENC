@@ -108,6 +108,14 @@ enum AutoBackupFrequency { daily, monthly, custom }
 /// position can't infer the PIN.
 enum LockScreenStyle { classic, bigNumpad, scrambled }
 
+/// Which credential is the app's active front-door lock (GitHub #104) — the
+/// user picks exactly one, never a combination. `hasUnlockCredential` in
+/// `core/security/unlock_method.dart` maps this to whether that credential
+/// is actually configured; [Settings.masterPhraseHash] can still be set and
+/// used purely as a fallback (see [Settings.masterPhraseAttemptThreshold])
+/// while a *different* method is active.
+enum UnlockMethod { pin, masterPhrase, totp }
+
 /// How the More hub (`MoreScreen`) lays out its items. `list` is the
 /// original one-column row layout. `cards` shows two square-ish cards per
 /// row instead, still grouped the same way.
@@ -877,6 +885,22 @@ class Settings extends Table {
   /// [masterPhraseHash] set, same guard pattern as [pinTimeoutMinutes].
   IntColumn get masterPhraseAttemptThreshold =>
       integer().withDefault(const Constant(5))();
+
+  /// Which credential is the active front door — see [UnlockMethod]. Default
+  /// `pin` so every existing install keeps today's exact behavior. Switching
+  /// this never clears any other method's credential; a phrase or a PIN can
+  /// stay configured and unused, or serve as [masterPhraseAttemptThreshold]'s
+  /// fallback, while a different method is active.
+  TextColumn get unlockMethod =>
+      textEnum<UnlockMethod>().withDefault(const Constant('pin'))();
+
+  /// A base32 TOTP secret (GitHub #104) — **not** hashed, unlike
+  /// [passcodeHash]/[masterPhraseHash]. Verifying a 6-digit code means
+  /// recomputing it from the secret and comparing, so the secret must stay
+  /// recoverable. This adds no new trust boundary: the whole ledger already
+  /// lives in this same plaintext local database. Null means the feature is
+  /// off, same convention as the other two credential columns.
+  TextColumn get totpSecret => text().nullable()();
 
   /// Consecutive wrong-PIN count on the lock screen — persisted, not reset
   /// by an app restart or by time passing (GitHub #74 asks for "no time

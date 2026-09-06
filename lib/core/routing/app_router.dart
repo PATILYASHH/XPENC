@@ -41,6 +41,8 @@ import '../../features/savings/savings_goals_screen.dart';
 import '../../features/security/master_phrase_setup_screen.dart';
 import '../../features/security/master_phrase_verify_screen.dart';
 import '../../features/security/set_passcode_screen.dart';
+import '../../features/security/totp_setup_screen.dart';
+import '../../features/security/totp_verify_screen.dart';
 import '../../features/settings/bottom_nav_settings_screen.dart';
 import '../../features/settings/currency_settings_screen.dart';
 import '../../features/settings/dashboard_settings_screen.dart';
@@ -186,6 +188,16 @@ final appRouter = GoRouter(
                       path: 'master-phrase/disable',
                       parentNavigatorKey: _rootKey,
                       builder: (_, _) => const MasterPhraseVerifyScreen(),
+                    ),
+                    GoRoute(
+                      path: 'totp/setup',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const TotpSetupScreen(),
+                    ),
+                    GoRoute(
+                      path: 'totp/disable',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const TotpVerifyScreen(),
                     ),
                     GoRoute(
                       path: 'widgets',
