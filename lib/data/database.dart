@@ -548,6 +548,9 @@ class AppDatabase extends _$AppDatabase {
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
+      // Must run before the typed `select(settings)` below — see doc
+      // comment on [_repairInvalidUnlockMethod].
+      await _repairInvalidUnlockMethod();
       final hasSettings = await select(settings).get();
       if (hasSettings.isEmpty) {
         await into(settings).insert(const SettingsCompanion());
@@ -590,6 +593,45 @@ class AppDatabase extends _$AppDatabase {
   ) async {
     if (await _hasColumn(table.actualTableName, column.name)) return;
     await m.addColumn(table, column);
+  }
+
+  /// Repairs a `settings.unlock_method` value that doesn't match any of
+  /// today's [UnlockMethod] names.
+  ///
+  /// Same root cause as [_addColumnIfMissing]'s doc — a rolling-BETA build
+  /// (an earlier iteration of GitHub #104 or #111) could have stamped
+  /// `schemaVersion` to its current number while writing an `unlock_method`
+  /// string that a later, renamed/reordered [UnlockMethod] no longer
+  /// recognizes. Drift's `textEnum` column decodes with `.byName(...)`,
+  /// which throws on an unrecognized string instead of falling back — and
+  /// because a device already on the latest `schemaVersion` never re-runs
+  /// `onUpgrade`, nothing else would ever fix it. Every subsequent launch
+  /// would then crash before the settings row can even be read, surfacing
+  /// as "Couldn't open your data" with no way for the user to recover
+  /// (GitHub #112).
+  ///
+  /// This runs with raw SQL rather than a typed `select`/`update`, so an
+  /// already-bad value is inspected and fixed *before* Drift's enum
+  /// converter ever gets a chance to throw on it.
+  Future<void> _repairInvalidUnlockMethod() async {
+    if (!await _hasColumn('settings', 'unlock_method')) return;
+    final validNames = UnlockMethod.values.map((e) => e.name).toSet();
+    final rows = await customSelect(
+      'SELECT DISTINCT unlock_method FROM settings',
+    ).get();
+    for (final row in rows) {
+      final value = row.read<String?>('unlock_method');
+      if (value != null && !validNames.contains(value)) {
+        await customUpdate(
+          'UPDATE settings SET unlock_method = ? WHERE unlock_method = ?',
+          variables: [
+            Variable.withString(UnlockMethod.pin.name),
+            Variable.withString(value),
+          ],
+          updates: {settings},
+        );
+      }
+    }
   }
 
   /// v2 → v3: person entries used to poke the account balance directly, with no
