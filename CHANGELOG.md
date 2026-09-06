@@ -8,33 +8,6 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
-### Added
-- **Category templates** (#101) — save your current category/sub-category
-  structure as a named template from Categories → the new templates icon,
-  and switch between saved templates any time. Switching never touches a
-  transaction: categories the target template doesn't have are archived
-  (same as a manual archive — their transactions keep them), categories it
-  does have are created or relabelled in place, and switching back later
-  reactivates the same categories rather than duplicating them.
-- **Auto rules: Goals & Loans (G&L)** — a recurring rule's Expense/Income
-  toggle now has a third option, G&L: on schedule, it posts a transfer into
-  a goal or a payment toward a loan instead of a category-tagged
-  income/expense — funding a savings goal or paying down a loan
-  automatically, the same way a bill or subscription already posts itself.
-- **More screen layout** (Settings → More screen layout) — the More hub can
-  render as the original one-column list or as two-per-row cards. Defaults
-  to list, so existing users see no change.
-- **Tag groups** (#92) — a named bundle of tags (e.g. "Work trip" = Travel +
-  Meals + Client), managed from Tags → the new group icon. Picking a group
-  from the tag picker selects every tag in it at once, instead of hunting
-  each one down individually every time the same combination gets used.
-- **Duplicate a transaction** (#92) — long-press a transaction in the list
-  (or tap the new icon on its detail screen) for Duplicate / Edit / Delete
-  quick actions. Duplicate prefills a new transaction from the source —
-  account, category, amount, note, payee, tags — but resets the date to
-  today and never copies its receipt, so it's clearly a new, separate entry
-  rather than a change to the original.
-
 ## [1.5.1] — 2026-09-01
 
 ### Added

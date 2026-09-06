@@ -86,10 +86,6 @@ void main() {
       revolutEnabled: true,
       lockScreenStyle: LockScreenStyle.classic,
       screenshotReminderEnabled: false,
-      moreScreenViewMode: MoreScreenViewMode.list,
-      frequentIconKeys: '',
-      budgetingMode: BudgetingMode.budgets,
-      rtaEnabled: false,
     );
 
     final now = DateTime(2026, 8, 5, 12);

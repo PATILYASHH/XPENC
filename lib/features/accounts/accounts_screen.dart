@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/app_icons.dart';
-import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/statement_range_picker.dart';
@@ -285,11 +284,6 @@ class _AccountTile extends ConsumerWidget {
   bool get _isPayLater => account.type == AccountType.payLater;
   bool get _owesLikeCredit => _isCreditCard || _isPayLater;
 
-  /// Null = parent currency, matching every existing account before this
-  /// feature — [BalanceText] then renders exactly as it always has.
-  Currency? get _currency =>
-      account.currencyCode == null ? null : currencyForCode(account.currencyCode!);
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
@@ -308,7 +302,6 @@ class _AccountTile extends ConsumerWidget {
       );
       trailing = BalanceText(
         account.currentBalance,
-        currency: _currency,
         style: theme.textTheme.titleMedium?.copyWith(
           fontWeight: FontWeight.w600,
         ),
@@ -324,7 +317,6 @@ class _AccountTile extends ConsumerWidget {
       subtitle = parts.isEmpty ? null : _subtitle(theme, parts.join('   '));
       trailing = BalanceText(
         account.currentBalance,
-        currency: _currency,
         style: theme.textTheme.titleMedium?.copyWith(
           fontWeight: FontWeight.w600,
         ),
@@ -518,9 +510,8 @@ class _AccountTile extends ConsumerWidget {
     );
     if (confirmed != true) return;
 
-    bool rtaAutoDisabled;
     try {
-      rtaAutoDisabled = await ref.read(dbProvider).deleteAccount(account.id);
+      await ref.read(dbProvider).deleteAccount(account.id);
     } on ArgumentError catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context)
@@ -535,16 +526,7 @@ class _AccountTile extends ConsumerWidget {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            rtaAutoDisabled
-                ? 'Account removed. Ready to Assign turned off — no '
-                      'accounts left in the pool.'
-                : 'Account removed',
-          ),
-        ),
-      );
+      ..showSnackBar(const SnackBar(content: Text('Account removed')));
   }
 }
 

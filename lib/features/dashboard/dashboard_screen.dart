@@ -12,7 +12,6 @@ import '../../core/widgets/motion.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
-import '../budgets/ready_to_assign_screen.dart';
 import '../message_capture/review_inbox_screen.dart';
 import '../reports/chart_widgets.dart';
 import 'sparkline.dart';
@@ -970,21 +969,19 @@ class _AccountCard extends StatelessWidget {
   }
 }
 
-// ── 3¼. Ready to Assign ──────────────────────────────────────────────────
+// ── 3¼. Ready to Assign (Envelope Mode) ──────────────────────────────────
 
-/// The one shared Ready to Assign figure, pooled across every on-budget
-/// account (GitHub #48 — one pool, not one per account). Hidden entirely
-/// while Ready to Assign is off globally, or no account is on-budget yet.
+/// One card per Envelope Mode account, showing how much of its balance
+/// hasn't been given a job yet. Hidden entirely when no account has Envelope
+/// Mode on — this is a per-account, opt-in feature, never a global mode.
 class _ReadyToAssignSection extends ConsumerWidget {
   const _ReadyToAssignSection();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (!ref.watch(rtaEnabledProvider)) {
-      return const SizedBox.shrink();
-    }
-    final poolAccounts = ref.watch(envelopeModeAccountsProvider);
-    if (poolAccounts.isEmpty) return const SizedBox.shrink();
+    final accounts = ref.watch(accountsProvider).valueOrNull ?? const [];
+    final envelopeAccounts = accounts.where((a) => a.envelopeMode).toList();
+    if (envelopeAccounts.isEmpty) return const SizedBox.shrink();
 
     return Padding(
       padding: _sectionPad,
@@ -992,12 +989,64 @@ class _ReadyToAssignSection extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _SectionHeader('Ready to Assign'),
-          InkWell(
-            borderRadius: BorderRadius.circular(_cardRadius),
-            onTap: () => context.push('/more/ready-to-assign'),
-            child: const ReadyToAssignCard(),
-          ),
+          for (final account in envelopeAccounts)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _ReadyToAssignCard(account: account),
+            ),
         ],
+      ),
+    );
+  }
+}
+
+class _ReadyToAssignCard extends ConsumerWidget {
+  const _ReadyToAssignCard({required this.account});
+
+  final AccountRow account;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final rta = ref.watch(readyToAssignProvider(account.id));
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(_cardRadius),
+        onTap: () => context.push('/account/${account.id}'),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      account.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    MoneyText(
+                      rta,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: rta.isNegative ? AppColors.expense : null,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1378,8 +1427,6 @@ class _BudgetsSection extends ConsumerWidget {
 
     if (progress.isEmpty) return const _SetBudgetCard();
 
-    final rtaOn = ref.watch(rtaEnabledProvider);
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
       child: Column(
@@ -1406,13 +1453,6 @@ class _BudgetsSection extends ConsumerWidget {
                         budget: p.budget.amount,
                         spent: p.spent,
                         color: Color(p.category.colorValue),
-                        fundingColor: rtaOn
-                            ? _fundingColor(
-                                ref.watch(
-                                  categoryFundingStateProvider(p.category.id),
-                                ),
-                              )
-                            : null,
                       ),
                   ],
                 ),
@@ -1423,13 +1463,6 @@ class _BudgetsSection extends ConsumerWidget {
       ),
     );
   }
-
-  static Color? _fundingColor(CategoryFundingState? state) => switch (state) {
-    CategoryFundingState.overspent => AppColors.expense,
-    CategoryFundingState.funded => AppColors.income,
-    CategoryFundingState.underfunded => Colors.amber,
-    null => null,
-  };
 }
 
 class _SetBudgetCard extends StatelessWidget {
@@ -1557,7 +1590,6 @@ class _SpendByCategorySection extends ConsumerWidget {
                             color: cats[e.key] != null
                                 ? Color(cats[e.key]!.colorValue)
                                 : theme.colorScheme.secondary,
-                            id: e.key,
                           ),
                       ],
                     ),

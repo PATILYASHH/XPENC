@@ -6,7 +6,6 @@ import '../../core/branding/app_info.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/providers.dart';
-import '../../data/tables.dart' show MoreScreenViewMode;
 
 /// Hub page. Grouped, not a flat dump. Every tile navigates to a real route.
 class MoreScreen extends ConsumerWidget {
@@ -18,7 +17,6 @@ class MoreScreen extends ConsumerWidget {
     final cs = theme.colorScheme;
 
     // ── Live badges ──────────────────────────────────────────────────────────
-    final rtaEnabled = ref.watch(rtaEnabledProvider);
     final progress = ref.watch(budgetProgressProvider);
     final overCount = progress.where((p) => p.overspent).length;
     final budgetSubtitle = overCount > 0
@@ -64,15 +62,6 @@ class MoreScreen extends ConsumerWidget {
           subtitle: budgetSubtitle,
           subtitleColor: budgetSubtitleColor,
         ),
-        if (rtaEnabled)
-          _Item(
-            Icons.savings_outlined,
-            'Ready to Assign',
-            route: '/more/ready-to-assign',
-            subtitle:
-                '${MoneyFormat.compact(ref.watch(readyToAssignProvider))} '
-                'unassigned',
-          ),
         _Item(
           Icons.autorenew_rounded,
           'Auto',
@@ -178,9 +167,6 @@ class MoreScreen extends ConsumerWidget {
       ]),
     ];
 
-    final viewMode = ref.watch(moreScreenViewModeProvider);
-    final isCards = viewMode == MoreScreenViewMode.cards;
-
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -199,40 +185,22 @@ class MoreScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            if (isCards)
-              SliverPadding(
+            SliverToBoxAdapter(
+              child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                sliver: SliverGrid(
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        mainAxisSpacing: 12,
-                        crossAxisSpacing: 12,
-                        childAspectRatio: 1.35,
-                      ),
-                  delegate: SliverChildBuilderDelegate(
-                    (context, i) => _MoreCard(item: group.items[i]),
-                    childCount: group.items.length,
-                  ),
-                ),
-              )
-            else
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Card(
-                    child: Column(
-                      children: [
-                        for (var i = 0; i < group.items.length; i++) ...[
-                          if (i > 0)
-                            Divider(height: 1, indent: 60, color: cs.outline),
-                          _MoreTile(item: group.items[i]),
-                        ],
+                child: Card(
+                  child: Column(
+                    children: [
+                      for (var i = 0; i < group.items.length; i++) ...[
+                        if (i > 0)
+                          Divider(height: 1, indent: 60, color: cs.outline),
+                        _MoreTile(item: group.items[i]),
                       ],
-                    ),
+                    ],
                   ),
                 ),
               ),
+            ),
           ],
           const SliverToBoxAdapter(child: SizedBox(height: 32)),
         ],
@@ -267,55 +235,6 @@ class _MoreTile extends StatelessWidget {
       ),
       trailing: const Icon(Icons.chevron_right_rounded),
       onTap: () => context.push(item.route),
-    );
-  }
-}
-
-/// A single hub card — two per row, see [MoreScreen]. Same destination and
-/// content as [_MoreTile], just laid out for a grid instead of a list row.
-class _MoreCard extends StatelessWidget {
-  const _MoreCard({required this.item});
-
-  final _Item item;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-
-    return Card(
-      margin: EdgeInsets.zero,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => context.push(item.route),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(item.icon, color: cs.primary),
-              const Spacer(),
-              Text(
-                item.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                item.subtitle,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: item.subtitleColor ?? cs.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

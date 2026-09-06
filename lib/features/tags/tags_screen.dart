@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../core/widgets/error_view.dart';
 import '../../data/database.dart';
@@ -31,16 +30,7 @@ class TagsScreen extends ConsumerWidget {
     final tagsAsync = ref.watch(tagsProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tags'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.workspaces_outline),
-            tooltip: 'Tag groups',
-            onPressed: () => context.push('/more/tags/groups'),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Tags')),
       body: tagsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => const Center(

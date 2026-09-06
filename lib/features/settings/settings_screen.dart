@@ -6,9 +6,9 @@ import '../../core/branding/app_info.dart';
 import '../../core/branding/brand_mark.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
+import 'currency_picker_sheet.dart';
 import 'lock_screen_style_sheet.dart';
 import 'master_phrase_attempts_sheet.dart';
-import 'more_screen_layout_sheet.dart';
 import 'pin_timeout_sheet.dart';
 import 'theme_picker_sheet.dart';
 
@@ -45,8 +45,6 @@ class SettingsScreen extends ConsumerWidget {
     final biometricEnabled = ref.watch(biometricEnabledProvider);
     final pinTimeoutMinutes = ref.watch(pinTimeoutMinutesProvider);
     final lockScreenStyle = ref.watch(lockScreenStyleProvider);
-    final moreScreenViewMode = ref.watch(moreScreenViewModeProvider);
-    final rtaEnabled = ref.watch(rtaEnabledProvider);
     final hasMasterPhrase = ref.watch(hasMasterPhraseProvider);
     final masterPhraseAttemptThreshold = ref.watch(
       masterPhraseAttemptThresholdProvider,
@@ -93,7 +91,7 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  onTap: () => context.push('/more/settings/currency'),
+                  onTap: () => CurrencyPickerSheet.show(context, ref),
                 ),
                 Divider(height: 1, indent: 60, color: cs.outline),
                 SwitchListTile(
@@ -148,27 +146,6 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                   onTap: () => context.push('/more/settings/font'),
                 ),
-                Divider(height: 1, indent: 60, color: cs.outline),
-                ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  leading: const Icon(Icons.dashboard_outlined),
-                  title: const Text('More screen layout'),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        MoreScreenLayoutSheet.label(moreScreenViewMode),
-                        style: trailingStyle,
-                      ),
-                      const SizedBox(width: 4),
-                      Icon(
-                        Icons.chevron_right_rounded,
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ],
-                  ),
-                  onTap: () => MoreScreenLayoutSheet.show(context),
-                ),
               ],
             ),
           ),
@@ -188,29 +165,6 @@ class SettingsScreen extends ConsumerWidget {
               ),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => context.push('/more/settings/dashboard'),
-            ),
-          ),
-
-          // ── Budgeting ──────────────────────────────────────────────────────
-          _sectionLabel(context, 'Budgeting'),
-          Card(
-            child: SwitchListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              secondary: const Icon(Icons.savings_outlined),
-              title: const Text('Ready to Assign'),
-              subtitle: Text(
-                'Budget (a spending ceiling per category) is always on. '
-                'Ready to Assign adds an optional layer on top: assign the '
-                'money you actually have into categories first, pooled '
-                'across every on-budget account. Turning this on enrolls '
-                'every account at once — opt individual ones out from '
-                'their own Account Detail screen.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
-                ),
-              ),
-              value: rtaEnabled,
-              onChanged: (v) => _onRtaToggle(context, ref, v),
             ),
           ),
 
@@ -1013,42 +967,6 @@ class SettingsScreen extends ConsumerWidget {
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text("Couldn't clear data: $e")));
     }
-  }
-
-  /// Turning Ready to Assign on is a bulk action — every account joins the
-  /// shared pool at once — so it gets the same confirm-on-enable treatment
-  /// as the per-account on-budget toggle; turning it off needs no
-  /// confirmation, same as there.
-  Future<void> _onRtaToggle(
-    BuildContext context,
-    WidgetRef ref,
-    bool enabled,
-  ) async {
-    if (enabled) {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Turn on Ready to Assign?'),
-          content: const Text(
-            'Every account joins the shared pool right away. You can opt '
-            'individual accounts back out afterward from their own Account '
-            'Detail screen.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Turn on'),
-            ),
-          ],
-        ),
-      );
-      if (confirmed != true) return;
-    }
-    await ref.read(dbProvider).setRtaEnabled(enabled);
   }
 
   Future<void> _toggleNotifications(WidgetRef ref, bool value) async {

@@ -63,49 +63,6 @@ void main() {
     expect(looksLikePdf(bytes), isTrue);
   });
 
-  test(
-    "a foreign-currency account's statement PDF renders in its own "
-    'currency, not the parent one',
-    () async {
-      final usdAccount = await db.addAccount(
-        name: 'Travel',
-        type: AccountType.cash,
-        colorValue: 0xFF000000,
-        iconKey: 'cash',
-        openingBalance: const Money.zero(),
-        currencyCode: 'USD',
-      );
-      await db.addCurrencyRate(
-        currencyCode: 'USD',
-        rateToBaseMicros: 83000000,
-        effectiveAt: DateTime(2026, 1, 1),
-      );
-      await db.addTransaction(
-        type: TxType.expense,
-        amount: Money.fromRupees(10), // $10.00
-        accountId: usdAccount,
-        date: DateTime(2026, 7, 5),
-        payee: 'Test Store',
-      );
-
-      final statement = await db.accountStatement(
-        accountId: usdAccount,
-        start: DateTime(2026, 7, 1),
-        end: DateTime(2026, 7, 31),
-      );
-      final account = await (db.select(
-        db.accounts,
-      )..where((a) => a.id.equals(usdAccount))).getSingle();
-      final bytes = await buildAccountStatementPdf(
-        account: account,
-        statement: statement,
-        start: DateTime(2026, 7, 1),
-        end: DateTime(2026, 7, 31),
-      );
-      expect(looksLikePdf(bytes), isTrue);
-    },
-  );
-
   test('budget statement PDF renders with rows', () async {
     final cash = (await db.watchAccounts().first)
         .firstWhere((a) => a.type == AccountType.cash);

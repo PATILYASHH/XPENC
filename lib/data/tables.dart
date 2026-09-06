@@ -108,20 +108,6 @@ enum AutoBackupFrequency { daily, monthly, custom }
 /// position can't infer the PIN.
 enum LockScreenStyle { classic, bigNumpad, scrambled }
 
-/// How the More hub (`MoreScreen`) lays out its items. `list` is the
-/// original one-column row layout. `cards` shows two square-ish cards per
-/// row instead, still grouped the same way.
-enum MoreScreenViewMode { list, cards }
-
-/// Legacy — superseded by `Settings.rtaEnabled` (GitHub #100 v2). Budget
-/// (the per-category ceiling system) is now always on for everyone, and
-/// Ready to Assign is a single on/off layer on top of it rather than a
-/// mutually-exclusive alternative. This enum/column is kept only so the
-/// `from < 62` migration can read a pre-existing user's choice once, to
-/// decide whether to backfill `rtaEnabled = true` — nothing writes to it
-/// anymore.
-enum BudgetingMode { budgets, envelope }
-
 // ─── Converters ─────────────────────────────────────────────────────────────
 
 /// Money crosses the DB boundary as an integer number of paise. Never a double.
@@ -133,31 +119,6 @@ class MoneyConverter extends TypeConverter<Money, int> {
 
   @override
   int toSql(Money value) => value.paise;
-}
-
-/// A manually-entered exchange rate: how many units of the parent currency
-/// (`Settings.currencyCode`) equal one unit of some other currency, as of a
-/// given date. Never fetched live — see the design spec's "Non-goals".
-///
-/// Rows accumulate as history; adding a new rate is always an insert, never
-/// an update, so a transaction posted under an old rate stays resolvable
-/// (`AppDatabase.latestRate`) even after the rate moves on. This is what
-/// makes converted historical totals stable when the rate changes later.
-@DataClassName('CurrencyRateRow')
-class CurrencyRates extends Table {
-  IntColumn get id => integer().autoIncrement()();
-
-  /// The non-parent currency this rate prices, e.g. `USD`. Never the parent
-  /// currency itself, which is always 1:1 with itself.
-  TextColumn get currencyCode => text().withLength(min: 3, max: 3)();
-
-  /// Units of the parent currency per 1 unit of [currencyCode], scaled by
-  /// [currencyRateScale] so it's an exact integer — never a `double`, the
-  /// same rule [Money] follows. `83_120_000` means 1 unit = 83.12 parent.
-  IntColumn get rateToBaseMicros => integer()();
-
-  DateTimeColumn get effectiveAt => dateTime()();
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
 // ─── Tables ─────────────────────────────────────────────────────────────────
@@ -193,16 +154,11 @@ class Accounts extends Table {
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
-  /// Whether this account is "on-budget" — inside the shared Ready to
-  /// Assign pool — rather than off-budget/tracking-only (a balance-only
-  /// account, outside the pool, like a vending-machine key fob). Only
-  /// meaningful while `Settings.rtaEnabled` is on: turning RTA on globally
-  /// sets this to true for every account at once, and turning it off for
-  /// the last pool account while RTA is on turns RTA off automatically
-  /// (see `AppDatabase.setRtaEnabled` / `_maybeAutoDisableRta`). An
-  /// on-budget account's expenses are funded from the pool via
-  /// [Allocations] — see `categoryBalanceProvider` / `readyToAssignProvider`
-  /// in `data/providers.dart`.
+  /// Turns this one account into "every rupee has a job" budgeting — an
+  /// expense on it must carry a category, and that category's balance is
+  /// funded from this account's own Ready to Assign via [Allocations]. Off
+  /// by default and per-account: every other account keeps working exactly
+  /// as it does today. See `AppDatabase.categoryBalance` / `readyToAssign`.
   BoolColumn get envelopeMode => boolean().withDefault(const Constant(false))();
 
   /// Whether this account's balance counts toward Net Worth (dashboard,
@@ -212,15 +168,6 @@ class Accounts extends Table {
   /// they treat as their real spendable net worth.
   BoolColumn get includeInNetWorth =>
       boolean().withDefault(const Constant(true))();
-
-  /// Null = this account is in the parent currency (`Settings.currencyCode`)
-  /// — true for every account that existed before this feature, and for
-  /// every account a user never explicitly changes. Locked once the account
-  /// has a transaction (enforced in `AppDatabase.setAccountCurrency`, not
-  /// here — Drift columns can't express that rule). A debit-card/UPI
-  /// instrument (non-null `linkedAccountId`) never gets its own value here —
-  /// it always mirrors its linked account's currency.
-  TextColumn get currencyCode => text().withLength(min: 3, max: 3).nullable()();
 }
 
 @DataClassName('CategoryRow')
@@ -243,36 +190,6 @@ class Categories extends Table {
   /// ([AppDatabase.addCategory] / [AppDatabase.updateCategory]); a stray id
   /// from an old backup is treated as top-level rather than wedging a query.
   IntColumn get parentId => integer().nullable()();
-}
-
-/// A saved snapshot of a category/sub-category structure (GitHub #101) — its
-/// rows live in [CategoryTemplateItems]. Independent of [Categories]: saving
-/// or applying a template never touches a transaction, only which
-/// `Categories` rows are archived vs. active. See
-/// `docs/superpowers/specs/2026-09-06-category-templates-design.md`.
-@DataClassName('CategoryTemplateRow')
-class CategoryTemplates extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  TextColumn get name => text().withLength(min: 1, max: 60)();
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
-}
-
-/// One category in a saved template. Mirrors [Categories]' own shape (name,
-/// kind, colour, icon, two-level parent nesting) but [parentItemId] resolves
-/// against *other rows of the same template*, never a live [Categories.id] —
-/// a template must be applicable on a device that has never seen these
-/// categories before. [AppDatabase.applyCategoryTemplate] matches these
-/// against live categories by name, not id.
-@DataClassName('CategoryTemplateItemRow')
-class CategoryTemplateItems extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  IntColumn get templateId => integer().references(CategoryTemplates, #id)();
-  TextColumn get name => text().withLength(min: 1, max: 40)();
-  TextColumn get kind => textEnum<CategoryKind>()();
-  IntColumn get colorValue => integer()();
-  TextColumn get iconKey => text().withLength(min: 1, max: 40)();
-  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
-  IntColumn get parentItemId => integer().nullable()();
 }
 
 @DataClassName('TransactionRow')
@@ -340,45 +257,6 @@ class Transactions extends Table {
   /// both at once.
   IntColumn get paymentGroupId =>
       integer().nullable().references(Transactions, #id)();
-
-  /// What this cost in another currency, manually entered — e.g. "$9.99" for
-  /// a subscription actually charged as [amount] home-currency rupees
-  /// (GitHub #85). [amount] stays authoritative for every balance/net-worth/
-  /// envelope computation; this is a purely informational annotation. Always
-  /// null exactly when [foreignAmount] is null — never one without the
-  /// other, same pairing as [RecurringRules.promoAmount]/
-  /// [RecurringRules.promoOccurrencesLeft]. The implied conversion rate is
-  /// `amount / foreignAmount`, recomputed for display rather than stored.
-  TextColumn get foreignCurrencyCode => text().nullable()();
-  IntColumn get foreignAmount =>
-      integer().nullable().map(const MoneyConverter())();
-
-  /// This transaction's own ledger currency, snapshotted from its account's
-  /// [Accounts.currencyCode] at post time. Null = parent currency, which
-  /// matches [amount]'s existing meaning exactly (no conversion needed).
-  /// Distinct from the #85 [foreignCurrencyCode]/[foreignAmount] pair above,
-  /// which is a manual informational annotation on a parent-currency
-  /// transaction — this pair instead describes the transaction's *real*
-  /// native currency, inherited from its account.
-  TextColumn get currencyCode => text().withLength(min: 3, max: 3).nullable()();
-
-  /// Snapshot of `CurrencyRates.rateToBaseMicros` as of [date], for
-  /// [currencyCode]. Null iff [currencyCode] is null.
-  IntColumn get fxRateToBaseMicros => integer().nullable()();
-
-  /// Transfer only, and only when the source and destination accounts don't
-  /// share a currency: the amount credited to [toAccountId], in *its own*
-  /// currency. Null for a same-currency transfer, where crediting [amount]
-  /// unchanged is already correct — see `AppDatabase._applyTxEffect`.
-  IntColumn get toAmount => integer().map(const MoneyConverter()).nullable()();
-
-  /// Transfer only, mirrors [currencyCode]/[fxRateToBaseMicros] for the
-  /// destination leg — the two accounts can each be a different currency
-  /// from the parent (and from each other), so the destination needs its
-  /// own independent snapshot.
-  TextColumn get toCurrencyCode =>
-      text().withLength(min: 3, max: 3).nullable()();
-  IntColumn get toFxRateToBaseMicros => integer().nullable()();
 }
 
 @DataClassName('BudgetRow')
@@ -596,20 +474,16 @@ class GroupExpenseShares extends Table {
   /// at any time. This share row survives with the link cleared, reading
   /// exactly like any other untracked share — a graceful downgrade, not a
   /// dangling reference `deleteGroupExpense` has to work around blind.
-  IntColumn get personEntryId => integer().nullable().references(
-    PersonEntries,
-    #id,
-    onDelete: KeyAction.setNull,
-  )();
+  IntColumn get personEntryId => integer()
+      .nullable()
+      .references(PersonEntries, #id, onDelete: KeyAction.setNull)();
 
   /// Set (with [personEntryId] null) only for my own share when I'm the
   /// payer — a real [TxType.expense] transaction, not a debt. Same
   /// `onDelete: setNull` reasoning as [personEntryId].
-  IntColumn get transactionId => integer().nullable().references(
-    Transactions,
-    #id,
-    onDelete: KeyAction.setNull,
-  )();
+  IntColumn get transactionId => integer()
+      .nullable()
+      .references(Transactions, #id, onDelete: KeyAction.setNull)();
 }
 
 /// Cash Reminders. A reminder **posts nothing on its own** — the user taps
@@ -647,27 +521,12 @@ class RecurringRules extends Table {
   TextColumn get name => text().withLength(min: 1, max: 60)();
 
   /// Reuses [CategoryKind] rather than a bespoke enum — a rule is exactly as
-  /// income-or-expense as the category it posts under. For a G&L rule (see
-  /// [toAccountId]) this is always [CategoryKind.expense] — money leaves
-  /// [accountId] the same direction as an expense — but it's otherwise
-  /// unread: every code path branches on [toAccountId] first.
+  /// income-or-expense as the category it posts under.
   TextColumn get kind => textEnum<CategoryKind>()();
 
   IntColumn get amount => integer().map(const MoneyConverter())();
   IntColumn get accountId => integer().references(Accounts, #id)();
-
-  /// Null for a G&L rule (see [toAccountId]) — a transfer into a goal or
-  /// loan is only ever optionally tagged, exactly like
-  /// [GoalDetails.categoryId]/[LoanDetails.categoryId]. Required for an
-  /// expense/income rule.
-  IntColumn get categoryId =>
-      integer().nullable().references(Categories, #id)();
-
-  /// Non-null makes this a "G&L" rule: it posts a [TxType.transfer] from
-  /// [accountId] to this goal or loan account instead of an
-  /// income/expense transaction. Null (the common case) means the rule
-  /// posts an ordinary expense/income per [kind].
-  IntColumn get toAccountId => integer().nullable().references(Accounts, #id)();
+  IntColumn get categoryId => integer().references(Categories, #id)();
 
   /// Same free-text field as [Transactions.payee] — who the rule pays (an
   /// expense) or who it's paid by (income, e.g. an employer for a salary
@@ -716,17 +575,6 @@ class RecurringRules extends Table {
   IntColumn get promoOccurrencesLeft => integer().nullable()();
 
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
-
-  /// Same annotation as [Transactions.foreignCurrencyCode]/
-  /// [Transactions.foreignAmount] (GitHub #85), carried on the rule so every
-  /// occurrence it posts keeps showing its original foreign-currency price
-  /// (e.g. a $9.99 subscription). Copied onto each posted transaction by
-  /// [AppDatabase.runDueRecurringRules] — except while a promo price is
-  /// active, since there is no tracked foreign equivalent for [promoAmount].
-  /// Always null exactly when [foreignAmount] is null.
-  TextColumn get foreignCurrencyCode => text().nullable()();
-  IntColumn get foreignAmount =>
-      integer().nullable().map(const MoneyConverter())();
 }
 
 /// Single-row app settings.
@@ -800,10 +648,12 @@ class Settings extends Table {
   BoolColumn get upiEnabled => boolean().withDefault(const Constant(true))();
 
   /// Same as [upiEnabled], for PayPal.
-  BoolColumn get paypalEnabled => boolean().withDefault(const Constant(true))();
+  BoolColumn get paypalEnabled =>
+      boolean().withDefault(const Constant(true))();
 
   /// Same as [upiEnabled], for Venmo.
-  BoolColumn get venmoEnabled => boolean().withDefault(const Constant(true))();
+  BoolColumn get venmoEnabled =>
+      boolean().withDefault(const Constant(true))();
 
   /// Same as [upiEnabled], for Cash App.
   BoolColumn get cashappEnabled =>
@@ -833,28 +683,6 @@ class Settings extends Table {
   /// Defaults to `classic` so existing users see no change.
   TextColumn get lockScreenStyle =>
       textEnum<LockScreenStyle>().withDefault(const Constant('classic'))();
-
-  /// How the More hub lays out its items — see [MoreScreenViewMode].
-  /// Defaults to `list` so existing users see no change.
-  TextColumn get moreScreenViewMode =>
-      textEnum<MoreScreenViewMode>().withDefault(const Constant('list'))();
-
-  /// Legacy — see [BudgetingMode]. Superseded by [rtaEnabled]; kept only for
-  /// the `from < 62` migration's one-time backfill read. Nothing writes to
-  /// this column anymore.
-  TextColumn get budgetingMode =>
-      textEnum<BudgetingMode>().withDefault(const Constant('budgets'))();
-
-  /// Whether Ready to Assign — the shared envelope pool — is turned on
-  /// globally (GitHub #100 v2). Off by default. Budget (the per-category
-  /// spending ceiling) is always on regardless of this flag; this only
-  /// decides whether accounts also participate in the shared RTA pool via
-  /// [Accounts.envelopeMode]. Replaces [BudgetingMode] as a mutually
-  /// exclusive Budgets-vs-Envelope choice — enabling this auto-enrolls
-  /// every account into the pool (see `AppDatabase.setRtaEnabled`), and it
-  /// turns itself back off automatically the moment the pool would
-  /// otherwise go empty (see `AppDatabase._maybeAutoDisableRta`).
-  BoolColumn get rtaEnabled => boolean().withDefault(const Constant(false))();
 
   /// Minutes the app may sit backgrounded before the next resume re-locks it
   /// — `0` means immediately (see GitHub #60). Checked against how long the
@@ -1019,13 +847,8 @@ class Settings extends Table {
   /// (GitHub #78). Applied once, in `XpencApp`'s `builder`, to the `padding`
   /// every `SafeArea` in the app reads from — see `AppShell` and
   /// `LockScreen`, neither of which needed any change themselves.
-  IntColumn get extraBottomInset => integer().withDefault(const Constant(0))();
-
-  /// Icon keys (see `AppIcons`) picked from the icon sheet, most-recent-first,
-  /// comma-joined — same convention as [bottomNavSlots]. Powers the
-  /// "Frequently used" row so the icon someone reaches for constantly (their
-  /// coffee cup, their gym) surfaces without scrolling or typing a search.
-  TextColumn get frequentIconKeys => text().withDefault(const Constant(''))();
+  IntColumn get extraBottomInset =>
+      integer().withDefault(const Constant(0))();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -1184,36 +1007,6 @@ class RecurringRuleTags extends Table {
 
   @override
   Set<Column> get primaryKey => {ruleId, tagId};
-}
-
-/// A named bundle of [Tags] (e.g. "Work trip" = Travel + Meals + Client) —
-/// picked as one unit from [TagPickerSheet] instead of hunting down each tag
-/// individually every time the same combination gets used. See GitHub #92.
-///
-/// Purely a shortcut for *selecting* tags: applying a group to a transaction
-/// still just writes ordinary [TransactionTags] rows, so nothing downstream
-/// (filters, stats, exports) needs to know groups exist at all.
-@DataClassName('TagGroupRow')
-class TagGroups extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  TextColumn get name => text().withLength(min: 1, max: 30)();
-  IntColumn get colorValue => integer()();
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
-
-  @override
-  List<Set<Column>> get uniqueKeys => [
-    {name},
-  ];
-}
-
-/// Many-to-many join: which tags belong to a [TagGroups] bundle.
-@DataClassName('TagGroupTagRow')
-class TagGroupTags extends Table {
-  IntColumn get groupId => integer().references(TagGroups, #id)();
-  IntColumn get tagId => integer().references(Tags, #id)();
-
-  @override
-  Set<Column> get primaryKey => {groupId, tagId};
 }
 
 /// One named shopping list (e.g. "Weekly groceries", "Diwali"). A user can
