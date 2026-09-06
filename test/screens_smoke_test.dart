@@ -350,6 +350,107 @@ void main() {
     await unmount(tester);
   });
 
+  testWidgets(
+    'Stats: category standings show each category\'s share of total spend',
+    (tester) async {
+      late int cash;
+      await tester.runAsync(() async {
+        final seeded = await seed(); // Food: 320 + 1234.56 = 1554.56
+        cash = seeded.cash;
+        final transport = (await db.watchCategories(CategoryKind.expense).first)
+            .firstWhere((c) => c.name == 'Transport')
+            .id;
+        // Total spend: 1554.56 + 500 = 2054.56 -> Transport is ~24.3%.
+        await db.addTransaction(
+          type: TxType.expense,
+          amount: Money.fromRupees(500),
+          accountId: cash,
+          categoryId: transport,
+          date: DateTime.now(),
+        );
+      });
+      // A tall viewport so the whole ListView (charts included) lays out
+      // without needing a scroll — the Stats screen has more than one
+      // Scrollable (the charts included), which makes scrollUntilVisible
+      // unreliable here.
+      tester.view.physicalSize = const Size(1080, 9000);
+      tester.view.devicePixelRatio = 3.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [dbProvider.overrideWithValue(db)],
+          child: const MaterialApp(home: StatsScreen()),
+        ),
+      );
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 300)),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(tester.takeException(), isNull);
+
+      // The Standings section defaults to ranking transactions — switch it
+      // to categories to reach the ranking this test targets (GitHub #95).
+      await tester.tap(find.text('Categories'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(tester.takeException(), isNull);
+
+      expect(find.textContaining('% of total'), findsWidgets);
+      expect(find.textContaining('24.3% of total'), findsOneWidget);
+      await unmount(tester);
+    },
+  );
+
+  testWidgets(
+    "Stats: the Spending by category donut's legend shows each slice's "
+    'share of total',
+    (tester) async {
+      late int cash;
+      await tester.runAsync(() async {
+        final seeded = await seed(); // Food: 320 + 1234.56 = 1554.56
+        cash = seeded.cash;
+        final transport = (await db.watchCategories(CategoryKind.expense).first)
+            .firstWhere((c) => c.name == 'Transport')
+            .id;
+        // Total spend: 1554.56 + 500 = 2054.56 -> Transport is ~24%.
+        await db.addTransaction(
+          type: TxType.expense,
+          amount: Money.fromRupees(500),
+          accountId: cash,
+          categoryId: transport,
+          date: DateTime.now(),
+        );
+      });
+      // A tall viewport so the donut's legend lays out without needing a
+      // scroll — see the note on the Standings test above.
+      tester.view.physicalSize = const Size(1080, 9000);
+      tester.view.devicePixelRatio = 3.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [dbProvider.overrideWithValue(db)],
+          child: const MaterialApp(home: StatsScreen()),
+        ),
+      );
+      // spendByCategoryProvider is a drift stream query — give it one more
+      // round trip to emit before asserting on its data.
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 300)),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(tester.takeException(), isNull);
+
+      expect(find.textContaining('(24%)'), findsOneWidget);
+      await unmount(tester);
+    },
+  );
+
   testWidgets('Account Reports renders with a negative credit-card balance', (
     tester,
   ) async {
