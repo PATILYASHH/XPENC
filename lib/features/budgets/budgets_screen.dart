@@ -333,7 +333,7 @@ class _SummaryCard extends StatelessWidget {
 /// button. Tapping anywhere opens the set/edit sheet. [compact] renders a
 /// visibly smaller tile for a subcategory threaded under its parent — see
 /// [_ChildBudgetThread].
-class _BudgetTile extends ConsumerWidget {
+class _BudgetTile extends StatelessWidget {
   const _BudgetTile({
     required this.category,
     required this.progress,
@@ -347,14 +347,10 @@ class _BudgetTile extends ConsumerWidget {
   final bool compact;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final catColor = Color(category.colorValue);
     final p = progress;
     final iconSize = compact ? 32.0 : 44.0;
-    final rtaOn = ref.watch(rtaEnabledProvider);
-    final fundingState = rtaOn
-        ? ref.watch(categoryFundingStateProvider(category.id))
-        : null;
 
     return Card(
       margin: compact ? EdgeInsets.zero : const EdgeInsets.only(bottom: 12),
@@ -382,7 +378,7 @@ class _BudgetTile extends ConsumerWidget {
               Expanded(
                 child: p == null
                     ? _noBudget(context)
-                    : _withBudget(context, p, catColor, rtaOn, fundingState),
+                    : _withBudget(context, p, catColor),
               ),
             ],
           ),
@@ -423,31 +419,15 @@ class _BudgetTile extends ConsumerWidget {
     );
   }
 
-  Widget _withBudget(
-    BuildContext context,
-    BudgetProgress p,
-    Color catColor,
-    bool rtaOn,
-    CategoryFundingState? fundingState,
-  ) {
+  Widget _withBudget(BuildContext context, BudgetProgress p, Color catColor) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final pct = (p.fraction * 100).round();
-    // RTA off: unchanged from before — overspent/nearing-limit/plain.
-    // RTA on: the three-state funding indicator replaces nearing-limit
-    // (GitHub #100 v2) — overspent still wins regardless of funding.
-    final barColor = !rtaOn
-        ? (p.overspent
-              ? AppColors.expense
-              : p.nearingLimit
-              ? Colors.amber
-              : catColor)
-        : switch (fundingState) {
-            CategoryFundingState.overspent => AppColors.expense,
-            CategoryFundingState.funded => AppColors.income,
-            CategoryFundingState.underfunded => Colors.amber,
-            null => catColor,
-          };
+    final barColor = p.overspent
+        ? AppColors.expense
+        : p.nearingLimit
+        ? Colors.amber
+        : catColor;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

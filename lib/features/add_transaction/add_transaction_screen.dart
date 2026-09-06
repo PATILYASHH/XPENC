@@ -6,16 +6,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/app_icons.dart';
-import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/money_text.dart';
-import '../../data/currency_conversion.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../accounts/envelope_outflow.dart';
-import '../settings/currency_picker_sheet.dart';
 import '../tags/tag_picker_sheet.dart';
 import 'amount_buffer.dart';
 import 'receipt_storage.dart';
@@ -81,30 +78,14 @@ class _PaymentLegEntry {
 ///
 /// With a [transactionId] the screen edits that existing transaction instead
 /// of creating a new one.
-///
-/// With a [duplicateFromId] instead, every field is prefilled from that
-/// transaction — same as editing — but [transactionId] stays null, so Save
-/// creates a brand-new row rather than touching the source (GitHub #92:
-/// "publish another one" of an existing transaction). The date resets to
-/// today rather than copying the source's, nudging the user to notice this
-/// is a separate entry and pick the date it actually happened on; the
-/// receipt photo is never copied, since it's evidence of the original
-/// purchase, not this new one.
 class AddTransactionScreen extends ConsumerStatefulWidget {
-  const AddTransactionScreen({
-    this.transactionId,
-    this.duplicateFromId,
-    this.initialType,
-    super.key,
-  });
+  const AddTransactionScreen({this.transactionId, this.initialType, super.key});
 
   final int? transactionId;
-  final int? duplicateFromId;
 
   /// Preselects Expense or Income — used by the home-screen widget's "+
   /// Expense" / "+ Income" shortcuts to skip the type-picker step. Ignored
-  /// when [transactionId] or [duplicateFromId] is set, since both load their
-  /// own type.
+  /// when [transactionId] is set, since editing loads its own type.
   final TxType? initialType;
 
   @override
@@ -166,17 +147,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   final _changeAmountController = TextEditingController();
   final _changeAmountFocus = FocusNode();
 
-  /// Income/expense only — "this was originally paid in another currency"
-  /// (GitHub #85), purely informational: [_amount] stays what actually moved
-  /// through the account. Unlike hybrid payment/change, this can be edited
-  /// after the fact, so it isn't gated on `!_isEditing`. Mutually exclusive
-  /// with hybrid payment and change (same toggle group); coexists with
-  /// split, since a split doesn't touch the transaction's own amount/currency.
-  bool _hasForeignCurrency = false;
-  String? _foreignCurrencyCode;
-  final _foreignAmountController = TextEditingController();
-  final _foreignAmountFocus = FocusNode();
-
   /// The receipt path that will be saved — an existing one loaded for
   /// editing, a freshly picked one, or null.
   String? _imagePath;
@@ -215,16 +185,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   Money get _changeAmount =>
       Money.tryParse(_changeAmountController.text) ?? const Money.zero();
 
-  /// Foreign currency only ever applies to an income or expense — a transfer
-  /// moves money between the user's own accounts, with nothing "paid" in
-  /// another currency.
-  bool get _isForeignCurrency =>
-      (_type == TxType.income || _type == TxType.expense) &&
-      _hasForeignCurrency;
-
-  Money get _foreignAmount =>
-      Money.tryParse(_foreignAmountController.text) ?? const Money.zero();
-
   /// The on-screen keypad and the system keyboard must never both be up —
   /// they'd fight over the same strip of screen and hide whatever the user
   /// just typed. The keypad only shows while no text field has focus,
@@ -234,8 +194,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       _payeeFocus.hasFocus ||
       _splitRows.any((r) => r.focusNode.hasFocus) ||
       _hybridLegs.any((r) => r.focusNode.hasFocus) ||
-      _changeAmountFocus.hasFocus ||
-      _foreignAmountFocus.hasFocus;
+      _changeAmountFocus.hasFocus;
 
   @override
   void initState() {
@@ -252,22 +211,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     if (_isEditing) {
       _loading = true;
       WidgetsBinding.instance.addPostFrameCallback((_) => _loadForEdit());
-    } else if (widget.duplicateFromId != null) {
-      _loading = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _loadForDuplicate());
-    } else {
-      // Pre-select the last-used account on a brand-new transaction, once the
-      // one-shot query resolves. Still freely changeable via "Paid via", and
-      // the guard on `_accountId` below means it never overwrites a
-      // selection the user already made while this was loading.
-      _seedLastUsedAccount();
     }
-  }
-
-  Future<void> _seedLastUsedAccount() async {
-    final txs = await ref.read(dbProvider).watchTransactions(limit: 1).first;
-    if (!mounted || _accountId != null || txs.isEmpty) return;
-    setState(() => _accountId = txs.first.accountId);
   }
 
   void _onFieldFocusChanged() => setState(() {});
@@ -290,8 +234,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     }
     _changeAmountController.dispose();
     _changeAmountFocus.dispose();
-    _foreignAmountController.dispose();
-    _foreignAmountFocus.dispose();
     // Best-effort: leaving without saving shouldn't leak the copy made on
     // pick. Fire-and-forget — nothing in this widget survives to await it.
     if (_unsavedPickedPath != null) _deleteQuietly(_unsavedPickedPath!);
@@ -356,80 +298,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             onFocusChange: _onFieldFocusChanged,
           ),
         );
-      }
-      _hasForeignCurrency = row.foreignAmount != null;
-      _foreignCurrencyCode = row.foreignCurrencyCode;
-      if (row.foreignAmount != null) {
-        _foreignAmountController.text = _bufferFromMoney(row.foreignAmount!);
-      }
-      _loading = false;
-    });
-  }
-
-  /// Fetch the transaction being duplicated and prefill every field from it,
-  /// same as [_loadForEdit] — except [_date] resets to today instead of
-  /// copying the source's, and the receipt (if any) is never carried over.
-  /// [widget.transactionId] stays null throughout, so `_save` inserts a new
-  /// row instead of updating the source.
-  Future<void> _loadForDuplicate() async {
-    final messenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
-
-    final db = ref.read(dbProvider);
-    final sourceId = widget.duplicateFromId!;
-    final row = await db.transactionById(sourceId);
-    final tagIds = await db.tagIdsForTransaction(sourceId);
-    final splits = await db.splitsForTransaction(sourceId);
-    if (!mounted) return;
-
-    if (row == null) {
-      navigator.pop();
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Transaction not found')),
-      );
-      return;
-    }
-
-    // Same restriction as `_loadForEdit`: this screen has no shape for a
-    // person movement (or a repayment counted as income), so there is
-    // nothing sensible to prefill it into.
-    final isPersonLinked =
-        row.type.isPersonMovement ||
-        (row.type.isIncomeOrExpense &&
-            await db.isPersonLinkedTransaction(row.id));
-    if (!mounted) return;
-    if (isPersonLinked) {
-      navigator.pop();
-      messenger.showSnackBar(
-        const SnackBar(content: Text("This can't be duplicated from here.")),
-      );
-      return;
-    }
-
-    setState(() {
-      _type = row.type;
-      _buffer = _bufferFromMoney(row.amount);
-      _freshAmountEntry = true;
-      _accountId = row.accountId;
-      _toAccountId = row.toAccountId;
-      _categoryId = row.categoryId;
-      _noteController.text = row.note ?? '';
-      _payeeController.text = row.payee ?? '';
-      _tagIds = tagIds.toSet();
-      _isSplit = splits.isNotEmpty;
-      for (final s in splits) {
-        _splitRows.add(
-          _SplitEntry(
-            categoryId: s.categoryId,
-            amountText: _bufferFromMoney(s.amount),
-            onFocusChange: _onFieldFocusChanged,
-          ),
-        );
-      }
-      _hasForeignCurrency = row.foreignAmount != null;
-      _foreignCurrencyCode = row.foreignCurrencyCode;
-      if (row.foreignAmount != null) {
-        _foreignAmountController.text = _bufferFromMoney(row.foreignAmount!);
       }
       _loading = false;
     });
@@ -516,76 +384,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     );
     if (selected == null || !mounted) return;
     setState(() => _categoryId = selected);
-  }
-
-  /// The currency [accountId] actually posts in — null for the parent
-  /// currency, same "null means parent" convention as
-  /// [AccountRow.currencyCode] itself. A debit/UPI instrument has no
-  /// currency of its own (see `tables.dart`'s doc on `Accounts.currencyCode`)
-  /// so this follows [AccountRow.linkedAccountId] once to the account that
-  /// actually holds the money.
-  Currency? _currencyForAccount(int? accountId, Map<int, AccountRow> accountMap) {
-    final account = accountMap[accountId];
-    if (account == null) return null;
-    final code = account.linkedAccountId == null
-        ? account.currencyCode
-        : accountMap[account.linkedAccountId]?.currencyCode;
-    return code == null ? null : currencyForCode(code);
-  }
-
-  /// An informational "≈ X received" line for a transfer between two
-  /// accounts that don't share a currency — read-only, purely a preview of
-  /// what `AppDatabase.addTransaction` will itself compute and store as
-  /// `toAmount` at save time (see its `_resolveTxCurrency`/cross-currency
-  /// logic), using whatever rate is current right now. `null` whenever
-  /// there's nothing to preview: not a transfer, no destination picked yet,
-  /// both legs share a currency, the amount is still zero, or a needed rate
-  /// hasn't loaded/been entered yet — the save button itself is the one
-  /// source of truth for whether posting will actually succeed.
-  Widget? _crossCurrencyTransferPreview(Map<int, AccountRow> accountMap) {
-    if (_type != TxType.transfer || _toAccountId == null) return null;
-    final sourceCurrency = _currencyForAccount(_accountId, accountMap);
-    final destCurrency = _currencyForAccount(_toAccountId, accountMap);
-    if (sourceCurrency?.code == destCurrency?.code) return null;
-
-    final amount = _amount;
-    if (!amount.isPositive) return null;
-
-    final rates = ref.watch(currencyRatesProvider).valueOrNull;
-    if (rates == null) return null;
-    final rateFor = {for (final r in rates) r.currencyCode: r.rateToBaseMicros};
-
-    Money sourceBase;
-    if (sourceCurrency == null) {
-      sourceBase = amount;
-    } else {
-      final rate = rateFor[sourceCurrency.code];
-      if (rate == null) return null;
-      sourceBase = convertUsingRate(amount, rate);
-    }
-
-    Money destAmount;
-    if (destCurrency == null) {
-      destAmount = sourceBase;
-    } else {
-      final rate = rateFor[destCurrency.code];
-      if (rate == null) return null;
-      destAmount = Money((sourceBase.paise * currencyRateScale) ~/ rate);
-    }
-
-    final theme = Theme.of(context);
-    final formatted = destCurrency == null
-        ? MoneyFormat.symbol(destAmount)
-        : MoneyFormat.symbolIn(destAmount, destCurrency);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Text(
-        '≈ $formatted received, at today\'s rate',
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-      ),
-    );
   }
 
   /// Non-null only for an expense on an Envelope Mode account — the signal
@@ -795,7 +593,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           if (v) {
             _isSplit = false;
             _hasChange = false;
-            _hasForeignCurrency = false;
           }
           while (v && _hybridLegs.length < 2) {
             _hybridLegs.add(
@@ -972,7 +769,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           if (v) {
             _isSplit = false;
             _isHybridPayment = false;
-            _hasForeignCurrency = false;
           }
         }),
         secondary: Icon(
@@ -983,124 +779,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         subtitle: _hasChange
             ? null
             : const Text('Part of the change lands in another account'),
-      ),
-    );
-  }
-
-  // ── Foreign currency ─────────────────────────────────────────────────────
-
-  Future<void> _pickForeignCurrency() async {
-    final picked = await CurrencyPickerSheet.pick(
-      context,
-      initialCode: _foreignCurrencyCode ?? MoneyFormat.currency.code,
-    );
-    if (picked == null || !mounted) return;
-    setState(() => _foreignCurrencyCode = picked.code);
-  }
-
-  Widget _foreignToggleTile() {
-    final theme = Theme.of(context);
-    return Card(
-      margin: EdgeInsets.zero,
-      clipBehavior: Clip.antiAlias,
-      child: SwitchListTile(
-        value: _hasForeignCurrency,
-        onChanged: (v) => setState(() {
-          _hasForeignCurrency = v;
-          if (v) {
-            _isHybridPayment = false;
-            _hasChange = false;
-          }
-        }),
-        secondary: Icon(
-          Icons.public_rounded,
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-        title: const Text('Foreign currency'),
-        subtitle: _hasForeignCurrency
-            ? null
-            : const Text('Record what this cost in another currency'),
-      ),
-    );
-  }
-
-  Widget _foreignCurrencyEditorCard() {
-    final theme = Theme.of(context);
-    final currency = currencyForCode(_foreignCurrencyCode);
-    final foreignAmount = _foreignAmount;
-    final rateLine = foreignAmount.isPositive
-        ? '1 ${currency.code} ≈ '
-              '${MoneyFormat.symbol(Money.fromRupees(_amount.rupees / foreignAmount.rupees))}'
-        : null;
-
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: _pickForeignCurrency,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: theme.colorScheme.outline),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          currency.symbol,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(currency.code, style: theme.textTheme.bodyMedium),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    controller: _foreignAmountController,
-                    focusNode: _foreignAmountFocus,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                    ],
-                    decoration: const InputDecoration(
-                      isDense: true,
-                      hintText: '0.00',
-                    ),
-                    onChanged: (_) => setState(() {}),
-                  ),
-                ),
-              ],
-            ),
-            if (rateLine != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                rateLine,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ],
-        ),
       ),
     );
   }
@@ -1526,15 +1204,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       );
       return;
     }
-    if (_isForeignCurrency &&
-        (_foreignCurrencyCode == null || !_foreignAmount.isPositive)) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Choose a currency and enter its amount'),
-        ),
-      );
-      return;
-    }
 
     final note = _noteController.text.trim();
     final payeeText = _payeeController.text.trim();
@@ -1548,8 +1217,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final categoryId = (_type == TxType.transfer || _isSplitting)
         ? null
         : _categoryId;
-    final foreignCurrencyCode = _isForeignCurrency ? _foreignCurrencyCode : null;
-    final foreignAmount = _isForeignCurrency ? _foreignAmount : null;
     try {
       final db = ref.read(dbProvider);
       int id;
@@ -1566,8 +1233,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           note: note.isEmpty ? null : note,
           payee: payee,
           imagePath: _imagePath,
-          foreignCurrencyCode: foreignCurrencyCode,
-          foreignAmount: foreignAmount,
         );
       } else {
         id = await db.addTransaction(
@@ -1580,8 +1245,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           note: note.isEmpty ? null : note,
           payee: payee,
           imagePath: _imagePath,
-          foreignCurrencyCode: foreignCurrencyCode,
-          foreignAmount: foreignAmount,
         );
       }
       // The receipt (if any) is now referenced by a saved row — no longer an
@@ -1683,12 +1346,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     // else here watches only starts loading on its first read.
     ref.watch(allAllocationsProvider);
     final amount = _amount;
-    // The amount always debits/credits _accountId — the source account for
-    // every type, transfer included — so that's whose currency the hero
-    // figure and its keypad are in. Null means the parent currency, which
-    // is also what every existing screen already renders (no account
-    // selected yet defaults to the same thing it always has).
-    final txCurrency = _currencyForAccount(_accountId, accountMap);
 
     return Scaffold(
       appBar: AppBar(
@@ -1767,9 +1424,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                         fit: BoxFit.scaleDown,
                         child: Text(
                           key: const Key('amountDisplay'),
-                          txCurrency == null
-                              ? MoneyFormat.symbol(amount)
-                              : MoneyFormat.symbolIn(amount, txCurrency),
+                          MoneyFormat.symbol(amount),
                           style: theme.textTheme.displayMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                             color: colorForTxType(_type),
@@ -1823,11 +1478,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           onTap: () => _pickAccount(isFrom: false),
         ),
       );
-      final preview = _crossCurrencyTransferPreview(accountMap);
-      if (preview != null) {
-        tiles.add(const SizedBox(height: 8));
-        tiles.add(preview);
-      }
     } else {
       // A hybrid payment has no single "paid via" account of its own — its
       // editor below picks each leg's account instead.
@@ -1841,16 +1491,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             onTap: () => _pickAccount(isFrom: true),
           ),
         );
-        tiles.add(const SizedBox(height: 12));
-      }
-      // Foreign currency applies to both income and expense (unlike
-      // split/hybrid/change, which are expense-only) and stays available
-      // while editing. Hidden once the account itself already carries a
-      // non-parent currency — the transaction's real amount is already
-      // natively foreign then, so a second manual foreign-currency
-      // annotation on top would be redundant and confusing.
-      if (_currencyForAccount(_accountId, accountMap) == null) {
-        tiles.add(_foreignToggleTile());
         tiles.add(const SizedBox(height: 12));
       }
       if (_type == TxType.expense) {
@@ -1878,10 +1518,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       }
       if (_isChange) {
         tiles.add(_changeEditorCard(accountMap));
-        tiles.add(const SizedBox(height: 12));
-      }
-      if (_isForeignCurrency) {
-        tiles.add(_foreignCurrencyEditorCard());
         tiles.add(const SizedBox(height: 12));
       }
       if (_isSplitting) {
@@ -2490,7 +2126,12 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
           if (envelopeAccountId != null)
             Consumer(
               builder: (context, ref, _) {
-                final balance = ref.watch(categoryBalanceProvider(categoryId));
+                final balance = ref.watch(
+                  categoryBalanceProvider((
+                    accountId: envelopeAccountId,
+                    categoryId: categoryId,
+                  )),
+                );
                 return Text(
                   '${MoneyFormat.symbol(balance)} left',
                   textAlign: TextAlign.center,

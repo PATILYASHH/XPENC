@@ -128,7 +128,6 @@ class MoneyText extends StatelessWidget {
     this.color,
     this.signed = false,
     this.compact = false,
-    this.currency,
     super.key,
   });
 
@@ -140,11 +139,6 @@ class MoneyText extends StatelessWidget {
   final bool signed;
   final bool compact;
 
-  /// Renders against this currency instead of the globally configured one —
-  /// for a specific account's/transaction's own (possibly foreign) amount.
-  /// Null (the default) renders exactly as before, via [MoneyFormat].
-  final Currency? currency;
-
   /// A fixed-width placeholder — never derived from the real digits, so the
   /// mask can't leak the amount's order of magnitude (a 3-digit vs 7-digit
   /// figure would otherwise be visibly distinguishable even hidden).
@@ -154,22 +148,17 @@ class MoneyText extends StatelessWidget {
   Widget build(BuildContext context) {
     // Rebuild whenever the currency setting changes — [MoneyFormat] is already
     // reconfigured by then, so the new symbol/grouping lands immediately.
-    // Irrelevant when [currency] is set explicitly, but depending
-    // unconditionally keeps this widget's rebuild behavior simple.
     CurrencyScope.depend(context);
     final hidden = AmountVisibilityScope.of(context);
-    final displayCurrency = currency ?? MoneyFormat.currency;
     final text = hidden
         ? (MoneyFormat.showSymbol
-            ? '${displayCurrency.symbol} $_maskGlyph'
+            ? '${MoneyFormat.currency.symbol} $_maskGlyph'
             : _maskGlyph)
         : compact
             ? MoneyFormat.compact(amount)
             : signed
-                ? _signedIn(amount, currency)
-                : currency == null
-                    ? MoneyFormat.symbol(amount)
-                    : MoneyFormat.symbolIn(amount, currency!);
+                ? MoneyFormat.signed(amount)
+                : MoneyFormat.symbol(amount);
 
     return Text(
       text,
@@ -179,28 +168,20 @@ class MoneyText extends StatelessWidget {
       ),
     );
   }
-
-  static String _signedIn(Money m, Currency? currency) {
-    if (currency == null) return MoneyFormat.signed(m);
-    final sign = m.isNegative ? '-' : '+';
-    return '$sign${MoneyFormat.symbolIn(m.abs, currency)}';
-  }
 }
 
 /// A balance. Negative renders red because on a credit card it means *owed*.
 class BalanceText extends StatelessWidget {
-  const BalanceText(this.amount, {this.style, this.currency, super.key});
+  const BalanceText(this.amount, {this.style, super.key});
 
   final Money amount;
   final TextStyle? style;
-  final Currency? currency;
 
   @override
   Widget build(BuildContext context) {
     return MoneyText(
       amount,
       style: style,
-      currency: currency,
       color: amount.isNegative ? AppColors.expense : null,
     );
   }
@@ -215,27 +196,24 @@ class AnimatedBalanceText extends StatelessWidget {
   const AnimatedBalanceText(
     this.amount, {
     this.style,
-    this.currency,
     this.duration = const Duration(milliseconds: 650),
     super.key,
   });
 
   final Money amount;
   final TextStyle? style;
-  final Currency? currency;
   final Duration duration;
 
   @override
   Widget build(BuildContext context) {
     if (MediaQuery.disableAnimationsOf(context)) {
-      return BalanceText(amount, style: style, currency: currency);
+      return BalanceText(amount, style: style);
     }
     return TweenAnimationBuilder<int>(
       tween: IntTween(begin: 0, end: amount.paise),
       duration: duration,
       curve: Curves.easeOutCubic,
-      builder: (context, paise, _) =>
-          BalanceText(Money(paise), style: style, currency: currency),
+      builder: (context, paise, _) => BalanceText(Money(paise), style: style),
     );
   }
 }

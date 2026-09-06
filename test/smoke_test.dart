@@ -107,38 +107,25 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets(
-    'Dashboard shows the shared Ready to Assign pool only once RTA is on '
-    'globally and an account is on-budget (GitHub #100 v2)',
-    (tester) async {
-      await pump(tester, const DashboardScreen());
-      expect(tester.takeException(), isNull);
-      expect(find.text('Ready to Assign'), findsNothing);
-      await unmount(tester);
+  testWidgets('Dashboard shows Ready to Assign only for an envelope account', (
+    tester,
+  ) async {
+    await pump(tester, const DashboardScreen());
+    expect(tester.takeException(), isNull);
+    expect(find.text('Ready to Assign'), findsNothing);
+    await unmount(tester);
 
-      await tester.runAsync(() async {
-        final cash = await cashId();
-        await db.setEnvelopeMode(cash, true);
-      });
+    await tester.runAsync(() async {
+      final cash = await cashId();
+      await db.setEnvelopeMode(cash, true);
+    });
 
-      // Still hidden while RTA is off globally, even with an on-budget
-      // account — the Settings switch is what surfaces this section.
-      await pump(tester, const DashboardScreen());
-      expect(tester.takeException(), isNull);
-      expect(find.text('Ready to Assign'), findsNothing);
-      await unmount(tester);
-
-      await tester.runAsync(() => db.setRtaEnabled(true));
-
-      await pump(tester, const DashboardScreen());
-      expect(tester.takeException(), isNull);
-      // The section header and the pooled RTA card's own label (GitHub
-      // #48 — one shared card, not one per account, so the account name
-      // itself is no longer shown here).
-      expect(find.text('Ready to Assign'), findsNWidgets(2));
-      await unmount(tester);
-    },
-  );
+    await pump(tester, const DashboardScreen());
+    expect(tester.takeException(), isNull);
+    expect(find.text('Ready to Assign'), findsOneWidget);
+    expect(find.text('Cash'), findsWidgets);
+    await unmount(tester);
+  });
 
   testWidgets('Accounts renders and shows the seeded Cash account', (
     tester,

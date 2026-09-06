@@ -12,10 +12,8 @@ import '../../features/auto/archived_auto_rules_screen.dart';
 import '../../features/auto/auto_screen.dart';
 import '../../features/budgets/budget_detail_screen.dart';
 import '../../features/budgets/budgets_screen.dart';
-import '../../features/budgets/ready_to_assign_screen.dart';
 import '../../features/calendar/calendar_screen.dart';
 import '../../features/categories/categories_screen.dart';
-import '../../features/categories/category_templates_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/data_export/backup_screen.dart';
 import '../../features/data_export/csv_import_screen.dart';
@@ -42,14 +40,12 @@ import '../../features/security/master_phrase_setup_screen.dart';
 import '../../features/security/master_phrase_verify_screen.dart';
 import '../../features/security/set_passcode_screen.dart';
 import '../../features/settings/bottom_nav_settings_screen.dart';
-import '../../features/settings/currency_settings_screen.dart';
 import '../../features/settings/dashboard_settings_screen.dart';
 import '../../features/settings/font_settings_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/settings/widgets_screen.dart';
 import '../../features/shopping/shopping_list_screen.dart';
 import '../../features/shopping/shopping_lists_screen.dart';
-import '../../features/tags/tag_groups_screen.dart';
 import '../../features/tags/tags_screen.dart';
 import '../../features/transactions/transaction_detail_screen.dart';
 import '../../features/transactions/transactions_screen.dart';
@@ -160,11 +156,6 @@ final appRouter = GoRouter(
                   builder: (_, _) => const CalendarScreen(),
                 ),
                 GoRoute(
-                  path: 'ready-to-assign',
-                  parentNavigatorKey: _rootKey,
-                  builder: (_, _) => const ReadyToAssignScreen(),
-                ),
-                GoRoute(
                   path: 'settings',
                   parentNavigatorKey: _rootKey,
                   builder: (_, _) => const SettingsScreen(),
@@ -201,11 +192,6 @@ final appRouter = GoRouter(
                       path: 'dashboard',
                       parentNavigatorKey: _rootKey,
                       builder: (_, _) => const DashboardSettingsScreen(),
-                    ),
-                    GoRoute(
-                      path: 'currency',
-                      parentNavigatorKey: _rootKey,
-                      builder: (_, _) => const CurrencySettingsScreen(),
                     ),
                   ],
                 ),
@@ -247,25 +233,11 @@ final appRouter = GoRouter(
                   path: 'categories',
                   parentNavigatorKey: _rootKey,
                   builder: (_, _) => const CategoriesScreen(),
-                  routes: [
-                    GoRoute(
-                      path: 'templates',
-                      parentNavigatorKey: _rootKey,
-                      builder: (_, _) => const CategoryTemplatesScreen(),
-                    ),
-                  ],
                 ),
                 GoRoute(
                   path: 'tags',
                   parentNavigatorKey: _rootKey,
                   builder: (_, _) => const TagsScreen(),
-                  routes: [
-                    GoRoute(
-                      path: 'groups',
-                      parentNavigatorKey: _rootKey,
-                      builder: (_, _) => const TagGroupsScreen(),
-                    ),
-                  ],
                 ),
                 GoRoute(
                   path: 'stats',
@@ -427,15 +399,12 @@ final appRouter = GoRouter(
     ),
 
     // The ➕ button — a route pushed above the shell, not a tab.
-    // With an `id` it edits that transaction instead of creating one. With a
-    // `duplicate` id instead, it prefills from that transaction but still
-    // creates a new one on save — see GitHub #92.
+    // With an `id` it edits that transaction instead of creating one.
     GoRoute(
       path: '/add',
       parentNavigatorKey: _rootKey,
       builder: (_, state) {
         final id = state.uri.queryParameters['id'];
-        final duplicateId = state.uri.queryParameters['duplicate'];
         final type = switch (state.uri.queryParameters['type']) {
           'expense' => TxType.expense,
           'income' => TxType.income,
@@ -443,9 +412,6 @@ final appRouter = GoRouter(
         };
         return AddTransactionScreen(
           transactionId: id == null ? null : int.tryParse(id),
-          duplicateFromId: duplicateId == null
-              ? null
-              : int.tryParse(duplicateId),
           initialType: type,
         );
       },

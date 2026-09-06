@@ -37,10 +37,6 @@ class BudgetDetailScreen extends ConsumerWidget {
         .watch(budgetProgressProvider)
         .where((p) => p.category.id == categoryId)
         .firstOrNull;
-    final rtaOn = ref.watch(rtaEnabledProvider);
-    final fundingState = rtaOn
-        ? ref.watch(categoryFundingStateProvider(categoryId))
-        : null;
     final txs = ref.watch(categoryTransactionsProvider(categoryId));
     final accounts = ref.watch(accountMapProvider);
 
@@ -72,8 +68,6 @@ class BudgetDetailScreen extends ConsumerWidget {
             color: catColor,
             periodLabel: periodLabel,
             progress: progress,
-            rtaOn: rtaOn,
-            fundingState: fundingState,
           ),
           const SizedBox(height: 24),
           Text(
@@ -140,15 +134,11 @@ class _SummaryCard extends StatelessWidget {
     required this.color,
     required this.periodLabel,
     required this.progress,
-    required this.rtaOn,
-    required this.fundingState,
   });
 
   final Color color;
   final String periodLabel;
   final BudgetProgress? progress;
-  final bool rtaOn;
-  final CategoryFundingState? fundingState;
 
   @override
   Widget build(BuildContext context) {
@@ -199,14 +189,7 @@ class _SummaryCard extends StatelessWidget {
                   value: p.fraction.clamp(0.0, 1.0),
                   minHeight: 10,
                   backgroundColor: cs.surfaceContainerHighest,
-                  color: !rtaOn
-                      ? (p.overspent ? AppColors.expense : color)
-                      : switch (fundingState) {
-                          CategoryFundingState.overspent => AppColors.expense,
-                          CategoryFundingState.funded => AppColors.income,
-                          CategoryFundingState.underfunded => Colors.amber,
-                          null => color,
-                        },
+                  color: p.overspent ? AppColors.expense : color,
                 ),
               ),
               const SizedBox(height: 12),

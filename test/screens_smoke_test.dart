@@ -14,7 +14,6 @@ import 'package:xpenc/features/accounts/accounts_screen.dart';
 import 'package:xpenc/features/auto/archived_auto_rules_screen.dart';
 import 'package:xpenc/features/auto/auto_screen.dart';
 import 'package:xpenc/features/budgets/budget_detail_screen.dart';
-import 'package:xpenc/features/budgets/ready_to_assign_screen.dart';
 import 'package:xpenc/features/calendar/calendar_screen.dart';
 import 'package:xpenc/features/categories/categories_screen.dart';
 import 'package:xpenc/features/data_export/backup_screen.dart';
@@ -27,10 +26,8 @@ import 'package:xpenc/features/reports/account_reports_screen.dart';
 import 'package:xpenc/features/reports/stats_screen.dart';
 import 'package:xpenc/features/savings/savings_goal_detail_screen.dart';
 import 'package:xpenc/features/savings/savings_goals_screen.dart';
-import 'package:xpenc/features/settings/more_screen_layout_sheet.dart';
 import 'package:xpenc/features/settings/settings_screen.dart';
 import 'package:xpenc/features/settings/widgets_screen.dart';
-import 'package:xpenc/features/tags/tag_groups_screen.dart';
 import 'package:xpenc/features/transactions/transaction_detail_screen.dart';
 import 'package:xpenc/features/more/whats_new_data.dart';
 import 'package:xpenc/features/more/whats_new_screen.dart';
@@ -189,26 +186,6 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('Tag groups screen renders empty, then with a group', (
-    tester,
-  ) async {
-    await pump(tester, const TagGroupsScreen());
-    expect(tester.takeException(), isNull);
-    expect(find.text('Tag groups'), findsOneWidget);
-    expect(find.textContaining('No tag groups yet'), findsOneWidget);
-    await unmount(tester);
-
-    final tagId = await db.addTag(name: 'Travel', colorValue: 0xFF16A34A);
-    final groupId = await db.addTagGroup(name: 'Work trip', colorValue: 0);
-    await db.setTagGroupTags(groupId, {tagId});
-
-    await pump(tester, const TagGroupsScreen());
-    expect(tester.takeException(), isNull);
-    expect(find.text('Work trip'), findsOneWidget);
-    expect(find.text('Travel'), findsOneWidget);
-    await unmount(tester);
-  });
-
   /// GitHub #61: a paused rule must never render on the main Auto screen —
   /// only the "N paused" summary row stands in for it.
   Future<int> addRecurringRuleFixture(
@@ -350,107 +327,6 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets(
-    'Stats: category standings show each category\'s share of total spend',
-    (tester) async {
-      late int cash;
-      await tester.runAsync(() async {
-        final seeded = await seed(); // Food: 320 + 1234.56 = 1554.56
-        cash = seeded.cash;
-        final transport = (await db.watchCategories(CategoryKind.expense).first)
-            .firstWhere((c) => c.name == 'Transport')
-            .id;
-        // Total spend: 1554.56 + 500 = 2054.56 -> Transport is ~24.3%.
-        await db.addTransaction(
-          type: TxType.expense,
-          amount: Money.fromRupees(500),
-          accountId: cash,
-          categoryId: transport,
-          date: DateTime.now(),
-        );
-      });
-      // A tall viewport so the whole ListView (charts included) lays out
-      // without needing a scroll — the Stats screen has more than one
-      // Scrollable (the charts included), which makes scrollUntilVisible
-      // unreliable here.
-      tester.view.physicalSize = const Size(1080, 9000);
-      tester.view.devicePixelRatio = 3.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [dbProvider.overrideWithValue(db)],
-          child: const MaterialApp(home: StatsScreen()),
-        ),
-      );
-      await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 300)),
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(tester.takeException(), isNull);
-
-      // The Standings section defaults to ranking transactions — switch it
-      // to categories to reach the ranking this test targets (GitHub #95).
-      await tester.tap(find.text('Categories'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(tester.takeException(), isNull);
-
-      expect(find.textContaining('% of total'), findsWidgets);
-      expect(find.textContaining('24.3% of total'), findsOneWidget);
-      await unmount(tester);
-    },
-  );
-
-  testWidgets(
-    "Stats: the Spending by category donut's legend shows each slice's "
-    'share of total',
-    (tester) async {
-      late int cash;
-      await tester.runAsync(() async {
-        final seeded = await seed(); // Food: 320 + 1234.56 = 1554.56
-        cash = seeded.cash;
-        final transport = (await db.watchCategories(CategoryKind.expense).first)
-            .firstWhere((c) => c.name == 'Transport')
-            .id;
-        // Total spend: 1554.56 + 500 = 2054.56 -> Transport is ~24%.
-        await db.addTransaction(
-          type: TxType.expense,
-          amount: Money.fromRupees(500),
-          accountId: cash,
-          categoryId: transport,
-          date: DateTime.now(),
-        );
-      });
-      // A tall viewport so the donut's legend lays out without needing a
-      // scroll — see the note on the Standings test above.
-      tester.view.physicalSize = const Size(1080, 9000);
-      tester.view.devicePixelRatio = 3.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [dbProvider.overrideWithValue(db)],
-          child: const MaterialApp(home: StatsScreen()),
-        ),
-      );
-      // spendByCategoryProvider is a drift stream query — give it one more
-      // round trip to emit before asserting on its data.
-      await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 300)),
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(tester.takeException(), isNull);
-
-      expect(find.textContaining('(24%)'), findsOneWidget);
-      await unmount(tester);
-    },
-  );
-
   testWidgets('Account Reports renders with a negative credit-card balance', (
     tester,
   ) async {
@@ -524,13 +400,13 @@ void main() {
   });
 
   testWidgets(
-    'Account detail: On-budget links to the shared Ready to Assign screen '
-    'once turned on',
+    'Account detail: Envelope Mode shows Ready to Assign and category '
+    'balances once turned on',
     (tester) async {
       late int cash;
       await tester.runAsync(() async {
         cash = (await seed()).cash;
-        await db.setRtaEnabled(true);
+        await db.setEnvelopeMode(cash, true);
         await db.addAllocation(
           accountId: cash,
           categoryId: await (db.watchCategories(CategoryKind.expense).first)
@@ -540,92 +416,24 @@ void main() {
       });
       await pump(tester, AccountDetailScreen(accountId: cash));
       expect(tester.takeException(), isNull);
-      expect(find.text('On-budget'), findsOneWidget);
-      expect(find.text('View shared budget'), findsOneWidget);
-      await unmount(tester);
-    },
-  );
-
-  testWidgets(
-    'Assign sheet offers an account picker once more than one account is '
-    'in the pool (GitHub #100)',
-    (tester) async {
-      late int cash;
-      await tester.runAsync(() async {
-        final seeded = await seed();
-        cash = seeded.cash;
-        await db.setEnvelopeMode(cash, true);
-      });
-      await pump(tester, const ReadyToAssignScreen());
-      expect(tester.takeException(), isNull);
-
-      await tester.tap(find.text('Food').first);
-      await tester.pumpAndSettle();
-      // Only one pool account so far — no need to ask which one.
-      expect(find.text('Account'), findsNothing);
-      await tester.tapAt(const Offset(10, 10));
-      await tester.pumpAndSettle();
-
-      await tester.runAsync(() async {
-        final bank = await db.addAccount(
-          name: 'IPPB',
-          type: AccountType.bank,
-          colorValue: 0,
-          iconKey: 'bank',
-          openingBalance: Money.fromRupees(5000),
-        );
-        await db.setEnvelopeMode(bank, true);
-      });
-      await pump(tester, const ReadyToAssignScreen());
-      expect(tester.takeException(), isNull);
-
-      await tester.tap(find.text('Food').first);
-      await tester.pumpAndSettle();
-      expect(find.text('Account'), findsOneWidget);
-      await unmount(tester);
-    },
-  );
-
-  testWidgets(
-    'Ready to Assign screen shows the shared pool total and category '
-    'balances',
-    (tester) async {
-      late int cash;
-      await tester.runAsync(() async {
-        cash = (await seed()).cash;
-        await db.setEnvelopeMode(cash, true);
-        await db.addAllocation(
-          accountId: cash,
-          categoryId: await (db.watchCategories(CategoryKind.expense).first)
-              .then((c) => c.firstWhere((c) => c.name == 'Food').id),
-          amount: Money.fromRupees(500),
-        );
-      });
-      await pump(tester, const ReadyToAssignScreen());
-      expect(tester.takeException(), isNull);
-      expect(find.text('Ready to Assign'), findsWidgets);
+      expect(find.text('Envelope Mode'), findsOneWidget);
+      expect(find.text('Ready to Assign'), findsOneWidget);
       expect(find.text('Food'), findsWidgets);
       await unmount(tester);
     },
   );
 
   testWidgets(
-    'Account detail: turning On-budget on asks for confirmation first',
+    'Account detail: turning Envelope Mode on asks for confirmation first',
     (tester) async {
       late int cash;
-      await tester.runAsync(() async {
-        cash = (await seed()).cash;
-        // RTA has to be on for the On-budget toggle to render at all — then
-        // opt this one account back out so there's something to turn on.
-        await db.setRtaEnabled(true);
-        await db.setEnvelopeMode(cash, false);
-      });
+      await tester.runAsync(() async => cash = (await seed()).cash);
       await pump(tester, AccountDetailScreen(accountId: cash));
       expect(tester.takeException(), isNull);
 
-      await tester.tap(find.text('On-budget'));
+      await tester.tap(find.text('Envelope Mode'));
       await tester.pump();
-      expect(find.text('Mark this account on-budget?'), findsOneWidget);
+      expect(find.text('Turn on Envelope Mode?'), findsOneWidget);
 
       late List<AccountRow> account;
       await tester.runAsync(
@@ -779,106 +587,6 @@ void main() {
     expect(find.text('Backup & Restore'), findsOneWidget);
     await unmount(tester);
   });
-
-  testWidgets('More hub renders every tile in cards layout', (tester) async {
-    await db.setMoreScreenViewMode(MoreScreenViewMode.cards);
-    await pump(tester, const MoreScreen());
-    expect(tester.takeException(), isNull);
-    expect(find.text('Stats'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Backup & Restore'), 240);
-    expect(find.text('Backup & Restore'), findsOneWidget);
-    await unmount(tester);
-  });
-
-  testWidgets(
-    'Settings: More screen layout row shows the stored mode',
-    (tester) async {
-      await pump(tester, const SettingsScreen());
-      expect(tester.takeException(), isNull);
-
-      await tester.scrollUntilVisible(find.text('More screen layout'), 300);
-      expect(find.text('List'), findsOneWidget);
-      await unmount(tester);
-    },
-  );
-
-  testWidgets('picking Cards on the More screen layout sheet writes it to '
-      'the database', (tester) async {
-    await pump(tester, const Scaffold(body: MoreScreenLayoutSheet()));
-
-    await tester.tap(find.text('Cards'));
-    await tester.pump();
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 200)),
-    );
-    await tester.pump();
-    expect(tester.takeException(), isNull);
-
-    await tester.runAsync(() async {
-      final settings = await db.getSettings();
-      expect(settings.moreScreenViewMode, MoreScreenViewMode.cards);
-    });
-    await unmount(tester);
-  });
-
-  testWidgets(
-    'Settings: Ready to Assign defaults off and turning it on persists '
-    '(GitHub #100 v2)',
-    (tester) async {
-      await pump(tester, const SettingsScreen());
-      expect(tester.takeException(), isNull);
-
-      await tester.scrollUntilVisible(find.text('Ready to Assign'), 300);
-      await tester.ensureVisible(find.text('Ready to Assign'));
-      await tester.pumpAndSettle();
-      expect(find.text('Ready to Assign'), findsOneWidget);
-
-      final initial = await db.getSettings();
-      expect(initial.rtaEnabled, isFalse);
-
-      await tester.tap(find.text('Ready to Assign'));
-      await tester.pump();
-      expect(find.text('Turn on Ready to Assign?'), findsOneWidget);
-      await tester.tap(find.text('Turn on'));
-      await tester.pump();
-      await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 200)),
-      );
-      await tester.pump();
-      expect(tester.takeException(), isNull);
-
-      await tester.runAsync(() async {
-        final updated = await db.getSettings();
-        expect(updated.rtaEnabled, isTrue);
-      });
-      await unmount(tester);
-    },
-  );
-
-  testWidgets(
-    'More hub: a Ready to Assign tile appears alongside Budgets once RTA '
-    'is on (GitHub #100 v2)',
-    (tester) async {
-      await db.setRtaEnabled(true);
-      await pump(tester, const MoreScreen());
-      expect(tester.takeException(), isNull);
-      expect(find.text('Ready to Assign'), findsOneWidget);
-      expect(find.text('Budgets'), findsOneWidget);
-      await unmount(tester);
-    },
-  );
-
-  testWidgets(
-    'More hub: only the Budgets tile shows while RTA is off',
-    (tester) async {
-      await pump(tester, const MoreScreen());
-      expect(tester.takeException(), isNull);
-      expect(find.text('Budgets'), findsOneWidget);
-      expect(find.text('Ready to Assign'), findsNothing);
-      await unmount(tester);
-    },
-  );
-
 
   testWidgets('Settings renders', (tester) async {
     await pump(tester, const SettingsScreen());
