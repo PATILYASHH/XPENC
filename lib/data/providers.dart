@@ -67,6 +67,18 @@ final categoryMapProvider = Provider<Map<int, CategoryRow>>((ref) {
   };
 });
 
+/// Saved category templates (GitHub #101), newest first.
+final categoryTemplatesProvider = StreamProvider<List<CategoryTemplateRow>>(
+  (ref) => ref.watch(dbProvider).watchCategoryTemplates(),
+);
+
+/// One template's own category items, for previewing before applying it.
+final categoryTemplateItemsProvider =
+    StreamProvider.family<List<CategoryTemplateItemRow>, int>(
+      (ref, templateId) =>
+          ref.watch(dbProvider).watchCategoryTemplateItems(templateId),
+    );
+
 /// A category's top-level ancestor. The tree is two deep, so a child resolves
 /// to its parent and a parent (or an unknown id) resolves to itself. Used to
 /// roll subcategory spend up into the parent it belongs to.
@@ -430,10 +442,7 @@ final defaultEnvelopeAccountIdProvider = Provider<int?>((ref) {
 /// everyday spending would silently drain the shared pool. Never touches
 /// [Accounts.currentBalance] or `net worth` — Envelope Mode only re-labels
 /// money already correctly tracked by the ledger, it never moves any.
-final categoryBalanceProvider = Provider.family<Money, int>((
-  ref,
-  categoryId,
-) {
+final categoryBalanceProvider = Provider.family<Money, int>((ref, categoryId) {
   final poolAccountIds = {
     for (final a in ref.watch(envelopeModeAccountsProvider)) a.id,
   };
@@ -462,21 +471,19 @@ enum CategoryFundingState { overspent, funded, underfunded }
 
 /// Returns null when [categoryId] has no [Budgets] row — there's nothing to
 /// color either way, in RTA on or off.
-final categoryFundingStateProvider = Provider.family<CategoryFundingState?, int>((
-  ref,
-  categoryId,
-) {
-  final p = ref
-      .watch(budgetProgressProvider)
-      .where((p) => p.budget.categoryId == categoryId)
-      .firstOrNull;
-  if (p == null) return null;
-  if (p.overspent) return CategoryFundingState.overspent;
-  final balance = ref.watch(categoryBalanceProvider(categoryId));
-  return balance >= p.budget.amount
-      ? CategoryFundingState.funded
-      : CategoryFundingState.underfunded;
-});
+final categoryFundingStateProvider =
+    Provider.family<CategoryFundingState?, int>((ref, categoryId) {
+      final p = ref
+          .watch(budgetProgressProvider)
+          .where((p) => p.budget.categoryId == categoryId)
+          .firstOrNull;
+      if (p == null) return null;
+      if (p.overspent) return CategoryFundingState.overspent;
+      final balance = ref.watch(categoryBalanceProvider(categoryId));
+      return balance >= p.budget.amount
+          ? CategoryFundingState.funded
+          : CategoryFundingState.underfunded;
+    });
 
 /// `Σ(currentBalance) − Σ(category_balance > 0)`, across every account in
 /// [envelopeModeAccountsProvider] — GitHub #48: one shared Ready to Assign
@@ -575,7 +582,8 @@ final groupExpensesProvider = StreamProvider.family<List<GroupExpenseRow>, int>(
 /// [personBalancesProvider] over exactly that group's member ids. Not new
 /// balance math; a group is never a second source of truth for money.
 final groupBalanceProvider = Provider.family<Money, int>((ref, groupId) {
-  final members = ref.watch(groupMembersProvider(groupId)).valueOrNull ?? const [];
+  final members =
+      ref.watch(groupMembersProvider(groupId)).valueOrNull ?? const [];
   final balances =
       ref.watch(personBalancesProvider).valueOrNull ?? const <int, Money>{};
   return members.fold(
@@ -821,7 +829,10 @@ final hasMasterPhraseProvider = Provider<bool>((ref) {
 });
 
 final masterPhraseAttemptThresholdProvider = Provider<int>((ref) {
-  return ref.watch(settingsProvider).valueOrNull?.masterPhraseAttemptThreshold ??
+  return ref
+          .watch(settingsProvider)
+          .valueOrNull
+          ?.masterPhraseAttemptThreshold ??
       5;
 });
 
