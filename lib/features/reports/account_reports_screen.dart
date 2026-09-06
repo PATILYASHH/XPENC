@@ -173,7 +173,6 @@ class _BalanceSplitCard extends ConsumerWidget {
                   label: a.name,
                   value: a.currentBalance,
                   color: Color(a.colorValue),
-                  id: null,
                 ),
             ],
           )

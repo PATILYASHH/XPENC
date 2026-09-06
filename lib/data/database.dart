@@ -4,13 +4,11 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
-import '../core/currency.dart';
 import '../core/group_split_math.dart';
 import '../core/money.dart';
 import '../core/security/passcode.dart';
 import '../features/message_capture/parser/bank_message.dart';
 import '../features/message_capture/parser/message_parser.dart';
-import 'currency_conversion.dart';
 import 'tables.dart';
 
 part 'database.g.dart';
@@ -27,8 +25,7 @@ part 'database.g.dart';
 Money accountMovement(TransactionRow tx, Set<int> ownIds) => switch (tx.type) {
   TxType.income || TxType.personIn => tx.amount,
   TxType.expense || TxType.personOut => -tx.amount,
-  TxType.transfer =>
-    ownIds.contains(tx.accountId) ? -tx.amount : (tx.toAmount ?? tx.amount),
+  TxType.transfer => ownIds.contains(tx.accountId) ? -tx.amount : tx.amount,
 };
 
 /// The gap between automatic backups for a given schedule. `monthly` is
@@ -138,8 +135,6 @@ typedef CombinedStatementLine = ({
     Tags,
     TransactionTags,
     RecurringRuleTags,
-    TagGroups,
-    TagGroupTags,
     TransactionSplits,
     TransactionLinks,
     GoalDetails,
@@ -150,9 +145,6 @@ typedef CombinedStatementLine = ({
     Allocations,
     OcrCorrections,
     CreditCardDetails,
-    CurrencyRates,
-    CategoryTemplates,
-    CategoryTemplateItems,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -178,7 +170,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 63;
+  int get schemaVersion => 54;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -375,7 +367,11 @@ class AppDatabase extends _$AppDatabase {
           settings,
           settings.masterPhraseAttemptThreshold,
         );
-        await _addColumnIfMissing(m, settings, settings.failedPasscodeAttempts);
+        await _addColumnIfMissing(
+          m,
+          settings,
+          settings.failedPasscodeAttempts,
+        );
       }
       if (from < 42) {
         await _addColumnIfMissing(m, settings, settings.showBottomNavLabels);
@@ -404,11 +400,7 @@ class AppDatabase extends _$AppDatabase {
         await _addColumnIfMissing(m, recurringRules, recurringRules.note);
       }
       if (from < 48) {
-        await _addColumnIfMissing(
-          m,
-          recurringRules,
-          recurringRules.promoAmount,
-        );
+        await _addColumnIfMissing(m, recurringRules, recurringRules.promoAmount);
         await _addColumnIfMissing(
           m,
           recurringRules,
@@ -445,95 +437,6 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 54) {
         await m.createTable(creditCardDetails);
-      }
-      if (from < 55) {
-        // Adds RecurringRules.toAccountId and loosens categoryId to
-        // nullable (a G&L rule's transfer carries neither) — SQLite can't
-        // relax a NOT NULL via a plain ALTER TABLE, so this recreates the
-        // table against the current Dart schema, copying existing rows by
-        // column name.
-        await m.alterTable(
-          TableMigration(
-            recurringRules,
-            newColumns: [recurringRules.toAccountId],
-          ),
-        );
-      }
-      if (from < 56) {
-        await _addColumnIfMissing(m, settings, settings.moreScreenViewMode);
-      }
-      if (from < 57) {
-        await m.createTable(tagGroups);
-        await m.createTable(tagGroupTags);
-      }
-      if (from < 58) {
-        await _addColumnIfMissing(m, settings, settings.frequentIconKeys);
-      }
-      if (from < 59) {
-        // GitHub #85 — a purely informational "originally paid in another
-        // currency" annotation on transactions and the auto rules that post
-        // them. Both columns on each table are always null together.
-        await _addColumnIfMissing(
-          m,
-          transactions,
-          transactions.foreignCurrencyCode,
-        );
-        await _addColumnIfMissing(m, transactions, transactions.foreignAmount);
-        await _addColumnIfMissing(
-          m,
-          recurringRules,
-          recurringRules.foreignCurrencyCode,
-        );
-        await _addColumnIfMissing(
-          m,
-          recurringRules,
-          recurringRules.foreignAmount,
-        );
-      }
-      if (from < 60) {
-        // Multi-currency accounts — see
-        // docs/superpowers/specs/2026-09-04-multi-currency-accounts-design.md.
-        await m.createTable(currencyRates);
-        await _addColumnIfMissing(m, accounts, accounts.currencyCode);
-        await _addColumnIfMissing(m, transactions, transactions.currencyCode);
-        await _addColumnIfMissing(
-          m,
-          transactions,
-          transactions.fxRateToBaseMicros,
-        );
-        await _addColumnIfMissing(m, transactions, transactions.toAmount);
-        await _addColumnIfMissing(m, transactions, transactions.toCurrencyCode);
-        await _addColumnIfMissing(
-          m,
-          transactions,
-          transactions.toFxRateToBaseMicros,
-        );
-      }
-      if (from < 61) {
-        // GitHub #100 — a Settings-level switch between the classic Budgets
-        // screen and Envelope Mode's Ready to Assign as the primary
-        // budgeting system. Neither system's own data changes.
-        await _addColumnIfMissing(m, settings, settings.budgetingMode);
-      }
-      if (from < 62) {
-        // GitHub #100 v2 — Budget (the ceiling system) is now always on for
-        // everyone; the old Budgets-vs-Envelope choice becomes a single
-        // Ready to Assign on/off switch instead. Backfill from the old
-        // enum rather than defaulting everyone to off, so an existing
-        // Envelope-mode user's accounts don't silently fall out of the pool.
-        await _addColumnIfMissing(m, settings, settings.rtaEnabled);
-        final current = await select(settings).getSingleOrNull();
-        if (current != null &&
-            current.budgetingMode == BudgetingMode.envelope) {
-          await update(
-            settings,
-          ).write(const SettingsCompanion(rtaEnabled: Value(true)));
-        }
-      }
-      if (from < 63) {
-        // GitHub #101 — saveable, switchable category templates.
-        await m.createTable(categoryTemplates);
-        await m.createTable(categoryTemplateItems);
       }
     },
     beforeOpen: (details) async {
@@ -855,7 +758,6 @@ class AppDatabase extends _$AppDatabase {
     await delete(categories).go();
     await delete(accounts).go();
     await delete(tags).go();
-    await delete(currencyRates).go();
     await _seedDefaultAccountsAndCategories();
   });
 
@@ -897,28 +799,7 @@ class AppDatabase extends _$AppDatabase {
         await _adjust(t.accountId, -amt);
       case TxType.transfer:
         await _adjust(t.accountId, -amt);
-        final creditAmt = t.toAmount == null
-            ? amt
-            : Money(t.toAmount!.paise * sign);
-        await _adjust(t.toAccountId!, creditAmt);
-    }
-  }
-
-  /// Shared by [_validateTx] and [_validateRecurringRule] — the foreign
-  /// currency annotation (GitHub #85) is optional, but never half-set.
-  void _validateForeignCurrency(String? code, Money? amount) {
-    if (code == null && amount == null) return;
-    if (code == null || amount == null) {
-      throw ArgumentError(
-        'A foreign amount needs a currency, and a foreign currency needs an '
-        'amount.',
-      );
-    }
-    if (!amount.isPositive) {
-      throw ArgumentError('Foreign amount must be positive.');
-    }
-    if (currencyForCode(code).code != code) {
-      throw ArgumentError('Unknown currency code: $code.');
+        await _adjust(t.toAccountId!, amt);
     }
   }
 
@@ -931,10 +812,7 @@ class AppDatabase extends _$AppDatabase {
     int? personId,
     String? payee,
     int? recurringRuleId,
-    String? foreignCurrencyCode,
-    Money? foreignAmount,
   }) async {
-    _validateForeignCurrency(foreignCurrencyCode, foreignAmount);
     // Zero is a legitimate income/expense (GitHub #87) — a free item, a
     // discount that fully covers the price, a promo month that costs
     // nothing. A transfer or person movement of ₹0 has no real meaning
@@ -968,12 +846,8 @@ class AppDatabase extends _$AppDatabase {
     if (!type.isIncomeOrExpense && payee != null) {
       throw ArgumentError('Only an income or expense names a payee.');
     }
-    if (!type.isIncomeOrExpense &&
-        type != TxType.transfer &&
-        recurringRuleId != null) {
-      throw ArgumentError(
-        'Only income, expense or a transfer can come from a rule.',
-      );
+    if (!type.isIncomeOrExpense && recurringRuleId != null) {
+      throw ArgumentError('Only income or expense can come from a rule.');
     }
     switch (type) {
       case TxType.transfer:
@@ -1036,33 +910,6 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 
-  /// Resolves what [accountId] should stamp onto a transaction posted on
-  /// [date]: `(null, null)` for a parent-currency account, or its currency
-  /// code plus the rate snapshot for a foreign-currency one. Throws if the
-  /// account is foreign-currency but no rate has been entered yet as of
-  /// that date — silently falling back to 1:1 would quietly corrupt every
-  /// downstream total, so this fails loudly instead and the UI is
-  /// responsible for steering the user to the Currency settings screen
-  /// first.
-  Future<(String?, int?)> _resolveTxCurrency(
-    int accountId,
-    DateTime date,
-  ) async {
-    final account = await (select(
-      accounts,
-    )..where((a) => a.id.equals(accountId))).getSingle();
-    final code = account.currencyCode;
-    if (code == null) return (null, null);
-    final rate = await latestRate(code, asOf: date);
-    if (rate == null) {
-      throw ArgumentError(
-        'No exchange rate set for $code yet — add one in Settings > '
-        'Currency before posting this transaction.',
-      );
-    }
-    return (code, rate.rateToBaseMicros);
-  }
-
   Future<int> addTransaction({
     required TxType type,
     required Money amount,
@@ -1076,8 +923,6 @@ class AppDatabase extends _$AppDatabase {
     int? recurringRuleId,
     String? imagePath,
     bool needsAmountReview = false,
-    String? foreignCurrencyCode,
-    Money? foreignAmount,
   }) async {
     await _validateTx(
       type: type,
@@ -1088,28 +933,7 @@ class AppDatabase extends _$AppDatabase {
       personId: personId,
       payee: payee,
       recurringRuleId: recurringRuleId,
-      foreignCurrencyCode: foreignCurrencyCode,
-      foreignAmount: foreignAmount,
     );
-
-    final (sourceCode, sourceRate) = await _resolveTxCurrency(accountId, date);
-
-    String? toCode;
-    int? toRate;
-    Money? toAmt;
-    if (type == TxType.transfer && toAccountId != null) {
-      final resolved = await _resolveTxCurrency(toAccountId, date);
-      toCode = resolved.$1;
-      toRate = resolved.$2;
-      if (toCode != sourceCode) {
-        final sourceBase = sourceCode == null
-            ? amount
-            : convertUsingRate(amount, sourceRate!);
-        toAmt = toCode == null
-            ? sourceBase
-            : Money((sourceBase.paise * currencyRateScale) ~/ toRate!);
-      }
-    }
 
     return transaction(() async {
       final id = await into(transactions).insert(
@@ -1126,13 +950,6 @@ class AppDatabase extends _$AppDatabase {
           recurringRuleId: Value(recurringRuleId),
           imagePath: Value(imagePath),
           needsAmountReview: Value(needsAmountReview),
-          foreignCurrencyCode: Value(foreignCurrencyCode),
-          foreignAmount: Value(foreignAmount),
-          currencyCode: Value(sourceCode),
-          fxRateToBaseMicros: Value(sourceRate),
-          toAmount: Value(toAmt),
-          toCurrencyCode: Value(toCode),
-          toFxRateToBaseMicros: Value(toRate),
         ),
       );
       final row = await (select(
@@ -1421,8 +1238,6 @@ class AppDatabase extends _$AppDatabase {
     String? note,
     String? payee,
     String? imagePath,
-    String? foreignCurrencyCode,
-    Money? foreignAmount,
   }) async {
     await _validateTx(
       type: type,
@@ -1432,8 +1247,6 @@ class AppDatabase extends _$AppDatabase {
       categoryId: categoryId,
       personId: personId,
       payee: payee,
-      foreignCurrencyCode: foreignCurrencyCode,
-      foreignAmount: foreignAmount,
     );
 
     return transaction(() async {
@@ -1464,8 +1277,6 @@ class AppDatabase extends _$AppDatabase {
           // Editing and saving *is* the confirmation — whatever amount is
           // typed here is now the real one, estimate or not.
           needsAmountReview: const Value(false),
-          foreignCurrencyCode: Value(foreignCurrencyCode),
-          foreignAmount: Value(foreignAmount),
         ),
       );
 
@@ -1543,65 +1354,6 @@ class AppDatabase extends _$AppDatabase {
             tagId: tagId,
           ),
         );
-      }
-    });
-  }
-
-  // ── Tag groups ───────────────────────────────────────────────────────────
-  //
-  // A shortcut for [TagPickerSheet]: pick one group and every tag in it gets
-  // selected at once, instead of hunting each one down individually every
-  // time the same combination is used (GitHub #92). A group is never itself
-  // written to a transaction — only the [Tags] it names are.
-
-  Stream<List<TagGroupRow>> watchTagGroups() => (select(
-    tagGroups,
-  )..orderBy([(g) => OrderingTerm(expression: g.name)])).watch();
-
-  Future<int> addTagGroup({required String name, required int colorValue}) =>
-      into(
-        tagGroups,
-      ).insert(TagGroupsCompanion.insert(name: name, colorValue: colorValue));
-
-  Future<void> updateTagGroup({
-    required int id,
-    required String name,
-    required int colorValue,
-  }) => (update(tagGroups)..where((g) => g.id.equals(id))).write(
-    TagGroupsCompanion(name: Value(name), colorValue: Value(colorValue)),
-  );
-
-  /// Same hard-delete shape as [deleteTag]: a group is only ever a picker
-  /// shortcut, so dropping it touches no transaction — just its own tag list.
-  Future<void> deleteTagGroup(int id) => transaction(() async {
-    await (delete(tagGroupTags)..where((t) => t.groupId.equals(id))).go();
-    await (delete(tagGroups)..where((g) => g.id.equals(id))).go();
-  });
-
-  /// Every group's tag link, across every group — composed with
-  /// [watchTagGroups] by the provider layer, same shape as
-  /// [watchAllTransactionTags].
-  Stream<List<TagGroupTagRow>> watchAllTagGroupTags() =>
-      select(tagGroupTags).watch();
-
-  Future<List<int>> tagIdsForGroup(int groupId) async {
-    final rows = await (select(
-      tagGroupTags,
-    )..where((t) => t.groupId.equals(groupId))).get();
-    return rows.map((r) => r.tagId).toList();
-  }
-
-  /// Replaces every tag in [groupId] with exactly [tagIds] — same
-  /// whole-set-rewrite shape as [setTransactionTags].
-  Future<void> setTagGroupTags(int groupId, Set<int> tagIds) {
-    return transaction(() async {
-      await (delete(
-        tagGroupTags,
-      )..where((t) => t.groupId.equals(groupId))).go();
-      for (final tagId in tagIds) {
-        await into(
-          tagGroupTags,
-        ).insert(TagGroupTagsCompanion.insert(groupId: groupId, tagId: tagId));
       }
     });
   }
@@ -1764,13 +1516,15 @@ class AppDatabase extends _$AppDatabase {
 
   // ── Credit card statements (GitHub #91) ─────────────────────────────────
 
-  Future<CreditCardDetailRow?> getCreditCardDetails(int accountId) => (select(
-    creditCardDetails,
-  )..where((c) => c.accountId.equals(accountId))).getSingleOrNull();
+  Future<CreditCardDetailRow?> getCreditCardDetails(int accountId) =>
+      (select(
+        creditCardDetails,
+      )..where((c) => c.accountId.equals(accountId))).getSingleOrNull();
 
-  Stream<CreditCardDetailRow?> watchCreditCardDetails(int accountId) => (select(
-    creditCardDetails,
-  )..where((c) => c.accountId.equals(accountId))).watchSingleOrNull();
+  Stream<CreditCardDetailRow?> watchCreditCardDetails(int accountId) =>
+      (select(
+        creditCardDetails,
+      )..where((c) => c.accountId.equals(accountId))).watchSingleOrNull();
 
   /// Every credit card currently tracking a statement cycle — what
   /// [NotificationService.syncCreditCardReminders] schedules a due-date
@@ -1810,9 +1564,10 @@ class AppDatabase extends _$AppDatabase {
 
   /// Turns tracking back off — the card itself is untouched, only the
   /// cycle it was reporting against.
-  Future<void> deleteCreditCardDetails(int accountId) => (delete(
-    creditCardDetails,
-  )..where((c) => c.accountId.equals(accountId))).go();
+  Future<void> deleteCreditCardDetails(int accountId) =>
+      (delete(
+        creditCardDetails,
+      )..where((c) => c.accountId.equals(accountId))).go();
 
   /// The last real day of [year]/[month] if [day] overshoots it (e.g. the
   /// 31st in a 30-day month) — the same snapping [_nextOccurrence] applies
@@ -2240,7 +1995,7 @@ class AppDatabase extends _$AppDatabase {
             bump(t.accountId, -t.amount);
           case TxType.transfer:
             bump(t.accountId, -t.amount);
-            bump(t.toAccountId!, t.toAmount ?? t.amount);
+            bump(t.toAccountId!, t.amount);
         }
       }
 
@@ -2254,69 +2009,6 @@ class AppDatabase extends _$AppDatabase {
       }
     });
   }
-
-  // ── Currency rates ───────────────────────────────────────────────────────
-
-  /// The most recent rate for [currencyCode] at or before [asOf] (defaults
-  /// to now) — `null` if none has been entered yet as of that date. This is
-  /// what a transaction snapshots at post time, and what a live figure
-  /// (Net Worth) resolves with `asOf` left at its default.
-  Future<CurrencyRateRow?> latestRate(String currencyCode, {DateTime? asOf}) {
-    final cutoff = asOf ?? DateTime.now();
-    return (select(currencyRates)
-          ..where(
-            (r) =>
-                r.currencyCode.equals(currencyCode) &
-                r.effectiveAt.isSmallerOrEqualValue(cutoff),
-          )
-          ..orderBy([
-            (r) => OrderingTerm(
-              expression: r.effectiveAt,
-              mode: OrderingMode.desc,
-            ),
-          ])
-          ..limit(1))
-        .getSingleOrNull();
-  }
-
-  /// Records a new rate. Always an insert, never an update — see
-  /// [CurrencyRates]'s doc for why history must never be overwritten.
-  Future<int> addCurrencyRate({
-    required String currencyCode,
-    required int rateToBaseMicros,
-    required DateTime effectiveAt,
-  }) {
-    if (rateToBaseMicros <= 0) {
-      throw ArgumentError('Rate must be positive.');
-    }
-    if (currencyForCode(currencyCode).code != currencyCode) {
-      throw ArgumentError('Unknown currency code: $currencyCode.');
-    }
-    return into(currencyRates).insert(
-      CurrencyRatesCompanion.insert(
-        currencyCode: currencyCode,
-        rateToBaseMicros: rateToBaseMicros,
-        effectiveAt: effectiveAt,
-      ),
-    );
-  }
-
-  /// One row per currency that has ever had a rate entered, each the most
-  /// recent — the list the Currency settings screen renders. Folds in Dart
-  /// rather than SQL, same style as [recalculateBalances]/[watchNetWorth].
-  Stream<List<CurrencyRateRow>> watchCurrentRates() =>
-      select(currencyRates).watch().map((rows) {
-        final latest = <String, CurrencyRateRow>{};
-        for (final r in rows) {
-          final existing = latest[r.currencyCode];
-          if (existing == null || r.effectiveAt.isAfter(existing.effectiveAt)) {
-            latest[r.currencyCode] = r;
-          }
-        }
-        final list = latest.values.toList()
-          ..sort((a, b) => a.currencyCode.compareTo(b.currencyCode));
-        return list;
-      });
 
   // ── Queries ───────────────────────────────────────────────────────────────
 
@@ -2339,29 +2031,11 @@ class AppDatabase extends _$AppDatabase {
   /// An account with [Accounts.includeInNetWorth] off — opted out from
   /// Settings > Customize Dashboard — contributes nothing here, though it
   /// still shows its own balance everywhere else in the app.
-  ///
-  /// A foreign-currency account's balance is converted using **today's**
-  /// rate, not a snapshot — Net Worth is a "right now" figure, unlike a
-  /// transaction's historical [TransactionBaseValue.baseAmount]. If no rate
-  /// has been entered for its currency yet, its raw balance is added
-  /// unconverted rather than dropping it or throwing, so an incomplete
-  /// Currency setup never breaks the dashboard.
-  Stream<Money> watchNetWorth() =>
-      watchBalanceHoldingAccounts().asyncMap((rows) async {
-        var total = const Money.zero();
-        for (final a in rows) {
-          if (!a.includeInNetWorth) continue;
-          if (a.currencyCode == null) {
-            total += a.currentBalance;
-            continue;
-          }
-          final rate = await latestRate(a.currencyCode!);
-          total += rate == null
-              ? a.currentBalance
-              : convertUsingRate(a.currentBalance, rate.rateToBaseMicros);
-        }
-        return total;
-      });
+  Stream<Money> watchNetWorth() => watchBalanceHoldingAccounts().map(
+    (rows) => rows
+        .where((a) => a.includeInNetWorth)
+        .fold(const Money.zero(), (sum, a) => sum + a.currentBalance),
+  );
 
   /// Flips whether [id]'s balance counts toward [watchNetWorth] — the toggle
   /// behind Settings > Customize Dashboard.
@@ -2538,7 +2212,6 @@ class AppDatabase extends _$AppDatabase {
     required int colorValue,
     required String iconKey,
     required Money openingBalance,
-    String? currencyCode,
   }) {
     if (type == AccountType.card && cardKind == null) {
       throw ArgumentError('A card must be credit or debit.');
@@ -2548,39 +2221,25 @@ class AppDatabase extends _$AppDatabase {
         'A debit card must be linked to the bank account it draws from.',
       );
     }
-    // An instrument (debit card) holds no balance, and no currency, of its
-    // own — it always mirrors the account it draws from.
+    // An instrument (debit card) holds no balance of its own.
     final opening = linkedAccountId == null
         ? openingBalance
         : const Money.zero();
-    final resolvedCurrencyCode = linkedAccountId == null ? currencyCode : null;
-    if (resolvedCurrencyCode != null &&
-        currencyForCode(resolvedCurrencyCode).code != resolvedCurrencyCode) {
-      throw ArgumentError('Unknown currency code: $resolvedCurrencyCode.');
-    }
 
-    return transaction(() async {
-      // GitHub #100 v2 — while Ready to Assign is on, every account joins
-      // the shared pool automatically, including a new one; there's no
-      // separate "turn on" step to remember.
-      final envelopeByDefault = (await getSettings()).rtaEnabled;
-      return into(accounts).insert(
-        AccountsCompanion.insert(
-          name: name,
-          type: type,
-          cardKind: Value(cardKind),
-          linkedAccountId: Value(linkedAccountId),
-          bankName: Value(bankName),
-          last4: Value(last4),
-          colorValue: colorValue,
-          currencyCode: Value(resolvedCurrencyCode),
-          iconKey: iconKey,
-          openingBalance: opening,
-          currentBalance: opening,
-          envelopeMode: Value(envelopeByDefault),
-        ),
-      );
-    });
+    return into(accounts).insert(
+      AccountsCompanion.insert(
+        name: name,
+        type: type,
+        cardKind: Value(cardKind),
+        linkedAccountId: Value(linkedAccountId),
+        bankName: Value(bankName),
+        last4: Value(last4),
+        colorValue: colorValue,
+        iconKey: iconKey,
+        openingBalance: opening,
+        currentBalance: opening,
+      ),
+    );
   }
 
   /// GitHub #88 — the only account field ever offered for editing after
@@ -2594,35 +2253,6 @@ class AppDatabase extends _$AppDatabase {
     }
     return (update(accounts)..where((a) => a.id.equals(id))).write(
       AccountsCompanion(name: Value(trimmed)),
-    );
-  }
-
-  /// Changes an account's currency. Only ever allowed before it has a
-  /// transaction — once one exists, its native amount is only meaningful
-  /// under the currency it was posted in, so the field locks (see the
-  /// design spec's "an account's currency locks once it has its first
-  /// transaction" decision). A linked card can never set its own currency —
-  /// it always mirrors the account it draws from.
-  Future<void> setAccountCurrency(int id, String? currencyCode) async {
-    if (currencyCode != null &&
-        currencyForCode(currencyCode).code != currencyCode) {
-      throw ArgumentError('Unknown currency code: $currencyCode.');
-    }
-    final account = await (select(
-      accounts,
-    )..where((a) => a.id.equals(id))).getSingle();
-    if (account.linkedAccountId != null) {
-      throw ArgumentError(
-        "A linked card always uses its bank account's currency.",
-      );
-    }
-    if (await countTransactionsForAccount(id) > 0) {
-      throw ArgumentError(
-        'This account already has transactions — its currency is locked.',
-      );
-    }
-    await (update(accounts)..where((a) => a.id.equals(id))).write(
-      AccountsCompanion(currencyCode: Value(currencyCode)),
     );
   }
 
@@ -2659,10 +2289,8 @@ class AppDatabase extends _$AppDatabase {
   /// with transaction history would orphan every row that named it, exactly
   /// like [archiveCategory] above. Removal only ever succeeds on an account
   /// nothing has touched yet — no transaction, no debit card drawing from it,
-  /// no reminder or merchant rule naming it. Returns whether deleting it
-  /// also auto-disabled Ready to Assign (it was the last pool account) — see
-  /// [_maybeAutoDisableRta].
-  Future<bool> deleteAccount(int id) async {
+  /// no reminder or merchant rule naming it.
+  Future<void> deleteAccount(int id) async {
     final linkedCard = await (select(
       accounts,
     )..where((a) => a.linkedAccountId.equals(id))).getSingleOrNull();
@@ -2705,7 +2333,7 @@ class AppDatabase extends _$AppDatabase {
         'that in Settings first.',
       );
     }
-    return transaction(() async {
+    await transaction(() async {
       // A goal account's own target/deadline row has no reason to outlive
       // it — nothing else ever references GoalDetails. Same for a credit
       // card's statement-tracking row.
@@ -2714,7 +2342,6 @@ class AppDatabase extends _$AppDatabase {
         creditCardDetails,
       )..where((c) => c.accountId.equals(id))).go();
       await (delete(accounts)..where((a) => a.id.equals(id))).go();
-      return _maybeAutoDisableRta();
     });
   }
 
@@ -2909,36 +2536,11 @@ class AppDatabase extends _$AppDatabase {
   /// Per-account, not global — every other account keeps working exactly as
   /// it does today. Switching this off never deletes [Allocations] rows (see
   /// [Allocations] doc); they simply stop being read while it's off, and
-  /// reappear if it's switched back on. Returns whether turning it off also
-  /// auto-disabled Ready to Assign (it was the last pool account) — see
-  /// [_maybeAutoDisableRta].
-  Future<bool> setEnvelopeMode(int accountId, bool enabled) =>
-      transaction(() async {
-        await (update(accounts)..where((a) => a.id.equals(accountId))).write(
-          AccountsCompanion(envelopeMode: Value(enabled)),
-        );
-        return enabled ? false : _maybeAutoDisableRta();
-      });
-
-  /// Turns Ready to Assign off, automatically, the moment its pool would
-  /// otherwise go empty — called from inside the same [transaction] as
-  /// whatever just removed the last pool account ([setEnvelopeMode] turning
-  /// one off, or [deleteAccount] removing one). Returns whether it actually
-  /// fired, so the caller can surface a non-blocking notice; never throws
-  /// and never blocks the action that triggered it (GitHub #100 v2 — no
-  /// confirmation prompt on the account-side action, only a heads-up after).
-  Future<bool> _maybeAutoDisableRta() async {
-    final settingsRow = await getSettings();
-    if (!settingsRow.rtaEnabled) return false;
-    final remaining = await (select(
-      accounts,
-    )..where((a) => a.envelopeMode.equals(true))).get();
-    if (remaining.isNotEmpty) return false;
-    await update(
-      settings,
-    ).write(const SettingsCompanion(rtaEnabled: Value(false)));
-    return true;
-  }
+  /// reappear if it's switched back on.
+  Future<void> setEnvelopeMode(int accountId, bool enabled) =>
+      (update(accounts)..where((a) => a.id.equals(accountId))).write(
+        AccountsCompanion(envelopeMode: Value(enabled)),
+      );
 
   /// Every allocation, across every account — the provider layer sums these
   /// per (account, category) rather than this querying once per pair.
@@ -2958,12 +2560,6 @@ class AppDatabase extends _$AppDatabase {
   /// (a positive amount) and "unassign" (a negative one); there is no
   /// separate method for each, the same way [addTransaction] covers
   /// income/expense/transfer with one method rather than three.
-  ///
-  /// GitHub #48: category envelope balances and Ready to Assign are pooled
-  /// across every Envelope-Mode account (see `categoryBalanceProvider` /
-  /// `readyToAssignProvider` in `data/providers.dart`), so [accountId] is no
-  /// longer read back for that math — it's kept purely as a historical/audit
-  /// trail of which account a given row was recorded against.
   ///
   /// Throws [ArgumentError] if [accountId] isn't in Envelope Mode, or if
   /// [amount] is zero.
@@ -3036,9 +2632,9 @@ class AppDatabase extends _$AppDatabase {
 
   // ── Groups CRUD ───────────────────────────────────────────────────────────
 
-  Future<int> addGroup(String name, {String? note}) => into(
-    groups,
-  ).insert(GroupsCompanion.insert(name: name, note: Value(note)));
+  Future<int> addGroup(String name, {String? note}) => into(groups).insert(
+    GroupsCompanion.insert(name: name, note: Value(note)),
+  );
 
   Future<void> updateGroup({
     required int id,
@@ -3075,9 +2671,7 @@ class AppDatabase extends _$AppDatabase {
   /// history. Anything used must be archived instead.
   Future<void> deleteGroup(int id) async {
     if (await countExpensesForGroup(id) > 0) {
-      throw ArgumentError(
-        'This group has expense history — archive it instead.',
-      );
+      throw ArgumentError('This group has expense history — archive it instead.');
     }
     await transaction(() async {
       await (delete(groupMembers)..where((m) => m.groupId.equals(id))).go();
@@ -3105,12 +2699,11 @@ class AppDatabase extends _$AppDatabase {
   /// [addGroupExpense] distributes a rounding remainder in, so which member
   /// gets an extra paisa is stable, not arbitrary.
   Stream<List<PersonRow>> watchGroupMembers(int groupId) {
-    final query =
-        select(groupMembers).join([
-            innerJoin(persons, persons.id.equalsExp(groupMembers.personId)),
-          ])
-          ..where(groupMembers.groupId.equals(groupId))
-          ..orderBy([OrderingTerm.asc(groupMembers.id)]);
+    final query = select(groupMembers).join([
+      innerJoin(persons, persons.id.equalsExp(groupMembers.personId)),
+    ])
+      ..where(groupMembers.groupId.equals(groupId))
+      ..orderBy([OrderingTerm.asc(groupMembers.id)]);
     return query.watch().map(
       (rows) => rows.map((r) => r.readTable(persons)).toList(),
     );
@@ -3323,19 +2916,16 @@ class AppDatabase extends _$AppDatabase {
   void _validateRecurringRule({
     required Money amount,
     required CategoryKind kind,
-    required CategoryRow? category,
+    required CategoryRow category,
     required RecurringFrequency frequency,
     int? dayOfMonth,
     Money? promoAmount,
     int? promoOccurrences,
-    String? foreignCurrencyCode,
-    Money? foreignAmount,
   }) {
     if (!amount.isPositive) {
       throw ArgumentError('Amount must be positive.');
     }
-    _validateForeignCurrency(foreignCurrencyCode, foreignAmount);
-    if (category != null && category.kind != kind) {
+    if (category.kind != kind) {
       throw ArgumentError(
         'That category is ${category.kind == CategoryKind.income ? 'an income' : 'an expense'} '
         'category — pick one that matches.',
@@ -3362,42 +2952,12 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 
-  /// A G&L rule's [RecurringRules.toAccountId] must be a real goal/loan
-  /// account, its [RecurringRules.accountId] must be a real non-goal/loan
-  /// (spendable) account, and the two must differ — the same shape
-  /// [_validateTx] enforces for a one-off transfer, checked up front here so
-  /// a bad rule can never be saved.
-  Future<void> _validateGoalOrLoanTarget({
-    required int accountId,
-    required int toAccountId,
-  }) async {
-    if (accountId == toAccountId) {
-      throw ArgumentError('The source and destination must be different.');
-    }
-    final to = await (select(
-      accounts,
-    )..where((a) => a.id.equals(toAccountId))).getSingleOrNull();
-    if (to == null ||
-        (to.type != AccountType.goal && to.type != AccountType.loan)) {
-      throw ArgumentError('Choose a goal or loan to fund.');
-    }
-    final from = await (select(
-      accounts,
-    )..where((a) => a.id.equals(accountId))).getSingleOrNull();
-    if (from == null ||
-        from.type == AccountType.goal ||
-        from.type == AccountType.loan) {
-      throw ArgumentError('Choose a spendable account to fund it from.');
-    }
-  }
-
   Future<int> addRecurringRule({
     required String name,
     required CategoryKind kind,
     required Money amount,
     required int accountId,
-    int? categoryId,
-    int? toAccountId,
+    required int categoryId,
     String? payee,
     String? note,
     required RecurringFrequency frequency,
@@ -3407,23 +2967,10 @@ class AppDatabase extends _$AppDatabase {
     Money? promoAmount,
     int? promoOccurrences,
     Set<int> tagIds = const {},
-    String? foreignCurrencyCode,
-    Money? foreignAmount,
   }) async {
-    CategoryRow? category;
-    if (toAccountId != null) {
-      await _validateGoalOrLoanTarget(
-        accountId: accountId,
-        toAccountId: toAccountId,
-      );
-    } else {
-      if (categoryId == null) {
-        throw ArgumentError('Choose a category.');
-      }
-      category = await categoryById(categoryId);
-      if (category == null) {
-        throw ArgumentError('That category no longer exists.');
-      }
+    final category = await categoryById(categoryId);
+    if (category == null) {
+      throw ArgumentError('That category no longer exists.');
     }
     final dayOfMonth = frequency == RecurringFrequency.monthly
         ? startsOn.day
@@ -3436,8 +2983,6 @@ class AppDatabase extends _$AppDatabase {
       dayOfMonth: dayOfMonth,
       promoAmount: promoAmount,
       promoOccurrences: promoOccurrences,
-      foreignCurrencyCode: foreignCurrencyCode,
-      foreignAmount: foreignAmount,
     );
 
     return transaction(() async {
@@ -3447,8 +2992,7 @@ class AppDatabase extends _$AppDatabase {
           kind: kind,
           amount: amount,
           accountId: accountId,
-          categoryId: Value(categoryId),
-          toAccountId: Value(toAccountId),
+          categoryId: categoryId,
           payee: Value(payee),
           note: Value(note),
           frequency: frequency,
@@ -3458,8 +3002,6 @@ class AppDatabase extends _$AppDatabase {
           isEstimate: Value(isEstimate),
           promoAmount: Value(promoAmount),
           promoOccurrencesLeft: Value(promoOccurrences),
-          foreignCurrencyCode: Value(foreignCurrencyCode),
-          foreignAmount: Value(foreignAmount),
         ),
       );
       await setRecurringRuleTags(id, tagIds);
@@ -3473,8 +3015,7 @@ class AppDatabase extends _$AppDatabase {
     required CategoryKind kind,
     required Money amount,
     required int accountId,
-    int? categoryId,
-    int? toAccountId,
+    required int categoryId,
     String? payee,
     String? note,
     required RecurringFrequency frequency,
@@ -3484,23 +3025,10 @@ class AppDatabase extends _$AppDatabase {
     Money? promoAmount,
     int? promoOccurrences,
     Set<int> tagIds = const {},
-    String? foreignCurrencyCode,
-    Money? foreignAmount,
   }) async {
-    CategoryRow? category;
-    if (toAccountId != null) {
-      await _validateGoalOrLoanTarget(
-        accountId: accountId,
-        toAccountId: toAccountId,
-      );
-    } else {
-      if (categoryId == null) {
-        throw ArgumentError('Choose a category.');
-      }
-      category = await categoryById(categoryId);
-      if (category == null) {
-        throw ArgumentError('That category no longer exists.');
-      }
+    final category = await categoryById(categoryId);
+    if (category == null) {
+      throw ArgumentError('That category no longer exists.');
     }
     final dayOfMonth = frequency == RecurringFrequency.monthly
         ? nextDueDate.day
@@ -3513,8 +3041,6 @@ class AppDatabase extends _$AppDatabase {
       dayOfMonth: dayOfMonth,
       promoAmount: promoAmount,
       promoOccurrences: promoOccurrences,
-      foreignCurrencyCode: foreignCurrencyCode,
-      foreignAmount: foreignAmount,
     );
 
     await setRecurringRuleTags(id, tagIds);
@@ -3525,7 +3051,6 @@ class AppDatabase extends _$AppDatabase {
         amount: Value(amount),
         accountId: Value(accountId),
         categoryId: Value(categoryId),
-        toAccountId: Value(toAccountId),
         payee: Value(payee),
         note: Value(note),
         frequency: Value(frequency),
@@ -3537,8 +3062,6 @@ class AppDatabase extends _$AppDatabase {
         isEstimate: Value(isEstimate),
         promoAmount: Value(promoAmount),
         promoOccurrencesLeft: Value(promoOccurrences),
-        foreignCurrencyCode: Value(foreignCurrencyCode),
-        foreignAmount: Value(foreignAmount),
       ),
     );
   }
@@ -3640,26 +3163,17 @@ class AppDatabase extends _$AppDatabase {
     required Set<int> tagIds,
   }) async {
     final onPromo = promoAmount != null && (promoLeft ?? 0) > 0;
-    final isGoalOrLoan = rule.toAccountId != null;
     final txId = await addTransaction(
-      type: isGoalOrLoan
-          ? TxType.transfer
-          : (rule.kind == CategoryKind.expense
-                ? TxType.expense
-                : TxType.income),
+      type: rule.kind == CategoryKind.expense
+          ? TxType.expense
+          : TxType.income,
       amount: onPromo ? promoAmount : rule.amount,
       accountId: rule.accountId,
-      toAccountId: rule.toAccountId,
       categoryId: rule.categoryId,
       date: date,
-      payee: isGoalOrLoan ? null : rule.payee,
+      payee: rule.payee,
       recurringRuleId: rule.id,
       needsAmountReview: rule.isEstimate,
-      // No tracked foreign equivalent for a promo price, so a promo
-      // occurrence posts with no foreign-currency annotation rather than a
-      // misleading one (GitHub #85).
-      foreignCurrencyCode: onPromo ? null : rule.foreignCurrencyCode,
-      foreignAmount: onPromo ? null : rule.foreignAmount,
     );
     if (tagIds.isNotEmpty) {
       await setTransactionTags(txId, tagIds);
@@ -3764,15 +3278,14 @@ class AppDatabase extends _$AppDatabase {
               dayOfMonth: rule.dayOfMonth,
             );
           }
-          await (update(
-            recurringRules,
-          )..where((r) => r.id.equals(rule.id))).write(
-            RecurringRulesCompanion(
-              nextDueDate: Value(next),
-              promoAmount: Value(promoAmount),
-              promoOccurrencesLeft: Value(promoLeft),
-            ),
-          );
+          await (update(recurringRules)..where((r) => r.id.equals(rule.id)))
+              .write(
+                RecurringRulesCompanion(
+                  nextDueDate: Value(next),
+                  promoAmount: Value(promoAmount),
+                  promoOccurrencesLeft: Value(promoLeft),
+                ),
+              );
         });
       } catch (_) {
         // One rule that can no longer post (its account stopped being
@@ -4274,28 +3787,9 @@ class AppDatabase extends _$AppDatabase {
   Future<void> setRevolutEnabled(bool value) =>
       update(settings).write(SettingsCompanion(revolutEnabled: Value(value)));
 
-  Future<void> setLockScreenStyle(LockScreenStyle style) =>
-      update(settings).write(SettingsCompanion(lockScreenStyle: Value(style)));
-
-  Future<void> setMoreScreenViewMode(MoreScreenViewMode mode) => update(
+  Future<void> setLockScreenStyle(LockScreenStyle style) => update(
     settings,
-  ).write(SettingsCompanion(moreScreenViewMode: Value(mode)));
-
-  /// Turning Ready to Assign on is meant to be the only step — GitHub #100
-  /// asked that every account join the shared pool at once rather than
-  /// needing its own trip to Account Detail's on-budget toggle; users opt
-  /// individual accounts back out from there afterward. Turning it off
-  /// leaves every account's [Accounts.envelopeMode] flag as-is (nothing
-  /// reads it while RTA is off), so turning it back on re-enrolls everyone
-  /// anyway per the branch below — no data is lost either direction.
-  Future<void> setRtaEnabled(bool enabled) => transaction(() async {
-    await update(settings).write(SettingsCompanion(rtaEnabled: Value(enabled)));
-    if (enabled) {
-      await update(
-        accounts,
-      ).write(const AccountsCompanion(envelopeMode: Value(true)));
-    }
-  });
+  ).write(SettingsCompanion(lockScreenStyle: Value(style)));
 
   // ── Passcode ──────────────────────────────────────────────────────────────
 
@@ -4394,9 +3888,9 @@ class AppDatabase extends _$AppDatabase {
   /// fall back to.
   Future<void> setMasterPhraseAttemptThreshold(int attempts) async {
     if ((await getSettings()).masterPhraseHash == null) return;
-    await update(
-      settings,
-    ).write(SettingsCompanion(masterPhraseAttemptThreshold: Value(attempts)));
+    await update(settings).write(
+      SettingsCompanion(masterPhraseAttemptThreshold: Value(attempts)),
+    );
   }
 
   /// Increments the persisted wrong-PIN counter and returns the new count —
@@ -4471,8 +3965,9 @@ class AppDatabase extends _$AppDatabase {
     settings,
   ).write(SettingsCompanion(showBottomNavLabels: Value(value)));
 
-  Future<void> setHoldMenuEnabled(bool value) =>
-      update(settings).write(SettingsCompanion(holdMenuEnabled: Value(value)));
+  Future<void> setHoldMenuEnabled(bool value) => update(
+    settings,
+  ).write(SettingsCompanion(holdMenuEnabled: Value(value)));
 
   Future<void> setHoldMenuSlots(List<String> ids) async {
     if (ids.length != 3 || ids.toSet().length != 3) {
@@ -4489,24 +3984,9 @@ class AppDatabase extends _$AppDatabase {
   /// Clamped to a sane range here, not just in the settings slider — this is
   /// the only path a stray value (a bad restore, a future scripted call)
   /// could take to reach the column.
-  Future<void> setExtraBottomInset(int px) => update(
-    settings,
-  ).write(SettingsCompanion(extraBottomInset: Value(px.clamp(0, 40))));
-
-  /// Bumps [key] to the front of `Settings.frequentIconKeys` — the icon sheet
-  /// calls this whenever an icon is picked. Capped at 12 so the "Frequently
-  /// used" row stays a single scroll, not a second copy of the full grid.
-  Future<void> recordIconUsed(String key) async {
-    final current = await select(settings).getSingle();
-    final keys = current.frequentIconKeys
-        .split(',')
-        .where((k) => k.isNotEmpty && k != key)
-        .toList();
-    keys.insert(0, key);
-    await update(settings).write(
-      SettingsCompanion(frequentIconKeys: Value(keys.take(12).join(','))),
-    );
-  }
+  Future<void> setExtraBottomInset(int px) => update(settings).write(
+    SettingsCompanion(extraBottomInset: Value(px.clamp(0, 40))),
+  );
 
   // ── Expense reminder ─────────────────────────────────────────────────────
 
@@ -4807,220 +4287,6 @@ class AppDatabase extends _$AppDatabase {
     return rows.length;
   }
 
-  // ── Category templates (GitHub #101) ────────────────────────────────────
-  //
-  // A template is a named snapshot of a category/sub-category structure.
-  // Switching to one never touches `Transactions` — it only changes which
-  // `Categories` rows are archived vs. active, the same as a manual archive.
-  // See docs/superpowers/specs/2026-09-06-category-templates-design.md.
-
-  /// Matches a live category or template item to "the same" one elsewhere —
-  /// by kind, name and parent *name*, never by id (a template's own ids are
-  /// meaningless once applied on a different device/dataset).
-  String _categoryMatchKey(CategoryKind kind, String name, String? parentName) {
-    final normalizedParent = parentName?.trim().toLowerCase() ?? '';
-    return '${kind.name}|$normalizedParent|${name.trim().toLowerCase()}';
-  }
-
-  Stream<List<CategoryTemplateRow>> watchCategoryTemplates() =>
-      (select(categoryTemplates)..orderBy([
-            (t) =>
-                OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
-          ]))
-          .watch();
-
-  Stream<List<CategoryTemplateItemRow>> watchCategoryTemplateItems(
-    int templateId,
-  ) =>
-      (select(categoryTemplateItems)
-            ..where((i) => i.templateId.equals(templateId))
-            ..orderBy([(i) => OrderingTerm(expression: i.sortOrder)]))
-          .watch();
-
-  /// Snapshots every currently-active category (both kinds) into a brand new
-  /// template. A child whose parent isn't itself active (a dangling
-  /// `parentId`, same edge case `_flatten` in the Categories screen guards)
-  /// is skipped rather than saved half-nested.
-  Future<int> saveCategoriesAsTemplate(String name) => transaction(() async {
-    final templateId = await into(
-      categoryTemplates,
-    ).insert(CategoryTemplatesCompanion.insert(name: name));
-
-    final active = await (select(
-      categories,
-    )..where((c) => c.isArchived.equals(false))).get();
-    final parents = active.where((c) => c.parentId == null).toList();
-    final itemIdByCategoryId = <int, int>{};
-
-    for (final p in parents) {
-      final itemId = await into(categoryTemplateItems).insert(
-        CategoryTemplateItemsCompanion.insert(
-          templateId: templateId,
-          name: p.name,
-          kind: p.kind,
-          colorValue: p.colorValue,
-          iconKey: p.iconKey,
-          sortOrder: Value(p.sortOrder),
-        ),
-      );
-      itemIdByCategoryId[p.id] = itemId;
-    }
-    for (final c in active.where((c) => c.parentId != null)) {
-      final parentItemId = itemIdByCategoryId[c.parentId];
-      if (parentItemId == null) continue;
-      await into(categoryTemplateItems).insert(
-        CategoryTemplateItemsCompanion.insert(
-          templateId: templateId,
-          name: c.name,
-          kind: c.kind,
-          colorValue: c.colorValue,
-          iconKey: c.iconKey,
-          sortOrder: Value(c.sortOrder),
-          parentItemId: Value(parentItemId),
-        ),
-      );
-    }
-    return templateId;
-  });
-
-  Future<void> renameCategoryTemplate(int id, String name) =>
-      (update(categoryTemplates)..where((t) => t.id.equals(id))).write(
-        CategoryTemplatesCompanion(name: Value(name)),
-      );
-
-  Future<void> deleteCategoryTemplate(int id) => transaction(() async {
-    await (delete(
-      categoryTemplateItems,
-    )..where((i) => i.templateId.equals(id))).go();
-    await (delete(categoryTemplates)..where((t) => t.id.equals(id))).go();
-  });
-
-  /// Switches the live category set to match [templateId]'s structure,
-  /// without ever touching a transaction:
-  ///
-  /// - A template item that matches an existing category (by
-  ///   [_categoryMatchKey], active **or** archived) relabels that category
-  ///   in place (name, colour, icon) and unarchives it if needed, instead of
-  ///   making a duplicate — this is what makes switching back to a template
-  ///   used before a free "revert" rather than a fresh rebuild.
-  /// - A template item with no match gets created fresh.
-  /// - A live active category that no template item matches gets archived —
-  ///   exactly like a manual archive, so its transactions keep it and only
-  ///   disappear from new-entry pickers.
-  Future<void> applyCategoryTemplate(int templateId) => transaction(() async {
-    final items = await (select(
-      categoryTemplateItems,
-    )..where((i) => i.templateId.equals(templateId))).get();
-    if (items.isEmpty) {
-      throw ArgumentError('This template has no categories to switch to.');
-    }
-    final itemsById = {for (final i in items) i.id: i};
-    String keyOf(CategoryTemplateItemRow i) {
-      final parentName = i.parentItemId == null
-          ? null
-          : itemsById[i.parentItemId]?.name;
-      return _categoryMatchKey(i.kind, i.name, parentName);
-    }
-
-    final all = await select(categories).get();
-    final byId = {for (final c in all) c.id: c};
-    String keyOfCategory(CategoryRow c) {
-      final parentName = c.parentId == null ? null : byId[c.parentId]?.name;
-      return _categoryMatchKey(c.kind, c.name, parentName);
-    }
-
-    // Archived rows first, active rows second — if a key somehow matches
-    // both (a stray duplicate), the map ends up pointing at the active one,
-    // so an already-live category is never displaced by reactivating a
-    // stale archived duplicate of itself.
-    final byKey = <String, CategoryRow>{};
-    for (final c in all.where((c) => c.isArchived)) {
-      byKey[keyOfCategory(c)] = c;
-    }
-    for (final c in all.where((c) => !c.isArchived)) {
-      byKey[keyOfCategory(c)] = c;
-    }
-    final active = all.where((c) => !c.isArchived).toList();
-
-    final matchedIds = <int>{};
-    final liveIdByItemId = <int, int>{};
-
-    Future<void> reuse(
-      CategoryRow existing,
-      CategoryTemplateItemRow item,
-      Value<int?> parentId,
-    ) async {
-      matchedIds.add(existing.id);
-      if (existing.isArchived) {
-        await (update(categories)..where((cc) => cc.id.equals(existing.id)))
-            .write(const CategoriesCompanion(isArchived: Value(false)));
-      }
-      try {
-        await updateCategory(
-          id: existing.id,
-          name: item.name,
-          colorValue: item.colorValue,
-          iconKey: item.iconKey,
-          parentId: parentId,
-        );
-      } on ArgumentError {
-        // Most likely: `existing` still has children of its own, so the
-        // two-level cap in `updateCategory` refuses to nest it under
-        // someone else. Keep its current placement rather than aborting the
-        // whole switch over one awkward re-nest.
-        if (parentId.present && parentId.value != null) {
-          await updateCategory(
-            id: existing.id,
-            name: item.name,
-            colorValue: item.colorValue,
-            iconKey: item.iconKey,
-          );
-        } else {
-          rethrow;
-        }
-      }
-    }
-
-    // Parents first, so children below can resolve their live parent id.
-    for (final item in items.where((i) => i.parentItemId == null)) {
-      final existing = byKey[keyOf(item)];
-      if (existing != null) {
-        liveIdByItemId[item.id] = existing.id;
-        await reuse(existing, item, const Value(null));
-      } else {
-        liveIdByItemId[item.id] = await addCategory(
-          name: item.name,
-          kind: item.kind,
-          colorValue: item.colorValue,
-          iconKey: item.iconKey,
-        );
-      }
-    }
-    for (final item in items.where((i) => i.parentItemId != null)) {
-      final existing = byKey[keyOf(item)];
-      final liveParentId = liveIdByItemId[item.parentItemId];
-      if (existing != null) {
-        await reuse(existing, item, Value(liveParentId));
-      } else if (liveParentId != null) {
-        await addCategory(
-          name: item.name,
-          kind: item.kind,
-          colorValue: item.colorValue,
-          iconKey: item.iconKey,
-          parentId: liveParentId,
-        );
-      }
-    }
-
-    for (final c in active) {
-      if (!matchedIds.contains(c.id)) {
-        await (update(categories)..where((cc) => cc.id.equals(c.id))).write(
-          const CategoriesCompanion(isArchived: Value(true)),
-        );
-      }
-    }
-  });
-
   // ── Per-account history ───────────────────────────────────────────────────
 
   /// Every transaction touching this account, including transfers in *and* out,
@@ -5104,18 +4370,7 @@ class AppDatabase extends _$AppDatabase {
               : categoriesById[t.categoryId];
           final base = category?.name ?? 'Uncategorised';
           final payee = t.payee?.trim();
-          var desc = (payee != null && payee.isNotEmpty)
-              ? '$base - $payee'
-              : base;
-          // Folded into the description rather than a new PDF column, and
-          // kept plain ASCII (no symbol/rate) — this file's fonts can't
-          // reliably render non-ASCII glyphs (GitHub #85).
-          if (t.foreignCurrencyCode != null && t.foreignAmount != null) {
-            desc +=
-                ' (${(t.foreignAmount!.paise / 100).toStringAsFixed(2)} '
-                '${t.foreignCurrencyCode})';
-          }
-          return desc;
+          return (payee != null && payee.isNotEmpty) ? '$base - $payee' : base;
       }
     }
 
@@ -5378,7 +4633,6 @@ class AppDatabase extends _$AppDatabase {
       'schemaVersion': schemaVersion,
       'exportedAt': DateTime.now().toIso8601String(),
       'accounts': (await select(accounts).get()).map(m).toList(),
-      'currencyRates': (await select(currencyRates).get()).map(m).toList(),
       'categories': (await select(categories).get()).map(m).toList(),
       'recurringRules': (await select(recurringRules).get()).map(m).toList(),
       'transactions': (await select(transactions).get()).map(m).toList(),
@@ -5393,8 +4647,6 @@ class AppDatabase extends _$AppDatabase {
       'recurringRuleTags': (await select(
         recurringRuleTags,
       ).get()).map(m).toList(),
-      'tagGroups': (await select(tagGroups).get()).map(m).toList(),
-      'tagGroupTags': (await select(tagGroupTags).get()).map(m).toList(),
       'transactionSplits': (await select(
         transactionSplits,
       ).get()).map(m).toList(),
@@ -5492,15 +4744,11 @@ class AppDatabase extends _$AppDatabase {
       await delete(categories).go();
       await delete(accounts).go();
       await delete(senderRules).go();
-      // References tags and tagGroups, so it goes before both deletes.
-      await delete(tagGroupTags).go();
-      await delete(tagGroups).go();
       await delete(tags).go();
       // Items reference lists, so they go first.
       await delete(shoppingItems).go();
       await delete(shoppingLists).go();
       await delete(settings).go();
-      await delete(currencyRates).go();
 
       Future<void> load<T extends Table, D>(
         TableInfo<T, D> table,
@@ -5524,17 +4772,9 @@ class AppDatabase extends _$AppDatabase {
       // `persons` before `transactions` (transactions.person_id), and
       // `transactions` before `person_entries` (person_entries.transaction_id).
       await load(accounts, 'accounts');
-      // No foreign key references currencyRates, so it can load anywhere —
-      // grouped with accounts since that's the other half of "an account's
-      // currency resolves to a rate" (AppDatabase.latestRate).
-      await load(currencyRates, 'currencyRates');
       await load(categories, 'categories');
       await load(persons, 'persons');
       await load(tags, 'tags');
-      // References tags, already loaded above. An older backup simply has no
-      // rows for either, so `rows()` yields nothing.
-      await load(tagGroups, 'tagGroups');
-      await load(tagGroupTags, 'tagGroupTags');
       // A backup taken before v21 has no `goalDetails` key — its (old-shaped)
       // goals live under `savingsGoals` instead. `accounts` is already
       // loaded above, so the linked account's balance is there to snapshot.
@@ -5633,8 +4873,7 @@ class AppDatabase extends _$AppDatabase {
     }
 
     final b = StringBuffer(
-      'Date,Type,Amount,Account,To Account,Category,Person,Note,'
-      'Foreign Amount,Foreign Currency\n',
+      'Date,Type,Amount,Account,To Account,Category,Person,Note\n',
     );
     for (final t in txs) {
       final d = t.date;
@@ -5657,14 +4896,6 @@ class AppDatabase extends _$AppDatabase {
         ..write(esc(t.personId == null ? '' : ppl[t.personId]))
         ..write(',')
         ..write(esc(t.note))
-        ..write(',')
-        ..write(
-          t.foreignAmount == null
-              ? ''
-              : (t.foreignAmount!.paise / 100).toStringAsFixed(2),
-        )
-        ..write(',')
-        ..write(esc(t.foreignCurrencyCode))
         ..write('\n');
     }
     return b.toString();
