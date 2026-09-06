@@ -108,13 +108,17 @@ enum AutoBackupFrequency { daily, monthly, custom }
 /// position can't infer the PIN.
 enum LockScreenStyle { classic, bigNumpad, scrambled }
 
-/// Which credential is the app's active front-door lock (GitHub #104) — the
-/// user picks exactly one, never a combination. `hasUnlockCredential` in
-/// `core/security/unlock_method.dart` maps this to whether that credential
-/// is actually configured; [Settings.masterPhraseHash] can still be set and
-/// used purely as a fallback (see [Settings.masterPhraseAttemptThreshold])
-/// while a *different* method is active.
-enum UnlockMethod { pin, masterPhrase, totp }
+/// Which credential(s) the app's active front-door lock requires. Originally
+/// (GitHub #104) the user picked exactly one, never a combination — that
+/// changed with the addition of [pinAndTotp] (GitHub #111): a true two-factor
+/// front door requiring *both* a correct PIN and a correct authenticator code,
+/// entered one after the other, rather than either alone. `hasUnlockCredential`
+/// in `core/security/unlock_method.dart` maps this to whether the credential(s)
+/// it needs are actually configured; [Settings.masterPhraseHash] can still be
+/// set and used purely as a fallback (see
+/// [Settings.masterPhraseAttemptThreshold]) while a different method is
+/// active.
+enum UnlockMethod { pin, masterPhrase, totp, pinAndTotp }
 
 /// How the More hub (`MoreScreen`) lays out its items. `list` is the
 /// original one-column row layout. `cards` shows two square-ish cards per
