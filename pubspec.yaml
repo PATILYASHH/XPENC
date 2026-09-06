@@ -97,6 +97,15 @@ dependencies:
   # android/build.gradle for the full rationale.
   flutter_tesseract_ocr:
     path: packages/flutter_tesseract_ocr_floss
+  # RFC 6238 TOTP codes for the authenticator-app unlock method (GitHub
+  # #104) — the same algorithm Google Authenticator/Authy/etc. implement.
+  # Pinned below 3.1.4: that release starts depending on timezone ^0.9.0/
+  # ^0.10.0, which conflicts with our own timezone ^0.11.1 (flutter_local_
+  # notifications). 3.1.3 has no timezone dependency at all and is otherwise
+  # the same generateTOTPCodeString API we use.
+  otp: 3.1.3
+  # Renders the QR code an authenticator app scans to add the TOTP secret.
+  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:

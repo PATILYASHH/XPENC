@@ -6,6 +6,7 @@ import '../../core/branding/app_info.dart';
 import '../../core/branding/brand_mark.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
+import '../../data/tables.dart' show UnlockMethod;
 import 'lock_screen_style_sheet.dart';
 import 'master_phrase_attempts_sheet.dart';
 import 'more_screen_layout_sheet.dart';
@@ -42,6 +43,9 @@ class SettingsScreen extends ConsumerWidget {
     final cashappEnabled = ref.watch(cashappEnabledProvider);
     final revolutEnabled = ref.watch(revolutEnabledProvider);
     final hasPasscode = ref.watch(hasPasscodeProvider);
+    final unlockMethod = ref.watch(unlockMethodProvider);
+    final hasTotp = ref.watch(hasTotpProvider);
+    final hasUnlockCredential = ref.watch(hasUnlockCredentialProvider);
     final biometricEnabled = ref.watch(biometricEnabledProvider);
     final pinTimeoutMinutes = ref.watch(pinTimeoutMinutesProvider);
     final lockScreenStyle = ref.watch(lockScreenStyleProvider);
@@ -258,9 +262,7 @@ class SettingsScreen extends ConsumerWidget {
                 if (upiEnabled) ...[
                   Divider(height: 1, indent: 60, color: cs.outline),
                   ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const Icon(Icons.qr_code_outlined),
                     title: const Text('My UPI ID'),
                     subtitle: Text(
@@ -284,9 +286,7 @@ class SettingsScreen extends ConsumerWidget {
                 if (paypalEnabled) ...[
                   Divider(height: 1, indent: 60, color: cs.outline),
                   ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const Icon(Icons.attach_money_rounded),
                     title: const Text('My PayPal.me ID'),
                     subtitle: Text(
@@ -312,9 +312,7 @@ class SettingsScreen extends ConsumerWidget {
                 if (venmoEnabled) ...[
                   Divider(height: 1, indent: 60, color: cs.outline),
                   ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const Icon(Icons.attach_money_rounded),
                     title: const Text('My Venmo username'),
                     subtitle: Text(
@@ -340,9 +338,7 @@ class SettingsScreen extends ConsumerWidget {
                 if (cashappEnabled) ...[
                   Divider(height: 1, indent: 60, color: cs.outline),
                   ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const Icon(Icons.attach_money_rounded),
                     title: const Text('My Cash App cashtag'),
                     subtitle: Text(
@@ -368,9 +364,7 @@ class SettingsScreen extends ConsumerWidget {
                 if (revolutEnabled) ...[
                   Divider(height: 1, indent: 60, color: cs.outline),
                   ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const Icon(Icons.attach_money_rounded),
                     title: const Text('My Revolut.me username'),
                     subtitle: Text(
@@ -461,6 +455,81 @@ class SettingsScreen extends ConsumerWidget {
           Card(
             child: Column(
               children: [
+                // ── Unlock method (GitHub #104) — pick exactly one front
+                // door; each method's own credential still manages
+                // independently below, active or not.
+                RadioListTile<UnlockMethod>(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  secondary: const Icon(Icons.pin_outlined),
+                  title: const Text('PIN'),
+                  subtitle: Text(
+                    hasPasscode ? 'A PIN unlocks the app' : 'Not set up yet',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  value: UnlockMethod.pin,
+                  // ignore: deprecated_member_use
+                  groupValue: unlockMethod,
+                  // ignore: deprecated_member_use
+                  onChanged: (_) => _selectUnlockMethod(
+                    context,
+                    ref,
+                    UnlockMethod.pin,
+                    configured: hasPasscode,
+                  ),
+                ),
+                Divider(height: 1, indent: 60, color: cs.outline),
+                RadioListTile<UnlockMethod>(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  secondary: const Icon(Icons.key_outlined),
+                  title: const Text('Master password'),
+                  subtitle: Text(
+                    hasMasterPhrase
+                        ? 'Your recovery phrase unlocks the app'
+                        : 'Not set up yet',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  value: UnlockMethod.masterPhrase,
+                  // ignore: deprecated_member_use
+                  groupValue: unlockMethod,
+                  // ignore: deprecated_member_use
+                  onChanged: (_) => _selectUnlockMethod(
+                    context,
+                    ref,
+                    UnlockMethod.masterPhrase,
+                    configured: hasMasterPhrase,
+                  ),
+                ),
+                Divider(height: 1, indent: 60, color: cs.outline),
+                RadioListTile<UnlockMethod>(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  secondary: const Icon(Icons.qr_code_2_rounded),
+                  title: const Text('Authenticator app'),
+                  subtitle: Text(
+                    hasTotp
+                        ? 'A 6-digit code unlocks the app'
+                        : 'Not set up yet',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  value: UnlockMethod.totp,
+                  // ignore: deprecated_member_use
+                  groupValue: unlockMethod,
+                  // ignore: deprecated_member_use
+                  onChanged: (_) => _selectUnlockMethod(
+                    context,
+                    ref,
+                    UnlockMethod.totp,
+                    configured: hasTotp,
+                  ),
+                ),
+                Divider(height: 1, indent: 60, color: cs.outline),
+
+                // ── PIN management — visible whether or not PIN is active ──
                 ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   leading: const Icon(Icons.lock_outline_rounded),
@@ -487,7 +556,8 @@ class SettingsScreen extends ConsumerWidget {
                     title: const Text('Biometric unlock'),
                     subtitle: Text(
                       'Use your fingerprint or face instead of the PIN — the '
-                      'PIN always still works',
+                      'PIN always still works. Only applies while PIN is the '
+                      'active unlock method.',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
                       ),
@@ -499,11 +569,149 @@ class SettingsScreen extends ConsumerWidget {
                   Divider(height: 1, indent: 60, color: cs.outline),
                   ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    leading: Icon(Icons.lock_open_outlined, color: cs.error),
+                    title: Text(
+                      'Remove passcode',
+                      style: TextStyle(color: cs.error),
+                    ),
+                    onTap: () =>
+                        context.push('/more/settings/passcode?remove=true'),
+                  ),
+                ],
+                Divider(height: 1, indent: 60, color: cs.outline),
+
+                // ── Master recovery phrase management — visible whether or
+                // not it's active ──────────────────────────────────────────
+                if (hasMasterPhrase) ...[
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    leading: const Icon(Icons.key_outlined),
+                    title: const Text('Master recovery phrase'),
+                    subtitle: Text(
+                      'Set — also used as a fallback after too many wrong '
+                      'attempts at whichever method is active',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  Divider(height: 1, indent: 60, color: cs.outline),
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    leading: const Icon(Icons.pin_outlined),
+                    title: const Text('Require after'),
+                    subtitle: Text(
+                      'How many wrong attempts before the recovery phrase is '
+                      'asked for instead',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          MasterPhraseAttemptsSheet.label(
+                            masterPhraseAttemptThreshold,
+                          ),
+                          style: trailingStyle,
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ],
+                    ),
+                    onTap: () => MasterPhraseAttemptsSheet.show(context),
+                  ),
+                  Divider(height: 1, indent: 60, color: cs.outline),
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    leading: Icon(Icons.key_off_outlined, color: cs.error),
+                    title: Text(
+                      'Turn off recovery phrase',
+                      style: TextStyle(color: cs.error),
+                    ),
+                    onTap: () =>
+                        context.push('/more/settings/master-phrase/disable'),
+                  ),
+                ] else
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    leading: const Icon(Icons.key_outlined),
+                    title: const Text('Set up master recovery phrase'),
+                    subtitle: Text(
+                      'A 10-word backup that can unlock XPENC if the active '
+                      'method is entered wrong too many times',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    trailing: Icon(
+                      Icons.chevron_right_rounded,
+                      color: cs.onSurfaceVariant,
+                    ),
+                    onTap: () =>
+                        context.push('/more/settings/master-phrase/setup'),
+                  ),
+                Divider(height: 1, indent: 60, color: cs.outline),
+
+                // ── Authenticator app (TOTP) management — visible whether
+                // or not it's active ──────────────────────────────────────
+                if (hasTotp) ...[
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    leading: const Icon(Icons.qr_code_2_rounded),
+                    title: const Text('Authenticator app'),
+                    subtitle: Text(
+                      'Set up',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  Divider(height: 1, indent: 60, color: cs.outline),
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    leading: Icon(Icons.qr_code_2_rounded, color: cs.error),
+                    title: Text(
+                      'Turn off authenticator app',
+                      style: TextStyle(color: cs.error),
+                    ),
+                    onTap: () => context.push('/more/settings/totp/disable'),
+                  ),
+                ] else
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    leading: const Icon(Icons.qr_code_2_rounded),
+                    title: const Text('Set up authenticator app'),
+                    subtitle: Text(
+                      'Use Google Authenticator, Authy or similar to unlock '
+                      'XPENC with a 6-digit code',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    trailing: Icon(
+                      Icons.chevron_right_rounded,
+                      color: cs.onSurfaceVariant,
+                    ),
+                    onTap: () => context.push('/more/settings/totp/setup'),
+                  ),
+
+                // ── Shared lock behavior — applies regardless of which
+                // method is active, so it's keyed on any credential existing
+                // at all, not on PIN specifically ────────────────────────
+                if (hasUnlockCredential) ...[
+                  Divider(height: 1, indent: 60, color: cs.outline),
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const Icon(Icons.timer_outlined),
                     title: const Text('Lock after'),
                     subtitle: Text(
                       'How long XPENC may sit in the background before it '
-                      'asks for your PIN again',
+                      'locks again',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
                       ),
@@ -530,7 +738,7 @@ class SettingsScreen extends ConsumerWidget {
                     leading: const Icon(Icons.dialpad_outlined),
                     title: const Text('Lock screen style'),
                     subtitle: Text(
-                      'How the PIN pad looks',
+                      'How the PIN/code pad looks',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
                       ),
@@ -551,98 +759,6 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                     onTap: () => LockScreenStyleSheet.show(context),
                   ),
-                  Divider(height: 1, indent: 60, color: cs.outline),
-                  ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    leading: Icon(Icons.lock_open_outlined, color: cs.error),
-                    title: Text(
-                      'Remove passcode',
-                      style: TextStyle(color: cs.error),
-                    ),
-                    onTap: () =>
-                        context.push('/more/settings/passcode?remove=true'),
-                  ),
-                  Divider(height: 1, indent: 60, color: cs.outline),
-                  if (hasMasterPhrase) ...[
-                    ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                      ),
-                      leading: const Icon(Icons.key_outlined),
-                      title: const Text('Master recovery phrase'),
-                      subtitle: Text(
-                        'Set — required after too many wrong PIN attempts',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                    Divider(height: 1, indent: 60, color: cs.outline),
-                    ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                      ),
-                      leading: const Icon(Icons.pin_outlined),
-                      title: const Text('Require after'),
-                      subtitle: Text(
-                        'How many wrong PINs before the recovery phrase is '
-                        'asked for instead',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            MasterPhraseAttemptsSheet.label(
-                              masterPhraseAttemptThreshold,
-                            ),
-                            style: trailingStyle,
-                          ),
-                          const SizedBox(width: 4),
-                          Icon(
-                            Icons.chevron_right_rounded,
-                            color: cs.onSurfaceVariant,
-                          ),
-                        ],
-                      ),
-                      onTap: () => MasterPhraseAttemptsSheet.show(context),
-                    ),
-                    Divider(height: 1, indent: 60, color: cs.outline),
-                    ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                      ),
-                      leading: Icon(Icons.key_off_outlined, color: cs.error),
-                      title: Text(
-                        'Turn off recovery phrase',
-                        style: TextStyle(color: cs.error),
-                      ),
-                      onTap: () =>
-                          context.push('/more/settings/master-phrase/disable'),
-                    ),
-                  ] else
-                    ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                      ),
-                      leading: const Icon(Icons.key_outlined),
-                      title: const Text('Set up master recovery phrase'),
-                      subtitle: Text(
-                        'A 10-word backup that unlocks XPENC if the PIN is '
-                        'entered wrong too many times',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
-                      trailing: Icon(
-                        Icons.chevron_right_rounded,
-                        color: cs.onSurfaceVariant,
-                      ),
-                      onTap: () =>
-                          context.push('/more/settings/master-phrase/setup'),
-                    ),
                 ],
                 Divider(height: 1, indent: 60, color: cs.outline),
                 SwitchListTile(
@@ -950,6 +1066,31 @@ class SettingsScreen extends ConsumerWidget {
     await onSave(id.isEmpty ? null : id);
   }
 
+  /// Handles a tap on one of the "Unlock method" radio rows (GitHub #104).
+  /// A method that already has a credential just becomes active immediately
+  /// — no re-setup needed to switch back and forth. One with none yet routes
+  /// to its setup flow instead; that flow's own save both stores the
+  /// credential and activates it (see [AppDatabase.setupTotp]/
+  /// [AppDatabase.setMasterPhrase]/[AppDatabase.setPasscode]), so there's
+  /// nothing left to do here in that case.
+  void _selectUnlockMethod(
+    BuildContext context,
+    WidgetRef ref,
+    UnlockMethod method, {
+    required bool configured,
+  }) {
+    if (ref.read(unlockMethodProvider) == method) return;
+    if (configured) {
+      ref.read(dbProvider).setUnlockMethod(method);
+      return;
+    }
+    context.push(switch (method) {
+      UnlockMethod.pin => '/more/settings/passcode',
+      UnlockMethod.masterPhrase => '/more/settings/master-phrase/setup',
+      UnlockMethod.totp => '/more/settings/totp/setup',
+    });
+  }
+
   Widget _sectionLabel(BuildContext context, String text) {
     final theme = Theme.of(context);
     return Padding(
@@ -1196,9 +1337,7 @@ class _MyIdDialog extends StatefulWidget {
 }
 
 class _MyIdDialogState extends State<_MyIdDialog> {
-  late final _controller = TextEditingController(
-    text: widget.currentId ?? '',
-  );
+  late final _controller = TextEditingController(text: widget.currentId ?? '');
 
   @override
   void dispose() {
