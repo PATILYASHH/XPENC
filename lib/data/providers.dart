@@ -67,6 +67,18 @@ final categoryMapProvider = Provider<Map<int, CategoryRow>>((ref) {
   };
 });
 
+/// Saved category templates (GitHub #101), newest first.
+final categoryTemplatesProvider = StreamProvider<List<CategoryTemplateRow>>(
+  (ref) => ref.watch(dbProvider).watchCategoryTemplates(),
+);
+
+/// One template's own category items, for previewing before applying it.
+final categoryTemplateItemsProvider =
+    StreamProvider.family<List<CategoryTemplateItemRow>, int>(
+      (ref, templateId) =>
+          ref.watch(dbProvider).watchCategoryTemplateItems(templateId),
+    );
+
 /// A category's top-level ancestor. The tree is two deep, so a child resolves
 /// to its parent and a parent (or an unknown id) resolves to itself. Used to
 /// roll subcategory spend up into the parent it belongs to.
@@ -127,6 +139,19 @@ final statsShowYearProvider = StateProvider<bool>((ref) => false);
 /// The "Spending by category" pie: main categories (rolled up, the default)
 /// or a per-subcategory breakdown. See GitHub #40.
 final statsShowSubcategoriesProvider = StateProvider<bool>((ref) => false);
+
+/// Stats "Standings" section: ranks either individual transactions or
+/// categories (the latter respecting [statsShowSubcategoriesProvider], same
+/// grouping as the pie above). See GitHub #95.
+enum StandingsMetric { transactions, categories }
+
+final statsStandingsMetricProvider = StateProvider<StandingsMetric>(
+  (ref) => StandingsMetric.transactions,
+);
+
+/// Standings sort direction: false (the default) ranks the highest amount
+/// first; true reverses it to lowest first.
+final statsStandingsAscendingProvider = StateProvider<bool>((ref) => false);
 
 // ── Transactions search & filter ───────────────────────────────────────────
 // Shared between the shared top bar (which owns the search/filter buttons —
@@ -384,48 +409,116 @@ final _envelopeSpentProvider = Provider<Map<(int, int), Money>>((ref) {
   return out;
 });
 
-/// `SUM(allocations) − SUM(expenses)` for one (account, category) pair. Never
-/// touches [Accounts.currentBalance] or `net worth` — Envelope Mode only
-/// re-labels money already correctly tracked by the ledger, it never moves
-/// any.
-final categoryBalanceProvider =
-    Provider.family<Money, ({int accountId, int categoryId})>((ref, key) {
-      final allocated = ref.watch(_envelopeAllocatedProvider);
-      final spent = ref.watch(_envelopeSpentProvider);
-      final pairKey = (key.accountId, key.categoryId);
-      return (allocated[pairKey] ?? const Money.zero()) -
-          (spent[pairKey] ?? const Money.zero());
+/// Every account currently in Envelope Mode, in the same order
+/// `watchAccounts()` returns (by `sortOrder`) — the shared "which accounts
+/// feed the pool" set behind [categoryBalanceProvider] and
+/// [readyToAssignProvider]. GitHub #48: multiple accounts can each opt in,
+/// but there is exactly one pool across all of them, not one per account.
+final envelopeModeAccountsProvider = Provider<List<AccountRow>>((ref) {
+  final accounts = ref.watch(accountsProvider).valueOrNull ?? const [];
+  return [
+    for (final a in accounts)
+      if (a.envelopeMode) a,
+  ];
+});
+
+/// The account [addAllocation]/[moveAllocation] record a manual assign
+/// against when there's no real transaction-level account to attribute it
+/// to (e.g. a move made from the shared Ready to Assign screen rather than
+/// alongside a specific transfer). Purely an audit trail — see
+/// [Allocations.accountId] — never read back by [categoryBalanceProvider]
+/// or [readyToAssignProvider], both of which pool across every account in
+/// [envelopeModeAccountsProvider] regardless of which one a row names.
+final defaultEnvelopeAccountIdProvider = Provider<int?>((ref) {
+  final accounts = ref.watch(envelopeModeAccountsProvider);
+  return accounts.isEmpty ? null : accounts.first.id;
+});
+
+/// `SUM(allocations) − SUM(expenses)` for one category, pooled across every
+/// account in [envelopeModeAccountsProvider] — GitHub #48: one shared
+/// balance per category, not one per account. An account that isn't (or is
+/// no longer) in Envelope Mode never contributes here, even if it shares a
+/// category with an Envelope-Mode account; otherwise an ordinary account's
+/// everyday spending would silently drain the shared pool. Never touches
+/// [Accounts.currentBalance] or `net worth` — Envelope Mode only re-labels
+/// money already correctly tracked by the ledger, it never moves any.
+final categoryBalanceProvider = Provider.family<Money, int>((ref, categoryId) {
+  final poolAccountIds = {
+    for (final a in ref.watch(envelopeModeAccountsProvider)) a.id,
+  };
+  final allocated = ref.watch(_envelopeAllocatedProvider);
+  final spent = ref.watch(_envelopeSpentProvider);
+
+  var balance = const Money.zero();
+  for (final accountId in poolAccountIds) {
+    final pairKey = (accountId, categoryId);
+    balance +=
+        (allocated[pairKey] ?? const Money.zero()) -
+        (spent[pairKey] ?? const Money.zero());
+  }
+  return balance;
+});
+
+/// The three-state (RTA on) / two-state (RTA off) funding indicator for a
+/// category with a [Budgets] ceiling — GitHub #100 v2. `overspent` always
+/// wins regardless of funding; `funded`/`underfunded` only distinguish
+/// whether the pooled envelope balance ([categoryBalanceProvider]) fully
+/// backs the ceiling yet. Callers should only use this while
+/// [rtaEnabledProvider] is on — with RTA off, fall back to
+/// [BudgetProgress.nearingLimit] instead, which this deliberately doesn't
+/// touch or replace.
+enum CategoryFundingState { overspent, funded, underfunded }
+
+/// Returns null when [categoryId] has no [Budgets] row — there's nothing to
+/// color either way, in RTA on or off.
+final categoryFundingStateProvider =
+    Provider.family<CategoryFundingState?, int>((ref, categoryId) {
+      final p = ref
+          .watch(budgetProgressProvider)
+          .where((p) => p.budget.categoryId == categoryId)
+          .firstOrNull;
+      if (p == null) return null;
+      if (p.overspent) return CategoryFundingState.overspent;
+      final balance = ref.watch(categoryBalanceProvider(categoryId));
+      return balance >= p.budget.amount
+          ? CategoryFundingState.funded
+          : CategoryFundingState.underfunded;
     });
 
-/// `account.currentBalance − Σ(category_balance > 0)`, for every category
-/// this account has ever allocated to or spent from. A category that has
-/// gone negative (overspent — allowed, shown in red, never blocked) does
-/// *not* reduce this further: those rupees already left the account and are
-/// already reflected in `currentBalance`, so only a category still holding a
+/// `Σ(currentBalance) − Σ(category_balance > 0)`, across every account in
+/// [envelopeModeAccountsProvider] — GitHub #48: one shared Ready to Assign
+/// figure, not one per account. A category that has gone negative
+/// (overspent — allowed, shown in red, never blocked) does *not* reduce
+/// this further: those rupees already left an account and are already
+/// reflected in its `currentBalance`, so only a category still holding a
 /// **positive**, unspent balance counts as "claimed". This keeps
-/// `ready_to_assign` bounded by the account's real balance in every case.
-final readyToAssignProvider = Provider.family<Money, int>((ref, accountId) {
-  final account = ref.watch(accountMapProvider)[accountId];
-  if (account == null) return const Money.zero();
+/// `ready_to_assign` bounded by the pool's real combined balance in every
+/// case.
+final readyToAssignProvider = Provider<Money>((ref) {
+  final poolAccounts = ref.watch(envelopeModeAccountsProvider);
+  if (poolAccounts.isEmpty) return const Money.zero();
+  final poolAccountIds = {for (final a in poolAccounts) a.id};
 
   final allocated = ref.watch(_envelopeAllocatedProvider);
   final spent = ref.watch(_envelopeSpentProvider);
   final categoryIds = <int>{
     for (final k in allocated.keys)
-      if (k.$1 == accountId) k.$2,
+      if (poolAccountIds.contains(k.$1)) k.$2,
     for (final k in spent.keys)
-      if (k.$1 == accountId) k.$2,
+      if (poolAccountIds.contains(k.$1)) k.$2,
   };
 
   var claimed = const Money.zero();
   for (final categoryId in categoryIds) {
-    final pairKey = (accountId, categoryId);
-    final balance =
-        (allocated[pairKey] ?? const Money.zero()) -
-        (spent[pairKey] ?? const Money.zero());
+    final balance = ref.watch(categoryBalanceProvider(categoryId));
     if (balance.isPositive) claimed += balance;
   }
-  return account.currentBalance - claimed;
+
+  var totalBalance = const Money.zero();
+  for (final a in poolAccounts) {
+    totalBalance += a.currentBalance;
+  }
+  return totalBalance - claimed;
 });
 
 // ── Persons ─────────────────────────────────────────────────────────────────
@@ -489,7 +582,8 @@ final groupExpensesProvider = StreamProvider.family<List<GroupExpenseRow>, int>(
 /// [personBalancesProvider] over exactly that group's member ids. Not new
 /// balance math; a group is never a second source of truth for money.
 final groupBalanceProvider = Provider.family<Money, int>((ref, groupId) {
-  final members = ref.watch(groupMembersProvider(groupId)).valueOrNull ?? const [];
+  final members =
+      ref.watch(groupMembersProvider(groupId)).valueOrNull ?? const [];
   final balances =
       ref.watch(personBalancesProvider).valueOrNull ?? const <int, Money>{};
   return members.fold(
@@ -628,6 +722,12 @@ final showCurrencySymbolProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.showCurrencySymbol ?? true;
 });
 
+/// One row per currency that has a rate entered, each the most recent — the
+/// Currency settings screen's list.
+final currencyRatesProvider = StreamProvider<List<CurrencyRateRow>>(
+  (ref) => ref.watch(dbProvider).watchCurrentRates(),
+);
+
 /// Whether "Mark as repaid" (Persons) is offered at all. Off by default —
 /// lending/borrowing stays out of income/expense unless asked for.
 final countRepaymentsAsIncomeProvider = Provider<bool>((ref) {
@@ -729,7 +829,10 @@ final hasMasterPhraseProvider = Provider<bool>((ref) {
 });
 
 final masterPhraseAttemptThresholdProvider = Provider<int>((ref) {
-  return ref.watch(settingsProvider).valueOrNull?.masterPhraseAttemptThreshold ??
+  return ref
+          .watch(settingsProvider)
+          .valueOrNull
+          ?.masterPhraseAttemptThreshold ??
       5;
 });
 
@@ -776,6 +879,13 @@ final extraBottomInsetProvider = Provider<int>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.extraBottomInset ?? 0;
 });
 
+/// Icon keys most recently picked from the icon sheet, newest first — see
+/// `Settings.frequentIconKeys` and `AppDatabase.recordIconUsed`.
+final frequentIconKeysProvider = Provider<List<String>>((ref) {
+  final raw = ref.watch(settingsProvider).valueOrNull?.frequentIconKeys ?? '';
+  return raw.isEmpty ? const [] : raw.split(',');
+});
+
 /// Minutes the app may sit backgrounded before the next resume re-locks it —
 /// `0` means immediately. See GitHub #60.
 final pinTimeoutMinutesProvider = Provider<int>((ref) {
@@ -789,10 +899,24 @@ final lockScreenStyleProvider = Provider<LockScreenStyle>((ref) {
       LockScreenStyle.classic;
 });
 
+/// How the More hub lays out its items — see [MoreScreenViewMode].
+final moreScreenViewModeProvider = Provider<MoreScreenViewMode>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.moreScreenViewMode ??
+      MoreScreenViewMode.list;
+});
+
 /// Whether every amount app-wide is masked — the top bar's eye icon. See
 /// `AmountVisibilityScope` in `money_text.dart`.
 final hideAmountsProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.hideAmounts ?? false;
+});
+
+/// Whether Ready to Assign — the shared envelope pool — is turned on
+/// globally (GitHub #100 v2). Budget (the per-category ceiling system) is
+/// always on regardless of this flag; see [BudgetingMode]'s doc comment for
+/// the superseded enum this replaces.
+final rtaEnabledProvider = Provider<bool>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.rtaEnabled ?? false;
 });
 
 /// A standing notification with "Add expense" / "Add income" shortcuts —
@@ -1189,6 +1313,30 @@ final transactionTagsByTxProvider = Provider<Map<int, List<TagRow>>>((ref) {
     final tag = tagMap[link.tagId];
     if (tag == null) continue;
     (out[link.transactionId] ??= []).add(tag);
+  }
+  return out;
+});
+
+// ── Tag groups ──────────────────────────────────────────────────────────────
+
+final tagGroupsProvider = StreamProvider<List<TagGroupRow>>(
+  (ref) => ref.watch(dbProvider).watchTagGroups(),
+);
+
+final _tagGroupTagLinksProvider = StreamProvider<List<TagGroupTagRow>>(
+  (ref) => ref.watch(dbProvider).watchAllTagGroupTags(),
+);
+
+/// Every group's member tags, keyed by group id — same compose-don't-
+/// resubscribe shape as [transactionTagsByTxProvider].
+final tagGroupTagsByGroupProvider = Provider<Map<int, List<TagRow>>>((ref) {
+  final links = ref.watch(_tagGroupTagLinksProvider).valueOrNull ?? const [];
+  final tagMap = ref.watch(tagMapProvider);
+  final out = <int, List<TagRow>>{};
+  for (final link in links) {
+    final tag = tagMap[link.tagId];
+    if (tag == null) continue;
+    (out[link.groupId] ??= []).add(tag);
   }
   return out;
 });

@@ -56,6 +56,156 @@ void main() {
           .firstWhere((c) => c.name == name)
           .id;
 
+  group('setRtaEnabled — GitHub #100 v2', () {
+    test(
+      'turning RTA on enrolls every existing account, including one never '
+      'touched before',
+      () async {
+        final cash = await cashId();
+        final bank = await db.addAccount(
+          name: 'IPPB',
+          type: AccountType.bank,
+          colorValue: 0,
+          iconKey: 'bank',
+          openingBalance: Money.fromRupees(5000),
+        );
+
+        await db.setRtaEnabled(true);
+
+        final accounts = await db.watchAccounts().first;
+        expect(
+          accounts.firstWhere((a) => a.id == cash).envelopeMode,
+          isTrue,
+        );
+        expect(
+          accounts.firstWhere((a) => a.id == bank).envelopeMode,
+          isTrue,
+        );
+      },
+    );
+
+    test(
+      'turning RTA off leaves every account\'s flag untouched',
+      () async {
+        final cash = await cashId();
+        await db.setRtaEnabled(true);
+        await db.setRtaEnabled(false);
+
+        final after = await db.watchAccounts().first;
+        expect(after.firstWhere((a) => a.id == cash).envelopeMode, isTrue);
+        expect((await db.getSettings()).rtaEnabled, isFalse);
+      },
+    );
+
+    test(
+      'a new account created while RTA is on joins the pool automatically',
+      () async {
+        await db.setRtaEnabled(true);
+
+        final newAccount = await db.addAccount(
+          name: 'New Wallet',
+          type: AccountType.cash,
+          colorValue: 0,
+          iconKey: 'wallet',
+          openingBalance: const Money.zero(),
+        );
+
+        final row = await (db.select(
+          db.accounts,
+        )..where((a) => a.id.equals(newAccount))).getSingle();
+        expect(row.envelopeMode, isTrue);
+      },
+    );
+
+    test(
+      'a new account created while RTA is off does not join the pool',
+      () async {
+        final newAccount = await db.addAccount(
+          name: 'New Wallet',
+          type: AccountType.cash,
+          colorValue: 0,
+          iconKey: 'wallet',
+          openingBalance: const Money.zero(),
+        );
+
+        final row = await (db.select(
+          db.accounts,
+        )..where((a) => a.id.equals(newAccount))).getSingle();
+        expect(row.envelopeMode, isFalse);
+      },
+    );
+  });
+
+  group('auto-disable RTA — GitHub #100 v2', () {
+    test(
+      'turning off the last pool account via setEnvelopeMode while RTA is '
+      'on also turns RTA off, and reports it',
+      () async {
+        final cash = await cashId();
+        await db.setRtaEnabled(true);
+
+        final autoDisabled = await db.setEnvelopeMode(cash, false);
+
+        expect(autoDisabled, isTrue);
+        expect((await db.getSettings()).rtaEnabled, isFalse);
+      },
+    );
+
+    test(
+      'turning off a non-last pool account leaves RTA on, and reports '
+      'nothing happened',
+      () async {
+        final cash = await cashId();
+        final bank = await db.addAccount(
+          name: 'IPPB',
+          type: AccountType.bank,
+          colorValue: 0,
+          iconKey: 'bank',
+          openingBalance: Money.fromRupees(5000),
+        );
+        await db.setRtaEnabled(true);
+
+        final autoDisabled = await db.setEnvelopeMode(cash, false);
+
+        expect(autoDisabled, isFalse);
+        expect((await db.getSettings()).rtaEnabled, isTrue);
+        final bankRow = await (db.select(
+          db.accounts,
+        )..where((a) => a.id.equals(bank))).getSingle();
+        expect(bankRow.envelopeMode, isTrue);
+      },
+    );
+
+    test(
+      'deleting the last pool account also turns RTA off, and reports it',
+      () async {
+        final newAccount = await db.addAccount(
+          name: 'New Wallet',
+          type: AccountType.cash,
+          colorValue: 0,
+          iconKey: 'wallet',
+          openingBalance: const Money.zero(),
+        );
+        await db.setRtaEnabled(true);
+        // Every other pool account has to stop being on-budget first, or
+        // deleting this one wouldn't actually empty the pool.
+        final cash = await cashId();
+        await db.setEnvelopeMode(cash, false);
+
+        final autoDisabled = await db.deleteAccount(newAccount);
+
+        expect(autoDisabled, isTrue);
+        expect((await db.getSettings()).rtaEnabled, isFalse);
+      },
+    );
+
+    test('is a no-op while RTA is already off', () async {
+      final cash = await cashId();
+      final autoDisabled = await db.setEnvelopeMode(cash, false);
+      expect(autoDisabled, isFalse);
+    });
+  });
+
   group('addAllocation', () {
     test('rejects an account with Envelope Mode off', () async {
       final cash = await cashId();
@@ -243,7 +393,7 @@ void main() {
       await settle();
 
       final balance = container.read(
-        categoryBalanceProvider((accountId: cash, categoryId: food)),
+        categoryBalanceProvider(food),
       );
       expect(balance, Money.fromRupees(1400));
     });
@@ -269,13 +419,14 @@ void main() {
       await settle();
 
       final balance = container.read(
-        categoryBalanceProvider((accountId: cash, categoryId: food)),
+        categoryBalanceProvider(food),
       );
       expect(balance, Money.fromRupees(-300));
     });
 
-    test('the same category in two different envelope accounts never mixes',
-        () async {
+    test(
+        'the same category pools across every Envelope-Mode account '
+        '(GitHub #48 — one shared balance, not one per account)', () async {
       await warmUp();
       final cash = await cashId();
       final bank = await db.addAccount(
@@ -302,16 +453,45 @@ void main() {
       await settle();
 
       expect(
-        container.read(
-          categoryBalanceProvider((accountId: cash, categoryId: food)),
-        ),
-        Money.fromRupees(1000),
+        container.read(categoryBalanceProvider(food)),
+        Money.fromRupees(3500),
       );
+    });
+
+    test(
+        "an account that isn't in Envelope Mode never contributes to the "
+        'shared pool, even sharing a category with one that is', () async {
+      await warmUp();
+      final cash = await cashId();
+      final bank = await db.addAccount(
+        name: 'IPPB',
+        type: AccountType.bank,
+        colorValue: 0,
+        iconKey: 'bank',
+        openingBalance: Money.fromRupees(5000),
+      );
+      final food = await expenseCategory('Food');
+      await db.setEnvelopeMode(cash, true);
+      // bank is never put in Envelope Mode.
+
+      await db.addAllocation(
+        accountId: cash,
+        categoryId: food,
+        amount: Money.fromRupees(1000),
+      );
+      await db.addTransaction(
+        type: TxType.expense,
+        amount: Money.fromRupees(400),
+        accountId: bank,
+        categoryId: food,
+        date: DateTime.now(),
+      );
+      await settle();
+
       expect(
-        container.read(
-          categoryBalanceProvider((accountId: bank, categoryId: food)),
-        ),
-        Money.fromRupees(2500),
+        container.read(categoryBalanceProvider(food)),
+        Money.fromRupees(1000),
+        reason: "bank's ordinary spending must not drain the shared pool",
       );
     });
   });
@@ -333,7 +513,7 @@ void main() {
       await settle();
 
       expect(
-        container.read(readyToAssignProvider(cash)),
+        container.read(readyToAssignProvider),
         Money.fromRupees(5000),
       );
     });
@@ -362,7 +542,7 @@ void main() {
       await settle();
 
       expect(
-        container.read(readyToAssignProvider(cash)),
+        container.read(readyToAssignProvider),
         Money.fromRupees(3800),
       );
     });
@@ -406,13 +586,54 @@ void main() {
       final balance = (await db.watchAccounts().first).single.currentBalance;
       expect(balance, Money.fromRupees(750));
       expect(
-        container.read(readyToAssignProvider(cash)),
+        container.read(readyToAssignProvider),
         Money.fromRupees(750),
       );
       expect(
-        container.read(readyToAssignProvider(cash)).paise <= balance.paise,
+        container.read(readyToAssignProvider).paise <= balance.paise,
         isTrue,
         reason: 'ready-to-assign must never exceed the real account balance',
+      );
+    });
+
+    test(
+        'pools across every Envelope-Mode account (GitHub #48 — one shared '
+        'figure, not one per account)', () async {
+      await warmUp();
+      final cash = await cashId();
+      final bank = await db.addAccount(
+        name: 'IPPB',
+        type: AccountType.bank,
+        colorValue: 0,
+        iconKey: 'bank',
+        openingBalance: Money.fromRupees(2000),
+      );
+      final food = await expenseCategory('Food');
+      await db.setEnvelopeMode(cash, true);
+      await db.setEnvelopeMode(bank, true);
+      final salary = await (db.watchCategories(CategoryKind.income).first)
+          .then((c) => c.firstWhere((c) => c.name == 'Salary').id);
+      await db.addTransaction(
+        type: TxType.income,
+        amount: Money.fromRupees(1000),
+        accountId: cash,
+        categoryId: salary,
+        date: DateTime.now(),
+      );
+      await settle();
+
+      await db.addAllocation(
+        accountId: cash,
+        categoryId: food,
+        amount: Money.fromRupees(600),
+      );
+      await settle();
+
+      // cash: 1000 balance, 600 claimed by Food. bank: 2000 balance,
+      // nothing claimed. Pool RTA = (1000 + 2000) − 600 = 2400.
+      expect(
+        container.read(readyToAssignProvider),
+        Money.fromRupees(2400),
       );
     });
   });

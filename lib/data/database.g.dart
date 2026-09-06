@@ -204,6 +204,21 @@ class $AccountsTable extends Accounts
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _currencyCodeMeta = const VerificationMeta(
+    'currencyCode',
+  );
+  @override
+  late final GeneratedColumn<String> currencyCode = GeneratedColumn<String>(
+    'currency_code',
+    aliasedName,
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 3,
+      maxTextLength: 3,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -222,6 +237,7 @@ class $AccountsTable extends Accounts
     createdAt,
     envelopeMode,
     includeInNetWorth,
+    currencyCode,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -319,6 +335,15 @@ class $AccountsTable extends Accounts
         ),
       );
     }
+    if (data.containsKey('currency_code')) {
+      context.handle(
+        _currencyCodeMeta,
+        currencyCode.isAcceptableOrUnknown(
+          data['currency_code']!,
+          _currencyCodeMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -400,6 +425,10 @@ class $AccountsTable extends Accounts
         DriftSqlType.bool,
         data['${effectivePrefix}include_in_net_worth'],
       )!,
+      currencyCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}currency_code'],
+      ),
     );
   }
 
@@ -459,6 +488,15 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   /// savings goal or account off if they don't want it inflating the figure
   /// they treat as their real spendable net worth.
   final bool includeInNetWorth;
+
+  /// Null = this account is in the parent currency (`Settings.currencyCode`)
+  /// — true for every account that existed before this feature, and for
+  /// every account a user never explicitly changes. Locked once the account
+  /// has a transaction (enforced in `AppDatabase.setAccountCurrency`, not
+  /// here — Drift columns can't express that rule). A debit-card/UPI
+  /// instrument (non-null `linkedAccountId`) never gets its own value here —
+  /// it always mirrors its linked account's currency.
+  final String? currencyCode;
   const AccountRow({
     required this.id,
     required this.name,
@@ -476,6 +514,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     required this.createdAt,
     required this.envelopeMode,
     required this.includeInNetWorth,
+    this.currencyCode,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -516,6 +555,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     map['created_at'] = Variable<DateTime>(createdAt);
     map['envelope_mode'] = Variable<bool>(envelopeMode);
     map['include_in_net_worth'] = Variable<bool>(includeInNetWorth);
+    if (!nullToAbsent || currencyCode != null) {
+      map['currency_code'] = Variable<String>(currencyCode);
+    }
     return map;
   }
 
@@ -545,6 +587,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       createdAt: Value(createdAt),
       envelopeMode: Value(envelopeMode),
       includeInNetWorth: Value(includeInNetWorth),
+      currencyCode: currencyCode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(currencyCode),
     );
   }
 
@@ -574,6 +619,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       envelopeMode: serializer.fromJson<bool>(json['envelopeMode']),
       includeInNetWorth: serializer.fromJson<bool>(json['includeInNetWorth']),
+      currencyCode: serializer.fromJson<String?>(json['currencyCode']),
     );
   }
   @override
@@ -600,6 +646,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'envelopeMode': serializer.toJson<bool>(envelopeMode),
       'includeInNetWorth': serializer.toJson<bool>(includeInNetWorth),
+      'currencyCode': serializer.toJson<String?>(currencyCode),
     };
   }
 
@@ -620,6 +667,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     DateTime? createdAt,
     bool? envelopeMode,
     bool? includeInNetWorth,
+    Value<String?> currencyCode = const Value.absent(),
   }) => AccountRow(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -639,6 +687,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     createdAt: createdAt ?? this.createdAt,
     envelopeMode: envelopeMode ?? this.envelopeMode,
     includeInNetWorth: includeInNetWorth ?? this.includeInNetWorth,
+    currencyCode: currencyCode.present ? currencyCode.value : this.currencyCode,
   );
   AccountRow copyWithCompanion(AccountsCompanion data) {
     return AccountRow(
@@ -672,6 +721,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       includeInNetWorth: data.includeInNetWorth.present
           ? data.includeInNetWorth.value
           : this.includeInNetWorth,
+      currencyCode: data.currencyCode.present
+          ? data.currencyCode.value
+          : this.currencyCode,
     );
   }
 
@@ -693,7 +745,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           ..write('sortOrder: $sortOrder, ')
           ..write('createdAt: $createdAt, ')
           ..write('envelopeMode: $envelopeMode, ')
-          ..write('includeInNetWorth: $includeInNetWorth')
+          ..write('includeInNetWorth: $includeInNetWorth, ')
+          ..write('currencyCode: $currencyCode')
           ..write(')'))
         .toString();
   }
@@ -716,6 +769,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     createdAt,
     envelopeMode,
     includeInNetWorth,
+    currencyCode,
   );
   @override
   bool operator ==(Object other) =>
@@ -736,7 +790,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           other.sortOrder == this.sortOrder &&
           other.createdAt == this.createdAt &&
           other.envelopeMode == this.envelopeMode &&
-          other.includeInNetWorth == this.includeInNetWorth);
+          other.includeInNetWorth == this.includeInNetWorth &&
+          other.currencyCode == this.currencyCode);
 }
 
 class AccountsCompanion extends UpdateCompanion<AccountRow> {
@@ -756,6 +811,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
   final Value<DateTime> createdAt;
   final Value<bool> envelopeMode;
   final Value<bool> includeInNetWorth;
+  final Value<String?> currencyCode;
   const AccountsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -773,6 +829,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.createdAt = const Value.absent(),
     this.envelopeMode = const Value.absent(),
     this.includeInNetWorth = const Value.absent(),
+    this.currencyCode = const Value.absent(),
   });
   AccountsCompanion.insert({
     this.id = const Value.absent(),
@@ -791,6 +848,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.createdAt = const Value.absent(),
     this.envelopeMode = const Value.absent(),
     this.includeInNetWorth = const Value.absent(),
+    this.currencyCode = const Value.absent(),
   }) : name = Value(name),
        type = Value(type),
        colorValue = Value(colorValue),
@@ -814,6 +872,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Expression<DateTime>? createdAt,
     Expression<bool>? envelopeMode,
     Expression<bool>? includeInNetWorth,
+    Expression<String>? currencyCode,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -832,6 +891,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       if (createdAt != null) 'created_at': createdAt,
       if (envelopeMode != null) 'envelope_mode': envelopeMode,
       if (includeInNetWorth != null) 'include_in_net_worth': includeInNetWorth,
+      if (currencyCode != null) 'currency_code': currencyCode,
     });
   }
 
@@ -852,6 +912,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Value<DateTime>? createdAt,
     Value<bool>? envelopeMode,
     Value<bool>? includeInNetWorth,
+    Value<String?>? currencyCode,
   }) {
     return AccountsCompanion(
       id: id ?? this.id,
@@ -870,6 +931,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       createdAt: createdAt ?? this.createdAt,
       envelopeMode: envelopeMode ?? this.envelopeMode,
       includeInNetWorth: includeInNetWorth ?? this.includeInNetWorth,
+      currencyCode: currencyCode ?? this.currencyCode,
     );
   }
 
@@ -932,6 +994,9 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     if (includeInNetWorth.present) {
       map['include_in_net_worth'] = Variable<bool>(includeInNetWorth.value);
     }
+    if (currencyCode.present) {
+      map['currency_code'] = Variable<String>(currencyCode.value);
+    }
     return map;
   }
 
@@ -953,7 +1018,8 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
           ..write('sortOrder: $sortOrder, ')
           ..write('createdAt: $createdAt, ')
           ..write('envelopeMode: $envelopeMode, ')
-          ..write('includeInNetWorth: $includeInNetWorth')
+          ..write('includeInNetWorth: $includeInNetWorth, ')
+          ..write('currencyCode: $currencyCode')
           ..write(')'))
         .toString();
   }
@@ -2269,11 +2335,25 @@ class $RecurringRulesTable extends RecurringRules
   late final GeneratedColumn<int> categoryId = GeneratedColumn<int>(
     'category_id',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.int,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
       'REFERENCES categories (id)',
+    ),
+  );
+  static const VerificationMeta _toAccountIdMeta = const VerificationMeta(
+    'toAccountId',
+  );
+  @override
+  late final GeneratedColumn<int> toAccountId = GeneratedColumn<int>(
+    'to_account_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES accounts (id)',
     ),
   );
   static const VerificationMeta _payeeMeta = const VerificationMeta('payee');
@@ -2402,6 +2482,26 @@ class $RecurringRulesTable extends RecurringRules
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _foreignCurrencyCodeMeta =
+      const VerificationMeta('foreignCurrencyCode');
+  @override
+  late final GeneratedColumn<String> foreignCurrencyCode =
+      GeneratedColumn<String>(
+        'foreign_currency_code',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  @override
+  late final GeneratedColumnWithTypeConverter<Money?, int> foreignAmount =
+      GeneratedColumn<int>(
+        'foreign_amount',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<Money?>($RecurringRulesTable.$converterforeignAmountn);
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2410,6 +2510,7 @@ class $RecurringRulesTable extends RecurringRules
     amount,
     accountId,
     categoryId,
+    toAccountId,
     payee,
     note,
     frequency,
@@ -2421,6 +2522,8 @@ class $RecurringRulesTable extends RecurringRules
     promoAmount,
     promoOccurrencesLeft,
     createdAt,
+    foreignCurrencyCode,
+    foreignAmount,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2458,8 +2561,15 @@ class $RecurringRulesTable extends RecurringRules
         _categoryIdMeta,
         categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
       );
-    } else if (isInserting) {
-      context.missing(_categoryIdMeta);
+    }
+    if (data.containsKey('to_account_id')) {
+      context.handle(
+        _toAccountIdMeta,
+        toAccountId.isAcceptableOrUnknown(
+          data['to_account_id']!,
+          _toAccountIdMeta,
+        ),
+      );
     }
     if (data.containsKey('payee')) {
       context.handle(
@@ -2529,6 +2639,15 @@ class $RecurringRulesTable extends RecurringRules
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
+    if (data.containsKey('foreign_currency_code')) {
+      context.handle(
+        _foreignCurrencyCodeMeta,
+        foreignCurrencyCode.isAcceptableOrUnknown(
+          data['foreign_currency_code']!,
+          _foreignCurrencyCodeMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -2565,7 +2684,11 @@ class $RecurringRulesTable extends RecurringRules
       categoryId: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}category_id'],
-      )!,
+      ),
+      toAccountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}to_account_id'],
+      ),
       payee: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}payee'],
@@ -2614,6 +2737,16 @@ class $RecurringRulesTable extends RecurringRules
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      foreignCurrencyCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}foreign_currency_code'],
+      ),
+      foreignAmount: $RecurringRulesTable.$converterforeignAmountn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}foreign_amount'],
+        ),
+      ),
     );
   }
 
@@ -2633,6 +2766,10 @@ class $RecurringRulesTable extends RecurringRules
       const MoneyConverter();
   static TypeConverter<Money?, int?> $converterpromoAmountn =
       NullAwareTypeConverter.wrap($converterpromoAmount);
+  static TypeConverter<Money, int> $converterforeignAmount =
+      const MoneyConverter();
+  static TypeConverter<Money?, int?> $converterforeignAmountn =
+      NullAwareTypeConverter.wrap($converterforeignAmount);
 }
 
 class RecurringRuleRow extends DataClass
@@ -2641,11 +2778,25 @@ class RecurringRuleRow extends DataClass
   final String name;
 
   /// Reuses [CategoryKind] rather than a bespoke enum — a rule is exactly as
-  /// income-or-expense as the category it posts under.
+  /// income-or-expense as the category it posts under. For a G&L rule (see
+  /// [toAccountId]) this is always [CategoryKind.expense] — money leaves
+  /// [accountId] the same direction as an expense — but it's otherwise
+  /// unread: every code path branches on [toAccountId] first.
   final CategoryKind kind;
   final Money amount;
   final int accountId;
-  final int categoryId;
+
+  /// Null for a G&L rule (see [toAccountId]) — a transfer into a goal or
+  /// loan is only ever optionally tagged, exactly like
+  /// [GoalDetails.categoryId]/[LoanDetails.categoryId]. Required for an
+  /// expense/income rule.
+  final int? categoryId;
+
+  /// Non-null makes this a "G&L" rule: it posts a [TxType.transfer] from
+  /// [accountId] to this goal or loan account instead of an
+  /// income/expense transaction. Null (the common case) means the rule
+  /// posts an ordinary expense/income per [kind].
+  final int? toAccountId;
 
   /// Same free-text field as [Transactions.payee] — who the rule pays (an
   /// expense) or who it's paid by (income, e.g. an employer for a salary
@@ -2690,13 +2841,24 @@ class RecurringRuleRow extends DataClass
   /// the promotion is set up.
   final int? promoOccurrencesLeft;
   final DateTime createdAt;
+
+  /// Same annotation as [Transactions.foreignCurrencyCode]/
+  /// [Transactions.foreignAmount] (GitHub #85), carried on the rule so every
+  /// occurrence it posts keeps showing its original foreign-currency price
+  /// (e.g. a $9.99 subscription). Copied onto each posted transaction by
+  /// [AppDatabase.runDueRecurringRules] — except while a promo price is
+  /// active, since there is no tracked foreign equivalent for [promoAmount].
+  /// Always null exactly when [foreignAmount] is null.
+  final String? foreignCurrencyCode;
+  final Money? foreignAmount;
   const RecurringRuleRow({
     required this.id,
     required this.name,
     required this.kind,
     required this.amount,
     required this.accountId,
-    required this.categoryId,
+    this.categoryId,
+    this.toAccountId,
     this.payee,
     this.note,
     required this.frequency,
@@ -2708,6 +2870,8 @@ class RecurringRuleRow extends DataClass
     this.promoAmount,
     this.promoOccurrencesLeft,
     required this.createdAt,
+    this.foreignCurrencyCode,
+    this.foreignAmount,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2725,7 +2889,12 @@ class RecurringRuleRow extends DataClass
       );
     }
     map['account_id'] = Variable<int>(accountId);
-    map['category_id'] = Variable<int>(categoryId);
+    if (!nullToAbsent || categoryId != null) {
+      map['category_id'] = Variable<int>(categoryId);
+    }
+    if (!nullToAbsent || toAccountId != null) {
+      map['to_account_id'] = Variable<int>(toAccountId);
+    }
     if (!nullToAbsent || payee != null) {
       map['payee'] = Variable<String>(payee);
     }
@@ -2753,6 +2922,14 @@ class RecurringRuleRow extends DataClass
       map['promo_occurrences_left'] = Variable<int>(promoOccurrencesLeft);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || foreignCurrencyCode != null) {
+      map['foreign_currency_code'] = Variable<String>(foreignCurrencyCode);
+    }
+    if (!nullToAbsent || foreignAmount != null) {
+      map['foreign_amount'] = Variable<int>(
+        $RecurringRulesTable.$converterforeignAmountn.toSql(foreignAmount),
+      );
+    }
     return map;
   }
 
@@ -2763,7 +2940,12 @@ class RecurringRuleRow extends DataClass
       kind: Value(kind),
       amount: Value(amount),
       accountId: Value(accountId),
-      categoryId: Value(categoryId),
+      categoryId: categoryId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(categoryId),
+      toAccountId: toAccountId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(toAccountId),
       payee: payee == null && nullToAbsent
           ? const Value.absent()
           : Value(payee),
@@ -2783,6 +2965,12 @@ class RecurringRuleRow extends DataClass
           ? const Value.absent()
           : Value(promoOccurrencesLeft),
       createdAt: Value(createdAt),
+      foreignCurrencyCode: foreignCurrencyCode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(foreignCurrencyCode),
+      foreignAmount: foreignAmount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(foreignAmount),
     );
   }
 
@@ -2799,7 +2987,8 @@ class RecurringRuleRow extends DataClass
       ),
       amount: serializer.fromJson<Money>(json['amount']),
       accountId: serializer.fromJson<int>(json['accountId']),
-      categoryId: serializer.fromJson<int>(json['categoryId']),
+      categoryId: serializer.fromJson<int?>(json['categoryId']),
+      toAccountId: serializer.fromJson<int?>(json['toAccountId']),
       payee: serializer.fromJson<String?>(json['payee']),
       note: serializer.fromJson<String?>(json['note']),
       frequency: $RecurringRulesTable.$converterfrequency.fromJson(
@@ -2815,6 +3004,10 @@ class RecurringRuleRow extends DataClass
         json['promoOccurrencesLeft'],
       ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      foreignCurrencyCode: serializer.fromJson<String?>(
+        json['foreignCurrencyCode'],
+      ),
+      foreignAmount: serializer.fromJson<Money?>(json['foreignAmount']),
     );
   }
   @override
@@ -2828,7 +3021,8 @@ class RecurringRuleRow extends DataClass
       ),
       'amount': serializer.toJson<Money>(amount),
       'accountId': serializer.toJson<int>(accountId),
-      'categoryId': serializer.toJson<int>(categoryId),
+      'categoryId': serializer.toJson<int?>(categoryId),
+      'toAccountId': serializer.toJson<int?>(toAccountId),
       'payee': serializer.toJson<String?>(payee),
       'note': serializer.toJson<String?>(note),
       'frequency': serializer.toJson<String>(
@@ -2842,6 +3036,8 @@ class RecurringRuleRow extends DataClass
       'promoAmount': serializer.toJson<Money?>(promoAmount),
       'promoOccurrencesLeft': serializer.toJson<int?>(promoOccurrencesLeft),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'foreignCurrencyCode': serializer.toJson<String?>(foreignCurrencyCode),
+      'foreignAmount': serializer.toJson<Money?>(foreignAmount),
     };
   }
 
@@ -2851,7 +3047,8 @@ class RecurringRuleRow extends DataClass
     CategoryKind? kind,
     Money? amount,
     int? accountId,
-    int? categoryId,
+    Value<int?> categoryId = const Value.absent(),
+    Value<int?> toAccountId = const Value.absent(),
     Value<String?> payee = const Value.absent(),
     Value<String?> note = const Value.absent(),
     RecurringFrequency? frequency,
@@ -2863,13 +3060,16 @@ class RecurringRuleRow extends DataClass
     Value<Money?> promoAmount = const Value.absent(),
     Value<int?> promoOccurrencesLeft = const Value.absent(),
     DateTime? createdAt,
+    Value<String?> foreignCurrencyCode = const Value.absent(),
+    Value<Money?> foreignAmount = const Value.absent(),
   }) => RecurringRuleRow(
     id: id ?? this.id,
     name: name ?? this.name,
     kind: kind ?? this.kind,
     amount: amount ?? this.amount,
     accountId: accountId ?? this.accountId,
-    categoryId: categoryId ?? this.categoryId,
+    categoryId: categoryId.present ? categoryId.value : this.categoryId,
+    toAccountId: toAccountId.present ? toAccountId.value : this.toAccountId,
     payee: payee.present ? payee.value : this.payee,
     note: note.present ? note.value : this.note,
     frequency: frequency ?? this.frequency,
@@ -2883,6 +3083,12 @@ class RecurringRuleRow extends DataClass
         ? promoOccurrencesLeft.value
         : this.promoOccurrencesLeft,
     createdAt: createdAt ?? this.createdAt,
+    foreignCurrencyCode: foreignCurrencyCode.present
+        ? foreignCurrencyCode.value
+        : this.foreignCurrencyCode,
+    foreignAmount: foreignAmount.present
+        ? foreignAmount.value
+        : this.foreignAmount,
   );
   RecurringRuleRow copyWithCompanion(RecurringRulesCompanion data) {
     return RecurringRuleRow(
@@ -2894,6 +3100,9 @@ class RecurringRuleRow extends DataClass
       categoryId: data.categoryId.present
           ? data.categoryId.value
           : this.categoryId,
+      toAccountId: data.toAccountId.present
+          ? data.toAccountId.value
+          : this.toAccountId,
       payee: data.payee.present ? data.payee.value : this.payee,
       note: data.note.present ? data.note.value : this.note,
       frequency: data.frequency.present ? data.frequency.value : this.frequency,
@@ -2917,6 +3126,12 @@ class RecurringRuleRow extends DataClass
           ? data.promoOccurrencesLeft.value
           : this.promoOccurrencesLeft,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      foreignCurrencyCode: data.foreignCurrencyCode.present
+          ? data.foreignCurrencyCode.value
+          : this.foreignCurrencyCode,
+      foreignAmount: data.foreignAmount.present
+          ? data.foreignAmount.value
+          : this.foreignAmount,
     );
   }
 
@@ -2929,6 +3144,7 @@ class RecurringRuleRow extends DataClass
           ..write('amount: $amount, ')
           ..write('accountId: $accountId, ')
           ..write('categoryId: $categoryId, ')
+          ..write('toAccountId: $toAccountId, ')
           ..write('payee: $payee, ')
           ..write('note: $note, ')
           ..write('frequency: $frequency, ')
@@ -2939,7 +3155,9 @@ class RecurringRuleRow extends DataClass
           ..write('isEstimate: $isEstimate, ')
           ..write('promoAmount: $promoAmount, ')
           ..write('promoOccurrencesLeft: $promoOccurrencesLeft, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('foreignCurrencyCode: $foreignCurrencyCode, ')
+          ..write('foreignAmount: $foreignAmount')
           ..write(')'))
         .toString();
   }
@@ -2952,6 +3170,7 @@ class RecurringRuleRow extends DataClass
     amount,
     accountId,
     categoryId,
+    toAccountId,
     payee,
     note,
     frequency,
@@ -2963,6 +3182,8 @@ class RecurringRuleRow extends DataClass
     promoAmount,
     promoOccurrencesLeft,
     createdAt,
+    foreignCurrencyCode,
+    foreignAmount,
   );
   @override
   bool operator ==(Object other) =>
@@ -2974,6 +3195,7 @@ class RecurringRuleRow extends DataClass
           other.amount == this.amount &&
           other.accountId == this.accountId &&
           other.categoryId == this.categoryId &&
+          other.toAccountId == this.toAccountId &&
           other.payee == this.payee &&
           other.note == this.note &&
           other.frequency == this.frequency &&
@@ -2984,7 +3206,9 @@ class RecurringRuleRow extends DataClass
           other.isEstimate == this.isEstimate &&
           other.promoAmount == this.promoAmount &&
           other.promoOccurrencesLeft == this.promoOccurrencesLeft &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.foreignCurrencyCode == this.foreignCurrencyCode &&
+          other.foreignAmount == this.foreignAmount);
 }
 
 class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
@@ -2993,7 +3217,8 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
   final Value<CategoryKind> kind;
   final Value<Money> amount;
   final Value<int> accountId;
-  final Value<int> categoryId;
+  final Value<int?> categoryId;
+  final Value<int?> toAccountId;
   final Value<String?> payee;
   final Value<String?> note;
   final Value<RecurringFrequency> frequency;
@@ -3005,6 +3230,8 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
   final Value<Money?> promoAmount;
   final Value<int?> promoOccurrencesLeft;
   final Value<DateTime> createdAt;
+  final Value<String?> foreignCurrencyCode;
+  final Value<Money?> foreignAmount;
   const RecurringRulesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -3012,6 +3239,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     this.amount = const Value.absent(),
     this.accountId = const Value.absent(),
     this.categoryId = const Value.absent(),
+    this.toAccountId = const Value.absent(),
     this.payee = const Value.absent(),
     this.note = const Value.absent(),
     this.frequency = const Value.absent(),
@@ -3023,6 +3251,8 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     this.promoAmount = const Value.absent(),
     this.promoOccurrencesLeft = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.foreignCurrencyCode = const Value.absent(),
+    this.foreignAmount = const Value.absent(),
   });
   RecurringRulesCompanion.insert({
     this.id = const Value.absent(),
@@ -3030,7 +3260,8 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     required CategoryKind kind,
     required Money amount,
     required int accountId,
-    required int categoryId,
+    this.categoryId = const Value.absent(),
+    this.toAccountId = const Value.absent(),
     this.payee = const Value.absent(),
     this.note = const Value.absent(),
     required RecurringFrequency frequency,
@@ -3042,11 +3273,12 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     this.promoAmount = const Value.absent(),
     this.promoOccurrencesLeft = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.foreignCurrencyCode = const Value.absent(),
+    this.foreignAmount = const Value.absent(),
   }) : name = Value(name),
        kind = Value(kind),
        amount = Value(amount),
        accountId = Value(accountId),
-       categoryId = Value(categoryId),
        frequency = Value(frequency),
        nextDueDate = Value(nextDueDate);
   static Insertable<RecurringRuleRow> custom({
@@ -3056,6 +3288,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     Expression<int>? amount,
     Expression<int>? accountId,
     Expression<int>? categoryId,
+    Expression<int>? toAccountId,
     Expression<String>? payee,
     Expression<String>? note,
     Expression<String>? frequency,
@@ -3067,6 +3300,8 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     Expression<int>? promoAmount,
     Expression<int>? promoOccurrencesLeft,
     Expression<DateTime>? createdAt,
+    Expression<String>? foreignCurrencyCode,
+    Expression<int>? foreignAmount,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3075,6 +3310,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
       if (amount != null) 'amount': amount,
       if (accountId != null) 'account_id': accountId,
       if (categoryId != null) 'category_id': categoryId,
+      if (toAccountId != null) 'to_account_id': toAccountId,
       if (payee != null) 'payee': payee,
       if (note != null) 'note': note,
       if (frequency != null) 'frequency': frequency,
@@ -3087,6 +3323,9 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
       if (promoOccurrencesLeft != null)
         'promo_occurrences_left': promoOccurrencesLeft,
       if (createdAt != null) 'created_at': createdAt,
+      if (foreignCurrencyCode != null)
+        'foreign_currency_code': foreignCurrencyCode,
+      if (foreignAmount != null) 'foreign_amount': foreignAmount,
     });
   }
 
@@ -3096,7 +3335,8 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     Value<CategoryKind>? kind,
     Value<Money>? amount,
     Value<int>? accountId,
-    Value<int>? categoryId,
+    Value<int?>? categoryId,
+    Value<int?>? toAccountId,
     Value<String?>? payee,
     Value<String?>? note,
     Value<RecurringFrequency>? frequency,
@@ -3108,6 +3348,8 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     Value<Money?>? promoAmount,
     Value<int?>? promoOccurrencesLeft,
     Value<DateTime>? createdAt,
+    Value<String?>? foreignCurrencyCode,
+    Value<Money?>? foreignAmount,
   }) {
     return RecurringRulesCompanion(
       id: id ?? this.id,
@@ -3116,6 +3358,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
       amount: amount ?? this.amount,
       accountId: accountId ?? this.accountId,
       categoryId: categoryId ?? this.categoryId,
+      toAccountId: toAccountId ?? this.toAccountId,
       payee: payee ?? this.payee,
       note: note ?? this.note,
       frequency: frequency ?? this.frequency,
@@ -3127,6 +3370,8 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
       promoAmount: promoAmount ?? this.promoAmount,
       promoOccurrencesLeft: promoOccurrencesLeft ?? this.promoOccurrencesLeft,
       createdAt: createdAt ?? this.createdAt,
+      foreignCurrencyCode: foreignCurrencyCode ?? this.foreignCurrencyCode,
+      foreignAmount: foreignAmount ?? this.foreignAmount,
     );
   }
 
@@ -3154,6 +3399,9 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     }
     if (categoryId.present) {
       map['category_id'] = Variable<int>(categoryId.value);
+    }
+    if (toAccountId.present) {
+      map['to_account_id'] = Variable<int>(toAccountId.value);
     }
     if (payee.present) {
       map['payee'] = Variable<String>(payee.value);
@@ -3192,6 +3440,18 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (foreignCurrencyCode.present) {
+      map['foreign_currency_code'] = Variable<String>(
+        foreignCurrencyCode.value,
+      );
+    }
+    if (foreignAmount.present) {
+      map['foreign_amount'] = Variable<int>(
+        $RecurringRulesTable.$converterforeignAmountn.toSql(
+          foreignAmount.value,
+        ),
+      );
+    }
     return map;
   }
 
@@ -3204,6 +3464,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
           ..write('amount: $amount, ')
           ..write('accountId: $accountId, ')
           ..write('categoryId: $categoryId, ')
+          ..write('toAccountId: $toAccountId, ')
           ..write('payee: $payee, ')
           ..write('note: $note, ')
           ..write('frequency: $frequency, ')
@@ -3214,7 +3475,9 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
           ..write('isEstimate: $isEstimate, ')
           ..write('promoAmount: $promoAmount, ')
           ..write('promoOccurrencesLeft: $promoOccurrencesLeft, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('foreignCurrencyCode: $foreignCurrencyCode, ')
+          ..write('foreignAmount: $foreignAmount')
           ..write(')'))
         .toString();
   }
@@ -3422,6 +3685,85 @@ class $TransactionsTable extends Transactions
       'REFERENCES transactions (id)',
     ),
   );
+  static const VerificationMeta _foreignCurrencyCodeMeta =
+      const VerificationMeta('foreignCurrencyCode');
+  @override
+  late final GeneratedColumn<String> foreignCurrencyCode =
+      GeneratedColumn<String>(
+        'foreign_currency_code',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  @override
+  late final GeneratedColumnWithTypeConverter<Money?, int> foreignAmount =
+      GeneratedColumn<int>(
+        'foreign_amount',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<Money?>($TransactionsTable.$converterforeignAmountn);
+  static const VerificationMeta _currencyCodeMeta = const VerificationMeta(
+    'currencyCode',
+  );
+  @override
+  late final GeneratedColumn<String> currencyCode = GeneratedColumn<String>(
+    'currency_code',
+    aliasedName,
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 3,
+      maxTextLength: 3,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _fxRateToBaseMicrosMeta =
+      const VerificationMeta('fxRateToBaseMicros');
+  @override
+  late final GeneratedColumn<int> fxRateToBaseMicros = GeneratedColumn<int>(
+    'fx_rate_to_base_micros',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<Money?, int> toAmount =
+      GeneratedColumn<int>(
+        'to_amount',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<Money?>($TransactionsTable.$convertertoAmountn);
+  static const VerificationMeta _toCurrencyCodeMeta = const VerificationMeta(
+    'toCurrencyCode',
+  );
+  @override
+  late final GeneratedColumn<String> toCurrencyCode = GeneratedColumn<String>(
+    'to_currency_code',
+    aliasedName,
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 3,
+      maxTextLength: 3,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _toFxRateToBaseMicrosMeta =
+      const VerificationMeta('toFxRateToBaseMicros');
+  @override
+  late final GeneratedColumn<int> toFxRateToBaseMicros = GeneratedColumn<int>(
+    'to_fx_rate_to_base_micros',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -3440,6 +3782,13 @@ class $TransactionsTable extends Transactions
     updatedAt,
     needsAmountReview,
     paymentGroupId,
+    foreignCurrencyCode,
+    foreignAmount,
+    currencyCode,
+    fxRateToBaseMicros,
+    toAmount,
+    toCurrencyCode,
+    toFxRateToBaseMicros,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3550,6 +3899,51 @@ class $TransactionsTable extends Transactions
         ),
       );
     }
+    if (data.containsKey('foreign_currency_code')) {
+      context.handle(
+        _foreignCurrencyCodeMeta,
+        foreignCurrencyCode.isAcceptableOrUnknown(
+          data['foreign_currency_code']!,
+          _foreignCurrencyCodeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('currency_code')) {
+      context.handle(
+        _currencyCodeMeta,
+        currencyCode.isAcceptableOrUnknown(
+          data['currency_code']!,
+          _currencyCodeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('fx_rate_to_base_micros')) {
+      context.handle(
+        _fxRateToBaseMicrosMeta,
+        fxRateToBaseMicros.isAcceptableOrUnknown(
+          data['fx_rate_to_base_micros']!,
+          _fxRateToBaseMicrosMeta,
+        ),
+      );
+    }
+    if (data.containsKey('to_currency_code')) {
+      context.handle(
+        _toCurrencyCodeMeta,
+        toCurrencyCode.isAcceptableOrUnknown(
+          data['to_currency_code']!,
+          _toCurrencyCodeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('to_fx_rate_to_base_micros')) {
+      context.handle(
+        _toFxRateToBaseMicrosMeta,
+        toFxRateToBaseMicros.isAcceptableOrUnknown(
+          data['to_fx_rate_to_base_micros']!,
+          _toFxRateToBaseMicrosMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -3627,6 +4021,38 @@ class $TransactionsTable extends Transactions
         DriftSqlType.int,
         data['${effectivePrefix}payment_group_id'],
       ),
+      foreignCurrencyCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}foreign_currency_code'],
+      ),
+      foreignAmount: $TransactionsTable.$converterforeignAmountn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}foreign_amount'],
+        ),
+      ),
+      currencyCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}currency_code'],
+      ),
+      fxRateToBaseMicros: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}fx_rate_to_base_micros'],
+      ),
+      toAmount: $TransactionsTable.$convertertoAmountn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}to_amount'],
+        ),
+      ),
+      toCurrencyCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}to_currency_code'],
+      ),
+      toFxRateToBaseMicros: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}to_fx_rate_to_base_micros'],
+      ),
     );
   }
 
@@ -3638,6 +4064,13 @@ class $TransactionsTable extends Transactions
   static JsonTypeConverter2<TxType, String, String> $convertertype =
       const EnumNameConverter<TxType>(TxType.values);
   static TypeConverter<Money, int> $converteramount = const MoneyConverter();
+  static TypeConverter<Money, int> $converterforeignAmount =
+      const MoneyConverter();
+  static TypeConverter<Money?, int?> $converterforeignAmountn =
+      NullAwareTypeConverter.wrap($converterforeignAmount);
+  static TypeConverter<Money, int> $convertertoAmount = const MoneyConverter();
+  static TypeConverter<Money?, int?> $convertertoAmountn =
+      NullAwareTypeConverter.wrap($convertertoAmount);
 }
 
 class TransactionRow extends DataClass implements Insertable<TransactionRow> {
@@ -3698,6 +4131,43 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   /// mutually exclusive in the UI, to avoid the 2-D matrix of splitting
   /// both at once.
   final int? paymentGroupId;
+
+  /// What this cost in another currency, manually entered — e.g. "$9.99" for
+  /// a subscription actually charged as [amount] home-currency rupees
+  /// (GitHub #85). [amount] stays authoritative for every balance/net-worth/
+  /// envelope computation; this is a purely informational annotation. Always
+  /// null exactly when [foreignAmount] is null — never one without the
+  /// other, same pairing as [RecurringRules.promoAmount]/
+  /// [RecurringRules.promoOccurrencesLeft]. The implied conversion rate is
+  /// `amount / foreignAmount`, recomputed for display rather than stored.
+  final String? foreignCurrencyCode;
+  final Money? foreignAmount;
+
+  /// This transaction's own ledger currency, snapshotted from its account's
+  /// [Accounts.currencyCode] at post time. Null = parent currency, which
+  /// matches [amount]'s existing meaning exactly (no conversion needed).
+  /// Distinct from the #85 [foreignCurrencyCode]/[foreignAmount] pair above,
+  /// which is a manual informational annotation on a parent-currency
+  /// transaction — this pair instead describes the transaction's *real*
+  /// native currency, inherited from its account.
+  final String? currencyCode;
+
+  /// Snapshot of `CurrencyRates.rateToBaseMicros` as of [date], for
+  /// [currencyCode]. Null iff [currencyCode] is null.
+  final int? fxRateToBaseMicros;
+
+  /// Transfer only, and only when the source and destination accounts don't
+  /// share a currency: the amount credited to [toAccountId], in *its own*
+  /// currency. Null for a same-currency transfer, where crediting [amount]
+  /// unchanged is already correct — see `AppDatabase._applyTxEffect`.
+  final Money? toAmount;
+
+  /// Transfer only, mirrors [currencyCode]/[fxRateToBaseMicros] for the
+  /// destination leg — the two accounts can each be a different currency
+  /// from the parent (and from each other), so the destination needs its
+  /// own independent snapshot.
+  final String? toCurrencyCode;
+  final int? toFxRateToBaseMicros;
   const TransactionRow({
     required this.id,
     required this.type,
@@ -3715,6 +4185,13 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     required this.updatedAt,
     required this.needsAmountReview,
     this.paymentGroupId,
+    this.foreignCurrencyCode,
+    this.foreignAmount,
+    this.currencyCode,
+    this.fxRateToBaseMicros,
+    this.toAmount,
+    this.toCurrencyCode,
+    this.toFxRateToBaseMicros,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3759,6 +4236,31 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     if (!nullToAbsent || paymentGroupId != null) {
       map['payment_group_id'] = Variable<int>(paymentGroupId);
     }
+    if (!nullToAbsent || foreignCurrencyCode != null) {
+      map['foreign_currency_code'] = Variable<String>(foreignCurrencyCode);
+    }
+    if (!nullToAbsent || foreignAmount != null) {
+      map['foreign_amount'] = Variable<int>(
+        $TransactionsTable.$converterforeignAmountn.toSql(foreignAmount),
+      );
+    }
+    if (!nullToAbsent || currencyCode != null) {
+      map['currency_code'] = Variable<String>(currencyCode);
+    }
+    if (!nullToAbsent || fxRateToBaseMicros != null) {
+      map['fx_rate_to_base_micros'] = Variable<int>(fxRateToBaseMicros);
+    }
+    if (!nullToAbsent || toAmount != null) {
+      map['to_amount'] = Variable<int>(
+        $TransactionsTable.$convertertoAmountn.toSql(toAmount),
+      );
+    }
+    if (!nullToAbsent || toCurrencyCode != null) {
+      map['to_currency_code'] = Variable<String>(toCurrencyCode);
+    }
+    if (!nullToAbsent || toFxRateToBaseMicros != null) {
+      map['to_fx_rate_to_base_micros'] = Variable<int>(toFxRateToBaseMicros);
+    }
     return map;
   }
 
@@ -3794,6 +4296,27 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       paymentGroupId: paymentGroupId == null && nullToAbsent
           ? const Value.absent()
           : Value(paymentGroupId),
+      foreignCurrencyCode: foreignCurrencyCode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(foreignCurrencyCode),
+      foreignAmount: foreignAmount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(foreignAmount),
+      currencyCode: currencyCode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(currencyCode),
+      fxRateToBaseMicros: fxRateToBaseMicros == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fxRateToBaseMicros),
+      toAmount: toAmount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(toAmount),
+      toCurrencyCode: toCurrencyCode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(toCurrencyCode),
+      toFxRateToBaseMicros: toFxRateToBaseMicros == null && nullToAbsent
+          ? const Value.absent()
+          : Value(toFxRateToBaseMicros),
     );
   }
 
@@ -3821,6 +4344,17 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       needsAmountReview: serializer.fromJson<bool>(json['needsAmountReview']),
       paymentGroupId: serializer.fromJson<int?>(json['paymentGroupId']),
+      foreignCurrencyCode: serializer.fromJson<String?>(
+        json['foreignCurrencyCode'],
+      ),
+      foreignAmount: serializer.fromJson<Money?>(json['foreignAmount']),
+      currencyCode: serializer.fromJson<String?>(json['currencyCode']),
+      fxRateToBaseMicros: serializer.fromJson<int?>(json['fxRateToBaseMicros']),
+      toAmount: serializer.fromJson<Money?>(json['toAmount']),
+      toCurrencyCode: serializer.fromJson<String?>(json['toCurrencyCode']),
+      toFxRateToBaseMicros: serializer.fromJson<int?>(
+        json['toFxRateToBaseMicros'],
+      ),
     );
   }
   @override
@@ -3845,6 +4379,13 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'needsAmountReview': serializer.toJson<bool>(needsAmountReview),
       'paymentGroupId': serializer.toJson<int?>(paymentGroupId),
+      'foreignCurrencyCode': serializer.toJson<String?>(foreignCurrencyCode),
+      'foreignAmount': serializer.toJson<Money?>(foreignAmount),
+      'currencyCode': serializer.toJson<String?>(currencyCode),
+      'fxRateToBaseMicros': serializer.toJson<int?>(fxRateToBaseMicros),
+      'toAmount': serializer.toJson<Money?>(toAmount),
+      'toCurrencyCode': serializer.toJson<String?>(toCurrencyCode),
+      'toFxRateToBaseMicros': serializer.toJson<int?>(toFxRateToBaseMicros),
     };
   }
 
@@ -3865,6 +4406,13 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     DateTime? updatedAt,
     bool? needsAmountReview,
     Value<int?> paymentGroupId = const Value.absent(),
+    Value<String?> foreignCurrencyCode = const Value.absent(),
+    Value<Money?> foreignAmount = const Value.absent(),
+    Value<String?> currencyCode = const Value.absent(),
+    Value<int?> fxRateToBaseMicros = const Value.absent(),
+    Value<Money?> toAmount = const Value.absent(),
+    Value<String?> toCurrencyCode = const Value.absent(),
+    Value<int?> toFxRateToBaseMicros = const Value.absent(),
   }) => TransactionRow(
     id: id ?? this.id,
     type: type ?? this.type,
@@ -3886,6 +4434,23 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     paymentGroupId: paymentGroupId.present
         ? paymentGroupId.value
         : this.paymentGroupId,
+    foreignCurrencyCode: foreignCurrencyCode.present
+        ? foreignCurrencyCode.value
+        : this.foreignCurrencyCode,
+    foreignAmount: foreignAmount.present
+        ? foreignAmount.value
+        : this.foreignAmount,
+    currencyCode: currencyCode.present ? currencyCode.value : this.currencyCode,
+    fxRateToBaseMicros: fxRateToBaseMicros.present
+        ? fxRateToBaseMicros.value
+        : this.fxRateToBaseMicros,
+    toAmount: toAmount.present ? toAmount.value : this.toAmount,
+    toCurrencyCode: toCurrencyCode.present
+        ? toCurrencyCode.value
+        : this.toCurrencyCode,
+    toFxRateToBaseMicros: toFxRateToBaseMicros.present
+        ? toFxRateToBaseMicros.value
+        : this.toFxRateToBaseMicros,
   );
   TransactionRow copyWithCompanion(TransactionsCompanion data) {
     return TransactionRow(
@@ -3915,6 +4480,25 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       paymentGroupId: data.paymentGroupId.present
           ? data.paymentGroupId.value
           : this.paymentGroupId,
+      foreignCurrencyCode: data.foreignCurrencyCode.present
+          ? data.foreignCurrencyCode.value
+          : this.foreignCurrencyCode,
+      foreignAmount: data.foreignAmount.present
+          ? data.foreignAmount.value
+          : this.foreignAmount,
+      currencyCode: data.currencyCode.present
+          ? data.currencyCode.value
+          : this.currencyCode,
+      fxRateToBaseMicros: data.fxRateToBaseMicros.present
+          ? data.fxRateToBaseMicros.value
+          : this.fxRateToBaseMicros,
+      toAmount: data.toAmount.present ? data.toAmount.value : this.toAmount,
+      toCurrencyCode: data.toCurrencyCode.present
+          ? data.toCurrencyCode.value
+          : this.toCurrencyCode,
+      toFxRateToBaseMicros: data.toFxRateToBaseMicros.present
+          ? data.toFxRateToBaseMicros.value
+          : this.toFxRateToBaseMicros,
     );
   }
 
@@ -3936,13 +4520,20 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('needsAmountReview: $needsAmountReview, ')
-          ..write('paymentGroupId: $paymentGroupId')
+          ..write('paymentGroupId: $paymentGroupId, ')
+          ..write('foreignCurrencyCode: $foreignCurrencyCode, ')
+          ..write('foreignAmount: $foreignAmount, ')
+          ..write('currencyCode: $currencyCode, ')
+          ..write('fxRateToBaseMicros: $fxRateToBaseMicros, ')
+          ..write('toAmount: $toAmount, ')
+          ..write('toCurrencyCode: $toCurrencyCode, ')
+          ..write('toFxRateToBaseMicros: $toFxRateToBaseMicros')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     type,
     amount,
@@ -3959,7 +4550,14 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     updatedAt,
     needsAmountReview,
     paymentGroupId,
-  );
+    foreignCurrencyCode,
+    foreignAmount,
+    currencyCode,
+    fxRateToBaseMicros,
+    toAmount,
+    toCurrencyCode,
+    toFxRateToBaseMicros,
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3979,7 +4577,14 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.needsAmountReview == this.needsAmountReview &&
-          other.paymentGroupId == this.paymentGroupId);
+          other.paymentGroupId == this.paymentGroupId &&
+          other.foreignCurrencyCode == this.foreignCurrencyCode &&
+          other.foreignAmount == this.foreignAmount &&
+          other.currencyCode == this.currencyCode &&
+          other.fxRateToBaseMicros == this.fxRateToBaseMicros &&
+          other.toAmount == this.toAmount &&
+          other.toCurrencyCode == this.toCurrencyCode &&
+          other.toFxRateToBaseMicros == this.toFxRateToBaseMicros);
 }
 
 class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
@@ -3999,6 +4604,13 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   final Value<DateTime> updatedAt;
   final Value<bool> needsAmountReview;
   final Value<int?> paymentGroupId;
+  final Value<String?> foreignCurrencyCode;
+  final Value<Money?> foreignAmount;
+  final Value<String?> currencyCode;
+  final Value<int?> fxRateToBaseMicros;
+  final Value<Money?> toAmount;
+  final Value<String?> toCurrencyCode;
+  final Value<int?> toFxRateToBaseMicros;
   const TransactionsCompanion({
     this.id = const Value.absent(),
     this.type = const Value.absent(),
@@ -4016,6 +4628,13 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.updatedAt = const Value.absent(),
     this.needsAmountReview = const Value.absent(),
     this.paymentGroupId = const Value.absent(),
+    this.foreignCurrencyCode = const Value.absent(),
+    this.foreignAmount = const Value.absent(),
+    this.currencyCode = const Value.absent(),
+    this.fxRateToBaseMicros = const Value.absent(),
+    this.toAmount = const Value.absent(),
+    this.toCurrencyCode = const Value.absent(),
+    this.toFxRateToBaseMicros = const Value.absent(),
   });
   TransactionsCompanion.insert({
     this.id = const Value.absent(),
@@ -4034,6 +4653,13 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.updatedAt = const Value.absent(),
     this.needsAmountReview = const Value.absent(),
     this.paymentGroupId = const Value.absent(),
+    this.foreignCurrencyCode = const Value.absent(),
+    this.foreignAmount = const Value.absent(),
+    this.currencyCode = const Value.absent(),
+    this.fxRateToBaseMicros = const Value.absent(),
+    this.toAmount = const Value.absent(),
+    this.toCurrencyCode = const Value.absent(),
+    this.toFxRateToBaseMicros = const Value.absent(),
   }) : type = Value(type),
        amount = Value(amount),
        accountId = Value(accountId),
@@ -4055,6 +4681,13 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Expression<DateTime>? updatedAt,
     Expression<bool>? needsAmountReview,
     Expression<int>? paymentGroupId,
+    Expression<String>? foreignCurrencyCode,
+    Expression<int>? foreignAmount,
+    Expression<String>? currencyCode,
+    Expression<int>? fxRateToBaseMicros,
+    Expression<int>? toAmount,
+    Expression<String>? toCurrencyCode,
+    Expression<int>? toFxRateToBaseMicros,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -4073,6 +4706,16 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       if (updatedAt != null) 'updated_at': updatedAt,
       if (needsAmountReview != null) 'needs_amount_review': needsAmountReview,
       if (paymentGroupId != null) 'payment_group_id': paymentGroupId,
+      if (foreignCurrencyCode != null)
+        'foreign_currency_code': foreignCurrencyCode,
+      if (foreignAmount != null) 'foreign_amount': foreignAmount,
+      if (currencyCode != null) 'currency_code': currencyCode,
+      if (fxRateToBaseMicros != null)
+        'fx_rate_to_base_micros': fxRateToBaseMicros,
+      if (toAmount != null) 'to_amount': toAmount,
+      if (toCurrencyCode != null) 'to_currency_code': toCurrencyCode,
+      if (toFxRateToBaseMicros != null)
+        'to_fx_rate_to_base_micros': toFxRateToBaseMicros,
     });
   }
 
@@ -4093,6 +4736,13 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Value<DateTime>? updatedAt,
     Value<bool>? needsAmountReview,
     Value<int?>? paymentGroupId,
+    Value<String?>? foreignCurrencyCode,
+    Value<Money?>? foreignAmount,
+    Value<String?>? currencyCode,
+    Value<int?>? fxRateToBaseMicros,
+    Value<Money?>? toAmount,
+    Value<String?>? toCurrencyCode,
+    Value<int?>? toFxRateToBaseMicros,
   }) {
     return TransactionsCompanion(
       id: id ?? this.id,
@@ -4111,6 +4761,13 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       updatedAt: updatedAt ?? this.updatedAt,
       needsAmountReview: needsAmountReview ?? this.needsAmountReview,
       paymentGroupId: paymentGroupId ?? this.paymentGroupId,
+      foreignCurrencyCode: foreignCurrencyCode ?? this.foreignCurrencyCode,
+      foreignAmount: foreignAmount ?? this.foreignAmount,
+      currencyCode: currencyCode ?? this.currencyCode,
+      fxRateToBaseMicros: fxRateToBaseMicros ?? this.fxRateToBaseMicros,
+      toAmount: toAmount ?? this.toAmount,
+      toCurrencyCode: toCurrencyCode ?? this.toCurrencyCode,
+      toFxRateToBaseMicros: toFxRateToBaseMicros ?? this.toFxRateToBaseMicros,
     );
   }
 
@@ -4169,6 +4826,35 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     if (paymentGroupId.present) {
       map['payment_group_id'] = Variable<int>(paymentGroupId.value);
     }
+    if (foreignCurrencyCode.present) {
+      map['foreign_currency_code'] = Variable<String>(
+        foreignCurrencyCode.value,
+      );
+    }
+    if (foreignAmount.present) {
+      map['foreign_amount'] = Variable<int>(
+        $TransactionsTable.$converterforeignAmountn.toSql(foreignAmount.value),
+      );
+    }
+    if (currencyCode.present) {
+      map['currency_code'] = Variable<String>(currencyCode.value);
+    }
+    if (fxRateToBaseMicros.present) {
+      map['fx_rate_to_base_micros'] = Variable<int>(fxRateToBaseMicros.value);
+    }
+    if (toAmount.present) {
+      map['to_amount'] = Variable<int>(
+        $TransactionsTable.$convertertoAmountn.toSql(toAmount.value),
+      );
+    }
+    if (toCurrencyCode.present) {
+      map['to_currency_code'] = Variable<String>(toCurrencyCode.value);
+    }
+    if (toFxRateToBaseMicros.present) {
+      map['to_fx_rate_to_base_micros'] = Variable<int>(
+        toFxRateToBaseMicros.value,
+      );
+    }
     return map;
   }
 
@@ -4190,7 +4876,14 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('needsAmountReview: $needsAmountReview, ')
-          ..write('paymentGroupId: $paymentGroupId')
+          ..write('paymentGroupId: $paymentGroupId, ')
+          ..write('foreignCurrencyCode: $foreignCurrencyCode, ')
+          ..write('foreignAmount: $foreignAmount, ')
+          ..write('currencyCode: $currencyCode, ')
+          ..write('fxRateToBaseMicros: $fxRateToBaseMicros, ')
+          ..write('toAmount: $toAmount, ')
+          ..write('toCurrencyCode: $toCurrencyCode, ')
+          ..write('toFxRateToBaseMicros: $toFxRateToBaseMicros')
           ..write(')'))
         .toString();
   }
@@ -8215,6 +8908,21 @@ class $SettingsTable extends Settings
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _rtaEnabledMeta = const VerificationMeta(
+    'rtaEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> rtaEnabled = GeneratedColumn<bool>(
+    'rta_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("rta_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _paypalEnabledMeta = const VerificationMeta(
     'paypalEnabled',
   );
@@ -8333,6 +9041,29 @@ class $SettingsTable extends Settings
     requiredDuringInsert: false,
     defaultValue: const Constant('classic'),
   ).withConverter<LockScreenStyle>($SettingsTable.$converterlockScreenStyle);
+  @override
+  late final GeneratedColumnWithTypeConverter<MoreScreenViewMode, String>
+  moreScreenViewMode =
+      GeneratedColumn<String>(
+        'more_screen_view_mode',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('list'),
+      ).withConverter<MoreScreenViewMode>(
+        $SettingsTable.$convertermoreScreenViewMode,
+      );
+  @override
+  late final GeneratedColumnWithTypeConverter<BudgetingMode, String>
+  budgetingMode = GeneratedColumn<String>(
+    'budgeting_mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('budgets'),
+  ).withConverter<BudgetingMode>($SettingsTable.$converterbudgetingMode);
   static const VerificationMeta _pinTimeoutMinutesMeta = const VerificationMeta(
     'pinTimeoutMinutes',
   );
@@ -8688,6 +9419,18 @@ class $SettingsTable extends Settings
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _frequentIconKeysMeta = const VerificationMeta(
+    'frequentIconKeys',
+  );
+  @override
+  late final GeneratedColumn<String> frequentIconKeys = GeneratedColumn<String>(
+    'frequent_icon_keys',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -8708,6 +9451,7 @@ class $SettingsTable extends Settings
     myCashapp,
     myRevolut,
     upiEnabled,
+    rtaEnabled,
     paypalEnabled,
     venmoEnabled,
     cashappEnabled,
@@ -8717,6 +9461,8 @@ class $SettingsTable extends Settings
     passcodeLength,
     biometricEnabled,
     lockScreenStyle,
+    moreScreenViewMode,
+    budgetingMode,
     pinTimeoutMinutes,
     masterPhraseHash,
     masterPhraseSalt,
@@ -8745,6 +9491,7 @@ class $SettingsTable extends Settings
     fontWeightDelta,
     fontFamily,
     extraBottomInset,
+    frequentIconKeys,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -8885,6 +9632,12 @@ class $SettingsTable extends Settings
       context.handle(
         _upiEnabledMeta,
         upiEnabled.isAcceptableOrUnknown(data['upi_enabled']!, _upiEnabledMeta),
+      );
+    }
+    if (data.containsKey('rta_enabled')) {
+      context.handle(
+        _rtaEnabledMeta,
+        rtaEnabled.isAcceptableOrUnknown(data['rta_enabled']!, _rtaEnabledMeta),
       );
     }
     if (data.containsKey('paypal_enabled')) {
@@ -9199,6 +9952,15 @@ class $SettingsTable extends Settings
         ),
       );
     }
+    if (data.containsKey('frequent_icon_keys')) {
+      context.handle(
+        _frequentIconKeysMeta,
+        frequentIconKeys.isAcceptableOrUnknown(
+          data['frequent_icon_keys']!,
+          _frequentIconKeysMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -9280,6 +10042,10 @@ class $SettingsTable extends Settings
         DriftSqlType.bool,
         data['${effectivePrefix}upi_enabled'],
       )!,
+      rtaEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}rta_enabled'],
+      )!,
       paypalEnabled: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}paypal_enabled'],
@@ -9316,6 +10082,18 @@ class $SettingsTable extends Settings
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
           data['${effectivePrefix}lock_screen_style'],
+        )!,
+      ),
+      moreScreenViewMode: $SettingsTable.$convertermoreScreenViewMode.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}more_screen_view_mode'],
+        )!,
+      ),
+      budgetingMode: $SettingsTable.$converterbudgetingMode.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}budgeting_mode'],
         )!,
       ),
       pinTimeoutMinutes: attachedDatabase.typeMapping.read(
@@ -9432,6 +10210,10 @@ class $SettingsTable extends Settings
         DriftSqlType.int,
         data['${effectivePrefix}extra_bottom_inset'],
       )!,
+      frequentIconKeys: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}frequent_icon_keys'],
+      )!,
     );
   }
 
@@ -9443,6 +10225,14 @@ class $SettingsTable extends Settings
   static JsonTypeConverter2<LockScreenStyle, String, String>
   $converterlockScreenStyle = const EnumNameConverter<LockScreenStyle>(
     LockScreenStyle.values,
+  );
+  static JsonTypeConverter2<MoreScreenViewMode, String, String>
+  $convertermoreScreenViewMode = const EnumNameConverter<MoreScreenViewMode>(
+    MoreScreenViewMode.values,
+  );
+  static JsonTypeConverter2<BudgetingMode, String, String>
+  $converterbudgetingMode = const EnumNameConverter<BudgetingMode>(
+    BudgetingMode.values,
   );
   static JsonTypeConverter2<AutoBackupFrequency, String, String>
   $converterautoBackupFrequency = const EnumNameConverter<AutoBackupFrequency>(
@@ -9510,6 +10300,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// entirely, rather than leaving a permanently-disabled button around.
   final bool upiEnabled;
 
+  /// Whether Ready to Assign is turned on globally.
+  final bool rtaEnabled;
+
   /// Same as [upiEnabled], for PayPal.
   final bool paypalEnabled;
 
@@ -9540,6 +10333,16 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// Which numpad style the lock screen draws — see [LockScreenStyle].
   /// Defaults to `classic` so existing users see no change.
   final LockScreenStyle lockScreenStyle;
+
+  /// How the More hub lays out its items — see [MoreScreenViewMode].
+  /// Defaults to `list` so existing users see no change.
+  final MoreScreenViewMode moreScreenViewMode;
+
+  /// Which budgeting system is primary — see [BudgetingMode] (GitHub #100).
+  /// Defaults to `budgets` so existing users see no change; switching to
+  /// `envelope` doesn't touch either system's data, it only changes which
+  /// one the Dashboard and More hub's "Budgets" tile surface.
+  final BudgetingMode budgetingMode;
 
   /// Minutes the app may sit backgrounded before the next resume re-locks it
   /// — `0` means immediately (see GitHub #60). Checked against how long the
@@ -9684,6 +10487,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// every `SafeArea` in the app reads from — see `AppShell` and
   /// `LockScreen`, neither of which needed any change themselves.
   final int extraBottomInset;
+
+  /// Icon keys (see `AppIcons`) picked from the icon sheet, most-recent-first,
+  /// comma-joined — same convention as [bottomNavSlots]. Powers the
+  /// "Frequently used" row so the icon someone reaches for constantly (their
+  /// coffee cup, their gym) surfaces without scrolling or typing a search.
+  final String frequentIconKeys;
   const SettingRow({
     required this.id,
     required this.currencyCode,
@@ -9703,6 +10512,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     this.myCashapp,
     this.myRevolut,
     required this.upiEnabled,
+    required this.rtaEnabled,
     required this.paypalEnabled,
     required this.venmoEnabled,
     required this.cashappEnabled,
@@ -9712,6 +10522,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     this.passcodeLength,
     required this.biometricEnabled,
     required this.lockScreenStyle,
+    required this.moreScreenViewMode,
+    required this.budgetingMode,
     required this.pinTimeoutMinutes,
     this.masterPhraseHash,
     this.masterPhraseSalt,
@@ -9740,6 +10552,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     required this.fontWeightDelta,
     this.fontFamily,
     required this.extraBottomInset,
+    required this.frequentIconKeys,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -9776,6 +10589,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       map['my_revolut'] = Variable<String>(myRevolut);
     }
     map['upi_enabled'] = Variable<bool>(upiEnabled);
+    map['rta_enabled'] = Variable<bool>(rtaEnabled);
     map['paypal_enabled'] = Variable<bool>(paypalEnabled);
     map['venmo_enabled'] = Variable<bool>(venmoEnabled);
     map['cashapp_enabled'] = Variable<bool>(cashappEnabled);
@@ -9793,6 +10607,16 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     {
       map['lock_screen_style'] = Variable<String>(
         $SettingsTable.$converterlockScreenStyle.toSql(lockScreenStyle),
+      );
+    }
+    {
+      map['more_screen_view_mode'] = Variable<String>(
+        $SettingsTable.$convertermoreScreenViewMode.toSql(moreScreenViewMode),
+      );
+    }
+    {
+      map['budgeting_mode'] = Variable<String>(
+        $SettingsTable.$converterbudgetingMode.toSql(budgetingMode),
       );
     }
     map['pin_timeout_minutes'] = Variable<int>(pinTimeoutMinutes);
@@ -9843,6 +10667,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       map['font_family'] = Variable<String>(fontFamily);
     }
     map['extra_bottom_inset'] = Variable<int>(extraBottomInset);
+    map['frequent_icon_keys'] = Variable<String>(frequentIconKeys);
     return map;
   }
 
@@ -9880,6 +10705,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ? const Value.absent()
           : Value(myRevolut),
       upiEnabled: Value(upiEnabled),
+      rtaEnabled: Value(rtaEnabled),
       paypalEnabled: Value(paypalEnabled),
       venmoEnabled: Value(venmoEnabled),
       cashappEnabled: Value(cashappEnabled),
@@ -9895,6 +10721,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           : Value(passcodeLength),
       biometricEnabled: Value(biometricEnabled),
       lockScreenStyle: Value(lockScreenStyle),
+      moreScreenViewMode: Value(moreScreenViewMode),
+      budgetingMode: Value(budgetingMode),
       pinTimeoutMinutes: Value(pinTimeoutMinutes),
       masterPhraseHash: masterPhraseHash == null && nullToAbsent
           ? const Value.absent()
@@ -9933,6 +10761,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ? const Value.absent()
           : Value(fontFamily),
       extraBottomInset: Value(extraBottomInset),
+      frequentIconKeys: Value(frequentIconKeys),
     );
   }
 
@@ -9968,6 +10797,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       myCashapp: serializer.fromJson<String?>(json['myCashapp']),
       myRevolut: serializer.fromJson<String?>(json['myRevolut']),
       upiEnabled: serializer.fromJson<bool>(json['upiEnabled']),
+      rtaEnabled: serializer.fromJson<bool>(json['rtaEnabled']),
       paypalEnabled: serializer.fromJson<bool>(json['paypalEnabled']),
       venmoEnabled: serializer.fromJson<bool>(json['venmoEnabled']),
       cashappEnabled: serializer.fromJson<bool>(json['cashappEnabled']),
@@ -9978,6 +10808,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       biometricEnabled: serializer.fromJson<bool>(json['biometricEnabled']),
       lockScreenStyle: $SettingsTable.$converterlockScreenStyle.fromJson(
         serializer.fromJson<String>(json['lockScreenStyle']),
+      ),
+      moreScreenViewMode: $SettingsTable.$convertermoreScreenViewMode.fromJson(
+        serializer.fromJson<String>(json['moreScreenViewMode']),
+      ),
+      budgetingMode: $SettingsTable.$converterbudgetingMode.fromJson(
+        serializer.fromJson<String>(json['budgetingMode']),
       ),
       pinTimeoutMinutes: serializer.fromJson<int>(json['pinTimeoutMinutes']),
       masterPhraseHash: serializer.fromJson<String?>(json['masterPhraseHash']),
@@ -10034,6 +10870,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       fontWeightDelta: serializer.fromJson<int>(json['fontWeightDelta']),
       fontFamily: serializer.fromJson<String?>(json['fontFamily']),
       extraBottomInset: serializer.fromJson<int>(json['extraBottomInset']),
+      frequentIconKeys: serializer.fromJson<String>(json['frequentIconKeys']),
     );
   }
   @override
@@ -10060,6 +10897,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'myCashapp': serializer.toJson<String?>(myCashapp),
       'myRevolut': serializer.toJson<String?>(myRevolut),
       'upiEnabled': serializer.toJson<bool>(upiEnabled),
+      'rtaEnabled': serializer.toJson<bool>(rtaEnabled),
       'paypalEnabled': serializer.toJson<bool>(paypalEnabled),
       'venmoEnabled': serializer.toJson<bool>(venmoEnabled),
       'cashappEnabled': serializer.toJson<bool>(cashappEnabled),
@@ -10070,6 +10908,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'biometricEnabled': serializer.toJson<bool>(biometricEnabled),
       'lockScreenStyle': serializer.toJson<String>(
         $SettingsTable.$converterlockScreenStyle.toJson(lockScreenStyle),
+      ),
+      'moreScreenViewMode': serializer.toJson<String>(
+        $SettingsTable.$convertermoreScreenViewMode.toJson(moreScreenViewMode),
+      ),
+      'budgetingMode': serializer.toJson<String>(
+        $SettingsTable.$converterbudgetingMode.toJson(budgetingMode),
       ),
       'pinTimeoutMinutes': serializer.toJson<int>(pinTimeoutMinutes),
       'masterPhraseHash': serializer.toJson<String?>(masterPhraseHash),
@@ -10109,6 +10953,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'fontWeightDelta': serializer.toJson<int>(fontWeightDelta),
       'fontFamily': serializer.toJson<String?>(fontFamily),
       'extraBottomInset': serializer.toJson<int>(extraBottomInset),
+      'frequentIconKeys': serializer.toJson<String>(frequentIconKeys),
     };
   }
 
@@ -10131,6 +10976,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     Value<String?> myCashapp = const Value.absent(),
     Value<String?> myRevolut = const Value.absent(),
     bool? upiEnabled,
+    bool? rtaEnabled,
     bool? paypalEnabled,
     bool? venmoEnabled,
     bool? cashappEnabled,
@@ -10140,6 +10986,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     Value<int?> passcodeLength = const Value.absent(),
     bool? biometricEnabled,
     LockScreenStyle? lockScreenStyle,
+    MoreScreenViewMode? moreScreenViewMode,
+    BudgetingMode? budgetingMode,
     int? pinTimeoutMinutes,
     Value<String?> masterPhraseHash = const Value.absent(),
     Value<String?> masterPhraseSalt = const Value.absent(),
@@ -10168,6 +11016,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     int? fontWeightDelta,
     Value<String?> fontFamily = const Value.absent(),
     int? extraBottomInset,
+    String? frequentIconKeys,
   }) => SettingRow(
     id: id ?? this.id,
     currencyCode: currencyCode ?? this.currencyCode,
@@ -10190,6 +11039,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     myCashapp: myCashapp.present ? myCashapp.value : this.myCashapp,
     myRevolut: myRevolut.present ? myRevolut.value : this.myRevolut,
     upiEnabled: upiEnabled ?? this.upiEnabled,
+    rtaEnabled: rtaEnabled ?? this.rtaEnabled,
     paypalEnabled: paypalEnabled ?? this.paypalEnabled,
     venmoEnabled: venmoEnabled ?? this.venmoEnabled,
     cashappEnabled: cashappEnabled ?? this.cashappEnabled,
@@ -10201,6 +11051,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
         : this.passcodeLength,
     biometricEnabled: biometricEnabled ?? this.biometricEnabled,
     lockScreenStyle: lockScreenStyle ?? this.lockScreenStyle,
+    moreScreenViewMode: moreScreenViewMode ?? this.moreScreenViewMode,
+    budgetingMode: budgetingMode ?? this.budgetingMode,
     pinTimeoutMinutes: pinTimeoutMinutes ?? this.pinTimeoutMinutes,
     masterPhraseHash: masterPhraseHash.present
         ? masterPhraseHash.value
@@ -10242,6 +11094,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     fontWeightDelta: fontWeightDelta ?? this.fontWeightDelta,
     fontFamily: fontFamily.present ? fontFamily.value : this.fontFamily,
     extraBottomInset: extraBottomInset ?? this.extraBottomInset,
+    frequentIconKeys: frequentIconKeys ?? this.frequentIconKeys,
   );
   SettingRow copyWithCompanion(SettingsCompanion data) {
     return SettingRow(
@@ -10281,6 +11134,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       upiEnabled: data.upiEnabled.present
           ? data.upiEnabled.value
           : this.upiEnabled,
+      rtaEnabled: data.rtaEnabled.present
+          ? data.rtaEnabled.value
+          : this.rtaEnabled,
       paypalEnabled: data.paypalEnabled.present
           ? data.paypalEnabled.value
           : this.paypalEnabled,
@@ -10308,6 +11164,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       lockScreenStyle: data.lockScreenStyle.present
           ? data.lockScreenStyle.value
           : this.lockScreenStyle,
+      moreScreenViewMode: data.moreScreenViewMode.present
+          ? data.moreScreenViewMode.value
+          : this.moreScreenViewMode,
+      budgetingMode: data.budgetingMode.present
+          ? data.budgetingMode.value
+          : this.budgetingMode,
       pinTimeoutMinutes: data.pinTimeoutMinutes.present
           ? data.pinTimeoutMinutes.value
           : this.pinTimeoutMinutes,
@@ -10392,6 +11254,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       extraBottomInset: data.extraBottomInset.present
           ? data.extraBottomInset.value
           : this.extraBottomInset,
+      frequentIconKeys: data.frequentIconKeys.present
+          ? data.frequentIconKeys.value
+          : this.frequentIconKeys,
     );
   }
 
@@ -10416,6 +11281,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('myCashapp: $myCashapp, ')
           ..write('myRevolut: $myRevolut, ')
           ..write('upiEnabled: $upiEnabled, ')
+          ..write('rtaEnabled: $rtaEnabled, ')
           ..write('paypalEnabled: $paypalEnabled, ')
           ..write('venmoEnabled: $venmoEnabled, ')
           ..write('cashappEnabled: $cashappEnabled, ')
@@ -10425,6 +11291,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('passcodeLength: $passcodeLength, ')
           ..write('biometricEnabled: $biometricEnabled, ')
           ..write('lockScreenStyle: $lockScreenStyle, ')
+          ..write('moreScreenViewMode: $moreScreenViewMode, ')
+          ..write('budgetingMode: $budgetingMode, ')
           ..write('pinTimeoutMinutes: $pinTimeoutMinutes, ')
           ..write('masterPhraseHash: $masterPhraseHash, ')
           ..write('masterPhraseSalt: $masterPhraseSalt, ')
@@ -10454,7 +11322,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('fontScalePercent: $fontScalePercent, ')
           ..write('fontWeightDelta: $fontWeightDelta, ')
           ..write('fontFamily: $fontFamily, ')
-          ..write('extraBottomInset: $extraBottomInset')
+          ..write('extraBottomInset: $extraBottomInset, ')
+          ..write('frequentIconKeys: $frequentIconKeys')
           ..write(')'))
         .toString();
   }
@@ -10479,6 +11348,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     myCashapp,
     myRevolut,
     upiEnabled,
+    rtaEnabled,
     paypalEnabled,
     venmoEnabled,
     cashappEnabled,
@@ -10488,6 +11358,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     passcodeLength,
     biometricEnabled,
     lockScreenStyle,
+    moreScreenViewMode,
+    budgetingMode,
     pinTimeoutMinutes,
     masterPhraseHash,
     masterPhraseSalt,
@@ -10516,6 +11388,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     fontWeightDelta,
     fontFamily,
     extraBottomInset,
+    frequentIconKeys,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -10539,6 +11412,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.myCashapp == this.myCashapp &&
           other.myRevolut == this.myRevolut &&
           other.upiEnabled == this.upiEnabled &&
+          other.rtaEnabled == this.rtaEnabled &&
           other.paypalEnabled == this.paypalEnabled &&
           other.venmoEnabled == this.venmoEnabled &&
           other.cashappEnabled == this.cashappEnabled &&
@@ -10548,6 +11422,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.passcodeLength == this.passcodeLength &&
           other.biometricEnabled == this.biometricEnabled &&
           other.lockScreenStyle == this.lockScreenStyle &&
+          other.moreScreenViewMode == this.moreScreenViewMode &&
+          other.budgetingMode == this.budgetingMode &&
           other.pinTimeoutMinutes == this.pinTimeoutMinutes &&
           other.masterPhraseHash == this.masterPhraseHash &&
           other.masterPhraseSalt == this.masterPhraseSalt &&
@@ -10577,7 +11453,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.fontScalePercent == this.fontScalePercent &&
           other.fontWeightDelta == this.fontWeightDelta &&
           other.fontFamily == this.fontFamily &&
-          other.extraBottomInset == this.extraBottomInset);
+          other.extraBottomInset == this.extraBottomInset &&
+          other.frequentIconKeys == this.frequentIconKeys);
 }
 
 class SettingsCompanion extends UpdateCompanion<SettingRow> {
@@ -10599,6 +11476,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<String?> myCashapp;
   final Value<String?> myRevolut;
   final Value<bool> upiEnabled;
+  final Value<bool> rtaEnabled;
   final Value<bool> paypalEnabled;
   final Value<bool> venmoEnabled;
   final Value<bool> cashappEnabled;
@@ -10608,6 +11486,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<int?> passcodeLength;
   final Value<bool> biometricEnabled;
   final Value<LockScreenStyle> lockScreenStyle;
+  final Value<MoreScreenViewMode> moreScreenViewMode;
+  final Value<BudgetingMode> budgetingMode;
   final Value<int> pinTimeoutMinutes;
   final Value<String?> masterPhraseHash;
   final Value<String?> masterPhraseSalt;
@@ -10636,6 +11516,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<int> fontWeightDelta;
   final Value<String?> fontFamily;
   final Value<int> extraBottomInset;
+  final Value<String> frequentIconKeys;
   const SettingsCompanion({
     this.id = const Value.absent(),
     this.currencyCode = const Value.absent(),
@@ -10655,6 +11536,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.myCashapp = const Value.absent(),
     this.myRevolut = const Value.absent(),
     this.upiEnabled = const Value.absent(),
+    this.rtaEnabled = const Value.absent(),
     this.paypalEnabled = const Value.absent(),
     this.venmoEnabled = const Value.absent(),
     this.cashappEnabled = const Value.absent(),
@@ -10664,6 +11546,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.passcodeLength = const Value.absent(),
     this.biometricEnabled = const Value.absent(),
     this.lockScreenStyle = const Value.absent(),
+    this.moreScreenViewMode = const Value.absent(),
+    this.budgetingMode = const Value.absent(),
     this.pinTimeoutMinutes = const Value.absent(),
     this.masterPhraseHash = const Value.absent(),
     this.masterPhraseSalt = const Value.absent(),
@@ -10692,6 +11576,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.fontWeightDelta = const Value.absent(),
     this.fontFamily = const Value.absent(),
     this.extraBottomInset = const Value.absent(),
+    this.frequentIconKeys = const Value.absent(),
   });
   SettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -10712,6 +11597,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.myCashapp = const Value.absent(),
     this.myRevolut = const Value.absent(),
     this.upiEnabled = const Value.absent(),
+    this.rtaEnabled = const Value.absent(),
     this.paypalEnabled = const Value.absent(),
     this.venmoEnabled = const Value.absent(),
     this.cashappEnabled = const Value.absent(),
@@ -10721,6 +11607,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.passcodeLength = const Value.absent(),
     this.biometricEnabled = const Value.absent(),
     this.lockScreenStyle = const Value.absent(),
+    this.moreScreenViewMode = const Value.absent(),
+    this.budgetingMode = const Value.absent(),
     this.pinTimeoutMinutes = const Value.absent(),
     this.masterPhraseHash = const Value.absent(),
     this.masterPhraseSalt = const Value.absent(),
@@ -10749,6 +11637,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.fontWeightDelta = const Value.absent(),
     this.fontFamily = const Value.absent(),
     this.extraBottomInset = const Value.absent(),
+    this.frequentIconKeys = const Value.absent(),
   });
   static Insertable<SettingRow> custom({
     Expression<int>? id,
@@ -10769,6 +11658,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<String>? myCashapp,
     Expression<String>? myRevolut,
     Expression<bool>? upiEnabled,
+    Expression<bool>? rtaEnabled,
     Expression<bool>? paypalEnabled,
     Expression<bool>? venmoEnabled,
     Expression<bool>? cashappEnabled,
@@ -10778,6 +11668,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<int>? passcodeLength,
     Expression<bool>? biometricEnabled,
     Expression<String>? lockScreenStyle,
+    Expression<String>? moreScreenViewMode,
+    Expression<String>? budgetingMode,
     Expression<int>? pinTimeoutMinutes,
     Expression<String>? masterPhraseHash,
     Expression<String>? masterPhraseSalt,
@@ -10806,6 +11698,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<int>? fontWeightDelta,
     Expression<String>? fontFamily,
     Expression<int>? extraBottomInset,
+    Expression<String>? frequentIconKeys,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -10830,6 +11723,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       if (myCashapp != null) 'my_cashapp': myCashapp,
       if (myRevolut != null) 'my_revolut': myRevolut,
       if (upiEnabled != null) 'upi_enabled': upiEnabled,
+      if (rtaEnabled != null) 'rta_enabled': rtaEnabled,
       if (paypalEnabled != null) 'paypal_enabled': paypalEnabled,
       if (venmoEnabled != null) 'venmo_enabled': venmoEnabled,
       if (cashappEnabled != null) 'cashapp_enabled': cashappEnabled,
@@ -10839,6 +11733,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       if (passcodeLength != null) 'passcode_length': passcodeLength,
       if (biometricEnabled != null) 'biometric_enabled': biometricEnabled,
       if (lockScreenStyle != null) 'lock_screen_style': lockScreenStyle,
+      if (moreScreenViewMode != null)
+        'more_screen_view_mode': moreScreenViewMode,
+      if (budgetingMode != null) 'budgeting_mode': budgetingMode,
       if (pinTimeoutMinutes != null) 'pin_timeout_minutes': pinTimeoutMinutes,
       if (masterPhraseHash != null) 'master_phrase_hash': masterPhraseHash,
       if (masterPhraseSalt != null) 'master_phrase_salt': masterPhraseSalt,
@@ -10880,6 +11777,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       if (fontWeightDelta != null) 'font_weight_delta': fontWeightDelta,
       if (fontFamily != null) 'font_family': fontFamily,
       if (extraBottomInset != null) 'extra_bottom_inset': extraBottomInset,
+      if (frequentIconKeys != null) 'frequent_icon_keys': frequentIconKeys,
     });
   }
 
@@ -10902,6 +11800,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<String?>? myCashapp,
     Value<String?>? myRevolut,
     Value<bool>? upiEnabled,
+    Value<bool>? rtaEnabled,
     Value<bool>? paypalEnabled,
     Value<bool>? venmoEnabled,
     Value<bool>? cashappEnabled,
@@ -10911,6 +11810,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<int?>? passcodeLength,
     Value<bool>? biometricEnabled,
     Value<LockScreenStyle>? lockScreenStyle,
+    Value<MoreScreenViewMode>? moreScreenViewMode,
+    Value<BudgetingMode>? budgetingMode,
     Value<int>? pinTimeoutMinutes,
     Value<String?>? masterPhraseHash,
     Value<String?>? masterPhraseSalt,
@@ -10939,6 +11840,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<int>? fontWeightDelta,
     Value<String?>? fontFamily,
     Value<int>? extraBottomInset,
+    Value<String>? frequentIconKeys,
   }) {
     return SettingsCompanion(
       id: id ?? this.id,
@@ -10961,6 +11863,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       myCashapp: myCashapp ?? this.myCashapp,
       myRevolut: myRevolut ?? this.myRevolut,
       upiEnabled: upiEnabled ?? this.upiEnabled,
+      rtaEnabled: rtaEnabled ?? this.rtaEnabled,
       paypalEnabled: paypalEnabled ?? this.paypalEnabled,
       venmoEnabled: venmoEnabled ?? this.venmoEnabled,
       cashappEnabled: cashappEnabled ?? this.cashappEnabled,
@@ -10970,6 +11873,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       passcodeLength: passcodeLength ?? this.passcodeLength,
       biometricEnabled: biometricEnabled ?? this.biometricEnabled,
       lockScreenStyle: lockScreenStyle ?? this.lockScreenStyle,
+      moreScreenViewMode: moreScreenViewMode ?? this.moreScreenViewMode,
+      budgetingMode: budgetingMode ?? this.budgetingMode,
       pinTimeoutMinutes: pinTimeoutMinutes ?? this.pinTimeoutMinutes,
       masterPhraseHash: masterPhraseHash ?? this.masterPhraseHash,
       masterPhraseSalt: masterPhraseSalt ?? this.masterPhraseSalt,
@@ -11006,6 +11911,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       fontWeightDelta: fontWeightDelta ?? this.fontWeightDelta,
       fontFamily: fontFamily ?? this.fontFamily,
       extraBottomInset: extraBottomInset ?? this.extraBottomInset,
+      frequentIconKeys: frequentIconKeys ?? this.frequentIconKeys,
     );
   }
 
@@ -11070,6 +11976,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     if (upiEnabled.present) {
       map['upi_enabled'] = Variable<bool>(upiEnabled.value);
     }
+    if (rtaEnabled.present) {
+      map['rta_enabled'] = Variable<bool>(rtaEnabled.value);
+    }
     if (paypalEnabled.present) {
       map['paypal_enabled'] = Variable<bool>(paypalEnabled.value);
     }
@@ -11097,6 +12006,18 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     if (lockScreenStyle.present) {
       map['lock_screen_style'] = Variable<String>(
         $SettingsTable.$converterlockScreenStyle.toSql(lockScreenStyle.value),
+      );
+    }
+    if (moreScreenViewMode.present) {
+      map['more_screen_view_mode'] = Variable<String>(
+        $SettingsTable.$convertermoreScreenViewMode.toSql(
+          moreScreenViewMode.value,
+        ),
+      );
+    }
+    if (budgetingMode.present) {
+      map['budgeting_mode'] = Variable<String>(
+        $SettingsTable.$converterbudgetingMode.toSql(budgetingMode.value),
       );
     }
     if (pinTimeoutMinutes.present) {
@@ -11205,6 +12126,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     if (extraBottomInset.present) {
       map['extra_bottom_inset'] = Variable<int>(extraBottomInset.value);
     }
+    if (frequentIconKeys.present) {
+      map['frequent_icon_keys'] = Variable<String>(frequentIconKeys.value);
+    }
     return map;
   }
 
@@ -11229,6 +12153,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('myCashapp: $myCashapp, ')
           ..write('myRevolut: $myRevolut, ')
           ..write('upiEnabled: $upiEnabled, ')
+          ..write('rtaEnabled: $rtaEnabled, ')
           ..write('paypalEnabled: $paypalEnabled, ')
           ..write('venmoEnabled: $venmoEnabled, ')
           ..write('cashappEnabled: $cashappEnabled, ')
@@ -11238,6 +12163,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('passcodeLength: $passcodeLength, ')
           ..write('biometricEnabled: $biometricEnabled, ')
           ..write('lockScreenStyle: $lockScreenStyle, ')
+          ..write('moreScreenViewMode: $moreScreenViewMode, ')
+          ..write('budgetingMode: $budgetingMode, ')
           ..write('pinTimeoutMinutes: $pinTimeoutMinutes, ')
           ..write('masterPhraseHash: $masterPhraseHash, ')
           ..write('masterPhraseSalt: $masterPhraseSalt, ')
@@ -11267,7 +12194,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('fontScalePercent: $fontScalePercent, ')
           ..write('fontWeightDelta: $fontWeightDelta, ')
           ..write('fontFamily: $fontFamily, ')
-          ..write('extraBottomInset: $extraBottomInset')
+          ..write('extraBottomInset: $extraBottomInset, ')
+          ..write('frequentIconKeys: $frequentIconKeys')
           ..write(')'))
         .toString();
   }
@@ -14220,6 +15148,530 @@ class RecurringRuleTagsCompanion extends UpdateCompanion<RecurringRuleTagRow> {
   String toString() {
     return (StringBuffer('RecurringRuleTagsCompanion(')
           ..write('ruleId: $ruleId, ')
+          ..write('tagId: $tagId, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TagGroupsTable extends TagGroups
+    with TableInfo<$TagGroupsTable, TagGroupRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TagGroupsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 30,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _colorValueMeta = const VerificationMeta(
+    'colorValue',
+  );
+  @override
+  late final GeneratedColumn<int> colorValue = GeneratedColumn<int>(
+    'color_value',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name, colorValue, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'tag_groups';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TagGroupRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('color_value')) {
+      context.handle(
+        _colorValueMeta,
+        colorValue.isAcceptableOrUnknown(data['color_value']!, _colorValueMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_colorValueMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {name},
+  ];
+  @override
+  TagGroupRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TagGroupRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      colorValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}color_value'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $TagGroupsTable createAlias(String alias) {
+    return $TagGroupsTable(attachedDatabase, alias);
+  }
+}
+
+class TagGroupRow extends DataClass implements Insertable<TagGroupRow> {
+  final int id;
+  final String name;
+  final int colorValue;
+  final DateTime createdAt;
+  const TagGroupRow({
+    required this.id,
+    required this.name,
+    required this.colorValue,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    map['color_value'] = Variable<int>(colorValue);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  TagGroupsCompanion toCompanion(bool nullToAbsent) {
+    return TagGroupsCompanion(
+      id: Value(id),
+      name: Value(name),
+      colorValue: Value(colorValue),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory TagGroupRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TagGroupRow(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      colorValue: serializer.fromJson<int>(json['colorValue']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'colorValue': serializer.toJson<int>(colorValue),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  TagGroupRow copyWith({
+    int? id,
+    String? name,
+    int? colorValue,
+    DateTime? createdAt,
+  }) => TagGroupRow(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    colorValue: colorValue ?? this.colorValue,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  TagGroupRow copyWithCompanion(TagGroupsCompanion data) {
+    return TagGroupRow(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      colorValue: data.colorValue.present
+          ? data.colorValue.value
+          : this.colorValue,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TagGroupRow(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('colorValue: $colorValue, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, colorValue, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TagGroupRow &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.colorValue == this.colorValue &&
+          other.createdAt == this.createdAt);
+}
+
+class TagGroupsCompanion extends UpdateCompanion<TagGroupRow> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<int> colorValue;
+  final Value<DateTime> createdAt;
+  const TagGroupsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.colorValue = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  TagGroupsCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    required int colorValue,
+    this.createdAt = const Value.absent(),
+  }) : name = Value(name),
+       colorValue = Value(colorValue);
+  static Insertable<TagGroupRow> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<int>? colorValue,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (colorValue != null) 'color_value': colorValue,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  TagGroupsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<int>? colorValue,
+    Value<DateTime>? createdAt,
+  }) {
+    return TagGroupsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      colorValue: colorValue ?? this.colorValue,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (colorValue.present) {
+      map['color_value'] = Variable<int>(colorValue.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TagGroupsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('colorValue: $colorValue, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TagGroupTagsTable extends TagGroupTags
+    with TableInfo<$TagGroupTagsTable, TagGroupTagRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TagGroupTagsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _groupIdMeta = const VerificationMeta(
+    'groupId',
+  );
+  @override
+  late final GeneratedColumn<int> groupId = GeneratedColumn<int>(
+    'group_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES tag_groups (id)',
+    ),
+  );
+  static const VerificationMeta _tagIdMeta = const VerificationMeta('tagId');
+  @override
+  late final GeneratedColumn<int> tagId = GeneratedColumn<int>(
+    'tag_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES tags (id)',
+    ),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [groupId, tagId];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'tag_group_tags';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TagGroupTagRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('group_id')) {
+      context.handle(
+        _groupIdMeta,
+        groupId.isAcceptableOrUnknown(data['group_id']!, _groupIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_groupIdMeta);
+    }
+    if (data.containsKey('tag_id')) {
+      context.handle(
+        _tagIdMeta,
+        tagId.isAcceptableOrUnknown(data['tag_id']!, _tagIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_tagIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {groupId, tagId};
+  @override
+  TagGroupTagRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TagGroupTagRow(
+      groupId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}group_id'],
+      )!,
+      tagId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}tag_id'],
+      )!,
+    );
+  }
+
+  @override
+  $TagGroupTagsTable createAlias(String alias) {
+    return $TagGroupTagsTable(attachedDatabase, alias);
+  }
+}
+
+class TagGroupTagRow extends DataClass implements Insertable<TagGroupTagRow> {
+  final int groupId;
+  final int tagId;
+  const TagGroupTagRow({required this.groupId, required this.tagId});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['group_id'] = Variable<int>(groupId);
+    map['tag_id'] = Variable<int>(tagId);
+    return map;
+  }
+
+  TagGroupTagsCompanion toCompanion(bool nullToAbsent) {
+    return TagGroupTagsCompanion(groupId: Value(groupId), tagId: Value(tagId));
+  }
+
+  factory TagGroupTagRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TagGroupTagRow(
+      groupId: serializer.fromJson<int>(json['groupId']),
+      tagId: serializer.fromJson<int>(json['tagId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'groupId': serializer.toJson<int>(groupId),
+      'tagId': serializer.toJson<int>(tagId),
+    };
+  }
+
+  TagGroupTagRow copyWith({int? groupId, int? tagId}) => TagGroupTagRow(
+    groupId: groupId ?? this.groupId,
+    tagId: tagId ?? this.tagId,
+  );
+  TagGroupTagRow copyWithCompanion(TagGroupTagsCompanion data) {
+    return TagGroupTagRow(
+      groupId: data.groupId.present ? data.groupId.value : this.groupId,
+      tagId: data.tagId.present ? data.tagId.value : this.tagId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TagGroupTagRow(')
+          ..write('groupId: $groupId, ')
+          ..write('tagId: $tagId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(groupId, tagId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TagGroupTagRow &&
+          other.groupId == this.groupId &&
+          other.tagId == this.tagId);
+}
+
+class TagGroupTagsCompanion extends UpdateCompanion<TagGroupTagRow> {
+  final Value<int> groupId;
+  final Value<int> tagId;
+  final Value<int> rowid;
+  const TagGroupTagsCompanion({
+    this.groupId = const Value.absent(),
+    this.tagId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TagGroupTagsCompanion.insert({
+    required int groupId,
+    required int tagId,
+    this.rowid = const Value.absent(),
+  }) : groupId = Value(groupId),
+       tagId = Value(tagId);
+  static Insertable<TagGroupTagRow> custom({
+    Expression<int>? groupId,
+    Expression<int>? tagId,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (groupId != null) 'group_id': groupId,
+      if (tagId != null) 'tag_id': tagId,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TagGroupTagsCompanion copyWith({
+    Value<int>? groupId,
+    Value<int>? tagId,
+    Value<int>? rowid,
+  }) {
+    return TagGroupTagsCompanion(
+      groupId: groupId ?? this.groupId,
+      tagId: tagId ?? this.tagId,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (groupId.present) {
+      map['group_id'] = Variable<int>(groupId.value);
+    }
+    if (tagId.present) {
+      map['tag_id'] = Variable<int>(tagId.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TagGroupTagsCompanion(')
+          ..write('groupId: $groupId, ')
           ..write('tagId: $tagId, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -18258,6 +19710,1168 @@ class CreditCardDetailsCompanion extends UpdateCompanion<CreditCardDetailRow> {
   }
 }
 
+class $CurrencyRatesTable extends CurrencyRates
+    with TableInfo<$CurrencyRatesTable, CurrencyRateRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CurrencyRatesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _currencyCodeMeta = const VerificationMeta(
+    'currencyCode',
+  );
+  @override
+  late final GeneratedColumn<String> currencyCode = GeneratedColumn<String>(
+    'currency_code',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 3,
+      maxTextLength: 3,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _rateToBaseMicrosMeta = const VerificationMeta(
+    'rateToBaseMicros',
+  );
+  @override
+  late final GeneratedColumn<int> rateToBaseMicros = GeneratedColumn<int>(
+    'rate_to_base_micros',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _effectiveAtMeta = const VerificationMeta(
+    'effectiveAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> effectiveAt = GeneratedColumn<DateTime>(
+    'effective_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    currencyCode,
+    rateToBaseMicros,
+    effectiveAt,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'currency_rates';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CurrencyRateRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('currency_code')) {
+      context.handle(
+        _currencyCodeMeta,
+        currencyCode.isAcceptableOrUnknown(
+          data['currency_code']!,
+          _currencyCodeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_currencyCodeMeta);
+    }
+    if (data.containsKey('rate_to_base_micros')) {
+      context.handle(
+        _rateToBaseMicrosMeta,
+        rateToBaseMicros.isAcceptableOrUnknown(
+          data['rate_to_base_micros']!,
+          _rateToBaseMicrosMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_rateToBaseMicrosMeta);
+    }
+    if (data.containsKey('effective_at')) {
+      context.handle(
+        _effectiveAtMeta,
+        effectiveAt.isAcceptableOrUnknown(
+          data['effective_at']!,
+          _effectiveAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_effectiveAtMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CurrencyRateRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CurrencyRateRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      currencyCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}currency_code'],
+      )!,
+      rateToBaseMicros: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}rate_to_base_micros'],
+      )!,
+      effectiveAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}effective_at'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CurrencyRatesTable createAlias(String alias) {
+    return $CurrencyRatesTable(attachedDatabase, alias);
+  }
+}
+
+class CurrencyRateRow extends DataClass implements Insertable<CurrencyRateRow> {
+  final int id;
+
+  /// The non-parent currency this rate prices, e.g. `USD`. Never the parent
+  /// currency itself, which is always 1:1 with itself.
+  final String currencyCode;
+
+  /// Units of the parent currency per 1 unit of [currencyCode], scaled by
+  /// [currencyRateScale] so it's an exact integer — never a `double`, the
+  /// same rule [Money] follows. `83_120_000` means 1 unit = 83.12 parent.
+  final int rateToBaseMicros;
+  final DateTime effectiveAt;
+  final DateTime createdAt;
+  const CurrencyRateRow({
+    required this.id,
+    required this.currencyCode,
+    required this.rateToBaseMicros,
+    required this.effectiveAt,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['currency_code'] = Variable<String>(currencyCode);
+    map['rate_to_base_micros'] = Variable<int>(rateToBaseMicros);
+    map['effective_at'] = Variable<DateTime>(effectiveAt);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  CurrencyRatesCompanion toCompanion(bool nullToAbsent) {
+    return CurrencyRatesCompanion(
+      id: Value(id),
+      currencyCode: Value(currencyCode),
+      rateToBaseMicros: Value(rateToBaseMicros),
+      effectiveAt: Value(effectiveAt),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory CurrencyRateRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CurrencyRateRow(
+      id: serializer.fromJson<int>(json['id']),
+      currencyCode: serializer.fromJson<String>(json['currencyCode']),
+      rateToBaseMicros: serializer.fromJson<int>(json['rateToBaseMicros']),
+      effectiveAt: serializer.fromJson<DateTime>(json['effectiveAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'currencyCode': serializer.toJson<String>(currencyCode),
+      'rateToBaseMicros': serializer.toJson<int>(rateToBaseMicros),
+      'effectiveAt': serializer.toJson<DateTime>(effectiveAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  CurrencyRateRow copyWith({
+    int? id,
+    String? currencyCode,
+    int? rateToBaseMicros,
+    DateTime? effectiveAt,
+    DateTime? createdAt,
+  }) => CurrencyRateRow(
+    id: id ?? this.id,
+    currencyCode: currencyCode ?? this.currencyCode,
+    rateToBaseMicros: rateToBaseMicros ?? this.rateToBaseMicros,
+    effectiveAt: effectiveAt ?? this.effectiveAt,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  CurrencyRateRow copyWithCompanion(CurrencyRatesCompanion data) {
+    return CurrencyRateRow(
+      id: data.id.present ? data.id.value : this.id,
+      currencyCode: data.currencyCode.present
+          ? data.currencyCode.value
+          : this.currencyCode,
+      rateToBaseMicros: data.rateToBaseMicros.present
+          ? data.rateToBaseMicros.value
+          : this.rateToBaseMicros,
+      effectiveAt: data.effectiveAt.present
+          ? data.effectiveAt.value
+          : this.effectiveAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CurrencyRateRow(')
+          ..write('id: $id, ')
+          ..write('currencyCode: $currencyCode, ')
+          ..write('rateToBaseMicros: $rateToBaseMicros, ')
+          ..write('effectiveAt: $effectiveAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, currencyCode, rateToBaseMicros, effectiveAt, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CurrencyRateRow &&
+          other.id == this.id &&
+          other.currencyCode == this.currencyCode &&
+          other.rateToBaseMicros == this.rateToBaseMicros &&
+          other.effectiveAt == this.effectiveAt &&
+          other.createdAt == this.createdAt);
+}
+
+class CurrencyRatesCompanion extends UpdateCompanion<CurrencyRateRow> {
+  final Value<int> id;
+  final Value<String> currencyCode;
+  final Value<int> rateToBaseMicros;
+  final Value<DateTime> effectiveAt;
+  final Value<DateTime> createdAt;
+  const CurrencyRatesCompanion({
+    this.id = const Value.absent(),
+    this.currencyCode = const Value.absent(),
+    this.rateToBaseMicros = const Value.absent(),
+    this.effectiveAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  CurrencyRatesCompanion.insert({
+    this.id = const Value.absent(),
+    required String currencyCode,
+    required int rateToBaseMicros,
+    required DateTime effectiveAt,
+    this.createdAt = const Value.absent(),
+  }) : currencyCode = Value(currencyCode),
+       rateToBaseMicros = Value(rateToBaseMicros),
+       effectiveAt = Value(effectiveAt);
+  static Insertable<CurrencyRateRow> custom({
+    Expression<int>? id,
+    Expression<String>? currencyCode,
+    Expression<int>? rateToBaseMicros,
+    Expression<DateTime>? effectiveAt,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (currencyCode != null) 'currency_code': currencyCode,
+      if (rateToBaseMicros != null) 'rate_to_base_micros': rateToBaseMicros,
+      if (effectiveAt != null) 'effective_at': effectiveAt,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  CurrencyRatesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? currencyCode,
+    Value<int>? rateToBaseMicros,
+    Value<DateTime>? effectiveAt,
+    Value<DateTime>? createdAt,
+  }) {
+    return CurrencyRatesCompanion(
+      id: id ?? this.id,
+      currencyCode: currencyCode ?? this.currencyCode,
+      rateToBaseMicros: rateToBaseMicros ?? this.rateToBaseMicros,
+      effectiveAt: effectiveAt ?? this.effectiveAt,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (currencyCode.present) {
+      map['currency_code'] = Variable<String>(currencyCode.value);
+    }
+    if (rateToBaseMicros.present) {
+      map['rate_to_base_micros'] = Variable<int>(rateToBaseMicros.value);
+    }
+    if (effectiveAt.present) {
+      map['effective_at'] = Variable<DateTime>(effectiveAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CurrencyRatesCompanion(')
+          ..write('id: $id, ')
+          ..write('currencyCode: $currencyCode, ')
+          ..write('rateToBaseMicros: $rateToBaseMicros, ')
+          ..write('effectiveAt: $effectiveAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CategoryTemplatesTable extends CategoryTemplates
+    with TableInfo<$CategoryTemplatesTable, CategoryTemplateRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CategoryTemplatesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 60,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'category_templates';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CategoryTemplateRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CategoryTemplateRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CategoryTemplateRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CategoryTemplatesTable createAlias(String alias) {
+    return $CategoryTemplatesTable(attachedDatabase, alias);
+  }
+}
+
+class CategoryTemplateRow extends DataClass
+    implements Insertable<CategoryTemplateRow> {
+  final int id;
+  final String name;
+  final DateTime createdAt;
+  const CategoryTemplateRow({
+    required this.id,
+    required this.name,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  CategoryTemplatesCompanion toCompanion(bool nullToAbsent) {
+    return CategoryTemplatesCompanion(
+      id: Value(id),
+      name: Value(name),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory CategoryTemplateRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CategoryTemplateRow(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  CategoryTemplateRow copyWith({int? id, String? name, DateTime? createdAt}) =>
+      CategoryTemplateRow(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  CategoryTemplateRow copyWithCompanion(CategoryTemplatesCompanion data) {
+    return CategoryTemplateRow(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CategoryTemplateRow(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CategoryTemplateRow &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.createdAt == this.createdAt);
+}
+
+class CategoryTemplatesCompanion extends UpdateCompanion<CategoryTemplateRow> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<DateTime> createdAt;
+  const CategoryTemplatesCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  CategoryTemplatesCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    this.createdAt = const Value.absent(),
+  }) : name = Value(name);
+  static Insertable<CategoryTemplateRow> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  CategoryTemplatesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<DateTime>? createdAt,
+  }) {
+    return CategoryTemplatesCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CategoryTemplatesCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CategoryTemplateItemsTable extends CategoryTemplateItems
+    with TableInfo<$CategoryTemplateItemsTable, CategoryTemplateItemRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CategoryTemplateItemsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _templateIdMeta = const VerificationMeta(
+    'templateId',
+  );
+  @override
+  late final GeneratedColumn<int> templateId = GeneratedColumn<int>(
+    'template_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES category_templates (id)',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 40,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<CategoryKind, String> kind =
+      GeneratedColumn<String>(
+        'kind',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<CategoryKind>($CategoryTemplateItemsTable.$converterkind);
+  static const VerificationMeta _colorValueMeta = const VerificationMeta(
+    'colorValue',
+  );
+  @override
+  late final GeneratedColumn<int> colorValue = GeneratedColumn<int>(
+    'color_value',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _iconKeyMeta = const VerificationMeta(
+    'iconKey',
+  );
+  @override
+  late final GeneratedColumn<String> iconKey = GeneratedColumn<String>(
+    'icon_key',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 40,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _parentItemIdMeta = const VerificationMeta(
+    'parentItemId',
+  );
+  @override
+  late final GeneratedColumn<int> parentItemId = GeneratedColumn<int>(
+    'parent_item_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    templateId,
+    name,
+    kind,
+    colorValue,
+    iconKey,
+    sortOrder,
+    parentItemId,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'category_template_items';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CategoryTemplateItemRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('template_id')) {
+      context.handle(
+        _templateIdMeta,
+        templateId.isAcceptableOrUnknown(data['template_id']!, _templateIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_templateIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('color_value')) {
+      context.handle(
+        _colorValueMeta,
+        colorValue.isAcceptableOrUnknown(data['color_value']!, _colorValueMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_colorValueMeta);
+    }
+    if (data.containsKey('icon_key')) {
+      context.handle(
+        _iconKeyMeta,
+        iconKey.isAcceptableOrUnknown(data['icon_key']!, _iconKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_iconKeyMeta);
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    if (data.containsKey('parent_item_id')) {
+      context.handle(
+        _parentItemIdMeta,
+        parentItemId.isAcceptableOrUnknown(
+          data['parent_item_id']!,
+          _parentItemIdMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CategoryTemplateItemRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CategoryTemplateItemRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      templateId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}template_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      kind: $CategoryTemplateItemsTable.$converterkind.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}kind'],
+        )!,
+      ),
+      colorValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}color_value'],
+      )!,
+      iconKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}icon_key'],
+      )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      parentItemId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}parent_item_id'],
+      ),
+    );
+  }
+
+  @override
+  $CategoryTemplateItemsTable createAlias(String alias) {
+    return $CategoryTemplateItemsTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<CategoryKind, String, String> $converterkind =
+      const EnumNameConverter<CategoryKind>(CategoryKind.values);
+}
+
+class CategoryTemplateItemRow extends DataClass
+    implements Insertable<CategoryTemplateItemRow> {
+  final int id;
+  final int templateId;
+  final String name;
+  final CategoryKind kind;
+  final int colorValue;
+  final String iconKey;
+  final int sortOrder;
+  final int? parentItemId;
+  const CategoryTemplateItemRow({
+    required this.id,
+    required this.templateId,
+    required this.name,
+    required this.kind,
+    required this.colorValue,
+    required this.iconKey,
+    required this.sortOrder,
+    this.parentItemId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['template_id'] = Variable<int>(templateId);
+    map['name'] = Variable<String>(name);
+    {
+      map['kind'] = Variable<String>(
+        $CategoryTemplateItemsTable.$converterkind.toSql(kind),
+      );
+    }
+    map['color_value'] = Variable<int>(colorValue);
+    map['icon_key'] = Variable<String>(iconKey);
+    map['sort_order'] = Variable<int>(sortOrder);
+    if (!nullToAbsent || parentItemId != null) {
+      map['parent_item_id'] = Variable<int>(parentItemId);
+    }
+    return map;
+  }
+
+  CategoryTemplateItemsCompanion toCompanion(bool nullToAbsent) {
+    return CategoryTemplateItemsCompanion(
+      id: Value(id),
+      templateId: Value(templateId),
+      name: Value(name),
+      kind: Value(kind),
+      colorValue: Value(colorValue),
+      iconKey: Value(iconKey),
+      sortOrder: Value(sortOrder),
+      parentItemId: parentItemId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(parentItemId),
+    );
+  }
+
+  factory CategoryTemplateItemRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CategoryTemplateItemRow(
+      id: serializer.fromJson<int>(json['id']),
+      templateId: serializer.fromJson<int>(json['templateId']),
+      name: serializer.fromJson<String>(json['name']),
+      kind: $CategoryTemplateItemsTable.$converterkind.fromJson(
+        serializer.fromJson<String>(json['kind']),
+      ),
+      colorValue: serializer.fromJson<int>(json['colorValue']),
+      iconKey: serializer.fromJson<String>(json['iconKey']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      parentItemId: serializer.fromJson<int?>(json['parentItemId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'templateId': serializer.toJson<int>(templateId),
+      'name': serializer.toJson<String>(name),
+      'kind': serializer.toJson<String>(
+        $CategoryTemplateItemsTable.$converterkind.toJson(kind),
+      ),
+      'colorValue': serializer.toJson<int>(colorValue),
+      'iconKey': serializer.toJson<String>(iconKey),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+      'parentItemId': serializer.toJson<int?>(parentItemId),
+    };
+  }
+
+  CategoryTemplateItemRow copyWith({
+    int? id,
+    int? templateId,
+    String? name,
+    CategoryKind? kind,
+    int? colorValue,
+    String? iconKey,
+    int? sortOrder,
+    Value<int?> parentItemId = const Value.absent(),
+  }) => CategoryTemplateItemRow(
+    id: id ?? this.id,
+    templateId: templateId ?? this.templateId,
+    name: name ?? this.name,
+    kind: kind ?? this.kind,
+    colorValue: colorValue ?? this.colorValue,
+    iconKey: iconKey ?? this.iconKey,
+    sortOrder: sortOrder ?? this.sortOrder,
+    parentItemId: parentItemId.present
+        ? parentItemId.value
+        : this.parentItemId,
+  );
+  CategoryTemplateItemRow copyWithCompanion(
+    CategoryTemplateItemsCompanion data,
+  ) {
+    return CategoryTemplateItemRow(
+      id: data.id.present ? data.id.value : this.id,
+      templateId: data.templateId.present
+          ? data.templateId.value
+          : this.templateId,
+      name: data.name.present ? data.name.value : this.name,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      colorValue: data.colorValue.present
+          ? data.colorValue.value
+          : this.colorValue,
+      iconKey: data.iconKey.present ? data.iconKey.value : this.iconKey,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      parentItemId: data.parentItemId.present
+          ? data.parentItemId.value
+          : this.parentItemId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CategoryTemplateItemRow(')
+          ..write('id: $id, ')
+          ..write('templateId: $templateId, ')
+          ..write('name: $name, ')
+          ..write('kind: $kind, ')
+          ..write('colorValue: $colorValue, ')
+          ..write('iconKey: $iconKey, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('parentItemId: $parentItemId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    templateId,
+    name,
+    kind,
+    colorValue,
+    iconKey,
+    sortOrder,
+    parentItemId,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CategoryTemplateItemRow &&
+          other.id == this.id &&
+          other.templateId == this.templateId &&
+          other.name == this.name &&
+          other.kind == this.kind &&
+          other.colorValue == this.colorValue &&
+          other.iconKey == this.iconKey &&
+          other.sortOrder == this.sortOrder &&
+          other.parentItemId == this.parentItemId);
+}
+
+class CategoryTemplateItemsCompanion
+    extends UpdateCompanion<CategoryTemplateItemRow> {
+  final Value<int> id;
+  final Value<int> templateId;
+  final Value<String> name;
+  final Value<CategoryKind> kind;
+  final Value<int> colorValue;
+  final Value<String> iconKey;
+  final Value<int> sortOrder;
+  final Value<int?> parentItemId;
+  const CategoryTemplateItemsCompanion({
+    this.id = const Value.absent(),
+    this.templateId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.colorValue = const Value.absent(),
+    this.iconKey = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.parentItemId = const Value.absent(),
+  });
+  CategoryTemplateItemsCompanion.insert({
+    this.id = const Value.absent(),
+    required int templateId,
+    required String name,
+    required CategoryKind kind,
+    required int colorValue,
+    required String iconKey,
+    this.sortOrder = const Value.absent(),
+    this.parentItemId = const Value.absent(),
+  }) : templateId = Value(templateId),
+       name = Value(name),
+       kind = Value(kind),
+       colorValue = Value(colorValue),
+       iconKey = Value(iconKey);
+  static Insertable<CategoryTemplateItemRow> custom({
+    Expression<int>? id,
+    Expression<int>? templateId,
+    Expression<String>? name,
+    Expression<String>? kind,
+    Expression<int>? colorValue,
+    Expression<String>? iconKey,
+    Expression<int>? sortOrder,
+    Expression<int>? parentItemId,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (templateId != null) 'template_id': templateId,
+      if (name != null) 'name': name,
+      if (kind != null) 'kind': kind,
+      if (colorValue != null) 'color_value': colorValue,
+      if (iconKey != null) 'icon_key': iconKey,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (parentItemId != null) 'parent_item_id': parentItemId,
+    });
+  }
+
+  CategoryTemplateItemsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? templateId,
+    Value<String>? name,
+    Value<CategoryKind>? kind,
+    Value<int>? colorValue,
+    Value<String>? iconKey,
+    Value<int>? sortOrder,
+    Value<int?>? parentItemId,
+  }) {
+    return CategoryTemplateItemsCompanion(
+      id: id ?? this.id,
+      templateId: templateId ?? this.templateId,
+      name: name ?? this.name,
+      kind: kind ?? this.kind,
+      colorValue: colorValue ?? this.colorValue,
+      iconKey: iconKey ?? this.iconKey,
+      sortOrder: sortOrder ?? this.sortOrder,
+      parentItemId: parentItemId ?? this.parentItemId,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (templateId.present) {
+      map['template_id'] = Variable<int>(templateId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(
+        $CategoryTemplateItemsTable.$converterkind.toSql(kind.value),
+      );
+    }
+    if (colorValue.present) {
+      map['color_value'] = Variable<int>(colorValue.value);
+    }
+    if (iconKey.present) {
+      map['icon_key'] = Variable<String>(iconKey.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (parentItemId.present) {
+      map['parent_item_id'] = Variable<int>(parentItemId.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CategoryTemplateItemsCompanion(')
+          ..write('id: $id, ')
+          ..write('templateId: $templateId, ')
+          ..write('name: $name, ')
+          ..write('kind: $kind, ')
+          ..write('colorValue: $colorValue, ')
+          ..write('iconKey: $iconKey, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('parentItemId: $parentItemId')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -18285,6 +20899,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $RecurringRuleTagsTable recurringRuleTags =
       $RecurringRuleTagsTable(this);
+  late final $TagGroupsTable tagGroups = $TagGroupsTable(this);
+  late final $TagGroupTagsTable tagGroupTags = $TagGroupTagsTable(this);
   late final $TransactionSplitsTable transactionSplits =
       $TransactionSplitsTable(this);
   late final $TransactionLinksTable transactionLinks = $TransactionLinksTable(
@@ -18299,6 +20915,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $OcrCorrectionsTable ocrCorrections = $OcrCorrectionsTable(this);
   late final $CreditCardDetailsTable creditCardDetails =
       $CreditCardDetailsTable(this);
+  late final $CurrencyRatesTable currencyRates = $CurrencyRatesTable(this);
+  late final $CategoryTemplatesTable categoryTemplates =
+      $CategoryTemplatesTable(this);
+  late final $CategoryTemplateItemsTable categoryTemplateItems =
+      $CategoryTemplateItemsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -18324,6 +20945,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     tags,
     transactionTags,
     recurringRuleTags,
+    tagGroups,
+    tagGroupTags,
     transactionSplits,
     transactionLinks,
     goalDetails,
@@ -18334,6 +20957,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     allocations,
     ocrCorrections,
     creditCardDetails,
+    currencyRates,
+    categoryTemplates,
+    categoryTemplateItems,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -18372,6 +20998,7 @@ typedef $$AccountsTableCreateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<bool> envelopeMode,
       Value<bool> includeInNetWorth,
+      Value<String?> currencyCode,
     });
 typedef $$AccountsTableUpdateCompanionBuilder =
     AccountsCompanion Function({
@@ -18391,6 +21018,7 @@ typedef $$AccountsTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<bool> envelopeMode,
       Value<bool> includeInNetWorth,
+      Value<String?> currencyCode,
     });
 
 final class $$AccountsTableReferences
@@ -18413,27 +21041,6 @@ final class $$AccountsTableReferences
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
-    );
-  }
-
-  static MultiTypedResultKey<$RecurringRulesTable, List<RecurringRuleRow>>
-  _recurringRulesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-    db.recurringRules,
-    aliasName: $_aliasNameGenerator(
-      db.accounts.id,
-      db.recurringRules.accountId,
-    ),
-  );
-
-  $$RecurringRulesTableProcessedTableManager get recurringRulesRefs {
-    final manager = $$RecurringRulesTableTableManager(
-      $_db,
-      $_db.recurringRules,
-    ).filter((f) => f.accountId.id.sqlEquals($_itemColumn<int>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(_recurringRulesRefsTable($_db));
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
     );
   }
 
@@ -18718,6 +21325,11 @@ class $$AccountsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$AccountsTableFilterComposer get linkedAccountId {
     final $$AccountsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -18739,31 +21351,6 @@ class $$AccountsTableFilterComposer
           ),
     );
     return composer;
-  }
-
-  Expression<bool> recurringRulesRefs(
-    Expression<bool> Function($$RecurringRulesTableFilterComposer f) f,
-  ) {
-    final $$RecurringRulesTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.recurringRules,
-      getReferencedColumn: (t) => t.accountId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$RecurringRulesTableFilterComposer(
-            $db: $db,
-            $table: $db.recurringRules,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
   }
 
   Expression<bool> personEntriesRefs(
@@ -19101,6 +21688,11 @@ class $$AccountsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$AccountsTableOrderingComposer get linkedAccountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -19193,6 +21785,11 @@ class $$AccountsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => column,
+  );
+
   $$AccountsTableAnnotationComposer get linkedAccountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -19214,31 +21811,6 @@ class $$AccountsTableAnnotationComposer
           ),
     );
     return composer;
-  }
-
-  Expression<T> recurringRulesRefs<T extends Object>(
-    Expression<T> Function($$RecurringRulesTableAnnotationComposer a) f,
-  ) {
-    final $$RecurringRulesTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.recurringRules,
-      getReferencedColumn: (t) => t.accountId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$RecurringRulesTableAnnotationComposer(
-            $db: $db,
-            $table: $db.recurringRules,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
   }
 
   Expression<T> personEntriesRefs<T extends Object>(
@@ -19508,7 +22080,6 @@ class $$AccountsTableTableManager
           AccountRow,
           PrefetchHooks Function({
             bool linkedAccountId,
-            bool recurringRulesRefs,
             bool personEntriesRefs,
             bool groupExpensesRefs,
             bool remindersRefs,
@@ -19550,6 +22121,7 @@ class $$AccountsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<bool> envelopeMode = const Value.absent(),
                 Value<bool> includeInNetWorth = const Value.absent(),
+                Value<String?> currencyCode = const Value.absent(),
               }) => AccountsCompanion(
                 id: id,
                 name: name,
@@ -19567,6 +22139,7 @@ class $$AccountsTableTableManager
                 createdAt: createdAt,
                 envelopeMode: envelopeMode,
                 includeInNetWorth: includeInNetWorth,
+                currencyCode: currencyCode,
               ),
           createCompanionCallback:
               ({
@@ -19586,6 +22159,7 @@ class $$AccountsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<bool> envelopeMode = const Value.absent(),
                 Value<bool> includeInNetWorth = const Value.absent(),
+                Value<String?> currencyCode = const Value.absent(),
               }) => AccountsCompanion.insert(
                 id: id,
                 name: name,
@@ -19603,6 +22177,7 @@ class $$AccountsTableTableManager
                 createdAt: createdAt,
                 envelopeMode: envelopeMode,
                 includeInNetWorth: includeInNetWorth,
+                currencyCode: currencyCode,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -19615,7 +22190,6 @@ class $$AccountsTableTableManager
           prefetchHooksCallback:
               ({
                 linkedAccountId = false,
-                recurringRulesRefs = false,
                 personEntriesRefs = false,
                 groupExpensesRefs = false,
                 remindersRefs = false,
@@ -19630,7 +22204,6 @@ class $$AccountsTableTableManager
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
-                    if (recurringRulesRefs) db.recurringRules,
                     if (personEntriesRefs) db.personEntries,
                     if (groupExpensesRefs) db.groupExpenses,
                     if (remindersRefs) db.reminders,
@@ -19676,27 +22249,6 @@ class $$AccountsTableTableManager
                       },
                   getPrefetchedDataCallback: (items) async {
                     return [
-                      if (recurringRulesRefs)
-                        await $_getPrefetchedData<
-                          AccountRow,
-                          $AccountsTable,
-                          RecurringRuleRow
-                        >(
-                          currentTable: table,
-                          referencedTable: $$AccountsTableReferences
-                              ._recurringRulesRefsTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$AccountsTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).recurringRulesRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.accountId == item.id,
-                              ),
-                          typedResults: items,
-                        ),
                       if (personEntriesRefs)
                         await $_getPrefetchedData<
                           AccountRow,
@@ -19929,7 +22481,6 @@ typedef $$AccountsTableProcessedTableManager =
       AccountRow,
       PrefetchHooks Function({
         bool linkedAccountId,
-        bool recurringRulesRefs,
         bool personEntriesRefs,
         bool groupExpensesRefs,
         bool remindersRefs,
@@ -22291,7 +24842,8 @@ typedef $$RecurringRulesTableCreateCompanionBuilder =
       required CategoryKind kind,
       required Money amount,
       required int accountId,
-      required int categoryId,
+      Value<int?> categoryId,
+      Value<int?> toAccountId,
       Value<String?> payee,
       Value<String?> note,
       required RecurringFrequency frequency,
@@ -22303,6 +24855,8 @@ typedef $$RecurringRulesTableCreateCompanionBuilder =
       Value<Money?> promoAmount,
       Value<int?> promoOccurrencesLeft,
       Value<DateTime> createdAt,
+      Value<String?> foreignCurrencyCode,
+      Value<Money?> foreignAmount,
     });
 typedef $$RecurringRulesTableUpdateCompanionBuilder =
     RecurringRulesCompanion Function({
@@ -22311,7 +24865,8 @@ typedef $$RecurringRulesTableUpdateCompanionBuilder =
       Value<CategoryKind> kind,
       Value<Money> amount,
       Value<int> accountId,
-      Value<int> categoryId,
+      Value<int?> categoryId,
+      Value<int?> toAccountId,
       Value<String?> payee,
       Value<String?> note,
       Value<RecurringFrequency> frequency,
@@ -22323,6 +24878,8 @@ typedef $$RecurringRulesTableUpdateCompanionBuilder =
       Value<Money?> promoAmount,
       Value<int?> promoOccurrencesLeft,
       Value<DateTime> createdAt,
+      Value<String?> foreignCurrencyCode,
+      Value<Money?> foreignAmount,
     });
 
 final class $$RecurringRulesTableReferences
@@ -22358,14 +24915,33 @@ final class $$RecurringRulesTableReferences
         $_aliasNameGenerator(db.recurringRules.categoryId, db.categories.id),
       );
 
-  $$CategoriesTableProcessedTableManager get categoryId {
-    final $_column = $_itemColumn<int>('category_id')!;
-
+  $$CategoriesTableProcessedTableManager? get categoryId {
+    final $_column = $_itemColumn<int>('category_id');
+    if ($_column == null) return null;
     final manager = $$CategoriesTableTableManager(
       $_db,
       $_db.categories,
     ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_categoryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $AccountsTable _toAccountIdTable(_$AppDatabase db) =>
+      db.accounts.createAlias(
+        $_aliasNameGenerator(db.recurringRules.toAccountId, db.accounts.id),
+      );
+
+  $$AccountsTableProcessedTableManager? get toAccountId {
+    final $_column = $_itemColumn<int>('to_account_id');
+    if ($_column == null) return null;
+    final manager = $$AccountsTableTableManager(
+      $_db,
+      $_db.accounts,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_toAccountIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -22506,6 +25082,17 @@ class $$RecurringRulesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get foreignCurrencyCode => $composableBuilder(
+    column: $table.foreignCurrencyCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<Money?, Money, int> get foreignAmount =>
+      $composableBuilder(
+        column: $table.foreignAmount,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
   $$AccountsTableFilterComposer get accountId {
     final $$AccountsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -22543,6 +25130,29 @@ class $$RecurringRulesTableFilterComposer
           }) => $$CategoriesTableFilterComposer(
             $db: $db,
             $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$AccountsTableFilterComposer get toAccountId {
+    final $$AccountsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.toAccountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableFilterComposer(
+            $db: $db,
+            $table: $db.accounts,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -22687,6 +25297,16 @@ class $$RecurringRulesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get foreignCurrencyCode => $composableBuilder(
+    column: $table.foreignCurrencyCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get foreignAmount => $composableBuilder(
+    column: $table.foreignAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$AccountsTableOrderingComposer get accountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -22724,6 +25344,29 @@ class $$RecurringRulesTableOrderingComposer
           }) => $$CategoriesTableOrderingComposer(
             $db: $db,
             $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$AccountsTableOrderingComposer get toAccountId {
+    final $$AccountsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.toAccountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableOrderingComposer(
+            $db: $db,
+            $table: $db.accounts,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -22801,6 +25444,17 @@ class $$RecurringRulesTableAnnotationComposer
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
+  GeneratedColumn<String> get foreignCurrencyCode => $composableBuilder(
+    column: $table.foreignCurrencyCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<Money?, int> get foreignAmount =>
+      $composableBuilder(
+        column: $table.foreignAmount,
+        builder: (column) => column,
+      );
+
   $$AccountsTableAnnotationComposer get accountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -22838,6 +25492,29 @@ class $$RecurringRulesTableAnnotationComposer
           }) => $$CategoriesTableAnnotationComposer(
             $db: $db,
             $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$AccountsTableAnnotationComposer get toAccountId {
+    final $$AccountsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.toAccountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.accounts,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -22915,6 +25592,7 @@ class $$RecurringRulesTableTableManager
           PrefetchHooks Function({
             bool accountId,
             bool categoryId,
+            bool toAccountId,
             bool transactionsRefs,
             bool recurringRuleTagsRefs,
           })
@@ -22939,7 +25617,8 @@ class $$RecurringRulesTableTableManager
                 Value<CategoryKind> kind = const Value.absent(),
                 Value<Money> amount = const Value.absent(),
                 Value<int> accountId = const Value.absent(),
-                Value<int> categoryId = const Value.absent(),
+                Value<int?> categoryId = const Value.absent(),
+                Value<int?> toAccountId = const Value.absent(),
                 Value<String?> payee = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<RecurringFrequency> frequency = const Value.absent(),
@@ -22951,6 +25630,8 @@ class $$RecurringRulesTableTableManager
                 Value<Money?> promoAmount = const Value.absent(),
                 Value<int?> promoOccurrencesLeft = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> foreignCurrencyCode = const Value.absent(),
+                Value<Money?> foreignAmount = const Value.absent(),
               }) => RecurringRulesCompanion(
                 id: id,
                 name: name,
@@ -22958,6 +25639,7 @@ class $$RecurringRulesTableTableManager
                 amount: amount,
                 accountId: accountId,
                 categoryId: categoryId,
+                toAccountId: toAccountId,
                 payee: payee,
                 note: note,
                 frequency: frequency,
@@ -22969,6 +25651,8 @@ class $$RecurringRulesTableTableManager
                 promoAmount: promoAmount,
                 promoOccurrencesLeft: promoOccurrencesLeft,
                 createdAt: createdAt,
+                foreignCurrencyCode: foreignCurrencyCode,
+                foreignAmount: foreignAmount,
               ),
           createCompanionCallback:
               ({
@@ -22977,7 +25661,8 @@ class $$RecurringRulesTableTableManager
                 required CategoryKind kind,
                 required Money amount,
                 required int accountId,
-                required int categoryId,
+                Value<int?> categoryId = const Value.absent(),
+                Value<int?> toAccountId = const Value.absent(),
                 Value<String?> payee = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 required RecurringFrequency frequency,
@@ -22989,6 +25674,8 @@ class $$RecurringRulesTableTableManager
                 Value<Money?> promoAmount = const Value.absent(),
                 Value<int?> promoOccurrencesLeft = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> foreignCurrencyCode = const Value.absent(),
+                Value<Money?> foreignAmount = const Value.absent(),
               }) => RecurringRulesCompanion.insert(
                 id: id,
                 name: name,
@@ -22996,6 +25683,7 @@ class $$RecurringRulesTableTableManager
                 amount: amount,
                 accountId: accountId,
                 categoryId: categoryId,
+                toAccountId: toAccountId,
                 payee: payee,
                 note: note,
                 frequency: frequency,
@@ -23007,6 +25695,8 @@ class $$RecurringRulesTableTableManager
                 promoAmount: promoAmount,
                 promoOccurrencesLeft: promoOccurrencesLeft,
                 createdAt: createdAt,
+                foreignCurrencyCode: foreignCurrencyCode,
+                foreignAmount: foreignAmount,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -23020,6 +25710,7 @@ class $$RecurringRulesTableTableManager
               ({
                 accountId = false,
                 categoryId = false,
+                toAccountId = false,
                 transactionsRefs = false,
                 recurringRuleTagsRefs = false,
               }) {
@@ -23071,6 +25762,21 @@ class $$RecurringRulesTableTableManager
                                     referencedColumn:
                                         $$RecurringRulesTableReferences
                                             ._categoryIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (toAccountId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.toAccountId,
+                                    referencedTable:
+                                        $$RecurringRulesTableReferences
+                                            ._toAccountIdTable(db),
+                                    referencedColumn:
+                                        $$RecurringRulesTableReferences
+                                            ._toAccountIdTable(db)
                                             .id,
                                   )
                                   as T;
@@ -23145,6 +25851,7 @@ typedef $$RecurringRulesTableProcessedTableManager =
       PrefetchHooks Function({
         bool accountId,
         bool categoryId,
+        bool toAccountId,
         bool transactionsRefs,
         bool recurringRuleTagsRefs,
       })
@@ -23167,6 +25874,13 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<DateTime> updatedAt,
       Value<bool> needsAmountReview,
       Value<int?> paymentGroupId,
+      Value<String?> foreignCurrencyCode,
+      Value<Money?> foreignAmount,
+      Value<String?> currencyCode,
+      Value<int?> fxRateToBaseMicros,
+      Value<Money?> toAmount,
+      Value<String?> toCurrencyCode,
+      Value<int?> toFxRateToBaseMicros,
     });
 typedef $$TransactionsTableUpdateCompanionBuilder =
     TransactionsCompanion Function({
@@ -23186,6 +25900,13 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<DateTime> updatedAt,
       Value<bool> needsAmountReview,
       Value<int?> paymentGroupId,
+      Value<String?> foreignCurrencyCode,
+      Value<Money?> foreignAmount,
+      Value<String?> currencyCode,
+      Value<int?> fxRateToBaseMicros,
+      Value<Money?> toAmount,
+      Value<String?> toCurrencyCode,
+      Value<int?> toFxRateToBaseMicros,
     });
 
 final class $$TransactionsTableReferences
@@ -23508,6 +26229,43 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<bool> get needsAmountReview => $composableBuilder(
     column: $table.needsAmountReview,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get foreignCurrencyCode => $composableBuilder(
+    column: $table.foreignCurrencyCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<Money?, Money, int> get foreignAmount =>
+      $composableBuilder(
+        column: $table.foreignAmount,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get fxRateToBaseMicros => $composableBuilder(
+    column: $table.fxRateToBaseMicros,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<Money?, Money, int> get toAmount =>
+      $composableBuilder(
+        column: $table.toAmount,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<String> get toCurrencyCode => $composableBuilder(
+    column: $table.toCurrencyCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get toFxRateToBaseMicros => $composableBuilder(
+    column: $table.toFxRateToBaseMicros,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -23859,6 +26617,41 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get foreignCurrencyCode => $composableBuilder(
+    column: $table.foreignCurrencyCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get foreignAmount => $composableBuilder(
+    column: $table.foreignAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get fxRateToBaseMicros => $composableBuilder(
+    column: $table.fxRateToBaseMicros,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get toAmount => $composableBuilder(
+    column: $table.toAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get toCurrencyCode => $composableBuilder(
+    column: $table.toCurrencyCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get toFxRateToBaseMicros => $composableBuilder(
+    column: $table.toFxRateToBaseMicros,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$AccountsTableOrderingComposer get accountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -24036,6 +26829,40 @@ class $$TransactionsTableAnnotationComposer
 
   GeneratedColumn<bool> get needsAmountReview => $composableBuilder(
     column: $table.needsAmountReview,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get foreignCurrencyCode => $composableBuilder(
+    column: $table.foreignCurrencyCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<Money?, int> get foreignAmount =>
+      $composableBuilder(
+        column: $table.foreignAmount,
+        builder: (column) => column,
+      );
+
+  GeneratedColumn<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get fxRateToBaseMicros => $composableBuilder(
+    column: $table.fxRateToBaseMicros,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<Money?, int> get toAmount =>
+      $composableBuilder(column: $table.toAmount, builder: (column) => column);
+
+  GeneratedColumn<String> get toCurrencyCode => $composableBuilder(
+    column: $table.toCurrencyCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get toFxRateToBaseMicros => $composableBuilder(
+    column: $table.toFxRateToBaseMicros,
     builder: (column) => column,
   );
 
@@ -24387,6 +27214,13 @@ class $$TransactionsTableTableManager
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> needsAmountReview = const Value.absent(),
                 Value<int?> paymentGroupId = const Value.absent(),
+                Value<String?> foreignCurrencyCode = const Value.absent(),
+                Value<Money?> foreignAmount = const Value.absent(),
+                Value<String?> currencyCode = const Value.absent(),
+                Value<int?> fxRateToBaseMicros = const Value.absent(),
+                Value<Money?> toAmount = const Value.absent(),
+                Value<String?> toCurrencyCode = const Value.absent(),
+                Value<int?> toFxRateToBaseMicros = const Value.absent(),
               }) => TransactionsCompanion(
                 id: id,
                 type: type,
@@ -24404,6 +27238,13 @@ class $$TransactionsTableTableManager
                 updatedAt: updatedAt,
                 needsAmountReview: needsAmountReview,
                 paymentGroupId: paymentGroupId,
+                foreignCurrencyCode: foreignCurrencyCode,
+                foreignAmount: foreignAmount,
+                currencyCode: currencyCode,
+                fxRateToBaseMicros: fxRateToBaseMicros,
+                toAmount: toAmount,
+                toCurrencyCode: toCurrencyCode,
+                toFxRateToBaseMicros: toFxRateToBaseMicros,
               ),
           createCompanionCallback:
               ({
@@ -24423,6 +27264,13 @@ class $$TransactionsTableTableManager
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> needsAmountReview = const Value.absent(),
                 Value<int?> paymentGroupId = const Value.absent(),
+                Value<String?> foreignCurrencyCode = const Value.absent(),
+                Value<Money?> foreignAmount = const Value.absent(),
+                Value<String?> currencyCode = const Value.absent(),
+                Value<int?> fxRateToBaseMicros = const Value.absent(),
+                Value<Money?> toAmount = const Value.absent(),
+                Value<String?> toCurrencyCode = const Value.absent(),
+                Value<int?> toFxRateToBaseMicros = const Value.absent(),
               }) => TransactionsCompanion.insert(
                 id: id,
                 type: type,
@@ -24440,6 +27288,13 @@ class $$TransactionsTableTableManager
                 updatedAt: updatedAt,
                 needsAmountReview: needsAmountReview,
                 paymentGroupId: paymentGroupId,
+                foreignCurrencyCode: foreignCurrencyCode,
+                foreignAmount: foreignAmount,
+                currencyCode: currencyCode,
+                fxRateToBaseMicros: fxRateToBaseMicros,
+                toAmount: toAmount,
+                toCurrencyCode: toCurrencyCode,
+                toFxRateToBaseMicros: toFxRateToBaseMicros,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -28967,6 +31822,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<String?> myCashapp,
       Value<String?> myRevolut,
       Value<bool> upiEnabled,
+      Value<bool> rtaEnabled,
       Value<bool> paypalEnabled,
       Value<bool> venmoEnabled,
       Value<bool> cashappEnabled,
@@ -28976,6 +31832,8 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<int?> passcodeLength,
       Value<bool> biometricEnabled,
       Value<LockScreenStyle> lockScreenStyle,
+      Value<MoreScreenViewMode> moreScreenViewMode,
+      Value<BudgetingMode> budgetingMode,
       Value<int> pinTimeoutMinutes,
       Value<String?> masterPhraseHash,
       Value<String?> masterPhraseSalt,
@@ -29004,6 +31862,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<int> fontWeightDelta,
       Value<String?> fontFamily,
       Value<int> extraBottomInset,
+      Value<String> frequentIconKeys,
     });
 typedef $$SettingsTableUpdateCompanionBuilder =
     SettingsCompanion Function({
@@ -29025,6 +31884,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<String?> myCashapp,
       Value<String?> myRevolut,
       Value<bool> upiEnabled,
+      Value<bool> rtaEnabled,
       Value<bool> paypalEnabled,
       Value<bool> venmoEnabled,
       Value<bool> cashappEnabled,
@@ -29034,6 +31894,8 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<int?> passcodeLength,
       Value<bool> biometricEnabled,
       Value<LockScreenStyle> lockScreenStyle,
+      Value<MoreScreenViewMode> moreScreenViewMode,
+      Value<BudgetingMode> budgetingMode,
       Value<int> pinTimeoutMinutes,
       Value<String?> masterPhraseHash,
       Value<String?> masterPhraseSalt,
@@ -29062,6 +31924,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<int> fontWeightDelta,
       Value<String?> fontFamily,
       Value<int> extraBottomInset,
+      Value<String> frequentIconKeys,
     });
 
 final class $$SettingsTableReferences
@@ -29187,6 +32050,11 @@ class $$SettingsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get rtaEnabled => $composableBuilder(
+    column: $table.rtaEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<bool> get paypalEnabled => $composableBuilder(
     column: $table.paypalEnabled,
     builder: (column) => ColumnFilters(column),
@@ -29230,6 +32098,18 @@ class $$SettingsTableFilterComposer
   ColumnWithTypeConverterFilters<LockScreenStyle, LockScreenStyle, String>
   get lockScreenStyle => $composableBuilder(
     column: $table.lockScreenStyle,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<MoreScreenViewMode, MoreScreenViewMode, String>
+  get moreScreenViewMode => $composableBuilder(
+    column: $table.moreScreenViewMode,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<BudgetingMode, BudgetingMode, String>
+  get budgetingMode => $composableBuilder(
+    column: $table.budgetingMode,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
@@ -29373,6 +32253,11 @@ class $$SettingsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get frequentIconKeys => $composableBuilder(
+    column: $table.frequentIconKeys,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$AccountsTableFilterComposer get quickAddAccountId {
     final $$AccountsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -29496,6 +32381,11 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get rtaEnabled => $composableBuilder(
+    column: $table.rtaEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get paypalEnabled => $composableBuilder(
     column: $table.paypalEnabled,
     builder: (column) => ColumnOrderings(column),
@@ -29538,6 +32428,16 @@ class $$SettingsTableOrderingComposer
 
   ColumnOrderings<String> get lockScreenStyle => $composableBuilder(
     column: $table.lockScreenStyle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get moreScreenViewMode => $composableBuilder(
+    column: $table.moreScreenViewMode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get budgetingMode => $composableBuilder(
+    column: $table.budgetingMode,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -29676,6 +32576,11 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get frequentIconKeys => $composableBuilder(
+    column: $table.frequentIconKeys,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$AccountsTableOrderingComposer get quickAddAccountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -29781,6 +32686,11 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get rtaEnabled => $composableBuilder(
+    column: $table.rtaEnabled,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get paypalEnabled => $composableBuilder(
     column: $table.paypalEnabled,
     builder: (column) => column,
@@ -29826,6 +32736,18 @@ class $$SettingsTableAnnotationComposer
     column: $table.lockScreenStyle,
     builder: (column) => column,
   );
+
+  GeneratedColumnWithTypeConverter<MoreScreenViewMode, String>
+  get moreScreenViewMode => $composableBuilder(
+    column: $table.moreScreenViewMode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<BudgetingMode, String> get budgetingMode =>
+      $composableBuilder(
+        column: $table.budgetingMode,
+        builder: (column) => column,
+      );
 
   GeneratedColumn<int> get pinTimeoutMinutes => $composableBuilder(
     column: $table.pinTimeoutMinutes,
@@ -29963,6 +32885,11 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get frequentIconKeys => $composableBuilder(
+    column: $table.frequentIconKeys,
+    builder: (column) => column,
+  );
+
   $$AccountsTableAnnotationComposer get quickAddAccountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -30033,6 +32960,7 @@ class $$SettingsTableTableManager
                 Value<String?> myCashapp = const Value.absent(),
                 Value<String?> myRevolut = const Value.absent(),
                 Value<bool> upiEnabled = const Value.absent(),
+                Value<bool> rtaEnabled = const Value.absent(),
                 Value<bool> paypalEnabled = const Value.absent(),
                 Value<bool> venmoEnabled = const Value.absent(),
                 Value<bool> cashappEnabled = const Value.absent(),
@@ -30042,6 +32970,9 @@ class $$SettingsTableTableManager
                 Value<int?> passcodeLength = const Value.absent(),
                 Value<bool> biometricEnabled = const Value.absent(),
                 Value<LockScreenStyle> lockScreenStyle = const Value.absent(),
+                Value<MoreScreenViewMode> moreScreenViewMode =
+                    const Value.absent(),
+                Value<BudgetingMode> budgetingMode = const Value.absent(),
                 Value<int> pinTimeoutMinutes = const Value.absent(),
                 Value<String?> masterPhraseHash = const Value.absent(),
                 Value<String?> masterPhraseSalt = const Value.absent(),
@@ -30071,6 +33002,7 @@ class $$SettingsTableTableManager
                 Value<int> fontWeightDelta = const Value.absent(),
                 Value<String?> fontFamily = const Value.absent(),
                 Value<int> extraBottomInset = const Value.absent(),
+                Value<String> frequentIconKeys = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
                 currencyCode: currencyCode,
@@ -30090,6 +33022,7 @@ class $$SettingsTableTableManager
                 myCashapp: myCashapp,
                 myRevolut: myRevolut,
                 upiEnabled: upiEnabled,
+                rtaEnabled: rtaEnabled,
                 paypalEnabled: paypalEnabled,
                 venmoEnabled: venmoEnabled,
                 cashappEnabled: cashappEnabled,
@@ -30099,6 +33032,8 @@ class $$SettingsTableTableManager
                 passcodeLength: passcodeLength,
                 biometricEnabled: biometricEnabled,
                 lockScreenStyle: lockScreenStyle,
+                moreScreenViewMode: moreScreenViewMode,
+                budgetingMode: budgetingMode,
                 pinTimeoutMinutes: pinTimeoutMinutes,
                 masterPhraseHash: masterPhraseHash,
                 masterPhraseSalt: masterPhraseSalt,
@@ -30127,6 +33062,7 @@ class $$SettingsTableTableManager
                 fontWeightDelta: fontWeightDelta,
                 fontFamily: fontFamily,
                 extraBottomInset: extraBottomInset,
+                frequentIconKeys: frequentIconKeys,
               ),
           createCompanionCallback:
               ({
@@ -30148,6 +33084,7 @@ class $$SettingsTableTableManager
                 Value<String?> myCashapp = const Value.absent(),
                 Value<String?> myRevolut = const Value.absent(),
                 Value<bool> upiEnabled = const Value.absent(),
+                Value<bool> rtaEnabled = const Value.absent(),
                 Value<bool> paypalEnabled = const Value.absent(),
                 Value<bool> venmoEnabled = const Value.absent(),
                 Value<bool> cashappEnabled = const Value.absent(),
@@ -30157,6 +33094,9 @@ class $$SettingsTableTableManager
                 Value<int?> passcodeLength = const Value.absent(),
                 Value<bool> biometricEnabled = const Value.absent(),
                 Value<LockScreenStyle> lockScreenStyle = const Value.absent(),
+                Value<MoreScreenViewMode> moreScreenViewMode =
+                    const Value.absent(),
+                Value<BudgetingMode> budgetingMode = const Value.absent(),
                 Value<int> pinTimeoutMinutes = const Value.absent(),
                 Value<String?> masterPhraseHash = const Value.absent(),
                 Value<String?> masterPhraseSalt = const Value.absent(),
@@ -30186,6 +33126,7 @@ class $$SettingsTableTableManager
                 Value<int> fontWeightDelta = const Value.absent(),
                 Value<String?> fontFamily = const Value.absent(),
                 Value<int> extraBottomInset = const Value.absent(),
+                Value<String> frequentIconKeys = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
                 currencyCode: currencyCode,
@@ -30205,6 +33146,7 @@ class $$SettingsTableTableManager
                 myCashapp: myCashapp,
                 myRevolut: myRevolut,
                 upiEnabled: upiEnabled,
+                rtaEnabled: rtaEnabled,
                 paypalEnabled: paypalEnabled,
                 venmoEnabled: venmoEnabled,
                 cashappEnabled: cashappEnabled,
@@ -30214,6 +33156,8 @@ class $$SettingsTableTableManager
                 passcodeLength: passcodeLength,
                 biometricEnabled: biometricEnabled,
                 lockScreenStyle: lockScreenStyle,
+                moreScreenViewMode: moreScreenViewMode,
+                budgetingMode: budgetingMode,
                 pinTimeoutMinutes: pinTimeoutMinutes,
                 masterPhraseHash: masterPhraseHash,
                 masterPhraseSalt: masterPhraseSalt,
@@ -30242,6 +33186,7 @@ class $$SettingsTableTableManager
                 fontWeightDelta: fontWeightDelta,
                 fontFamily: fontFamily,
                 extraBottomInset: extraBottomInset,
+                frequentIconKeys: frequentIconKeys,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -31993,6 +34938,24 @@ final class $$TagsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$TagGroupTagsTable, List<TagGroupTagRow>>
+  _tagGroupTagsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.tagGroupTags,
+    aliasName: $_aliasNameGenerator(db.tags.id, db.tagGroupTags.tagId),
+  );
+
+  $$TagGroupTagsTableProcessedTableManager get tagGroupTagsRefs {
+    final manager = $$TagGroupTagsTableTableManager(
+      $_db,
+      $_db.tagGroupTags,
+    ).filter((f) => f.tagId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_tagGroupTagsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$TagsTableFilterComposer extends Composer<_$AppDatabase, $TagsTable> {
@@ -32059,6 +35022,31 @@ class $$TagsTableFilterComposer extends Composer<_$AppDatabase, $TagsTable> {
           }) => $$RecurringRuleTagsTableFilterComposer(
             $db: $db,
             $table: $db.recurringRuleTags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> tagGroupTagsRefs(
+    Expression<bool> Function($$TagGroupTagsTableFilterComposer f) f,
+  ) {
+    final $$TagGroupTagsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.tagGroupTags,
+      getReferencedColumn: (t) => t.tagId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagGroupTagsTableFilterComposer(
+            $db: $db,
+            $table: $db.tagGroupTags,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -32163,6 +35151,31 @@ class $$TagsTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> tagGroupTagsRefs<T extends Object>(
+    Expression<T> Function($$TagGroupTagsTableAnnotationComposer a) f,
+  ) {
+    final $$TagGroupTagsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.tagGroupTags,
+      getReferencedColumn: (t) => t.tagId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagGroupTagsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.tagGroupTags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$TagsTableTableManager
@@ -32181,6 +35194,7 @@ class $$TagsTableTableManager
           PrefetchHooks Function({
             bool transactionTagsRefs,
             bool recurringRuleTagsRefs,
+            bool tagGroupTagsRefs,
           })
         > {
   $$TagsTableTableManager(_$AppDatabase db, $TagsTable table)
@@ -32217,12 +35231,17 @@ class $$TagsTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({transactionTagsRefs = false, recurringRuleTagsRefs = false}) {
+              ({
+                transactionTagsRefs = false,
+                recurringRuleTagsRefs = false,
+                tagGroupTagsRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (transactionTagsRefs) db.transactionTags,
                     if (recurringRuleTagsRefs) db.recurringRuleTags,
+                    if (tagGroupTagsRefs) db.tagGroupTags,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -32267,6 +35286,26 @@ class $$TagsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (tagGroupTagsRefs)
+                        await $_getPrefetchedData<
+                          TagRow,
+                          $TagsTable,
+                          TagGroupTagRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$TagsTableReferences
+                              ._tagGroupTagsRefsTable(db),
+                          managerFromTypedResult: (p0) => $$TagsTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).tagGroupTagsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.tagId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -32290,6 +35329,7 @@ typedef $$TagsTableProcessedTableManager =
       PrefetchHooks Function({
         bool transactionTagsRefs,
         bool recurringRuleTagsRefs,
+        bool tagGroupTagsRefs,
       })
     >;
 typedef $$TransactionTagsTableCreateCompanionBuilder =
@@ -33025,6 +36065,633 @@ typedef $$RecurringRuleTagsTableProcessedTableManager =
       (RecurringRuleTagRow, $$RecurringRuleTagsTableReferences),
       RecurringRuleTagRow,
       PrefetchHooks Function({bool ruleId, bool tagId})
+    >;
+typedef $$TagGroupsTableCreateCompanionBuilder =
+    TagGroupsCompanion Function({
+      Value<int> id,
+      required String name,
+      required int colorValue,
+      Value<DateTime> createdAt,
+    });
+typedef $$TagGroupsTableUpdateCompanionBuilder =
+    TagGroupsCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<int> colorValue,
+      Value<DateTime> createdAt,
+    });
+
+final class $$TagGroupsTableReferences
+    extends BaseReferences<_$AppDatabase, $TagGroupsTable, TagGroupRow> {
+  $$TagGroupsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$TagGroupTagsTable, List<TagGroupTagRow>>
+  _tagGroupTagsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.tagGroupTags,
+    aliasName: $_aliasNameGenerator(db.tagGroups.id, db.tagGroupTags.groupId),
+  );
+
+  $$TagGroupTagsTableProcessedTableManager get tagGroupTagsRefs {
+    final manager = $$TagGroupTagsTableTableManager(
+      $_db,
+      $_db.tagGroupTags,
+    ).filter((f) => f.groupId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_tagGroupTagsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$TagGroupsTableFilterComposer
+    extends Composer<_$AppDatabase, $TagGroupsTable> {
+  $$TagGroupsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get colorValue => $composableBuilder(
+    column: $table.colorValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> tagGroupTagsRefs(
+    Expression<bool> Function($$TagGroupTagsTableFilterComposer f) f,
+  ) {
+    final $$TagGroupTagsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.tagGroupTags,
+      getReferencedColumn: (t) => t.groupId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagGroupTagsTableFilterComposer(
+            $db: $db,
+            $table: $db.tagGroupTags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$TagGroupsTableOrderingComposer
+    extends Composer<_$AppDatabase, $TagGroupsTable> {
+  $$TagGroupsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get colorValue => $composableBuilder(
+    column: $table.colorValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TagGroupsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TagGroupsTable> {
+  $$TagGroupsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<int> get colorValue => $composableBuilder(
+    column: $table.colorValue,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  Expression<T> tagGroupTagsRefs<T extends Object>(
+    Expression<T> Function($$TagGroupTagsTableAnnotationComposer a) f,
+  ) {
+    final $$TagGroupTagsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.tagGroupTags,
+      getReferencedColumn: (t) => t.groupId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagGroupTagsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.tagGroupTags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$TagGroupsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TagGroupsTable,
+          TagGroupRow,
+          $$TagGroupsTableFilterComposer,
+          $$TagGroupsTableOrderingComposer,
+          $$TagGroupsTableAnnotationComposer,
+          $$TagGroupsTableCreateCompanionBuilder,
+          $$TagGroupsTableUpdateCompanionBuilder,
+          (TagGroupRow, $$TagGroupsTableReferences),
+          TagGroupRow,
+          PrefetchHooks Function({bool tagGroupTagsRefs})
+        > {
+  $$TagGroupsTableTableManager(_$AppDatabase db, $TagGroupsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TagGroupsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TagGroupsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TagGroupsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<int> colorValue = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => TagGroupsCompanion(
+                id: id,
+                name: name,
+                colorValue: colorValue,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                required int colorValue,
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => TagGroupsCompanion.insert(
+                id: id,
+                name: name,
+                colorValue: colorValue,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$TagGroupsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({tagGroupTagsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (tagGroupTagsRefs) db.tagGroupTags],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (tagGroupTagsRefs)
+                    await $_getPrefetchedData<
+                      TagGroupRow,
+                      $TagGroupsTable,
+                      TagGroupTagRow
+                    >(
+                      currentTable: table,
+                      referencedTable: $$TagGroupsTableReferences
+                          ._tagGroupTagsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$TagGroupsTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).tagGroupTagsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.groupId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$TagGroupsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TagGroupsTable,
+      TagGroupRow,
+      $$TagGroupsTableFilterComposer,
+      $$TagGroupsTableOrderingComposer,
+      $$TagGroupsTableAnnotationComposer,
+      $$TagGroupsTableCreateCompanionBuilder,
+      $$TagGroupsTableUpdateCompanionBuilder,
+      (TagGroupRow, $$TagGroupsTableReferences),
+      TagGroupRow,
+      PrefetchHooks Function({bool tagGroupTagsRefs})
+    >;
+typedef $$TagGroupTagsTableCreateCompanionBuilder =
+    TagGroupTagsCompanion Function({
+      required int groupId,
+      required int tagId,
+      Value<int> rowid,
+    });
+typedef $$TagGroupTagsTableUpdateCompanionBuilder =
+    TagGroupTagsCompanion Function({
+      Value<int> groupId,
+      Value<int> tagId,
+      Value<int> rowid,
+    });
+
+final class $$TagGroupTagsTableReferences
+    extends BaseReferences<_$AppDatabase, $TagGroupTagsTable, TagGroupTagRow> {
+  $$TagGroupTagsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $TagGroupsTable _groupIdTable(_$AppDatabase db) =>
+      db.tagGroups.createAlias(
+        $_aliasNameGenerator(db.tagGroupTags.groupId, db.tagGroups.id),
+      );
+
+  $$TagGroupsTableProcessedTableManager get groupId {
+    final $_column = $_itemColumn<int>('group_id')!;
+
+    final manager = $$TagGroupsTableTableManager(
+      $_db,
+      $_db.tagGroups,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_groupIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $TagsTable _tagIdTable(_$AppDatabase db) => db.tags.createAlias(
+    $_aliasNameGenerator(db.tagGroupTags.tagId, db.tags.id),
+  );
+
+  $$TagsTableProcessedTableManager get tagId {
+    final $_column = $_itemColumn<int>('tag_id')!;
+
+    final manager = $$TagsTableTableManager(
+      $_db,
+      $_db.tags,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_tagIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$TagGroupTagsTableFilterComposer
+    extends Composer<_$AppDatabase, $TagGroupTagsTable> {
+  $$TagGroupTagsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  $$TagGroupsTableFilterComposer get groupId {
+    final $$TagGroupsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.groupId,
+      referencedTable: $db.tagGroups,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagGroupsTableFilterComposer(
+            $db: $db,
+            $table: $db.tagGroups,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TagsTableFilterComposer get tagId {
+    final $$TagsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tagId,
+      referencedTable: $db.tags,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagsTableFilterComposer(
+            $db: $db,
+            $table: $db.tags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TagGroupTagsTableOrderingComposer
+    extends Composer<_$AppDatabase, $TagGroupTagsTable> {
+  $$TagGroupTagsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  $$TagGroupsTableOrderingComposer get groupId {
+    final $$TagGroupsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.groupId,
+      referencedTable: $db.tagGroups,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagGroupsTableOrderingComposer(
+            $db: $db,
+            $table: $db.tagGroups,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TagsTableOrderingComposer get tagId {
+    final $$TagsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tagId,
+      referencedTable: $db.tags,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagsTableOrderingComposer(
+            $db: $db,
+            $table: $db.tags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TagGroupTagsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TagGroupTagsTable> {
+  $$TagGroupTagsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  $$TagGroupsTableAnnotationComposer get groupId {
+    final $$TagGroupsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.groupId,
+      referencedTable: $db.tagGroups,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagGroupsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.tagGroups,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TagsTableAnnotationComposer get tagId {
+    final $$TagsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tagId,
+      referencedTable: $db.tags,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.tags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TagGroupTagsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TagGroupTagsTable,
+          TagGroupTagRow,
+          $$TagGroupTagsTableFilterComposer,
+          $$TagGroupTagsTableOrderingComposer,
+          $$TagGroupTagsTableAnnotationComposer,
+          $$TagGroupTagsTableCreateCompanionBuilder,
+          $$TagGroupTagsTableUpdateCompanionBuilder,
+          (TagGroupTagRow, $$TagGroupTagsTableReferences),
+          TagGroupTagRow,
+          PrefetchHooks Function({bool groupId, bool tagId})
+        > {
+  $$TagGroupTagsTableTableManager(_$AppDatabase db, $TagGroupTagsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TagGroupTagsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TagGroupTagsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TagGroupTagsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> groupId = const Value.absent(),
+                Value<int> tagId = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TagGroupTagsCompanion(
+                groupId: groupId,
+                tagId: tagId,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required int groupId,
+                required int tagId,
+                Value<int> rowid = const Value.absent(),
+              }) => TagGroupTagsCompanion.insert(
+                groupId: groupId,
+                tagId: tagId,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$TagGroupTagsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({groupId = false, tagId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (groupId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.groupId,
+                                referencedTable: $$TagGroupTagsTableReferences
+                                    ._groupIdTable(db),
+                                referencedColumn: $$TagGroupTagsTableReferences
+                                    ._groupIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+                    if (tagId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.tagId,
+                                referencedTable: $$TagGroupTagsTableReferences
+                                    ._tagIdTable(db),
+                                referencedColumn: $$TagGroupTagsTableReferences
+                                    ._tagIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$TagGroupTagsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TagGroupTagsTable,
+      TagGroupTagRow,
+      $$TagGroupTagsTableFilterComposer,
+      $$TagGroupTagsTableOrderingComposer,
+      $$TagGroupTagsTableAnnotationComposer,
+      $$TagGroupTagsTableCreateCompanionBuilder,
+      $$TagGroupTagsTableUpdateCompanionBuilder,
+      (TagGroupTagRow, $$TagGroupTagsTableReferences),
+      TagGroupTagRow,
+      PrefetchHooks Function({bool groupId, bool tagId})
     >;
 typedef $$TransactionSplitsTableCreateCompanionBuilder =
     TransactionSplitsCompanion Function({
@@ -36579,6 +40246,206 @@ typedef $$CreditCardDetailsTableProcessedTableManager =
       CreditCardDetailRow,
       PrefetchHooks Function({bool accountId})
     >;
+typedef $$CurrencyRatesTableCreateCompanionBuilder =
+    CurrencyRatesCompanion Function({
+      Value<int> id,
+      required String currencyCode,
+      required int rateToBaseMicros,
+      required DateTime effectiveAt,
+      Value<DateTime> createdAt,
+    });
+typedef $$CurrencyRatesTableUpdateCompanionBuilder =
+    CurrencyRatesCompanion Function({
+      Value<int> id,
+      Value<String> currencyCode,
+      Value<int> rateToBaseMicros,
+      Value<DateTime> effectiveAt,
+      Value<DateTime> createdAt,
+    });
+
+class $$CurrencyRatesTableFilterComposer
+    extends Composer<_$AppDatabase, $CurrencyRatesTable> {
+  $$CurrencyRatesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get rateToBaseMicros => $composableBuilder(
+    column: $table.rateToBaseMicros,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get effectiveAt => $composableBuilder(
+    column: $table.effectiveAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CurrencyRatesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CurrencyRatesTable> {
+  $$CurrencyRatesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get rateToBaseMicros => $composableBuilder(
+    column: $table.rateToBaseMicros,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get effectiveAt => $composableBuilder(
+    column: $table.effectiveAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CurrencyRatesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CurrencyRatesTable> {
+  $$CurrencyRatesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get rateToBaseMicros => $composableBuilder(
+    column: $table.rateToBaseMicros,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get effectiveAt => $composableBuilder(
+    column: $table.effectiveAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$CurrencyRatesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CurrencyRatesTable,
+          CurrencyRateRow,
+          $$CurrencyRatesTableFilterComposer,
+          $$CurrencyRatesTableOrderingComposer,
+          $$CurrencyRatesTableAnnotationComposer,
+          $$CurrencyRatesTableCreateCompanionBuilder,
+          $$CurrencyRatesTableUpdateCompanionBuilder,
+          (
+            CurrencyRateRow,
+            BaseReferences<_$AppDatabase, $CurrencyRatesTable, CurrencyRateRow>,
+          ),
+          CurrencyRateRow,
+          PrefetchHooks Function()
+        > {
+  $$CurrencyRatesTableTableManager(_$AppDatabase db, $CurrencyRatesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CurrencyRatesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CurrencyRatesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CurrencyRatesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> currencyCode = const Value.absent(),
+                Value<int> rateToBaseMicros = const Value.absent(),
+                Value<DateTime> effectiveAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => CurrencyRatesCompanion(
+                id: id,
+                currencyCode: currencyCode,
+                rateToBaseMicros: rateToBaseMicros,
+                effectiveAt: effectiveAt,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String currencyCode,
+                required int rateToBaseMicros,
+                required DateTime effectiveAt,
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => CurrencyRatesCompanion.insert(
+                id: id,
+                currencyCode: currencyCode,
+                rateToBaseMicros: rateToBaseMicros,
+                effectiveAt: effectiveAt,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CurrencyRatesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CurrencyRatesTable,
+      CurrencyRateRow,
+      $$CurrencyRatesTableFilterComposer,
+      $$CurrencyRatesTableOrderingComposer,
+      $$CurrencyRatesTableAnnotationComposer,
+      $$CurrencyRatesTableCreateCompanionBuilder,
+      $$CurrencyRatesTableUpdateCompanionBuilder,
+      (
+        CurrencyRateRow,
+        BaseReferences<_$AppDatabase, $CurrencyRatesTable, CurrencyRateRow>,
+      ),
+      CurrencyRateRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -36622,6 +40489,10 @@ class $AppDatabaseManager {
       $$TransactionTagsTableTableManager(_db, _db.transactionTags);
   $$RecurringRuleTagsTableTableManager get recurringRuleTags =>
       $$RecurringRuleTagsTableTableManager(_db, _db.recurringRuleTags);
+  $$TagGroupsTableTableManager get tagGroups =>
+      $$TagGroupsTableTableManager(_db, _db.tagGroups);
+  $$TagGroupTagsTableTableManager get tagGroupTags =>
+      $$TagGroupTagsTableTableManager(_db, _db.tagGroupTags);
   $$TransactionSplitsTableTableManager get transactionSplits =>
       $$TransactionSplitsTableTableManager(_db, _db.transactionSplits);
   $$TransactionLinksTableTableManager get transactionLinks =>
@@ -36642,4 +40513,6 @@ class $AppDatabaseManager {
       $$OcrCorrectionsTableTableManager(_db, _db.ocrCorrections);
   $$CreditCardDetailsTableTableManager get creditCardDetails =>
       $$CreditCardDetailsTableTableManager(_db, _db.creditCardDetails);
+  $$CurrencyRatesTableTableManager get currencyRates =>
+      $$CurrencyRatesTableTableManager(_db, _db.currencyRates);
 }

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/app_icons.dart';
+import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/error_view.dart';
@@ -14,6 +15,17 @@ import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'credit_card_statement_section.dart';
 import 'envelope_section.dart';
+
+/// [account]'s own currency — null for the parent currency, matching
+/// [AccountRow.currencyCode]'s own convention. A debit/UPI instrument
+/// carries no currency of its own, so this follows [AccountRow.linkedAccountId]
+/// once to the account that actually holds the money.
+Currency? _accountCurrency(AccountRow account, Map<int, AccountRow> accountMap) {
+  final code = account.linkedAccountId == null
+      ? account.currencyCode
+      : accountMap[account.linkedAccountId]?.currencyCode;
+  return code == null ? null : currencyForCode(code);
+}
 
 /// One account's balance, context and full history.
 ///
@@ -97,7 +109,11 @@ class _AccountDetailView extends ConsumerWidget {
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
-            child: _HeaderCard(account: account, linkedBank: linkedBank),
+            child: _HeaderCard(
+              account: account,
+              linkedBank: linkedBank,
+              currency: _accountCurrency(account, accountMap),
+            ),
           ),
           // A linked instrument (debit card / UPI) holds no balance of its
           // own — there is no money on it to give a job to.
@@ -114,6 +130,7 @@ class _AccountDetailView extends ConsumerWidget {
             accountMap: accountMap,
             categoryMap: categoryMap,
             ownIds: ownIds,
+            currency: _accountCurrency(account, accountMap),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 32)),
         ],
@@ -127,6 +144,7 @@ class _AccountDetailView extends ConsumerWidget {
     required Map<int, AccountRow> accountMap,
     required Map<int, CategoryRow> categoryMap,
     required Set<int> ownIds,
+    required Currency? currency,
   }) {
     final theme = Theme.of(context);
 
@@ -182,7 +200,7 @@ class _AccountDetailView extends ConsumerWidget {
           for (final tx in rows) {
             net += accountMovement(tx, ownIds);
           }
-          children.add(_DayHeader(day: day, net: net));
+          children.add(_DayHeader(day: day, net: net, currency: currency));
           for (final tx in rows) {
             children.add(
               _HistoryRow(
@@ -190,6 +208,7 @@ class _AccountDetailView extends ConsumerWidget {
                 accountMap: accountMap,
                 categoryMap: categoryMap,
                 ownIds: ownIds,
+                currency: currency,
               ),
             );
           }
@@ -205,10 +224,15 @@ class _AccountDetailView extends ConsumerWidget {
 
 /// Balance + a one-line story about this account, plus type / bank chips.
 class _HeaderCard extends ConsumerWidget {
-  const _HeaderCard({required this.account, required this.linkedBank});
+  const _HeaderCard({
+    required this.account,
+    required this.linkedBank,
+    required this.currency,
+  });
 
   final AccountRow account;
   final AccountRow? linkedBank;
+  final Currency? currency;
 
   bool get _isDebitCard => account.linkedAccountId != null;
   bool get _isCreditCard =>
@@ -242,8 +266,10 @@ class _HeaderCard extends ConsumerWidget {
         contextColor = AppColors.income;
       }
     } else {
-      contextLine =
-          'Opening balance ${MoneyFormat.symbol(account.openingBalance)}';
+      final openingBalanceText = currency == null
+          ? MoneyFormat.symbol(account.openingBalance)
+          : MoneyFormat.symbolIn(account.openingBalance, currency!);
+      contextLine = 'Opening balance $openingBalanceText';
       contextColor = cs.onSurfaceVariant;
     }
 
@@ -279,6 +305,7 @@ class _HeaderCard extends ConsumerWidget {
                 alignment: Alignment.centerLeft,
                 child: BalanceText(
                   shownBalance,
+                  currency: currency,
                   style: theme.textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -337,10 +364,11 @@ class _InfoChip extends StatelessWidget {
 // ── History ─────────────────────────────────────────────────────────────────
 
 class _DayHeader extends StatelessWidget {
-  const _DayHeader({required this.day, required this.net});
+  const _DayHeader({required this.day, required this.net, required this.currency});
 
   final DateTime day;
   final Money net;
+  final Currency? currency;
 
   @override
   Widget build(BuildContext context) {
@@ -368,6 +396,7 @@ class _DayHeader extends StatelessWidget {
             net,
             signed: true,
             color: netColor,
+            currency: currency,
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w600,
             ),
@@ -385,12 +414,14 @@ class _HistoryRow extends StatelessWidget {
     required this.accountMap,
     required this.categoryMap,
     required this.ownIds,
+    required this.currency,
   });
 
   final TransactionRow tx;
   final Map<int, AccountRow> accountMap;
   final Map<int, CategoryRow> categoryMap;
   final Set<int> ownIds;
+  final Currency? currency;
 
   @override
   Widget build(BuildContext context) {
@@ -428,6 +459,7 @@ class _HistoryRow extends StatelessWidget {
         movement,
         signed: true,
         color: colorForTxType(tx.type),
+        currency: currency,
         style: theme.textTheme.titleMedium?.copyWith(
           fontWeight: FontWeight.w700,
         ),
