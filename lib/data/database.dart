@@ -643,42 +643,76 @@ class AppDatabase extends _$AppDatabase {
     await m.addColumn(table, column);
   }
 
-  /// Repairs a `settings.unlock_method` value that doesn't match any of
-  /// today's [UnlockMethod] names.
+  /// Repairs a `settings.unlock_method`/toggle value the generated row
+  /// mapper can't decode: a name outside today's [UnlockMethod] set, or —
+  /// the case the first attempt at this (GitHub #112) missed — outright
+  /// `NULL`.
   ///
-  /// Same root cause as [_addColumnIfMissing]'s doc — a rolling-BETA build
-  /// (an earlier iteration of GitHub #104 or #111) could have stamped
-  /// `schemaVersion` to its current number while writing an `unlock_method`
-  /// string that a later, renamed/reordered [UnlockMethod] no longer
-  /// recognizes. Drift's `textEnum` column decodes with `.byName(...)`,
-  /// which throws on an unrecognized string instead of falling back — and
-  /// because a device already on the latest `schemaVersion` never re-runs
-  /// `onUpgrade`, nothing else would ever fix it. Every subsequent launch
-  /// would then crash before the settings row can even be read, surfacing
-  /// as "Couldn't open your data" with no way for the user to recover
-  /// (GitHub #112).
+  /// Same rolling-BETA root cause as [_addColumnIfMissing]'s doc: an early
+  /// iteration of GitHub #104/#111/#116 could have added `unlock_method`
+  /// (or `pin_unlock_enabled`/`master_phrase_unlock_enabled`/
+  /// `totp_unlock_enabled`) as nullable, with no default, before the
+  /// released migration that added the same column `NOT NULL DEFAULT`. Once
+  /// a device already has the column, [_addColumnIfMissing] skips re-adding
+  /// it — so that device keeps a nullable column with real `NULL` rows,
+  /// forever. `database.g.dart`'s row mapper reads every one of these with
+  /// a `!` (non-nullable Dart fields), so `NULL` throws "Null check
+  /// operator used on a null value" — not the enum-decode exception the
+  /// first fix (PR #114) targeted — crashing every launch before the
+  /// settings row can even be read, as "Couldn't open your data" with no
+  /// way for the user to recover.
   ///
   /// This runs with raw SQL rather than a typed `select`/`update`, so an
-  /// already-bad value is inspected and fixed *before* Drift's enum
-  /// converter ever gets a chance to throw on it.
+  /// already-bad value is inspected and fixed *before* Drift's generated
+  /// mapper ever gets a chance to throw on it.
   Future<void> _repairInvalidUnlockMethod() async {
-    if (!await _hasColumn('settings', 'unlock_method')) return;
-    final validNames = UnlockMethod.values.map((e) => e.name).toSet();
-    final rows = await customSelect(
-      'SELECT DISTINCT unlock_method FROM settings',
-    ).get();
-    for (final row in rows) {
-      final value = row.read<String?>('unlock_method');
-      if (value != null && !validNames.contains(value)) {
-        await customUpdate(
-          'UPDATE settings SET unlock_method = ? WHERE unlock_method = ?',
-          variables: [
-            Variable.withString(UnlockMethod.pin.name),
-            Variable.withString(value),
-          ],
-          updates: {settings},
-        );
+    if (await _hasColumn('settings', 'unlock_method')) {
+      final validNames = UnlockMethod.values.map((e) => e.name).toSet();
+      final rows = await customSelect(
+        'SELECT DISTINCT unlock_method FROM settings',
+      ).get();
+      for (final row in rows) {
+        final value = row.read<String?>('unlock_method');
+        if (value == null) {
+          await customUpdate(
+            'UPDATE settings SET unlock_method = ? WHERE unlock_method IS NULL',
+            variables: [Variable.withString(UnlockMethod.pin.name)],
+            updates: {settings},
+          );
+        } else if (!validNames.contains(value)) {
+          await customUpdate(
+            'UPDATE settings SET unlock_method = ? WHERE unlock_method = ?',
+            variables: [
+              Variable.withString(UnlockMethod.pin.name),
+              Variable.withString(value),
+            ],
+            updates: {settings},
+          );
+        }
       }
+    }
+    // The three toggles default to "on" only for whichever method already
+    // has a credential — same rule the v65 migration itself backfills new
+    // rows with — rather than blindly flipping every stale NULL to off,
+    // which could silently drop a still-configured method's only way in.
+    if (await _hasColumn('settings', 'pin_unlock_enabled')) {
+      await customStatement(
+        'UPDATE settings SET pin_unlock_enabled = '
+        '(passcode_hash IS NOT NULL) WHERE pin_unlock_enabled IS NULL',
+      );
+    }
+    if (await _hasColumn('settings', 'master_phrase_unlock_enabled')) {
+      await customStatement(
+        'UPDATE settings SET master_phrase_unlock_enabled = '
+        '(master_phrase_hash IS NOT NULL) '
+        'WHERE master_phrase_unlock_enabled IS NULL',
+      );
+    }
+    if (await _hasColumn('settings', 'totp_unlock_enabled')) {
+      await customStatement(
+        'UPDATE settings SET totp_unlock_enabled = '
+        '(totp_secret IS NOT NULL) WHERE totp_unlock_enabled IS NULL',
+      );
     }
   }
 
