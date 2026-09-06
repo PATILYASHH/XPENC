@@ -7,12 +7,13 @@ import 'package:xpenc/data/database.dart';
 import 'package:xpenc/data/providers.dart';
 import 'package:xpenc/data/tables.dart';
 
-/// Choice of unlock method + TOTP (GitHub #104): the design doc is at
-/// `docs/superpowers/specs/2026-09-06-unlock-method-choice-design.md`. These
-/// tests guard the non-UI core — the TOTP algorithm itself, the
-/// `Settings.unlockMethod`/`totpSecret` round-trip, and
-/// `hasUnlockCredential`'s single "is the app actually locked right now"
-/// answer — the same shape as `passcode_test.dart`'s PIN/phrase coverage.
+/// Independent on/off toggles per unlock method (GitHub #104 → #111 →
+/// this), OR semantics: turning on more than one of PIN / master password /
+/// authenticator app means *any* of them unlocks the app, not all of them.
+/// These tests guard the non-UI core — the TOTP algorithm itself, the
+/// `Settings` round-trip, and `hasUnlockCredential`/`isUnlockMethodReady`/
+/// `readyUnlockMethods`'s "is the app actually locked, and with what" answer
+/// — the same shape as `passcode_test.dart`'s PIN/phrase coverage.
 void main() {
   group('Totp', () {
     test('a code generated for one instant verifies at that instant', () {
@@ -78,90 +79,134 @@ void main() {
     });
 
     test('verify fails closed on a malformed secret instead of throwing', () {
-      expect(() => Totp.verify('not valid base32!!', '123456'), returnsNormally);
+      expect(
+        () => Totp.verify('not valid base32!!', '123456'),
+        returnsNormally,
+      );
       expect(Totp.verify('not valid base32!!', '123456'), isFalse);
     });
   });
 
-  group('hasUnlockCredential', () {
+  group('hasUnlockCredential / isUnlockMethodReady / readyUnlockMethods', () {
     late AppDatabase db;
 
     setUp(() => db = AppDatabase(NativeDatabase.memory()));
     tearDown(() => db.close());
 
     test('a fresh install has no unlock credential', () async {
-      expect(hasUnlockCredential(await db.getSettings()), isFalse);
+      final settings = await db.getSettings();
+      expect(hasUnlockCredential(settings), isFalse);
+      expect(readyUnlockMethods(settings), isEmpty);
     });
 
-    test('true once a PIN is set (the default active method)', () async {
+    test('true once a PIN is set (fresh setup turns its toggle on)', () async {
       await db.setPasscode('4269');
-      expect(hasUnlockCredential(await db.getSettings()), isTrue);
+      final settings = await db.getSettings();
+      expect(hasUnlockCredential(settings), isTrue);
+      expect(readyUnlockMethods(settings), [UnlockMethod.pin]);
+    });
+
+    test('a configured-but-toggled-off method never counts, even with another '
+        'method ready alongside it', () async {
+      await db.setPasscode('4269'); // turns pin on
+      await db.setMasterPhrase(const [
+        'anchor',
+        'bear',
+        'cliff',
+        'dawn',
+        'ember',
+        'falcon',
+        'garden',
+        'harbor',
+        'island',
+        'jungle',
+      ]); // turns masterPhrase on too
+      // Two ready methods now, so turning one off is allowed.
+      final turnedOff = await db.setUnlockMethodEnabled(
+        UnlockMethod.masterPhrase,
+        false,
+      );
+      expect(turnedOff, isTrue);
+
+      final settings = await db.getSettings();
+      // Still configured (the hash survives) but no longer ready.
+      expect(settings.masterPhraseHash, isNotNull);
+      expect(isUnlockMethodReady(settings, UnlockMethod.masterPhrase), isFalse);
+      expect(hasUnlockCredential(settings), isTrue); // PIN alone still works
+      expect(readyUnlockMethods(settings), [UnlockMethod.pin]);
+    });
+
+    test('OR semantics: either PIN or TOTP alone unlocks once both are set '
+        'up', () async {
+      await db.setPasscode('4269');
+      await db.setupTotp(Totp.generateSecret());
+      final settings = await db.getSettings();
+      expect(hasUnlockCredential(settings), isTrue);
+      expect(readyUnlockMethods(settings), [
+        UnlockMethod.pin,
+        UnlockMethod.totp,
+      ]);
     });
 
     test(
-      'false for a configured method that is not the active one',
+      'setUnlockMethodEnabled refuses to turn off the last ready method',
       () async {
-        // A phrase alone, with PIN still the (unset) active method, must not
-        // read as "locked" — this is exactly the bug the design doc opens
-        // with: a phrase with no PIN behind it couldn't lock the app.
-        await db.setMasterPhrase(const [
-          'anchor',
-          'bear',
-          'cliff',
-          'dawn',
-          'ember',
-          'falcon',
-          'garden',
-          'harbor',
-          'island',
-          'jungle',
-        ]);
-        // setMasterPhrase activates it, so flip back to pin to exercise the
-        // "configured but not active" branch.
-        await db.setUnlockMethod(UnlockMethod.pin);
-        expect(hasUnlockCredential(await db.getSettings()), isFalse);
+        await db.setPasscode('4269');
+        final ok = await db.setUnlockMethodEnabled(UnlockMethod.pin, false);
+        expect(ok, isFalse);
+        final settings = await db.getSettings();
+        expect(isUnlockMethodReady(settings, UnlockMethod.pin), isTrue);
+        expect(hasUnlockCredential(settings), isTrue);
       },
     );
 
-    // GitHub #111: PIN + Authenticator needs *both* halves configured.
-    group('pinAndTotp', () {
-      test('false with only a PIN set', () async {
-        await db.setPasscode('4269');
-        await db.setUnlockMethod(UnlockMethod.pinAndTotp);
-        expect(hasUnlockCredential(await db.getSettings()), isFalse);
-      });
+    test('setUnlockMethodEnabled allows turning off one of several ready '
+        'methods', () async {
+      await db.setPasscode('4269');
+      await db.setupTotp(Totp.generateSecret());
+      final ok = await db.setUnlockMethodEnabled(UnlockMethod.pin, false);
+      expect(ok, isTrue);
+      final settings = await db.getSettings();
+      expect(isUnlockMethodReady(settings, UnlockMethod.pin), isFalse);
+      expect(isUnlockMethodReady(settings, UnlockMethod.totp), isTrue);
+      expect(hasUnlockCredential(settings), isTrue);
+    });
 
-      test('false with only a TOTP secret set', () async {
-        await db.setupTotp(Totp.generateSecret());
-        await db.setUnlockMethod(UnlockMethod.pinAndTotp);
-        expect(hasUnlockCredential(await db.getSettings()), isFalse);
-      });
-
-      test('true once both a PIN and a TOTP secret are set', () async {
-        await db.setPasscode('4269');
-        await db.setupTotp(Totp.generateSecret());
-        await db.setUnlockMethod(UnlockMethod.pinAndTotp);
-        expect(hasUnlockCredential(await db.getSettings()), isTrue);
-      });
+    test('setUnlockMethodEnabled(on) with no credential configured is a no-op '
+        '— the caller is expected to route to setup instead', () async {
+      final ok = await db.setUnlockMethodEnabled(UnlockMethod.totp, true);
+      expect(ok, isTrue);
+      final settings = await db.getSettings();
+      // Toggle flips, but there's no secret behind it, so still not ready.
+      expect(settings.totpUnlockEnabled, isTrue);
+      expect(isUnlockMethodReady(settings, UnlockMethod.totp), isFalse);
+      expect(hasUnlockCredential(settings), isFalse);
     });
   });
 
-  group('AppDatabase unlock method + TOTP round-trip (GitHub #104)', () {
+  group('AppDatabase unlock method round-trip', () {
     late AppDatabase db;
 
     setUp(() => db = AppDatabase(NativeDatabase.memory()));
     tearDown(() => db.close());
 
-    test('unlockMethod defaults to pin', () async {
-      expect((await db.getSettings()).unlockMethod, UnlockMethod.pin);
-      expect((await db.getSettings()).totpSecret, isNull);
+    test('defaults: pin shown first, pin toggle on, nothing else configured '
+        'or on', () async {
+      final settings = await db.getSettings();
+      expect(settings.unlockMethod, UnlockMethod.pin);
+      expect(settings.pinUnlockEnabled, isTrue);
+      expect(settings.masterPhraseUnlockEnabled, isFalse);
+      expect(settings.totpUnlockEnabled, isFalse);
+      expect(settings.totpSecret, isNull);
     });
 
-    test('setupTotp stores the secret and activates it in one step', () async {
+    test('setupTotp stores the secret, turns its toggle on, and shows it '
+        'first, in one step', () async {
       final secret = Totp.generateSecret();
       await db.setupTotp(secret);
       final settings = await db.getSettings();
       expect(settings.totpSecret, secret);
+      expect(settings.totpUnlockEnabled, isTrue);
       expect(settings.unlockMethod, UnlockMethod.totp);
     });
 
@@ -178,28 +223,29 @@ void main() {
       expect(await db.verifyTotp('123456'), isFalse);
     });
 
-    test('clearTotp removes the secret and falls back to pin when it was '
-        'active', () async {
+    test('clearTotp removes the secret and its toggle, and falls back to pin '
+        'when it was the method shown first', () async {
       await db.setupTotp(Totp.generateSecret());
       await db.clearTotp();
       final settings = await db.getSettings();
       expect(settings.totpSecret, isNull);
+      expect(settings.totpUnlockEnabled, isFalse);
       expect(settings.unlockMethod, UnlockMethod.pin);
     });
 
     test(
-      'clearTotp leaves the active method alone when TOTP was not it',
+      'clearTotp leaves the shown method alone when TOTP was not it',
       () async {
         await db.setupTotp(Totp.generateSecret());
-        await db.setPasscode('4269'); // fresh passcode activates pin
+        await db.setPasscode('4269'); // fresh passcode shows pin first
         await db.clearTotp();
         expect((await db.getSettings()).unlockMethod, UnlockMethod.pin);
       },
     );
 
     test(
-      'a fresh setPasscode activates pin; changing an existing one does not '
-      'steal activation from a different active method',
+      'a fresh setPasscode turns pin on and shows it first; changing an '
+      'existing one does not steal that from a different shown method',
       () async {
         await db.setPasscode('4269');
         expect((await db.getSettings()).unlockMethod, UnlockMethod.pin);
@@ -207,125 +253,116 @@ void main() {
         await db.setupTotp(Totp.generateSecret());
         expect((await db.getSettings()).unlockMethod, UnlockMethod.totp);
 
-        // Changing the already-set PIN must not silently switch back to it.
+        // Changing the already-set PIN must not silently switch back to it,
+        // nor touch its own toggle (already on).
         await db.setPasscode('1357');
-        expect((await db.getSettings()).unlockMethod, UnlockMethod.totp);
+        final settings = await db.getSettings();
+        expect(settings.unlockMethod, UnlockMethod.totp);
+        expect(settings.pinUnlockEnabled, isTrue);
         expect(await db.verifyPasscode('1357'), isTrue);
       },
     );
 
-    test('setUnlockMethod switches the active method without touching any '
-        "method's own credential", () async {
+    test('setPreferredUnlockMethod switches which method shows first, '
+        "without touching any method's own credential or toggle", () async {
       await db.setPasscode('4269');
       await db.setupTotp(Totp.generateSecret());
-      await db.setUnlockMethod(UnlockMethod.pin);
+      await db.setPreferredUnlockMethod(UnlockMethod.pin);
       final settings = await db.getSettings();
       expect(settings.unlockMethod, UnlockMethod.pin);
-      expect(settings.totpSecret, isNotNull); // still configured, just unused
+      expect(settings.totpSecret, isNotNull); // still configured and ready
+      expect(settings.totpUnlockEnabled, isTrue);
       expect(await db.verifyPasscode('4269'), isTrue);
     });
 
-    test(
-      'a backup restore never silently swaps the active method or the TOTP '
-      'secret',
-      () async {
-        final secret = Totp.generateSecret();
-        await db.setupTotp(secret);
-        final backup = await db.exportAll();
+    test('a backup restore never silently swaps the shown method, its toggle, '
+        'or the TOTP secret', () async {
+      final secret = Totp.generateSecret();
+      await db.setupTotp(secret);
+      final backup = await db.exportAll();
 
-        final settingsRows = (backup['settings'] as List)
-            .cast<Map<String, dynamic>>();
-        for (final row in settingsRows) {
-          row['unlock_method'] = 'pin';
-          row.remove('totp_secret');
-        }
+      final settingsRows = (backup['settings'] as List)
+          .cast<Map<String, dynamic>>();
+      for (final row in settingsRows) {
+        row['unlock_method'] = 'pin';
+        row['totp_unlock_enabled'] = false;
+        row.remove('totp_secret');
+      }
 
-        await db.importAll(backup);
+      await db.importAll(backup);
 
-        final settings = await db.getSettings();
-        expect(settings.unlockMethod, UnlockMethod.totp);
-        expect(settings.totpSecret, secret);
-      },
-    );
-
-    // GitHub #111: a true two-factor front door — both a PIN *and* a TOTP
-    // code, not either alone — plus graceful fallback when either half is
-    // later removed.
-    group('pinAndTotp', () {
-      test(
-        'setUnlockMethod activates the combo once both halves exist',
-        () async {
-          await db.setPasscode('4269');
-          await db.setupTotp(Totp.generateSecret());
-          await db.setUnlockMethod(UnlockMethod.pinAndTotp);
-          expect(
-            (await db.getSettings()).unlockMethod,
-            UnlockMethod.pinAndTotp,
-          );
-        },
-      );
-
-      test(
-        'clearPasscode falls back to totp when the combo was active — the '
-        'authenticator half still works on its own',
-        () async {
-          await db.setPasscode('4269');
-          await db.setupTotp(Totp.generateSecret());
-          await db.setUnlockMethod(UnlockMethod.pinAndTotp);
-
-          await db.clearPasscode();
-          final settings = await db.getSettings();
-          expect(settings.unlockMethod, UnlockMethod.totp);
-          expect(settings.passcodeHash, isNull);
-          expect(settings.totpSecret, isNotNull);
-        },
-      );
-
-      test(
-        'clearTotp falls back to pin when the combo was active — the PIN '
-        'half still works on its own',
-        () async {
-          await db.setPasscode('4269');
-          await db.setupTotp(Totp.generateSecret());
-          await db.setUnlockMethod(UnlockMethod.pinAndTotp);
-
-          await db.clearTotp();
-          final settings = await db.getSettings();
-          expect(settings.unlockMethod, UnlockMethod.pin);
-          expect(settings.totpSecret, isNull);
-          expect(settings.passcodeHash, isNotNull);
-          expect(await db.verifyPasscode('4269'), isTrue);
-        },
-      );
-
-      test(
-        'clearPasscode leaves the active method alone when the combo was '
-        'not active',
-        () async {
-          await db.setPasscode('4269');
-          await db.setupTotp(Totp.generateSecret()); // activates totp alone
-          await db.clearPasscode();
-          expect((await db.getSettings()).unlockMethod, UnlockMethod.totp);
-        },
-      );
+      final settings = await db.getSettings();
+      expect(settings.unlockMethod, UnlockMethod.totp);
+      expect(settings.totpSecret, secret);
+      expect(settings.totpUnlockEnabled, isTrue);
     });
 
-    test('unlockMethodProvider/hasTotpProvider reflect the stored row', () async {
-      final container = ProviderContainer(
-        overrides: [dbProvider.overrideWithValue(db)],
-      );
-      addTearDown(container.dispose);
+    test(
+      'unlockMethodProvider/hasTotpProvider reflect the stored row',
+      () async {
+        final container = ProviderContainer(
+          overrides: [dbProvider.overrideWithValue(db)],
+        );
+        addTearDown(container.dispose);
 
-      await container.read(dbProvider).getSettings();
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-      expect(container.read(unlockMethodProvider), UnlockMethod.pin);
-      expect(container.read(hasTotpProvider), isFalse);
+        await container.read(dbProvider).getSettings();
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        expect(container.read(unlockMethodProvider), UnlockMethod.pin);
+        expect(container.read(hasTotpProvider), isFalse);
 
+        await db.setupTotp(Totp.generateSecret());
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        expect(container.read(unlockMethodProvider), UnlockMethod.totp);
+        expect(container.read(hasTotpProvider), isTrue);
+        expect(container.read(hasUnlockCredentialProvider), isTrue);
+        // Pin's toggle defaults on, but no PIN was ever actually set here —
+        // `isUnlockMethodReady` needs both, so only totp is ready.
+        expect(container.read(readyUnlockMethodsProvider), [UnlockMethod.totp]);
+      },
+    );
+  });
+
+  group('migration backfill: a pre-existing pinAndTotp install', () {
+    late AppDatabase db;
+
+    setUp(() => db = AppDatabase(NativeDatabase.memory()));
+    tearDown(() => db.close());
+
+    test('a stored pinAndTotp value backfills to both toggles on, OR semantics '
+        '— either credential alone now unlocks it', () async {
+      // Simulate what a real v64 `pinAndTotp` install looked like, written
+      // with raw SQL so this doesn't go through the (now three-value)
+      // typed enum converter.
+      await db.setPasscode('4269');
       await db.setupTotp(Totp.generateSecret());
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-      expect(container.read(unlockMethodProvider), UnlockMethod.totp);
-      expect(container.read(hasTotpProvider), isTrue);
-      expect(container.read(hasUnlockCredentialProvider), isTrue);
+      await db.customStatement(
+        "UPDATE settings SET unlock_method = 'pinAndTotp', "
+        'pin_unlock_enabled = 1, totp_unlock_enabled = 1',
+      );
+
+      // Re-running the migration's backfill logic directly (as the real
+      // `from < 65` step does) rather than round-tripping the on-disk
+      // schema version, which `AppDatabase(NativeDatabase.memory())`
+      // always opens at the latest version already.
+      await db.customStatement(
+        "UPDATE settings SET pin_unlock_enabled = 0 "
+        "WHERE unlock_method NOT IN ('pin', 'pinAndTotp')",
+      );
+      await db.customStatement(
+        "UPDATE settings SET totp_unlock_enabled = 1 "
+        "WHERE unlock_method IN ('totp', 'pinAndTotp')",
+      );
+      await db.customStatement(
+        "UPDATE settings SET unlock_method = 'pin' "
+        "WHERE unlock_method = 'pinAndTotp'",
+      );
+
+      final settings = await db.getSettings();
+      expect(settings.unlockMethod, UnlockMethod.pin);
+      expect(readyUnlockMethods(settings), [
+        UnlockMethod.pin,
+        UnlockMethod.totp,
+      ]);
     });
   });
 }
