@@ -108,17 +108,19 @@ enum AutoBackupFrequency { daily, monthly, custom }
 /// position can't infer the PIN.
 enum LockScreenStyle { classic, bigNumpad, scrambled }
 
-/// Which credential(s) the app's active front-door lock requires. Originally
-/// (GitHub #104) the user picked exactly one, never a combination — that
-/// changed with the addition of [pinAndTotp] (GitHub #111): a true two-factor
-/// front door requiring *both* a correct PIN and a correct authenticator code,
-/// entered one after the other, rather than either alone. `hasUnlockCredential`
-/// in `core/security/unlock_method.dart` maps this to whether the credential(s)
-/// it needs are actually configured; [Settings.masterPhraseHash] can still be
-/// set and used purely as a fallback (see
-/// [Settings.masterPhraseAttemptThreshold]) while a different method is
-/// active.
-enum UnlockMethod { pin, masterPhrase, totp, pinAndTotp }
+/// One of the app's possible front-door credentials. Originally (GitHub
+/// #104) the user picked exactly one, then briefly a two-factor AND
+/// combination of PIN + authenticator (GitHub #111, `pinAndTotp`) — both
+/// replaced by independent on/off toggles per method
+/// ([Settings.pinUnlockEnabled] / [Settings.masterPhraseUnlockEnabled] /
+/// [Settings.totpUnlockEnabled]): turning on more than one means **any** of
+/// them unlocks the app (OR, not AND), and the lock screen's "try another
+/// method" switches between whichever are ready. `hasUnlockCredential` /
+/// `isUnlockMethodReady` / `readyUnlockMethods` in
+/// `core/security/unlock_method.dart` are the single place that decides
+/// which methods actually work right now — enabled *and* configured, not
+/// just one or the other.
+enum UnlockMethod { pin, masterPhrase, totp }
 
 /// How the More hub (`MoreScreen`) lays out its items. `list` is the
 /// original one-column row layout. `cards` shows two square-ish cards per
@@ -890,11 +892,14 @@ class Settings extends Table {
   IntColumn get masterPhraseAttemptThreshold =>
       integer().withDefault(const Constant(5))();
 
-  /// Which credential is the active front door — see [UnlockMethod]. Default
-  /// `pin` so every existing install keeps today's exact behavior. Switching
-  /// this never clears any other method's credential; a phrase or a PIN can
-  /// stay configured and unused, or serve as [masterPhraseAttemptThreshold]'s
-  /// fallback, while a different method is active.
+  /// Which method the lock screen shows first when more than one is ready
+  /// (below) — "try another method" repoints this at whatever the user
+  /// switched to, or successfully unlocked with, most recently. Default
+  /// `pin` so every existing install keeps today's exact behavior. Purely a
+  /// display preference: it doesn't gate anything on its own — a stale value
+  /// (e.g. the method it names just got turned off) is handled by falling
+  /// back to any other ready method, never by refusing to show the lock
+  /// screen.
   TextColumn get unlockMethod =>
       textEnum<UnlockMethod>().withDefault(const Constant('pin'))();
 
@@ -905,6 +910,26 @@ class Settings extends Table {
   /// lives in this same plaintext local database. Null means the feature is
   /// off, same convention as the other two credential columns.
   TextColumn get totpSecret => text().nullable()();
+
+  /// Whether a PIN is one of the (possibly several) unlock methods that
+  /// currently work — see [UnlockMethod]'s doc. Meaningless without
+  /// [passcodeHash] also set; `isUnlockMethodReady` in
+  /// `core/security/unlock_method.dart` is what actually combines the two.
+  /// Defaults `true` so every existing install (which only ever had PIN as
+  /// a concept) keeps today's exact behavior the moment it sets a PIN.
+  BoolColumn get pinUnlockEnabled =>
+      boolean().withDefault(const Constant(true))();
+
+  /// Same as [pinUnlockEnabled], for the master recovery phrase. Off by
+  /// default — a phrase already has its own independent role as
+  /// [masterPhraseAttemptThreshold]'s fallback, so setting one up must not
+  /// silently also turn it into an OR'd front-door method.
+  BoolColumn get masterPhraseUnlockEnabled =>
+      boolean().withDefault(const Constant(false))();
+
+  /// Same as [pinUnlockEnabled], for the authenticator app (TOTP).
+  BoolColumn get totpUnlockEnabled =>
+      boolean().withDefault(const Constant(false))();
 
   /// Consecutive wrong-PIN count on the lock screen — persisted, not reset
   /// by an app restart or by time passing (GitHub #74 asks for "no time

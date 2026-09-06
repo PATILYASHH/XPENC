@@ -15,14 +15,9 @@ import 'lock_screen_keypad.dart';
 /// hard-codes `digits=6`, so entry here matches.
 const _totpCodeLength = 6;
 
-/// Which half of [UnlockMethod.pinAndTotp] (GitHub #111) is currently being
-/// asked for — the PIN always comes first, the authenticator code second;
-/// both must be correct before [LockScreen.onUnlocked] fires.
-enum _PinTotpStep { pin, totp }
-
 /// Rendered directly by [XpencApp]'s `builder`, outside the router — a
 /// blocking overlay, not a route, so there is no back button and no way
-/// around it except a correct PIN or biometric.
+/// around it except a correct credential from one of the ready methods.
 class LockScreen extends ConsumerStatefulWidget {
   const LockScreen({required this.onUnlocked, super.key});
 
@@ -52,15 +47,20 @@ class _LockScreenState extends ConsumerState<LockScreen> {
   /// Same purpose as [_attempt], for the TOTP keypad.
   int _totpAttempt = 0;
 
-  /// Only meaningful while [UnlockMethod.pinAndTotp] is active (GitHub #111)
-  /// — which of the two steps is currently showing. Resets to [_PinTotpStep.
-  /// pin] each time a fresh [LockScreen] is mounted (i.e. every time the app
-  /// re-locks), never mid-session.
-  _PinTotpStep _pinTotpStep = _PinTotpStep.pin;
+  /// Which method this lock session is currently asking for. Independent
+  /// on/off toggles per method mean OR semantics (any ready method
+  /// unlocks) — "try another method" below switches this to whichever
+  /// other ready method the user picks; a successful unlock with it then
+  /// persists the choice via `AppDatabase.setPreferredUnlockMethod` so the
+  /// next lock remembers it. Seeded once, from whichever method was
+  /// remembered last time, and never re-seeded mid-session (only "try
+  /// another method" changes it after that).
+  UnlockMethod? _shownMethod;
 
   @override
   void initState() {
     super.initState();
+    _shownMethod = ref.read(unlockMethodProvider);
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeTryBiometric());
   }
 
@@ -69,10 +69,10 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     _biometricTried = true;
     // Biometric is a shortcut for *PIN* entry only (GitHub #104) — trying it
     // (or offering the fingerprint key at all) while a different method is
-    // active would let a fingerprint silently bypass whichever front door
-    // was actually chosen.
+    // showing would let a fingerprint silently bypass whichever front door
+    // is actually up right now.
     if (!ref.read(biometricEnabledProvider) ||
-        ref.read(unlockMethodProvider) != UnlockMethod.pin) {
+        _shownMethod != UnlockMethod.pin) {
       return;
     }
     await _tryBiometric();
@@ -94,6 +94,20 @@ class _LockScreenState extends ConsumerState<LockScreen> {
       // Falls through to the PIN pad — biometric is a shortcut, never the
       // only way in.
     }
+  }
+
+  /// Clears every method's transient entry state — called whenever "try
+  /// another method" switches [_shownMethod], so leftover digits/errors
+  /// from the previous method never bleed into the new one.
+  void _resetEntryState() {
+    _pin = '';
+    _error = false;
+    _checking = false;
+    _totp = '';
+    _totpError = false;
+    _totpChecking = false;
+    _phraseError = null;
+    _phraseChecking = false;
   }
 
   void _onDigit(String d) {
@@ -118,6 +132,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     if (!mounted) return;
     if (ok) {
       await db.resetFailedPasscodeAttempts();
+      await db.setPreferredUnlockMethod(UnlockMethod.pin);
       if (!mounted) return;
       widget.onUnlocked();
       return;
@@ -142,6 +157,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     if (!mounted) return;
     if (ok) {
       await db.resetFailedPasscodeAttempts();
+      await db.setPreferredUnlockMethod(UnlockMethod.masterPhrase);
       if (!mounted) return;
       widget.onUnlocked();
       return;
@@ -173,13 +189,14 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     if (!mounted) return;
     if (ok) {
       await db.resetFailedPasscodeAttempts();
+      await db.setPreferredUnlockMethod(UnlockMethod.totp);
       if (!mounted) return;
       widget.onUnlocked();
       return;
     }
     // Same counter a wrong PIN increments — the "too many wrong attempts"
     // fallback to the master phrase is generalized across whichever method
-    // is active (GitHub #104), not PIN-specific.
+    // is showing (GitHub #104), not PIN-specific.
     await db.recordFailedPasscodeAttempt();
     if (!mounted) return;
     setState(() {
@@ -190,83 +207,9 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     });
   }
 
-  // ── PIN + Authenticator, combined (GitHub #111) ─────────────────────────
-  // A correct PIN here only advances to the TOTP step — it never unlocks by
-  // itself, unlike plain [UnlockMethod.pin]. Only a correct code afterward
-  // actually calls `onUnlocked`. Both steps share the shared wrong-attempt
-  // counter with every other method, so the phrase fallback still kicks in
-  // the same way after enough combined failures.
-
-  void _onCombinedPinDigit(String d) {
-    final pinLength = ref.read(passcodeLengthProvider);
-    if (_checking || _pin.length >= pinLength) return;
-    setState(() {
-      _error = false;
-      _pin += d;
-    });
-    if (_pin.length == pinLength) _submitCombinedPin();
-  }
-
-  Future<void> _submitCombinedPin() async {
-    setState(() => _checking = true);
-    final db = ref.read(dbProvider);
-    final ok = await db.verifyPasscode(_pin);
-    if (!mounted) return;
-    if (ok) {
-      setState(() {
-        _checking = false;
-        _pin = '';
-        _pinTotpStep = _PinTotpStep.totp;
-      });
-      return;
-    }
-    await db.recordFailedPasscodeAttempt();
-    if (!mounted) return;
-    setState(() {
-      _error = true;
-      _checking = false;
-      _pin = '';
-      _attempt++;
-    });
-  }
-
-  void _onCombinedTotpDigit(String d) {
-    if (_totpChecking || _totp.length >= _totpCodeLength) return;
-    setState(() {
-      _totpError = false;
-      _totp += d;
-    });
-    if (_totp.length == _totpCodeLength) _submitCombinedTotp();
-  }
-
-  Future<void> _submitCombinedTotp() async {
-    setState(() => _totpChecking = true);
-    final db = ref.read(dbProvider);
-    final ok = await db.verifyTotp(_totp);
-    if (!mounted) return;
-    if (ok) {
-      // The counter only resets once *both* factors are satisfied — a
-      // correct PIN alone (see `_submitCombinedPin`) never touches it.
-      await db.resetFailedPasscodeAttempts();
-      if (!mounted) return;
-      widget.onUnlocked();
-      return;
-    }
-    await db.recordFailedPasscodeAttempt();
-    if (!mounted) return;
-    setState(() {
-      _totpError = true;
-      _totpChecking = false;
-      _totp = '';
-      _totpAttempt++;
-    });
-  }
-
-  /// The TOTP keypad's paste key (GitHub #111), shared by [_buildTotpBody]'s
-  /// single-method and combined-flow cases — fills [_totp] from the
-  /// clipboard's digits and submits through whichever of [_submitTotp] /
-  /// [_submitCombinedTotp] actually applies right now.
-  void _onPasteTotp(String digits, {required bool combined}) {
+  /// The TOTP keypad's paste key (GitHub #111) — fills [_totp] from the
+  /// clipboard's digits and submits.
+  void _onPasteTotp(String digits) {
     if (_totpChecking) return;
     setState(() {
       _totpError = false;
@@ -274,31 +217,90 @@ class _LockScreenState extends ConsumerState<LockScreen> {
           ? digits.substring(0, _totpCodeLength)
           : digits;
     });
-    if (_totp.length != _totpCodeLength) return;
-    if (combined) {
-      _submitCombinedTotp();
-    } else {
-      _submitTotp();
-    }
+    if (_totp.length == _totpCodeLength) _submitTotp();
   }
+
+  /// Opens a bottom sheet listing every other ready method (GitHub #104 →
+  /// independent on/off toggles) — tapping one switches [_shownMethod] and
+  /// clears whatever was half-entered for the method being left.
+  Future<void> _showMethodPicker(
+    BuildContext context,
+    List<UnlockMethod> otherMethods,
+  ) async {
+    final chosen = await showModalBottomSheet<UnlockMethod>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Try another method',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+            for (final method in otherMethods)
+              ListTile(
+                leading: Icon(_methodIcon(method)),
+                title: Text(_methodLabel(method)),
+                onTap: () => Navigator.of(sheetContext).pop(method),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (chosen == null || !mounted) return;
+    setState(() {
+      _shownMethod = chosen;
+      _resetEntryState();
+    });
+  }
+
+  static IconData _methodIcon(UnlockMethod method) => switch (method) {
+    UnlockMethod.pin => Icons.pin_outlined,
+    UnlockMethod.masterPhrase => Icons.key_outlined,
+    UnlockMethod.totp => Icons.qr_code_2_rounded,
+  };
+
+  static String _methodLabel(UnlockMethod method) => switch (method) {
+    UnlockMethod.pin => 'PIN',
+    UnlockMethod.masterPhrase => 'Master password',
+    UnlockMethod.totp => 'Authenticator app',
+  };
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final unlockMethod = ref.watch(unlockMethodProvider);
     final hasMasterPhrase = ref.watch(hasMasterPhraseProvider);
     final failedAttempts = ref.watch(failedPasscodeAttemptsProvider);
     final threshold = ref.watch(masterPhraseAttemptThresholdProvider);
+    final readyMethods = ref.watch(readyUnlockMethodsProvider);
+    // A stale preference (its method was turned off, or never set) falls
+    // back to whatever else is ready — never shown blank while the app is
+    // actually locked.
+    final shownMethod = readyMethods.contains(_shownMethod)
+        ? _shownMethod
+        : readyMethods.isEmpty
+        ? null
+        : readyMethods.first;
     // The phrase is itself the fallback mechanism, so it never falls back to
-    // itself (GitHub #104) — only reachable here when a *different* method
-    // is active.
+    // itself (GitHub #104) — only reachable here while a *different* method
+    // is showing.
     final canFallBackToPhrase =
-        hasMasterPhrase && unlockMethod != UnlockMethod.masterPhrase;
+        hasMasterPhrase && shownMethod != UnlockMethod.masterPhrase;
     // No time decay (GitHub #74): once the persisted counter reaches the
-    // threshold, every future launch/resume lands here directly — the active
-    // method's own entry below is unreachable again until the phrase is
-    // entered correctly.
+    // threshold, every future launch/resume lands here directly — the
+    // showing method's own entry below is unreachable again until the
+    // phrase is entered correctly.
     final phraseLocked = canFallBackToPhrase && failedAttempts >= threshold;
+    final otherReadyMethods = phraseLocked
+        ? const <UnlockMethod>[]
+        : readyMethods.where((m) => m != shownMethod).toList();
 
     return PopScope(
       canPop: false,
@@ -333,21 +335,23 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                         const SizedBox(height: 40),
                         phraseLocked
                             ? _buildPhraseBody(context, isFallback: true)
-                            : switch (unlockMethod) {
+                            : switch (shownMethod) {
                                 UnlockMethod.pin => _buildPinBody(context),
                                 UnlockMethod.masterPhrase => _buildPhraseBody(
                                   context,
                                   isFallback: false,
                                 ),
                                 UnlockMethod.totp => _buildTotpBody(context),
-                                UnlockMethod.pinAndTotp =>
-                                  _pinTotpStep == _PinTotpStep.pin
-                                      ? _buildPinBody(context, combined: true)
-                                      : _buildTotpBody(
-                                          context,
-                                          combined: true,
-                                        ),
+                                null => const SizedBox.shrink(),
                               },
+                        if (otherReadyMethods.isNotEmpty) ...[
+                          const SizedBox(height: 20),
+                          TextButton(
+                            onPressed: () =>
+                                _showMethodPicker(context, otherReadyMethods),
+                            child: const Text('Try another method'),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -360,13 +364,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     );
   }
 
-  /// [combined] is true for the PIN half of [UnlockMethod.pinAndTotp]
-  /// (GitHub #111) — a correct PIN there only advances to the code step
-  /// (see [_onCombinedPinDigit]), so the biometric shortcut is withheld:
-  /// fingerprint unlock is documented as a PIN-only shortcut, and letting it
-  /// also skip the authenticator half would silently turn "both factors" into
-  /// "just a fingerprint".
-  Widget _buildPinBody(BuildContext context, {bool combined = false}) {
+  Widget _buildPinBody(BuildContext context) {
     final theme = Theme.of(context);
     final biometricEnabled = ref.watch(biometricEnabledProvider);
     final pinLength = ref.watch(passcodeLengthProvider);
@@ -383,15 +381,6 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                 : theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        if (combined) ...[
-          const SizedBox(height: 4),
-          Text(
-            'Step 1 of 2 — an authenticator code is needed next',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
         const SizedBox(height: 18),
         PinDots(entered: _pin.length, length: pinLength, error: _error),
         const SizedBox(height: 40),
@@ -400,9 +389,9 @@ class _LockScreenState extends ConsumerState<LockScreen> {
           child: LockScreenKeypad(
             style: lockScreenStyle,
             attempt: _attempt,
-            onDigit: combined ? _onCombinedPinDigit : _onDigit,
+            onDigit: _onDigit,
             onBackspace: _onBackspace,
-            extraKey: !combined && biometricEnabled
+            extraKey: biometricEnabled
                 ? IconButton(
                     icon: const Icon(Icons.fingerprint_rounded, size: 28),
                     tooltip: 'Use biometric unlock',
@@ -416,19 +405,21 @@ class _LockScreenState extends ConsumerState<LockScreen> {
   }
 
   /// [isFallback] is true when this is reached via too many wrong attempts
-  /// at a *different* active method (GitHub #104) rather than the phrase
-  /// being the active method itself — only then does the "too many wrong…"
+  /// at a *different* showing method (GitHub #104) rather than the phrase
+  /// being the method itself showing — only then does the "too many wrong…"
   /// framing make sense.
   Widget _buildPhraseBody(BuildContext context, {required bool isFallback}) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final unlockMethod = ref.read(unlockMethodProvider);
-    final fallbackHeading = switch (unlockMethod) {
+    final shownMethod =
+        ref.read(readyUnlockMethodsProvider).contains(_shownMethod)
+        ? _shownMethod
+        : null;
+    final fallbackHeading = switch (shownMethod) {
       UnlockMethod.pin => 'Too many wrong PINs',
       UnlockMethod.totp => 'Too many wrong codes',
-      UnlockMethod.pinAndTotp => 'Too many wrong attempts',
-      UnlockMethod.masterPhrase =>
-        '', // unreachable — the phrase can't fall back to itself
+      UnlockMethod.masterPhrase ||
+      null => 'Too many wrong attempts', // masterPhrase case unreachable
     };
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -465,12 +456,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     );
   }
 
-  /// [combined] is true for the code half of [UnlockMethod.pinAndTotp]
-  /// (GitHub #111), reached only after [_buildPinBody]'s combined PIN step
-  /// already verified — routes digit entry and the paste key to
-  /// [_submitCombinedTotp] instead of [_submitTotp] so a correct code here
-  /// actually unlocks, rather than the single-method TOTP flow's own submit.
-  Widget _buildTotpBody(BuildContext context, {bool combined = false}) {
+  Widget _buildTotpBody(BuildContext context) {
     final theme = Theme.of(context);
     final lockScreenStyle = ref.watch(lockScreenStyleProvider);
 
@@ -485,15 +471,6 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                 : theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        if (combined) ...[
-          const SizedBox(height: 4),
-          Text(
-            'Step 2 of 2',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
         const SizedBox(height: 18),
         PinDots(
           entered: _totp.length,
@@ -506,11 +483,9 @@ class _LockScreenState extends ConsumerState<LockScreen> {
           child: LockScreenKeypad(
             style: lockScreenStyle,
             attempt: _totpAttempt,
-            onDigit: combined ? _onCombinedTotpDigit : _onTotpDigit,
+            onDigit: _onTotpDigit,
             onBackspace: _onTotpBackspace,
-            extraKey: PasteCodeKey(
-              onCode: (d) => _onPasteTotp(d, combined: combined),
-            ),
+            extraKey: PasteCodeKey(onCode: _onPasteTotp),
           ),
         ),
       ],

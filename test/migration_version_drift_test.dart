@@ -68,30 +68,24 @@ void main() {
     },
   );
 
-  test(
-    'the v29 hideAmounts column (top-bar eye icon) survives a rolled-back '
-    're-open without "duplicate column name"',
-    () async {
-      final file = await buildRolledBackDatabase(28);
+  test('the v29 hideAmounts column (top-bar eye icon) survives a rolled-back '
+      're-open without "duplicate column name"', () async {
+    final file = await buildRolledBackDatabase(28);
 
-      final reopened = AppDatabase(NativeDatabase(file));
-      await expectLater(reopened.select(reopened.settings).get(), completes);
-      await reopened.close();
-    },
-  );
+    final reopened = AppDatabase(NativeDatabase(file));
+    await expectLater(reopened.select(reopened.settings).get(), completes);
+    await reopened.close();
+  });
 
-  test(
-    'the v44 upiId/myUpiId columns (Persons Pay/Request via UPI) survive a '
-    'rolled-back re-open without "duplicate column name"',
-    () async {
-      final file = await buildRolledBackDatabase(43);
+  test('the v44 upiId/myUpiId columns (Persons Pay/Request via UPI) survive a '
+      'rolled-back re-open without "duplicate column name"', () async {
+    final file = await buildRolledBackDatabase(43);
 
-      final reopened = AppDatabase(NativeDatabase(file));
-      await expectLater(reopened.select(reopened.persons).get(), completes);
-      await expectLater(reopened.select(reopened.settings).get(), completes);
-      await reopened.close();
-    },
-  );
+    final reopened = AppDatabase(NativeDatabase(file));
+    await expectLater(reopened.select(reopened.persons).get(), completes);
+    await expectLater(reopened.select(reopened.settings).get(), completes);
+    await reopened.close();
+  });
 
   test(
     'the v45 holdMenuEnabled/holdMenuSlots columns (hold-➕ quick access) '
@@ -105,81 +99,73 @@ void main() {
     },
   );
 
-  test(
-    'the v46 group tables (Groups/GroupMembers/GroupExpenses/'
-    'GroupExpenseShares) survive a rolled-back re-open',
-    () async {
-      final file = await buildRolledBackDatabase(45);
+  test('the v46 group tables (Groups/GroupMembers/GroupExpenses/'
+      'GroupExpenseShares) survive a rolled-back re-open', () async {
+    final file = await buildRolledBackDatabase(45);
 
-      final reopened = AppDatabase(NativeDatabase(file));
-      await expectLater(reopened.select(reopened.groups).get(), completes);
-      await expectLater(
-        reopened.select(reopened.groupMembers).get(),
-        completes,
-      );
-      await expectLater(
-        reopened.select(reopened.groupExpenses).get(),
-        completes,
-      );
-      await expectLater(
-        reopened.select(reopened.groupExpenseShares).get(),
-        completes,
-      );
-      await reopened.close();
-    },
-  );
+    final reopened = AppDatabase(NativeDatabase(file));
+    await expectLater(reopened.select(reopened.groups).get(), completes);
+    await expectLater(reopened.select(reopened.groupMembers).get(), completes);
+    await expectLater(reopened.select(reopened.groupExpenses).get(), completes);
+    await expectLater(
+      reopened.select(reopened.groupExpenseShares).get(),
+      completes,
+    );
+    await reopened.close();
+  });
 
-  test(
-    'the v60 CurrencyRates table and account/transaction currency columns '
-    'survive a rolled-back re-open',
-    () async {
-      final file = await buildRolledBackDatabase(59);
+  test('the v60 CurrencyRates table and account/transaction currency columns '
+      'survive a rolled-back re-open', () async {
+    final file = await buildRolledBackDatabase(59);
 
-      final reopened = AppDatabase(NativeDatabase(file));
-      await expectLater(reopened.select(reopened.currencyRates).get(), completes);
-      await expectLater(reopened.select(reopened.accounts).get(), completes);
-      await expectLater(reopened.select(reopened.transactions).get(), completes);
-      await reopened.close();
-    },
-  );
+    final reopened = AppDatabase(NativeDatabase(file));
+    await expectLater(reopened.select(reopened.currencyRates).get(), completes);
+    await expectLater(reopened.select(reopened.accounts).get(), completes);
+    await expectLater(reopened.select(reopened.transactions).get(), completes);
+    await reopened.close();
+  });
 
-  test(
-    'the v64 unlockMethod/totpSecret columns (choice of unlock method, '
-    'GitHub #104) survive a rolled-back re-open',
-    () async {
-      final file = await buildRolledBackDatabase(63);
+  test('the v64 unlockMethod/totpSecret columns (choice of unlock method, '
+      'GitHub #104) survive a rolled-back re-open', () async {
+    final file = await buildRolledBackDatabase(63);
 
-      final reopened = AppDatabase(NativeDatabase(file));
-      await expectLater(reopened.select(reopened.settings).get(), completes);
-      await reopened.close();
-    },
-  );
+    final reopened = AppDatabase(NativeDatabase(file));
+    await expectLater(reopened.select(reopened.settings).get(), completes);
+    await reopened.close();
+  });
 
-  test(
-    'GitHub #112: a settings row whose stored unlock_method is not a '
-    "current UnlockMethod name (e.g. a rolling-BETA build's stale value) "
-    'no longer crashes "Couldn\'t open your data" on reopen, and is '
-    'repaired back to pin',
-    () async {
-      final file = File('${tempDir.path}/stale_unlock_method.sqlite');
-      final db = AppDatabase(NativeDatabase(file));
-      // Fully migrated already (schemaVersion == 64), but the stored text
-      // doesn't match any current UnlockMethod.values name — as if an
-      // earlier beta iteration of #104/#111 wrote a value under a name
-      // since renamed. Written with raw SQL so this doesn't itself throw
-      // going through the typed enum converter.
-      await db.customStatement(
-        "UPDATE settings SET unlock_method = 'stale_value_from_old_beta'",
-      );
-      await db.close();
+  test('the v65 pinUnlockEnabled/masterPhraseUnlockEnabled/totpUnlockEnabled '
+      'columns (independent on/off unlock toggles) survive a rolled-back '
+      're-open', () async {
+    final file = await buildRolledBackDatabase(64);
 
-      final reopened = AppDatabase(NativeDatabase(file));
-      // Before the fix, `EnumNameConverter.fromSql`'s `.byName(...)` threw
-      // here, surfacing as the app's "Couldn't open your data" screen with
-      // no way for the user to recover.
-      final row = await reopened.select(reopened.settings).getSingle();
-      expect(row.unlockMethod, UnlockMethod.pin);
-      await reopened.close();
-    },
-  );
+    final reopened = AppDatabase(NativeDatabase(file));
+    await expectLater(reopened.select(reopened.settings).get(), completes);
+    await reopened.close();
+  });
+
+  test('GitHub #112: a settings row whose stored unlock_method is not a '
+      "current UnlockMethod name (e.g. a rolling-BETA build's stale value) "
+      'no longer crashes "Couldn\'t open your data" on reopen, and is '
+      'repaired back to pin', () async {
+    final file = File('${tempDir.path}/stale_unlock_method.sqlite');
+    final db = AppDatabase(NativeDatabase(file));
+    // Fully migrated already (schemaVersion == 64), but the stored text
+    // doesn't match any current UnlockMethod.values name — as if an
+    // earlier beta iteration of #104/#111 wrote a value under a name
+    // since renamed. Written with raw SQL so this doesn't itself throw
+    // going through the typed enum converter.
+    await db.customStatement(
+      "UPDATE settings SET unlock_method = 'stale_value_from_old_beta'",
+    );
+    await db.close();
+
+    final reopened = AppDatabase(NativeDatabase(file));
+    // Before the fix, `EnumNameConverter.fromSql`'s `.byName(...)` threw
+    // here, surfacing as the app's "Couldn't open your data" screen with
+    // no way for the user to recover.
+    final row = await reopened.select(reopened.settings).getSingle();
+    expect(row.unlockMethod, UnlockMethod.pin);
+    await reopened.close();
+  });
 }

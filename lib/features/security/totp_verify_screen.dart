@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/security/paste_code_key.dart';
 import '../../core/security/pin_pad.dart';
 import '../../data/providers.dart';
-import '../../data/tables.dart' show UnlockMethod;
 import 'lock_screen_keypad.dart';
 
 const _codeLength = 6;
@@ -66,24 +65,13 @@ class _TotpVerifyScreenState extends ConsumerState<TotpVerifyScreen> {
       });
       return;
     }
-    // Read before clearing — GitHub #111: PIN + Authenticator loses its
-    // authenticator half here, so the message should say what unlock now
-    // actually requires instead of implying nothing changed.
-    final wasCombined =
-        ref.read(unlockMethodProvider) == UnlockMethod.pinAndTotp;
     await ref.read(dbProvider).clearTotp();
     if (!mounted) return;
     Navigator.of(context).pop();
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        SnackBar(
-          content: Text(
-            wasCombined
-                ? 'Authenticator app turned off — PIN unlock only'
-                : 'Authenticator app turned off',
-          ),
-        ),
+        const SnackBar(content: Text('Authenticator app turned off')),
       );
   }
 

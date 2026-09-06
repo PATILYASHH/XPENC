@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/security/paste_code_key.dart';
 import '../../core/security/pin_pad.dart';
 import '../../core/security/totp.dart';
 import '../../data/providers.dart';
-import '../../data/tables.dart' show UnlockMethod;
 import 'lock_screen_keypad.dart';
 
 enum _Step { scan, confirm }
@@ -20,15 +18,7 @@ const _codeLength = 6;
 /// committing" shape as [MasterPhraseSetupScreen]'s tap-back-in-order step.
 /// GitHub #104.
 class TotpSetupScreen extends ConsumerStatefulWidget {
-  const TotpSetupScreen({this.combineWithPin = false, super.key});
-
-  /// Set when this setup was reached from the Settings "PIN + Authenticator"
-  /// combined-method radio (GitHub #111), rather than the plain
-  /// "Authenticator app" one. On success, activates
-  /// [UnlockMethod.pinAndTotp] instead of the usual "just activate TOTP
-  /// alone" rule — chaining onward to the PIN setup first if a PIN isn't
-  /// configured yet, since the combo needs both.
-  final bool combineWithPin;
+  const TotpSetupScreen({super.key});
 
   @override
   ConsumerState<TotpSetupScreen> createState() => _TotpSetupScreenState();
@@ -93,27 +83,6 @@ class _TotpSetupScreenState extends ConsumerState<TotpSetupScreen> {
     setState(() => _saving = true);
     await ref.read(dbProvider).setupTotp(_secret);
     if (!mounted) return;
-
-    if (widget.combineWithPin) {
-      if (ref.read(hasPasscodeProvider)) {
-        // Both halves exist now — activate the combo instead of leaving
-        // `setupTotp`'s own "activate TOTP alone" default in place.
-        await ref.read(dbProvider).setUnlockMethod(UnlockMethod.pinAndTotp);
-        if (!mounted) return;
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            const SnackBar(content: Text('PIN + Authenticator unlock set')),
-          );
-      } else {
-        // No PIN yet — chain onward rather than leaving the combo
-        // half-configured. `pushReplacement` (not push) so cancelling out of
-        // the PIN step lands back on Settings, not back here.
-        context.pushReplacement('/more/settings/passcode?combine=true');
-      }
-      return;
-    }
 
     Navigator.of(context).pop();
     ScaffoldMessenger.of(context)
