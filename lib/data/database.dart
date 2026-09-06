@@ -27,9 +27,8 @@ part 'database.g.dart';
 Money accountMovement(TransactionRow tx, Set<int> ownIds) => switch (tx.type) {
   TxType.income || TxType.personIn => tx.amount,
   TxType.expense || TxType.personOut => -tx.amount,
-  TxType.transfer => ownIds.contains(tx.accountId)
-      ? -tx.amount
-      : (tx.toAmount ?? tx.amount),
+  TxType.transfer =>
+    ownIds.contains(tx.accountId) ? -tx.amount : (tx.toAmount ?? tx.amount),
 };
 
 /// The gap between automatic backups for a given schedule. `monthly` is
@@ -152,6 +151,8 @@ typedef CombinedStatementLine = ({
     OcrCorrections,
     CreditCardDetails,
     CurrencyRates,
+    CategoryTemplates,
+    CategoryTemplateItems,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -177,7 +178,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 62;
+  int get schemaVersion => 63;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -374,11 +375,7 @@ class AppDatabase extends _$AppDatabase {
           settings,
           settings.masterPhraseAttemptThreshold,
         );
-        await _addColumnIfMissing(
-          m,
-          settings,
-          settings.failedPasscodeAttempts,
-        );
+        await _addColumnIfMissing(m, settings, settings.failedPasscodeAttempts);
       }
       if (from < 42) {
         await _addColumnIfMissing(m, settings, settings.showBottomNavLabels);
@@ -407,7 +404,11 @@ class AppDatabase extends _$AppDatabase {
         await _addColumnIfMissing(m, recurringRules, recurringRules.note);
       }
       if (from < 48) {
-        await _addColumnIfMissing(m, recurringRules, recurringRules.promoAmount);
+        await _addColumnIfMissing(
+          m,
+          recurringRules,
+          recurringRules.promoAmount,
+        );
         await _addColumnIfMissing(
           m,
           recurringRules,
@@ -501,11 +502,7 @@ class AppDatabase extends _$AppDatabase {
           transactions.fxRateToBaseMicros,
         );
         await _addColumnIfMissing(m, transactions, transactions.toAmount);
-        await _addColumnIfMissing(
-          m,
-          transactions,
-          transactions.toCurrencyCode,
-        );
+        await _addColumnIfMissing(m, transactions, transactions.toCurrencyCode);
         await _addColumnIfMissing(
           m,
           transactions,
@@ -526,11 +523,17 @@ class AppDatabase extends _$AppDatabase {
         // Envelope-mode user's accounts don't silently fall out of the pool.
         await _addColumnIfMissing(m, settings, settings.rtaEnabled);
         final current = await select(settings).getSingleOrNull();
-        if (current != null && current.budgetingMode == BudgetingMode.envelope) {
+        if (current != null &&
+            current.budgetingMode == BudgetingMode.envelope) {
           await update(
             settings,
           ).write(const SettingsCompanion(rtaEnabled: Value(true)));
         }
+      }
+      if (from < 63) {
+        // GitHub #101 — saveable, switchable category templates.
+        await m.createTable(categoryTemplates);
+        await m.createTable(categoryTemplateItems);
       }
     },
     beforeOpen: (details) async {
@@ -894,8 +897,9 @@ class AppDatabase extends _$AppDatabase {
         await _adjust(t.accountId, -amt);
       case TxType.transfer:
         await _adjust(t.accountId, -amt);
-        final creditAmt =
-            t.toAmount == null ? amt : Money(t.toAmount!.paise * sign);
+        final creditAmt = t.toAmount == null
+            ? amt
+            : Money(t.toAmount!.paise * sign);
         await _adjust(t.toAccountId!, creditAmt);
     }
   }
@@ -1040,7 +1044,10 @@ class AppDatabase extends _$AppDatabase {
   /// downstream total, so this fails loudly instead and the UI is
   /// responsible for steering the user to the Currency settings screen
   /// first.
-  Future<(String?, int?)> _resolveTxCurrency(int accountId, DateTime date) async {
+  Future<(String?, int?)> _resolveTxCurrency(
+    int accountId,
+    DateTime date,
+  ) async {
     final account = await (select(
       accounts,
     )..where((a) => a.id.equals(accountId))).getSingle();
@@ -1552,9 +1559,9 @@ class AppDatabase extends _$AppDatabase {
   )..orderBy([(g) => OrderingTerm(expression: g.name)])).watch();
 
   Future<int> addTagGroup({required String name, required int colorValue}) =>
-      into(tagGroups).insert(
-        TagGroupsCompanion.insert(name: name, colorValue: colorValue),
-      );
+      into(
+        tagGroups,
+      ).insert(TagGroupsCompanion.insert(name: name, colorValue: colorValue));
 
   Future<void> updateTagGroup({
     required int id,
@@ -1592,9 +1599,9 @@ class AppDatabase extends _$AppDatabase {
         tagGroupTags,
       )..where((t) => t.groupId.equals(groupId))).go();
       for (final tagId in tagIds) {
-        await into(tagGroupTags).insert(
-          TagGroupTagsCompanion.insert(groupId: groupId, tagId: tagId),
-        );
+        await into(
+          tagGroupTags,
+        ).insert(TagGroupTagsCompanion.insert(groupId: groupId, tagId: tagId));
       }
     });
   }
@@ -1757,15 +1764,13 @@ class AppDatabase extends _$AppDatabase {
 
   // ── Credit card statements (GitHub #91) ─────────────────────────────────
 
-  Future<CreditCardDetailRow?> getCreditCardDetails(int accountId) =>
-      (select(
-        creditCardDetails,
-      )..where((c) => c.accountId.equals(accountId))).getSingleOrNull();
+  Future<CreditCardDetailRow?> getCreditCardDetails(int accountId) => (select(
+    creditCardDetails,
+  )..where((c) => c.accountId.equals(accountId))).getSingleOrNull();
 
-  Stream<CreditCardDetailRow?> watchCreditCardDetails(int accountId) =>
-      (select(
-        creditCardDetails,
-      )..where((c) => c.accountId.equals(accountId))).watchSingleOrNull();
+  Stream<CreditCardDetailRow?> watchCreditCardDetails(int accountId) => (select(
+    creditCardDetails,
+  )..where((c) => c.accountId.equals(accountId))).watchSingleOrNull();
 
   /// Every credit card currently tracking a statement cycle — what
   /// [NotificationService.syncCreditCardReminders] schedules a due-date
@@ -1805,10 +1810,9 @@ class AppDatabase extends _$AppDatabase {
 
   /// Turns tracking back off — the card itself is untouched, only the
   /// cycle it was reporting against.
-  Future<void> deleteCreditCardDetails(int accountId) =>
-      (delete(
-        creditCardDetails,
-      )..where((c) => c.accountId.equals(accountId))).go();
+  Future<void> deleteCreditCardDetails(int accountId) => (delete(
+    creditCardDetails,
+  )..where((c) => c.accountId.equals(accountId))).go();
 
   /// The last real day of [year]/[month] if [day] overshoots it (e.g. the
   /// 31st in a 30-day month) — the same snapping [_nextOccurrence] applies
@@ -2257,10 +2261,7 @@ class AppDatabase extends _$AppDatabase {
   /// to now) — `null` if none has been entered yet as of that date. This is
   /// what a transaction snapshots at post time, and what a live figure
   /// (Net Worth) resolves with `asOf` left at its default.
-  Future<CurrencyRateRow?> latestRate(
-    String currencyCode, {
-    DateTime? asOf,
-  }) {
+  Future<CurrencyRateRow?> latestRate(String currencyCode, {DateTime? asOf}) {
     final cutoff = asOf ?? DateTime.now();
     return (select(currencyRates)
           ..where(
@@ -2269,8 +2270,10 @@ class AppDatabase extends _$AppDatabase {
                 r.effectiveAt.isSmallerOrEqualValue(cutoff),
           )
           ..orderBy([
-            (r) =>
-                OrderingTerm(expression: r.effectiveAt, mode: OrderingMode.desc),
+            (r) => OrderingTerm(
+              expression: r.effectiveAt,
+              mode: OrderingMode.desc,
+            ),
           ])
           ..limit(1))
         .getSingleOrNull();
@@ -2343,23 +2346,22 @@ class AppDatabase extends _$AppDatabase {
   /// has been entered for its currency yet, its raw balance is added
   /// unconverted rather than dropping it or throwing, so an incomplete
   /// Currency setup never breaks the dashboard.
-  Stream<Money> watchNetWorth() => watchBalanceHoldingAccounts().asyncMap((
-    rows,
-  ) async {
-    var total = const Money.zero();
-    for (final a in rows) {
-      if (!a.includeInNetWorth) continue;
-      if (a.currencyCode == null) {
-        total += a.currentBalance;
-        continue;
-      }
-      final rate = await latestRate(a.currencyCode!);
-      total += rate == null
-          ? a.currentBalance
-          : convertUsingRate(a.currentBalance, rate.rateToBaseMicros);
-    }
-    return total;
-  });
+  Stream<Money> watchNetWorth() =>
+      watchBalanceHoldingAccounts().asyncMap((rows) async {
+        var total = const Money.zero();
+        for (final a in rows) {
+          if (!a.includeInNetWorth) continue;
+          if (a.currencyCode == null) {
+            total += a.currentBalance;
+            continue;
+          }
+          final rate = await latestRate(a.currencyCode!);
+          total += rate == null
+              ? a.currentBalance
+              : convertUsingRate(a.currentBalance, rate.rateToBaseMicros);
+        }
+        return total;
+      });
 
   /// Flips whether [id]'s balance counts toward [watchNetWorth] — the toggle
   /// behind Settings > Customize Dashboard.
@@ -3034,9 +3036,9 @@ class AppDatabase extends _$AppDatabase {
 
   // ── Groups CRUD ───────────────────────────────────────────────────────────
 
-  Future<int> addGroup(String name, {String? note}) => into(groups).insert(
-    GroupsCompanion.insert(name: name, note: Value(note)),
-  );
+  Future<int> addGroup(String name, {String? note}) => into(
+    groups,
+  ).insert(GroupsCompanion.insert(name: name, note: Value(note)));
 
   Future<void> updateGroup({
     required int id,
@@ -3073,7 +3075,9 @@ class AppDatabase extends _$AppDatabase {
   /// history. Anything used must be archived instead.
   Future<void> deleteGroup(int id) async {
     if (await countExpensesForGroup(id) > 0) {
-      throw ArgumentError('This group has expense history — archive it instead.');
+      throw ArgumentError(
+        'This group has expense history — archive it instead.',
+      );
     }
     await transaction(() async {
       await (delete(groupMembers)..where((m) => m.groupId.equals(id))).go();
@@ -3101,11 +3105,12 @@ class AppDatabase extends _$AppDatabase {
   /// [addGroupExpense] distributes a rounding remainder in, so which member
   /// gets an extra paisa is stable, not arbitrary.
   Stream<List<PersonRow>> watchGroupMembers(int groupId) {
-    final query = select(groupMembers).join([
-      innerJoin(persons, persons.id.equalsExp(groupMembers.personId)),
-    ])
-      ..where(groupMembers.groupId.equals(groupId))
-      ..orderBy([OrderingTerm.asc(groupMembers.id)]);
+    final query =
+        select(groupMembers).join([
+            innerJoin(persons, persons.id.equalsExp(groupMembers.personId)),
+          ])
+          ..where(groupMembers.groupId.equals(groupId))
+          ..orderBy([OrderingTerm.asc(groupMembers.id)]);
     return query.watch().map(
       (rows) => rows.map((r) => r.readTable(persons)).toList(),
     );
@@ -3759,14 +3764,15 @@ class AppDatabase extends _$AppDatabase {
               dayOfMonth: rule.dayOfMonth,
             );
           }
-          await (update(recurringRules)..where((r) => r.id.equals(rule.id)))
-              .write(
-                RecurringRulesCompanion(
-                  nextDueDate: Value(next),
-                  promoAmount: Value(promoAmount),
-                  promoOccurrencesLeft: Value(promoLeft),
-                ),
-              );
+          await (update(
+            recurringRules,
+          )..where((r) => r.id.equals(rule.id))).write(
+            RecurringRulesCompanion(
+              nextDueDate: Value(next),
+              promoAmount: Value(promoAmount),
+              promoOccurrencesLeft: Value(promoLeft),
+            ),
+          );
         });
       } catch (_) {
         // One rule that can no longer post (its account stopped being
@@ -4268,9 +4274,8 @@ class AppDatabase extends _$AppDatabase {
   Future<void> setRevolutEnabled(bool value) =>
       update(settings).write(SettingsCompanion(revolutEnabled: Value(value)));
 
-  Future<void> setLockScreenStyle(LockScreenStyle style) => update(
-    settings,
-  ).write(SettingsCompanion(lockScreenStyle: Value(style)));
+  Future<void> setLockScreenStyle(LockScreenStyle style) =>
+      update(settings).write(SettingsCompanion(lockScreenStyle: Value(style)));
 
   Future<void> setMoreScreenViewMode(MoreScreenViewMode mode) => update(
     settings,
@@ -4284,9 +4289,7 @@ class AppDatabase extends _$AppDatabase {
   /// reads it while RTA is off), so turning it back on re-enrolls everyone
   /// anyway per the branch below — no data is lost either direction.
   Future<void> setRtaEnabled(bool enabled) => transaction(() async {
-    await update(
-      settings,
-    ).write(SettingsCompanion(rtaEnabled: Value(enabled)));
+    await update(settings).write(SettingsCompanion(rtaEnabled: Value(enabled)));
     if (enabled) {
       await update(
         accounts,
@@ -4391,9 +4394,9 @@ class AppDatabase extends _$AppDatabase {
   /// fall back to.
   Future<void> setMasterPhraseAttemptThreshold(int attempts) async {
     if ((await getSettings()).masterPhraseHash == null) return;
-    await update(settings).write(
-      SettingsCompanion(masterPhraseAttemptThreshold: Value(attempts)),
-    );
+    await update(
+      settings,
+    ).write(SettingsCompanion(masterPhraseAttemptThreshold: Value(attempts)));
   }
 
   /// Increments the persisted wrong-PIN counter and returns the new count —
@@ -4468,9 +4471,8 @@ class AppDatabase extends _$AppDatabase {
     settings,
   ).write(SettingsCompanion(showBottomNavLabels: Value(value)));
 
-  Future<void> setHoldMenuEnabled(bool value) => update(
-    settings,
-  ).write(SettingsCompanion(holdMenuEnabled: Value(value)));
+  Future<void> setHoldMenuEnabled(bool value) =>
+      update(settings).write(SettingsCompanion(holdMenuEnabled: Value(value)));
 
   Future<void> setHoldMenuSlots(List<String> ids) async {
     if (ids.length != 3 || ids.toSet().length != 3) {
@@ -4487,9 +4489,9 @@ class AppDatabase extends _$AppDatabase {
   /// Clamped to a sane range here, not just in the settings slider — this is
   /// the only path a stray value (a bad restore, a future scripted call)
   /// could take to reach the column.
-  Future<void> setExtraBottomInset(int px) => update(settings).write(
-    SettingsCompanion(extraBottomInset: Value(px.clamp(0, 40))),
-  );
+  Future<void> setExtraBottomInset(int px) => update(
+    settings,
+  ).write(SettingsCompanion(extraBottomInset: Value(px.clamp(0, 40))));
 
   /// Bumps [key] to the front of `Settings.frequentIconKeys` — the icon sheet
   /// calls this whenever an icon is picked. Capped at 12 so the "Frequently
@@ -4804,6 +4806,220 @@ class AppDatabase extends _$AppDatabase {
     )..where((t) => t.categoryId.equals(categoryId))).get();
     return rows.length;
   }
+
+  // ── Category templates (GitHub #101) ────────────────────────────────────
+  //
+  // A template is a named snapshot of a category/sub-category structure.
+  // Switching to one never touches `Transactions` — it only changes which
+  // `Categories` rows are archived vs. active, the same as a manual archive.
+  // See docs/superpowers/specs/2026-09-06-category-templates-design.md.
+
+  /// Matches a live category or template item to "the same" one elsewhere —
+  /// by kind, name and parent *name*, never by id (a template's own ids are
+  /// meaningless once applied on a different device/dataset).
+  String _categoryMatchKey(CategoryKind kind, String name, String? parentName) {
+    final normalizedParent = parentName?.trim().toLowerCase() ?? '';
+    return '${kind.name}|$normalizedParent|${name.trim().toLowerCase()}';
+  }
+
+  Stream<List<CategoryTemplateRow>> watchCategoryTemplates() =>
+      (select(categoryTemplates)..orderBy([
+            (t) =>
+                OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
+          ]))
+          .watch();
+
+  Stream<List<CategoryTemplateItemRow>> watchCategoryTemplateItems(
+    int templateId,
+  ) =>
+      (select(categoryTemplateItems)
+            ..where((i) => i.templateId.equals(templateId))
+            ..orderBy([(i) => OrderingTerm(expression: i.sortOrder)]))
+          .watch();
+
+  /// Snapshots every currently-active category (both kinds) into a brand new
+  /// template. A child whose parent isn't itself active (a dangling
+  /// `parentId`, same edge case `_flatten` in the Categories screen guards)
+  /// is skipped rather than saved half-nested.
+  Future<int> saveCategoriesAsTemplate(String name) => transaction(() async {
+    final templateId = await into(
+      categoryTemplates,
+    ).insert(CategoryTemplatesCompanion.insert(name: name));
+
+    final active = await (select(
+      categories,
+    )..where((c) => c.isArchived.equals(false))).get();
+    final parents = active.where((c) => c.parentId == null).toList();
+    final itemIdByCategoryId = <int, int>{};
+
+    for (final p in parents) {
+      final itemId = await into(categoryTemplateItems).insert(
+        CategoryTemplateItemsCompanion.insert(
+          templateId: templateId,
+          name: p.name,
+          kind: p.kind,
+          colorValue: p.colorValue,
+          iconKey: p.iconKey,
+          sortOrder: Value(p.sortOrder),
+        ),
+      );
+      itemIdByCategoryId[p.id] = itemId;
+    }
+    for (final c in active.where((c) => c.parentId != null)) {
+      final parentItemId = itemIdByCategoryId[c.parentId];
+      if (parentItemId == null) continue;
+      await into(categoryTemplateItems).insert(
+        CategoryTemplateItemsCompanion.insert(
+          templateId: templateId,
+          name: c.name,
+          kind: c.kind,
+          colorValue: c.colorValue,
+          iconKey: c.iconKey,
+          sortOrder: Value(c.sortOrder),
+          parentItemId: Value(parentItemId),
+        ),
+      );
+    }
+    return templateId;
+  });
+
+  Future<void> renameCategoryTemplate(int id, String name) =>
+      (update(categoryTemplates)..where((t) => t.id.equals(id))).write(
+        CategoryTemplatesCompanion(name: Value(name)),
+      );
+
+  Future<void> deleteCategoryTemplate(int id) => transaction(() async {
+    await (delete(
+      categoryTemplateItems,
+    )..where((i) => i.templateId.equals(id))).go();
+    await (delete(categoryTemplates)..where((t) => t.id.equals(id))).go();
+  });
+
+  /// Switches the live category set to match [templateId]'s structure,
+  /// without ever touching a transaction:
+  ///
+  /// - A template item that matches an existing category (by
+  ///   [_categoryMatchKey], active **or** archived) relabels that category
+  ///   in place (name, colour, icon) and unarchives it if needed, instead of
+  ///   making a duplicate — this is what makes switching back to a template
+  ///   used before a free "revert" rather than a fresh rebuild.
+  /// - A template item with no match gets created fresh.
+  /// - A live active category that no template item matches gets archived —
+  ///   exactly like a manual archive, so its transactions keep it and only
+  ///   disappear from new-entry pickers.
+  Future<void> applyCategoryTemplate(int templateId) => transaction(() async {
+    final items = await (select(
+      categoryTemplateItems,
+    )..where((i) => i.templateId.equals(templateId))).get();
+    if (items.isEmpty) {
+      throw ArgumentError('This template has no categories to switch to.');
+    }
+    final itemsById = {for (final i in items) i.id: i};
+    String keyOf(CategoryTemplateItemRow i) {
+      final parentName = i.parentItemId == null
+          ? null
+          : itemsById[i.parentItemId]?.name;
+      return _categoryMatchKey(i.kind, i.name, parentName);
+    }
+
+    final all = await select(categories).get();
+    final byId = {for (final c in all) c.id: c};
+    String keyOfCategory(CategoryRow c) {
+      final parentName = c.parentId == null ? null : byId[c.parentId]?.name;
+      return _categoryMatchKey(c.kind, c.name, parentName);
+    }
+
+    // Archived rows first, active rows second — if a key somehow matches
+    // both (a stray duplicate), the map ends up pointing at the active one,
+    // so an already-live category is never displaced by reactivating a
+    // stale archived duplicate of itself.
+    final byKey = <String, CategoryRow>{};
+    for (final c in all.where((c) => c.isArchived)) {
+      byKey[keyOfCategory(c)] = c;
+    }
+    for (final c in all.where((c) => !c.isArchived)) {
+      byKey[keyOfCategory(c)] = c;
+    }
+    final active = all.where((c) => !c.isArchived).toList();
+
+    final matchedIds = <int>{};
+    final liveIdByItemId = <int, int>{};
+
+    Future<void> reuse(
+      CategoryRow existing,
+      CategoryTemplateItemRow item,
+      Value<int?> parentId,
+    ) async {
+      matchedIds.add(existing.id);
+      if (existing.isArchived) {
+        await (update(categories)..where((cc) => cc.id.equals(existing.id)))
+            .write(const CategoriesCompanion(isArchived: Value(false)));
+      }
+      try {
+        await updateCategory(
+          id: existing.id,
+          name: item.name,
+          colorValue: item.colorValue,
+          iconKey: item.iconKey,
+          parentId: parentId,
+        );
+      } on ArgumentError {
+        // Most likely: `existing` still has children of its own, so the
+        // two-level cap in `updateCategory` refuses to nest it under
+        // someone else. Keep its current placement rather than aborting the
+        // whole switch over one awkward re-nest.
+        if (parentId.present && parentId.value != null) {
+          await updateCategory(
+            id: existing.id,
+            name: item.name,
+            colorValue: item.colorValue,
+            iconKey: item.iconKey,
+          );
+        } else {
+          rethrow;
+        }
+      }
+    }
+
+    // Parents first, so children below can resolve their live parent id.
+    for (final item in items.where((i) => i.parentItemId == null)) {
+      final existing = byKey[keyOf(item)];
+      if (existing != null) {
+        liveIdByItemId[item.id] = existing.id;
+        await reuse(existing, item, const Value(null));
+      } else {
+        liveIdByItemId[item.id] = await addCategory(
+          name: item.name,
+          kind: item.kind,
+          colorValue: item.colorValue,
+          iconKey: item.iconKey,
+        );
+      }
+    }
+    for (final item in items.where((i) => i.parentItemId != null)) {
+      final existing = byKey[keyOf(item)];
+      final liveParentId = liveIdByItemId[item.parentItemId];
+      if (existing != null) {
+        await reuse(existing, item, Value(liveParentId));
+      } else if (liveParentId != null) {
+        await addCategory(
+          name: item.name,
+          kind: item.kind,
+          colorValue: item.colorValue,
+          iconKey: item.iconKey,
+          parentId: liveParentId,
+        );
+      }
+    }
+
+    for (final c in active) {
+      if (!matchedIds.contains(c.id)) {
+        await (update(categories)..where((cc) => cc.id.equals(c.id))).write(
+          const CategoriesCompanion(isArchived: Value(true)),
+        );
+      }
+    }
+  });
 
   // ── Per-account history ───────────────────────────────────────────────────
 
