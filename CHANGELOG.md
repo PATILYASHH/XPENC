@@ -8,6 +8,16 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
+### Changed
+- **Unlock methods are now independent on/off toggles** (Settings → Security)
+  instead of picking exactly one. Turn on PIN, master password and/or the
+  authenticator app in any combination — any one of them unlocks the app
+  (OR, not AND) — and switch between whichever are turned on from "Try
+  another method" on the lock screen. Replaces the old single-choice picker
+  and the "PIN + Authenticator" two-factor combo: an install that had that
+  combo active now has both toggles on, so either credential alone unlocks
+  it going forward.
+
 ### Added
 - **Category templates** (#101) — save your current category/sub-category
   structure as a named template from Categories → the new templates icon,

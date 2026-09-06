@@ -177,8 +177,6 @@ final appRouter = GoRouter(
                       builder: (_, state) => SetPasscodeScreen(
                         isRemoving:
                             state.uri.queryParameters['remove'] == 'true',
-                        combineWithTotp:
-                            state.uri.queryParameters['combine'] == 'true',
                       ),
                     ),
                     GoRoute(
@@ -194,10 +192,7 @@ final appRouter = GoRouter(
                     GoRoute(
                       path: 'totp/setup',
                       parentNavigatorKey: _rootKey,
-                      builder: (_, state) => TotpSetupScreen(
-                        combineWithPin:
-                            state.uri.queryParameters['combine'] == 'true',
-                      ),
+                      builder: (_, _) => const TotpSetupScreen(),
                     ),
                     GoRoute(
                       path: 'totp/disable',
