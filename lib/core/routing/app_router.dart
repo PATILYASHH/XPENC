@@ -15,6 +15,7 @@ import '../../features/budgets/budgets_screen.dart';
 import '../../features/budgets/ready_to_assign_screen.dart';
 import '../../features/calendar/calendar_screen.dart';
 import '../../features/categories/categories_screen.dart';
+import '../../features/categories/category_templates_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/data_export/backup_screen.dart';
 import '../../features/data_export/csv_import_screen.dart';
@@ -246,6 +247,13 @@ final appRouter = GoRouter(
                   path: 'categories',
                   parentNavigatorKey: _rootKey,
                   builder: (_, _) => const CategoriesScreen(),
+                  routes: [
+                    GoRoute(
+                      path: 'templates',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const CategoryTemplatesScreen(),
+                    ),
+                  ],
                 ),
                 GoRoute(
                   path: 'tags',
