@@ -11,4 +11,10 @@ bool hasUnlockCredential(SettingRow settings) =>
       UnlockMethod.pin => settings.passcodeHash != null,
       UnlockMethod.masterPhrase => settings.masterPhraseHash != null,
       UnlockMethod.totp => settings.totpSecret != null,
+      // Both factors must actually be configured — a half-configured combo
+      // (e.g. the TOTP secret got cleared elsewhere) must not read as "locked"
+      // on just the PIN alone, same "all or nothing per method" rule the
+      // other cases already follow.
+      UnlockMethod.pinAndTotp =>
+        settings.passcodeHash != null && settings.totpSecret != null,
     };

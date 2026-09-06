@@ -4332,15 +4332,26 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// Clears the passcode and, since it's meaningless without one, biometric
-  /// unlock along with it.
-  Future<void> clearPasscode() => update(settings).write(
-    const SettingsCompanion(
-      passcodeHash: Value(null),
-      passcodeSalt: Value(null),
-      passcodeLength: Value(null),
-      biometricEnabled: Value(false),
-    ),
-  );
+  /// unlock along with it. If [UnlockMethod.pinAndTotp] was active, the
+  /// authenticator half of it still stands on its own, so this falls back to
+  /// `totp` rather than leaving [Settings.unlockMethod] pointed at a
+  /// combination that's now missing half its credential — same "graceful
+  /// fallback to whatever still works" rule [clearTotp] follows.
+  Future<void> clearPasscode() async {
+    final wasCombined =
+        (await getSettings()).unlockMethod == UnlockMethod.pinAndTotp;
+    await update(settings).write(
+      SettingsCompanion(
+        passcodeHash: const Value(null),
+        passcodeSalt: const Value(null),
+        passcodeLength: const Value(null),
+        biometricEnabled: const Value(false),
+        unlockMethod: wasCombined
+            ? const Value(UnlockMethod.totp)
+            : const Value.absent(),
+      ),
+    );
+  }
 
   Future<bool> verifyPasscode(String pin) async {
     final row = await getSettings();
@@ -4444,14 +4455,20 @@ class AppDatabase extends _$AppDatabase {
     ),
   );
 
-  /// Clears the TOTP secret. If it was the active method, falls back to
-  /// `pin` — same reasoning as [clearMasterPhrase].
+  /// Clears the TOTP secret. If it was the active method — alone or as half
+  /// of [UnlockMethod.pinAndTotp] — falls back to `pin` — same reasoning as
+  /// [clearMasterPhrase]. A [UnlockMethod.pinAndTotp] setup always has a PIN
+  /// configured (it's required to activate the combo in the first place), so
+  /// `pin` is always a real fallback here, never a credential that doesn't
+  /// exist.
   Future<void> clearTotp() async {
-    final wasActive = (await getSettings()).unlockMethod == UnlockMethod.totp;
+    final current = (await getSettings()).unlockMethod;
+    final fallsBackToPin =
+        current == UnlockMethod.totp || current == UnlockMethod.pinAndTotp;
     await update(settings).write(
       SettingsCompanion(
         totpSecret: const Value(null),
-        unlockMethod: wasActive
+        unlockMethod: fallsBackToPin
             ? const Value(UnlockMethod.pin)
             : const Value.absent(),
       ),

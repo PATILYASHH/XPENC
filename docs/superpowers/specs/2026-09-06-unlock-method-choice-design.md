@@ -140,7 +140,13 @@ what the backup file itself contains.
 
 ## Non-goals (v1)
 
-- No multi-factor combination (PIN *and* TOTP, etc.) — the reporter
-  explicitly asked for alternatives, not stacking.
+- ~~No multi-factor combination (PIN *and* TOTP, etc.) — the reporter
+  explicitly asked for alternatives, not stacking.~~ Superseded by GitHub
+  #111 — see
+  `docs/superpowers/specs/2026-09-06-pin-plus-authenticator-design.md`, which
+  adds [UnlockMethod.pinAndTotp] as a fourth, *additional* choice alongside
+  the three alternatives this spec introduced. Nothing here changes: a user
+  who wants "either PIN or TOTP" still picks one of the original three: the
+  combo is an opt-in fourth radio option, not a replacement.
 - No re-showing a previously-generated TOTP secret/QR after setup closes —
   matches the master phrase's own "shown once, then gone" precedent.
