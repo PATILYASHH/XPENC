@@ -8,6 +8,8 @@ import '../core/currency.dart';
 import '../core/group_split_math.dart';
 import '../core/money.dart';
 import '../core/security/passcode.dart';
+import '../core/security/totp.dart';
+import '../core/security/unlock_method.dart';
 import '../features/message_capture/parser/bank_message.dart';
 import '../features/message_capture/parser/message_parser.dart';
 import 'currency_conversion.dart';
@@ -178,7 +180,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 63;
+  int get schemaVersion => 64;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -534,6 +536,14 @@ class AppDatabase extends _$AppDatabase {
         // GitHub #101 — saveable, switchable category templates.
         await m.createTable(categoryTemplates);
         await m.createTable(categoryTemplateItems);
+      }
+      if (from < 64) {
+        // GitHub #104 — choose PIN, master password, or an authenticator
+        // app (TOTP) as the app's unlock method, instead of PIN always
+        // being it. `unlockMethod` defaults to `pin`, so every existing
+        // install keeps today's exact behavior.
+        await _addColumnIfMissing(m, settings, settings.unlockMethod);
+        await _addColumnIfMissing(m, settings, settings.totpSecret);
       }
     },
     beforeOpen: (details) async {
@@ -4300,14 +4310,23 @@ class AppDatabase extends _$AppDatabase {
   // ── Passcode ──────────────────────────────────────────────────────────────
 
   /// [pin].length is trusted as-is — the entry screen is what enforces 4-6
-  /// digits (see GitHub #18).
-  Future<void> setPasscode(String pin) {
+  /// digits (see GitHub #18). A *fresh* passcode (none set before) also
+  /// switches [Settings.unlockMethod] to `pin` (GitHub #104) — the same
+  /// "saving a setup flow activates it" rule [setupTotp] and [setMasterPhrase]
+  /// follow. Changing an already-set passcode leaves the active method
+  /// untouched — that's the "manage this credential independently of which
+  /// one is active" case the design doc calls out.
+  Future<void> setPasscode(String pin) async {
+    final isFreshSetup = (await getSettings()).passcodeHash == null;
     final salt = Passcode.generateSalt();
-    return update(settings).write(
+    await update(settings).write(
       SettingsCompanion(
         passcodeHash: Value(Passcode.hash(pin, salt)),
         passcodeSalt: Value(salt),
         passcodeLength: Value(pin.length),
+        unlockMethod: isFreshSetup
+            ? const Value(UnlockMethod.pin)
+            : const Value.absent(),
       ),
     );
   }
@@ -4347,10 +4366,12 @@ class AppDatabase extends _$AppDatabase {
     settings,
   ).write(SettingsCompanion(screenshotReminderEnabled: Value(value)));
 
-  /// A no-op when no passcode is set — same guard as [setBiometricEnabled];
-  /// a timeout means nothing without a lock to defer.
+  /// A no-op when nothing actually locks the app right now — a timeout
+  /// means nothing without a lock to defer. Applies to whichever method is
+  /// active (GitHub #104), not just a PIN — the same backgrounding timeout
+  /// governs a master-phrase-primary or TOTP-primary setup too.
   Future<void> setPinTimeoutMinutes(int minutes) async {
-    if ((await getSettings()).passcodeHash == null) return;
+    if (!hasUnlockCredential(await getSettings())) return;
     await update(
       settings,
     ).write(SettingsCompanion(pinTimeoutMinutes: Value(minutes)));
@@ -4359,27 +4380,42 @@ class AppDatabase extends _$AppDatabase {
   // ── Master recovery phrase (GitHub #74) ─────────────────────────────────
 
   /// [words] is trusted as-is — the setup screen is what enforces the word
-  /// count and that they came from [RecoveryWords.wordlist].
+  /// count and that they came from [RecoveryWords.wordlist]. Only ever called
+  /// for a fresh setup (the Settings UI offers no "change phrase" while one
+  /// is already set — just set-up-once/turn-off), so unlike [setPasscode]
+  /// this unconditionally activates it as the unlock method (GitHub #104),
+  /// same as [setupTotp].
   Future<void> setMasterPhrase(List<String> words) {
     final salt = Passcode.generateSalt();
     return update(settings).write(
       SettingsCompanion(
         masterPhraseHash: Value(Passcode.hash(words.join(' '), salt)),
         masterPhraseSalt: Value(salt),
+        unlockMethod: const Value(UnlockMethod.masterPhrase),
       ),
     );
   }
 
   /// Clears the phrase and resets the attempt counter — otherwise a device
   /// already past the threshold would stay locked out of a PIN with no
-  /// phrase left to unlock it with.
-  Future<void> clearMasterPhrase() => update(settings).write(
-    const SettingsCompanion(
-      masterPhraseHash: Value(null),
-      masterPhraseSalt: Value(null),
-      failedPasscodeAttempts: Value(0),
-    ),
-  );
+  /// phrase left to unlock it with. If the phrase was the *active* unlock
+  /// method, falls back to `pin` (mirroring [clearPasscode]'s own "meaningless
+  /// without one" cleanup) rather than leaving [Settings.unlockMethod]
+  /// pointed at a credential that no longer exists.
+  Future<void> clearMasterPhrase() async {
+    final wasActive =
+        (await getSettings()).unlockMethod == UnlockMethod.masterPhrase;
+    await update(settings).write(
+      SettingsCompanion(
+        masterPhraseHash: const Value(null),
+        masterPhraseSalt: const Value(null),
+        failedPasscodeAttempts: const Value(0),
+        unlockMethod: wasActive
+            ? const Value(UnlockMethod.pin)
+            : const Value.absent(),
+      ),
+    );
+  }
 
   Future<bool> verifyMasterPhrase(List<String> words) async {
     final row = await getSettings();
@@ -4387,6 +4423,45 @@ class AppDatabase extends _$AppDatabase {
     final salt = row.masterPhraseSalt;
     if (hash == null || salt == null) return false;
     return Passcode.verify(words.join(' '), salt, hash);
+  }
+
+  // ── Unlock method + TOTP (GitHub #104) ──────────────────────────────────
+
+  /// Switches the active front-door credential. Doesn't touch any other
+  /// method's own credential — a PIN or phrase can stay configured and
+  /// simply unused (or serve as [masterPhraseAttemptThreshold]'s fallback)
+  /// while a different method is active.
+  Future<void> setUnlockMethod(UnlockMethod method) =>
+      update(settings).write(SettingsCompanion(unlockMethod: Value(method)));
+
+  /// Saves a newly-confirmed TOTP secret and makes it the active method in
+  /// one step — mirrors how setting a PIN or a phrase for the first time is
+  /// immediately usable, with no separate "activate" step.
+  Future<void> setupTotp(String secret) => update(settings).write(
+    SettingsCompanion(
+      totpSecret: Value(secret),
+      unlockMethod: const Value(UnlockMethod.totp),
+    ),
+  );
+
+  /// Clears the TOTP secret. If it was the active method, falls back to
+  /// `pin` — same reasoning as [clearMasterPhrase].
+  Future<void> clearTotp() async {
+    final wasActive = (await getSettings()).unlockMethod == UnlockMethod.totp;
+    await update(settings).write(
+      SettingsCompanion(
+        totpSecret: const Value(null),
+        unlockMethod: wasActive
+            ? const Value(UnlockMethod.pin)
+            : const Value.absent(),
+      ),
+    );
+  }
+
+  Future<bool> verifyTotp(String code) async {
+    final secret = (await getSettings()).totpSecret;
+    if (secret == null) return false;
+    return Totp.verify(secret, code);
   }
 
   /// A no-op when no master phrase is set — same guard as
@@ -5459,6 +5534,11 @@ class AppDatabase extends _$AppDatabase {
         localSettings?.masterPhraseAttemptThreshold ?? 5;
     final localFailedPasscodeAttempts =
         localSettings?.failedPasscodeAttempts ?? 0;
+    // Same reasoning again (GitHub #104): which method is active, and its
+    // TOTP secret if any, describe *this device's* lock, not the ledger —
+    // an import must never silently switch it or turn it off.
+    final localUnlockMethod = localSettings?.unlockMethod ?? UnlockMethod.pin;
+    final localTotpSecret = localSettings?.totpSecret;
 
     // Foreign keys stay ON throughout (SQLite ignores the `foreign_keys` pragma
     // inside a transaction anyway). That is deliberate: a backup pointing at a
@@ -5605,6 +5685,8 @@ class AppDatabase extends _$AppDatabase {
               localMasterPhraseAttemptThreshold,
             ),
             failedPasscodeAttempts: Value(localFailedPasscodeAttempts),
+            unlockMethod: Value(localUnlockMethod),
+            totpSecret: Value(localTotpSecret),
           ),
         );
       }

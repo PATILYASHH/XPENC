@@ -8,6 +8,7 @@ import 'core/branding/brand_mark.dart';
 import 'core/money.dart';
 import 'core/routing/app_router.dart';
 import 'core/security/screen_security.dart';
+import 'core/security/unlock_method.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/error_view.dart';
 import 'core/widgets/money_text.dart';
@@ -142,14 +143,17 @@ class _XpencAppState extends ConsumerState<XpencApp>
     // to decide with.
     if (state == AppLifecycleState.paused && _passcodeKnown) {
       _pausedAt = DateTime.now();
-      final hasPasscode =
-          ref.read(settingsProvider).valueOrNull?.passcodeHash != null;
+      final settingsRow = ref.read(settingsProvider).valueOrNull;
+      // Whichever method is active (GitHub #104) — not just a PIN — governs
+      // the immediate-lock-on-background decision.
+      final hasCredential =
+          settingsRow != null && hasUnlockCredential(settingsRow);
       // A zero timeout ("Immediately", the default) locks right here rather
       // than waiting for resume — otherwise the very next resume, however
       // soon, would still show real data for one frame first.
       final immediate =
           (ref.read(settingsProvider).valueOrNull?.pinTimeoutMinutes ?? 0) == 0;
-      if (hasPasscode && immediate) setState(() => _locked = true);
+      if (hasCredential && immediate) setState(() => _locked = true);
     }
   }
 
@@ -159,8 +163,8 @@ class _XpencAppState extends ConsumerState<XpencApp>
   void _maybeLockAfterTimeout() {
     if (_locked || !_passcodeKnown) return;
     final settings = ref.read(settingsProvider).valueOrNull;
-    if (settings?.passcodeHash == null) return;
-    final minutes = settings?.pinTimeoutMinutes ?? 0;
+    if (settings == null || !hasUnlockCredential(settings)) return;
+    final minutes = settings.pinTimeoutMinutes;
     final pausedAt = _pausedAt;
     if (minutes == 0 || pausedAt == null) return;
     if (DateTime.now().difference(pausedAt) >= Duration(minutes: minutes)) {
@@ -261,7 +265,7 @@ class _XpencAppState extends ConsumerState<XpencApp>
     final settingsRow = ref.watch(settingsProvider).valueOrNull;
     if (settingsRow != null && !_passcodeKnown) {
       _passcodeKnown = true;
-      _locked = settingsRow.passcodeHash != null;
+      _locked = hasUnlockCredential(settingsRow);
     }
 
     // Point the global formatters at the chosen currency before anything paints,

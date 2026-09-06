@@ -85,6 +85,7 @@ void main() {
       cashappEnabled: true,
       revolutEnabled: true,
       lockScreenStyle: LockScreenStyle.classic,
+      unlockMethod: UnlockMethod.pin,
       screenshotReminderEnabled: false,
       moreScreenViewMode: MoreScreenViewMode.list,
       frequentIconKeys: '',
