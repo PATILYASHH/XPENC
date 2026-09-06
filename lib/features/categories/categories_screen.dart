@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/app_icons.dart';
 import '../../core/widgets/error_view.dart';
@@ -53,6 +54,13 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Categories'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.dashboard_customize_outlined),
+            tooltip: 'Templates',
+            onPressed: () => context.push('/more/categories/templates'),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
