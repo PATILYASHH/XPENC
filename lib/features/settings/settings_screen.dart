@@ -528,6 +528,34 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ),
                 Divider(height: 1, indent: 60, color: cs.outline),
+                // ── PIN + Authenticator — a true two-factor front door
+                // (GitHub #111): both a correct PIN *and* a correct code are
+                // required, entered one after the other, not either alone.
+                RadioListTile<UnlockMethod>(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  secondary: const Icon(Icons.security_rounded),
+                  title: const Text('PIN + Authenticator'),
+                  subtitle: Text(
+                    hasPasscode && hasTotp
+                        ? 'Both a PIN and a code are required to unlock'
+                        : 'Requires setting up both a PIN and an '
+                              'authenticator app',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  value: UnlockMethod.pinAndTotp,
+                  // ignore: deprecated_member_use
+                  groupValue: unlockMethod,
+                  // ignore: deprecated_member_use
+                  onChanged: (_) => _selectUnlockMethod(
+                    context,
+                    ref,
+                    UnlockMethod.pinAndTotp,
+                    configured: hasPasscode && hasTotp,
+                  ),
+                ),
+                Divider(height: 1, indent: 60, color: cs.outline),
 
                 // ── PIN management — visible whether or not PIN is active ──
                 ListTile(
@@ -1073,6 +1101,12 @@ class SettingsScreen extends ConsumerWidget {
   /// credential and activates it (see [AppDatabase.setupTotp]/
   /// [AppDatabase.setMasterPhrase]/[AppDatabase.setPasscode]), so there's
   /// nothing left to do here in that case.
+  ///
+  /// [UnlockMethod.pinAndTotp] (GitHub #111) needs *both* a PIN and a TOTP
+  /// secret before it's "configured" — when only one is missing, this routes
+  /// to that one's setup screen with `combine=true`, which chains on to the
+  /// other automatically if it's missing too (see [SetPasscodeScreen] /
+  /// [TotpSetupScreen]).
   void _selectUnlockMethod(
     BuildContext context,
     WidgetRef ref,
@@ -1088,6 +1122,9 @@ class SettingsScreen extends ConsumerWidget {
       UnlockMethod.pin => '/more/settings/passcode',
       UnlockMethod.masterPhrase => '/more/settings/master-phrase/setup',
       UnlockMethod.totp => '/more/settings/totp/setup',
+      UnlockMethod.pinAndTotp => ref.read(hasPasscodeProvider)
+          ? '/more/settings/totp/setup?combine=true'
+          : '/more/settings/passcode?combine=true',
     });
   }
 

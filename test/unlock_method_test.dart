@@ -122,6 +122,28 @@ void main() {
         expect(hasUnlockCredential(await db.getSettings()), isFalse);
       },
     );
+
+    // GitHub #111: PIN + Authenticator needs *both* halves configured.
+    group('pinAndTotp', () {
+      test('false with only a PIN set', () async {
+        await db.setPasscode('4269');
+        await db.setUnlockMethod(UnlockMethod.pinAndTotp);
+        expect(hasUnlockCredential(await db.getSettings()), isFalse);
+      });
+
+      test('false with only a TOTP secret set', () async {
+        await db.setupTotp(Totp.generateSecret());
+        await db.setUnlockMethod(UnlockMethod.pinAndTotp);
+        expect(hasUnlockCredential(await db.getSettings()), isFalse);
+      });
+
+      test('true once both a PIN and a TOTP secret are set', () async {
+        await db.setPasscode('4269');
+        await db.setupTotp(Totp.generateSecret());
+        await db.setUnlockMethod(UnlockMethod.pinAndTotp);
+        expect(hasUnlockCredential(await db.getSettings()), isTrue);
+      });
+    });
   });
 
   group('AppDatabase unlock method + TOTP round-trip (GitHub #104)', () {
@@ -225,6 +247,68 @@ void main() {
         expect(settings.totpSecret, secret);
       },
     );
+
+    // GitHub #111: a true two-factor front door — both a PIN *and* a TOTP
+    // code, not either alone — plus graceful fallback when either half is
+    // later removed.
+    group('pinAndTotp', () {
+      test(
+        'setUnlockMethod activates the combo once both halves exist',
+        () async {
+          await db.setPasscode('4269');
+          await db.setupTotp(Totp.generateSecret());
+          await db.setUnlockMethod(UnlockMethod.pinAndTotp);
+          expect(
+            (await db.getSettings()).unlockMethod,
+            UnlockMethod.pinAndTotp,
+          );
+        },
+      );
+
+      test(
+        'clearPasscode falls back to totp when the combo was active — the '
+        'authenticator half still works on its own',
+        () async {
+          await db.setPasscode('4269');
+          await db.setupTotp(Totp.generateSecret());
+          await db.setUnlockMethod(UnlockMethod.pinAndTotp);
+
+          await db.clearPasscode();
+          final settings = await db.getSettings();
+          expect(settings.unlockMethod, UnlockMethod.totp);
+          expect(settings.passcodeHash, isNull);
+          expect(settings.totpSecret, isNotNull);
+        },
+      );
+
+      test(
+        'clearTotp falls back to pin when the combo was active — the PIN '
+        'half still works on its own',
+        () async {
+          await db.setPasscode('4269');
+          await db.setupTotp(Totp.generateSecret());
+          await db.setUnlockMethod(UnlockMethod.pinAndTotp);
+
+          await db.clearTotp();
+          final settings = await db.getSettings();
+          expect(settings.unlockMethod, UnlockMethod.pin);
+          expect(settings.totpSecret, isNull);
+          expect(settings.passcodeHash, isNotNull);
+          expect(await db.verifyPasscode('4269'), isTrue);
+        },
+      );
+
+      test(
+        'clearPasscode leaves the active method alone when the combo was '
+        'not active',
+        () async {
+          await db.setPasscode('4269');
+          await db.setupTotp(Totp.generateSecret()); // activates totp alone
+          await db.clearPasscode();
+          expect((await db.getSettings()).unlockMethod, UnlockMethod.totp);
+        },
+      );
+    });
 
     test('unlockMethodProvider/hasTotpProvider reflect the stored row', () async {
       final container = ProviderContainer(

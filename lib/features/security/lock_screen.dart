@@ -5,6 +5,7 @@ import 'package:local_auth/local_auth.dart';
 import '../../core/branding/app_info.dart';
 import '../../core/branding/brand_mark.dart';
 import '../../core/security/master_phrase_field.dart';
+import '../../core/security/paste_code_key.dart';
 import '../../core/security/pin_pad.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart' show UnlockMethod;
@@ -13,6 +14,11 @@ import 'lock_screen_keypad.dart';
 /// A TOTP code is always 6 digits (GitHub #104) — `Totp.provisioningUri`
 /// hard-codes `digits=6`, so entry here matches.
 const _totpCodeLength = 6;
+
+/// Which half of [UnlockMethod.pinAndTotp] (GitHub #111) is currently being
+/// asked for — the PIN always comes first, the authenticator code second;
+/// both must be correct before [LockScreen.onUnlocked] fires.
+enum _PinTotpStep { pin, totp }
 
 /// Rendered directly by [XpencApp]'s `builder`, outside the router — a
 /// blocking overlay, not a route, so there is no back button and no way
@@ -45,6 +51,12 @@ class _LockScreenState extends ConsumerState<LockScreen> {
 
   /// Same purpose as [_attempt], for the TOTP keypad.
   int _totpAttempt = 0;
+
+  /// Only meaningful while [UnlockMethod.pinAndTotp] is active (GitHub #111)
+  /// — which of the two steps is currently showing. Resets to [_PinTotpStep.
+  /// pin] each time a fresh [LockScreen] is mounted (i.e. every time the app
+  /// re-locks), never mid-session.
+  _PinTotpStep _pinTotpStep = _PinTotpStep.pin;
 
   @override
   void initState() {
@@ -178,6 +190,98 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     });
   }
 
+  // ── PIN + Authenticator, combined (GitHub #111) ─────────────────────────
+  // A correct PIN here only advances to the TOTP step — it never unlocks by
+  // itself, unlike plain [UnlockMethod.pin]. Only a correct code afterward
+  // actually calls `onUnlocked`. Both steps share the shared wrong-attempt
+  // counter with every other method, so the phrase fallback still kicks in
+  // the same way after enough combined failures.
+
+  void _onCombinedPinDigit(String d) {
+    final pinLength = ref.read(passcodeLengthProvider);
+    if (_checking || _pin.length >= pinLength) return;
+    setState(() {
+      _error = false;
+      _pin += d;
+    });
+    if (_pin.length == pinLength) _submitCombinedPin();
+  }
+
+  Future<void> _submitCombinedPin() async {
+    setState(() => _checking = true);
+    final db = ref.read(dbProvider);
+    final ok = await db.verifyPasscode(_pin);
+    if (!mounted) return;
+    if (ok) {
+      setState(() {
+        _checking = false;
+        _pin = '';
+        _pinTotpStep = _PinTotpStep.totp;
+      });
+      return;
+    }
+    await db.recordFailedPasscodeAttempt();
+    if (!mounted) return;
+    setState(() {
+      _error = true;
+      _checking = false;
+      _pin = '';
+      _attempt++;
+    });
+  }
+
+  void _onCombinedTotpDigit(String d) {
+    if (_totpChecking || _totp.length >= _totpCodeLength) return;
+    setState(() {
+      _totpError = false;
+      _totp += d;
+    });
+    if (_totp.length == _totpCodeLength) _submitCombinedTotp();
+  }
+
+  Future<void> _submitCombinedTotp() async {
+    setState(() => _totpChecking = true);
+    final db = ref.read(dbProvider);
+    final ok = await db.verifyTotp(_totp);
+    if (!mounted) return;
+    if (ok) {
+      // The counter only resets once *both* factors are satisfied — a
+      // correct PIN alone (see `_submitCombinedPin`) never touches it.
+      await db.resetFailedPasscodeAttempts();
+      if (!mounted) return;
+      widget.onUnlocked();
+      return;
+    }
+    await db.recordFailedPasscodeAttempt();
+    if (!mounted) return;
+    setState(() {
+      _totpError = true;
+      _totpChecking = false;
+      _totp = '';
+      _totpAttempt++;
+    });
+  }
+
+  /// The TOTP keypad's paste key (GitHub #111), shared by [_buildTotpBody]'s
+  /// single-method and combined-flow cases — fills [_totp] from the
+  /// clipboard's digits and submits through whichever of [_submitTotp] /
+  /// [_submitCombinedTotp] actually applies right now.
+  void _onPasteTotp(String digits, {required bool combined}) {
+    if (_totpChecking) return;
+    setState(() {
+      _totpError = false;
+      _totp = digits.length > _totpCodeLength
+          ? digits.substring(0, _totpCodeLength)
+          : digits;
+    });
+    if (_totp.length != _totpCodeLength) return;
+    if (combined) {
+      _submitCombinedTotp();
+    } else {
+      _submitTotp();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -236,6 +340,13 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                                   isFallback: false,
                                 ),
                                 UnlockMethod.totp => _buildTotpBody(context),
+                                UnlockMethod.pinAndTotp =>
+                                  _pinTotpStep == _PinTotpStep.pin
+                                      ? _buildPinBody(context, combined: true)
+                                      : _buildTotpBody(
+                                          context,
+                                          combined: true,
+                                        ),
                               },
                       ],
                     ),
@@ -249,7 +360,13 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     );
   }
 
-  Widget _buildPinBody(BuildContext context) {
+  /// [combined] is true for the PIN half of [UnlockMethod.pinAndTotp]
+  /// (GitHub #111) — a correct PIN there only advances to the code step
+  /// (see [_onCombinedPinDigit]), so the biometric shortcut is withheld:
+  /// fingerprint unlock is documented as a PIN-only shortcut, and letting it
+  /// also skip the authenticator half would silently turn "both factors" into
+  /// "just a fingerprint".
+  Widget _buildPinBody(BuildContext context, {bool combined = false}) {
     final theme = Theme.of(context);
     final biometricEnabled = ref.watch(biometricEnabledProvider);
     final pinLength = ref.watch(passcodeLengthProvider);
@@ -266,6 +383,15 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                 : theme.colorScheme.onSurfaceVariant,
           ),
         ),
+        if (combined) ...[
+          const SizedBox(height: 4),
+          Text(
+            'Step 1 of 2 — an authenticator code is needed next',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
         const SizedBox(height: 18),
         PinDots(entered: _pin.length, length: pinLength, error: _error),
         const SizedBox(height: 40),
@@ -274,9 +400,9 @@ class _LockScreenState extends ConsumerState<LockScreen> {
           child: LockScreenKeypad(
             style: lockScreenStyle,
             attempt: _attempt,
-            onDigit: _onDigit,
+            onDigit: combined ? _onCombinedPinDigit : _onDigit,
             onBackspace: _onBackspace,
-            extraKey: biometricEnabled
+            extraKey: !combined && biometricEnabled
                 ? IconButton(
                     icon: const Icon(Icons.fingerprint_rounded, size: 28),
                     tooltip: 'Use biometric unlock',
@@ -300,6 +426,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     final fallbackHeading = switch (unlockMethod) {
       UnlockMethod.pin => 'Too many wrong PINs',
       UnlockMethod.totp => 'Too many wrong codes',
+      UnlockMethod.pinAndTotp => 'Too many wrong attempts',
       UnlockMethod.masterPhrase =>
         '', // unreachable — the phrase can't fall back to itself
     };
@@ -338,7 +465,12 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     );
   }
 
-  Widget _buildTotpBody(BuildContext context) {
+  /// [combined] is true for the code half of [UnlockMethod.pinAndTotp]
+  /// (GitHub #111), reached only after [_buildPinBody]'s combined PIN step
+  /// already verified — routes digit entry and the paste key to
+  /// [_submitCombinedTotp] instead of [_submitTotp] so a correct code here
+  /// actually unlocks, rather than the single-method TOTP flow's own submit.
+  Widget _buildTotpBody(BuildContext context, {bool combined = false}) {
     final theme = Theme.of(context);
     final lockScreenStyle = ref.watch(lockScreenStyleProvider);
 
@@ -353,6 +485,15 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                 : theme.colorScheme.onSurfaceVariant,
           ),
         ),
+        if (combined) ...[
+          const SizedBox(height: 4),
+          Text(
+            'Step 2 of 2',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
         const SizedBox(height: 18),
         PinDots(
           entered: _totp.length,
@@ -365,8 +506,11 @@ class _LockScreenState extends ConsumerState<LockScreen> {
           child: LockScreenKeypad(
             style: lockScreenStyle,
             attempt: _totpAttempt,
-            onDigit: _onTotpDigit,
+            onDigit: combined ? _onCombinedTotpDigit : _onTotpDigit,
             onBackspace: _onTotpBackspace,
+            extraKey: PasteCodeKey(
+              onCode: (d) => _onPasteTotp(d, combined: combined),
+            ),
           ),
         ),
       ],
