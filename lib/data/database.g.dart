@@ -9119,6 +9119,50 @@ class $SettingsTable extends Settings
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _pinUnlockEnabledMeta = const VerificationMeta(
+    'pinUnlockEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> pinUnlockEnabled = GeneratedColumn<bool>(
+    'pin_unlock_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("pin_unlock_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _masterPhraseUnlockEnabledMeta =
+      const VerificationMeta('masterPhraseUnlockEnabled');
+  @override
+  late final GeneratedColumn<bool> masterPhraseUnlockEnabled =
+      GeneratedColumn<bool>(
+        'master_phrase_unlock_enabled',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("master_phrase_unlock_enabled" IN (0, 1))',
+        ),
+        defaultValue: const Constant(false),
+      );
+  static const VerificationMeta _totpUnlockEnabledMeta =
+      const VerificationMeta('totpUnlockEnabled');
+  @override
+  late final GeneratedColumn<bool> totpUnlockEnabled = GeneratedColumn<bool>(
+    'totp_unlock_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("totp_unlock_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _masterPhraseAttemptThresholdMeta =
       const VerificationMeta('masterPhraseAttemptThreshold');
   @override
@@ -9489,6 +9533,9 @@ class $SettingsTable extends Settings
     masterPhraseHash,
     masterPhraseSalt,
     totpSecret,
+    pinUnlockEnabled,
+    masterPhraseUnlockEnabled,
+    totpUnlockEnabled,
     masterPhraseAttemptThreshold,
     failedPasscodeAttempts,
     expenseReminderEnabled,
@@ -9766,6 +9813,33 @@ class $SettingsTable extends Settings
       context.handle(
         _totpSecretMeta,
         totpSecret.isAcceptableOrUnknown(data['totp_secret']!, _totpSecretMeta),
+      );
+    }
+    if (data.containsKey('pin_unlock_enabled')) {
+      context.handle(
+        _pinUnlockEnabledMeta,
+        pinUnlockEnabled.isAcceptableOrUnknown(
+          data['pin_unlock_enabled']!,
+          _pinUnlockEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('master_phrase_unlock_enabled')) {
+      context.handle(
+        _masterPhraseUnlockEnabledMeta,
+        masterPhraseUnlockEnabled.isAcceptableOrUnknown(
+          data['master_phrase_unlock_enabled']!,
+          _masterPhraseUnlockEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('totp_unlock_enabled')) {
+      context.handle(
+        _totpUnlockEnabledMeta,
+        totpUnlockEnabled.isAcceptableOrUnknown(
+          data['totp_unlock_enabled']!,
+          _totpUnlockEnabledMeta,
+        ),
       );
     }
     if (data.containsKey('master_phrase_attempt_threshold')) {
@@ -10147,6 +10221,18 @@ class $SettingsTable extends Settings
         DriftSqlType.string,
         data['${effectivePrefix}totp_secret'],
       ),
+      pinUnlockEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}pin_unlock_enabled'],
+      )!,
+      masterPhraseUnlockEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}master_phrase_unlock_enabled'],
+      )!,
+      totpUnlockEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}totp_unlock_enabled'],
+      )!,
       masterPhraseAttemptThreshold: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}master_phrase_attempt_threshold'],
@@ -10410,6 +10496,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// A base32 TOTP secret (GitHub #104) — not hashed, unlike
   /// [passcodeHash]/[masterPhraseHash]. Null means the feature is off.
   final String? totpSecret;
+  final bool pinUnlockEnabled;
+  final bool masterPhraseUnlockEnabled;
+  final bool totpUnlockEnabled;
 
   /// How many consecutive wrong PINs (with [failedPasscodeAttempts]) force
   /// the lock screen into master-phrase-only mode. Meaningless without
@@ -10580,6 +10669,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     this.masterPhraseHash,
     this.masterPhraseSalt,
     this.totpSecret,
+    required this.pinUnlockEnabled,
+    required this.masterPhraseUnlockEnabled,
+    required this.totpUnlockEnabled,
     required this.masterPhraseAttemptThreshold,
     required this.failedPasscodeAttempts,
     required this.expenseReminderEnabled,
@@ -10687,6 +10779,11 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     if (!nullToAbsent || totpSecret != null) {
       map['totp_secret'] = Variable<String>(totpSecret);
     }
+    map['pin_unlock_enabled'] = Variable<bool>(pinUnlockEnabled);
+    map['master_phrase_unlock_enabled'] = Variable<bool>(
+      masterPhraseUnlockEnabled,
+    );
+    map['totp_unlock_enabled'] = Variable<bool>(totpUnlockEnabled);
     map['master_phrase_attempt_threshold'] = Variable<int>(
       masterPhraseAttemptThreshold,
     );
@@ -10795,6 +10892,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       totpSecret: totpSecret == null && nullToAbsent
           ? const Value.absent()
           : Value(totpSecret),
+      pinUnlockEnabled: Value(pinUnlockEnabled),
+      masterPhraseUnlockEnabled: Value(masterPhraseUnlockEnabled),
+      totpUnlockEnabled: Value(totpUnlockEnabled),
       masterPhraseAttemptThreshold: Value(masterPhraseAttemptThreshold),
       failedPasscodeAttempts: Value(failedPasscodeAttempts),
       expenseReminderEnabled: Value(expenseReminderEnabled),
@@ -10887,6 +10987,11 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       masterPhraseHash: serializer.fromJson<String?>(json['masterPhraseHash']),
       masterPhraseSalt: serializer.fromJson<String?>(json['masterPhraseSalt']),
       totpSecret: serializer.fromJson<String?>(json['totpSecret']),
+      pinUnlockEnabled: serializer.fromJson<bool>(json['pinUnlockEnabled']),
+      masterPhraseUnlockEnabled: serializer.fromJson<bool>(
+        json['masterPhraseUnlockEnabled'],
+      ),
+      totpUnlockEnabled: serializer.fromJson<bool>(json['totpUnlockEnabled']),
       masterPhraseAttemptThreshold: serializer.fromJson<int>(
         json['masterPhraseAttemptThreshold'],
       ),
@@ -10991,6 +11096,11 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'masterPhraseHash': serializer.toJson<String?>(masterPhraseHash),
       'masterPhraseSalt': serializer.toJson<String?>(masterPhraseSalt),
       'totpSecret': serializer.toJson<String?>(totpSecret),
+      'pinUnlockEnabled': serializer.toJson<bool>(pinUnlockEnabled),
+      'masterPhraseUnlockEnabled': serializer.toJson<bool>(
+        masterPhraseUnlockEnabled,
+      ),
+      'totpUnlockEnabled': serializer.toJson<bool>(totpUnlockEnabled),
       'masterPhraseAttemptThreshold': serializer.toJson<int>(
         masterPhraseAttemptThreshold,
       ),
@@ -11066,6 +11176,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     Value<String?> masterPhraseHash = const Value.absent(),
     Value<String?> masterPhraseSalt = const Value.absent(),
     Value<String?> totpSecret = const Value.absent(),
+    bool? pinUnlockEnabled,
+    bool? masterPhraseUnlockEnabled,
+    bool? totpUnlockEnabled,
     int? masterPhraseAttemptThreshold,
     int? failedPasscodeAttempts,
     bool? expenseReminderEnabled,
@@ -11137,6 +11250,10 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
         ? masterPhraseSalt.value
         : this.masterPhraseSalt,
     totpSecret: totpSecret.present ? totpSecret.value : this.totpSecret,
+    pinUnlockEnabled: pinUnlockEnabled ?? this.pinUnlockEnabled,
+    masterPhraseUnlockEnabled:
+        masterPhraseUnlockEnabled ?? this.masterPhraseUnlockEnabled,
+    totpUnlockEnabled: totpUnlockEnabled ?? this.totpUnlockEnabled,
     masterPhraseAttemptThreshold:
         masterPhraseAttemptThreshold ?? this.masterPhraseAttemptThreshold,
     failedPasscodeAttempts:
@@ -11262,6 +11379,15 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       totpSecret: data.totpSecret.present
           ? data.totpSecret.value
           : this.totpSecret,
+      pinUnlockEnabled: data.pinUnlockEnabled.present
+          ? data.pinUnlockEnabled.value
+          : this.pinUnlockEnabled,
+      masterPhraseUnlockEnabled: data.masterPhraseUnlockEnabled.present
+          ? data.masterPhraseUnlockEnabled.value
+          : this.masterPhraseUnlockEnabled,
+      totpUnlockEnabled: data.totpUnlockEnabled.present
+          ? data.totpUnlockEnabled.value
+          : this.totpUnlockEnabled,
       masterPhraseAttemptThreshold: data.masterPhraseAttemptThreshold.present
           ? data.masterPhraseAttemptThreshold.value
           : this.masterPhraseAttemptThreshold,
@@ -11381,6 +11507,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('masterPhraseHash: $masterPhraseHash, ')
           ..write('masterPhraseSalt: $masterPhraseSalt, ')
           ..write('totpSecret: $totpSecret, ')
+          ..write('pinUnlockEnabled: $pinUnlockEnabled, ')
+          ..write('masterPhraseUnlockEnabled: $masterPhraseUnlockEnabled, ')
+          ..write('totpUnlockEnabled: $totpUnlockEnabled, ')
           ..write(
             'masterPhraseAttemptThreshold: $masterPhraseAttemptThreshold, ',
           )
@@ -11450,6 +11579,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     masterPhraseHash,
     masterPhraseSalt,
     totpSecret,
+    pinUnlockEnabled,
+    masterPhraseUnlockEnabled,
+    totpUnlockEnabled,
     masterPhraseAttemptThreshold,
     failedPasscodeAttempts,
     expenseReminderEnabled,
@@ -11516,6 +11648,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.masterPhraseHash == this.masterPhraseHash &&
           other.masterPhraseSalt == this.masterPhraseSalt &&
           other.totpSecret == this.totpSecret &&
+          other.pinUnlockEnabled == this.pinUnlockEnabled &&
+          other.masterPhraseUnlockEnabled == this.masterPhraseUnlockEnabled &&
+          other.totpUnlockEnabled == this.totpUnlockEnabled &&
           other.masterPhraseAttemptThreshold ==
               this.masterPhraseAttemptThreshold &&
           other.failedPasscodeAttempts == this.failedPasscodeAttempts &&
@@ -11582,6 +11717,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<String?> masterPhraseHash;
   final Value<String?> masterPhraseSalt;
   final Value<String?> totpSecret;
+  final Value<bool> pinUnlockEnabled;
+  final Value<bool> masterPhraseUnlockEnabled;
+  final Value<bool> totpUnlockEnabled;
   final Value<int> masterPhraseAttemptThreshold;
   final Value<int> failedPasscodeAttempts;
   final Value<bool> expenseReminderEnabled;
@@ -11644,6 +11782,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.masterPhraseHash = const Value.absent(),
     this.masterPhraseSalt = const Value.absent(),
     this.totpSecret = const Value.absent(),
+    this.pinUnlockEnabled = const Value.absent(),
+    this.masterPhraseUnlockEnabled = const Value.absent(),
+    this.totpUnlockEnabled = const Value.absent(),
     this.masterPhraseAttemptThreshold = const Value.absent(),
     this.failedPasscodeAttempts = const Value.absent(),
     this.expenseReminderEnabled = const Value.absent(),
@@ -11707,6 +11848,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.masterPhraseHash = const Value.absent(),
     this.masterPhraseSalt = const Value.absent(),
     this.totpSecret = const Value.absent(),
+    this.pinUnlockEnabled = const Value.absent(),
+    this.masterPhraseUnlockEnabled = const Value.absent(),
+    this.totpUnlockEnabled = const Value.absent(),
     this.masterPhraseAttemptThreshold = const Value.absent(),
     this.failedPasscodeAttempts = const Value.absent(),
     this.expenseReminderEnabled = const Value.absent(),
@@ -11770,6 +11914,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<String>? masterPhraseHash,
     Expression<String>? masterPhraseSalt,
     Expression<String>? totpSecret,
+    Expression<bool>? pinUnlockEnabled,
+    Expression<bool>? masterPhraseUnlockEnabled,
+    Expression<bool>? totpUnlockEnabled,
     Expression<int>? masterPhraseAttemptThreshold,
     Expression<int>? failedPasscodeAttempts,
     Expression<bool>? expenseReminderEnabled,
@@ -11838,6 +11985,10 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       if (masterPhraseHash != null) 'master_phrase_hash': masterPhraseHash,
       if (masterPhraseSalt != null) 'master_phrase_salt': masterPhraseSalt,
       if (totpSecret != null) 'totp_secret': totpSecret,
+      if (pinUnlockEnabled != null) 'pin_unlock_enabled': pinUnlockEnabled,
+      if (masterPhraseUnlockEnabled != null)
+        'master_phrase_unlock_enabled': masterPhraseUnlockEnabled,
+      if (totpUnlockEnabled != null) 'totp_unlock_enabled': totpUnlockEnabled,
       if (masterPhraseAttemptThreshold != null)
         'master_phrase_attempt_threshold': masterPhraseAttemptThreshold,
       if (failedPasscodeAttempts != null)
@@ -11916,6 +12067,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<String?>? masterPhraseHash,
     Value<String?>? masterPhraseSalt,
     Value<String?>? totpSecret,
+    Value<bool>? pinUnlockEnabled,
+    Value<bool>? masterPhraseUnlockEnabled,
+    Value<bool>? totpUnlockEnabled,
     Value<int>? masterPhraseAttemptThreshold,
     Value<int>? failedPasscodeAttempts,
     Value<bool>? expenseReminderEnabled,
@@ -11981,6 +12135,10 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       masterPhraseHash: masterPhraseHash ?? this.masterPhraseHash,
       masterPhraseSalt: masterPhraseSalt ?? this.masterPhraseSalt,
       totpSecret: totpSecret ?? this.totpSecret,
+      pinUnlockEnabled: pinUnlockEnabled ?? this.pinUnlockEnabled,
+      masterPhraseUnlockEnabled:
+          masterPhraseUnlockEnabled ?? this.masterPhraseUnlockEnabled,
+      totpUnlockEnabled: totpUnlockEnabled ?? this.totpUnlockEnabled,
       masterPhraseAttemptThreshold:
           masterPhraseAttemptThreshold ?? this.masterPhraseAttemptThreshold,
       failedPasscodeAttempts:
@@ -12140,6 +12298,17 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     if (totpSecret.present) {
       map['totp_secret'] = Variable<String>(totpSecret.value);
     }
+    if (pinUnlockEnabled.present) {
+      map['pin_unlock_enabled'] = Variable<bool>(pinUnlockEnabled.value);
+    }
+    if (masterPhraseUnlockEnabled.present) {
+      map['master_phrase_unlock_enabled'] = Variable<bool>(
+        masterPhraseUnlockEnabled.value,
+      );
+    }
+    if (totpUnlockEnabled.present) {
+      map['totp_unlock_enabled'] = Variable<bool>(totpUnlockEnabled.value);
+    }
     if (masterPhraseAttemptThreshold.present) {
       map['master_phrase_attempt_threshold'] = Variable<int>(
         masterPhraseAttemptThreshold.value,
@@ -12281,6 +12450,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('masterPhraseHash: $masterPhraseHash, ')
           ..write('masterPhraseSalt: $masterPhraseSalt, ')
           ..write('totpSecret: $totpSecret, ')
+          ..write('pinUnlockEnabled: $pinUnlockEnabled, ')
+          ..write('masterPhraseUnlockEnabled: $masterPhraseUnlockEnabled, ')
+          ..write('totpUnlockEnabled: $totpUnlockEnabled, ')
           ..write(
             'masterPhraseAttemptThreshold: $masterPhraseAttemptThreshold, ',
           )

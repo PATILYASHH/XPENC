@@ -43,7 +43,11 @@ class SettingsScreen extends ConsumerWidget {
     final cashappEnabled = ref.watch(cashappEnabledProvider);
     final revolutEnabled = ref.watch(revolutEnabledProvider);
     final hasPasscode = ref.watch(hasPasscodeProvider);
-    final unlockMethod = ref.watch(unlockMethodProvider);
+    final pinUnlockEnabled = ref.watch(pinUnlockEnabledProvider);
+    final masterPhraseUnlockEnabled = ref.watch(
+      masterPhraseUnlockEnabledProvider,
+    );
+    final totpUnlockEnabled = ref.watch(totpUnlockEnabledProvider);
     final hasTotp = ref.watch(hasTotpProvider);
     final hasUnlockCredential = ref.watch(hasUnlockCredentialProvider);
     final biometricEnabled = ref.watch(biometricEnabledProvider);
@@ -455,104 +459,91 @@ class SettingsScreen extends ConsumerWidget {
           Card(
             child: Column(
               children: [
-                // ── Unlock method (GitHub #104) — pick exactly one front
-                // door; each method's own credential still manages
-                // independently below, active or not.
-                RadioListTile<UnlockMethod>(
+                // ── Unlock methods — independent on/off toggles. Turn on
+                // more than one and any of them unlocks the app (OR, not
+                // AND) — "try another method" on the lock screen switches
+                // between whichever are ready. Each method's own credential
+                // still manages independently below, toggled on or not.
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  child: Text(
+                    'Turn on more than one and any of them unlocks the app — '
+                    'switch between them from "Try another method" on the '
+                    'lock screen.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                SwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   secondary: const Icon(Icons.pin_outlined),
                   title: const Text('PIN'),
                   subtitle: Text(
-                    hasPasscode ? 'A PIN unlocks the app' : 'Not set up yet',
+                    !hasPasscode
+                        ? 'Tap to set up a PIN'
+                        : pinUnlockEnabled
+                        ? 'A PIN can unlock the app'
+                        : 'Set up, but turned off',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: cs.onSurfaceVariant,
                     ),
                   ),
-                  value: UnlockMethod.pin,
-                  // ignore: deprecated_member_use
-                  groupValue: unlockMethod,
-                  // ignore: deprecated_member_use
-                  onChanged: (_) => _selectUnlockMethod(
+                  value: hasPasscode && pinUnlockEnabled,
+                  onChanged: (v) => _toggleUnlockMethod(
                     context,
                     ref,
                     UnlockMethod.pin,
+                    v,
                     configured: hasPasscode,
                   ),
                 ),
                 Divider(height: 1, indent: 60, color: cs.outline),
-                RadioListTile<UnlockMethod>(
+                SwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   secondary: const Icon(Icons.key_outlined),
                   title: const Text('Master password'),
                   subtitle: Text(
-                    hasMasterPhrase
-                        ? 'Your recovery phrase unlocks the app'
-                        : 'Not set up yet',
+                    !hasMasterPhrase
+                        ? 'Tap to set up a recovery phrase'
+                        : masterPhraseUnlockEnabled
+                        ? 'Your recovery phrase can unlock the app'
+                        : 'Set up, but turned off',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: cs.onSurfaceVariant,
                     ),
                   ),
-                  value: UnlockMethod.masterPhrase,
-                  // ignore: deprecated_member_use
-                  groupValue: unlockMethod,
-                  // ignore: deprecated_member_use
-                  onChanged: (_) => _selectUnlockMethod(
+                  value: hasMasterPhrase && masterPhraseUnlockEnabled,
+                  onChanged: (v) => _toggleUnlockMethod(
                     context,
                     ref,
                     UnlockMethod.masterPhrase,
+                    v,
                     configured: hasMasterPhrase,
                   ),
                 ),
                 Divider(height: 1, indent: 60, color: cs.outline),
-                RadioListTile<UnlockMethod>(
+                SwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   secondary: const Icon(Icons.qr_code_2_rounded),
                   title: const Text('Authenticator app'),
                   subtitle: Text(
-                    hasTotp
-                        ? 'A 6-digit code unlocks the app'
-                        : 'Not set up yet',
+                    !hasTotp
+                        ? 'Tap to set up an authenticator app'
+                        : totpUnlockEnabled
+                        ? 'A 6-digit code can unlock the app'
+                        : 'Set up, but turned off',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: cs.onSurfaceVariant,
                     ),
                   ),
-                  value: UnlockMethod.totp,
-                  // ignore: deprecated_member_use
-                  groupValue: unlockMethod,
-                  // ignore: deprecated_member_use
-                  onChanged: (_) => _selectUnlockMethod(
+                  value: hasTotp && totpUnlockEnabled,
+                  onChanged: (v) => _toggleUnlockMethod(
                     context,
                     ref,
                     UnlockMethod.totp,
+                    v,
                     configured: hasTotp,
-                  ),
-                ),
-                Divider(height: 1, indent: 60, color: cs.outline),
-                // ── PIN + Authenticator — a true two-factor front door
-                // (GitHub #111): both a correct PIN *and* a correct code are
-                // required, entered one after the other, not either alone.
-                RadioListTile<UnlockMethod>(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  secondary: const Icon(Icons.security_rounded),
-                  title: const Text('PIN + Authenticator'),
-                  subtitle: Text(
-                    hasPasscode && hasTotp
-                        ? 'Both a PIN and a code are required to unlock'
-                        : 'Requires setting up both a PIN and an '
-                              'authenticator app',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
-                  ),
-                  value: UnlockMethod.pinAndTotp,
-                  // ignore: deprecated_member_use
-                  groupValue: unlockMethod,
-                  // ignore: deprecated_member_use
-                  onChanged: (_) => _selectUnlockMethod(
-                    context,
-                    ref,
-                    UnlockMethod.pinAndTotp,
-                    configured: hasPasscode && hasTotp,
                   ),
                 ),
                 Divider(height: 1, indent: 60, color: cs.outline),
@@ -584,8 +575,8 @@ class SettingsScreen extends ConsumerWidget {
                     title: const Text('Biometric unlock'),
                     subtitle: Text(
                       'Use your fingerprint or face instead of the PIN — the '
-                      'PIN always still works. Only applies while PIN is the '
-                      'active unlock method.',
+                      'PIN always still works. Only applies while PIN unlock '
+                      'is turned on.',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
                       ),
@@ -1094,38 +1085,42 @@ class SettingsScreen extends ConsumerWidget {
     await onSave(id.isEmpty ? null : id);
   }
 
-  /// Handles a tap on one of the "Unlock method" radio rows (GitHub #104).
-  /// A method that already has a credential just becomes active immediately
-  /// — no re-setup needed to switch back and forth. One with none yet routes
-  /// to its setup flow instead; that flow's own save both stores the
-  /// credential and activates it (see [AppDatabase.setupTotp]/
+  /// Handles a tap on one of the "Unlock methods" switches — independent
+  /// on/off toggles, OR semantics: any turned-on-and-configured method
+  /// unlocks the app. Turning on a method with no credential yet routes to
+  /// its setup flow instead; that flow's own save both stores the
+  /// credential and turns the toggle on (see [AppDatabase.setupTotp]/
   /// [AppDatabase.setMasterPhrase]/[AppDatabase.setPasscode]), so there's
-  /// nothing left to do here in that case.
-  ///
-  /// [UnlockMethod.pinAndTotp] (GitHub #111) needs *both* a PIN and a TOTP
-  /// secret before it's "configured" — when only one is missing, this routes
-  /// to that one's setup screen with `combine=true`, which chains on to the
-  /// other automatically if it's missing too (see [SetPasscodeScreen] /
-  /// [TotpSetupScreen]).
-  void _selectUnlockMethod(
+  /// nothing left to do here in that case. Turning off the last remaining
+  /// ready method is refused by [AppDatabase.setUnlockMethodEnabled] — the
+  /// toggles alone must never leave the app with no way back in.
+  Future<void> _toggleUnlockMethod(
     BuildContext context,
     WidgetRef ref,
-    UnlockMethod method, {
+    UnlockMethod method,
+    bool turnOn, {
     required bool configured,
-  }) {
-    if (ref.read(unlockMethodProvider) == method) return;
-    if (configured) {
-      ref.read(dbProvider).setUnlockMethod(method);
+  }) async {
+    if (turnOn && !configured) {
+      context.push(switch (method) {
+        UnlockMethod.pin => '/more/settings/passcode',
+        UnlockMethod.masterPhrase => '/more/settings/master-phrase/setup',
+        UnlockMethod.totp => '/more/settings/totp/setup',
+      });
       return;
     }
-    context.push(switch (method) {
-      UnlockMethod.pin => '/more/settings/passcode',
-      UnlockMethod.masterPhrase => '/more/settings/master-phrase/setup',
-      UnlockMethod.totp => '/more/settings/totp/setup',
-      UnlockMethod.pinAndTotp => ref.read(hasPasscodeProvider)
-          ? '/more/settings/totp/setup?combine=true'
-          : '/more/settings/passcode?combine=true',
-    });
+    final ok = await ref
+        .read(dbProvider)
+        .setUnlockMethodEnabled(method, turnOn);
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('At least one unlock method must stay on'),
+          ),
+        );
+    }
   }
 
   Widget _sectionLabel(BuildContext context, String text) {

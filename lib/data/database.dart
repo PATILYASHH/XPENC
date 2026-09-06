@@ -180,7 +180,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 64;
+  int get schemaVersion => 65;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -544,6 +544,54 @@ class AppDatabase extends _$AppDatabase {
         // install keeps today's exact behavior.
         await _addColumnIfMissing(m, settings, settings.unlockMethod);
         await _addColumnIfMissing(m, settings, settings.totpSecret);
+      }
+      if (from < 65) {
+        // Independent on/off toggles per unlock method, OR semantics —
+        // replaces both the old single-choice `unlockMethod` (GitHub #104)
+        // and the `pinAndTotp` two-factor AND combo (GitHub #111): turning
+        // on more than one method now means *any* of them unlocks, with
+        // "try another method" on the lock screen to switch between
+        // whichever are ready.
+        await _addColumnIfMissing(m, settings, settings.pinUnlockEnabled);
+        await _addColumnIfMissing(
+          m,
+          settings,
+          settings.masterPhraseUnlockEnabled,
+        );
+        await _addColumnIfMissing(m, settings, settings.totpUnlockEnabled);
+        // Backfill from the old single-choice value so an existing install
+        // keeps unlocking exactly the way it already did — including a
+        // `pinAndTotp` install, which now has *both* toggles on rather than
+        // requiring both (a deliberate loosening from AND to OR; either
+        // credential alone unlocks it from here on).
+        //
+        // `pinUnlockEnabled`'s column default is `true` (right for a *new*
+        // row), but a plain `ADD COLUMN` stamps that same default onto
+        // every *existing* row too — including ones whose old
+        // `unlockMethod` was `masterPhrase` or `totp` alone, which must not
+        // suddenly gain PIN as an extra OR'd method. Narrow it back down to
+        // just the installs that actually had PIN active before this
+        // migration.
+        await customStatement(
+          "UPDATE settings SET pin_unlock_enabled = 0 "
+          "WHERE unlock_method NOT IN ('pin', 'pinAndTotp')",
+        );
+        await customStatement(
+          "UPDATE settings SET master_phrase_unlock_enabled = 1 "
+          "WHERE unlock_method = 'masterPhrase'",
+        );
+        await customStatement(
+          "UPDATE settings SET totp_unlock_enabled = 1 "
+          "WHERE unlock_method IN ('totp', 'pinAndTotp')",
+        );
+        // `pinAndTotp` is no longer a valid `UnlockMethod` name — repoint
+        // the "which one to show first" column at a value that still is,
+        // now that its old AND requirement lives as the OR of the two
+        // toggles above.
+        await customStatement(
+          "UPDATE settings SET unlock_method = 'pin' "
+          "WHERE unlock_method = 'pinAndTotp'",
+        );
       }
     },
     beforeOpen: (details) async {
@@ -4353,11 +4401,12 @@ class AppDatabase extends _$AppDatabase {
 
   /// [pin].length is trusted as-is — the entry screen is what enforces 4-6
   /// digits (see GitHub #18). A *fresh* passcode (none set before) also
-  /// switches [Settings.unlockMethod] to `pin` (GitHub #104) — the same
-  /// "saving a setup flow activates it" rule [setupTotp] and [setMasterPhrase]
-  /// follow. Changing an already-set passcode leaves the active method
-  /// untouched — that's the "manage this credential independently of which
-  /// one is active" case the design doc calls out.
+  /// turns [Settings.pinUnlockEnabled] on and makes it the method the lock
+  /// screen shows first (GitHub #104) — the same "saving a setup flow
+  /// activates it" rule [setupTotp] and [setMasterPhrase] follow. Changing
+  /// an already-set passcode leaves both untouched — that's the "manage
+  /// this credential independently of which methods are active" case the
+  /// design doc calls out.
   Future<void> setPasscode(String pin) async {
     final isFreshSetup = (await getSettings()).passcodeHash == null;
     final salt = Passcode.generateSalt();
@@ -4366,6 +4415,9 @@ class AppDatabase extends _$AppDatabase {
         passcodeHash: Value(Passcode.hash(pin, salt)),
         passcodeSalt: Value(salt),
         passcodeLength: Value(pin.length),
+        pinUnlockEnabled: isFreshSetup
+            ? const Value(true)
+            : const Value.absent(),
         unlockMethod: isFreshSetup
             ? const Value(UnlockMethod.pin)
             : const Value.absent(),
@@ -4373,23 +4425,22 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
-  /// Clears the passcode and, since it's meaningless without one, biometric
-  /// unlock along with it. If [UnlockMethod.pinAndTotp] was active, the
-  /// authenticator half of it still stands on its own, so this falls back to
-  /// `totp` rather than leaving [Settings.unlockMethod] pointed at a
-  /// combination that's now missing half its credential — same "graceful
-  /// fallback to whatever still works" rule [clearTotp] follows.
+  /// Clears the passcode and, since they're meaningless without one, both
+  /// biometric unlock and the PIN's own on/off toggle. If PIN was the method
+  /// the lock screen was showing first, repoints that at whichever other
+  /// method is still ready (any OR'd toggle left on with its own credential
+  /// configured) — never left pointed at a credential that no longer exists.
   Future<void> clearPasscode() async {
-    final wasCombined =
-        (await getSettings()).unlockMethod == UnlockMethod.pinAndTotp;
+    final row = await getSettings();
     await update(settings).write(
       SettingsCompanion(
         passcodeHash: const Value(null),
         passcodeSalt: const Value(null),
         passcodeLength: const Value(null),
         biometricEnabled: const Value(false),
-        unlockMethod: wasCombined
-            ? const Value(UnlockMethod.totp)
+        pinUnlockEnabled: const Value(false),
+        unlockMethod: row.unlockMethod == UnlockMethod.pin
+            ? Value(_nextShownMethod(row, excluding: UnlockMethod.pin))
             : const Value.absent(),
       ),
     );
@@ -4436,35 +4487,37 @@ class AppDatabase extends _$AppDatabase {
   /// count and that they came from [RecoveryWords.wordlist]. Only ever called
   /// for a fresh setup (the Settings UI offers no "change phrase" while one
   /// is already set — just set-up-once/turn-off), so unlike [setPasscode]
-  /// this unconditionally activates it as the unlock method (GitHub #104),
-  /// same as [setupTotp].
+  /// this unconditionally turns [Settings.masterPhraseUnlockEnabled] on and
+  /// makes it the method the lock screen shows first (GitHub #104), same as
+  /// [setupTotp].
   Future<void> setMasterPhrase(List<String> words) {
     final salt = Passcode.generateSalt();
     return update(settings).write(
       SettingsCompanion(
         masterPhraseHash: Value(Passcode.hash(words.join(' '), salt)),
         masterPhraseSalt: Value(salt),
+        masterPhraseUnlockEnabled: const Value(true),
         unlockMethod: const Value(UnlockMethod.masterPhrase),
       ),
     );
   }
 
-  /// Clears the phrase and resets the attempt counter — otherwise a device
-  /// already past the threshold would stay locked out of a PIN with no
-  /// phrase left to unlock it with. If the phrase was the *active* unlock
-  /// method, falls back to `pin` (mirroring [clearPasscode]'s own "meaningless
-  /// without one" cleanup) rather than leaving [Settings.unlockMethod]
-  /// pointed at a credential that no longer exists.
+  /// Clears the phrase, its on/off toggle, and resets the attempt counter —
+  /// otherwise a device already past the threshold would stay locked out
+  /// with no phrase left to fall back to. If the phrase was the method the
+  /// lock screen was showing first, repoints that at whichever other method
+  /// is still ready — same "never left pointed at a credential that no
+  /// longer exists" rule [clearPasscode] follows.
   Future<void> clearMasterPhrase() async {
-    final wasActive =
-        (await getSettings()).unlockMethod == UnlockMethod.masterPhrase;
+    final row = await getSettings();
     await update(settings).write(
       SettingsCompanion(
         masterPhraseHash: const Value(null),
         masterPhraseSalt: const Value(null),
+        masterPhraseUnlockEnabled: const Value(false),
         failedPasscodeAttempts: const Value(0),
-        unlockMethod: wasActive
-            ? const Value(UnlockMethod.pin)
+        unlockMethod: row.unlockMethod == UnlockMethod.masterPhrase
+            ? Value(_nextShownMethod(row, excluding: UnlockMethod.masterPhrase))
             : const Value.absent(),
       ),
     );
@@ -4478,40 +4531,85 @@ class AppDatabase extends _$AppDatabase {
     return Passcode.verify(words.join(' '), salt, hash);
   }
 
-  // ── Unlock method + TOTP (GitHub #104) ──────────────────────────────────
+  // ── Unlock methods (GitHub #104 → independent on/off toggles) ──────────
 
-  /// Switches the active front-door credential. Doesn't touch any other
-  /// method's own credential — a PIN or phrase can stay configured and
-  /// simply unused (or serve as [masterPhraseAttemptThreshold]'s fallback)
-  /// while a different method is active.
-  Future<void> setUnlockMethod(UnlockMethod method) =>
+  /// Which ready method (see `readyUnlockMethods`) [clearPasscode] /
+  /// [clearMasterPhrase] / [clearTotp] repoint [Settings.unlockMethod] at
+  /// once the one it was pointing at stops being ready — [excluding] itself,
+  /// since [row] is read *before* the clear that's about to happen. Falls
+  /// back to `pin` (a harmless, inert default — [hasUnlockCredential] never
+  /// reads this column) on the rare path where nothing else is ready either.
+  UnlockMethod _nextShownMethod(
+    SettingRow row, {
+    required UnlockMethod excluding,
+  }) => readyUnlockMethods(
+    row,
+  ).firstWhere((m) => m != excluding, orElse: () => UnlockMethod.pin);
+
+  /// Turns [method] on or off as one of possibly several OR'd unlock
+  /// methods. Turning on a method with no credential configured yet is a
+  /// no-op here — the caller (Settings) is expected to route to that
+  /// method's own setup flow instead, whose own save (`setPasscode`/
+  /// `setupTotp`/`setMasterPhrase`) turns the toggle on as part of
+  /// activating it. Turning off the last remaining ready method is refused
+  /// (returns `false`) so the toggles alone can never leave the app with no
+  /// way back in — deleting a credential outright (`clearPasscode`/
+  /// `clearMasterPhrase`/`clearTotp`) is a separate, deliberate action that
+  /// can still zero everything out.
+  Future<bool> setUnlockMethodEnabled(UnlockMethod method, bool enabled) async {
+    final row = await getSettings();
+    if (!enabled &&
+        isUnlockMethodReady(row, method) &&
+        readyUnlockMethods(row).length <= 1) {
+      return false;
+    }
+    await update(settings).write(switch (method) {
+      UnlockMethod.pin => SettingsCompanion(pinUnlockEnabled: Value(enabled)),
+      UnlockMethod.masterPhrase => SettingsCompanion(
+        masterPhraseUnlockEnabled: Value(enabled),
+      ),
+      UnlockMethod.totp => SettingsCompanion(totpUnlockEnabled: Value(enabled)),
+    });
+    if (!enabled && row.unlockMethod == method) {
+      await update(settings).write(
+        SettingsCompanion(
+          unlockMethod: Value(_nextShownMethod(row, excluding: method)),
+        ),
+      );
+    }
+    return true;
+  }
+
+  /// Which method the lock screen shows first, when more than one is ready —
+  /// "try another method" persists the switch here so it's remembered next
+  /// time the app locks, the same way a successful unlock with a
+  /// newly-picked method does.
+  Future<void> setPreferredUnlockMethod(UnlockMethod method) =>
       update(settings).write(SettingsCompanion(unlockMethod: Value(method)));
 
-  /// Saves a newly-confirmed TOTP secret and makes it the active method in
-  /// one step — mirrors how setting a PIN or a phrase for the first time is
-  /// immediately usable, with no separate "activate" step.
+  /// Saves a newly-confirmed TOTP secret, turns its toggle on, and makes it
+  /// the method the lock screen shows first in one step — mirrors how
+  /// setting a PIN or a phrase for the first time is immediately usable,
+  /// with no separate "activate" step.
   Future<void> setupTotp(String secret) => update(settings).write(
     SettingsCompanion(
       totpSecret: Value(secret),
+      totpUnlockEnabled: const Value(true),
       unlockMethod: const Value(UnlockMethod.totp),
     ),
   );
 
-  /// Clears the TOTP secret. If it was the active method — alone or as half
-  /// of [UnlockMethod.pinAndTotp] — falls back to `pin` — same reasoning as
-  /// [clearMasterPhrase]. A [UnlockMethod.pinAndTotp] setup always has a PIN
-  /// configured (it's required to activate the combo in the first place), so
-  /// `pin` is always a real fallback here, never a credential that doesn't
-  /// exist.
+  /// Clears the TOTP secret and its on/off toggle. If it was the method the
+  /// lock screen was showing first, repoints that at whichever other method
+  /// is still ready — same rule [clearPasscode]/[clearMasterPhrase] follow.
   Future<void> clearTotp() async {
-    final current = (await getSettings()).unlockMethod;
-    final fallsBackToPin =
-        current == UnlockMethod.totp || current == UnlockMethod.pinAndTotp;
+    final row = await getSettings();
     await update(settings).write(
       SettingsCompanion(
         totpSecret: const Value(null),
-        unlockMethod: fallsBackToPin
-            ? const Value(UnlockMethod.pin)
+        totpUnlockEnabled: const Value(false),
+        unlockMethod: row.unlockMethod == UnlockMethod.totp
+            ? Value(_nextShownMethod(row, excluding: UnlockMethod.totp))
             : const Value.absent(),
       ),
     );
@@ -5593,11 +5691,19 @@ class AppDatabase extends _$AppDatabase {
         localSettings?.masterPhraseAttemptThreshold ?? 5;
     final localFailedPasscodeAttempts =
         localSettings?.failedPasscodeAttempts ?? 0;
-    // Same reasoning again (GitHub #104): which method is active, and its
-    // TOTP secret if any, describe *this device's* lock, not the ledger —
-    // an import must never silently switch it or turn it off.
+    // Same reasoning again (GitHub #104): which method is shown first, and
+    // its TOTP secret if any, describe *this device's* lock, not the
+    // ledger — an import must never silently switch it or turn it off.
     final localUnlockMethod = localSettings?.unlockMethod ?? UnlockMethod.pin;
     final localTotpSecret = localSettings?.totpSecret;
+    // Same again for which methods are turned on — a backup from a device
+    // with a different toggle combination (or one predating these columns
+    // entirely, defaulting them) must never silently change which methods
+    // unlock *this* device.
+    final localPinUnlockEnabled = localSettings?.pinUnlockEnabled ?? true;
+    final localMasterPhraseUnlockEnabled =
+        localSettings?.masterPhraseUnlockEnabled ?? false;
+    final localTotpUnlockEnabled = localSettings?.totpUnlockEnabled ?? false;
 
     // Foreign keys stay ON throughout (SQLite ignores the `foreign_keys` pragma
     // inside a transaction anyway). That is deliberate: a backup pointing at a
@@ -5746,6 +5852,9 @@ class AppDatabase extends _$AppDatabase {
             failedPasscodeAttempts: Value(localFailedPasscodeAttempts),
             unlockMethod: Value(localUnlockMethod),
             totpSecret: Value(localTotpSecret),
+            pinUnlockEnabled: Value(localPinUnlockEnabled),
+            masterPhraseUnlockEnabled: Value(localMasterPhraseUnlockEnabled),
+            totpUnlockEnabled: Value(localTotpUnlockEnabled),
           ),
         );
       }

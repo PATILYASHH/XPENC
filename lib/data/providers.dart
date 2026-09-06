@@ -829,8 +829,13 @@ final hasMasterPhraseProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.masterPhraseHash != null;
 });
 
-/// Which credential is the active front-door lock (GitHub #104). Defaults to
-/// `pin`, matching [Settings.unlockMethod]'s own default.
+/// Which method the lock screen shows first when more than one is ready
+/// (GitHub #104 → independent on/off toggles, OR semantics) — see
+/// [Settings.unlockMethod]'s doc. Defaults to `pin`, matching the column's
+/// own default. Widgets that need the method that's actually usable right
+/// now (falling back off a stale/turned-off preference) should read
+/// [readyUnlockMethodsProvider] instead — this is a raw display preference,
+/// not a "which one is active" answer.
 final unlockMethodProvider = Provider<UnlockMethod>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.unlockMethod ??
       UnlockMethod.pin;
@@ -843,10 +848,37 @@ final hasTotpProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.totpSecret != null;
 });
 
-/// Whether the credential [unlockMethodProvider] currently points at is
-/// actually configured — the single "is the app really locked right now"
-/// answer from [hasUnlockCredential], exposed as a provider so widgets don't
-/// each reconstruct the same switch over [settingsProvider].
+/// Whether PIN is turned on as one of the (possibly several) OR'd unlock
+/// methods — the Settings toggle's own value. Meaningless without
+/// [hasPasscodeProvider] also true; see `isUnlockMethodReady`.
+final pinUnlockEnabledProvider = Provider<bool>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.pinUnlockEnabled ?? true;
+});
+
+/// Same as [pinUnlockEnabledProvider], for the master recovery phrase.
+final masterPhraseUnlockEnabledProvider = Provider<bool>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.masterPhraseUnlockEnabled ??
+      false;
+});
+
+/// Same as [pinUnlockEnabledProvider], for the authenticator app (TOTP).
+final totpUnlockEnabledProvider = Provider<bool>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.totpUnlockEnabled ?? false;
+});
+
+/// Every unlock method that's both turned on and has its credential
+/// configured, in [UnlockMethod.values] order — what the lock screen's "try
+/// another method" offers, and what the Settings toggles must never
+/// collectively empty out.
+final readyUnlockMethodsProvider = Provider<List<UnlockMethod>>((ref) {
+  final settings = ref.watch(settingsProvider).valueOrNull;
+  return settings == null ? const [] : readyUnlockMethods(settings);
+});
+
+/// Whether *any* unlock method is ready right now — the single "is the app
+/// really locked right now" answer from [hasUnlockCredential], exposed as a
+/// provider so widgets don't each reconstruct the same switch over
+/// [settingsProvider].
 final hasUnlockCredentialProvider = Provider<bool>((ref) {
   final settings = ref.watch(settingsProvider).valueOrNull;
   return settings != null && hasUnlockCredential(settings);
