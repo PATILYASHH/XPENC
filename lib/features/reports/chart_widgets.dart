@@ -46,10 +46,23 @@ class _NoData extends StatelessWidget {
 /// Account Reports want that at-a-glance list; the Dashboard's compact card
 /// doesn't).
 class CategoryPieChart extends StatefulWidget {
-  const CategoryPieChart({required this.slices, this.showLegend = true, super.key});
+  const CategoryPieChart({
+    required this.slices,
+    this.showLegend = true,
+    this.onSliceTap,
+    super.key,
+  });
 
-  final List<({String label, Money value, Color color})> slices;
+  /// [id] is whatever the caller wants back via [onSliceTap] — e.g. a
+  /// category id to drill into. Null for a slice nothing should navigate to
+  /// (the synthetic "Other" tail always gets null; a non-category chart like
+  /// the accounts-balance one can leave every slice's id null).
+  final List<({String label, Money value, Color color, int? id})> slices;
   final bool showLegend;
+
+  /// Tapping a legend chip whose slice carries a non-null id calls this with
+  /// that id. Left null (the default) makes the legend non-interactive.
+  final ValueChanged<int>? onSliceTap;
 
   @override
   State<CategoryPieChart> createState() => _CategoryPieChartState();
@@ -65,17 +78,18 @@ class _CategoryPieChartState extends State<CategoryPieChart> {
 
     if (positive.isEmpty) return const _NoData(height: 220);
 
-    final data = <({String label, Money value, Color color})>[];
+    final data = <({String label, Money value, Color color, int? id})>[];
     if (positive.length > 6) {
       data.addAll(positive.take(5));
       var rest = const Money.zero();
       for (final s in positive.skip(5)) {
         rest += s.value;
       }
-      data.add((label: 'Other', value: rest, color: Colors.grey));
+      data.add((label: 'Other', value: rest, color: Colors.grey, id: null));
     } else {
       data.addAll(positive);
     }
+    final total = data.fold<int>(0, (sum, d) => sum + d.value.paise);
 
     final touched = _touchedIndex >= 0 && _touchedIndex < data.length
         ? data[_touchedIndex]
@@ -131,7 +145,16 @@ class _CategoryPieChartState extends State<CategoryPieChart> {
               spacing: 16,
               runSpacing: 10,
               alignment: WrapAlignment.center,
-              children: [for (final s in data) _LegendChip(slice: s)],
+              children: [
+                for (final s in data)
+                  _LegendChip(
+                    slice: s,
+                    percentOfTotal: total == 0 ? null : s.value.paise / total * 100,
+                    onTap: (widget.onSliceTap == null || s.id == null)
+                        ? null
+                        : () => widget.onSliceTap!(s.id!),
+                  ),
+              ],
             ),
           ],
         ],
@@ -144,7 +167,7 @@ class _CategoryPieChartState extends State<CategoryPieChart> {
 class _CenterLabel extends StatelessWidget {
   const _CenterLabel({required this.slice});
 
-  final ({String label, Money value, Color color}) slice;
+  final ({String label, Money value, Color color, int? id}) slice;
 
   @override
   Widget build(BuildContext context) {
@@ -180,44 +203,67 @@ class _CenterLabel extends StatelessWidget {
 }
 
 class _LegendChip extends StatelessWidget {
-  const _LegendChip({required this.slice});
+  const _LegendChip({required this.slice, this.percentOfTotal, this.onTap});
 
-  final ({String label, Money value, Color color}) slice;
+  final ({String label, Money value, Color color, int? id}) slice;
+  final double? percentOfTotal;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return ConstrainedBox(
+    final valueLine = percentOfTotal == null
+        ? MoneyFormat.compact(slice.value)
+        : '${MoneyFormat.compact(slice.value)} (${percentOfTotal!.round()}%)';
+
+    final chip = ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 150),
       child: Row(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(color: slice.color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              slice.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall,
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(color: slice.color, shape: BoxShape.circle),
             ),
           ),
           const SizedBox(width: 6),
-          Text(
-            MoneyFormat.compact(slice.value),
-            maxLines: 1,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontFeatures: kTabularFigures,
+          // Label and value stack in one Flexible so a long percentage-
+          // annotated value wraps to a second line instead of overflowing
+          // the chip's width, the way it would fighting for space as a
+          // sibling of the label in a single Row.
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  slice.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall,
+                ),
+                Text(
+                  valueLine,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontFeatures: kTabularFigures,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
     );
+
+    if (onTap == null) return chip;
+    return InkWell(borderRadius: BorderRadius.circular(8), onTap: onTap, child: chip);
   }
 }
 

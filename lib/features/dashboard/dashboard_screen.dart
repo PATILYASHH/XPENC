@@ -1557,6 +1557,7 @@ class _SpendByCategorySection extends ConsumerWidget {
                             color: cats[e.key] != null
                                 ? Color(cats[e.key]!.colorValue)
                                 : theme.colorScheme.secondary,
+                            id: e.key,
                           ),
                       ],
                     ),
