@@ -127,4 +127,18 @@ void main() {
       await reopened.close();
     },
   );
+
+  test(
+    'the v60 CurrencyRates table and account/transaction currency columns '
+    'survive a rolled-back re-open',
+    () async {
+      final file = await buildRolledBackDatabase(59);
+
+      final reopened = AppDatabase(NativeDatabase(file));
+      await expectLater(reopened.select(reopened.currencyRates).get(), completes);
+      await expectLater(reopened.select(reopened.accounts).get(), completes);
+      await expectLater(reopened.select(reopened.transactions).get(), completes);
+      await reopened.close();
+    },
+  );
 }

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/app_icons.dart';
+import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/widgets/error_view.dart';
 import '../../core/widgets/money_text.dart';
@@ -32,6 +33,11 @@ class TransactionDetailScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Transaction'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.content_copy_outlined),
+            tooltip: 'Duplicate',
+            onPressed: () => context.push('/add?duplicate=$transactionId'),
+          ),
           IconButton(
             icon: const Icon(Icons.edit_outlined),
             tooltip: 'Edit',
@@ -169,6 +175,15 @@ class _TransactionView extends ConsumerWidget {
                   'Account',
                   _accountValue(context, t, accountMap),
                 ),
+                if (t.foreignCurrencyCode != null &&
+                    t.foreignAmount != null) ...[
+                  _divider(theme),
+                  _detailRow(
+                    context,
+                    'Original amount',
+                    _valueText(context, _foreignAmountValue(t)),
+                  ),
+                ],
                 if (t.type == TxType.expense) ...[
                   _divider(theme),
                   _detailRow(
@@ -325,6 +340,13 @@ class _Hero extends StatelessWidget {
         (t.type == TxType.expense || t.type == TxType.personOut)
         ? -t.amount
         : t.amount;
+    // The row's own snapshotted currency — authoritative regardless of
+    // whether the account it was posted from could somehow have a
+    // different currency today (it can't, once posted, but the
+    // transaction is self-describing either way).
+    final currency = t.currencyCode == null
+        ? null
+        : currencyForCode(t.currencyCode!);
 
     final (String label, IconData icon) = switch (t.type) {
       TxType.income => ('Income', Icons.arrow_downward_rounded),
@@ -343,6 +365,7 @@ class _Hero extends StatelessWidget {
             displayAmount,
             signed: !isTransfer,
             color: color,
+            currency: currency,
             style: theme.textTheme.displaySmall?.copyWith(
               fontWeight: FontWeight.w700,
             ),
@@ -613,6 +636,9 @@ class _LinkedTxRow extends StatelessWidget {
         (linked.type == TxType.expense || linked.type == TxType.personOut)
         ? -linked.amount
         : linked.amount;
+    final currency = linked.currencyCode == null
+        ? null
+        : currencyForCode(linked.currencyCode!);
 
     return Row(
       children: [
@@ -636,6 +662,7 @@ class _LinkedTxRow extends StatelessWidget {
                     displayAmount,
                     signed: !isTransfer,
                     color: colorForTxType(linked.type),
+                    currency: currency,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -917,4 +944,16 @@ Widget _accountValue(
       ],
     ],
   );
+}
+
+/// "9.99 USD (1 USD ≈ ₹83.08)" — [t.foreignAmount]/[t.foreignCurrencyCode]
+/// must both be non-null; the implied rate is recomputed from [t.amount],
+/// never stored (GitHub #85).
+String _foreignAmountValue(TransactionRow t) {
+  final currency = currencyForCode(t.foreignCurrencyCode);
+  final foreignAmount = t.foreignAmount!;
+  final formatted = MoneyFormat.forCurrency(foreignAmount, currency);
+  if (!foreignAmount.isPositive) return formatted;
+  final rate = Money.fromRupees(t.amount.rupees / foreignAmount.rupees);
+  return '$formatted (1 ${currency.code} ≈ ${MoneyFormat.symbol(rate)})';
 }

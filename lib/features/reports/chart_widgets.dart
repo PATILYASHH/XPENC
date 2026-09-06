@@ -46,10 +46,23 @@ class _NoData extends StatelessWidget {
 /// Account Reports want that at-a-glance list; the Dashboard's compact card
 /// doesn't).
 class CategoryPieChart extends StatefulWidget {
-  const CategoryPieChart({required this.slices, this.showLegend = true, super.key});
+  const CategoryPieChart({
+    required this.slices,
+    this.showLegend = true,
+    this.onSliceTap,
+    super.key,
+  });
 
-  final List<({String label, Money value, Color color})> slices;
+  /// [id] is whatever the caller wants back via [onSliceTap] — e.g. a
+  /// category id to drill into. Null for a slice nothing should navigate to
+  /// (the synthetic "Other" tail always gets null; a non-category chart like
+  /// the accounts-balance one can leave every slice's id null).
+  final List<({String label, Money value, Color color, int? id})> slices;
   final bool showLegend;
+
+  /// Tapping a legend chip whose slice carries a non-null id calls this with
+  /// that id. Left null (the default) makes the legend non-interactive.
+  final ValueChanged<int>? onSliceTap;
 
   @override
   State<CategoryPieChart> createState() => _CategoryPieChartState();
@@ -65,17 +78,18 @@ class _CategoryPieChartState extends State<CategoryPieChart> {
 
     if (positive.isEmpty) return const _NoData(height: 220);
 
-    final data = <({String label, Money value, Color color})>[];
+    final data = <({String label, Money value, Color color, int? id})>[];
     if (positive.length > 6) {
       data.addAll(positive.take(5));
       var rest = const Money.zero();
       for (final s in positive.skip(5)) {
         rest += s.value;
       }
-      data.add((label: 'Other', value: rest, color: Colors.grey));
+      data.add((label: 'Other', value: rest, color: Colors.grey, id: null));
     } else {
       data.addAll(positive);
     }
+    final total = data.fold<int>(0, (sum, d) => sum + d.value.paise);
 
     final touched = _touchedIndex >= 0 && _touchedIndex < data.length
         ? data[_touchedIndex]
@@ -131,7 +145,16 @@ class _CategoryPieChartState extends State<CategoryPieChart> {
               spacing: 16,
               runSpacing: 10,
               alignment: WrapAlignment.center,
-              children: [for (final s in data) _LegendChip(slice: s)],
+              children: [
+                for (final s in data)
+                  _LegendChip(
+                    slice: s,
+                    percentOfTotal: total == 0 ? null : s.value.paise / total * 100,
+                    onTap: (widget.onSliceTap == null || s.id == null)
+                        ? null
+                        : () => widget.onSliceTap!(s.id!),
+                  ),
+              ],
             ),
           ],
         ],
@@ -144,7 +167,7 @@ class _CategoryPieChartState extends State<CategoryPieChart> {
 class _CenterLabel extends StatelessWidget {
   const _CenterLabel({required this.slice});
 
-  final ({String label, Money value, Color color}) slice;
+  final ({String label, Money value, Color color, int? id}) slice;
 
   @override
   Widget build(BuildContext context) {
@@ -180,44 +203,67 @@ class _CenterLabel extends StatelessWidget {
 }
 
 class _LegendChip extends StatelessWidget {
-  const _LegendChip({required this.slice});
+  const _LegendChip({required this.slice, this.percentOfTotal, this.onTap});
 
-  final ({String label, Money value, Color color}) slice;
+  final ({String label, Money value, Color color, int? id}) slice;
+  final double? percentOfTotal;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return ConstrainedBox(
+    final valueLine = percentOfTotal == null
+        ? MoneyFormat.compact(slice.value)
+        : '${MoneyFormat.compact(slice.value)} (${percentOfTotal!.round()}%)';
+
+    final chip = ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 150),
       child: Row(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(color: slice.color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              slice.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall,
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(color: slice.color, shape: BoxShape.circle),
             ),
           ),
           const SizedBox(width: 6),
-          Text(
-            MoneyFormat.compact(slice.value),
-            maxLines: 1,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontFeatures: kTabularFigures,
+          // Label and value stack in one Flexible so a long percentage-
+          // annotated value wraps to a second line instead of overflowing
+          // the chip's width, the way it would fighting for space as a
+          // sibling of the label in a single Row.
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  slice.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall,
+                ),
+                Text(
+                  valueLine,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontFeatures: kTabularFigures,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
     );
+
+    if (onTap == null) return chip;
+    return InkWell(borderRadius: BorderRadius.circular(8), onTap: onTap, child: chip);
   }
 }
 
@@ -236,7 +282,14 @@ class _LegendChip extends StatelessWidget {
 class BudgetRadialChart extends StatefulWidget {
   const BudgetRadialChart({required this.slices, super.key});
 
-  final List<({String label, Money budget, Money spent, Color color})> slices;
+  /// [fundingColor], when set (GitHub #100 v2, only while Ready to Assign is
+  /// on), overrides [color] for this slice's fill — green/amber for
+  /// funded/underfunded. The overspent hazard-stripe + red ring stays
+  /// keyed off [spent]/[budget] regardless, so it still overlays either way.
+  final List<
+    ({String label, Money budget, Money spent, Color color, Color? fundingColor})
+  >
+  slices;
 
   @override
   State<BudgetRadialChart> createState() => _BudgetRadialChartState();
@@ -283,7 +336,9 @@ class _BudgetRadialChartState extends State<BudgetRadialChart> {
     final data = <_BudgetSlice>[];
     if (positive.length > 6) {
       for (final s in positive.take(5)) {
-        data.add(_BudgetSlice(s.label, s.budget, s.spent, s.color));
+        data.add(
+          _BudgetSlice(s.label, s.budget, s.spent, s.color, s.fundingColor),
+        );
       }
       var restBudget = const Money.zero();
       var restSpent = const Money.zero();
@@ -291,10 +346,14 @@ class _BudgetRadialChartState extends State<BudgetRadialChart> {
         restBudget += s.budget;
         restSpent += s.spent;
       }
+      // Folded into "Other": a single funding color can't represent several
+      // categories at once, so this tail always falls back to its own grey.
       data.add(_BudgetSlice('Other', restBudget, restSpent, Colors.grey));
     } else {
       for (final s in positive) {
-        data.add(_BudgetSlice(s.label, s.budget, s.spent, s.color));
+        data.add(
+          _BudgetSlice(s.label, s.budget, s.spent, s.color, s.fundingColor),
+        );
       }
     }
 
@@ -344,12 +403,23 @@ class _BudgetRadialChartState extends State<BudgetRadialChart> {
 }
 
 class _BudgetSlice {
-  const _BudgetSlice(this.label, this.budget, this.spent, this.color);
+  const _BudgetSlice(
+    this.label,
+    this.budget,
+    this.spent,
+    this.color, [
+    this.fundingColor,
+  ]);
 
   final String label;
   final Money budget;
   final Money spent;
   final Color color;
+  final Color? fundingColor;
+
+  /// The color actually painted for the wedge fill — [fundingColor] when
+  /// set, else the category's own [color].
+  Color get fillColor => fundingColor ?? color;
 
   bool get overspent => spent > budget;
 
@@ -386,7 +456,10 @@ class _BudgetSectorPainter extends CustomPainter {
       final sweep = share - gap;
       final wedge = _wedge(center, outerRect, start, sweep);
 
-      canvas.drawPath(wedge, Paint()..color = slice.color.withValues(alpha: 0.16));
+      canvas.drawPath(
+        wedge,
+        Paint()..color = slice.fillColor.withValues(alpha: 0.16),
+      );
 
       if (slice.fraction > 0) {
         final filledRadius = outerRadius * math.sqrt(slice.fraction);
@@ -397,7 +470,7 @@ class _BudgetSectorPainter extends CustomPainter {
             start,
             sweep,
           ),
-          Paint()..color = slice.color,
+          Paint()..color = slice.fillColor,
         );
       }
 
