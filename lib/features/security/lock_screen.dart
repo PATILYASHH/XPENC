@@ -7,7 +7,12 @@ import '../../core/branding/brand_mark.dart';
 import '../../core/security/master_phrase_field.dart';
 import '../../core/security/pin_pad.dart';
 import '../../data/providers.dart';
+import '../../data/tables.dart' show UnlockMethod;
 import 'lock_screen_keypad.dart';
+
+/// A TOTP code is always 6 digits (GitHub #104) — `Totp.provisioningUri`
+/// hard-codes `digits=6`, so entry here matches.
+const _totpCodeLength = 6;
 
 /// Rendered directly by [XpencApp]'s `builder`, outside the router — a
 /// blocking overlay, not a route, so there is no back button and no way
@@ -33,6 +38,14 @@ class _LockScreenState extends ConsumerState<LockScreen> {
   /// reshuffles for the next attempt — see its `attempt` doc.
   int _attempt = 0;
 
+  // ── TOTP entry (GitHub #104) ─────────────────────────────────────────────
+  String _totp = '';
+  bool _totpError = false;
+  bool _totpChecking = false;
+
+  /// Same purpose as [_attempt], for the TOTP keypad.
+  int _totpAttempt = 0;
+
   @override
   void initState() {
     super.initState();
@@ -42,7 +55,14 @@ class _LockScreenState extends ConsumerState<LockScreen> {
   Future<void> _maybeTryBiometric() async {
     if (_biometricTried) return;
     _biometricTried = true;
-    if (!ref.read(biometricEnabledProvider)) return;
+    // Biometric is a shortcut for *PIN* entry only (GitHub #104) — trying it
+    // (or offering the fingerprint key at all) while a different method is
+    // active would let a fingerprint silently bypass whichever front door
+    // was actually chosen.
+    if (!ref.read(biometricEnabledProvider) ||
+        ref.read(unlockMethodProvider) != UnlockMethod.pin) {
+      return;
+    }
     await _tryBiometric();
   }
 
@@ -120,16 +140,61 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     });
   }
 
+  void _onTotpDigit(String d) {
+    if (_totpChecking || _totp.length >= _totpCodeLength) return;
+    setState(() {
+      _totpError = false;
+      _totp += d;
+    });
+    if (_totp.length == _totpCodeLength) _submitTotp();
+  }
+
+  void _onTotpBackspace() {
+    if (_totpChecking || _totp.isEmpty) return;
+    setState(() => _totp = _totp.substring(0, _totp.length - 1));
+  }
+
+  Future<void> _submitTotp() async {
+    setState(() => _totpChecking = true);
+    final db = ref.read(dbProvider);
+    final ok = await db.verifyTotp(_totp);
+    if (!mounted) return;
+    if (ok) {
+      await db.resetFailedPasscodeAttempts();
+      if (!mounted) return;
+      widget.onUnlocked();
+      return;
+    }
+    // Same counter a wrong PIN increments — the "too many wrong attempts"
+    // fallback to the master phrase is generalized across whichever method
+    // is active (GitHub #104), not PIN-specific.
+    await db.recordFailedPasscodeAttempt();
+    if (!mounted) return;
+    setState(() {
+      _totpError = true;
+      _totpChecking = false;
+      _totp = '';
+      _totpAttempt++;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final unlockMethod = ref.watch(unlockMethodProvider);
     final hasMasterPhrase = ref.watch(hasMasterPhraseProvider);
     final failedAttempts = ref.watch(failedPasscodeAttemptsProvider);
     final threshold = ref.watch(masterPhraseAttemptThresholdProvider);
+    // The phrase is itself the fallback mechanism, so it never falls back to
+    // itself (GitHub #104) — only reachable here when a *different* method
+    // is active.
+    final canFallBackToPhrase =
+        hasMasterPhrase && unlockMethod != UnlockMethod.masterPhrase;
     // No time decay (GitHub #74): once the persisted counter reaches the
-    // threshold, every future launch/resume lands here directly — the PIN
-    // pad below is unreachable again until the phrase is entered correctly.
-    final phraseLocked = hasMasterPhrase && failedAttempts >= threshold;
+    // threshold, every future launch/resume lands here directly — the active
+    // method's own entry below is unreachable again until the phrase is
+    // entered correctly.
+    final phraseLocked = canFallBackToPhrase && failedAttempts >= threshold;
 
     return PopScope(
       canPop: false,
@@ -163,8 +228,15 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                         ),
                         const SizedBox(height: 40),
                         phraseLocked
-                            ? _buildPhraseBody(context)
-                            : _buildPinBody(context),
+                            ? _buildPhraseBody(context, isFallback: true)
+                            : switch (unlockMethod) {
+                                UnlockMethod.pin => _buildPinBody(context),
+                                UnlockMethod.masterPhrase => _buildPhraseBody(
+                                  context,
+                                  isFallback: false,
+                                ),
+                                UnlockMethod.totp => _buildTotpBody(context),
+                              },
                       ],
                     ),
                   ),
@@ -217,9 +289,20 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     );
   }
 
-  Widget _buildPhraseBody(BuildContext context) {
+  /// [isFallback] is true when this is reached via too many wrong attempts
+  /// at a *different* active method (GitHub #104) rather than the phrase
+  /// being the active method itself — only then does the "too many wrong…"
+  /// framing make sense.
+  Widget _buildPhraseBody(BuildContext context, {required bool isFallback}) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    final unlockMethod = ref.read(unlockMethodProvider);
+    final fallbackHeading = switch (unlockMethod) {
+      UnlockMethod.pin => 'Too many wrong PINs',
+      UnlockMethod.totp => 'Too many wrong codes',
+      UnlockMethod.masterPhrase =>
+        '', // unreachable — the phrase can't fall back to itself
+    };
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -227,14 +310,16 @@ class _LockScreenState extends ConsumerState<LockScreen> {
         children: [
           Icon(Icons.key_outlined, size: 32, color: cs.primary),
           const SizedBox(height: 12),
-          Text(
-            'Too many wrong PINs',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
+          if (isFallback) ...[
+            Text(
+              fallbackHeading,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
+            const SizedBox(height: 8),
+          ],
           Text(
             'Enter your master recovery phrase to unlock XPENC.',
             style: theme.textTheme.bodyMedium?.copyWith(
@@ -250,6 +335,41 @@ class _LockScreenState extends ConsumerState<LockScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTotpBody(BuildContext context) {
+    final theme = Theme.of(context);
+    final lockScreenStyle = ref.watch(lockScreenStyleProvider);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          _totpError ? 'Wrong code' : 'Enter your authenticator code',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: _totpError
+                ? theme.colorScheme.error
+                : theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 18),
+        PinDots(
+          entered: _totp.length,
+          length: _totpCodeLength,
+          error: _totpError,
+        ),
+        const SizedBox(height: 40),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: LockScreenKeypad(
+            style: lockScreenStyle,
+            attempt: _totpAttempt,
+            onDigit: _onTotpDigit,
+            onBackspace: _onTotpBackspace,
+          ),
+        ),
+      ],
     );
   }
 }

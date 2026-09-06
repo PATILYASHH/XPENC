@@ -141,4 +141,16 @@ void main() {
       await reopened.close();
     },
   );
+
+  test(
+    'the v64 unlockMethod/totpSecret columns (choice of unlock method, '
+    'GitHub #104) survive a rolled-back re-open',
+    () async {
+      final file = await buildRolledBackDatabase(63);
+
+      final reopened = AppDatabase(NativeDatabase(file));
+      await expectLater(reopened.select(reopened.settings).get(), completes);
+      await reopened.close();
+    },
+  );
 }
