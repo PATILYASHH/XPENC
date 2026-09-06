@@ -9,6 +9,13 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 ## [Unreleased]
 
 ### Added
+- **Category templates** (#101) — save your current category/sub-category
+  structure as a named template from Categories → the new templates icon,
+  and switch between saved templates any time. Switching never touches a
+  transaction: categories the target template doesn't have are archived
+  (same as a manual archive — their transactions keep them), categories it
+  does have are created or relabelled in place, and switching back later
+  reactivates the same categories rather than duplicating them.
 - **Auto rules: Goals & Loans (G&L)** — a recurring rule's Expense/Income
   toggle now has a third option, G&L: on schedule, it posts a transfer into
   a goal or a payment toward a loan instead of a category-tagged

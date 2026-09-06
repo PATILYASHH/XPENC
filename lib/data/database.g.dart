@@ -20087,6 +20087,791 @@ class CurrencyRatesCompanion extends UpdateCompanion<CurrencyRateRow> {
   }
 }
 
+class $CategoryTemplatesTable extends CategoryTemplates
+    with TableInfo<$CategoryTemplatesTable, CategoryTemplateRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CategoryTemplatesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 60,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'category_templates';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CategoryTemplateRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CategoryTemplateRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CategoryTemplateRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CategoryTemplatesTable createAlias(String alias) {
+    return $CategoryTemplatesTable(attachedDatabase, alias);
+  }
+}
+
+class CategoryTemplateRow extends DataClass
+    implements Insertable<CategoryTemplateRow> {
+  final int id;
+  final String name;
+  final DateTime createdAt;
+  const CategoryTemplateRow({
+    required this.id,
+    required this.name,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  CategoryTemplatesCompanion toCompanion(bool nullToAbsent) {
+    return CategoryTemplatesCompanion(
+      id: Value(id),
+      name: Value(name),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory CategoryTemplateRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CategoryTemplateRow(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  CategoryTemplateRow copyWith({int? id, String? name, DateTime? createdAt}) =>
+      CategoryTemplateRow(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  CategoryTemplateRow copyWithCompanion(CategoryTemplatesCompanion data) {
+    return CategoryTemplateRow(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CategoryTemplateRow(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CategoryTemplateRow &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.createdAt == this.createdAt);
+}
+
+class CategoryTemplatesCompanion extends UpdateCompanion<CategoryTemplateRow> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<DateTime> createdAt;
+  const CategoryTemplatesCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  CategoryTemplatesCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    this.createdAt = const Value.absent(),
+  }) : name = Value(name);
+  static Insertable<CategoryTemplateRow> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  CategoryTemplatesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<DateTime>? createdAt,
+  }) {
+    return CategoryTemplatesCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CategoryTemplatesCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CategoryTemplateItemsTable extends CategoryTemplateItems
+    with TableInfo<$CategoryTemplateItemsTable, CategoryTemplateItemRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CategoryTemplateItemsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _templateIdMeta = const VerificationMeta(
+    'templateId',
+  );
+  @override
+  late final GeneratedColumn<int> templateId = GeneratedColumn<int>(
+    'template_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES category_templates (id)',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 40,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<CategoryKind, String> kind =
+      GeneratedColumn<String>(
+        'kind',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<CategoryKind>($CategoryTemplateItemsTable.$converterkind);
+  static const VerificationMeta _colorValueMeta = const VerificationMeta(
+    'colorValue',
+  );
+  @override
+  late final GeneratedColumn<int> colorValue = GeneratedColumn<int>(
+    'color_value',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _iconKeyMeta = const VerificationMeta(
+    'iconKey',
+  );
+  @override
+  late final GeneratedColumn<String> iconKey = GeneratedColumn<String>(
+    'icon_key',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 40,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _parentItemIdMeta = const VerificationMeta(
+    'parentItemId',
+  );
+  @override
+  late final GeneratedColumn<int> parentItemId = GeneratedColumn<int>(
+    'parent_item_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    templateId,
+    name,
+    kind,
+    colorValue,
+    iconKey,
+    sortOrder,
+    parentItemId,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'category_template_items';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CategoryTemplateItemRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('template_id')) {
+      context.handle(
+        _templateIdMeta,
+        templateId.isAcceptableOrUnknown(data['template_id']!, _templateIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_templateIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('color_value')) {
+      context.handle(
+        _colorValueMeta,
+        colorValue.isAcceptableOrUnknown(data['color_value']!, _colorValueMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_colorValueMeta);
+    }
+    if (data.containsKey('icon_key')) {
+      context.handle(
+        _iconKeyMeta,
+        iconKey.isAcceptableOrUnknown(data['icon_key']!, _iconKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_iconKeyMeta);
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    if (data.containsKey('parent_item_id')) {
+      context.handle(
+        _parentItemIdMeta,
+        parentItemId.isAcceptableOrUnknown(
+          data['parent_item_id']!,
+          _parentItemIdMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CategoryTemplateItemRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CategoryTemplateItemRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      templateId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}template_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      kind: $CategoryTemplateItemsTable.$converterkind.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}kind'],
+        )!,
+      ),
+      colorValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}color_value'],
+      )!,
+      iconKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}icon_key'],
+      )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      parentItemId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}parent_item_id'],
+      ),
+    );
+  }
+
+  @override
+  $CategoryTemplateItemsTable createAlias(String alias) {
+    return $CategoryTemplateItemsTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<CategoryKind, String, String> $converterkind =
+      const EnumNameConverter<CategoryKind>(CategoryKind.values);
+}
+
+class CategoryTemplateItemRow extends DataClass
+    implements Insertable<CategoryTemplateItemRow> {
+  final int id;
+  final int templateId;
+  final String name;
+  final CategoryKind kind;
+  final int colorValue;
+  final String iconKey;
+  final int sortOrder;
+  final int? parentItemId;
+  const CategoryTemplateItemRow({
+    required this.id,
+    required this.templateId,
+    required this.name,
+    required this.kind,
+    required this.colorValue,
+    required this.iconKey,
+    required this.sortOrder,
+    this.parentItemId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['template_id'] = Variable<int>(templateId);
+    map['name'] = Variable<String>(name);
+    {
+      map['kind'] = Variable<String>(
+        $CategoryTemplateItemsTable.$converterkind.toSql(kind),
+      );
+    }
+    map['color_value'] = Variable<int>(colorValue);
+    map['icon_key'] = Variable<String>(iconKey);
+    map['sort_order'] = Variable<int>(sortOrder);
+    if (!nullToAbsent || parentItemId != null) {
+      map['parent_item_id'] = Variable<int>(parentItemId);
+    }
+    return map;
+  }
+
+  CategoryTemplateItemsCompanion toCompanion(bool nullToAbsent) {
+    return CategoryTemplateItemsCompanion(
+      id: Value(id),
+      templateId: Value(templateId),
+      name: Value(name),
+      kind: Value(kind),
+      colorValue: Value(colorValue),
+      iconKey: Value(iconKey),
+      sortOrder: Value(sortOrder),
+      parentItemId: parentItemId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(parentItemId),
+    );
+  }
+
+  factory CategoryTemplateItemRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CategoryTemplateItemRow(
+      id: serializer.fromJson<int>(json['id']),
+      templateId: serializer.fromJson<int>(json['templateId']),
+      name: serializer.fromJson<String>(json['name']),
+      kind: $CategoryTemplateItemsTable.$converterkind.fromJson(
+        serializer.fromJson<String>(json['kind']),
+      ),
+      colorValue: serializer.fromJson<int>(json['colorValue']),
+      iconKey: serializer.fromJson<String>(json['iconKey']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      parentItemId: serializer.fromJson<int?>(json['parentItemId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'templateId': serializer.toJson<int>(templateId),
+      'name': serializer.toJson<String>(name),
+      'kind': serializer.toJson<String>(
+        $CategoryTemplateItemsTable.$converterkind.toJson(kind),
+      ),
+      'colorValue': serializer.toJson<int>(colorValue),
+      'iconKey': serializer.toJson<String>(iconKey),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+      'parentItemId': serializer.toJson<int?>(parentItemId),
+    };
+  }
+
+  CategoryTemplateItemRow copyWith({
+    int? id,
+    int? templateId,
+    String? name,
+    CategoryKind? kind,
+    int? colorValue,
+    String? iconKey,
+    int? sortOrder,
+    Value<int?> parentItemId = const Value.absent(),
+  }) => CategoryTemplateItemRow(
+    id: id ?? this.id,
+    templateId: templateId ?? this.templateId,
+    name: name ?? this.name,
+    kind: kind ?? this.kind,
+    colorValue: colorValue ?? this.colorValue,
+    iconKey: iconKey ?? this.iconKey,
+    sortOrder: sortOrder ?? this.sortOrder,
+    parentItemId: parentItemId.present
+        ? parentItemId.value
+        : this.parentItemId,
+  );
+  CategoryTemplateItemRow copyWithCompanion(
+    CategoryTemplateItemsCompanion data,
+  ) {
+    return CategoryTemplateItemRow(
+      id: data.id.present ? data.id.value : this.id,
+      templateId: data.templateId.present
+          ? data.templateId.value
+          : this.templateId,
+      name: data.name.present ? data.name.value : this.name,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      colorValue: data.colorValue.present
+          ? data.colorValue.value
+          : this.colorValue,
+      iconKey: data.iconKey.present ? data.iconKey.value : this.iconKey,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      parentItemId: data.parentItemId.present
+          ? data.parentItemId.value
+          : this.parentItemId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CategoryTemplateItemRow(')
+          ..write('id: $id, ')
+          ..write('templateId: $templateId, ')
+          ..write('name: $name, ')
+          ..write('kind: $kind, ')
+          ..write('colorValue: $colorValue, ')
+          ..write('iconKey: $iconKey, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('parentItemId: $parentItemId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    templateId,
+    name,
+    kind,
+    colorValue,
+    iconKey,
+    sortOrder,
+    parentItemId,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CategoryTemplateItemRow &&
+          other.id == this.id &&
+          other.templateId == this.templateId &&
+          other.name == this.name &&
+          other.kind == this.kind &&
+          other.colorValue == this.colorValue &&
+          other.iconKey == this.iconKey &&
+          other.sortOrder == this.sortOrder &&
+          other.parentItemId == this.parentItemId);
+}
+
+class CategoryTemplateItemsCompanion
+    extends UpdateCompanion<CategoryTemplateItemRow> {
+  final Value<int> id;
+  final Value<int> templateId;
+  final Value<String> name;
+  final Value<CategoryKind> kind;
+  final Value<int> colorValue;
+  final Value<String> iconKey;
+  final Value<int> sortOrder;
+  final Value<int?> parentItemId;
+  const CategoryTemplateItemsCompanion({
+    this.id = const Value.absent(),
+    this.templateId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.colorValue = const Value.absent(),
+    this.iconKey = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.parentItemId = const Value.absent(),
+  });
+  CategoryTemplateItemsCompanion.insert({
+    this.id = const Value.absent(),
+    required int templateId,
+    required String name,
+    required CategoryKind kind,
+    required int colorValue,
+    required String iconKey,
+    this.sortOrder = const Value.absent(),
+    this.parentItemId = const Value.absent(),
+  }) : templateId = Value(templateId),
+       name = Value(name),
+       kind = Value(kind),
+       colorValue = Value(colorValue),
+       iconKey = Value(iconKey);
+  static Insertable<CategoryTemplateItemRow> custom({
+    Expression<int>? id,
+    Expression<int>? templateId,
+    Expression<String>? name,
+    Expression<String>? kind,
+    Expression<int>? colorValue,
+    Expression<String>? iconKey,
+    Expression<int>? sortOrder,
+    Expression<int>? parentItemId,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (templateId != null) 'template_id': templateId,
+      if (name != null) 'name': name,
+      if (kind != null) 'kind': kind,
+      if (colorValue != null) 'color_value': colorValue,
+      if (iconKey != null) 'icon_key': iconKey,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (parentItemId != null) 'parent_item_id': parentItemId,
+    });
+  }
+
+  CategoryTemplateItemsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? templateId,
+    Value<String>? name,
+    Value<CategoryKind>? kind,
+    Value<int>? colorValue,
+    Value<String>? iconKey,
+    Value<int>? sortOrder,
+    Value<int?>? parentItemId,
+  }) {
+    return CategoryTemplateItemsCompanion(
+      id: id ?? this.id,
+      templateId: templateId ?? this.templateId,
+      name: name ?? this.name,
+      kind: kind ?? this.kind,
+      colorValue: colorValue ?? this.colorValue,
+      iconKey: iconKey ?? this.iconKey,
+      sortOrder: sortOrder ?? this.sortOrder,
+      parentItemId: parentItemId ?? this.parentItemId,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (templateId.present) {
+      map['template_id'] = Variable<int>(templateId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(
+        $CategoryTemplateItemsTable.$converterkind.toSql(kind.value),
+      );
+    }
+    if (colorValue.present) {
+      map['color_value'] = Variable<int>(colorValue.value);
+    }
+    if (iconKey.present) {
+      map['icon_key'] = Variable<String>(iconKey.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (parentItemId.present) {
+      map['parent_item_id'] = Variable<int>(parentItemId.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CategoryTemplateItemsCompanion(')
+          ..write('id: $id, ')
+          ..write('templateId: $templateId, ')
+          ..write('name: $name, ')
+          ..write('kind: $kind, ')
+          ..write('colorValue: $colorValue, ')
+          ..write('iconKey: $iconKey, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('parentItemId: $parentItemId')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -20131,6 +20916,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CreditCardDetailsTable creditCardDetails =
       $CreditCardDetailsTable(this);
   late final $CurrencyRatesTable currencyRates = $CurrencyRatesTable(this);
+  late final $CategoryTemplatesTable categoryTemplates =
+      $CategoryTemplatesTable(this);
+  late final $CategoryTemplateItemsTable categoryTemplateItems =
+      $CategoryTemplateItemsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -20169,6 +20958,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     ocrCorrections,
     creditCardDetails,
     currencyRates,
+    categoryTemplates,
+    categoryTemplateItems,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
