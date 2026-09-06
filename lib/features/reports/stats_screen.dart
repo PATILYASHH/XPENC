@@ -415,7 +415,7 @@ class _CategorySection extends ConsumerWidget {
     final categories = ref.watch(categoryMapProvider);
 
     Widget chartOf(Map<int, Money> rawSpend) {
-      final slices = <({String label, Money value, Color color})>[];
+      final slices = <({String label, Money value, Color color, int? id})>[];
       if (showSubcategories) {
         // Every leaf category gets its own slice — no roll-up. A
         // subcategory is labelled "Parent · Child" so two subcategories
@@ -429,6 +429,7 @@ class _CategorySection extends ConsumerWidget {
             label: parent == null ? cat.name : '${parent.name} · ${cat.name}',
             value: amount,
             color: Color(cat.colorValue),
+            id: id,
           ));
         });
       } else {
@@ -442,10 +443,14 @@ class _CategorySection extends ConsumerWidget {
             label: cat.name,
             value: amount,
             color: Color(cat.colorValue),
+            id: id,
           ));
         });
       }
-      return CategoryPieChart(slices: slices);
+      return CategoryPieChart(
+        slices: slices,
+        onSliceTap: (categoryId) => context.push('/more/budgets/$categoryId'),
+      );
     }
 
     if (showYear) {
@@ -841,13 +846,14 @@ class _CategoryStandings extends ConsumerWidget {
       // Same grouping rule as the pie above: subcategories stand alone
       // (labelled "Parent · Child" to stay distinguishable), or roll up
       // into their parent when the toggle is off.
-      final entries = <({String label, Money value, Color color})>[];
+      final entries = <({int id, String label, Money value, Color color})>[];
       if (showSubcategories) {
         rawSpend.forEach((id, amount) {
           final cat = categories[id];
           if (cat == null) return;
           final parent = cat.parentId == null ? null : categories[cat.parentId];
           entries.add((
+            id: id,
             label: parent == null ? cat.name : '${parent.name} · ${cat.name}',
             value: amount,
             color: Color(cat.colorValue),
@@ -857,7 +863,12 @@ class _CategoryStandings extends ConsumerWidget {
         rollUpToParents(rawSpend, categories).forEach((id, amount) {
           final cat = categories[id];
           if (cat == null) return;
-          entries.add((label: cat.name, value: amount, color: Color(cat.colorValue)));
+          entries.add((
+            id: id,
+            label: cat.name,
+            value: amount,
+            color: Color(cat.colorValue),
+          ));
         });
       }
 
@@ -873,6 +884,7 @@ class _CategoryStandings extends ConsumerWidget {
       final maxValue = positive
           .map((e) => e.value.paise)
           .reduce((a, b) => a > b ? a : b);
+      final total = positive.fold(const Money.zero(), (sum, e) => sum + e.value);
 
       return _StandingsCard(
         children: [
@@ -880,10 +892,14 @@ class _CategoryStandings extends ConsumerWidget {
             _StandingRow(
               rank: i + 1,
               title: e.label,
+              subtitle: total.paise == 0
+                  ? null
+                  : '${(e.value.paise / total.paise * 100).toStringAsFixed(1)}% of total',
               value: MoneyFormat.symbol(e.value),
               dotColor: e.color,
               barFraction: maxValue == 0 ? 0 : e.value.paise / maxValue,
               barColor: e.color,
+              onTap: () => context.push('/more/budgets/${e.id}'),
             ),
         ],
       );
