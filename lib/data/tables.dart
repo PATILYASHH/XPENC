@@ -245,6 +245,36 @@ class Categories extends Table {
   IntColumn get parentId => integer().nullable()();
 }
 
+/// A saved snapshot of a category/sub-category structure (GitHub #101) — its
+/// rows live in [CategoryTemplateItems]. Independent of [Categories]: saving
+/// or applying a template never touches a transaction, only which
+/// `Categories` rows are archived vs. active. See
+/// `docs/superpowers/specs/2026-09-06-category-templates-design.md`.
+@DataClassName('CategoryTemplateRow')
+class CategoryTemplates extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text().withLength(min: 1, max: 60)();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// One category in a saved template. Mirrors [Categories]' own shape (name,
+/// kind, colour, icon, two-level parent nesting) but [parentItemId] resolves
+/// against *other rows of the same template*, never a live [Categories.id] —
+/// a template must be applicable on a device that has never seen these
+/// categories before. [AppDatabase.applyCategoryTemplate] matches these
+/// against live categories by name, not id.
+@DataClassName('CategoryTemplateItemRow')
+class CategoryTemplateItems extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get templateId => integer().references(CategoryTemplates, #id)();
+  TextColumn get name => text().withLength(min: 1, max: 40)();
+  TextColumn get kind => textEnum<CategoryKind>()();
+  IntColumn get colorValue => integer()();
+  TextColumn get iconKey => text().withLength(min: 1, max: 40)();
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+  IntColumn get parentItemId => integer().nullable()();
+}
+
 @DataClassName('TransactionRow')
 class Transactions extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -346,7 +376,8 @@ class Transactions extends Table {
   /// destination leg — the two accounts can each be a different currency
   /// from the parent (and from each other), so the destination needs its
   /// own independent snapshot.
-  TextColumn get toCurrencyCode => text().withLength(min: 3, max: 3).nullable()();
+  TextColumn get toCurrencyCode =>
+      text().withLength(min: 3, max: 3).nullable()();
   IntColumn get toFxRateToBaseMicros => integer().nullable()();
 }
 
@@ -565,16 +596,20 @@ class GroupExpenseShares extends Table {
   /// at any time. This share row survives with the link cleared, reading
   /// exactly like any other untracked share — a graceful downgrade, not a
   /// dangling reference `deleteGroupExpense` has to work around blind.
-  IntColumn get personEntryId => integer()
-      .nullable()
-      .references(PersonEntries, #id, onDelete: KeyAction.setNull)();
+  IntColumn get personEntryId => integer().nullable().references(
+    PersonEntries,
+    #id,
+    onDelete: KeyAction.setNull,
+  )();
 
   /// Set (with [personEntryId] null) only for my own share when I'm the
   /// payer — a real [TxType.expense] transaction, not a debt. Same
   /// `onDelete: setNull` reasoning as [personEntryId].
-  IntColumn get transactionId => integer()
-      .nullable()
-      .references(Transactions, #id, onDelete: KeyAction.setNull)();
+  IntColumn get transactionId => integer().nullable().references(
+    Transactions,
+    #id,
+    onDelete: KeyAction.setNull,
+  )();
 }
 
 /// Cash Reminders. A reminder **posts nothing on its own** — the user taps
@@ -632,8 +667,7 @@ class RecurringRules extends Table {
   /// [accountId] to this goal or loan account instead of an
   /// income/expense transaction. Null (the common case) means the rule
   /// posts an ordinary expense/income per [kind].
-  IntColumn get toAccountId =>
-      integer().nullable().references(Accounts, #id)();
+  IntColumn get toAccountId => integer().nullable().references(Accounts, #id)();
 
   /// Same free-text field as [Transactions.payee] — who the rule pays (an
   /// expense) or who it's paid by (income, e.g. an employer for a salary
@@ -766,12 +800,10 @@ class Settings extends Table {
   BoolColumn get upiEnabled => boolean().withDefault(const Constant(true))();
 
   /// Same as [upiEnabled], for PayPal.
-  BoolColumn get paypalEnabled =>
-      boolean().withDefault(const Constant(true))();
+  BoolColumn get paypalEnabled => boolean().withDefault(const Constant(true))();
 
   /// Same as [upiEnabled], for Venmo.
-  BoolColumn get venmoEnabled =>
-      boolean().withDefault(const Constant(true))();
+  BoolColumn get venmoEnabled => boolean().withDefault(const Constant(true))();
 
   /// Same as [upiEnabled], for Cash App.
   BoolColumn get cashappEnabled =>
@@ -987,8 +1019,7 @@ class Settings extends Table {
   /// (GitHub #78). Applied once, in `XpencApp`'s `builder`, to the `padding`
   /// every `SafeArea` in the app reads from — see `AppShell` and
   /// `LockScreen`, neither of which needed any change themselves.
-  IntColumn get extraBottomInset =>
-      integer().withDefault(const Constant(0))();
+  IntColumn get extraBottomInset => integer().withDefault(const Constant(0))();
 
   /// Icon keys (see `AppIcons`) picked from the icon sheet, most-recent-first,
   /// comma-joined — same convention as [bottomNavSlots]. Powers the
