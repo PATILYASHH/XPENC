@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:drift/drift.dart' show Variable;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:xpenc/data/database.dart';
@@ -168,4 +169,81 @@ void main() {
     expect(row.unlockMethod, UnlockMethod.pin);
     await reopened.close();
   });
+
+  /// Strips the `NOT NULL`/`DEFAULT` clause off one `settings` column's
+  /// stored `CREATE TABLE` text via SQLite's `writable_schema` trick — the
+  /// only way to reproduce, from a *current*-schema database, the shape an
+  /// early rolling-BETA build actually left on a real device: the column
+  /// already exists (so `_addColumnIfMissing` skips it forever), but
+  /// without the constraint the officially released migration added, so it
+  /// can hold a real `NULL`. Requires closing and reopening the connection
+  /// afterward — SQLite caches parsed schema per-connection.
+  Future<void> dropNotNull(AppDatabase db, String column, String ddlSuffix) =>
+      db.customUpdate(
+        "UPDATE sqlite_master SET sql = REPLACE(sql, ?, ?) "
+        "WHERE type = 'table' AND name = 'settings'",
+        variables: [
+          Variable.withString('"$column" $ddlSuffix'),
+          Variable.withString('"$column" ${ddlSuffix.split(' ').first}'),
+        ],
+      );
+
+  test(
+    'GitHub #112 (take 2): unlock_method/pin_unlock_enabled/'
+    'master_phrase_unlock_enabled/totp_unlock_enabled columns that are '
+    "literally NULL — an early rolling-BETA build's column added without "
+    'the released NOT NULL/DEFAULT, so _addColumnIfMissing never touches '
+    'it again — no longer throw "Null check operator used on a null '
+    'value" on reopen, and are repaired to sane defaults',
+    () async {
+      final file = File('${tempDir.path}/null_unlock_columns.sqlite');
+      var db = AppDatabase(NativeDatabase(file));
+      await db.customStatement('PRAGMA writable_schema = 1');
+      await dropNotNull(db, 'unlock_method', "TEXT NOT NULL DEFAULT 'pin'");
+      await dropNotNull(
+        db,
+        'pin_unlock_enabled',
+        'INTEGER NOT NULL DEFAULT 1 CHECK ("pin_unlock_enabled" IN (0, 1))',
+      );
+      await dropNotNull(
+        db,
+        'master_phrase_unlock_enabled',
+        'INTEGER NOT NULL DEFAULT 0 CHECK '
+            '("master_phrase_unlock_enabled" IN (0, 1))',
+      );
+      await dropNotNull(
+        db,
+        'totp_unlock_enabled',
+        'INTEGER NOT NULL DEFAULT 0 CHECK ("totp_unlock_enabled" IN (0, 1))',
+      );
+      await db.customStatement('PRAGMA writable_schema = 0');
+      await db.close();
+
+      // A fresh connection to actually pick up the rewritten schema, so the
+      // columns below are genuinely nullable rather than still cached as
+      // NOT NULL from the connection that just edited sqlite_master.
+      db = AppDatabase(NativeDatabase(file));
+      await db.customStatement(
+        'UPDATE settings SET unlock_method = NULL, pin_unlock_enabled = '
+        'NULL, master_phrase_unlock_enabled = NULL, totp_unlock_enabled = '
+        'NULL',
+      );
+      await db.close();
+
+      final reopened = AppDatabase(NativeDatabase(file));
+      // Before this fix, `data['...pin_unlock_enabled']!`  (and the other
+      // three `!`-asserted reads) threw here — surfacing on a real device
+      // exactly as the screenshot on GitHub #112 shows: "Couldn't open
+      // your data" / "Null check operator used on a null value".
+      final row = await reopened.select(reopened.settings).getSingle();
+      expect(row.unlockMethod, UnlockMethod.pin);
+      // Repaired toggles fall back to "on" only where a credential already
+      // exists — this seeded row has none, so all three land off, which is
+      // the same "nothing configured yet" shape a brand-new install has.
+      expect(row.pinUnlockEnabled, isFalse);
+      expect(row.masterPhraseUnlockEnabled, isFalse);
+      expect(row.totpUnlockEnabled, isFalse);
+      await reopened.close();
+    },
+  );
 }
