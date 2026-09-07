@@ -246,4 +246,35 @@ void main() {
       await reopened.close();
     },
   );
+
+  test(
+    'GitHub #112 (take 3): any other NOT NULL settings column left NULL by '
+    "the same rolling-BETA shape (e.g. rta_enabled) — not just the "
+    'unlock-method ones PR #117 hand-patched — is coalesced back to its '
+    'schema default instead of crashing "Couldn\'t open your data"',
+    () async {
+      final file = File('${tempDir.path}/null_rta_enabled.sqlite');
+      var db = AppDatabase(NativeDatabase(file));
+      await db.customStatement('PRAGMA writable_schema = 1');
+      await dropNotNull(
+        db,
+        'rta_enabled',
+        'INTEGER NOT NULL DEFAULT 0 CHECK ("rta_enabled" IN (0, 1))',
+      );
+      await db.customStatement('PRAGMA writable_schema = 0');
+      await db.close();
+
+      db = AppDatabase(NativeDatabase(file));
+      await db.customStatement('UPDATE settings SET rta_enabled = NULL');
+      await db.close();
+
+      final reopened = AppDatabase(NativeDatabase(file));
+      // Before this fix, `data['rta_enabled']!` threw "Null check operator
+      // used on a null value" here — the exact same crash shape as #112,
+      // just on a column the earlier hand-patch never covered.
+      final row = await reopened.select(reopened.settings).getSingle();
+      expect(row.rtaEnabled, isFalse);
+      await reopened.close();
+    },
+  );
 }
