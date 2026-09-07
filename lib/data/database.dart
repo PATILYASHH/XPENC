@@ -599,6 +599,7 @@ class AppDatabase extends _$AppDatabase {
       // Must run before the typed `select(settings)` below — see doc
       // comment on [_repairInvalidUnlockMethod].
       await _repairInvalidUnlockMethod();
+      await _repairNullSettingsColumns();
       final hasSettings = await select(settings).get();
       if (hasSettings.isEmpty) {
         await into(settings).insert(const SettingsCompanion());
@@ -712,6 +713,54 @@ class AppDatabase extends _$AppDatabase {
       await customStatement(
         'UPDATE settings SET totp_unlock_enabled = '
         '(totp_secret IS NOT NULL) WHERE totp_unlock_enabled IS NULL',
+      );
+    }
+  }
+
+  /// Catch-all for the same rolling-BETA root cause as
+  /// [_repairInvalidUnlockMethod], for every *other* `settings` column.
+  ///
+  /// That fix (PR #117) hand-patched only the unlock-method columns because
+  /// those were the ones a user had actually hit. But issue #112 kept
+  /// recurring afterward (see the issue's comment thread — reports on
+  /// commits after #117 had already merged): the same "an early rolling-BETA
+  /// build added this NOT NULL column nullable, before the officially
+  /// released migration added it NOT NULL DEFAULT, so `_addColumnIfMissing`
+  /// leaves it stuck NULL forever" shape applies to *any* column ever added
+  /// after the initial schema, not just the unlock-method ones — e.g.
+  /// [Settings.rtaEnabled] or [Settings.showCurrencySymbol]. Hand-patching
+  /// one column at a time only fixes the specific report that already came
+  /// in, leaving the same crash waiting on the next column.
+  ///
+  /// This walks every `settings` column and, for the ones that are `NOT
+  /// NULL` with a plain constant default (which is every column added this
+  /// way — see `database.g.dart`), coalesces a stray `NULL` to that default.
+  /// It runs *after* [_repairInvalidUnlockMethod] so the smarter
+  /// credential-aware defaults above still win for the columns they cover;
+  /// this only catches whatever they don't.
+  Future<void> _repairNullSettingsColumns() async {
+    for (final column in settings.$columns) {
+      if (column.$nullable) continue;
+      final defaultValue = column.defaultValue;
+      if (defaultValue is! Constant) continue;
+      final value = defaultValue.value;
+      if (value == null) continue;
+
+      final Variable? variable = switch (value) {
+        bool v => Variable.withBool(v),
+        int v => Variable.withInt(v),
+        String v => Variable.withString(v),
+        double v => Variable.withReal(v),
+        DateTime v => Variable.withDateTime(v),
+        _ => null,
+      };
+      if (variable == null) continue;
+
+      await customUpdate(
+        'UPDATE settings SET "${column.name}" = ? '
+        'WHERE "${column.name}" IS NULL',
+        variables: [variable],
+        updates: {settings},
       );
     }
   }
