@@ -454,10 +454,22 @@ class AppDatabase extends _$AppDatabase {
         // relax a NOT NULL via a plain ALTER TABLE, so this recreates the
         // table against the current Dart schema, copying existing rows by
         // column name.
+        //
+        // `newColumns` must list every column that doesn't exist in the
+        // on-disk table *yet*, not just ones "new" as of v55: Drift builds
+        // this recreate against today's full Dart table definition, so
+        // foreignCurrencyCode/foreignAmount (only added later, in the
+        // `from < 59` step below) would otherwise get copied from a column
+        // that doesn't exist on a device migrating from below 55 in the
+        // same run — "no such column: foreign_currency_code" (GitHub #112).
         await m.alterTable(
           TableMigration(
             recurringRules,
-            newColumns: [recurringRules.toAccountId],
+            newColumns: [
+              recurringRules.toAccountId,
+              recurringRules.foreignCurrencyCode,
+              recurringRules.foreignAmount,
+            ],
           ),
         );
       }

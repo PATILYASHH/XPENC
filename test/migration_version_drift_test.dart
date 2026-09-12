@@ -3,8 +3,9 @@ import 'dart:io';
 import 'package:drift/drift.dart' show Variable;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:xpenc/core/money.dart';
 import 'package:xpenc/data/database.dart';
-import 'package:xpenc/data/tables.dart' show UnlockMethod;
+import 'package:xpenc/data/tables.dart' show CategoryKind, RecurringFrequency, UnlockMethod;
 
 /// GitHub #49 / #50: some real devices ended up with a database whose
 /// stored `PRAGMA user_version` was *lower* than the schema version its
@@ -114,6 +115,61 @@ void main() {
     );
     await reopened.close();
   });
+
+  test(
+    'GitHub #112: migrating from below v55 straight to current no longer '
+    'throws "no such column: foreign_currency_code" recreating '
+    'RecurringRules — newColumns must list every column missing from the '
+    'on-disk table at that point in the migration, not just ones "new" as '
+    'of v55',
+    () async {
+      final file = File('${tempDir.path}/pre_v55_recurring_rules.sqlite');
+      // Fresh file → built at the full current schema, then seeded with a
+      // real row and reshaped back to what a real device stuck below v55
+      // actually has on disk: recurring_rules without any column added at
+      // v55 or later. The row matters — an empty table doesn't exercise
+      // the bug, since SQLite only needs to resolve the copy statement's
+      // columns against actual data once a row is copied through it.
+      var db = AppDatabase(NativeDatabase(file));
+      final cash = (await db.watchAccounts().first).first.id;
+      final category = (await db
+              .watchCategories(CategoryKind.expense)
+              .first)
+          .first
+          .id;
+      await db.addRecurringRule(
+        name: 'Rent',
+        kind: CategoryKind.expense,
+        amount: Money.fromRupees(100),
+        accountId: cash,
+        categoryId: category,
+        frequency: RecurringFrequency.monthly,
+        startsOn: DateTime(2026, 1, 1),
+      );
+      await db.customStatement(
+        'ALTER TABLE recurring_rules DROP COLUMN to_account_id',
+      );
+      await db.customStatement(
+        'ALTER TABLE recurring_rules DROP COLUMN foreign_currency_code',
+      );
+      await db.customStatement(
+        'ALTER TABLE recurring_rules DROP COLUMN foreign_amount',
+      );
+      await db.customStatement('PRAGMA user_version = 54');
+      await db.close();
+
+      final reopened = AppDatabase(NativeDatabase(file));
+      // Before the fix, the `from < 55` TableMigration rebuilt
+      // recurring_rules against today's full Dart definition (which
+      // already includes foreign_currency_code/foreign_amount, added only
+      // later in the `from < 59` step) and tried to copy them from a
+      // table that doesn't have them yet — throwing right here.
+      final rows = await reopened.select(reopened.recurringRules).get();
+      expect(rows, hasLength(1));
+      expect(rows.single.name, 'Rent');
+      await reopened.close();
+    },
+  );
 
   test('the v60 CurrencyRates table and account/transaction currency columns '
       'survive a rolled-back re-open', () async {
