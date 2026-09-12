@@ -536,9 +536,20 @@ class AppDatabase extends _$AppDatabase {
         // enum rather than defaulting everyone to off, so an existing
         // Envelope-mode user's accounts don't silently fall out of the pool.
         await _addColumnIfMissing(m, settings, settings.rtaEnabled);
-        final current = await select(settings).getSingleOrNull();
-        if (current != null &&
-            current.budgetingMode == BudgetingMode.envelope) {
+        // GitHub #112: a *typed* `select(settings)` here used the mapper
+        // generated for *today's* full schema — every column ever added
+        // after v62 (unlock toggles at v64/65, `ussdPayEnabled` at v66, the
+        // next one tomorrow) is simply absent from the row data this early
+        // in the migration, not null, just missing, so the mapper's `!`
+        // threw on a device migrating from below v62 straight to current.
+        // Raw SQL for just the one column this step actually needs
+        // (`budgeting_mode`, added the step right above and therefore
+        // guaranteed to exist here) sidesteps the whole class of bug
+        // instead of chasing it column by column.
+        final row = await customSelect(
+          'SELECT budgeting_mode FROM settings LIMIT 1',
+        ).getSingleOrNull();
+        if (row?.read<String?>('budgeting_mode') == 'envelope') {
           await update(
             settings,
           ).write(const SettingsCompanion(rtaEnabled: Value(true)));
@@ -757,6 +768,9 @@ class AppDatabase extends _$AppDatabase {
   Future<void> _repairNullSettingsColumns() async {
     for (final column in settings.$columns) {
       if (column.$nullable) continue;
+      // Safe to call before every column in today's Dart definition has
+      // actually been added yet — see the mid-`onUpgrade` call below.
+      if (!await _hasColumn('settings', column.name)) continue;
       final defaultValue = column.defaultValue;
       if (defaultValue is! Constant) continue;
       final value = defaultValue.value;

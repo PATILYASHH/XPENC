@@ -117,6 +117,52 @@ void main() {
   });
 
   test(
+    'GitHub #112: migrating from below v62 straight to current no longer '
+    'throws "Null check operator used on a null value" reading settings '
+    'mid-migration — a typed select there always uses the mapper for '
+    "today's full schema, so any column added after v62 (there have been "
+    'four rounds since) is simply absent from the row this early, not '
+    'null, just missing entirely',
+    () async {
+      final file = File('${tempDir.path}/pre_v62_settings.sqlite');
+      // Fresh file → built at the full current schema, then reshaped back
+      // to what a real device stuck below v62 actually has on disk, with
+      // the old Envelope-mode choice a real such device could carry.
+      var db = AppDatabase(NativeDatabase(file));
+      await db.customStatement(
+        "UPDATE settings SET budgeting_mode = 'envelope'",
+      );
+      for (final column in [
+        'rta_enabled',
+        'unlock_method',
+        'totp_secret',
+        'pin_unlock_enabled',
+        'master_phrase_unlock_enabled',
+        'totp_unlock_enabled',
+        'ussd_pay_enabled',
+      ]) {
+        await db.customStatement(
+          'ALTER TABLE settings DROP COLUMN $column',
+        );
+      }
+      await db.customStatement('PRAGMA user_version = 61');
+      await db.close();
+
+      final reopened = AppDatabase(NativeDatabase(file));
+      // Before the fix, the `from < 62` step's typed `select(settings)`
+      // threw right here trying to read a column (first `unlock_method`,
+      // now `ussd_pay_enabled`) that doesn't exist yet at this point in
+      // the migration.
+      final row = await reopened.select(reopened.settings).getSingle();
+      // The old Envelope-mode choice must still carry over into RTA, same
+      // as it always did — the fix changed how this reads the old value,
+      // not what it does with it.
+      expect(row.rtaEnabled, isTrue);
+      await reopened.close();
+    },
+  );
+
+  test(
     'GitHub #112: migrating from below v55 straight to current no longer '
     'throws "no such column: foreign_currency_code" recreating '
     'RecurringRules — newColumns must list every column missing from the '
