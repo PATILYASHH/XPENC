@@ -70,7 +70,11 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
         ],
       ),
     );
-    controller.dispose();
+    // Deliberately not disposed: `showDialog`'s Future resolves as soon as
+    // Navigator.pop runs, before the dialog's exit transition finishes —
+    // disposing here can crash a still-animating TextField with "A
+    // TextEditingController was used after being disposed." A local
+    // controller with no listeners is harmless to just let the GC reclaim.
     if (name == null || name.isEmpty || !context.mounted) return;
 
     final groupId = await ref.read(dbProvider).addGroup(name);

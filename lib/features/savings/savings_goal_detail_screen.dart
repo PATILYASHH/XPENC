@@ -357,7 +357,9 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
         ],
       ),
     );
-    controller.dispose();
+    // Deliberately not disposed — see the same note in
+    // persons_screen.dart's _createGroup: disposing right after showDialog
+    // resolves can crash the TextField mid exit-transition.
     if (newAmount == null) return;
 
     try {
