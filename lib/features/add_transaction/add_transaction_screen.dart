@@ -95,6 +95,9 @@ class AddTransactionScreen extends ConsumerStatefulWidget {
     this.transactionId,
     this.duplicateFromId,
     this.initialType,
+    this.initialPayee,
+    this.initialNote,
+    this.initialAmount,
     super.key,
   });
 
@@ -106,6 +109,16 @@ class AddTransactionScreen extends ConsumerStatefulWidget {
   /// when [transactionId] or [duplicateFromId] is set, since both load their
   /// own type.
   final TxType? initialType;
+
+  /// Prefills the payee/note/amount fields — used by the "Pay without
+  /// internet" (*99#) flow to hand off what it already collected instead of
+  /// making the user retype it. Ignored (like [initialType]) once
+  /// [transactionId] or [duplicateFromId] is set, since both load their own
+  /// values. All three are freely editable afterward, same as any other
+  /// field on this screen.
+  final String? initialPayee;
+  final String? initialNote;
+  final Money? initialAmount;
 
   @override
   ConsumerState<AddTransactionScreen> createState() =>
@@ -256,6 +269,12 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       _loading = true;
       WidgetsBinding.instance.addPostFrameCallback((_) => _loadForDuplicate());
     } else {
+      if (widget.initialPayee != null) _payeeController.text = widget.initialPayee!;
+      if (widget.initialNote != null) _noteController.text = widget.initialNote!;
+      if (widget.initialAmount != null) {
+        _buffer = _bufferFromMoney(widget.initialAmount!);
+        _freshAmountEntry = true;
+      }
       // Pre-select the last-used account on a brand-new transaction, once the
       // one-shot query resolves. Still freely changeable via "Paid via", and
       // the guard on `_accountId` below means it never overwrites a

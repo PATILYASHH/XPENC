@@ -827,6 +827,14 @@ class Settings extends Table {
   BoolColumn get revolutEnabled =>
       boolean().withDefault(const Constant(true))();
 
+  /// Whether the "Pay without internet" (USSD *99#) beta is on — an opt-in
+  /// FAB on the Persons screen that helps send a UPI payment over *99# when
+  /// there's no data connection. Unlike the payment methods above, this
+  /// defaults *false*: it's a new, unfamiliar entry point (a floating
+  /// button), not an existing one someone might need to turn off.
+  BoolColumn get ussdPayEnabled =>
+      boolean().withDefault(const Constant(false))();
+
   /// A salted SHA-256 hash — never the passcode itself. Null means no
   /// passcode is set, the default, and the app never locks.
   TextColumn get passcodeHash => text().nullable()();

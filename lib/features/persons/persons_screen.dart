@@ -88,6 +88,7 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final ussdPayEnabled = ref.watch(ussdPayEnabledProvider);
     return Scaffold(
       appBar: widget.embedded
           ? null
@@ -125,6 +126,12 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
               tooltip: 'New group',
               onPressed: () => _createGroup(context, ref),
               child: const Icon(Icons.add_rounded),
+            )
+          : ussdPayEnabled
+          ? FloatingActionButton(
+              tooltip: 'Pay without internet',
+              onPressed: () => context.push('/persons/ussd-pay'),
+              child: const Icon(Icons.dialpad_rounded),
             )
           : null,
     );
@@ -169,6 +176,14 @@ class _IndividualTab extends ConsumerWidget {
             if (persons.isEmpty) {
               return const SliverToBoxAdapter(child: _EmptyPersons());
             }
+            // Dues/owes on top (largest first) — anyone still at zero here
+            // has no history yet (settled ones auto-archive), so they trail
+            // at the bottom rather than mixing in with active balances.
+            final sorted = [...persons]..sort((a, b) {
+              final ba = balances[a.id] ?? const Money.zero();
+              final bb = balances[b.id] ?? const Money.zero();
+              return bb.abs.compareTo(ba.abs);
+            });
             return SliverPadding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
               sliver: SliverToBoxAdapter(
@@ -176,7 +191,7 @@ class _IndividualTab extends ConsumerWidget {
                   clipBehavior: Clip.antiAlias,
                   child: Column(
                     children: [
-                      for (var i = 0; i < persons.length; i++) ...[
+                      for (var i = 0; i < sorted.length; i++) ...[
                         if (i > 0)
                           Divider(
                             height: 1,
@@ -184,9 +199,8 @@ class _IndividualTab extends ConsumerWidget {
                             color: theme.colorScheme.outline,
                           ),
                         _PersonTile(
-                          person: persons[i],
-                          balance:
-                              balances[persons[i].id] ?? const Money.zero(),
+                          person: sorted[i],
+                          balance: balances[sorted[i].id] ?? const Money.zero(),
                         ),
                       ],
                     ],
@@ -539,6 +553,15 @@ class _GroupTab extends ConsumerWidget {
       ),
       data: (groups) {
         if (groups.isEmpty) return const _EmptyGroups();
+        // Same "dues on top" ordering as the Individual tab, reusing
+        // groupBalanceProvider's aggregate rather than recomputing it.
+        final balanceById = {
+          for (final g in groups) g.id: ref.watch(groupBalanceProvider(g.id)),
+        };
+        final sorted = [...groups]
+          ..sort(
+            (a, b) => balanceById[b.id]!.abs.compareTo(balanceById[a.id]!.abs),
+          );
         return ListView(
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 96),
           children: [
@@ -546,14 +569,14 @@ class _GroupTab extends ConsumerWidget {
               clipBehavior: Clip.antiAlias,
               child: Column(
                 children: [
-                  for (var i = 0; i < groups.length; i++) ...[
+                  for (var i = 0; i < sorted.length; i++) ...[
                     if (i > 0)
                       Divider(
                         height: 1,
                         indent: 72,
                         color: theme.colorScheme.outline,
                       ),
-                    _GroupTile(group: groups[i]),
+                    _GroupTile(group: sorted[i]),
                   ],
                 ],
               ),
@@ -865,37 +888,18 @@ String _initials(String name) {
 
 /// Not private: the shared top bar's "Add person" action (see `AppShell`)
 /// calls this directly rather than duplicating it, since this screen no
-/// longer owns its own app bar.
-Future<void> showAddPersonDialog(BuildContext context, WidgetRef ref) async {
-  final controller = TextEditingController();
-  final name = await showDialog<String>(
+/// longer owns its own app bar. Opens the same sheet as editing, in create
+/// mode, so payment IDs can be filled in up front instead of only after
+/// the fact.
+Future<void> showAddPersonDialog(BuildContext context, WidgetRef ref) {
+  return showModalBottomSheet<void>(
     context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: const Text('Add person'),
-      content: TextField(
-        controller: controller,
-        autofocus: true,
-        textCapitalization: TextCapitalization.words,
-        decoration: const InputDecoration(
-          labelText: 'Name',
-          hintText: 'e.g. Rahul',
-        ),
-        onSubmitted: (value) => Navigator.of(dialogContext).pop(value.trim()),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () =>
-              Navigator.of(dialogContext).pop(controller.text.trim()),
-          child: const Text('Add'),
-        ),
-      ],
+    isScrollControlled: true,
+    useSafeArea: true,
+    showDragHandle: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
+    builder: (_) => const EditPersonSheet(person: null),
   );
-  controller.dispose();
-  if (name == null || name.isEmpty) return;
-  await ref.read(dbProvider).addPerson(name);
 }

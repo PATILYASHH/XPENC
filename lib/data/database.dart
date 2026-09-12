@@ -180,7 +180,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 65;
+  int get schemaVersion => 66;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -592,6 +592,10 @@ class AppDatabase extends _$AppDatabase {
           "UPDATE settings SET unlock_method = 'pin' "
           "WHERE unlock_method = 'pinAndTotp'",
         );
+      }
+      if (from < 66) {
+        // "Pay without internet" (USSD *99#) beta — see settings.ussdPayEnabled.
+        await _addColumnIfMissing(m, settings, settings.ussdPayEnabled);
       }
     },
     beforeOpen: (details) async {
@@ -2250,7 +2254,7 @@ class AppDatabase extends _$AppDatabase {
         );
       }
 
-      return into(personEntries).insert(
+      final entryId = await into(personEntries).insert(
         PersonEntriesCompanion.insert(
           personId: personId,
           direction: direction,
@@ -2263,6 +2267,8 @@ class AppDatabase extends _$AppDatabase {
           categoryId: Value(categoryId),
         ),
       );
+      await _maybeAutoArchiveSettled(personId);
+      return entryId;
     });
   }
 
@@ -2278,6 +2284,7 @@ class AppDatabase extends _$AppDatabase {
       if (row.transactionId != null) {
         await deleteTransaction(row.transactionId!);
       }
+      await _maybeAutoArchiveSettled(row.personId);
     });
   }
 
@@ -2363,7 +2370,59 @@ class AppDatabase extends _$AppDatabase {
           categoryId: Value(categoryId),
         ),
       );
+      await _maybeAutoArchiveSettled(existing.personId);
     });
+  }
+
+  /// After a person's ledger changes, silently archives them once they're
+  /// back to exactly zero — same "Settled" condition the UI already shows
+  /// (`!isPositive && !isNegative`). Requires at least one entry so a
+  /// freshly-added person with no history yet is never auto-archived on
+  /// sight. Reversible any time from the Archived screen. Cascades to any
+  /// group this person belongs to, in case the whole group just settled too.
+  Future<void> _maybeAutoArchiveSettled(int personId) async {
+    final person = await (select(
+      persons,
+    )..where((p) => p.id.equals(personId))).getSingleOrNull();
+    if (person == null || person.isArchived) return;
+    if (await countEntriesForPerson(personId) == 0) return;
+    final balance = await _personBalance(personId);
+    if (!balance.isZero) return;
+    await archivePerson(personId);
+
+    final memberships = await (select(
+      groupMembers,
+    )..where((m) => m.personId.equals(personId))).get();
+    for (final membership in memberships) {
+      await _maybeAutoArchiveSettledGroup(membership.groupId);
+    }
+  }
+
+  /// Same idea as [_maybeAutoArchiveSettled], for a group's aggregate
+  /// balance across all its members — the same sum [groupBalanceProvider]
+  /// shows as "Settled" in the UI.
+  Future<void> _maybeAutoArchiveSettledGroup(int groupId) async {
+    final group = await (select(
+      groups,
+    )..where((g) => g.id.equals(groupId))).getSingleOrNull();
+    if (group == null || group.isArchived) return;
+    if (await countExpensesForGroup(groupId) == 0) return;
+    final members = await (select(
+      groupMembers,
+    )..where((m) => m.groupId.equals(groupId))).get();
+    var total = const Money.zero();
+    for (final member in members) {
+      total += await _personBalance(member.personId);
+    }
+    if (!total.isZero) return;
+    await archiveGroup(groupId);
+  }
+
+  Future<Money> _personBalance(int personId) async {
+    final rows = await (select(
+      personEntries,
+    )..where((e) => e.personId.equals(personId))).get();
+    return _netOf(rows);
   }
 
   /// `+` they owe you, `-` you owe them.
@@ -2903,14 +2962,29 @@ class AppDatabase extends _$AppDatabase {
 
   // ── Persons CRUD ──────────────────────────────────────────────────────────
 
-  Future<int> addPerson(String name, {String? contact, String? note}) =>
-      into(persons).insert(
-        PersonsCompanion.insert(
-          name: name,
-          contact: Value(contact),
-          note: Value(note),
-        ),
-      );
+  Future<int> addPerson(
+    String name, {
+    String? contact,
+    String? note,
+    String? upiId,
+    String? phone,
+    String? paypal,
+    String? venmo,
+    String? cashapp,
+    String? revolut,
+  }) => into(persons).insert(
+    PersonsCompanion.insert(
+      name: name,
+      contact: Value(contact),
+      note: Value(note),
+      upiId: Value(upiId),
+      phone: Value(phone),
+      paypal: Value(paypal),
+      venmo: Value(venmo),
+      cashapp: Value(cashapp),
+      revolut: Value(revolut),
+    ),
+  );
 
   /// Full edit — unlike [addPersonEntry]'s pattern, every field the edit
   /// sheet shows is passed every time, so `null` here means "clear this
@@ -4456,6 +4530,9 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> setRevolutEnabled(bool value) =>
       update(settings).write(SettingsCompanion(revolutEnabled: Value(value)));
+
+  Future<void> setUssdPayEnabled(bool value) =>
+      update(settings).write(SettingsCompanion(ussdPayEnabled: Value(value)));
 
   Future<void> setLockScreenStyle(LockScreenStyle style) =>
       update(settings).write(SettingsCompanion(lockScreenStyle: Value(style)));

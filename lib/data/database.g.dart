@@ -475,11 +475,16 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   final int sortOrder;
   final DateTime createdAt;
 
-  /// Turns this one account into "every rupee has a job" budgeting — an
-  /// expense on it must carry a category, and that category's balance is
-  /// funded from this account's own Ready to Assign via [Allocations]. Off
-  /// by default and per-account: every other account keeps working exactly
-  /// as it does today. See `AppDatabase.categoryBalance` / `readyToAssign`.
+  /// Whether this account is "on-budget" — inside the shared Ready to
+  /// Assign pool — rather than off-budget/tracking-only (a balance-only
+  /// account, outside the pool, like a vending-machine key fob). Only
+  /// meaningful while `Settings.rtaEnabled` is on: turning RTA on globally
+  /// sets this to true for every account at once, and turning it off for
+  /// the last pool account while RTA is on turns RTA off automatically
+  /// (see `AppDatabase.setRtaEnabled` / `_maybeAutoDisableRta`). An
+  /// on-budget account's expenses are funded from the pool via
+  /// [Allocations] — see `categoryBalanceProvider` / `readyToAssignProvider`
+  /// in `data/providers.dart`.
   final bool envelopeMode;
 
   /// Whether this account's balance counts toward Net Worth (dashboard,
@@ -8908,21 +8913,6 @@ class $SettingsTable extends Settings
     ),
     defaultValue: const Constant(true),
   );
-  static const VerificationMeta _rtaEnabledMeta = const VerificationMeta(
-    'rtaEnabled',
-  );
-  @override
-  late final GeneratedColumn<bool> rtaEnabled = GeneratedColumn<bool>(
-    'rta_enabled',
-    aliasedName,
-    false,
-    type: DriftSqlType.bool,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("rta_enabled" IN (0, 1))',
-    ),
-    defaultValue: const Constant(false),
-  );
   static const VerificationMeta _paypalEnabledMeta = const VerificationMeta(
     'paypalEnabled',
   );
@@ -8983,6 +8973,21 @@ class $SettingsTable extends Settings
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _ussdPayEnabledMeta = const VerificationMeta(
+    'ussdPayEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> ussdPayEnabled = GeneratedColumn<bool>(
+    'ussd_pay_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("ussd_pay_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _passcodeHashMeta = const VerificationMeta(
     'passcodeHash',
   );
@@ -9042,16 +9047,6 @@ class $SettingsTable extends Settings
     defaultValue: const Constant('classic'),
   ).withConverter<LockScreenStyle>($SettingsTable.$converterlockScreenStyle);
   @override
-  late final GeneratedColumnWithTypeConverter<UnlockMethod, String>
-  unlockMethod = GeneratedColumn<String>(
-    'unlock_method',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    defaultValue: const Constant('pin'),
-  ).withConverter<UnlockMethod>($SettingsTable.$converterunlockMethod);
-  @override
   late final GeneratedColumnWithTypeConverter<MoreScreenViewMode, String>
   moreScreenViewMode =
       GeneratedColumn<String>(
@@ -9074,6 +9069,21 @@ class $SettingsTable extends Settings
     requiredDuringInsert: false,
     defaultValue: const Constant('budgets'),
   ).withConverter<BudgetingMode>($SettingsTable.$converterbudgetingMode);
+  static const VerificationMeta _rtaEnabledMeta = const VerificationMeta(
+    'rtaEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> rtaEnabled = GeneratedColumn<bool>(
+    'rta_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("rta_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _pinTimeoutMinutesMeta = const VerificationMeta(
     'pinTimeoutMinutes',
   );
@@ -9108,6 +9118,28 @@ class $SettingsTable extends Settings
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _masterPhraseAttemptThresholdMeta =
+      const VerificationMeta('masterPhraseAttemptThreshold');
+  @override
+  late final GeneratedColumn<int> masterPhraseAttemptThreshold =
+      GeneratedColumn<int>(
+        'master_phrase_attempt_threshold',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(5),
+      );
+  @override
+  late final GeneratedColumnWithTypeConverter<UnlockMethod, String>
+  unlockMethod = GeneratedColumn<String>(
+    'unlock_method',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pin'),
+  ).withConverter<UnlockMethod>($SettingsTable.$converterunlockMethod);
   static const VerificationMeta _totpSecretMeta = const VerificationMeta(
     'totpSecret',
   );
@@ -9149,8 +9181,9 @@ class $SettingsTable extends Settings
         ),
         defaultValue: const Constant(false),
       );
-  static const VerificationMeta _totpUnlockEnabledMeta =
-      const VerificationMeta('totpUnlockEnabled');
+  static const VerificationMeta _totpUnlockEnabledMeta = const VerificationMeta(
+    'totpUnlockEnabled',
+  );
   @override
   late final GeneratedColumn<bool> totpUnlockEnabled = GeneratedColumn<bool>(
     'totp_unlock_enabled',
@@ -9163,18 +9196,6 @@ class $SettingsTable extends Settings
     ),
     defaultValue: const Constant(false),
   );
-  static const VerificationMeta _masterPhraseAttemptThresholdMeta =
-      const VerificationMeta('masterPhraseAttemptThreshold');
-  @override
-  late final GeneratedColumn<int> masterPhraseAttemptThreshold =
-      GeneratedColumn<int>(
-        'master_phrase_attempt_threshold',
-        aliasedName,
-        false,
-        type: DriftSqlType.int,
-        requiredDuringInsert: false,
-        defaultValue: const Constant(5),
-      );
   static const VerificationMeta _failedPasscodeAttemptsMeta =
       const VerificationMeta('failedPasscodeAttempts');
   @override
@@ -9516,27 +9537,28 @@ class $SettingsTable extends Settings
     myCashapp,
     myRevolut,
     upiEnabled,
-    rtaEnabled,
     paypalEnabled,
     venmoEnabled,
     cashappEnabled,
     revolutEnabled,
+    ussdPayEnabled,
     passcodeHash,
     passcodeSalt,
     passcodeLength,
     biometricEnabled,
     lockScreenStyle,
-    unlockMethod,
     moreScreenViewMode,
     budgetingMode,
+    rtaEnabled,
     pinTimeoutMinutes,
     masterPhraseHash,
     masterPhraseSalt,
+    masterPhraseAttemptThreshold,
+    unlockMethod,
     totpSecret,
     pinUnlockEnabled,
     masterPhraseUnlockEnabled,
     totpUnlockEnabled,
-    masterPhraseAttemptThreshold,
     failedPasscodeAttempts,
     expenseReminderEnabled,
     expenseReminderHour,
@@ -9704,12 +9726,6 @@ class $SettingsTable extends Settings
         upiEnabled.isAcceptableOrUnknown(data['upi_enabled']!, _upiEnabledMeta),
       );
     }
-    if (data.containsKey('rta_enabled')) {
-      context.handle(
-        _rtaEnabledMeta,
-        rtaEnabled.isAcceptableOrUnknown(data['rta_enabled']!, _rtaEnabledMeta),
-      );
-    }
     if (data.containsKey('paypal_enabled')) {
       context.handle(
         _paypalEnabledMeta,
@@ -9743,6 +9759,15 @@ class $SettingsTable extends Settings
         revolutEnabled.isAcceptableOrUnknown(
           data['revolut_enabled']!,
           _revolutEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('ussd_pay_enabled')) {
+      context.handle(
+        _ussdPayEnabledMeta,
+        ussdPayEnabled.isAcceptableOrUnknown(
+          data['ussd_pay_enabled']!,
+          _ussdPayEnabledMeta,
         ),
       );
     }
@@ -9782,6 +9807,12 @@ class $SettingsTable extends Settings
         ),
       );
     }
+    if (data.containsKey('rta_enabled')) {
+      context.handle(
+        _rtaEnabledMeta,
+        rtaEnabled.isAcceptableOrUnknown(data['rta_enabled']!, _rtaEnabledMeta),
+      );
+    }
     if (data.containsKey('pin_timeout_minutes')) {
       context.handle(
         _pinTimeoutMinutesMeta,
@@ -9806,6 +9837,15 @@ class $SettingsTable extends Settings
         masterPhraseSalt.isAcceptableOrUnknown(
           data['master_phrase_salt']!,
           _masterPhraseSaltMeta,
+        ),
+      );
+    }
+    if (data.containsKey('master_phrase_attempt_threshold')) {
+      context.handle(
+        _masterPhraseAttemptThresholdMeta,
+        masterPhraseAttemptThreshold.isAcceptableOrUnknown(
+          data['master_phrase_attempt_threshold']!,
+          _masterPhraseAttemptThresholdMeta,
         ),
       );
     }
@@ -9839,15 +9879,6 @@ class $SettingsTable extends Settings
         totpUnlockEnabled.isAcceptableOrUnknown(
           data['totp_unlock_enabled']!,
           _totpUnlockEnabledMeta,
-        ),
-      );
-    }
-    if (data.containsKey('master_phrase_attempt_threshold')) {
-      context.handle(
-        _masterPhraseAttemptThresholdMeta,
-        masterPhraseAttemptThreshold.isAcceptableOrUnknown(
-          data['master_phrase_attempt_threshold']!,
-          _masterPhraseAttemptThresholdMeta,
         ),
       );
     }
@@ -10145,10 +10176,6 @@ class $SettingsTable extends Settings
         DriftSqlType.bool,
         data['${effectivePrefix}upi_enabled'],
       )!,
-      rtaEnabled: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}rta_enabled'],
-      )!,
       paypalEnabled: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}paypal_enabled'],
@@ -10164,6 +10191,10 @@ class $SettingsTable extends Settings
       revolutEnabled: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}revolut_enabled'],
+      )!,
+      ussdPayEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}ussd_pay_enabled'],
       )!,
       passcodeHash: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -10187,12 +10218,6 @@ class $SettingsTable extends Settings
           data['${effectivePrefix}lock_screen_style'],
         )!,
       ),
-      unlockMethod: $SettingsTable.$converterunlockMethod.fromSql(
-        attachedDatabase.typeMapping.read(
-          DriftSqlType.string,
-          data['${effectivePrefix}unlock_method'],
-        )!,
-      ),
       moreScreenViewMode: $SettingsTable.$convertermoreScreenViewMode.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
@@ -10205,6 +10230,10 @@ class $SettingsTable extends Settings
           data['${effectivePrefix}budgeting_mode'],
         )!,
       ),
+      rtaEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}rta_enabled'],
+      )!,
       pinTimeoutMinutes: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}pin_timeout_minutes'],
@@ -10216,6 +10245,16 @@ class $SettingsTable extends Settings
       masterPhraseSalt: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}master_phrase_salt'],
+      ),
+      masterPhraseAttemptThreshold: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}master_phrase_attempt_threshold'],
+      )!,
+      unlockMethod: $SettingsTable.$converterunlockMethod.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}unlock_method'],
+        )!,
       ),
       totpSecret: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -10232,10 +10271,6 @@ class $SettingsTable extends Settings
       totpUnlockEnabled: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}totp_unlock_enabled'],
-      )!,
-      masterPhraseAttemptThreshold: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}master_phrase_attempt_threshold'],
       )!,
       failedPasscodeAttempts: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
@@ -10351,10 +10386,6 @@ class $SettingsTable extends Settings
   $converterlockScreenStyle = const EnumNameConverter<LockScreenStyle>(
     LockScreenStyle.values,
   );
-  static JsonTypeConverter2<UnlockMethod, String, String>
-  $converterunlockMethod = const EnumNameConverter<UnlockMethod>(
-    UnlockMethod.values,
-  );
   static JsonTypeConverter2<MoreScreenViewMode, String, String>
   $convertermoreScreenViewMode = const EnumNameConverter<MoreScreenViewMode>(
     MoreScreenViewMode.values,
@@ -10362,6 +10393,10 @@ class $SettingsTable extends Settings
   static JsonTypeConverter2<BudgetingMode, String, String>
   $converterbudgetingMode = const EnumNameConverter<BudgetingMode>(
     BudgetingMode.values,
+  );
+  static JsonTypeConverter2<UnlockMethod, String, String>
+  $converterunlockMethod = const EnumNameConverter<UnlockMethod>(
+    UnlockMethod.values,
   );
   static JsonTypeConverter2<AutoBackupFrequency, String, String>
   $converterautoBackupFrequency = const EnumNameConverter<AutoBackupFrequency>(
@@ -10429,9 +10464,6 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// entirely, rather than leaving a permanently-disabled button around.
   final bool upiEnabled;
 
-  /// Whether Ready to Assign is turned on globally.
-  final bool rtaEnabled;
-
   /// Same as [upiEnabled], for PayPal.
   final bool paypalEnabled;
 
@@ -10443,6 +10475,13 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
 
   /// Same as [upiEnabled], for Revolut.
   final bool revolutEnabled;
+
+  /// Whether the "Pay without internet" (USSD *99#) beta is on — an opt-in
+  /// FAB on the Persons screen that helps send a UPI payment over *99# when
+  /// there's no data connection. Unlike the payment methods above, this
+  /// defaults *false*: it's a new, unfamiliar entry point (a floating
+  /// button), not an existing one someone might need to turn off.
+  final bool ussdPayEnabled;
 
   /// A salted SHA-256 hash — never the passcode itself. Null means no
   /// passcode is set, the default, and the app never locks.
@@ -10463,19 +10502,25 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// Defaults to `classic` so existing users see no change.
   final LockScreenStyle lockScreenStyle;
 
-  /// Which credential is the active front door — see [UnlockMethod]. Default
-  /// `pin` so every existing install keeps today's exact behavior.
-  final UnlockMethod unlockMethod;
-
   /// How the More hub lays out its items — see [MoreScreenViewMode].
   /// Defaults to `list` so existing users see no change.
   final MoreScreenViewMode moreScreenViewMode;
 
-  /// Which budgeting system is primary — see [BudgetingMode] (GitHub #100).
-  /// Defaults to `budgets` so existing users see no change; switching to
-  /// `envelope` doesn't touch either system's data, it only changes which
-  /// one the Dashboard and More hub's "Budgets" tile surface.
+  /// Legacy — see [BudgetingMode]. Superseded by [rtaEnabled]; kept only for
+  /// the `from < 62` migration's one-time backfill read. Nothing writes to
+  /// this column anymore.
   final BudgetingMode budgetingMode;
+
+  /// Whether Ready to Assign — the shared envelope pool — is turned on
+  /// globally (GitHub #100 v2). Off by default. Budget (the per-category
+  /// spending ceiling) is always on regardless of this flag; this only
+  /// decides whether accounts also participate in the shared RTA pool via
+  /// [Accounts.envelopeMode]. Replaces [BudgetingMode] as a mutually
+  /// exclusive Budgets-vs-Envelope choice — enabling this auto-enrolls
+  /// every account into the pool (see `AppDatabase.setRtaEnabled`), and it
+  /// turns itself back off automatically the moment the pool would
+  /// otherwise go empty (see `AppDatabase._maybeAutoDisableRta`).
+  final bool rtaEnabled;
 
   /// Minutes the app may sit backgrounded before the next resume re-locks it
   /// — `0` means immediately (see GitHub #60). Checked against how long the
@@ -10493,17 +10538,45 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   final String? masterPhraseHash;
   final String? masterPhraseSalt;
 
-  /// A base32 TOTP secret (GitHub #104) — not hashed, unlike
-  /// [passcodeHash]/[masterPhraseHash]. Null means the feature is off.
-  final String? totpSecret;
-  final bool pinUnlockEnabled;
-  final bool masterPhraseUnlockEnabled;
-  final bool totpUnlockEnabled;
-
   /// How many consecutive wrong PINs (with [failedPasscodeAttempts]) force
   /// the lock screen into master-phrase-only mode. Meaningless without
   /// [masterPhraseHash] set, same guard pattern as [pinTimeoutMinutes].
   final int masterPhraseAttemptThreshold;
+
+  /// Which method the lock screen shows first when more than one is ready
+  /// (below) — "try another method" repoints this at whatever the user
+  /// switched to, or successfully unlocked with, most recently. Default
+  /// `pin` so every existing install keeps today's exact behavior. Purely a
+  /// display preference: it doesn't gate anything on its own — a stale value
+  /// (e.g. the method it names just got turned off) is handled by falling
+  /// back to any other ready method, never by refusing to show the lock
+  /// screen.
+  final UnlockMethod unlockMethod;
+
+  /// A base32 TOTP secret (GitHub #104) — **not** hashed, unlike
+  /// [passcodeHash]/[masterPhraseHash]. Verifying a 6-digit code means
+  /// recomputing it from the secret and comparing, so the secret must stay
+  /// recoverable. This adds no new trust boundary: the whole ledger already
+  /// lives in this same plaintext local database. Null means the feature is
+  /// off, same convention as the other two credential columns.
+  final String? totpSecret;
+
+  /// Whether a PIN is one of the (possibly several) unlock methods that
+  /// currently work — see [UnlockMethod]'s doc. Meaningless without
+  /// [passcodeHash] also set; `isUnlockMethodReady` in
+  /// `core/security/unlock_method.dart` is what actually combines the two.
+  /// Defaults `true` so every existing install (which only ever had PIN as
+  /// a concept) keeps today's exact behavior the moment it sets a PIN.
+  final bool pinUnlockEnabled;
+
+  /// Same as [pinUnlockEnabled], for the master recovery phrase. Off by
+  /// default — a phrase already has its own independent role as
+  /// [masterPhraseAttemptThreshold]'s fallback, so setting one up must not
+  /// silently also turn it into an OR'd front-door method.
+  final bool masterPhraseUnlockEnabled;
+
+  /// Same as [pinUnlockEnabled], for the authenticator app (TOTP).
+  final bool totpUnlockEnabled;
 
   /// Consecutive wrong-PIN count on the lock screen — persisted, not reset
   /// by an app restart or by time passing (GitHub #74 asks for "no time
@@ -10652,27 +10725,28 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     this.myCashapp,
     this.myRevolut,
     required this.upiEnabled,
-    required this.rtaEnabled,
     required this.paypalEnabled,
     required this.venmoEnabled,
     required this.cashappEnabled,
     required this.revolutEnabled,
+    required this.ussdPayEnabled,
     this.passcodeHash,
     this.passcodeSalt,
     this.passcodeLength,
     required this.biometricEnabled,
     required this.lockScreenStyle,
-    required this.unlockMethod,
     required this.moreScreenViewMode,
     required this.budgetingMode,
+    required this.rtaEnabled,
     required this.pinTimeoutMinutes,
     this.masterPhraseHash,
     this.masterPhraseSalt,
+    required this.masterPhraseAttemptThreshold,
+    required this.unlockMethod,
     this.totpSecret,
     required this.pinUnlockEnabled,
     required this.masterPhraseUnlockEnabled,
     required this.totpUnlockEnabled,
-    required this.masterPhraseAttemptThreshold,
     required this.failedPasscodeAttempts,
     required this.expenseReminderEnabled,
     required this.expenseReminderHour,
@@ -10734,11 +10808,11 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       map['my_revolut'] = Variable<String>(myRevolut);
     }
     map['upi_enabled'] = Variable<bool>(upiEnabled);
-    map['rta_enabled'] = Variable<bool>(rtaEnabled);
     map['paypal_enabled'] = Variable<bool>(paypalEnabled);
     map['venmo_enabled'] = Variable<bool>(venmoEnabled);
     map['cashapp_enabled'] = Variable<bool>(cashappEnabled);
     map['revolut_enabled'] = Variable<bool>(revolutEnabled);
+    map['ussd_pay_enabled'] = Variable<bool>(ussdPayEnabled);
     if (!nullToAbsent || passcodeHash != null) {
       map['passcode_hash'] = Variable<String>(passcodeHash);
     }
@@ -10755,11 +10829,6 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       );
     }
     {
-      map['unlock_method'] = Variable<String>(
-        $SettingsTable.$converterunlockMethod.toSql(unlockMethod),
-      );
-    }
-    {
       map['more_screen_view_mode'] = Variable<String>(
         $SettingsTable.$convertermoreScreenViewMode.toSql(moreScreenViewMode),
       );
@@ -10769,12 +10838,21 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
         $SettingsTable.$converterbudgetingMode.toSql(budgetingMode),
       );
     }
+    map['rta_enabled'] = Variable<bool>(rtaEnabled);
     map['pin_timeout_minutes'] = Variable<int>(pinTimeoutMinutes);
     if (!nullToAbsent || masterPhraseHash != null) {
       map['master_phrase_hash'] = Variable<String>(masterPhraseHash);
     }
     if (!nullToAbsent || masterPhraseSalt != null) {
       map['master_phrase_salt'] = Variable<String>(masterPhraseSalt);
+    }
+    map['master_phrase_attempt_threshold'] = Variable<int>(
+      masterPhraseAttemptThreshold,
+    );
+    {
+      map['unlock_method'] = Variable<String>(
+        $SettingsTable.$converterunlockMethod.toSql(unlockMethod),
+      );
     }
     if (!nullToAbsent || totpSecret != null) {
       map['totp_secret'] = Variable<String>(totpSecret);
@@ -10784,9 +10862,6 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       masterPhraseUnlockEnabled,
     );
     map['totp_unlock_enabled'] = Variable<bool>(totpUnlockEnabled);
-    map['master_phrase_attempt_threshold'] = Variable<int>(
-      masterPhraseAttemptThreshold,
-    );
     map['failed_passcode_attempts'] = Variable<int>(failedPasscodeAttempts);
     map['expense_reminder_enabled'] = Variable<bool>(expenseReminderEnabled);
     map['expense_reminder_hour'] = Variable<int>(expenseReminderHour);
@@ -10863,11 +10938,11 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ? const Value.absent()
           : Value(myRevolut),
       upiEnabled: Value(upiEnabled),
-      rtaEnabled: Value(rtaEnabled),
       paypalEnabled: Value(paypalEnabled),
       venmoEnabled: Value(venmoEnabled),
       cashappEnabled: Value(cashappEnabled),
       revolutEnabled: Value(revolutEnabled),
+      ussdPayEnabled: Value(ussdPayEnabled),
       passcodeHash: passcodeHash == null && nullToAbsent
           ? const Value.absent()
           : Value(passcodeHash),
@@ -10879,9 +10954,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           : Value(passcodeLength),
       biometricEnabled: Value(biometricEnabled),
       lockScreenStyle: Value(lockScreenStyle),
-      unlockMethod: Value(unlockMethod),
       moreScreenViewMode: Value(moreScreenViewMode),
       budgetingMode: Value(budgetingMode),
+      rtaEnabled: Value(rtaEnabled),
       pinTimeoutMinutes: Value(pinTimeoutMinutes),
       masterPhraseHash: masterPhraseHash == null && nullToAbsent
           ? const Value.absent()
@@ -10889,13 +10964,14 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       masterPhraseSalt: masterPhraseSalt == null && nullToAbsent
           ? const Value.absent()
           : Value(masterPhraseSalt),
+      masterPhraseAttemptThreshold: Value(masterPhraseAttemptThreshold),
+      unlockMethod: Value(unlockMethod),
       totpSecret: totpSecret == null && nullToAbsent
           ? const Value.absent()
           : Value(totpSecret),
       pinUnlockEnabled: Value(pinUnlockEnabled),
       masterPhraseUnlockEnabled: Value(masterPhraseUnlockEnabled),
       totpUnlockEnabled: Value(totpUnlockEnabled),
-      masterPhraseAttemptThreshold: Value(masterPhraseAttemptThreshold),
       failedPasscodeAttempts: Value(failedPasscodeAttempts),
       expenseReminderEnabled: Value(expenseReminderEnabled),
       expenseReminderHour: Value(expenseReminderHour),
@@ -10962,11 +11038,11 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       myCashapp: serializer.fromJson<String?>(json['myCashapp']),
       myRevolut: serializer.fromJson<String?>(json['myRevolut']),
       upiEnabled: serializer.fromJson<bool>(json['upiEnabled']),
-      rtaEnabled: serializer.fromJson<bool>(json['rtaEnabled']),
       paypalEnabled: serializer.fromJson<bool>(json['paypalEnabled']),
       venmoEnabled: serializer.fromJson<bool>(json['venmoEnabled']),
       cashappEnabled: serializer.fromJson<bool>(json['cashappEnabled']),
       revolutEnabled: serializer.fromJson<bool>(json['revolutEnabled']),
+      ussdPayEnabled: serializer.fromJson<bool>(json['ussdPayEnabled']),
       passcodeHash: serializer.fromJson<String?>(json['passcodeHash']),
       passcodeSalt: serializer.fromJson<String?>(json['passcodeSalt']),
       passcodeLength: serializer.fromJson<int?>(json['passcodeLength']),
@@ -10974,27 +11050,28 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       lockScreenStyle: $SettingsTable.$converterlockScreenStyle.fromJson(
         serializer.fromJson<String>(json['lockScreenStyle']),
       ),
-      unlockMethod: $SettingsTable.$converterunlockMethod.fromJson(
-        serializer.fromJson<String>(json['unlockMethod']),
-      ),
       moreScreenViewMode: $SettingsTable.$convertermoreScreenViewMode.fromJson(
         serializer.fromJson<String>(json['moreScreenViewMode']),
       ),
       budgetingMode: $SettingsTable.$converterbudgetingMode.fromJson(
         serializer.fromJson<String>(json['budgetingMode']),
       ),
+      rtaEnabled: serializer.fromJson<bool>(json['rtaEnabled']),
       pinTimeoutMinutes: serializer.fromJson<int>(json['pinTimeoutMinutes']),
       masterPhraseHash: serializer.fromJson<String?>(json['masterPhraseHash']),
       masterPhraseSalt: serializer.fromJson<String?>(json['masterPhraseSalt']),
+      masterPhraseAttemptThreshold: serializer.fromJson<int>(
+        json['masterPhraseAttemptThreshold'],
+      ),
+      unlockMethod: $SettingsTable.$converterunlockMethod.fromJson(
+        serializer.fromJson<String>(json['unlockMethod']),
+      ),
       totpSecret: serializer.fromJson<String?>(json['totpSecret']),
       pinUnlockEnabled: serializer.fromJson<bool>(json['pinUnlockEnabled']),
       masterPhraseUnlockEnabled: serializer.fromJson<bool>(
         json['masterPhraseUnlockEnabled'],
       ),
       totpUnlockEnabled: serializer.fromJson<bool>(json['totpUnlockEnabled']),
-      masterPhraseAttemptThreshold: serializer.fromJson<int>(
-        json['masterPhraseAttemptThreshold'],
-      ),
       failedPasscodeAttempts: serializer.fromJson<int>(
         json['failedPasscodeAttempts'],
       ),
@@ -11071,11 +11148,11 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'myCashapp': serializer.toJson<String?>(myCashapp),
       'myRevolut': serializer.toJson<String?>(myRevolut),
       'upiEnabled': serializer.toJson<bool>(upiEnabled),
-      'rtaEnabled': serializer.toJson<bool>(rtaEnabled),
       'paypalEnabled': serializer.toJson<bool>(paypalEnabled),
       'venmoEnabled': serializer.toJson<bool>(venmoEnabled),
       'cashappEnabled': serializer.toJson<bool>(cashappEnabled),
       'revolutEnabled': serializer.toJson<bool>(revolutEnabled),
+      'ussdPayEnabled': serializer.toJson<bool>(ussdPayEnabled),
       'passcodeHash': serializer.toJson<String?>(passcodeHash),
       'passcodeSalt': serializer.toJson<String?>(passcodeSalt),
       'passcodeLength': serializer.toJson<int?>(passcodeLength),
@@ -11083,27 +11160,28 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'lockScreenStyle': serializer.toJson<String>(
         $SettingsTable.$converterlockScreenStyle.toJson(lockScreenStyle),
       ),
-      'unlockMethod': serializer.toJson<String>(
-        $SettingsTable.$converterunlockMethod.toJson(unlockMethod),
-      ),
       'moreScreenViewMode': serializer.toJson<String>(
         $SettingsTable.$convertermoreScreenViewMode.toJson(moreScreenViewMode),
       ),
       'budgetingMode': serializer.toJson<String>(
         $SettingsTable.$converterbudgetingMode.toJson(budgetingMode),
       ),
+      'rtaEnabled': serializer.toJson<bool>(rtaEnabled),
       'pinTimeoutMinutes': serializer.toJson<int>(pinTimeoutMinutes),
       'masterPhraseHash': serializer.toJson<String?>(masterPhraseHash),
       'masterPhraseSalt': serializer.toJson<String?>(masterPhraseSalt),
+      'masterPhraseAttemptThreshold': serializer.toJson<int>(
+        masterPhraseAttemptThreshold,
+      ),
+      'unlockMethod': serializer.toJson<String>(
+        $SettingsTable.$converterunlockMethod.toJson(unlockMethod),
+      ),
       'totpSecret': serializer.toJson<String?>(totpSecret),
       'pinUnlockEnabled': serializer.toJson<bool>(pinUnlockEnabled),
       'masterPhraseUnlockEnabled': serializer.toJson<bool>(
         masterPhraseUnlockEnabled,
       ),
       'totpUnlockEnabled': serializer.toJson<bool>(totpUnlockEnabled),
-      'masterPhraseAttemptThreshold': serializer.toJson<int>(
-        masterPhraseAttemptThreshold,
-      ),
       'failedPasscodeAttempts': serializer.toJson<int>(failedPasscodeAttempts),
       'expenseReminderEnabled': serializer.toJson<bool>(expenseReminderEnabled),
       'expenseReminderHour': serializer.toJson<int>(expenseReminderHour),
@@ -11159,27 +11237,28 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     Value<String?> myCashapp = const Value.absent(),
     Value<String?> myRevolut = const Value.absent(),
     bool? upiEnabled,
-    bool? rtaEnabled,
     bool? paypalEnabled,
     bool? venmoEnabled,
     bool? cashappEnabled,
     bool? revolutEnabled,
+    bool? ussdPayEnabled,
     Value<String?> passcodeHash = const Value.absent(),
     Value<String?> passcodeSalt = const Value.absent(),
     Value<int?> passcodeLength = const Value.absent(),
     bool? biometricEnabled,
     LockScreenStyle? lockScreenStyle,
-    UnlockMethod? unlockMethod,
     MoreScreenViewMode? moreScreenViewMode,
     BudgetingMode? budgetingMode,
+    bool? rtaEnabled,
     int? pinTimeoutMinutes,
     Value<String?> masterPhraseHash = const Value.absent(),
     Value<String?> masterPhraseSalt = const Value.absent(),
+    int? masterPhraseAttemptThreshold,
+    UnlockMethod? unlockMethod,
     Value<String?> totpSecret = const Value.absent(),
     bool? pinUnlockEnabled,
     bool? masterPhraseUnlockEnabled,
     bool? totpUnlockEnabled,
-    int? masterPhraseAttemptThreshold,
     int? failedPasscodeAttempts,
     bool? expenseReminderEnabled,
     int? expenseReminderHour,
@@ -11227,11 +11306,11 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     myCashapp: myCashapp.present ? myCashapp.value : this.myCashapp,
     myRevolut: myRevolut.present ? myRevolut.value : this.myRevolut,
     upiEnabled: upiEnabled ?? this.upiEnabled,
-    rtaEnabled: rtaEnabled ?? this.rtaEnabled,
     paypalEnabled: paypalEnabled ?? this.paypalEnabled,
     venmoEnabled: venmoEnabled ?? this.venmoEnabled,
     cashappEnabled: cashappEnabled ?? this.cashappEnabled,
     revolutEnabled: revolutEnabled ?? this.revolutEnabled,
+    ussdPayEnabled: ussdPayEnabled ?? this.ussdPayEnabled,
     passcodeHash: passcodeHash.present ? passcodeHash.value : this.passcodeHash,
     passcodeSalt: passcodeSalt.present ? passcodeSalt.value : this.passcodeSalt,
     passcodeLength: passcodeLength.present
@@ -11239,9 +11318,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
         : this.passcodeLength,
     biometricEnabled: biometricEnabled ?? this.biometricEnabled,
     lockScreenStyle: lockScreenStyle ?? this.lockScreenStyle,
-    unlockMethod: unlockMethod ?? this.unlockMethod,
     moreScreenViewMode: moreScreenViewMode ?? this.moreScreenViewMode,
     budgetingMode: budgetingMode ?? this.budgetingMode,
+    rtaEnabled: rtaEnabled ?? this.rtaEnabled,
     pinTimeoutMinutes: pinTimeoutMinutes ?? this.pinTimeoutMinutes,
     masterPhraseHash: masterPhraseHash.present
         ? masterPhraseHash.value
@@ -11249,13 +11328,14 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     masterPhraseSalt: masterPhraseSalt.present
         ? masterPhraseSalt.value
         : this.masterPhraseSalt,
+    masterPhraseAttemptThreshold:
+        masterPhraseAttemptThreshold ?? this.masterPhraseAttemptThreshold,
+    unlockMethod: unlockMethod ?? this.unlockMethod,
     totpSecret: totpSecret.present ? totpSecret.value : this.totpSecret,
     pinUnlockEnabled: pinUnlockEnabled ?? this.pinUnlockEnabled,
     masterPhraseUnlockEnabled:
         masterPhraseUnlockEnabled ?? this.masterPhraseUnlockEnabled,
     totpUnlockEnabled: totpUnlockEnabled ?? this.totpUnlockEnabled,
-    masterPhraseAttemptThreshold:
-        masterPhraseAttemptThreshold ?? this.masterPhraseAttemptThreshold,
     failedPasscodeAttempts:
         failedPasscodeAttempts ?? this.failedPasscodeAttempts,
     expenseReminderEnabled:
@@ -11328,9 +11408,6 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       upiEnabled: data.upiEnabled.present
           ? data.upiEnabled.value
           : this.upiEnabled,
-      rtaEnabled: data.rtaEnabled.present
-          ? data.rtaEnabled.value
-          : this.rtaEnabled,
       paypalEnabled: data.paypalEnabled.present
           ? data.paypalEnabled.value
           : this.paypalEnabled,
@@ -11343,6 +11420,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       revolutEnabled: data.revolutEnabled.present
           ? data.revolutEnabled.value
           : this.revolutEnabled,
+      ussdPayEnabled: data.ussdPayEnabled.present
+          ? data.ussdPayEnabled.value
+          : this.ussdPayEnabled,
       passcodeHash: data.passcodeHash.present
           ? data.passcodeHash.value
           : this.passcodeHash,
@@ -11358,15 +11438,15 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       lockScreenStyle: data.lockScreenStyle.present
           ? data.lockScreenStyle.value
           : this.lockScreenStyle,
-      unlockMethod: data.unlockMethod.present
-          ? data.unlockMethod.value
-          : this.unlockMethod,
       moreScreenViewMode: data.moreScreenViewMode.present
           ? data.moreScreenViewMode.value
           : this.moreScreenViewMode,
       budgetingMode: data.budgetingMode.present
           ? data.budgetingMode.value
           : this.budgetingMode,
+      rtaEnabled: data.rtaEnabled.present
+          ? data.rtaEnabled.value
+          : this.rtaEnabled,
       pinTimeoutMinutes: data.pinTimeoutMinutes.present
           ? data.pinTimeoutMinutes.value
           : this.pinTimeoutMinutes,
@@ -11376,6 +11456,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       masterPhraseSalt: data.masterPhraseSalt.present
           ? data.masterPhraseSalt.value
           : this.masterPhraseSalt,
+      masterPhraseAttemptThreshold: data.masterPhraseAttemptThreshold.present
+          ? data.masterPhraseAttemptThreshold.value
+          : this.masterPhraseAttemptThreshold,
+      unlockMethod: data.unlockMethod.present
+          ? data.unlockMethod.value
+          : this.unlockMethod,
       totpSecret: data.totpSecret.present
           ? data.totpSecret.value
           : this.totpSecret,
@@ -11388,9 +11474,6 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       totpUnlockEnabled: data.totpUnlockEnabled.present
           ? data.totpUnlockEnabled.value
           : this.totpUnlockEnabled,
-      masterPhraseAttemptThreshold: data.masterPhraseAttemptThreshold.present
-          ? data.masterPhraseAttemptThreshold.value
-          : this.masterPhraseAttemptThreshold,
       failedPasscodeAttempts: data.failedPasscodeAttempts.present
           ? data.failedPasscodeAttempts.value
           : this.failedPasscodeAttempts,
@@ -11490,29 +11573,30 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('myCashapp: $myCashapp, ')
           ..write('myRevolut: $myRevolut, ')
           ..write('upiEnabled: $upiEnabled, ')
-          ..write('rtaEnabled: $rtaEnabled, ')
           ..write('paypalEnabled: $paypalEnabled, ')
           ..write('venmoEnabled: $venmoEnabled, ')
           ..write('cashappEnabled: $cashappEnabled, ')
           ..write('revolutEnabled: $revolutEnabled, ')
+          ..write('ussdPayEnabled: $ussdPayEnabled, ')
           ..write('passcodeHash: $passcodeHash, ')
           ..write('passcodeSalt: $passcodeSalt, ')
           ..write('passcodeLength: $passcodeLength, ')
           ..write('biometricEnabled: $biometricEnabled, ')
           ..write('lockScreenStyle: $lockScreenStyle, ')
-          ..write('unlockMethod: $unlockMethod, ')
           ..write('moreScreenViewMode: $moreScreenViewMode, ')
           ..write('budgetingMode: $budgetingMode, ')
+          ..write('rtaEnabled: $rtaEnabled, ')
           ..write('pinTimeoutMinutes: $pinTimeoutMinutes, ')
           ..write('masterPhraseHash: $masterPhraseHash, ')
           ..write('masterPhraseSalt: $masterPhraseSalt, ')
+          ..write(
+            'masterPhraseAttemptThreshold: $masterPhraseAttemptThreshold, ',
+          )
+          ..write('unlockMethod: $unlockMethod, ')
           ..write('totpSecret: $totpSecret, ')
           ..write('pinUnlockEnabled: $pinUnlockEnabled, ')
           ..write('masterPhraseUnlockEnabled: $masterPhraseUnlockEnabled, ')
           ..write('totpUnlockEnabled: $totpUnlockEnabled, ')
-          ..write(
-            'masterPhraseAttemptThreshold: $masterPhraseAttemptThreshold, ',
-          )
           ..write('failedPasscodeAttempts: $failedPasscodeAttempts, ')
           ..write('expenseReminderEnabled: $expenseReminderEnabled, ')
           ..write('expenseReminderHour: $expenseReminderHour, ')
@@ -11562,27 +11646,28 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     myCashapp,
     myRevolut,
     upiEnabled,
-    rtaEnabled,
     paypalEnabled,
     venmoEnabled,
     cashappEnabled,
     revolutEnabled,
+    ussdPayEnabled,
     passcodeHash,
     passcodeSalt,
     passcodeLength,
     biometricEnabled,
     lockScreenStyle,
-    unlockMethod,
     moreScreenViewMode,
     budgetingMode,
+    rtaEnabled,
     pinTimeoutMinutes,
     masterPhraseHash,
     masterPhraseSalt,
+    masterPhraseAttemptThreshold,
+    unlockMethod,
     totpSecret,
     pinUnlockEnabled,
     masterPhraseUnlockEnabled,
     totpUnlockEnabled,
-    masterPhraseAttemptThreshold,
     failedPasscodeAttempts,
     expenseReminderEnabled,
     expenseReminderHour,
@@ -11631,28 +11716,29 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.myCashapp == this.myCashapp &&
           other.myRevolut == this.myRevolut &&
           other.upiEnabled == this.upiEnabled &&
-          other.rtaEnabled == this.rtaEnabled &&
           other.paypalEnabled == this.paypalEnabled &&
           other.venmoEnabled == this.venmoEnabled &&
           other.cashappEnabled == this.cashappEnabled &&
           other.revolutEnabled == this.revolutEnabled &&
+          other.ussdPayEnabled == this.ussdPayEnabled &&
           other.passcodeHash == this.passcodeHash &&
           other.passcodeSalt == this.passcodeSalt &&
           other.passcodeLength == this.passcodeLength &&
           other.biometricEnabled == this.biometricEnabled &&
           other.lockScreenStyle == this.lockScreenStyle &&
-          other.unlockMethod == this.unlockMethod &&
           other.moreScreenViewMode == this.moreScreenViewMode &&
           other.budgetingMode == this.budgetingMode &&
+          other.rtaEnabled == this.rtaEnabled &&
           other.pinTimeoutMinutes == this.pinTimeoutMinutes &&
           other.masterPhraseHash == this.masterPhraseHash &&
           other.masterPhraseSalt == this.masterPhraseSalt &&
+          other.masterPhraseAttemptThreshold ==
+              this.masterPhraseAttemptThreshold &&
+          other.unlockMethod == this.unlockMethod &&
           other.totpSecret == this.totpSecret &&
           other.pinUnlockEnabled == this.pinUnlockEnabled &&
           other.masterPhraseUnlockEnabled == this.masterPhraseUnlockEnabled &&
           other.totpUnlockEnabled == this.totpUnlockEnabled &&
-          other.masterPhraseAttemptThreshold ==
-              this.masterPhraseAttemptThreshold &&
           other.failedPasscodeAttempts == this.failedPasscodeAttempts &&
           other.expenseReminderEnabled == this.expenseReminderEnabled &&
           other.expenseReminderHour == this.expenseReminderHour &&
@@ -11700,27 +11786,28 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<String?> myCashapp;
   final Value<String?> myRevolut;
   final Value<bool> upiEnabled;
-  final Value<bool> rtaEnabled;
   final Value<bool> paypalEnabled;
   final Value<bool> venmoEnabled;
   final Value<bool> cashappEnabled;
   final Value<bool> revolutEnabled;
+  final Value<bool> ussdPayEnabled;
   final Value<String?> passcodeHash;
   final Value<String?> passcodeSalt;
   final Value<int?> passcodeLength;
   final Value<bool> biometricEnabled;
   final Value<LockScreenStyle> lockScreenStyle;
-  final Value<UnlockMethod> unlockMethod;
   final Value<MoreScreenViewMode> moreScreenViewMode;
   final Value<BudgetingMode> budgetingMode;
+  final Value<bool> rtaEnabled;
   final Value<int> pinTimeoutMinutes;
   final Value<String?> masterPhraseHash;
   final Value<String?> masterPhraseSalt;
+  final Value<int> masterPhraseAttemptThreshold;
+  final Value<UnlockMethod> unlockMethod;
   final Value<String?> totpSecret;
   final Value<bool> pinUnlockEnabled;
   final Value<bool> masterPhraseUnlockEnabled;
   final Value<bool> totpUnlockEnabled;
-  final Value<int> masterPhraseAttemptThreshold;
   final Value<int> failedPasscodeAttempts;
   final Value<bool> expenseReminderEnabled;
   final Value<int> expenseReminderHour;
@@ -11765,27 +11852,28 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.myCashapp = const Value.absent(),
     this.myRevolut = const Value.absent(),
     this.upiEnabled = const Value.absent(),
-    this.rtaEnabled = const Value.absent(),
     this.paypalEnabled = const Value.absent(),
     this.venmoEnabled = const Value.absent(),
     this.cashappEnabled = const Value.absent(),
     this.revolutEnabled = const Value.absent(),
+    this.ussdPayEnabled = const Value.absent(),
     this.passcodeHash = const Value.absent(),
     this.passcodeSalt = const Value.absent(),
     this.passcodeLength = const Value.absent(),
     this.biometricEnabled = const Value.absent(),
     this.lockScreenStyle = const Value.absent(),
-    this.unlockMethod = const Value.absent(),
     this.moreScreenViewMode = const Value.absent(),
     this.budgetingMode = const Value.absent(),
+    this.rtaEnabled = const Value.absent(),
     this.pinTimeoutMinutes = const Value.absent(),
     this.masterPhraseHash = const Value.absent(),
     this.masterPhraseSalt = const Value.absent(),
+    this.masterPhraseAttemptThreshold = const Value.absent(),
+    this.unlockMethod = const Value.absent(),
     this.totpSecret = const Value.absent(),
     this.pinUnlockEnabled = const Value.absent(),
     this.masterPhraseUnlockEnabled = const Value.absent(),
     this.totpUnlockEnabled = const Value.absent(),
-    this.masterPhraseAttemptThreshold = const Value.absent(),
     this.failedPasscodeAttempts = const Value.absent(),
     this.expenseReminderEnabled = const Value.absent(),
     this.expenseReminderHour = const Value.absent(),
@@ -11831,27 +11919,28 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.myCashapp = const Value.absent(),
     this.myRevolut = const Value.absent(),
     this.upiEnabled = const Value.absent(),
-    this.rtaEnabled = const Value.absent(),
     this.paypalEnabled = const Value.absent(),
     this.venmoEnabled = const Value.absent(),
     this.cashappEnabled = const Value.absent(),
     this.revolutEnabled = const Value.absent(),
+    this.ussdPayEnabled = const Value.absent(),
     this.passcodeHash = const Value.absent(),
     this.passcodeSalt = const Value.absent(),
     this.passcodeLength = const Value.absent(),
     this.biometricEnabled = const Value.absent(),
     this.lockScreenStyle = const Value.absent(),
-    this.unlockMethod = const Value.absent(),
     this.moreScreenViewMode = const Value.absent(),
     this.budgetingMode = const Value.absent(),
+    this.rtaEnabled = const Value.absent(),
     this.pinTimeoutMinutes = const Value.absent(),
     this.masterPhraseHash = const Value.absent(),
     this.masterPhraseSalt = const Value.absent(),
+    this.masterPhraseAttemptThreshold = const Value.absent(),
+    this.unlockMethod = const Value.absent(),
     this.totpSecret = const Value.absent(),
     this.pinUnlockEnabled = const Value.absent(),
     this.masterPhraseUnlockEnabled = const Value.absent(),
     this.totpUnlockEnabled = const Value.absent(),
-    this.masterPhraseAttemptThreshold = const Value.absent(),
     this.failedPasscodeAttempts = const Value.absent(),
     this.expenseReminderEnabled = const Value.absent(),
     this.expenseReminderHour = const Value.absent(),
@@ -11897,27 +11986,28 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<String>? myCashapp,
     Expression<String>? myRevolut,
     Expression<bool>? upiEnabled,
-    Expression<bool>? rtaEnabled,
     Expression<bool>? paypalEnabled,
     Expression<bool>? venmoEnabled,
     Expression<bool>? cashappEnabled,
     Expression<bool>? revolutEnabled,
+    Expression<bool>? ussdPayEnabled,
     Expression<String>? passcodeHash,
     Expression<String>? passcodeSalt,
     Expression<int>? passcodeLength,
     Expression<bool>? biometricEnabled,
     Expression<String>? lockScreenStyle,
-    Expression<String>? unlockMethod,
     Expression<String>? moreScreenViewMode,
     Expression<String>? budgetingMode,
+    Expression<bool>? rtaEnabled,
     Expression<int>? pinTimeoutMinutes,
     Expression<String>? masterPhraseHash,
     Expression<String>? masterPhraseSalt,
+    Expression<int>? masterPhraseAttemptThreshold,
+    Expression<String>? unlockMethod,
     Expression<String>? totpSecret,
     Expression<bool>? pinUnlockEnabled,
     Expression<bool>? masterPhraseUnlockEnabled,
     Expression<bool>? totpUnlockEnabled,
-    Expression<int>? masterPhraseAttemptThreshold,
     Expression<int>? failedPasscodeAttempts,
     Expression<bool>? expenseReminderEnabled,
     Expression<int>? expenseReminderHour,
@@ -11967,30 +12057,31 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       if (myCashapp != null) 'my_cashapp': myCashapp,
       if (myRevolut != null) 'my_revolut': myRevolut,
       if (upiEnabled != null) 'upi_enabled': upiEnabled,
-      if (rtaEnabled != null) 'rta_enabled': rtaEnabled,
       if (paypalEnabled != null) 'paypal_enabled': paypalEnabled,
       if (venmoEnabled != null) 'venmo_enabled': venmoEnabled,
       if (cashappEnabled != null) 'cashapp_enabled': cashappEnabled,
       if (revolutEnabled != null) 'revolut_enabled': revolutEnabled,
+      if (ussdPayEnabled != null) 'ussd_pay_enabled': ussdPayEnabled,
       if (passcodeHash != null) 'passcode_hash': passcodeHash,
       if (passcodeSalt != null) 'passcode_salt': passcodeSalt,
       if (passcodeLength != null) 'passcode_length': passcodeLength,
       if (biometricEnabled != null) 'biometric_enabled': biometricEnabled,
       if (lockScreenStyle != null) 'lock_screen_style': lockScreenStyle,
-      if (unlockMethod != null) 'unlock_method': unlockMethod,
       if (moreScreenViewMode != null)
         'more_screen_view_mode': moreScreenViewMode,
       if (budgetingMode != null) 'budgeting_mode': budgetingMode,
+      if (rtaEnabled != null) 'rta_enabled': rtaEnabled,
       if (pinTimeoutMinutes != null) 'pin_timeout_minutes': pinTimeoutMinutes,
       if (masterPhraseHash != null) 'master_phrase_hash': masterPhraseHash,
       if (masterPhraseSalt != null) 'master_phrase_salt': masterPhraseSalt,
+      if (masterPhraseAttemptThreshold != null)
+        'master_phrase_attempt_threshold': masterPhraseAttemptThreshold,
+      if (unlockMethod != null) 'unlock_method': unlockMethod,
       if (totpSecret != null) 'totp_secret': totpSecret,
       if (pinUnlockEnabled != null) 'pin_unlock_enabled': pinUnlockEnabled,
       if (masterPhraseUnlockEnabled != null)
         'master_phrase_unlock_enabled': masterPhraseUnlockEnabled,
       if (totpUnlockEnabled != null) 'totp_unlock_enabled': totpUnlockEnabled,
-      if (masterPhraseAttemptThreshold != null)
-        'master_phrase_attempt_threshold': masterPhraseAttemptThreshold,
       if (failedPasscodeAttempts != null)
         'failed_passcode_attempts': failedPasscodeAttempts,
       if (expenseReminderEnabled != null)
@@ -12050,27 +12141,28 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<String?>? myCashapp,
     Value<String?>? myRevolut,
     Value<bool>? upiEnabled,
-    Value<bool>? rtaEnabled,
     Value<bool>? paypalEnabled,
     Value<bool>? venmoEnabled,
     Value<bool>? cashappEnabled,
     Value<bool>? revolutEnabled,
+    Value<bool>? ussdPayEnabled,
     Value<String?>? passcodeHash,
     Value<String?>? passcodeSalt,
     Value<int?>? passcodeLength,
     Value<bool>? biometricEnabled,
     Value<LockScreenStyle>? lockScreenStyle,
-    Value<UnlockMethod>? unlockMethod,
     Value<MoreScreenViewMode>? moreScreenViewMode,
     Value<BudgetingMode>? budgetingMode,
+    Value<bool>? rtaEnabled,
     Value<int>? pinTimeoutMinutes,
     Value<String?>? masterPhraseHash,
     Value<String?>? masterPhraseSalt,
+    Value<int>? masterPhraseAttemptThreshold,
+    Value<UnlockMethod>? unlockMethod,
     Value<String?>? totpSecret,
     Value<bool>? pinUnlockEnabled,
     Value<bool>? masterPhraseUnlockEnabled,
     Value<bool>? totpUnlockEnabled,
-    Value<int>? masterPhraseAttemptThreshold,
     Value<int>? failedPasscodeAttempts,
     Value<bool>? expenseReminderEnabled,
     Value<int>? expenseReminderHour,
@@ -12118,29 +12210,30 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       myCashapp: myCashapp ?? this.myCashapp,
       myRevolut: myRevolut ?? this.myRevolut,
       upiEnabled: upiEnabled ?? this.upiEnabled,
-      rtaEnabled: rtaEnabled ?? this.rtaEnabled,
       paypalEnabled: paypalEnabled ?? this.paypalEnabled,
       venmoEnabled: venmoEnabled ?? this.venmoEnabled,
       cashappEnabled: cashappEnabled ?? this.cashappEnabled,
       revolutEnabled: revolutEnabled ?? this.revolutEnabled,
+      ussdPayEnabled: ussdPayEnabled ?? this.ussdPayEnabled,
       passcodeHash: passcodeHash ?? this.passcodeHash,
       passcodeSalt: passcodeSalt ?? this.passcodeSalt,
       passcodeLength: passcodeLength ?? this.passcodeLength,
       biometricEnabled: biometricEnabled ?? this.biometricEnabled,
       lockScreenStyle: lockScreenStyle ?? this.lockScreenStyle,
-      unlockMethod: unlockMethod ?? this.unlockMethod,
       moreScreenViewMode: moreScreenViewMode ?? this.moreScreenViewMode,
       budgetingMode: budgetingMode ?? this.budgetingMode,
+      rtaEnabled: rtaEnabled ?? this.rtaEnabled,
       pinTimeoutMinutes: pinTimeoutMinutes ?? this.pinTimeoutMinutes,
       masterPhraseHash: masterPhraseHash ?? this.masterPhraseHash,
       masterPhraseSalt: masterPhraseSalt ?? this.masterPhraseSalt,
+      masterPhraseAttemptThreshold:
+          masterPhraseAttemptThreshold ?? this.masterPhraseAttemptThreshold,
+      unlockMethod: unlockMethod ?? this.unlockMethod,
       totpSecret: totpSecret ?? this.totpSecret,
       pinUnlockEnabled: pinUnlockEnabled ?? this.pinUnlockEnabled,
       masterPhraseUnlockEnabled:
           masterPhraseUnlockEnabled ?? this.masterPhraseUnlockEnabled,
       totpUnlockEnabled: totpUnlockEnabled ?? this.totpUnlockEnabled,
-      masterPhraseAttemptThreshold:
-          masterPhraseAttemptThreshold ?? this.masterPhraseAttemptThreshold,
       failedPasscodeAttempts:
           failedPasscodeAttempts ?? this.failedPasscodeAttempts,
       expenseReminderEnabled:
@@ -12237,9 +12330,6 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     if (upiEnabled.present) {
       map['upi_enabled'] = Variable<bool>(upiEnabled.value);
     }
-    if (rtaEnabled.present) {
-      map['rta_enabled'] = Variable<bool>(rtaEnabled.value);
-    }
     if (paypalEnabled.present) {
       map['paypal_enabled'] = Variable<bool>(paypalEnabled.value);
     }
@@ -12251,6 +12341,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     }
     if (revolutEnabled.present) {
       map['revolut_enabled'] = Variable<bool>(revolutEnabled.value);
+    }
+    if (ussdPayEnabled.present) {
+      map['ussd_pay_enabled'] = Variable<bool>(ussdPayEnabled.value);
     }
     if (passcodeHash.present) {
       map['passcode_hash'] = Variable<String>(passcodeHash.value);
@@ -12269,11 +12362,6 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
         $SettingsTable.$converterlockScreenStyle.toSql(lockScreenStyle.value),
       );
     }
-    if (unlockMethod.present) {
-      map['unlock_method'] = Variable<String>(
-        $SettingsTable.$converterunlockMethod.toSql(unlockMethod.value),
-      );
-    }
     if (moreScreenViewMode.present) {
       map['more_screen_view_mode'] = Variable<String>(
         $SettingsTable.$convertermoreScreenViewMode.toSql(
@@ -12286,6 +12374,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
         $SettingsTable.$converterbudgetingMode.toSql(budgetingMode.value),
       );
     }
+    if (rtaEnabled.present) {
+      map['rta_enabled'] = Variable<bool>(rtaEnabled.value);
+    }
     if (pinTimeoutMinutes.present) {
       map['pin_timeout_minutes'] = Variable<int>(pinTimeoutMinutes.value);
     }
@@ -12294,6 +12385,16 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     }
     if (masterPhraseSalt.present) {
       map['master_phrase_salt'] = Variable<String>(masterPhraseSalt.value);
+    }
+    if (masterPhraseAttemptThreshold.present) {
+      map['master_phrase_attempt_threshold'] = Variable<int>(
+        masterPhraseAttemptThreshold.value,
+      );
+    }
+    if (unlockMethod.present) {
+      map['unlock_method'] = Variable<String>(
+        $SettingsTable.$converterunlockMethod.toSql(unlockMethod.value),
+      );
     }
     if (totpSecret.present) {
       map['totp_secret'] = Variable<String>(totpSecret.value);
@@ -12308,11 +12409,6 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     }
     if (totpUnlockEnabled.present) {
       map['totp_unlock_enabled'] = Variable<bool>(totpUnlockEnabled.value);
-    }
-    if (masterPhraseAttemptThreshold.present) {
-      map['master_phrase_attempt_threshold'] = Variable<int>(
-        masterPhraseAttemptThreshold.value,
-      );
     }
     if (failedPasscodeAttempts.present) {
       map['failed_passcode_attempts'] = Variable<int>(
@@ -12433,29 +12529,30 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('myCashapp: $myCashapp, ')
           ..write('myRevolut: $myRevolut, ')
           ..write('upiEnabled: $upiEnabled, ')
-          ..write('rtaEnabled: $rtaEnabled, ')
           ..write('paypalEnabled: $paypalEnabled, ')
           ..write('venmoEnabled: $venmoEnabled, ')
           ..write('cashappEnabled: $cashappEnabled, ')
           ..write('revolutEnabled: $revolutEnabled, ')
+          ..write('ussdPayEnabled: $ussdPayEnabled, ')
           ..write('passcodeHash: $passcodeHash, ')
           ..write('passcodeSalt: $passcodeSalt, ')
           ..write('passcodeLength: $passcodeLength, ')
           ..write('biometricEnabled: $biometricEnabled, ')
           ..write('lockScreenStyle: $lockScreenStyle, ')
-          ..write('unlockMethod: $unlockMethod, ')
           ..write('moreScreenViewMode: $moreScreenViewMode, ')
           ..write('budgetingMode: $budgetingMode, ')
+          ..write('rtaEnabled: $rtaEnabled, ')
           ..write('pinTimeoutMinutes: $pinTimeoutMinutes, ')
           ..write('masterPhraseHash: $masterPhraseHash, ')
           ..write('masterPhraseSalt: $masterPhraseSalt, ')
+          ..write(
+            'masterPhraseAttemptThreshold: $masterPhraseAttemptThreshold, ',
+          )
+          ..write('unlockMethod: $unlockMethod, ')
           ..write('totpSecret: $totpSecret, ')
           ..write('pinUnlockEnabled: $pinUnlockEnabled, ')
           ..write('masterPhraseUnlockEnabled: $masterPhraseUnlockEnabled, ')
           ..write('totpUnlockEnabled: $totpUnlockEnabled, ')
-          ..write(
-            'masterPhraseAttemptThreshold: $masterPhraseAttemptThreshold, ',
-          )
           ..write('failedPasscodeAttempts: $failedPasscodeAttempts, ')
           ..write('expenseReminderEnabled: $expenseReminderEnabled, ')
           ..write('expenseReminderHour: $expenseReminderHour, ')
@@ -32105,11 +32202,11 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<String?> myCashapp,
       Value<String?> myRevolut,
       Value<bool> upiEnabled,
-      Value<bool> rtaEnabled,
       Value<bool> paypalEnabled,
       Value<bool> venmoEnabled,
       Value<bool> cashappEnabled,
       Value<bool> revolutEnabled,
+      Value<bool> ussdPayEnabled,
       Value<String?> passcodeHash,
       Value<String?> passcodeSalt,
       Value<int?> passcodeLength,
@@ -32117,10 +32214,16 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<LockScreenStyle> lockScreenStyle,
       Value<MoreScreenViewMode> moreScreenViewMode,
       Value<BudgetingMode> budgetingMode,
+      Value<bool> rtaEnabled,
       Value<int> pinTimeoutMinutes,
       Value<String?> masterPhraseHash,
       Value<String?> masterPhraseSalt,
       Value<int> masterPhraseAttemptThreshold,
+      Value<UnlockMethod> unlockMethod,
+      Value<String?> totpSecret,
+      Value<bool> pinUnlockEnabled,
+      Value<bool> masterPhraseUnlockEnabled,
+      Value<bool> totpUnlockEnabled,
       Value<int> failedPasscodeAttempts,
       Value<bool> expenseReminderEnabled,
       Value<int> expenseReminderHour,
@@ -32167,11 +32270,11 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<String?> myCashapp,
       Value<String?> myRevolut,
       Value<bool> upiEnabled,
-      Value<bool> rtaEnabled,
       Value<bool> paypalEnabled,
       Value<bool> venmoEnabled,
       Value<bool> cashappEnabled,
       Value<bool> revolutEnabled,
+      Value<bool> ussdPayEnabled,
       Value<String?> passcodeHash,
       Value<String?> passcodeSalt,
       Value<int?> passcodeLength,
@@ -32179,10 +32282,16 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<LockScreenStyle> lockScreenStyle,
       Value<MoreScreenViewMode> moreScreenViewMode,
       Value<BudgetingMode> budgetingMode,
+      Value<bool> rtaEnabled,
       Value<int> pinTimeoutMinutes,
       Value<String?> masterPhraseHash,
       Value<String?> masterPhraseSalt,
       Value<int> masterPhraseAttemptThreshold,
+      Value<UnlockMethod> unlockMethod,
+      Value<String?> totpSecret,
+      Value<bool> pinUnlockEnabled,
+      Value<bool> masterPhraseUnlockEnabled,
+      Value<bool> totpUnlockEnabled,
       Value<int> failedPasscodeAttempts,
       Value<bool> expenseReminderEnabled,
       Value<int> expenseReminderHour,
@@ -32333,11 +32442,6 @@ class $$SettingsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<bool> get rtaEnabled => $composableBuilder(
-    column: $table.rtaEnabled,
-    builder: (column) => ColumnFilters(column),
-  );
-
   ColumnFilters<bool> get paypalEnabled => $composableBuilder(
     column: $table.paypalEnabled,
     builder: (column) => ColumnFilters(column),
@@ -32355,6 +32459,11 @@ class $$SettingsTableFilterComposer
 
   ColumnFilters<bool> get revolutEnabled => $composableBuilder(
     column: $table.revolutEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get ussdPayEnabled => $composableBuilder(
+    column: $table.ussdPayEnabled,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -32396,6 +32505,11 @@ class $$SettingsTableFilterComposer
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
+  ColumnFilters<bool> get rtaEnabled => $composableBuilder(
+    column: $table.rtaEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<int> get pinTimeoutMinutes => $composableBuilder(
     column: $table.pinTimeoutMinutes,
     builder: (column) => ColumnFilters(column),
@@ -32413,6 +32527,32 @@ class $$SettingsTableFilterComposer
 
   ColumnFilters<int> get masterPhraseAttemptThreshold => $composableBuilder(
     column: $table.masterPhraseAttemptThreshold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<UnlockMethod, UnlockMethod, String>
+  get unlockMethod => $composableBuilder(
+    column: $table.unlockMethod,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get totpSecret => $composableBuilder(
+    column: $table.totpSecret,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get pinUnlockEnabled => $composableBuilder(
+    column: $table.pinUnlockEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get masterPhraseUnlockEnabled => $composableBuilder(
+    column: $table.masterPhraseUnlockEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get totpUnlockEnabled => $composableBuilder(
+    column: $table.totpUnlockEnabled,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -32664,11 +32804,6 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<bool> get rtaEnabled => $composableBuilder(
-    column: $table.rtaEnabled,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<bool> get paypalEnabled => $composableBuilder(
     column: $table.paypalEnabled,
     builder: (column) => ColumnOrderings(column),
@@ -32686,6 +32821,11 @@ class $$SettingsTableOrderingComposer
 
   ColumnOrderings<bool> get revolutEnabled => $composableBuilder(
     column: $table.revolutEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get ussdPayEnabled => $composableBuilder(
+    column: $table.ussdPayEnabled,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -32724,6 +32864,11 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get rtaEnabled => $composableBuilder(
+    column: $table.rtaEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get pinTimeoutMinutes => $composableBuilder(
     column: $table.pinTimeoutMinutes,
     builder: (column) => ColumnOrderings(column),
@@ -32741,6 +32886,31 @@ class $$SettingsTableOrderingComposer
 
   ColumnOrderings<int> get masterPhraseAttemptThreshold => $composableBuilder(
     column: $table.masterPhraseAttemptThreshold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get unlockMethod => $composableBuilder(
+    column: $table.unlockMethod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get totpSecret => $composableBuilder(
+    column: $table.totpSecret,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get pinUnlockEnabled => $composableBuilder(
+    column: $table.pinUnlockEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get masterPhraseUnlockEnabled => $composableBuilder(
+    column: $table.masterPhraseUnlockEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get totpUnlockEnabled => $composableBuilder(
+    column: $table.totpUnlockEnabled,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -32969,11 +33139,6 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<bool> get rtaEnabled => $composableBuilder(
-    column: $table.rtaEnabled,
-    builder: (column) => column,
-  );
-
   GeneratedColumn<bool> get paypalEnabled => $composableBuilder(
     column: $table.paypalEnabled,
     builder: (column) => column,
@@ -32991,6 +33156,11 @@ class $$SettingsTableAnnotationComposer
 
   GeneratedColumn<bool> get revolutEnabled => $composableBuilder(
     column: $table.revolutEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get ussdPayEnabled => $composableBuilder(
+    column: $table.ussdPayEnabled,
     builder: (column) => column,
   );
 
@@ -33032,6 +33202,11 @@ class $$SettingsTableAnnotationComposer
         builder: (column) => column,
       );
 
+  GeneratedColumn<bool> get rtaEnabled => $composableBuilder(
+    column: $table.rtaEnabled,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get pinTimeoutMinutes => $composableBuilder(
     column: $table.pinTimeoutMinutes,
     builder: (column) => column,
@@ -33049,6 +33224,32 @@ class $$SettingsTableAnnotationComposer
 
   GeneratedColumn<int> get masterPhraseAttemptThreshold => $composableBuilder(
     column: $table.masterPhraseAttemptThreshold,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<UnlockMethod, String> get unlockMethod =>
+      $composableBuilder(
+        column: $table.unlockMethod,
+        builder: (column) => column,
+      );
+
+  GeneratedColumn<String> get totpSecret => $composableBuilder(
+    column: $table.totpSecret,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get pinUnlockEnabled => $composableBuilder(
+    column: $table.pinUnlockEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get masterPhraseUnlockEnabled => $composableBuilder(
+    column: $table.masterPhraseUnlockEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get totpUnlockEnabled => $composableBuilder(
+    column: $table.totpUnlockEnabled,
     builder: (column) => column,
   );
 
@@ -33243,11 +33444,11 @@ class $$SettingsTableTableManager
                 Value<String?> myCashapp = const Value.absent(),
                 Value<String?> myRevolut = const Value.absent(),
                 Value<bool> upiEnabled = const Value.absent(),
-                Value<bool> rtaEnabled = const Value.absent(),
                 Value<bool> paypalEnabled = const Value.absent(),
                 Value<bool> venmoEnabled = const Value.absent(),
                 Value<bool> cashappEnabled = const Value.absent(),
                 Value<bool> revolutEnabled = const Value.absent(),
+                Value<bool> ussdPayEnabled = const Value.absent(),
                 Value<String?> passcodeHash = const Value.absent(),
                 Value<String?> passcodeSalt = const Value.absent(),
                 Value<int?> passcodeLength = const Value.absent(),
@@ -33256,10 +33457,16 @@ class $$SettingsTableTableManager
                 Value<MoreScreenViewMode> moreScreenViewMode =
                     const Value.absent(),
                 Value<BudgetingMode> budgetingMode = const Value.absent(),
+                Value<bool> rtaEnabled = const Value.absent(),
                 Value<int> pinTimeoutMinutes = const Value.absent(),
                 Value<String?> masterPhraseHash = const Value.absent(),
                 Value<String?> masterPhraseSalt = const Value.absent(),
                 Value<int> masterPhraseAttemptThreshold = const Value.absent(),
+                Value<UnlockMethod> unlockMethod = const Value.absent(),
+                Value<String?> totpSecret = const Value.absent(),
+                Value<bool> pinUnlockEnabled = const Value.absent(),
+                Value<bool> masterPhraseUnlockEnabled = const Value.absent(),
+                Value<bool> totpUnlockEnabled = const Value.absent(),
                 Value<int> failedPasscodeAttempts = const Value.absent(),
                 Value<bool> expenseReminderEnabled = const Value.absent(),
                 Value<int> expenseReminderHour = const Value.absent(),
@@ -33305,11 +33512,11 @@ class $$SettingsTableTableManager
                 myCashapp: myCashapp,
                 myRevolut: myRevolut,
                 upiEnabled: upiEnabled,
-                rtaEnabled: rtaEnabled,
                 paypalEnabled: paypalEnabled,
                 venmoEnabled: venmoEnabled,
                 cashappEnabled: cashappEnabled,
                 revolutEnabled: revolutEnabled,
+                ussdPayEnabled: ussdPayEnabled,
                 passcodeHash: passcodeHash,
                 passcodeSalt: passcodeSalt,
                 passcodeLength: passcodeLength,
@@ -33317,10 +33524,16 @@ class $$SettingsTableTableManager
                 lockScreenStyle: lockScreenStyle,
                 moreScreenViewMode: moreScreenViewMode,
                 budgetingMode: budgetingMode,
+                rtaEnabled: rtaEnabled,
                 pinTimeoutMinutes: pinTimeoutMinutes,
                 masterPhraseHash: masterPhraseHash,
                 masterPhraseSalt: masterPhraseSalt,
                 masterPhraseAttemptThreshold: masterPhraseAttemptThreshold,
+                unlockMethod: unlockMethod,
+                totpSecret: totpSecret,
+                pinUnlockEnabled: pinUnlockEnabled,
+                masterPhraseUnlockEnabled: masterPhraseUnlockEnabled,
+                totpUnlockEnabled: totpUnlockEnabled,
                 failedPasscodeAttempts: failedPasscodeAttempts,
                 expenseReminderEnabled: expenseReminderEnabled,
                 expenseReminderHour: expenseReminderHour,
@@ -33367,11 +33580,11 @@ class $$SettingsTableTableManager
                 Value<String?> myCashapp = const Value.absent(),
                 Value<String?> myRevolut = const Value.absent(),
                 Value<bool> upiEnabled = const Value.absent(),
-                Value<bool> rtaEnabled = const Value.absent(),
                 Value<bool> paypalEnabled = const Value.absent(),
                 Value<bool> venmoEnabled = const Value.absent(),
                 Value<bool> cashappEnabled = const Value.absent(),
                 Value<bool> revolutEnabled = const Value.absent(),
+                Value<bool> ussdPayEnabled = const Value.absent(),
                 Value<String?> passcodeHash = const Value.absent(),
                 Value<String?> passcodeSalt = const Value.absent(),
                 Value<int?> passcodeLength = const Value.absent(),
@@ -33380,10 +33593,16 @@ class $$SettingsTableTableManager
                 Value<MoreScreenViewMode> moreScreenViewMode =
                     const Value.absent(),
                 Value<BudgetingMode> budgetingMode = const Value.absent(),
+                Value<bool> rtaEnabled = const Value.absent(),
                 Value<int> pinTimeoutMinutes = const Value.absent(),
                 Value<String?> masterPhraseHash = const Value.absent(),
                 Value<String?> masterPhraseSalt = const Value.absent(),
                 Value<int> masterPhraseAttemptThreshold = const Value.absent(),
+                Value<UnlockMethod> unlockMethod = const Value.absent(),
+                Value<String?> totpSecret = const Value.absent(),
+                Value<bool> pinUnlockEnabled = const Value.absent(),
+                Value<bool> masterPhraseUnlockEnabled = const Value.absent(),
+                Value<bool> totpUnlockEnabled = const Value.absent(),
                 Value<int> failedPasscodeAttempts = const Value.absent(),
                 Value<bool> expenseReminderEnabled = const Value.absent(),
                 Value<int> expenseReminderHour = const Value.absent(),
@@ -33429,11 +33648,11 @@ class $$SettingsTableTableManager
                 myCashapp: myCashapp,
                 myRevolut: myRevolut,
                 upiEnabled: upiEnabled,
-                rtaEnabled: rtaEnabled,
                 paypalEnabled: paypalEnabled,
                 venmoEnabled: venmoEnabled,
                 cashappEnabled: cashappEnabled,
                 revolutEnabled: revolutEnabled,
+                ussdPayEnabled: ussdPayEnabled,
                 passcodeHash: passcodeHash,
                 passcodeSalt: passcodeSalt,
                 passcodeLength: passcodeLength,
@@ -33441,10 +33660,16 @@ class $$SettingsTableTableManager
                 lockScreenStyle: lockScreenStyle,
                 moreScreenViewMode: moreScreenViewMode,
                 budgetingMode: budgetingMode,
+                rtaEnabled: rtaEnabled,
                 pinTimeoutMinutes: pinTimeoutMinutes,
                 masterPhraseHash: masterPhraseHash,
                 masterPhraseSalt: masterPhraseSalt,
                 masterPhraseAttemptThreshold: masterPhraseAttemptThreshold,
+                unlockMethod: unlockMethod,
+                totpSecret: totpSecret,
+                pinUnlockEnabled: pinUnlockEnabled,
+                masterPhraseUnlockEnabled: masterPhraseUnlockEnabled,
+                totpUnlockEnabled: totpUnlockEnabled,
                 failedPasscodeAttempts: failedPasscodeAttempts,
                 expenseReminderEnabled: expenseReminderEnabled,
                 expenseReminderHour: expenseReminderHour,
@@ -40729,6 +40954,692 @@ typedef $$CurrencyRatesTableProcessedTableManager =
       CurrencyRateRow,
       PrefetchHooks Function()
     >;
+typedef $$CategoryTemplatesTableCreateCompanionBuilder =
+    CategoryTemplatesCompanion Function({
+      Value<int> id,
+      required String name,
+      Value<DateTime> createdAt,
+    });
+typedef $$CategoryTemplatesTableUpdateCompanionBuilder =
+    CategoryTemplatesCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<DateTime> createdAt,
+    });
+
+final class $$CategoryTemplatesTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $CategoryTemplatesTable,
+          CategoryTemplateRow
+        > {
+  $$CategoryTemplatesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static MultiTypedResultKey<
+    $CategoryTemplateItemsTable,
+    List<CategoryTemplateItemRow>
+  >
+  _categoryTemplateItemsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.categoryTemplateItems,
+        aliasName: $_aliasNameGenerator(
+          db.categoryTemplates.id,
+          db.categoryTemplateItems.templateId,
+        ),
+      );
+
+  $$CategoryTemplateItemsTableProcessedTableManager
+  get categoryTemplateItemsRefs {
+    final manager = $$CategoryTemplateItemsTableTableManager(
+      $_db,
+      $_db.categoryTemplateItems,
+    ).filter((f) => f.templateId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _categoryTemplateItemsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$CategoryTemplatesTableFilterComposer
+    extends Composer<_$AppDatabase, $CategoryTemplatesTable> {
+  $$CategoryTemplatesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> categoryTemplateItemsRefs(
+    Expression<bool> Function($$CategoryTemplateItemsTableFilterComposer f) f,
+  ) {
+    final $$CategoryTemplateItemsTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.categoryTemplateItems,
+          getReferencedColumn: (t) => t.templateId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$CategoryTemplateItemsTableFilterComposer(
+                $db: $db,
+                $table: $db.categoryTemplateItems,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$CategoryTemplatesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CategoryTemplatesTable> {
+  $$CategoryTemplatesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CategoryTemplatesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CategoryTemplatesTable> {
+  $$CategoryTemplatesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  Expression<T> categoryTemplateItemsRefs<T extends Object>(
+    Expression<T> Function($$CategoryTemplateItemsTableAnnotationComposer a) f,
+  ) {
+    final $$CategoryTemplateItemsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.categoryTemplateItems,
+          getReferencedColumn: (t) => t.templateId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$CategoryTemplateItemsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.categoryTemplateItems,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$CategoryTemplatesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CategoryTemplatesTable,
+          CategoryTemplateRow,
+          $$CategoryTemplatesTableFilterComposer,
+          $$CategoryTemplatesTableOrderingComposer,
+          $$CategoryTemplatesTableAnnotationComposer,
+          $$CategoryTemplatesTableCreateCompanionBuilder,
+          $$CategoryTemplatesTableUpdateCompanionBuilder,
+          (CategoryTemplateRow, $$CategoryTemplatesTableReferences),
+          CategoryTemplateRow,
+          PrefetchHooks Function({bool categoryTemplateItemsRefs})
+        > {
+  $$CategoryTemplatesTableTableManager(
+    _$AppDatabase db,
+    $CategoryTemplatesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CategoryTemplatesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CategoryTemplatesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CategoryTemplatesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => CategoryTemplatesCompanion(
+                id: id,
+                name: name,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => CategoryTemplatesCompanion.insert(
+                id: id,
+                name: name,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$CategoryTemplatesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({categoryTemplateItemsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (categoryTemplateItemsRefs) db.categoryTemplateItems,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (categoryTemplateItemsRefs)
+                    await $_getPrefetchedData<
+                      CategoryTemplateRow,
+                      $CategoryTemplatesTable,
+                      CategoryTemplateItemRow
+                    >(
+                      currentTable: table,
+                      referencedTable: $$CategoryTemplatesTableReferences
+                          ._categoryTemplateItemsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$CategoryTemplatesTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).categoryTemplateItemsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.templateId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$CategoryTemplatesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CategoryTemplatesTable,
+      CategoryTemplateRow,
+      $$CategoryTemplatesTableFilterComposer,
+      $$CategoryTemplatesTableOrderingComposer,
+      $$CategoryTemplatesTableAnnotationComposer,
+      $$CategoryTemplatesTableCreateCompanionBuilder,
+      $$CategoryTemplatesTableUpdateCompanionBuilder,
+      (CategoryTemplateRow, $$CategoryTemplatesTableReferences),
+      CategoryTemplateRow,
+      PrefetchHooks Function({bool categoryTemplateItemsRefs})
+    >;
+typedef $$CategoryTemplateItemsTableCreateCompanionBuilder =
+    CategoryTemplateItemsCompanion Function({
+      Value<int> id,
+      required int templateId,
+      required String name,
+      required CategoryKind kind,
+      required int colorValue,
+      required String iconKey,
+      Value<int> sortOrder,
+      Value<int?> parentItemId,
+    });
+typedef $$CategoryTemplateItemsTableUpdateCompanionBuilder =
+    CategoryTemplateItemsCompanion Function({
+      Value<int> id,
+      Value<int> templateId,
+      Value<String> name,
+      Value<CategoryKind> kind,
+      Value<int> colorValue,
+      Value<String> iconKey,
+      Value<int> sortOrder,
+      Value<int?> parentItemId,
+    });
+
+final class $$CategoryTemplateItemsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $CategoryTemplateItemsTable,
+          CategoryTemplateItemRow
+        > {
+  $$CategoryTemplateItemsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $CategoryTemplatesTable _templateIdTable(_$AppDatabase db) =>
+      db.categoryTemplates.createAlias(
+        $_aliasNameGenerator(
+          db.categoryTemplateItems.templateId,
+          db.categoryTemplates.id,
+        ),
+      );
+
+  $$CategoryTemplatesTableProcessedTableManager get templateId {
+    final $_column = $_itemColumn<int>('template_id')!;
+
+    final manager = $$CategoryTemplatesTableTableManager(
+      $_db,
+      $_db.categoryTemplates,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_templateIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$CategoryTemplateItemsTableFilterComposer
+    extends Composer<_$AppDatabase, $CategoryTemplateItemsTable> {
+  $$CategoryTemplateItemsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<CategoryKind, CategoryKind, String> get kind =>
+      $composableBuilder(
+        column: $table.kind,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<int> get colorValue => $composableBuilder(
+    column: $table.colorValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get iconKey => $composableBuilder(
+    column: $table.iconKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get parentItemId => $composableBuilder(
+    column: $table.parentItemId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$CategoryTemplatesTableFilterComposer get templateId {
+    final $$CategoryTemplatesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.templateId,
+      referencedTable: $db.categoryTemplates,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoryTemplatesTableFilterComposer(
+            $db: $db,
+            $table: $db.categoryTemplates,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$CategoryTemplateItemsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CategoryTemplateItemsTable> {
+  $$CategoryTemplateItemsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get colorValue => $composableBuilder(
+    column: $table.colorValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get iconKey => $composableBuilder(
+    column: $table.iconKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get parentItemId => $composableBuilder(
+    column: $table.parentItemId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$CategoryTemplatesTableOrderingComposer get templateId {
+    final $$CategoryTemplatesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.templateId,
+      referencedTable: $db.categoryTemplates,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoryTemplatesTableOrderingComposer(
+            $db: $db,
+            $table: $db.categoryTemplates,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$CategoryTemplateItemsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CategoryTemplateItemsTable> {
+  $$CategoryTemplateItemsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<CategoryKind, String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<int> get colorValue => $composableBuilder(
+    column: $table.colorValue,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get iconKey =>
+      $composableBuilder(column: $table.iconKey, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<int> get parentItemId => $composableBuilder(
+    column: $table.parentItemId,
+    builder: (column) => column,
+  );
+
+  $$CategoryTemplatesTableAnnotationComposer get templateId {
+    final $$CategoryTemplatesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.templateId,
+          referencedTable: $db.categoryTemplates,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$CategoryTemplatesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.categoryTemplates,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+}
+
+class $$CategoryTemplateItemsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CategoryTemplateItemsTable,
+          CategoryTemplateItemRow,
+          $$CategoryTemplateItemsTableFilterComposer,
+          $$CategoryTemplateItemsTableOrderingComposer,
+          $$CategoryTemplateItemsTableAnnotationComposer,
+          $$CategoryTemplateItemsTableCreateCompanionBuilder,
+          $$CategoryTemplateItemsTableUpdateCompanionBuilder,
+          (CategoryTemplateItemRow, $$CategoryTemplateItemsTableReferences),
+          CategoryTemplateItemRow,
+          PrefetchHooks Function({bool templateId})
+        > {
+  $$CategoryTemplateItemsTableTableManager(
+    _$AppDatabase db,
+    $CategoryTemplateItemsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CategoryTemplateItemsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$CategoryTemplateItemsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$CategoryTemplateItemsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> templateId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<CategoryKind> kind = const Value.absent(),
+                Value<int> colorValue = const Value.absent(),
+                Value<String> iconKey = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<int?> parentItemId = const Value.absent(),
+              }) => CategoryTemplateItemsCompanion(
+                id: id,
+                templateId: templateId,
+                name: name,
+                kind: kind,
+                colorValue: colorValue,
+                iconKey: iconKey,
+                sortOrder: sortOrder,
+                parentItemId: parentItemId,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int templateId,
+                required String name,
+                required CategoryKind kind,
+                required int colorValue,
+                required String iconKey,
+                Value<int> sortOrder = const Value.absent(),
+                Value<int?> parentItemId = const Value.absent(),
+              }) => CategoryTemplateItemsCompanion.insert(
+                id: id,
+                templateId: templateId,
+                name: name,
+                kind: kind,
+                colorValue: colorValue,
+                iconKey: iconKey,
+                sortOrder: sortOrder,
+                parentItemId: parentItemId,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$CategoryTemplateItemsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({templateId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (templateId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.templateId,
+                                referencedTable:
+                                    $$CategoryTemplateItemsTableReferences
+                                        ._templateIdTable(db),
+                                referencedColumn:
+                                    $$CategoryTemplateItemsTableReferences
+                                        ._templateIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$CategoryTemplateItemsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CategoryTemplateItemsTable,
+      CategoryTemplateItemRow,
+      $$CategoryTemplateItemsTableFilterComposer,
+      $$CategoryTemplateItemsTableOrderingComposer,
+      $$CategoryTemplateItemsTableAnnotationComposer,
+      $$CategoryTemplateItemsTableCreateCompanionBuilder,
+      $$CategoryTemplateItemsTableUpdateCompanionBuilder,
+      (CategoryTemplateItemRow, $$CategoryTemplateItemsTableReferences),
+      CategoryTemplateItemRow,
+      PrefetchHooks Function({bool templateId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -40798,4 +41709,8 @@ class $AppDatabaseManager {
       $$CreditCardDetailsTableTableManager(_db, _db.creditCardDetails);
   $$CurrencyRatesTableTableManager get currencyRates =>
       $$CurrencyRatesTableTableManager(_db, _db.currencyRates);
+  $$CategoryTemplatesTableTableManager get categoryTemplates =>
+      $$CategoryTemplatesTableTableManager(_db, _db.categoryTemplates);
+  $$CategoryTemplateItemsTableTableManager get categoryTemplateItems =>
+      $$CategoryTemplateItemsTableTableManager(_db, _db.categoryTemplateItems);
 }

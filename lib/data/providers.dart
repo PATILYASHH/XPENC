@@ -795,6 +795,14 @@ final revolutEnabledProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.revolutEnabled ?? true;
 });
 
+/// Whether the "Pay without internet" (USSD *99#) beta is on — gates both
+/// its Settings sub-row and the Persons screen FAB. Defaults false: unlike
+/// the payment methods above, this is new, unfamiliar UI, not something to
+/// hide from users who don't need it.
+final ussdPayEnabledProvider = Provider<bool>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.ussdPayEnabled ?? false;
+});
+
 /// Whether a passcode is set at all — the switch the app-lock gate checks on
 /// every launch and resume.
 final hasPasscodeProvider = Provider<bool>((ref) {

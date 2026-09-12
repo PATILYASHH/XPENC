@@ -275,4 +275,67 @@ void main() {
       expect(await balance(cash), Money.fromRupees(5000));
     });
   });
+
+  group('auto-archiving a settled group', () {
+    test(
+      'once every member repays in full, the group and its members '
+      'auto-archive; the expense history that made it "settled" stays',
+      () async {
+        final cash = await cashId();
+        await seedCash(Money.fromRupees(5000));
+        final food = await catId(CategoryKind.expense, 'Food');
+        final (groupId, ram, shyam) = await seedGroup();
+
+        final expenseId = await db.addGroupExpense(
+          groupId: groupId,
+          amount: Money.fromRupees(900),
+          splitMethod: GroupSplitMethod.equal,
+          date: DateTime(2026, 7, 5),
+          accountId: cash,
+          categoryId: food,
+          participantIds: {null, ram, shyam},
+        );
+
+        var groups = await db.watchGroups().first;
+        expect(
+          groups.map((g) => g.id),
+          contains(groupId),
+          reason: 'still owed money — must stay visible',
+        );
+
+        // Both members pay me back in full.
+        await db.addPersonEntry(
+          personId: ram,
+          direction: PersonDirection.iOwe,
+          amount: Money.fromRupees(300),
+          date: DateTime(2026, 7, 20),
+        );
+        await db.addPersonEntry(
+          personId: shyam,
+          direction: PersonDirection.iOwe,
+          amount: Money.fromRupees(300),
+          date: DateTime(2026, 7, 20),
+        );
+
+        final activePersons = await db.watchPersons().first;
+        expect(
+          activePersons.map((p) => p.id),
+          isNot(anyOf(contains(ram), contains(shyam))),
+        );
+        final archivedPersons = await db.watchArchivedPersons().first;
+        expect(archivedPersons.map((p) => p.id), containsAll([ram, shyam]));
+
+        groups = await db.watchGroups().first;
+        expect(groups.map((g) => g.id), isNot(contains(groupId)));
+        final archivedGroups = await db.watchArchivedGroups().first;
+        expect(archivedGroups.map((g) => g.id), contains(groupId));
+
+        // The expense itself is history, not undone by the settlement.
+        final expense = await (db.select(
+          db.groupExpenses,
+        )..where((e) => e.id.equals(expenseId))).getSingleOrNull();
+        expect(expense, isNotNull);
+      },
+    );
+  });
 }

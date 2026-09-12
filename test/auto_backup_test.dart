@@ -84,6 +84,7 @@ void main() {
       venmoEnabled: true,
       cashappEnabled: true,
       revolutEnabled: true,
+      ussdPayEnabled: false,
       lockScreenStyle: LockScreenStyle.classic,
       unlockMethod: UnlockMethod.pin,
       pinUnlockEnabled: true,

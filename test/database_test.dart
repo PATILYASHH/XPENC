@@ -1072,6 +1072,55 @@ void main() {
       expect(await db.watchPersonBalance(ram).first, const Money.zero());
       expect(await balanceOf(cash), const Money.zero());
     });
+
+    test(
+      'settling back to zero auto-archives the person, but a fresh '
+      'person with no history yet is left alone',
+      () async {
+        final cash = await cashId();
+        final ram = await db.addPerson('Ram');
+        final freshPerson = await db.addPerson('Shyam');
+
+        var active = await db.watchPersons().first;
+        expect(active.map((p) => p.id), containsAll([ram, freshPerson]));
+
+        await db.addPersonEntry(
+          personId: ram,
+          direction: PersonDirection.theyOwe,
+          amount: Money.fromRupees(500),
+          date: DateTime(2026, 7, 8),
+          accountId: cash,
+        );
+        active = await db.watchPersons().first;
+        expect(
+          active.map((p) => p.id),
+          contains(ram),
+          reason: 'still owed money — must stay visible',
+        );
+
+        await db.addPersonEntry(
+          personId: ram,
+          direction: PersonDirection.iOwe,
+          amount: Money.fromRupees(500),
+          date: DateTime(2026, 7, 18),
+          accountId: cash,
+        );
+
+        active = await db.watchPersons().first;
+        expect(
+          active.map((p) => p.id),
+          isNot(contains(ram)),
+          reason: 'settled — should auto-archive out of the active list',
+        );
+        expect(
+          active.map((p) => p.id),
+          contains(freshPerson),
+          reason: 'never had any history — must not be swept up too',
+        );
+        final archived = await db.watchArchivedPersons().first;
+        expect(archived.map((p) => p.id), contains(ram));
+      },
+    );
   });
 
   group('payee — expense or income, free text', () {

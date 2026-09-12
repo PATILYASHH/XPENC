@@ -38,6 +38,7 @@ class SettingsScreen extends ConsumerWidget {
     final myCashapp = ref.watch(myCashappProvider);
     final myRevolut = ref.watch(myRevolutProvider);
     final upiEnabled = ref.watch(upiEnabledProvider);
+    final ussdPayEnabled = ref.watch(ussdPayEnabledProvider);
     final paypalEnabled = ref.watch(paypalEnabledProvider);
     final venmoEnabled = ref.watch(venmoEnabledProvider);
     final cashappEnabled = ref.watch(cashappEnabledProvider);
@@ -418,6 +419,26 @@ class SettingsScreen extends ConsumerWidget {
                   value: upiEnabled,
                   onChanged: (v) => ref.read(dbProvider).setUpiEnabled(v),
                 ),
+                if (upiEnabled) ...[
+                  Divider(height: 1, indent: 32, color: cs.outline),
+                  ListTile(
+                    contentPadding: const EdgeInsets.only(
+                      left: 32,
+                      right: 8,
+                    ),
+                    title: const Text('Pay without internet (Beta)'),
+                    subtitle: const Text(
+                      'Send via *99# USSD when you have no data — tap for '
+                      'how it works',
+                    ),
+                    onTap: () => _showUssdPayInfoSheet(context),
+                    trailing: Switch(
+                      value: ussdPayEnabled,
+                      onChanged: (v) =>
+                          ref.read(dbProvider).setUssdPayEnabled(v),
+                    ),
+                  ),
+                ],
                 Divider(height: 1, indent: 16, color: cs.outline),
                 SwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1041,6 +1062,73 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  /// Explains *99# before anyone turns the beta on: what it is, what XPENC
+  /// can and can't automate, and what actually happens when they use it.
+  Future<void> _showUssdPayInfoSheet(BuildContext context) {
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            bottom: MediaQuery.of(sheetContext).padding.bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Pay without internet (Beta)',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '*99# is NPCI\'s USSD banking service — it sends a UPI '
+                'payment over your SIM\'s signal alone, no data connection '
+                'needed, on almost any phone.',
+                style: theme.textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'XPENC can\'t read or answer the *99# menu for you — that '
+                'screen belongs to your phone\'s own dialer, not any app. '
+                'What this does instead:',
+                style: theme.textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '1. You enter who you\'re paying (UPI ID or phone number).\n'
+                '2. Copy it, then dial *99# — XPENC opens your dialer with '
+                'it ready to call.\n'
+                '3. You go through the menu yourself: Send Money → paste → '
+                'amount → UPI PIN.\n'
+                '4. Back in XPENC, log it as a normal transaction.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 20),
+              FilledButton(
+                onPressed: () => Navigator.of(sheetContext).pop(),
+                child: const Text('Got it'),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

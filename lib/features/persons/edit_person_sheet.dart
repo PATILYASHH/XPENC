@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show PlatformException;
+import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/database.dart';
 import '../../data/providers.dart';
 
-/// Opens the "edit person" bottom sheet. There is no add-time equivalent for
-/// these fields (`showAddPersonDialog` only collects a name) — this is the
-/// only place UPI ID/phone/contact/note ever get set.
+/// Opens the "edit person" bottom sheet.
 Future<void> showEditPersonSheet(
   BuildContext context,
   WidgetRef ref,
@@ -24,40 +24,45 @@ Future<void> showEditPersonSheet(
   );
 }
 
+/// Same sheet, in create mode — [showAddPersonDialog] in `persons_screen.dart`
+/// opens it with `person: null` so payment IDs can be filled in up front
+/// instead of only after the fact via edit.
 class EditPersonSheet extends ConsumerStatefulWidget {
   const EditPersonSheet({required this.person, super.key});
 
-  final PersonRow person;
+  final PersonRow? person;
 
   @override
   ConsumerState<EditPersonSheet> createState() => _EditPersonSheetState();
 }
 
 class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
-  late final _nameController = TextEditingController(text: widget.person.name);
+  late final _nameController = TextEditingController(
+    text: widget.person?.name ?? '',
+  );
   late final _contactController = TextEditingController(
-    text: widget.person.contact ?? '',
+    text: widget.person?.contact ?? '',
   );
   late final _noteController = TextEditingController(
-    text: widget.person.note ?? '',
+    text: widget.person?.note ?? '',
   );
   late final _upiIdController = TextEditingController(
-    text: widget.person.upiId ?? '',
+    text: widget.person?.upiId ?? '',
   );
   late final _paypalController = TextEditingController(
-    text: widget.person.paypal ?? '',
+    text: widget.person?.paypal ?? '',
   );
   late final _venmoController = TextEditingController(
-    text: widget.person.venmo ?? '',
+    text: widget.person?.venmo ?? '',
   );
   late final _cashappController = TextEditingController(
-    text: widget.person.cashapp ?? '',
+    text: widget.person?.cashapp ?? '',
   );
   late final _revolutController = TextEditingController(
-    text: widget.person.revolut ?? '',
+    text: widget.person?.revolut ?? '',
   );
   late final _phoneController = TextEditingController(
-    text: widget.person.phone ?? '',
+    text: widget.person?.phone ?? '',
   );
 
   bool _saving = false;
@@ -82,6 +87,25 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
+  /// Hands off to the OS's own contact picker rather than reading the
+  /// address book into the app — no `READ_CONTACTS` permission, no Play
+  /// Data Safety entry, nothing for XPENC to ever store or leak. The
+  /// trade-off: only `displayName` comes back on Android without that
+  /// permission, so phone number still has to be typed in by hand.
+  Future<void> _pickFromContacts() async {
+    try {
+      final contact = await FlutterContacts.native.showPicker();
+      if (contact == null || !mounted) return;
+      final name = contact.displayName;
+      if (name != null && name.isNotEmpty) {
+        _nameController.text = name;
+      }
+    } on PlatformException {
+      if (!mounted) return;
+      _showError("Couldn't open contacts.");
+    }
+  }
+
   Future<void> _save() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
@@ -90,20 +114,34 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
     }
 
     setState(() => _saving = true);
-    await ref
-        .read(dbProvider)
-        .updatePerson(
-          id: widget.person.id,
-          name: name,
-          contact: _contactController.text.trim().nullIfEmpty,
-          note: _noteController.text.trim().nullIfEmpty,
-          upiId: _upiIdController.text.trim().nullIfEmpty,
-          phone: _phoneController.text.trim().nullIfEmpty,
-          paypal: _paypalController.text.trim().nullIfEmpty,
-          venmo: _venmoController.text.trim().nullIfEmpty,
-          cashapp: _cashappController.text.trim().nullIfEmpty,
-          revolut: _revolutController.text.trim().nullIfEmpty,
-        );
+    final person = widget.person;
+    final db = ref.read(dbProvider);
+    if (person == null) {
+      await db.addPerson(
+        name,
+        contact: _contactController.text.trim().nullIfEmpty,
+        note: _noteController.text.trim().nullIfEmpty,
+        upiId: _upiIdController.text.trim().nullIfEmpty,
+        phone: _phoneController.text.trim().nullIfEmpty,
+        paypal: _paypalController.text.trim().nullIfEmpty,
+        venmo: _venmoController.text.trim().nullIfEmpty,
+        cashapp: _cashappController.text.trim().nullIfEmpty,
+        revolut: _revolutController.text.trim().nullIfEmpty,
+      );
+    } else {
+      await db.updatePerson(
+        id: person.id,
+        name: name,
+        contact: _contactController.text.trim().nullIfEmpty,
+        note: _noteController.text.trim().nullIfEmpty,
+        upiId: _upiIdController.text.trim().nullIfEmpty,
+        phone: _phoneController.text.trim().nullIfEmpty,
+        paypal: _paypalController.text.trim().nullIfEmpty,
+        venmo: _venmoController.text.trim().nullIfEmpty,
+        cashapp: _cashappController.text.trim().nullIfEmpty,
+        revolut: _revolutController.text.trim().nullIfEmpty,
+      );
+    }
     if (!mounted) return;
     Navigator.of(context).pop();
   }
@@ -138,7 +176,7 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Edit person',
+              widget.person == null ? 'Add person' : 'Edit person',
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
@@ -147,11 +185,19 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
 
             TextField(
               controller: _nameController,
+              autofocus: widget.person == null,
               textCapitalization: TextCapitalization.words,
               textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Name',
-                hintText: 'e.g. Rahul',
+                hintText: 'e.g. Yash',
+                suffixIcon: widget.person == null
+                    ? IconButton(
+                        tooltip: 'Pick from contacts',
+                        icon: const Icon(Icons.contacts_outlined),
+                        onPressed: _pickFromContacts,
+                      )
+                    : null,
               ),
             ),
             const SizedBox(height: 16),
@@ -276,7 +322,7 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
                       width: 22,
                       child: CircularProgressIndicator(strokeWidth: 2.4),
                     )
-                  : const Text('Save'),
+                  : Text(widget.person == null ? 'Add' : 'Save'),
             ),
           ],
         ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/tables.dart';
+import '../money.dart';
 import '../../features/about/about_screen.dart';
 import '../../features/more/whats_new_screen.dart';
 import '../../features/accounts/account_detail_screen.dart';
@@ -28,6 +29,7 @@ import '../../features/more/more_screen.dart';
 import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/payees/payee_detail_screen.dart';
 import '../../features/payees/payees_screen.dart';
+import '../../features/payments/ussd_pay_screen.dart';
 import '../../features/persons/add_group_expense_screen.dart';
 import '../../features/persons/archived_persons_screen.dart';
 import '../../features/persons/group_detail_screen.dart';
@@ -453,12 +455,25 @@ final appRouter = GoRouter(
           'income' => TxType.income,
           _ => null,
         };
+        // Only the "Pay without internet" (*99#) flow sends these — it hands
+        // off what it already collected instead of making the user retype
+        // it. `amount` is a plain rupee decimal string, same shape as
+        // UpiLauncher's `am` param.
+        final payee = state.uri.queryParameters['payee'];
+        final note = state.uri.queryParameters['note'];
+        final amountText = state.uri.queryParameters['amount'];
+        final amount = amountText == null
+            ? null
+            : Money.fromRupees(double.tryParse(amountText) ?? 0);
         return AddTransactionScreen(
           transactionId: id == null ? null : int.tryParse(id),
           duplicateFromId: duplicateId == null
               ? null
               : int.tryParse(duplicateId),
           initialType: type,
+          initialPayee: payee,
+          initialNote: note,
+          initialAmount: amount,
         );
       },
     ),
@@ -503,6 +518,12 @@ final appRouter = GoRouter(
       path: '/persons/archived',
       parentNavigatorKey: _rootKey,
       builder: (_, _) => const ArchivedPersonsScreen(),
+    ),
+
+    GoRoute(
+      path: '/persons/ussd-pay',
+      parentNavigatorKey: _rootKey,
+      builder: (_, _) => const UssdPayScreen(),
     ),
 
     GoRoute(
