@@ -135,7 +135,7 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
           ? FloatingActionButton(
               tooltip: 'Pay without internet',
               onPressed: () => context.push('/persons/ussd-pay'),
-              child: const Icon(Icons.dialpad_rounded),
+              child: const Icon(Icons.send_rounded),
             )
           : null,
     );

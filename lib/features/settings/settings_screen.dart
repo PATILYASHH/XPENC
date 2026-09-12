@@ -1111,8 +1111,8 @@ class SettingsScreen extends ConsumerWidget {
               const SizedBox(height: 8),
               Text(
                 '1. You enter who you\'re paying (UPI ID or phone number).\n'
-                '2. Copy it, then dial *99# — XPENC opens your dialer with '
-                'it ready to call.\n'
+                '2. Tap Dial *99# — XPENC copies it and opens your dialer, '
+                'ready to call.\n'
                 '3. You go through the menu yourself: Send Money → paste → '
                 'amount → UPI PIN.\n'
                 '4. Back in XPENC, log it as a normal transaction.',

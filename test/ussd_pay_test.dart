@@ -61,7 +61,7 @@ void main() {
     ) async {
       await pump(tester, const PersonsScreen());
       expect(tester.takeException(), isNull);
-      expect(find.byIcon(Icons.dialpad_rounded), findsNothing);
+      expect(find.byIcon(Icons.send_rounded), findsNothing);
       await unmount(tester);
     });
 
@@ -71,7 +71,7 @@ void main() {
       await tester.runAsync(() => db.setUssdPayEnabled(true));
       await pump(tester, const PersonsScreen());
       expect(tester.takeException(), isNull);
-      expect(find.byIcon(Icons.dialpad_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.send_rounded), findsOneWidget);
       await unmount(tester);
     });
   });
@@ -83,7 +83,7 @@ void main() {
         await pump(tester, const UssdPayScreen());
         expect(tester.takeException(), isNull);
 
-        await tester.tap(find.text('Log this payment'));
+        await tester.tap(find.text('Log payment'));
         await tester.pump();
 
         expect(find.text('Enter who you paid first.'), findsOneWidget);
@@ -124,6 +124,72 @@ void main() {
     });
 
     testWidgets(
+      'Dial *99# copies the ID first, same as a separate Copy ID tap would',
+      (tester) async {
+        String? clipboardText;
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          (call) async {
+            if (call.method == 'Clipboard.setData') {
+              clipboardText = (call.arguments as Map)['text'] as String?;
+            }
+            return null;
+          },
+        );
+        addTearDown(
+          () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            SystemChannels.platform,
+            null,
+          ),
+        );
+
+        await pump(tester, const UssdPayScreen());
+        expect(tester.takeException(), isNull);
+
+        await tester.enterText(find.byType(TextField).first, 'shop@okaxis');
+        await tester.ensureVisible(find.text('Dial *99#'));
+        await tester.tap(find.text('Dial *99#'));
+        await tester.pump();
+
+        expect(clipboardText, 'shop@okaxis');
+        await unmount(tester);
+      },
+    );
+
+    testWidgets(
+      'Dialing with no ID entered warns instead of copying or dialing',
+      (tester) async {
+        String? clipboardText;
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          (call) async {
+            if (call.method == 'Clipboard.setData') {
+              clipboardText = (call.arguments as Map)['text'] as String?;
+            }
+            return null;
+          },
+        );
+        addTearDown(
+          () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            SystemChannels.platform,
+            null,
+          ),
+        );
+
+        await pump(tester, const UssdPayScreen());
+        expect(tester.takeException(), isNull);
+
+        await tester.ensureVisible(find.text('Dial *99#'));
+        await tester.tap(find.text('Dial *99#'));
+        await tester.pump();
+
+        expect(find.text('Enter who you paid first.'), findsOneWidget);
+        expect(clipboardText, isNull);
+        await unmount(tester);
+      },
+    );
+
+    testWidgets(
       'logging the payment hands off a plain expense — payee, note and '
       'amount carried over, nothing routed through a Person',
       (tester) async {
@@ -159,7 +225,7 @@ void main() {
 
         await tester.enterText(find.byType(TextField).first, 'shop@okaxis');
         await tester.enterText(find.byType(TextField).last, '250');
-        await tester.tap(find.text('Log this payment'));
+        await tester.tap(find.text('Log payment'));
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 500));
 

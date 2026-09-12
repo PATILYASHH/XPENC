@@ -60,12 +60,30 @@ class _UssdPayScreenState extends State<UssdPayScreen> {
       ..showSnackBar(const SnackBar(content: Text('Copied')));
   }
 
-  /// `tel:*99%23` — the `#` must stay percent-encoded or it's parsed as a
-  /// URI fragment separator, not part of the number. Opens the dialer with
-  /// the code ready to call (`ACTION_DIAL`); it never places the call
-  /// itself, so no `CALL_PHONE` permission is needed.
+  /// Copies the ID first — same as tapping "Copy ID" separately — so the
+  /// USSD menu's paste step is ready the moment the dialer opens, no extra
+  /// tap needed. `tel:*99%23`'s `#` must stay percent-encoded or it's
+  /// parsed as a URI fragment separator, not part of the number. Opens the
+  /// dialer with the code ready to call (`ACTION_DIAL`); it never places
+  /// the call itself, so no `CALL_PHONE` permission is needed.
   Future<void> _dial() async {
     final messenger = ScaffoldMessenger.of(context);
+    if (_id.isEmpty) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              _idKind == _IdKind.upiId
+                  ? 'Enter who you paid first.'
+                  : 'Enter their phone number first.',
+            ),
+          ),
+        );
+      return;
+    }
+    await Clipboard.setData(ClipboardData(text: _id));
+
     var opened = false;
     try {
       opened = await launchUrl(
@@ -183,9 +201,10 @@ class _UssdPayScreenState extends State<UssdPayScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '1. Copy the ID below.\n'
-                        '2. Dial *99# — your phone\'s own USSD menu takes '
-                        'over from here (XPENC can\'t read or answer it).\n'
+                        '1. Tap Dial *99# below — it copies the ID above and '
+                        'opens the dialer in one go.\n'
+                        '2. Your phone\'s own USSD menu takes over from here '
+                        '(XPENC can\'t read or answer it).\n'
                         '3. Choose Send Money → paste the ID → enter the '
                         'amount → enter your UPI PIN.\n'
                         '4. Come back here and log what you paid.',
@@ -210,19 +229,20 @@ class _UssdPayScreenState extends State<UssdPayScreen> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: FilledButton.icon(
-                      onPressed: _dial,
-                      icon: const Icon(Icons.dialpad_rounded),
-                      label: const Text('Dial *99#'),
+                    child: OutlinedButton.icon(
+                      onPressed: _logPayment,
+                      icon: const Icon(Icons.check_circle_outline_rounded),
+                      label: const Text('Log payment'),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 24),
 
-              FilledButton.tonal(
-                onPressed: _logPayment,
-                child: const Text('Log this payment'),
+              FilledButton.icon(
+                onPressed: _dial,
+                icon: const Icon(Icons.send_rounded),
+                label: const Text('Dial *99#'),
               ),
             ],
           ),
