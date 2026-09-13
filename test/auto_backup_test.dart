@@ -222,6 +222,31 @@ void main() {
       );
     });
 
+    test(
+      'GitHub #123: accepts a pure hours-only interval — 0 days is not a '
+      'placeholder that has to be bumped to at least 1',
+      () async {
+        await db.setAutoBackupSettings(
+          enabled: true,
+          frequency: AutoBackupFrequency.custom,
+          customDays: 0,
+          customHours: 12,
+          retentionDays: 8,
+        );
+        final s = await db.getSettings();
+        expect(s.autoBackupCustomDays, 0);
+        expect(s.autoBackupCustomHours, 12);
+        expect(
+          autoBackupInterval(
+            frequency: s.autoBackupFrequency,
+            customDays: s.autoBackupCustomDays,
+            customHours: s.autoBackupCustomHours,
+          ),
+          const Duration(hours: 12),
+        );
+      },
+    );
+
     test('accepts a custom interval right at the retention boundary', () async {
       await db.setAutoBackupSettings(
         enabled: true,

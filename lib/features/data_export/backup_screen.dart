@@ -511,7 +511,7 @@ class _AutoBackupSettingsSheetState
   late bool _enabled = widget.current.enabled;
   late AutoBackupFrequency _frequency = widget.current.frequency;
   late final _daysCtrl = TextEditingController(
-    text: '${widget.current.customDays == 0 ? 1 : widget.current.customDays}',
+    text: '${widget.current.customDays}',
   );
   late final _hoursCtrl = TextEditingController(
     text: '${widget.current.customHours}',
@@ -534,6 +534,13 @@ class _AutoBackupSettingsSheetState
 
   bool _retentionAllowed(int days) =>
       days == 0 || Duration(days: days) >= _interval;
+
+  /// Days and hours are independent — 0 days plus some hours is a perfectly
+  /// good hours-only interval (e.g. every 12 hours), not a placeholder that
+  /// needs bumping to 1. The only real constraint is that *some* time has
+  /// to pass between backups.
+  bool get _customIntervalValid =>
+      _frequency != AutoBackupFrequency.custom || _interval > Duration.zero;
 
   Future<void> _save() async {
     final messenger = ScaffoldMessenger.of(context);
@@ -660,6 +667,18 @@ class _AutoBackupSettingsSheetState
                     ),
                   ],
                 ),
+                const SizedBox(height: 6),
+                Text(
+                  _customIntervalValid
+                      ? 'Leave Days at 0 for an hours-only interval — e.g. '
+                            '0 days, 12 hours backs up twice a day.'
+                      : 'Set at least one of Days or Hours above zero.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: _customIntervalValid
+                        ? cs.onSurfaceVariant
+                        : cs.error,
+                  ),
+                ),
               ],
               const SizedBox(height: 20),
               _label(theme, 'KEEP BACKUPS FOR'),
@@ -691,7 +710,10 @@ class _AutoBackupSettingsSheetState
             const SizedBox(height: 24),
             FilledButton(
               onPressed:
-                  _saving || (_enabled && !_retentionAllowed(_retentionDays))
+                  _saving ||
+                      (_enabled &&
+                          (!_retentionAllowed(_retentionDays) ||
+                              !_customIntervalValid))
                   ? null
                   : _save,
               child: _saving
