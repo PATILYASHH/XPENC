@@ -18,6 +18,7 @@ import '../accounts/envelope_outflow.dart';
 import '../settings/currency_picker_sheet.dart';
 import '../tags/tag_picker_sheet.dart';
 import 'amount_buffer.dart';
+import 'date_time_combine.dart';
 import 'receipt_storage.dart';
 
 /// One editable row of a split expense: which category, and how much of the
@@ -624,7 +625,21 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       lastDate: DateTime(2100),
     );
     if (picked == null || !mounted) return;
-    setState(() => _date = picked);
+    setState(
+      () => _date = combineDateAndTime(picked, TimeOfDay.fromDateTime(_date)),
+    );
+  }
+
+  /// Optional — most transactions never need this touched at all. Lets
+  /// someone correct the exact time when they log an expense later than it
+  /// actually happened (GitHub #124), without needing to re-pick the date.
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_date),
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _date = combineDateAndTime(_date, picked));
   }
 
   // ── Receipt photo ────────────────────────────────────────────────────────
@@ -1930,15 +1945,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     }
 
     tiles.add(const SizedBox(height: 12));
-    tiles.add(
-      _pickerTile(
-        icon: Icons.event_outlined,
-        label: 'Date',
-        value: DateFormat('d MMM yyyy').format(_date),
-        selected: true,
-        onTap: _pickDate,
-      ),
-    );
+    tiles.add(_dateTile());
     if (_type == TxType.expense || _type == TxType.income) {
       tiles.add(const SizedBox(height: 12));
       tiles.add(_payeeCard());
@@ -1946,6 +1953,45 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     tiles.add(const SizedBox(height: 12));
     tiles.add(_noteCard());
     return tiles;
+  }
+
+  /// Like [_pickerTile], but with a second, independent tap target: the
+  /// clock icon opens [_pickTime] without disturbing the date, while the
+  /// rest of the card still opens [_pickDate] — same card, two pickers,
+  /// so adjusting one never has to go through the other (GitHub #124).
+  Widget _dateTile() {
+    final theme = Theme.of(context);
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: ListTile(
+        onTap: _pickDate,
+        leading: Icon(
+          Icons.event_outlined,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+        title: Text(
+          'Date',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        subtitle: Text(
+          DateFormat('d MMM yyyy, h:mm a').format(_date),
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: theme.colorScheme.onSurface,
+          ),
+        ),
+        trailing: IconButton(
+          tooltip: 'Change time',
+          icon: Icon(
+            Icons.access_time_rounded,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          onPressed: _pickTime,
+        ),
+      ),
+    );
   }
 
   Widget _pickerTile({
