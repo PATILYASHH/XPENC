@@ -3,8 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/app_icons.dart';
+import '../../core/iso_week.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+
+/// Which widget the "Date range" section shows — a plain range picker, or a
+/// week-at-a-time stepper (GitHub #121). Local to the sheet: neither
+/// [TransactionFilters] nor the rest of the app needs to know how a range
+/// was chosen, only what it resolved to.
+enum _DateFilterMode { custom, week }
 
 /// Snapshot of every advanced filter the tune sheet can set — date range,
 /// account, category, tag. Shared between the top bar (which owns the button
@@ -49,6 +56,14 @@ class _TransactionFiltersSheetState
   final Set<int> _categoryIds = {};
   final Set<int> _tagIds = {};
 
+  _DateFilterMode _dateMode = _DateFilterMode.custom;
+
+  /// Which week the stepper is showing — independent of [_dateRange], since
+  /// that may be null or a custom multi-week range. Stepping (or first
+  /// switching into week mode) always writes its result straight into
+  /// [_dateRange], same as picking a custom range does.
+  late DateTime _weekAnchor = _dateRange?.start ?? DateTime.now();
+
   @override
   void initState() {
     super.initState();
@@ -70,9 +85,26 @@ class _TransactionFiltersSheetState
     setState(() => _dateRange = picked);
   }
 
+  void _setDateMode(_DateFilterMode mode) {
+    setState(() {
+      _dateMode = mode;
+      if (mode == _DateFilterMode.week) {
+        _dateRange = weekRangeContaining(_weekAnchor);
+      }
+    });
+  }
+
+  void _stepWeek(int weeks) {
+    setState(() {
+      _weekAnchor = _weekAnchor.add(Duration(days: 7 * weeks));
+      _dateRange = weekRangeContaining(_weekAnchor);
+    });
+  }
+
   void _clearAll() {
     setState(() {
       _dateRange = null;
+      _dateMode = _DateFilterMode.custom;
       _accountIds.clear();
       _categoryIds.clear();
       _tagIds.clear();
@@ -135,21 +167,70 @@ class _TransactionFiltersSheetState
                   children: [
                     _sectionLabel(theme, 'Date range'),
                     const SizedBox(height: 10),
-                    OutlinedButton.icon(
-                      onPressed: _pickDateRange,
-                      icon: const Icon(Icons.event_outlined, size: 18),
-                      label: Text(
-                        _dateRange == null
-                            ? 'Any time'
-                            : '${DateFormat('d MMM yyyy').format(_dateRange!.start)} '
-                                  '– ${DateFormat('d MMM yyyy').format(_dateRange!.end)}',
+                    SizedBox(
+                      width: double.infinity,
+                      child: SegmentedButton<_DateFilterMode>(
+                        segments: const [
+                          ButtonSegment(
+                            value: _DateFilterMode.custom,
+                            label: Text('Custom range'),
+                          ),
+                          ButtonSegment(
+                            value: _DateFilterMode.week,
+                            label: Text('Week'),
+                          ),
+                        ],
+                        selected: {_dateMode},
+                        showSelectedIcon: false,
+                        onSelectionChanged: (s) => _setDateMode(s.first),
                       ),
                     ),
+                    const SizedBox(height: 10),
+                    if (_dateMode == _DateFilterMode.custom) ...[
+                      OutlinedButton.icon(
+                        onPressed: _pickDateRange,
+                        icon: const Icon(Icons.event_outlined, size: 18),
+                        label: Text(
+                          _dateRange == null
+                              ? 'Any time'
+                              : '${DateFormat('d MMM yyyy').format(_dateRange!.start)} '
+                                    '– ${DateFormat('d MMM yyyy').format(_dateRange!.end)}',
+                        ),
+                      ),
+                    ] else
+                      Row(
+                        children: [
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => _stepWeek(-1),
+                            icon: const Icon(Icons.chevron_left_rounded),
+                            tooltip: 'Previous week',
+                          ),
+                          Expanded(
+                            child: Text(
+                              weekLabel(_weekAnchor),
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => _stepWeek(1),
+                            icon: const Icon(Icons.chevron_right_rounded),
+                            tooltip: 'Next week',
+                          ),
+                        ],
+                      ),
                     if (_dateRange != null)
                       Align(
                         alignment: Alignment.centerLeft,
                         child: TextButton(
-                          onPressed: () => setState(() => _dateRange = null),
+                          onPressed: () => setState(() {
+                            _dateRange = null;
+                            _dateMode = _DateFilterMode.custom;
+                          }),
                           child: const Text('Clear date range'),
                         ),
                       ),
