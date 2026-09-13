@@ -4,9 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/branding/app_info.dart';
 import '../../core/branding/brand_mark.dart';
+import '../../core/budget_cycle.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart' show UnlockMethod;
+import 'budget_start_day_sheet.dart';
 import 'lock_screen_style_sheet.dart';
 import 'master_phrase_attempts_sheet.dart';
 import 'more_screen_layout_sheet.dart';
@@ -56,6 +58,7 @@ class SettingsScreen extends ConsumerWidget {
     final lockScreenStyle = ref.watch(lockScreenStyleProvider);
     final moreScreenViewMode = ref.watch(moreScreenViewModeProvider);
     final rtaEnabled = ref.watch(rtaEnabledProvider);
+    final budgetStartDay = ref.watch(budgetStartDayProvider);
     final hasMasterPhrase = ref.watch(hasMasterPhraseProvider);
     final masterPhraseAttemptThreshold = ref.watch(
       masterPhraseAttemptThresholdProvider,
@@ -203,23 +206,44 @@ class SettingsScreen extends ConsumerWidget {
           // ── Budgeting ──────────────────────────────────────────────────────
           _sectionLabel(context, 'Budgeting'),
           Card(
-            child: SwitchListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              secondary: const Icon(Icons.savings_outlined),
-              title: const Text('Ready to Assign'),
-              subtitle: Text(
-                'Budget (a spending ceiling per category) is always on. '
-                'Ready to Assign adds an optional layer on top: assign the '
-                'money you actually have into categories first, pooled '
-                'across every on-budget account. Turning this on enrolls '
-                'every account at once — opt individual ones out from '
-                'their own Account Detail screen.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
+            child: Column(
+              children: [
+                SwitchListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  secondary: const Icon(Icons.savings_outlined),
+                  title: const Text('Ready to Assign'),
+                  subtitle: Text(
+                    'Budget (a spending ceiling per category) is always on. '
+                    'Ready to Assign adds an optional layer on top: assign '
+                    'the money you actually have into categories first, '
+                    'pooled across every on-budget account. Turning this on '
+                    'enrolls every account at once — opt individual ones '
+                    'out from their own Account Detail screen.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  value: rtaEnabled,
+                  onChanged: (v) => _onRtaToggle(context, ref, v),
                 ),
-              ),
-              value: rtaEnabled,
-              onChanged: (v) => _onRtaToggle(context, ref, v),
+                Divider(height: 1, indent: 16, color: cs.outline),
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  leading: const Icon(Icons.event_repeat_outlined),
+                  title: const Text('Budget cycle start day'),
+                  subtitle: Text(
+                    budgetStartDay == 1
+                        ? '1st of the month — an ordinary calendar month'
+                        : '${ordinalDay(budgetStartDay)} of the month, e.g. '
+                              'a payday-anchored cycle',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => BudgetStartDaySheet.show(context),
+                ),
+              ],
             ),
           ),
 

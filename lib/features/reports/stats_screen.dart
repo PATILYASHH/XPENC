@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/budget_cycle.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/error_view.dart';
@@ -50,6 +51,7 @@ class StatsScreen extends ConsumerWidget {
         _PeriodStepper(
           month: month,
           showYear: showYear,
+          startDay: ref.watch(budgetStartDayProvider),
           onShift: (delta) =>
               ref.read(selectedMonthProvider.notifier).state = showYear
               ? DateTime(month.year + delta, month.month)
@@ -135,12 +137,14 @@ Future<void> _downloadReport(
     periodLabel = '${month.year}';
     fileSuffix = '${month.year}';
   } else {
-    start = DateTime(month.year, month.month);
-    end = DateTime(
-      month.year,
-      month.month + 1,
-    ).subtract(const Duration(milliseconds: 1));
-    periodLabel = DateFormat('MMMM yyyy').format(month);
+    final startDay = ref.read(budgetStartDayProvider);
+    final period = budgetPeriodFor(month, startDay);
+    start = period.start;
+    end = period.end;
+    periodLabel = startDay == 1
+        ? DateFormat('MMMM yyyy').format(month)
+        : '${DateFormat('MMMM yyyy').format(month)} '
+              '(${budgetPeriodRangeLabel(month, startDay)})';
     fileSuffix = '${month.year}-${month.month.toString().padLeft(2, '0')}';
   }
 
@@ -363,11 +367,13 @@ class _PeriodStepper extends StatelessWidget {
   const _PeriodStepper({
     required this.month,
     required this.showYear,
+    required this.startDay,
     required this.onShift,
   });
 
   final DateTime month;
   final bool showYear;
+  final int startDay;
   final ValueChanged<int> onShift;
 
   @override
@@ -381,12 +387,27 @@ class _PeriodStepper extends StatelessWidget {
           onPressed: () => onShift(-1),
         ),
         Expanded(
-          child: Text(
-            showYear ? '${month.year}' : DateFormat('MMMM yyyy').format(month),
-            textAlign: TextAlign.center,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                showYear
+                    ? '${month.year}'
+                    : DateFormat('MMMM yyyy').format(month),
+                textAlign: TextAlign.center,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (!showYear && startDay != 1)
+                Text(
+                  budgetPeriodRangeLabel(month, startDay),
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+            ],
           ),
         ),
         IconButton(

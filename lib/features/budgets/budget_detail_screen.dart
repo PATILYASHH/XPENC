@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/budget_cycle.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/money_text.dart';
@@ -32,6 +33,7 @@ class BudgetDetailScreen extends ConsumerWidget {
     final catColor = Color(category.colorValue);
     final month = ref.watch(selectedMonthProvider);
     final periodLabel = DateFormat('MMMM yyyy').format(month);
+    final startDay = ref.watch(budgetStartDayProvider);
 
     final progress = ref
         .watch(budgetProgressProvider)
@@ -71,6 +73,9 @@ class BudgetDetailScreen extends ConsumerWidget {
           _SummaryCard(
             color: catColor,
             periodLabel: periodLabel,
+            periodRangeLabel: startDay == 1
+                ? null
+                : budgetPeriodRangeLabel(month, startDay),
             progress: progress,
             rtaOn: rtaOn,
             fundingState: fundingState,
@@ -116,6 +121,7 @@ class BudgetDetailScreen extends ConsumerWidget {
       final file = await service.writeCategoryStatementPdf(
         categoryId: categoryId,
         month: month,
+        startDay: ref.read(budgetStartDayProvider),
       );
       await service.share(file, subject: 'Budget statement');
       if (!context.mounted) return;
@@ -139,6 +145,7 @@ class _SummaryCard extends StatelessWidget {
   const _SummaryCard({
     required this.color,
     required this.periodLabel,
+    this.periodRangeLabel,
     required this.progress,
     required this.rtaOn,
     required this.fundingState,
@@ -146,6 +153,10 @@ class _SummaryCard extends StatelessWidget {
 
   final Color color;
   final String periodLabel;
+
+  /// The exact date range, e.g. "15 Sep – 14 Oct" — only passed once a
+  /// payday-anchored cycle is on; null keeps this card exactly as it was.
+  final String? periodRangeLabel;
   final BudgetProgress? progress;
   final bool rtaOn;
   final CategoryFundingState? fundingState;
@@ -168,6 +179,13 @@ class _SummaryCard extends StatelessWidget {
                 color: cs.onSurfaceVariant,
               ),
             ),
+            if (periodRangeLabel != null)
+              Text(
+                periodRangeLabel!,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
             const SizedBox(height: 16),
             if (p == null)
               Text(

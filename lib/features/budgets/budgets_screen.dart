@@ -199,7 +199,10 @@ class BudgetsScreen extends ConsumerWidget {
       ..hideCurrentSnackBar()
       ..showSnackBar(const SnackBar(content: Text('Generating statement...')));
     try {
-      final file = await service.writeBudgetStatementPdf(month);
+      final file = await service.writeBudgetStatementPdf(
+        month,
+        ref.read(budgetStartDayProvider),
+      );
       await service.share(file, subject: 'Budget statement');
       if (!context.mounted) return;
       messenger

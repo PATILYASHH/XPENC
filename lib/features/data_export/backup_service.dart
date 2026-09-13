@@ -436,9 +436,10 @@ class BackupService {
     return file;
   }
 
-  /// Planned vs. actual for every budgeted category in [month].
-  Future<File> writeBudgetStatementPdf(DateTime month) async {
-    final lines = await _db.budgetStatement(month);
+  /// Planned vs. actual for every budgeted category in [month]'s period
+  /// (see [startDay]).
+  Future<File> writeBudgetStatementPdf(DateTime month, int startDay) async {
+    final lines = await _db.budgetStatement(month, startDay);
     final bytes = await buildBudgetStatementPdf(month: month, lines: lines);
     final dir = await getApplicationDocumentsDirectory();
     final file = File(
@@ -449,15 +450,17 @@ class BackupService {
     return file;
   }
 
-  /// One category's budget line plus every expense in it for [month] — the
-  /// download action on the Budget Detail page.
+  /// One category's budget line plus every expense in it for [month]'s
+  /// period (see [startDay]) — the download action on the Budget Detail page.
   Future<File> writeCategoryStatementPdf({
     required int categoryId,
     required DateTime month,
+    required int startDay,
   }) async {
     final statement = await _db.categoryStatement(
       categoryId: categoryId,
       month: month,
+      startDay: startDay,
     );
     final bytes = await buildCategoryStatementPdf(
       month: month,

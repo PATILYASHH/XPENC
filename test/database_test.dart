@@ -160,7 +160,7 @@ void main() {
         date: DateTime(2026, 7, 5),
       );
 
-      final totals = await db.watchMonthTotals(DateTime(2026, 7)).first;
+      final totals = await db.watchMonthTotals(DateTime(2026, 7), 1).first;
       expect(totals.income, const Money.zero());
       expect(totals.expense, const Money.zero());
     });
@@ -1040,7 +1040,7 @@ void main() {
         reason: '+ means they owe you',
       );
 
-      final totals = await db.watchMonthTotals(DateTime(2026, 7)).first;
+      final totals = await db.watchMonthTotals(DateTime(2026, 7), 1).first;
       expect(
         totals.expense,
         const Money.zero(),
@@ -2335,7 +2335,7 @@ void main() {
         date: DateTime(2026, 7, 12),
       );
 
-      final lines = await db.budgetStatement(DateTime(2026, 7, 1));
+      final lines = await db.budgetStatement(DateTime(2026, 7, 1), 1);
       final line = lines.firstWhere((l) => l.category.id == food);
       expect(line.budgeted, Money.fromRupees(5000));
       expect(
@@ -2346,7 +2346,7 @@ void main() {
     });
 
     test('a category with no budget does not appear', () async {
-      final lines = await db.budgetStatement(DateTime(2026, 7, 1));
+      final lines = await db.budgetStatement(DateTime(2026, 7, 1), 1);
       expect(lines, isEmpty);
     });
   });

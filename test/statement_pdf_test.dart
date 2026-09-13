@@ -120,7 +120,7 @@ void main() {
       date: DateTime(2026, 7, 5),
     );
 
-    final lines = await db.budgetStatement(DateTime(2026, 7, 1));
+    final lines = await db.budgetStatement(DateTime(2026, 7, 1), 1);
     final bytes = await buildBudgetStatementPdf(
       month: DateTime(2026, 7, 1),
       lines: lines,
@@ -129,7 +129,7 @@ void main() {
   });
 
   test('budget statement PDF renders with no budgets set', () async {
-    final lines = await db.budgetStatement(DateTime(2026, 7, 1));
+    final lines = await db.budgetStatement(DateTime(2026, 7, 1), 1);
     final bytes = await buildBudgetStatementPdf(
       month: DateTime(2026, 7, 1),
       lines: lines,
@@ -169,6 +169,7 @@ void main() {
     final statement = await db.categoryStatement(
       categoryId: food.id,
       month: DateTime(2026, 7, 1),
+      startDay: 1,
     );
     expect(statement.spent, Money.fromRupees(700));
     expect(statement.lines, hasLength(2));
@@ -188,6 +189,7 @@ void main() {
     final statement = await db.categoryStatement(
       categoryId: food.id,
       month: DateTime(2026, 7, 1),
+      startDay: 1,
     );
     final bytes = await buildCategoryStatementPdf(
       month: DateTime(2026, 7, 1),

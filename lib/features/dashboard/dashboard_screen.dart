@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/app_icons.dart';
+import '../../core/budget_cycle.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/theme_preset.dart';
@@ -627,6 +628,7 @@ class _ThisMonthCardState extends ConsumerState<_ThisMonthCard> {
     final theme = Theme.of(context);
     final month = ref.watch(selectedMonthProvider);
     final totals = ref.watch(monthTotalsProvider);
+    final startDay = ref.watch(budgetStartDayProvider);
 
     return Padding(
       padding: _sectionPad,
@@ -647,12 +649,28 @@ class _ThisMonthCardState extends ConsumerState<_ThisMonthCard> {
                         ).animate(animation),
                         child: FadeTransition(opacity: animation, child: child),
                       ),
-                      child: Text(
-                        DateFormat('MMMM yyyy').format(month),
+                      child: Column(
                         key: ValueKey(month),
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            DateFormat('MMMM yyyy').format(month),
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          // Only shown once someone's opted into a
+                          // payday-anchored cycle — "September 2026" alone
+                          // would otherwise misleadingly suggest the 1st.
+                          if (startDay != 1)
+                            Text(
+                              budgetPeriodRangeLabel(month, startDay),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ),

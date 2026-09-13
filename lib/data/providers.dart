@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/budget_cycle.dart';
 import '../core/currency.dart';
 import '../core/home_widget/home_widget_service.dart';
 import '../core/money.dart';
@@ -118,16 +119,20 @@ final allTransactionsProvider = StreamProvider<List<TransactionRow>>(
   (ref) => ref.watch(dbProvider).watchTransactions(),
 );
 
-/// The month currently being viewed. Defaults to this month.
+/// The "month" period currently being viewed — an anchor `budgetPeriodFor`
+/// resolves into an actual date range, not necessarily today's calendar
+/// month once a custom [budgetStartDayProvider] is set. Defaults to whichever
+/// period contains today.
 final selectedMonthProvider = StateProvider<DateTime>(
-  (ref) => DateTime(DateTime.now().year, DateTime.now().month),
+  (ref) => budgetPeriodAnchorFor(DateTime.now(), ref.watch(budgetStartDayProvider)),
 );
 
 final monthTotalsProvider = StreamProvider<({Money income, Money expense})>((
   ref,
 ) {
   final month = ref.watch(selectedMonthProvider);
-  return ref.watch(dbProvider).watchMonthTotals(month);
+  final startDay = ref.watch(budgetStartDayProvider);
+  return ref.watch(dbProvider).watchMonthTotals(month, startDay);
 });
 
 /// Stats-screen only: false shows one month (the existing, shared
@@ -217,12 +222,9 @@ final yearSpendByCategoryProvider = Provider.family<Map<int, Money>, int>((
 
 final spendByCategoryProvider = StreamProvider<Map<int, Money>>((ref) {
   final month = ref.watch(selectedMonthProvider);
-  final start = DateTime(month.year, month.month);
-  final end = DateTime(
-    month.year,
-    month.month + 1,
-  ).subtract(const Duration(milliseconds: 1));
-  return ref.watch(dbProvider).watchSpendByCategory(start, end);
+  final startDay = ref.watch(budgetStartDayProvider);
+  final period = budgetPeriodFor(month, startDay);
+  return ref.watch(dbProvider).watchSpendByCategory(period.start, period.end);
 });
 
 // ── Budgets ─────────────────────────────────────────────────────────────────
@@ -245,11 +247,10 @@ final categoryTransactionsProvider = Provider.family<List<CategoryTx>, int>((
   categoryId,
 ) {
   final month = ref.watch(selectedMonthProvider);
-  final start = DateTime(month.year, month.month);
-  final end = DateTime(
-    month.year,
-    month.month + 1,
-  ).subtract(const Duration(milliseconds: 1));
+  final startDay = ref.watch(budgetStartDayProvider);
+  final period = budgetPeriodFor(month, startDay);
+  final start = period.start;
+  final end = period.end;
 
   final cats = ref.watch(categoryMapProvider);
   final categoryIds = {
@@ -721,6 +722,13 @@ final currencyProvider = Provider<Currency>((ref) {
 /// Whether to draw the currency symbol. Defaults to shown while settings load.
 final showCurrencySymbolProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.showCurrencySymbol ?? true;
+});
+
+/// Which day of the month Dashboard/Budgets/Stats treat as the start of a
+/// "month" — 1 (an ordinary calendar month) while settings load or for
+/// every install that hasn't opted into a payday-anchored cycle.
+final budgetStartDayProvider = Provider<int>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.budgetStartDay ?? 1;
 });
 
 /// One row per currency that has a rate entered, each the most recent — the

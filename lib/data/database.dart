@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
+import '../core/budget_cycle.dart';
 import '../core/currency.dart';
 import '../core/group_split_math.dart';
 import '../core/money.dart';
@@ -2669,14 +2670,15 @@ class AppDatabase extends _$AppDatabase {
           .watch();
 
   /// Income and expense only. Transfers are excluded **by definition** — they
-  /// move your own money between your own accounts.
-  Stream<({Money income, Money expense})> watchMonthTotals(DateTime month) {
-    final start = DateTime(month.year, month.month);
-    final end = DateTime(
-      month.year,
-      month.month + 1,
-    ).subtract(const Duration(milliseconds: 1));
-    return watchTransactionsBetween(start, end).map((rows) {
+  /// move your own money between your own accounts. [startDay] is
+  /// `Settings.budgetStartDay` — 1 for an ordinary calendar month, or a
+  /// payday-anchored cycle otherwise (see `budget_cycle.dart`).
+  Stream<({Money income, Money expense})> watchMonthTotals(
+    DateTime month,
+    int startDay,
+  ) {
+    final period = budgetPeriodFor(month, startDay);
+    return watchTransactionsBetween(period.start, period.end).map((rows) {
       var income = const Money.zero();
       var expense = const Money.zero();
       for (final t in rows) {
@@ -2689,8 +2691,9 @@ class AppDatabase extends _$AppDatabase {
 
   /// One-shot income/expense/category-breakdown snapshot for an arbitrary
   /// range — the data behind the Income & Expense Report PDF. [watchMonthTotals]
-  /// stays calendar-month-only because Dashboard needs exactly that; a report
-  /// covers whatever period the Stats screen is showing (month or year).
+  /// takes a month + startDay and resolves the period itself; a report covers
+  /// whatever exact range the Stats screen is showing (month, year, or a
+  /// custom-cycle month), so it's the caller's job to resolve that first.
   Future<({Money income, Money expense, Map<int, Money> expenseByCategory})>
   reportTotals(DateTime start, DateTime end) async {
     final rows = await watchTransactionsBetween(start, end).first;
@@ -4520,6 +4523,20 @@ class AppDatabase extends _$AppDatabase {
     settings,
   ).write(SettingsCompanion(showCurrencySymbol: Value(show)));
 
+  /// Which day of the month Dashboard/Budgets/Stats treat as the start of a
+  /// "month" — 1 for an ordinary calendar month, or a payday-anchored cycle
+  /// otherwise (e.g. 15 for a 15th-to-14th cycle). Clamped to 1-28 so every
+  /// month can host every start day — no "the 31st doesn't exist in
+  /// February" edge case for [budgetPeriodFor] to handle.
+  Future<void> setBudgetStartDay(int day) {
+    if (day < 1 || day > 28) {
+      throw ArgumentError('Pick a day between 1 and 28.');
+    }
+    return update(
+      settings,
+    ).write(SettingsCompanion(budgetStartDay: Value(day)));
+  }
+
   Future<void> setCountRepaymentsAsIncome(bool value) => update(
     settings,
   ).write(SettingsCompanion(countRepaymentsAsIncome: Value(value)));
@@ -5563,22 +5580,22 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
-  /// Planned vs. actual for every budgeted category in [month] — a subcategory
-  /// budget rolls up under its own line; a parent's budget rolls its
-  /// children's spend into it, exactly like [budgetProgressProvider] shows on
-  /// screen (duplicated here rather than shared, since that provider is a
-  /// Riverpod composition this data-only layer must not depend on).
-  Future<List<BudgetStatementLine>> budgetStatement(DateTime month) async {
-    final start = DateTime(month.year, month.month);
-    final end = DateTime(
-      month.year,
-      month.month + 1,
-    ).subtract(const Duration(milliseconds: 1));
+  /// Planned vs. actual for every budgeted category in [month]'s period
+  /// (see [startDay]) — a subcategory budget rolls up under its own line; a
+  /// parent's budget rolls its children's spend into it, exactly like
+  /// [budgetProgressProvider] shows on screen (duplicated here rather than
+  /// shared, since that provider is a Riverpod composition this data-only
+  /// layer must not depend on).
+  Future<List<BudgetStatementLine>> budgetStatement(
+    DateTime month,
+    int startDay,
+  ) async {
+    final period = budgetPeriodFor(month, startDay);
     final budgetRows = await select(budgets).get();
     final categoriesById = {
       for (final c in await select(categories).get()) c.id: c,
     };
-    final spend = await watchSpendByCategory(start, end).first;
+    final spend = await watchSpendByCategory(period.start, period.end).first;
 
     final out = <BudgetStatementLine>[];
     for (final b in budgetRows) {
@@ -5596,24 +5613,23 @@ class AppDatabase extends _$AppDatabase {
     return out;
   }
 
-  /// One category's statement for [month] — its budget line plus every
-  /// expense in it, a parent rolling up its children's the same way
-  /// [budgetStatement] and [categoryTransactionsProvider] both do (duplicated
-  /// here rather than shared, since that provider is a Riverpod composition
-  /// this data-only layer must not depend on).
+  /// One category's statement for [month]'s period (see [startDay]) — its
+  /// budget line plus every expense in it, a parent rolling up its children's
+  /// the same way [budgetStatement] and [categoryTransactionsProvider] both
+  /// do (duplicated here rather than shared, since that provider is a
+  /// Riverpod composition this data-only layer must not depend on).
   Future<CategoryStatement> categoryStatement({
     required int categoryId,
     required DateTime month,
+    required int startDay,
   }) async {
     final category = await categoryById(categoryId);
     if (category == null) {
       throw ArgumentError('That category no longer exists.');
     }
-    final start = DateTime(month.year, month.month);
-    final end = DateTime(
-      month.year,
-      month.month + 1,
-    ).subtract(const Duration(milliseconds: 1));
+    final period = budgetPeriodFor(month, startDay);
+    final start = period.start;
+    final end = period.end;
 
     final categoriesById = {
       for (final c in await select(categories).get()) c.id: c,

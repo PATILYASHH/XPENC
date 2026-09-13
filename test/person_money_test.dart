@@ -157,7 +157,7 @@ void main() {
         accountId: cash,
       );
 
-      final totals = await db.watchMonthTotals(DateTime(2026, 7)).first;
+      final totals = await db.watchMonthTotals(DateTime(2026, 7), 1).first;
       expect(totals.income, Money.fromRupees(5000), reason: 'only the salary');
       expect(
         totals.expense,
@@ -256,7 +256,7 @@ void main() {
       expect(await db.watchPersonBalance(ram).first, const Money.zero());
       expect(await balance(cash), Money.fromRupees(5000));
 
-      final totals = await db.watchMonthTotals(DateTime(2026, 7)).first;
+      final totals = await db.watchMonthTotals(DateTime(2026, 7), 1).first;
       expect(
         totals.income,
         Money.fromRupees(5000),
