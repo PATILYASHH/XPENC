@@ -91,10 +91,17 @@ class _PaymentLegEntry {
 /// is a separate entry and pick the date it actually happened on; the
 /// receipt photo is never copied, since it's evidence of the original
 /// purchase, not this new one.
+///
+/// With a [templateId] instead, fields are prefilled the same way from a
+/// saved [TransactionTemplateRow] (GitHub #125) rather than a live
+/// transaction — reached by picking a template from the ➕ button's choice
+/// sheet. Same as duplicating: the date is always today, and there is no
+/// receipt to carry over.
 class AddTransactionScreen extends ConsumerStatefulWidget {
   const AddTransactionScreen({
     this.transactionId,
     this.duplicateFromId,
+    this.templateId,
     this.initialType,
     this.initialPayee,
     this.initialNote,
@@ -104,19 +111,20 @@ class AddTransactionScreen extends ConsumerStatefulWidget {
 
   final int? transactionId;
   final int? duplicateFromId;
+  final int? templateId;
 
   /// Preselects Expense or Income — used by the home-screen widget's "+
   /// Expense" / "+ Income" shortcuts to skip the type-picker step. Ignored
-  /// when [transactionId] or [duplicateFromId] is set, since both load their
-  /// own type.
+  /// when [transactionId], [duplicateFromId] or [templateId] is set, since
+  /// all three load their own type.
   final TxType? initialType;
 
   /// Prefills the payee/note/amount fields — used by the "Pay without
   /// internet" (*99#) flow to hand off what it already collected instead of
   /// making the user retype it. Ignored (like [initialType]) once
-  /// [transactionId] or [duplicateFromId] is set, since both load their own
-  /// values. All three are freely editable afterward, same as any other
-  /// field on this screen.
+  /// [transactionId], [duplicateFromId] or [templateId] is set, since all
+  /// three load their own values. All three are freely editable afterward,
+  /// same as any other field on this screen.
   final String? initialPayee;
   final String? initialNote;
   final Money? initialAmount;
@@ -269,6 +277,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     } else if (widget.duplicateFromId != null) {
       _loading = true;
       WidgetsBinding.instance.addPostFrameCallback((_) => _loadForDuplicate());
+    } else if (widget.templateId != null) {
+      _loading = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadForTemplate());
     } else {
       if (widget.initialPayee != null) _payeeController.text = widget.initialPayee!;
       if (widget.initialNote != null) _noteController.text = widget.initialNote!;
@@ -451,6 +462,44 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       if (row.foreignAmount != null) {
         _foreignAmountController.text = _bufferFromMoney(row.foreignAmount!);
       }
+      _loading = false;
+    });
+  }
+
+  /// Fetch the saved template and prefill every field it carries — same
+  /// shape as [_loadForDuplicate], minus splits and foreign currency, which
+  /// no [TransactionTemplateRow] stores (see its own doc comment).
+  /// [widget.transactionId] stays null throughout, so `_save` inserts a new
+  /// row rather than touching anything.
+  Future<void> _loadForTemplate() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+
+    final db = ref.read(dbProvider);
+    final row = await db.transactionTemplateById(widget.templateId!);
+    if (!mounted) return;
+
+    if (row == null) {
+      navigator.pop();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Template not found')),
+      );
+      return;
+    }
+
+    final tagIds = await db.tagIdsForTemplate(widget.templateId!);
+    if (!mounted) return;
+
+    setState(() {
+      _type = row.type;
+      _buffer = _bufferFromMoney(row.amount);
+      _freshAmountEntry = true;
+      _accountId = row.accountId;
+      _toAccountId = row.toAccountId;
+      _categoryId = row.categoryId;
+      _noteController.text = row.note ?? '';
+      _payeeController.text = row.payee ?? '';
+      _tagIds = tagIds.toSet();
       _loading = false;
     });
   }

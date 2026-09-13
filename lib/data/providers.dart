@@ -1413,6 +1413,21 @@ final tagGroupTagsByGroupProvider = Provider<Map<int, List<TagRow>>>((ref) {
   return out;
 });
 
+// ── Transaction templates ────────────────────────────────────────────────────
+
+/// Saved ➕-flow prefills (GitHub #125), newest first.
+final transactionTemplatesProvider = StreamProvider<List<TransactionTemplateRow>>(
+  (ref) => ref.watch(dbProvider).watchTransactionTemplates(),
+);
+
+/// Whether the ➕ button needs to show its "blank or template" choice sheet
+/// at all — false (the common case) means it still jumps straight to `/add`,
+/// unchanged from before this feature existed.
+final hasTransactionTemplatesProvider = Provider<bool>(
+  (ref) =>
+      (ref.watch(transactionTemplatesProvider).valueOrNull ?? const []).isNotEmpty,
+);
+
 // ── Split expenses ──────────────────────────────────────────────────────────
 
 final _transactionSplitLinksProvider =

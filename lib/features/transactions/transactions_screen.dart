@@ -83,6 +83,60 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     if (ok ?? false) await _deleteTransaction(tx.id);
   }
 
+  /// GitHub #125: prompts for a name, then snapshots [tx] into a new
+  /// [TransactionTemplateRow]. [createTemplateFromTransaction] itself refuses
+  /// a person movement or a split expense — surfaced here as a plain
+  /// SnackBar rather than a dialog, since there's no screen navigation to
+  /// bail out of the way `_loadForDuplicate`/`_loadForTemplate` do.
+  Future<void> _createTemplateFrom(TransactionRow tx, String title) async {
+    final controller = TextEditingController(text: title);
+    final name = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Save as template'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 60,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(
+            labelText: 'Template name',
+            counterText: '',
+          ),
+          onSubmitted: (v) => Navigator.of(dialogContext).pop(v.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(controller.text.trim()),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+      // Deliberately not disposing `controller` here — see
+      // persons_screen.dart's `_createGroup` for why disposing right after
+      // showDialog resolves can crash a still-animating TextField.
+    );
+    if (name == null || name.isEmpty || !mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(dbProvider).createTemplateFromTransaction(
+        transactionId: tx.id,
+        name: name,
+      );
+      messenger.showSnackBar(SnackBar(content: Text('Saved "$name" as a template')));
+    } on ArgumentError catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(e.message?.toString() ?? "Couldn't save template")),
+      );
+    }
+  }
+
   /// Only reachable when [TransactionsScreen.embedded] is false — the shell's
   /// shared top bar (`AppShell._TransactionsBarActions`) opens the same sheet
   /// when this screen is a bottom-nav tab instead.
@@ -243,6 +297,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         categoryMap[s.categoryId]!,
                   ],
                   onDelete: _confirmDelete,
+                  onCreateTemplate: _createTemplateFrom,
                 ),
               ),
               _ClusterHeaderEntry(:final count, :final start, :final end) =>
@@ -272,6 +327,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                           categoryMap[s.categoryId]!,
                     ],
                     onDelete: _confirmDelete,
+                    onCreateTemplate: _createTemplateFrom,
                   ),
                 ),
             };
@@ -810,14 +866,15 @@ class _ClusterHeader extends StatelessWidget {
 // ── One transaction, one card ────────────────────────────────────────────────
 
 /// Long-press quick actions: Duplicate ("publish another one" of this
-/// transaction with today's date, GitHub #92), Edit, Delete — the same three
-/// destinations already reachable one at a time from the detail screen, just
-/// surfaced without leaving the list.
+/// transaction with today's date, GitHub #92), Save as template (GitHub
+/// #125), Edit, Delete — the same destinations already reachable one at a
+/// time from the detail screen, just surfaced without leaving the list.
 Future<void> _openQuickActions(
   BuildContext context,
   TransactionRow tx,
   String title,
   Future<void> Function(TransactionRow tx, String title) onDelete,
+  Future<void> Function(TransactionRow tx, String title) onCreateTemplate,
 ) async {
   final theme = Theme.of(context);
   await showModalBottomSheet<void>(
@@ -835,6 +892,15 @@ Future<void> _openQuickActions(
             onTap: () {
               Navigator.of(sheetContext).pop();
               context.push('/add?duplicate=${tx.id}');
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.bookmark_add_outlined),
+            title: const Text('Save as template'),
+            subtitle: const Text('Reuse these details from the ➕ button'),
+            onTap: () {
+              Navigator.of(sheetContext).pop();
+              onCreateTemplate(tx, title);
             },
           ),
           ListTile(
@@ -876,6 +942,7 @@ class _TxCard extends StatelessWidget {
     required this.splitCategories,
     required this.hasReceipt,
     required this.onDelete,
+    required this.onCreateTemplate,
   });
 
   final TransactionRow tx;
@@ -890,6 +957,8 @@ class _TxCard extends StatelessWidget {
   final List<CategoryRow> splitCategories;
   final bool hasReceipt;
   final Future<void> Function(TransactionRow tx, String title) onDelete;
+  final Future<void> Function(TransactionRow tx, String title)
+  onCreateTemplate;
 
   @override
   Widget build(BuildContext context) {
@@ -972,7 +1041,13 @@ class _TxCard extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             child: InkWell(
               onTap: () => context.push('/transaction/${tx.id}'),
-              onLongPress: () => _openQuickActions(context, tx, title, onDelete),
+              onLongPress: () => _openQuickActions(
+                context,
+                tx,
+                title,
+                onDelete,
+                onCreateTemplate,
+              ),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
                 child: Row(
@@ -1243,6 +1318,7 @@ class _LinkedTxRow extends StatelessWidget {
     required this.splitCategories,
     required this.hasReceipt,
     required this.onDelete,
+    required this.onCreateTemplate,
   });
 
   final TransactionRow tx;
@@ -1256,6 +1332,8 @@ class _LinkedTxRow extends StatelessWidget {
   final List<CategoryRow> splitCategories;
   final bool hasReceipt;
   final Future<void> Function(TransactionRow tx, String title) onDelete;
+  final Future<void> Function(TransactionRow tx, String title)
+  onCreateTemplate;
 
   @override
   Widget build(BuildContext context) {
@@ -1306,6 +1384,7 @@ class _LinkedTxRow extends StatelessWidget {
               splitCategories: splitCategories,
               hasReceipt: hasReceipt,
               onDelete: onDelete,
+              onCreateTemplate: onCreateTemplate,
             ),
           ),
         ],

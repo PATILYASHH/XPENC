@@ -21252,6 +21252,862 @@ class CategoryTemplateItemsCompanion
   }
 }
 
+class $TransactionTemplatesTable extends TransactionTemplates
+    with TableInfo<$TransactionTemplatesTable, TransactionTemplateRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TransactionTemplatesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 60,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<TxType, String> type =
+      GeneratedColumn<String>(
+        'type',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<TxType>($TransactionTemplatesTable.$convertertype);
+  @override
+  late final GeneratedColumnWithTypeConverter<Money, int> amount =
+      GeneratedColumn<int>(
+        'amount',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: true,
+      ).withConverter<Money>($TransactionTemplatesTable.$converteramount);
+  static const VerificationMeta _accountIdMeta = const VerificationMeta(
+    'accountId',
+  );
+  @override
+  late final GeneratedColumn<int> accountId = GeneratedColumn<int>(
+    'account_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES accounts (id)',
+    ),
+  );
+  static const VerificationMeta _toAccountIdMeta = const VerificationMeta(
+    'toAccountId',
+  );
+  @override
+  late final GeneratedColumn<int> toAccountId = GeneratedColumn<int>(
+    'to_account_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES accounts (id)',
+    ),
+  );
+  static const VerificationMeta _categoryIdMeta = const VerificationMeta(
+    'categoryId',
+  );
+  @override
+  late final GeneratedColumn<int> categoryId = GeneratedColumn<int>(
+    'category_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES categories (id)',
+    ),
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _payeeMeta = const VerificationMeta('payee');
+  @override
+  late final GeneratedColumn<String> payee = GeneratedColumn<String>(
+    'payee',
+    aliasedName,
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 80,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    type,
+    amount,
+    accountId,
+    toAccountId,
+    categoryId,
+    note,
+    payee,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'transaction_templates';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TransactionTemplateRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('account_id')) {
+      context.handle(
+        _accountIdMeta,
+        accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_accountIdMeta);
+    }
+    if (data.containsKey('to_account_id')) {
+      context.handle(
+        _toAccountIdMeta,
+        toAccountId.isAcceptableOrUnknown(
+          data['to_account_id']!,
+          _toAccountIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('category_id')) {
+      context.handle(
+        _categoryIdMeta,
+        categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
+      );
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    if (data.containsKey('payee')) {
+      context.handle(
+        _payeeMeta,
+        payee.isAcceptableOrUnknown(data['payee']!, _payeeMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  TransactionTemplateRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TransactionTemplateRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      type: $TransactionTemplatesTable.$convertertype.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}type'],
+        )!,
+      ),
+      amount: $TransactionTemplatesTable.$converteramount.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}amount'],
+        )!,
+      ),
+      accountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}account_id'],
+      )!,
+      toAccountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}to_account_id'],
+      ),
+      categoryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}category_id'],
+      ),
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
+      payee: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payee'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $TransactionTemplatesTable createAlias(String alias) {
+    return $TransactionTemplatesTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<TxType, String, String> $convertertype =
+      const EnumNameConverter<TxType>(TxType.values);
+  static TypeConverter<Money, int> $converteramount = const MoneyConverter();
+}
+
+class TransactionTemplateRow extends DataClass
+    implements Insertable<TransactionTemplateRow> {
+  final int id;
+  final String name;
+  final TxType type;
+  final Money amount;
+  final int accountId;
+  final int? toAccountId;
+  final int? categoryId;
+  final String? note;
+  final String? payee;
+  final DateTime createdAt;
+  const TransactionTemplateRow({
+    required this.id,
+    required this.name,
+    required this.type,
+    required this.amount,
+    required this.accountId,
+    this.toAccountId,
+    this.categoryId,
+    this.note,
+    this.payee,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    {
+      map['type'] = Variable<String>(
+        $TransactionTemplatesTable.$convertertype.toSql(type),
+      );
+    }
+    {
+      map['amount'] = Variable<int>(
+        $TransactionTemplatesTable.$converteramount.toSql(amount),
+      );
+    }
+    map['account_id'] = Variable<int>(accountId);
+    if (!nullToAbsent || toAccountId != null) {
+      map['to_account_id'] = Variable<int>(toAccountId);
+    }
+    if (!nullToAbsent || categoryId != null) {
+      map['category_id'] = Variable<int>(categoryId);
+    }
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    if (!nullToAbsent || payee != null) {
+      map['payee'] = Variable<String>(payee);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  TransactionTemplatesCompanion toCompanion(bool nullToAbsent) {
+    return TransactionTemplatesCompanion(
+      id: Value(id),
+      name: Value(name),
+      type: Value(type),
+      amount: Value(amount),
+      accountId: Value(accountId),
+      toAccountId: toAccountId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(toAccountId),
+      categoryId: categoryId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(categoryId),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      payee: payee == null && nullToAbsent
+          ? const Value.absent()
+          : Value(payee),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory TransactionTemplateRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TransactionTemplateRow(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      type: $TransactionTemplatesTable.$convertertype.fromJson(
+        serializer.fromJson<String>(json['type']),
+      ),
+      amount: serializer.fromJson<Money>(json['amount']),
+      accountId: serializer.fromJson<int>(json['accountId']),
+      toAccountId: serializer.fromJson<int?>(json['toAccountId']),
+      categoryId: serializer.fromJson<int?>(json['categoryId']),
+      note: serializer.fromJson<String?>(json['note']),
+      payee: serializer.fromJson<String?>(json['payee']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'type': serializer.toJson<String>(
+        $TransactionTemplatesTable.$convertertype.toJson(type),
+      ),
+      'amount': serializer.toJson<Money>(amount),
+      'accountId': serializer.toJson<int>(accountId),
+      'toAccountId': serializer.toJson<int?>(toAccountId),
+      'categoryId': serializer.toJson<int?>(categoryId),
+      'note': serializer.toJson<String?>(note),
+      'payee': serializer.toJson<String?>(payee),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  TransactionTemplateRow copyWith({
+    int? id,
+    String? name,
+    TxType? type,
+    Money? amount,
+    int? accountId,
+    Value<int?> toAccountId = const Value.absent(),
+    Value<int?> categoryId = const Value.absent(),
+    Value<String?> note = const Value.absent(),
+    Value<String?> payee = const Value.absent(),
+    DateTime? createdAt,
+  }) => TransactionTemplateRow(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    type: type ?? this.type,
+    amount: amount ?? this.amount,
+    accountId: accountId ?? this.accountId,
+    toAccountId: toAccountId.present ? toAccountId.value : this.toAccountId,
+    categoryId: categoryId.present ? categoryId.value : this.categoryId,
+    note: note.present ? note.value : this.note,
+    payee: payee.present ? payee.value : this.payee,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  TransactionTemplateRow copyWithCompanion(TransactionTemplatesCompanion data) {
+    return TransactionTemplateRow(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      type: data.type.present ? data.type.value : this.type,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      accountId: data.accountId.present ? data.accountId.value : this.accountId,
+      toAccountId: data.toAccountId.present
+          ? data.toAccountId.value
+          : this.toAccountId,
+      categoryId: data.categoryId.present
+          ? data.categoryId.value
+          : this.categoryId,
+      note: data.note.present ? data.note.value : this.note,
+      payee: data.payee.present ? data.payee.value : this.payee,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TransactionTemplateRow(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('type: $type, ')
+          ..write('amount: $amount, ')
+          ..write('accountId: $accountId, ')
+          ..write('toAccountId: $toAccountId, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('note: $note, ')
+          ..write('payee: $payee, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    name,
+    type,
+    amount,
+    accountId,
+    toAccountId,
+    categoryId,
+    note,
+    payee,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TransactionTemplateRow &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.type == this.type &&
+          other.amount == this.amount &&
+          other.accountId == this.accountId &&
+          other.toAccountId == this.toAccountId &&
+          other.categoryId == this.categoryId &&
+          other.note == this.note &&
+          other.payee == this.payee &&
+          other.createdAt == this.createdAt);
+}
+
+class TransactionTemplatesCompanion
+    extends UpdateCompanion<TransactionTemplateRow> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<TxType> type;
+  final Value<Money> amount;
+  final Value<int> accountId;
+  final Value<int?> toAccountId;
+  final Value<int?> categoryId;
+  final Value<String?> note;
+  final Value<String?> payee;
+  final Value<DateTime> createdAt;
+  const TransactionTemplatesCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.type = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.accountId = const Value.absent(),
+    this.toAccountId = const Value.absent(),
+    this.categoryId = const Value.absent(),
+    this.note = const Value.absent(),
+    this.payee = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  TransactionTemplatesCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    required TxType type,
+    required Money amount,
+    required int accountId,
+    this.toAccountId = const Value.absent(),
+    this.categoryId = const Value.absent(),
+    this.note = const Value.absent(),
+    this.payee = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : name = Value(name),
+       type = Value(type),
+       amount = Value(amount),
+       accountId = Value(accountId);
+  static Insertable<TransactionTemplateRow> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<String>? type,
+    Expression<int>? amount,
+    Expression<int>? accountId,
+    Expression<int>? toAccountId,
+    Expression<int>? categoryId,
+    Expression<String>? note,
+    Expression<String>? payee,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (type != null) 'type': type,
+      if (amount != null) 'amount': amount,
+      if (accountId != null) 'account_id': accountId,
+      if (toAccountId != null) 'to_account_id': toAccountId,
+      if (categoryId != null) 'category_id': categoryId,
+      if (note != null) 'note': note,
+      if (payee != null) 'payee': payee,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  TransactionTemplatesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<TxType>? type,
+    Value<Money>? amount,
+    Value<int>? accountId,
+    Value<int?>? toAccountId,
+    Value<int?>? categoryId,
+    Value<String?>? note,
+    Value<String?>? payee,
+    Value<DateTime>? createdAt,
+  }) {
+    return TransactionTemplatesCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      type: type ?? this.type,
+      amount: amount ?? this.amount,
+      accountId: accountId ?? this.accountId,
+      toAccountId: toAccountId ?? this.toAccountId,
+      categoryId: categoryId ?? this.categoryId,
+      note: note ?? this.note,
+      payee: payee ?? this.payee,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(
+        $TransactionTemplatesTable.$convertertype.toSql(type.value),
+      );
+    }
+    if (amount.present) {
+      map['amount'] = Variable<int>(
+        $TransactionTemplatesTable.$converteramount.toSql(amount.value),
+      );
+    }
+    if (accountId.present) {
+      map['account_id'] = Variable<int>(accountId.value);
+    }
+    if (toAccountId.present) {
+      map['to_account_id'] = Variable<int>(toAccountId.value);
+    }
+    if (categoryId.present) {
+      map['category_id'] = Variable<int>(categoryId.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (payee.present) {
+      map['payee'] = Variable<String>(payee.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TransactionTemplatesCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('type: $type, ')
+          ..write('amount: $amount, ')
+          ..write('accountId: $accountId, ')
+          ..write('toAccountId: $toAccountId, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('note: $note, ')
+          ..write('payee: $payee, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TransactionTemplateTagsTable extends TransactionTemplateTags
+    with TableInfo<$TransactionTemplateTagsTable, TransactionTemplateTagRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TransactionTemplateTagsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _templateIdMeta = const VerificationMeta(
+    'templateId',
+  );
+  @override
+  late final GeneratedColumn<int> templateId = GeneratedColumn<int>(
+    'template_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES transaction_templates (id)',
+    ),
+  );
+  static const VerificationMeta _tagIdMeta = const VerificationMeta('tagId');
+  @override
+  late final GeneratedColumn<int> tagId = GeneratedColumn<int>(
+    'tag_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES tags (id)',
+    ),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [templateId, tagId];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'transaction_template_tags';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TransactionTemplateTagRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('template_id')) {
+      context.handle(
+        _templateIdMeta,
+        templateId.isAcceptableOrUnknown(data['template_id']!, _templateIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_templateIdMeta);
+    }
+    if (data.containsKey('tag_id')) {
+      context.handle(
+        _tagIdMeta,
+        tagId.isAcceptableOrUnknown(data['tag_id']!, _tagIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_tagIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {templateId, tagId};
+  @override
+  TransactionTemplateTagRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TransactionTemplateTagRow(
+      templateId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}template_id'],
+      )!,
+      tagId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}tag_id'],
+      )!,
+    );
+  }
+
+  @override
+  $TransactionTemplateTagsTable createAlias(String alias) {
+    return $TransactionTemplateTagsTable(attachedDatabase, alias);
+  }
+}
+
+class TransactionTemplateTagRow extends DataClass
+    implements Insertable<TransactionTemplateTagRow> {
+  final int templateId;
+  final int tagId;
+  const TransactionTemplateTagRow({
+    required this.templateId,
+    required this.tagId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['template_id'] = Variable<int>(templateId);
+    map['tag_id'] = Variable<int>(tagId);
+    return map;
+  }
+
+  TransactionTemplateTagsCompanion toCompanion(bool nullToAbsent) {
+    return TransactionTemplateTagsCompanion(
+      templateId: Value(templateId),
+      tagId: Value(tagId),
+    );
+  }
+
+  factory TransactionTemplateTagRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TransactionTemplateTagRow(
+      templateId: serializer.fromJson<int>(json['templateId']),
+      tagId: serializer.fromJson<int>(json['tagId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'templateId': serializer.toJson<int>(templateId),
+      'tagId': serializer.toJson<int>(tagId),
+    };
+  }
+
+  TransactionTemplateTagRow copyWith({int? templateId, int? tagId}) =>
+      TransactionTemplateTagRow(
+        templateId: templateId ?? this.templateId,
+        tagId: tagId ?? this.tagId,
+      );
+  TransactionTemplateTagRow copyWithCompanion(
+    TransactionTemplateTagsCompanion data,
+  ) {
+    return TransactionTemplateTagRow(
+      templateId: data.templateId.present
+          ? data.templateId.value
+          : this.templateId,
+      tagId: data.tagId.present ? data.tagId.value : this.tagId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TransactionTemplateTagRow(')
+          ..write('templateId: $templateId, ')
+          ..write('tagId: $tagId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(templateId, tagId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TransactionTemplateTagRow &&
+          other.templateId == this.templateId &&
+          other.tagId == this.tagId);
+}
+
+class TransactionTemplateTagsCompanion
+    extends UpdateCompanion<TransactionTemplateTagRow> {
+  final Value<int> templateId;
+  final Value<int> tagId;
+  final Value<int> rowid;
+  const TransactionTemplateTagsCompanion({
+    this.templateId = const Value.absent(),
+    this.tagId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TransactionTemplateTagsCompanion.insert({
+    required int templateId,
+    required int tagId,
+    this.rowid = const Value.absent(),
+  }) : templateId = Value(templateId),
+       tagId = Value(tagId);
+  static Insertable<TransactionTemplateTagRow> custom({
+    Expression<int>? templateId,
+    Expression<int>? tagId,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (templateId != null) 'template_id': templateId,
+      if (tagId != null) 'tag_id': tagId,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TransactionTemplateTagsCompanion copyWith({
+    Value<int>? templateId,
+    Value<int>? tagId,
+    Value<int>? rowid,
+  }) {
+    return TransactionTemplateTagsCompanion(
+      templateId: templateId ?? this.templateId,
+      tagId: tagId ?? this.tagId,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (templateId.present) {
+      map['template_id'] = Variable<int>(templateId.value);
+    }
+    if (tagId.present) {
+      map['tag_id'] = Variable<int>(tagId.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TransactionTemplateTagsCompanion(')
+          ..write('templateId: $templateId, ')
+          ..write('tagId: $tagId, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -21300,6 +22156,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $CategoryTemplatesTable(this);
   late final $CategoryTemplateItemsTable categoryTemplateItems =
       $CategoryTemplateItemsTable(this);
+  late final $TransactionTemplatesTable transactionTemplates =
+      $TransactionTemplatesTable(this);
+  late final $TransactionTemplateTagsTable transactionTemplateTags =
+      $TransactionTemplateTagsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -21340,6 +22200,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     currencyRates,
     categoryTemplates,
     categoryTemplateItems,
+    transactionTemplates,
+    transactionTemplateTags,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -23149,6 +24011,34 @@ final class $$CategoriesTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<
+    $TransactionTemplatesTable,
+    List<TransactionTemplateRow>
+  >
+  _transactionTemplatesRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.transactionTemplates,
+        aliasName: $_aliasNameGenerator(
+          db.categories.id,
+          db.transactionTemplates.categoryId,
+        ),
+      );
+
+  $$TransactionTemplatesTableProcessedTableManager
+  get transactionTemplatesRefs {
+    final manager = $$TransactionTemplatesTableTableManager(
+      $_db,
+      $_db.transactionTemplates,
+    ).filter((f) => f.categoryId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _transactionTemplatesRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$CategoriesTableFilterComposer
@@ -23492,6 +24382,31 @@ class $$CategoriesTableFilterComposer
           }) => $$AllocationsTableFilterComposer(
             $db: $db,
             $table: $db.allocations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> transactionTemplatesRefs(
+    Expression<bool> Function($$TransactionTemplatesTableFilterComposer f) f,
+  ) {
+    final $$TransactionTemplatesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.transactionTemplates,
+      getReferencedColumn: (t) => t.categoryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TransactionTemplatesTableFilterComposer(
+            $db: $db,
+            $table: $db.transactionTemplates,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -23889,6 +24804,32 @@ class $$CategoriesTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> transactionTemplatesRefs<T extends Object>(
+    Expression<T> Function($$TransactionTemplatesTableAnnotationComposer a) f,
+  ) {
+    final $$TransactionTemplatesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.transactionTemplates,
+          getReferencedColumn: (t) => t.categoryId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$TransactionTemplatesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.transactionTemplates,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$CategoriesTableTableManager
@@ -23917,6 +24858,7 @@ class $$CategoriesTableTableManager
             bool goalDetailsRefs,
             bool loanDetailsRefs,
             bool allocationsRefs,
+            bool transactionTemplatesRefs,
           })
         > {
   $$CategoriesTableTableManager(_$AppDatabase db, $CategoriesTable table)
@@ -23992,6 +24934,7 @@ class $$CategoriesTableTableManager
                 goalDetailsRefs = false,
                 loanDetailsRefs = false,
                 allocationsRefs = false,
+                transactionTemplatesRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -24008,6 +24951,7 @@ class $$CategoriesTableTableManager
                     if (goalDetailsRefs) db.goalDetails,
                     if (loanDetailsRefs) db.loanDetails,
                     if (allocationsRefs) db.allocations,
+                    if (transactionTemplatesRefs) db.transactionTemplates,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -24264,6 +25208,27 @@ class $$CategoriesTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (transactionTemplatesRefs)
+                        await $_getPrefetchedData<
+                          CategoryRow,
+                          $CategoriesTable,
+                          TransactionTemplateRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$CategoriesTableReferences
+                              ._transactionTemplatesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$CategoriesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).transactionTemplatesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.categoryId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -24297,6 +25262,7 @@ typedef $$CategoriesTableProcessedTableManager =
         bool goalDetailsRefs,
         bool loanDetailsRefs,
         bool allocationsRefs,
+        bool transactionTemplatesRefs,
       })
     >;
 typedef $$PersonsTableCreateCompanionBuilder =
@@ -35464,6 +36430,34 @@ final class $$TagsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<
+    $TransactionTemplateTagsTable,
+    List<TransactionTemplateTagRow>
+  >
+  _transactionTemplateTagsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.transactionTemplateTags,
+        aliasName: $_aliasNameGenerator(
+          db.tags.id,
+          db.transactionTemplateTags.tagId,
+        ),
+      );
+
+  $$TransactionTemplateTagsTableProcessedTableManager
+  get transactionTemplateTagsRefs {
+    final manager = $$TransactionTemplateTagsTableTableManager(
+      $_db,
+      $_db.transactionTemplateTags,
+    ).filter((f) => f.tagId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _transactionTemplateTagsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$TagsTableFilterComposer extends Composer<_$AppDatabase, $TagsTable> {
@@ -35561,6 +36555,32 @@ class $$TagsTableFilterComposer extends Composer<_$AppDatabase, $TagsTable> {
                 $removeJoinBuilderFromRootComposer,
           ),
     );
+    return f(composer);
+  }
+
+  Expression<bool> transactionTemplateTagsRefs(
+    Expression<bool> Function($$TransactionTemplateTagsTableFilterComposer f) f,
+  ) {
+    final $$TransactionTemplateTagsTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.transactionTemplateTags,
+          getReferencedColumn: (t) => t.tagId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$TransactionTemplateTagsTableFilterComposer(
+                $db: $db,
+                $table: $db.transactionTemplateTags,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 }
@@ -35684,6 +36704,33 @@ class $$TagsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> transactionTemplateTagsRefs<T extends Object>(
+    Expression<T> Function($$TransactionTemplateTagsTableAnnotationComposer a)
+    f,
+  ) {
+    final $$TransactionTemplateTagsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.transactionTemplateTags,
+          getReferencedColumn: (t) => t.tagId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$TransactionTemplateTagsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.transactionTemplateTags,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$TagsTableTableManager
@@ -35703,6 +36750,7 @@ class $$TagsTableTableManager
             bool transactionTagsRefs,
             bool recurringRuleTagsRefs,
             bool tagGroupTagsRefs,
+            bool transactionTemplateTagsRefs,
           })
         > {
   $$TagsTableTableManager(_$AppDatabase db, $TagsTable table)
@@ -35743,6 +36791,7 @@ class $$TagsTableTableManager
                 transactionTagsRefs = false,
                 recurringRuleTagsRefs = false,
                 tagGroupTagsRefs = false,
+                transactionTemplateTagsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -35750,6 +36799,7 @@ class $$TagsTableTableManager
                     if (transactionTagsRefs) db.transactionTags,
                     if (recurringRuleTagsRefs) db.recurringRuleTags,
                     if (tagGroupTagsRefs) db.tagGroupTags,
+                    if (transactionTemplateTagsRefs) db.transactionTemplateTags,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -35814,6 +36864,26 @@ class $$TagsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (transactionTemplateTagsRefs)
+                        await $_getPrefetchedData<
+                          TagRow,
+                          $TagsTable,
+                          TransactionTemplateTagRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$TagsTableReferences
+                              ._transactionTemplateTagsRefsTable(db),
+                          managerFromTypedResult: (p0) => $$TagsTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).transactionTemplateTagsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.tagId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -35838,6 +36908,7 @@ typedef $$TagsTableProcessedTableManager =
         bool transactionTagsRefs,
         bool recurringRuleTagsRefs,
         bool tagGroupTagsRefs,
+        bool transactionTemplateTagsRefs,
       })
     >;
 typedef $$TransactionTagsTableCreateCompanionBuilder =
@@ -41640,6 +42711,1120 @@ typedef $$CategoryTemplateItemsTableProcessedTableManager =
       CategoryTemplateItemRow,
       PrefetchHooks Function({bool templateId})
     >;
+typedef $$TransactionTemplatesTableCreateCompanionBuilder =
+    TransactionTemplatesCompanion Function({
+      Value<int> id,
+      required String name,
+      required TxType type,
+      required Money amount,
+      required int accountId,
+      Value<int?> toAccountId,
+      Value<int?> categoryId,
+      Value<String?> note,
+      Value<String?> payee,
+      Value<DateTime> createdAt,
+    });
+typedef $$TransactionTemplatesTableUpdateCompanionBuilder =
+    TransactionTemplatesCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<TxType> type,
+      Value<Money> amount,
+      Value<int> accountId,
+      Value<int?> toAccountId,
+      Value<int?> categoryId,
+      Value<String?> note,
+      Value<String?> payee,
+      Value<DateTime> createdAt,
+    });
+
+final class $$TransactionTemplatesTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $TransactionTemplatesTable,
+          TransactionTemplateRow
+        > {
+  $$TransactionTemplatesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $AccountsTable _accountIdTable(_$AppDatabase db) =>
+      db.accounts.createAlias(
+        $_aliasNameGenerator(db.transactionTemplates.accountId, db.accounts.id),
+      );
+
+  $$AccountsTableProcessedTableManager get accountId {
+    final $_column = $_itemColumn<int>('account_id')!;
+
+    final manager = $$AccountsTableTableManager(
+      $_db,
+      $_db.accounts,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_accountIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $AccountsTable _toAccountIdTable(_$AppDatabase db) =>
+      db.accounts.createAlias(
+        $_aliasNameGenerator(
+          db.transactionTemplates.toAccountId,
+          db.accounts.id,
+        ),
+      );
+
+  $$AccountsTableProcessedTableManager? get toAccountId {
+    final $_column = $_itemColumn<int>('to_account_id');
+    if ($_column == null) return null;
+    final manager = $$AccountsTableTableManager(
+      $_db,
+      $_db.accounts,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_toAccountIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $CategoriesTable _categoryIdTable(_$AppDatabase db) =>
+      db.categories.createAlias(
+        $_aliasNameGenerator(
+          db.transactionTemplates.categoryId,
+          db.categories.id,
+        ),
+      );
+
+  $$CategoriesTableProcessedTableManager? get categoryId {
+    final $_column = $_itemColumn<int>('category_id');
+    if ($_column == null) return null;
+    final manager = $$CategoriesTableTableManager(
+      $_db,
+      $_db.categories,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_categoryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $TransactionTemplateTagsTable,
+    List<TransactionTemplateTagRow>
+  >
+  _transactionTemplateTagsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.transactionTemplateTags,
+        aliasName: $_aliasNameGenerator(
+          db.transactionTemplates.id,
+          db.transactionTemplateTags.templateId,
+        ),
+      );
+
+  $$TransactionTemplateTagsTableProcessedTableManager
+  get transactionTemplateTagsRefs {
+    final manager = $$TransactionTemplateTagsTableTableManager(
+      $_db,
+      $_db.transactionTemplateTags,
+    ).filter((f) => f.templateId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _transactionTemplateTagsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$TransactionTemplatesTableFilterComposer
+    extends Composer<_$AppDatabase, $TransactionTemplatesTable> {
+  $$TransactionTemplatesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<TxType, TxType, String> get type =>
+      $composableBuilder(
+        column: $table.type,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnWithTypeConverterFilters<Money, Money, int> get amount =>
+      $composableBuilder(
+        column: $table.amount,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payee => $composableBuilder(
+    column: $table.payee,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$AccountsTableFilterComposer get accountId {
+    final $$AccountsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.accountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableFilterComposer(
+            $db: $db,
+            $table: $db.accounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$AccountsTableFilterComposer get toAccountId {
+    final $$AccountsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.toAccountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableFilterComposer(
+            $db: $db,
+            $table: $db.accounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CategoriesTableFilterComposer get categoryId {
+    final $$CategoriesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableFilterComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> transactionTemplateTagsRefs(
+    Expression<bool> Function($$TransactionTemplateTagsTableFilterComposer f) f,
+  ) {
+    final $$TransactionTemplateTagsTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.transactionTemplateTags,
+          getReferencedColumn: (t) => t.templateId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$TransactionTemplateTagsTableFilterComposer(
+                $db: $db,
+                $table: $db.transactionTemplateTags,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$TransactionTemplatesTableOrderingComposer
+    extends Composer<_$AppDatabase, $TransactionTemplatesTable> {
+  $$TransactionTemplatesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payee => $composableBuilder(
+    column: $table.payee,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$AccountsTableOrderingComposer get accountId {
+    final $$AccountsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.accountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableOrderingComposer(
+            $db: $db,
+            $table: $db.accounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$AccountsTableOrderingComposer get toAccountId {
+    final $$AccountsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.toAccountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableOrderingComposer(
+            $db: $db,
+            $table: $db.accounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CategoriesTableOrderingComposer get categoryId {
+    final $$CategoriesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableOrderingComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TransactionTemplatesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TransactionTemplatesTable> {
+  $$TransactionTemplatesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<TxType, String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<Money, int> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<String> get payee =>
+      $composableBuilder(column: $table.payee, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$AccountsTableAnnotationComposer get accountId {
+    final $$AccountsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.accountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.accounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$AccountsTableAnnotationComposer get toAccountId {
+    final $$AccountsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.toAccountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.accounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CategoriesTableAnnotationComposer get categoryId {
+    final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> transactionTemplateTagsRefs<T extends Object>(
+    Expression<T> Function($$TransactionTemplateTagsTableAnnotationComposer a)
+    f,
+  ) {
+    final $$TransactionTemplateTagsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.transactionTemplateTags,
+          getReferencedColumn: (t) => t.templateId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$TransactionTemplateTagsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.transactionTemplateTags,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$TransactionTemplatesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TransactionTemplatesTable,
+          TransactionTemplateRow,
+          $$TransactionTemplatesTableFilterComposer,
+          $$TransactionTemplatesTableOrderingComposer,
+          $$TransactionTemplatesTableAnnotationComposer,
+          $$TransactionTemplatesTableCreateCompanionBuilder,
+          $$TransactionTemplatesTableUpdateCompanionBuilder,
+          (TransactionTemplateRow, $$TransactionTemplatesTableReferences),
+          TransactionTemplateRow,
+          PrefetchHooks Function({
+            bool accountId,
+            bool toAccountId,
+            bool categoryId,
+            bool transactionTemplateTagsRefs,
+          })
+        > {
+  $$TransactionTemplatesTableTableManager(
+    _$AppDatabase db,
+    $TransactionTemplatesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TransactionTemplatesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TransactionTemplatesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$TransactionTemplatesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<TxType> type = const Value.absent(),
+                Value<Money> amount = const Value.absent(),
+                Value<int> accountId = const Value.absent(),
+                Value<int?> toAccountId = const Value.absent(),
+                Value<int?> categoryId = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<String?> payee = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => TransactionTemplatesCompanion(
+                id: id,
+                name: name,
+                type: type,
+                amount: amount,
+                accountId: accountId,
+                toAccountId: toAccountId,
+                categoryId: categoryId,
+                note: note,
+                payee: payee,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                required TxType type,
+                required Money amount,
+                required int accountId,
+                Value<int?> toAccountId = const Value.absent(),
+                Value<int?> categoryId = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<String?> payee = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => TransactionTemplatesCompanion.insert(
+                id: id,
+                name: name,
+                type: type,
+                amount: amount,
+                accountId: accountId,
+                toAccountId: toAccountId,
+                categoryId: categoryId,
+                note: note,
+                payee: payee,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$TransactionTemplatesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({
+                accountId = false,
+                toAccountId = false,
+                categoryId = false,
+                transactionTemplateTagsRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (transactionTemplateTagsRefs) db.transactionTemplateTags,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (accountId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.accountId,
+                                    referencedTable:
+                                        $$TransactionTemplatesTableReferences
+                                            ._accountIdTable(db),
+                                    referencedColumn:
+                                        $$TransactionTemplatesTableReferences
+                                            ._accountIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (toAccountId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.toAccountId,
+                                    referencedTable:
+                                        $$TransactionTemplatesTableReferences
+                                            ._toAccountIdTable(db),
+                                    referencedColumn:
+                                        $$TransactionTemplatesTableReferences
+                                            ._toAccountIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (categoryId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.categoryId,
+                                    referencedTable:
+                                        $$TransactionTemplatesTableReferences
+                                            ._categoryIdTable(db),
+                                    referencedColumn:
+                                        $$TransactionTemplatesTableReferences
+                                            ._categoryIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (transactionTemplateTagsRefs)
+                        await $_getPrefetchedData<
+                          TransactionTemplateRow,
+                          $TransactionTemplatesTable,
+                          TransactionTemplateTagRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$TransactionTemplatesTableReferences
+                              ._transactionTemplateTagsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$TransactionTemplatesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).transactionTemplateTagsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.templateId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$TransactionTemplatesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TransactionTemplatesTable,
+      TransactionTemplateRow,
+      $$TransactionTemplatesTableFilterComposer,
+      $$TransactionTemplatesTableOrderingComposer,
+      $$TransactionTemplatesTableAnnotationComposer,
+      $$TransactionTemplatesTableCreateCompanionBuilder,
+      $$TransactionTemplatesTableUpdateCompanionBuilder,
+      (TransactionTemplateRow, $$TransactionTemplatesTableReferences),
+      TransactionTemplateRow,
+      PrefetchHooks Function({
+        bool accountId,
+        bool toAccountId,
+        bool categoryId,
+        bool transactionTemplateTagsRefs,
+      })
+    >;
+typedef $$TransactionTemplateTagsTableCreateCompanionBuilder =
+    TransactionTemplateTagsCompanion Function({
+      required int templateId,
+      required int tagId,
+      Value<int> rowid,
+    });
+typedef $$TransactionTemplateTagsTableUpdateCompanionBuilder =
+    TransactionTemplateTagsCompanion Function({
+      Value<int> templateId,
+      Value<int> tagId,
+      Value<int> rowid,
+    });
+
+final class $$TransactionTemplateTagsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $TransactionTemplateTagsTable,
+          TransactionTemplateTagRow
+        > {
+  $$TransactionTemplateTagsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $TransactionTemplatesTable _templateIdTable(_$AppDatabase db) =>
+      db.transactionTemplates.createAlias(
+        $_aliasNameGenerator(
+          db.transactionTemplateTags.templateId,
+          db.transactionTemplates.id,
+        ),
+      );
+
+  $$TransactionTemplatesTableProcessedTableManager get templateId {
+    final $_column = $_itemColumn<int>('template_id')!;
+
+    final manager = $$TransactionTemplatesTableTableManager(
+      $_db,
+      $_db.transactionTemplates,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_templateIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $TagsTable _tagIdTable(_$AppDatabase db) => db.tags.createAlias(
+    $_aliasNameGenerator(db.transactionTemplateTags.tagId, db.tags.id),
+  );
+
+  $$TagsTableProcessedTableManager get tagId {
+    final $_column = $_itemColumn<int>('tag_id')!;
+
+    final manager = $$TagsTableTableManager(
+      $_db,
+      $_db.tags,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_tagIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$TransactionTemplateTagsTableFilterComposer
+    extends Composer<_$AppDatabase, $TransactionTemplateTagsTable> {
+  $$TransactionTemplateTagsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  $$TransactionTemplatesTableFilterComposer get templateId {
+    final $$TransactionTemplatesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.templateId,
+      referencedTable: $db.transactionTemplates,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TransactionTemplatesTableFilterComposer(
+            $db: $db,
+            $table: $db.transactionTemplates,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TagsTableFilterComposer get tagId {
+    final $$TagsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tagId,
+      referencedTable: $db.tags,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagsTableFilterComposer(
+            $db: $db,
+            $table: $db.tags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TransactionTemplateTagsTableOrderingComposer
+    extends Composer<_$AppDatabase, $TransactionTemplateTagsTable> {
+  $$TransactionTemplateTagsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  $$TransactionTemplatesTableOrderingComposer get templateId {
+    final $$TransactionTemplatesTableOrderingComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.templateId,
+          referencedTable: $db.transactionTemplates,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$TransactionTemplatesTableOrderingComposer(
+                $db: $db,
+                $table: $db.transactionTemplates,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$TagsTableOrderingComposer get tagId {
+    final $$TagsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tagId,
+      referencedTable: $db.tags,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagsTableOrderingComposer(
+            $db: $db,
+            $table: $db.tags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TransactionTemplateTagsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TransactionTemplateTagsTable> {
+  $$TransactionTemplateTagsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  $$TransactionTemplatesTableAnnotationComposer get templateId {
+    final $$TransactionTemplatesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.templateId,
+          referencedTable: $db.transactionTemplates,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$TransactionTemplatesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.transactionTemplates,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$TagsTableAnnotationComposer get tagId {
+    final $$TagsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tagId,
+      referencedTable: $db.tags,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.tags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TransactionTemplateTagsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TransactionTemplateTagsTable,
+          TransactionTemplateTagRow,
+          $$TransactionTemplateTagsTableFilterComposer,
+          $$TransactionTemplateTagsTableOrderingComposer,
+          $$TransactionTemplateTagsTableAnnotationComposer,
+          $$TransactionTemplateTagsTableCreateCompanionBuilder,
+          $$TransactionTemplateTagsTableUpdateCompanionBuilder,
+          (TransactionTemplateTagRow, $$TransactionTemplateTagsTableReferences),
+          TransactionTemplateTagRow,
+          PrefetchHooks Function({bool templateId, bool tagId})
+        > {
+  $$TransactionTemplateTagsTableTableManager(
+    _$AppDatabase db,
+    $TransactionTemplateTagsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TransactionTemplateTagsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$TransactionTemplateTagsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$TransactionTemplateTagsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> templateId = const Value.absent(),
+                Value<int> tagId = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TransactionTemplateTagsCompanion(
+                templateId: templateId,
+                tagId: tagId,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required int templateId,
+                required int tagId,
+                Value<int> rowid = const Value.absent(),
+              }) => TransactionTemplateTagsCompanion.insert(
+                templateId: templateId,
+                tagId: tagId,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$TransactionTemplateTagsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({templateId = false, tagId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (templateId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.templateId,
+                                referencedTable:
+                                    $$TransactionTemplateTagsTableReferences
+                                        ._templateIdTable(db),
+                                referencedColumn:
+                                    $$TransactionTemplateTagsTableReferences
+                                        ._templateIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+                    if (tagId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.tagId,
+                                referencedTable:
+                                    $$TransactionTemplateTagsTableReferences
+                                        ._tagIdTable(db),
+                                referencedColumn:
+                                    $$TransactionTemplateTagsTableReferences
+                                        ._tagIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$TransactionTemplateTagsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TransactionTemplateTagsTable,
+      TransactionTemplateTagRow,
+      $$TransactionTemplateTagsTableFilterComposer,
+      $$TransactionTemplateTagsTableOrderingComposer,
+      $$TransactionTemplateTagsTableAnnotationComposer,
+      $$TransactionTemplateTagsTableCreateCompanionBuilder,
+      $$TransactionTemplateTagsTableUpdateCompanionBuilder,
+      (TransactionTemplateTagRow, $$TransactionTemplateTagsTableReferences),
+      TransactionTemplateTagRow,
+      PrefetchHooks Function({bool templateId, bool tagId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -41713,4 +43898,11 @@ class $AppDatabaseManager {
       $$CategoryTemplatesTableTableManager(_db, _db.categoryTemplates);
   $$CategoryTemplateItemsTableTableManager get categoryTemplateItems =>
       $$CategoryTemplateItemsTableTableManager(_db, _db.categoryTemplateItems);
+  $$TransactionTemplatesTableTableManager get transactionTemplates =>
+      $$TransactionTemplatesTableTableManager(_db, _db.transactionTemplates);
+  $$TransactionTemplateTagsTableTableManager get transactionTemplateTags =>
+      $$TransactionTemplateTagsTableTableManager(
+        _db,
+        _db.transactionTemplateTags,
+      );
 }

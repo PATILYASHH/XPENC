@@ -1277,6 +1277,49 @@ class TagGroupTags extends Table {
   Set<Column> get primaryKey => {groupId, tagId};
 }
 
+/// A saved prefill for the ➕ flow (GitHub #125) — "create template from this
+/// transaction" snapshots one existing [Transactions] row's shape (minus its
+/// date and receipt, same two fields a duplicate never carries over either —
+/// see [AddTransactionScreen]'s doc comment) so it can be picked again later
+/// from the ➕ button's choice sheet instead of retyping the same rent/
+/// subscription/etc. every time.
+///
+/// [accountId]/[toAccountId] reference live [Accounts] rows rather than
+/// snapshotting a name, so [AppDatabase.deleteAccount] refuses to delete an
+/// account still named by a template (same house style as its existing
+/// reminder/rule guards) — a template never silently loses its account
+/// mid-life. [categoryId] needs no such guard: categories are only ever
+/// archived, never hard-deleted, so the reference is always safe.
+///
+/// Deliberately does not support a split expense — [AppDatabase.
+/// createTemplateFromTransaction] refuses to create one from a transaction
+/// with [TransactionSplits] rows, since a template has only the one
+/// [categoryId] to prefill.
+@DataClassName('TransactionTemplateRow')
+class TransactionTemplates extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text().withLength(min: 1, max: 60)();
+  TextColumn get type => textEnum<TxType>()();
+  IntColumn get amount => integer().map(const MoneyConverter())();
+  IntColumn get accountId => integer().references(Accounts, #id)();
+  IntColumn get toAccountId => integer().nullable().references(Accounts, #id)();
+  IntColumn get categoryId =>
+      integer().nullable().references(Categories, #id)();
+  TextColumn get note => text().nullable()();
+  TextColumn get payee => text().withLength(min: 1, max: 80).nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// Many-to-many join: which tags a [TransactionTemplates] row prefills.
+@DataClassName('TransactionTemplateTagRow')
+class TransactionTemplateTags extends Table {
+  IntColumn get templateId => integer().references(TransactionTemplates, #id)();
+  IntColumn get tagId => integer().references(Tags, #id)();
+
+  @override
+  Set<Column> get primaryKey => {templateId, tagId};
+}
+
 /// One named shopping list (e.g. "Weekly groceries", "Diwali"). A user can
 /// keep any number of these side by side — see [ShoppingItems].
 @DataClassName('ShoppingListRow')

@@ -443,13 +443,16 @@ final appRouter = GoRouter(
     // The ➕ button — a route pushed above the shell, not a tab.
     // With an `id` it edits that transaction instead of creating one. With a
     // `duplicate` id instead, it prefills from that transaction but still
-    // creates a new one on save — see GitHub #92.
+    // creates a new one on save — see GitHub #92. With a `template` id, it
+    // prefills the same way from a saved TransactionTemplateRow instead of a
+    // live transaction — see GitHub #125.
     GoRoute(
       path: '/add',
       parentNavigatorKey: _rootKey,
       builder: (_, state) {
         final id = state.uri.queryParameters['id'];
         final duplicateId = state.uri.queryParameters['duplicate'];
+        final templateId = state.uri.queryParameters['template'];
         final type = switch (state.uri.queryParameters['type']) {
           'expense' => TxType.expense,
           'income' => TxType.income,
@@ -470,6 +473,7 @@ final appRouter = GoRouter(
           duplicateFromId: duplicateId == null
               ? null
               : int.tryParse(duplicateId),
+          templateId: templateId == null ? null : int.tryParse(templateId),
           initialType: type,
           initialPayee: payee,
           initialNote: note,

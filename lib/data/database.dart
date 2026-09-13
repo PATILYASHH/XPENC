@@ -156,6 +156,8 @@ typedef CombinedStatementLine = ({
     CurrencyRates,
     CategoryTemplates,
     CategoryTemplateItems,
+    TransactionTemplates,
+    TransactionTemplateTags,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -181,7 +183,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 66;
+  int get schemaVersion => 67;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -620,6 +622,11 @@ class AppDatabase extends _$AppDatabase {
       if (from < 66) {
         // "Pay without internet" (USSD *99#) beta — see settings.ussdPayEnabled.
         await _addColumnIfMissing(m, settings, settings.ussdPayEnabled);
+      }
+      if (from < 67) {
+        // Transaction templates (GitHub #125).
+        await m.createTable(transactionTemplates);
+        await m.createTable(transactionTemplateTags);
       }
     },
     beforeOpen: (details) async {
@@ -1726,6 +1733,9 @@ class AppDatabase extends _$AppDatabase {
   /// with no archive step.
   Future<void> deleteTag(int id) => transaction(() async {
     await (delete(transactionTags)..where((t) => t.tagId.equals(id))).go();
+    await (delete(
+      transactionTemplateTags,
+    )..where((t) => t.tagId.equals(id))).go();
     await (delete(tags)..where((t) => t.id.equals(id))).go();
   });
 
@@ -1819,6 +1829,94 @@ class AppDatabase extends _$AppDatabase {
       }
     });
   }
+
+  // ── Transaction templates ────────────────────────────────────────────────
+  //
+  // A saved prefill for the ➕ flow (GitHub #125), always created from an
+  // existing transaction — there is no separate "build one from scratch"
+  // form. Picking one from the ➕ button's choice sheet just prefills
+  // AddTransactionScreen the same way duplicating a transaction does.
+
+  Stream<List<TransactionTemplateRow>> watchTransactionTemplates() =>
+      (select(transactionTemplates)..orderBy([
+            (t) => OrderingTerm(
+              expression: t.createdAt,
+              mode: OrderingMode.desc,
+            ),
+          ]))
+          .watch();
+
+  Future<TransactionTemplateRow?> transactionTemplateById(int id) =>
+      (select(
+        transactionTemplates,
+      )..where((t) => t.id.equals(id))).getSingleOrNull();
+
+  Future<List<int>> tagIdsForTemplate(int templateId) async {
+    final rows = await (select(
+      transactionTemplateTags,
+    )..where((t) => t.templateId.equals(templateId))).get();
+    return rows.map((r) => r.tagId).toList();
+  }
+
+  /// Snapshots [transactionId]'s type/amount/account/category/note/payee/
+  /// tags into a new template named [name]. Refuses a person movement (or a
+  /// repayment counted as income) and a split expense — neither has a shape
+  /// this table, or [AddTransactionScreen], can represent.
+  Future<int> createTemplateFromTransaction({
+    required int transactionId,
+    required String name,
+  }) async {
+    final row = await transactionById(transactionId);
+    if (row == null) throw ArgumentError('Transaction not found.');
+
+    final isPersonLinked =
+        row.type.isPersonMovement ||
+        (row.type.isIncomeOrExpense &&
+            await isPersonLinkedTransaction(row.id));
+    if (isPersonLinked) {
+      throw ArgumentError("This can't be turned into a template.");
+    }
+    final splits = await splitsForTransaction(transactionId);
+    if (splits.isNotEmpty) {
+      throw ArgumentError(
+        "A split transaction can't be turned into a template yet.",
+      );
+    }
+
+    final tagIds = await tagIdsForTransaction(transactionId);
+    return transaction(() async {
+      final id = await into(transactionTemplates).insert(
+        TransactionTemplatesCompanion.insert(
+          name: name,
+          type: row.type,
+          amount: row.amount,
+          accountId: row.accountId,
+          toAccountId: Value(row.toAccountId),
+          categoryId: Value(row.categoryId),
+          note: Value(row.note),
+          payee: Value(row.payee),
+        ),
+      );
+      for (final tagId in tagIds) {
+        await into(transactionTemplateTags).insert(
+          TransactionTemplateTagsCompanion.insert(
+            templateId: id,
+            tagId: tagId,
+          ),
+        );
+      }
+      return id;
+    });
+  }
+
+  Future<void> deleteTransactionTemplate(int id) => transaction(() async {
+    await (delete(
+      transactionTemplateTags,
+    )..where((t) => t.templateId.equals(id))).go();
+    await (delete(
+      transactionTemplates,
+    )..where((t) => t.id.equals(id))).go();
+  });
 
   // ── Savings goals ────────────────────────────────────────────────────────
   //
@@ -2974,6 +3072,16 @@ class AppDatabase extends _$AppDatabase {
       throw ArgumentError(
         'The quick-add notification still posts to this account. Change '
         'that in Settings first.',
+      );
+    }
+    final template = await (select(transactionTemplates)..where(
+          (t) => t.accountId.equals(id) | t.toAccountId.equals(id),
+        ))
+        .getSingleOrNull();
+    if (template != null) {
+      throw ArgumentError(
+        '"${template.name}" template still points at this account. Delete '
+        'that template first.',
       );
     }
     return transaction(() async {

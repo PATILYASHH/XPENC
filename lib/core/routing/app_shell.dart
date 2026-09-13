@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/providers.dart';
 import 'hold_menu_geometry.dart';
+import '../../features/add_transaction/add_transaction_choice_sheet.dart';
 import '../../features/persons/persons_screen.dart' show showAddPersonDialog;
 import '../../features/transactions/transaction_filters.dart';
 import '../branding/app_info.dart';
@@ -134,6 +135,7 @@ class AppShell extends ConsumerWidget {
                   holdEnabled: ref.watch(holdMenuEnabledProvider),
                   slotIds: ref.watch(holdMenuSlotsProvider),
                   catalog: _catalog,
+                  hasTemplates: ref.watch(hasTransactionTemplatesProvider),
                 ),
                 _navItem(context, ref, right),
                 _navItem(context, ref, _more),
@@ -198,11 +200,17 @@ class _AddButton extends StatefulWidget {
     required this.holdEnabled,
     required this.slotIds,
     required this.catalog,
+    required this.hasTemplates,
   });
 
   final bool holdEnabled;
   final List<String> slotIds;
   final Map<String, _TabSpec> catalog;
+
+  /// Whether a plain tap should show the "blank or template" choice sheet
+  /// (GitHub #125) instead of jumping straight to `/add` — see
+  /// [hasTransactionTemplatesProvider].
+  final bool hasTemplates;
 
   @override
   State<_AddButton> createState() => _AddButtonState();
@@ -297,7 +305,9 @@ class _AddButtonState extends State<_AddButton> {
       shape: const CircleBorder(),
       child: InkWell(
         customBorder: const CircleBorder(),
-        onTap: () => context.push('/add'),
+        onTap: () => widget.hasTemplates
+            ? openAddTransactionChoiceSheet(context)
+            : context.push('/add'),
         child: const SizedBox(
           width: 52,
           height: 52,
