@@ -11,10 +11,12 @@ import '../settings/currency_picker_sheet.dart';
 import '../tags/tag_picker_sheet.dart';
 
 /// Opens the add/edit sheet. Pass [existing] to edit that rule instead of
-/// creating a new one.
+/// creating a new one, or [prefillFrom] to seed a new rule's fields from a
+/// past transaction (GitHub #129) — ignored when [existing] is set.
 Future<void> showRecurringRuleSheet(
   BuildContext context, {
   RecurringRuleRow? existing,
+  TransactionRow? prefillFrom,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -24,7 +26,8 @@ Future<void> showRecurringRuleSheet(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
-    builder: (_) => RecurringRuleSheet(existing: existing),
+    builder: (_) =>
+        RecurringRuleSheet(existing: existing, prefillFrom: prefillFrom),
   );
 }
 
@@ -34,9 +37,13 @@ Future<void> showRecurringRuleSheet(
 /// the result via [Transactions.needsAmountReview] so the user is nudged to
 /// correct it. See [AppDatabase.runDueRecurringRules].
 class RecurringRuleSheet extends ConsumerStatefulWidget {
-  const RecurringRuleSheet({this.existing, super.key});
+  const RecurringRuleSheet({this.existing, this.prefillFrom, super.key});
 
   final RecurringRuleRow? existing;
+
+  /// A past transaction to seed a new rule's fields from. Ignored when
+  /// [existing] is set — editing always wins.
+  final TransactionRow? prefillFrom;
 
   @override
   ConsumerState<RecurringRuleSheet> createState() => _RecurringRuleSheetState();
@@ -89,6 +96,10 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     final e = widget.existing;
     if (e == null) {
       _dueDate = DateTime.now();
+      final source = widget.prefillFrom;
+      if (source != null && source.type.isIncomeOrExpense) {
+        _prefillFromTransaction(source);
+      }
       return;
     }
     _nameController.text = e.name;
@@ -125,6 +136,36 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
   /// `AddTransactionScreen._loadForEdit` fetching a transaction's tags.
   Future<void> _loadTagIds(int ruleId) async {
     final ids = await ref.read(dbProvider).tagIdsForRecurringRule(ruleId);
+    if (mounted) setState(() => _tagIds = ids.toSet());
+  }
+
+  /// Seeds a brand-new rule's fields from [t] (GitHub #129 — "turn this
+  /// transaction into a recurring payment"). The due date is left at "now"
+  /// (set by the caller) rather than derived from [t.date]: the source
+  /// transaction may be old, and guessing the next occurrence from it is
+  /// more likely to surprise than help — the user picks the real start date.
+  void _prefillFromTransaction(TransactionRow t) {
+    _ruleKind = t.type == TxType.income ? _RuleKind.income : _RuleKind.expense;
+    _amountController.text = _bufferFromMoney(t.amount);
+    _accountId = t.accountId;
+    _categoryId = t.categoryId;
+    final payee = t.payee?.trim();
+    if (payee != null && payee.isNotEmpty) {
+      _payeeController.text = payee;
+      _nameController.text = payee;
+    } else {
+      final category = ref.read(categoryMapProvider)[t.categoryId];
+      _nameController.text =
+          category?.name ??
+          (t.type == TxType.income ? 'Recurring income' : 'Recurring expense');
+    }
+    final note = t.note?.trim();
+    if (note != null && note.isNotEmpty) _noteController.text = note;
+    _loadTransactionTagIds(t.id);
+  }
+
+  Future<void> _loadTransactionTagIds(int transactionId) async {
+    final ids = await ref.read(dbProvider).tagIdsForTransaction(transactionId);
     if (mounted) setState(() => _tagIds = ids.toSet());
   }
 

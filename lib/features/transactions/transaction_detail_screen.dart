@@ -13,6 +13,7 @@ import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../auto/recurring_rule_sheet.dart';
 import '../tags/tag_picker_sheet.dart';
 import 'transaction_link_picker_sheet.dart';
 
@@ -28,11 +29,22 @@ class TransactionDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final txAsync = ref.watch(transactionByIdProvider(transactionId));
+    final t = txAsync.valueOrNull;
+    // Only an income or expense has a category/account shape a recurring
+    // rule can reuse, and one already posted by a rule doesn't need another.
+    final canMakeRecurring =
+        t != null && t.type.isIncomeOrExpense && t.recurringRuleId == null;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Transaction'),
         actions: [
+          if (canMakeRecurring)
+            IconButton(
+              icon: const Icon(Icons.autorenew_rounded),
+              tooltip: 'Make recurring',
+              onPressed: () => showRecurringRuleSheet(context, prefillFrom: t),
+            ),
           IconButton(
             icon: const Icon(Icons.content_copy_outlined),
             tooltip: 'Duplicate',
