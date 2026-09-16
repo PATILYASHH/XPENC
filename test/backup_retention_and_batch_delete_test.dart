@@ -131,7 +131,10 @@ void main() {
 
       expect(find.text('1 selected'), findsOneWidget);
       expect(find.text('Find existing'), findsNothing);
-      expect(find.widgetWithText(TextButton, 'Delete'), findsOneWidget);
+      // find.byIcon rather than widgetWithText(TextButton, ...) — the header
+      // Delete action is a TextButton.icon, whose internal widget type isn't
+      // stable across Flutter versions; the icon is unique to this button.
+      expect(find.byIcon(Icons.delete_outline), findsOneWidget);
       // Entering selection mode hides the per-tile overflow menu — nothing
       // else should be able to trigger a restore/share/delete meanwhile.
       expect(find.byType(PopupMenuButton<String>), findsNothing);
@@ -181,7 +184,7 @@ void main() {
       await tester.pump();
       expect(find.text('2 selected'), findsOneWidget);
 
-      await tester.tap(find.widgetWithText(TextButton, 'Delete'));
+      await tester.tap(find.byIcon(Icons.delete_outline));
       await tester.pump();
 
       expect(find.text('Delete 2 backups?'), findsOneWidget);
