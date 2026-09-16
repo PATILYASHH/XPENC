@@ -325,6 +325,171 @@ Future<Uint8List> buildCombinedStatementPdf({
   return doc.save();
 }
 
+/// One person's lend/borrow ledger for a period (GitHub #128 — "Share Data
+/// with Person"). [currentBalance] is the live, all-time net balance (not
+/// filtered to [start]/[end]) — a per-period balance would need a running
+/// total as of [start], which this ledger doesn't track, so it's labelled
+/// separately rather than implied as "as of [end]".
+Future<Uint8List> buildPersonStatementPdf({
+  required PersonRow person,
+  required List<PersonEntryRow> entries,
+  required Money currentBalance,
+  required DateTime start,
+  required DateTime end,
+}) async {
+  final doc = pw.Document(title: '${person.name} statement');
+  final sorted = [...entries]..sort((a, b) => a.date.compareTo(b.date));
+
+  doc.addPage(
+    pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
+      header: (context) => _pageHeader('Person Statement'),
+      footer: _pageFooter,
+      build: (context) => [
+        _kv('Person', person.name),
+        _kv('Period', '${_dateLabel(start)} to ${_dateLabel(end)}'),
+        _kv('Currency', MoneyFormat.currency.code),
+        pw.SizedBox(height: 12),
+        if (sorted.isEmpty)
+          pw.Text(
+            'No entries in this period.',
+            style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+          )
+        else
+          pw.TableHelper.fromTextArray(
+            headers: const ['Date', 'Note', 'Direction', 'Amount'],
+            data: [
+              for (final e in sorted)
+                [
+                  _dateLabel(e.date),
+                  (e.note?.trim().isNotEmpty ?? false) ? e.note!.trim() : '-',
+                  e.direction == PersonDirection.theyOwe
+                      ? 'They owe'
+                      : 'You owe',
+                  MoneyFormat.bare(e.amount),
+                ],
+            ],
+            cellAlignments: const {
+              0: pw.Alignment.centerLeft,
+              1: pw.Alignment.centerLeft,
+              2: pw.Alignment.centerLeft,
+              3: pw.Alignment.centerRight,
+            },
+            headerStyle: pw.TextStyle(
+              fontWeight: pw.FontWeight.bold,
+              fontSize: 10,
+            ),
+            cellStyle: const pw.TextStyle(fontSize: 9),
+            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+            headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+          ),
+        pw.SizedBox(height: 16),
+        pw.Divider(color: PdfColors.grey400),
+        _kv(
+          'Current balance',
+          currentBalance.isNegative
+              ? 'You owe ${MoneyFormat.bare(currentBalance.abs)}'
+              : currentBalance.isPositive
+              ? 'They owe ${MoneyFormat.bare(currentBalance)}'
+              : 'Settled',
+        ),
+        pw.SizedBox(height: 4),
+        pw.Text(
+          '(as of today, not limited to the period above)',
+          style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
+        ),
+      ],
+    ),
+  );
+
+  return doc.save();
+}
+
+/// One group's shared-expense history for a period (GitHub #128 — same
+/// request extended to groups). [payerNames] maps a [GroupExpenseRow.payerId]
+/// to a display name; a null key is looked up for "me" (the app's own user)
+/// paying. Per-member shares aren't broken out here — the group detail
+/// screen doesn't persist another member's share once it's computed either
+/// (see `GroupExpenses`), so this mirrors what's actually on screen.
+Future<Uint8List> buildGroupStatementPdf({
+  required GroupRow group,
+  required List<GroupExpenseRow> expenses,
+  required Map<int, String> payerNames,
+  required Money currentBalance,
+  required DateTime start,
+  required DateTime end,
+}) async {
+  final doc = pw.Document(title: '${group.name} statement');
+  final sorted = [...expenses]..sort((a, b) => a.date.compareTo(b.date));
+  final total = sorted.fold(const Money.zero(), (s, e) => s + e.amount);
+
+  doc.addPage(
+    pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
+      header: (context) => _pageHeader('Group Statement'),
+      footer: _pageFooter,
+      build: (context) => [
+        _kv('Group', group.name),
+        _kv('Period', '${_dateLabel(start)} to ${_dateLabel(end)}'),
+        _kv('Currency', MoneyFormat.currency.code),
+        pw.SizedBox(height: 12),
+        if (sorted.isEmpty)
+          pw.Text(
+            'No expenses in this period.',
+            style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+          )
+        else
+          pw.TableHelper.fromTextArray(
+            headers: const ['Date', 'Note', 'Paid by', 'Amount'],
+            data: [
+              for (final e in sorted)
+                [
+                  _dateLabel(e.date),
+                  (e.note?.trim().isNotEmpty ?? false)
+                      ? e.note!.trim()
+                      : 'Group expense',
+                  payerNames[e.payerId] ?? 'You',
+                  MoneyFormat.bare(e.amount),
+                ],
+            ],
+            cellAlignments: const {
+              0: pw.Alignment.centerLeft,
+              1: pw.Alignment.centerLeft,
+              2: pw.Alignment.centerLeft,
+              3: pw.Alignment.centerRight,
+            },
+            headerStyle: pw.TextStyle(
+              fontWeight: pw.FontWeight.bold,
+              fontSize: 10,
+            ),
+            cellStyle: const pw.TextStyle(fontSize: 9),
+            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+            headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+          ),
+        pw.SizedBox(height: 12),
+        _kv('Total for period', MoneyFormat.bare(total)),
+        pw.SizedBox(height: 16),
+        pw.Divider(color: PdfColors.grey400),
+        _kv(
+          'Your balance',
+          currentBalance.isNegative
+              ? 'You owe ${MoneyFormat.bare(currentBalance.abs)}'
+              : currentBalance.isPositive
+              ? 'Owed to you ${MoneyFormat.bare(currentBalance)}'
+              : 'Settled',
+        ),
+        pw.SizedBox(height: 4),
+        pw.Text(
+          '(as of today, not limited to the period above)',
+          style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
+        ),
+      ],
+    ),
+  );
+
+  return doc.save();
+}
+
 // ── Shared layout helpers ────────────────────────────────────────────────────
 
 pw.Widget _pageHeader(String title) => pw.Column(

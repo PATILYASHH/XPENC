@@ -5,6 +5,7 @@ import 'package:media_store_plus/media_store_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/money.dart';
 import '../../data/database.dart';
 import 'report_pdf.dart';
 import 'statement_pdf.dart';
@@ -473,6 +474,62 @@ class BackupService {
     final file = File(
       '${dir.path}/xpenc-budget-$safeName-${month.year}-'
       '${_two(month.month)}.pdf',
+    );
+    await file.writeAsBytes(bytes, flush: true);
+    return file;
+  }
+
+  /// One person's lend/borrow ledger for [start] to [end] inclusive — the
+  /// Person Detail page's share action (GitHub #128).
+  Future<File> writePersonStatementPdf({
+    required PersonRow person,
+    required List<PersonEntryRow> entries,
+    required Money currentBalance,
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    final bytes = await buildPersonStatementPdf(
+      person: person,
+      entries: entries,
+      currentBalance: currentBalance,
+      start: start,
+      end: end,
+    );
+    final dir = await getApplicationDocumentsDirectory();
+    final safeName = person.name
+        .replaceAll(RegExp(r'[^A-Za-z0-9]+'), '-')
+        .toLowerCase();
+    final file = File(
+      '${dir.path}/xpenc-person-$safeName-${_stamp(DateTime.now())}.pdf',
+    );
+    await file.writeAsBytes(bytes, flush: true);
+    return file;
+  }
+
+  /// One group's shared-expense history for [start] to [end] inclusive —
+  /// the Group Detail page's share action (GitHub #128).
+  Future<File> writeGroupStatementPdf({
+    required GroupRow group,
+    required List<GroupExpenseRow> expenses,
+    required Map<int, String> payerNames,
+    required Money currentBalance,
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    final bytes = await buildGroupStatementPdf(
+      group: group,
+      expenses: expenses,
+      payerNames: payerNames,
+      currentBalance: currentBalance,
+      start: start,
+      end: end,
+    );
+    final dir = await getApplicationDocumentsDirectory();
+    final safeName = group.name
+        .replaceAll(RegExp(r'[^A-Za-z0-9]+'), '-')
+        .toLowerCase();
+    final file = File(
+      '${dir.path}/xpenc-group-$safeName-${_stamp(DateTime.now())}.pdf',
     );
     await file.writeAsBytes(bytes, flush: true);
     return file;

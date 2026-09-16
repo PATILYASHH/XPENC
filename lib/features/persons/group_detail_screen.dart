@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/money_text.dart';
+import '../../core/widgets/statement_range_picker.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
@@ -62,6 +63,11 @@ class GroupDetailScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Text(group.name),
         actions: [
+          IconButton(
+            tooltip: 'Share statement',
+            icon: const Icon(Icons.ios_share_rounded),
+            onPressed: () => _shareGroupStatement(context, ref, group, balance),
+          ),
           IconButton(
             tooltip: 'Edit group',
             icon: const Icon(Icons.edit_outlined),
@@ -335,6 +341,63 @@ class GroupDetailScreen extends ConsumerWidget {
 }
 
 enum _GroupMenuAction { archive, remove }
+
+/// Same "pick a period → generate → share" flow as
+/// `_downloadStatement`/`_shareStatement` for an account or person — see
+/// `person_detail_screen.dart`.
+Future<void> _shareGroupStatement(
+  BuildContext context,
+  WidgetRef ref,
+  GroupRow group,
+  Money balance,
+) async {
+  final range = await pickStatementRange(context);
+  if (range == null || !context.mounted) return;
+
+  final messenger = ScaffoldMessenger.of(context);
+  final expenses = await ref.read(groupExpensesProvider(group.id).future);
+  final periodExpenses = expenses
+      .where(
+        (e) =>
+            !e.date.isBefore(range.start) &&
+            e.date.isBefore(range.end.add(const Duration(days: 1))),
+      )
+      .toList();
+  final personMap = ref.read(personMapProvider);
+  final payerNames = {
+    for (final e in periodExpenses)
+      if (e.payerId != null) e.payerId!: personMap[e.payerId]?.name ?? 'Someone',
+  };
+
+  final service = ref.read(backupServiceProvider);
+  messenger
+    ..hideCurrentSnackBar()
+    ..showSnackBar(const SnackBar(content: Text('Generating statement...')));
+  try {
+    final file = await service.writeGroupStatementPdf(
+      group: group,
+      expenses: periodExpenses,
+      payerNames: payerNames,
+      currentBalance: balance,
+      start: range.start,
+      end: range.end,
+    );
+    await service.share(file, subject: '${group.name} statement');
+    if (!context.mounted) return;
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text('Exported ${file.uri.pathSegments.last}')),
+      );
+  } catch (e) {
+    if (!context.mounted) return;
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text("Couldn't generate statement: $e")),
+      );
+  }
+}
 
 class _GroupBalanceHero extends StatelessWidget {
   const _GroupBalanceHero({required this.balance});

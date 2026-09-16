@@ -13,6 +13,7 @@ import '../../core/payments/upi_launcher.dart';
 import '../../core/payments/venmo_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/money_text.dart';
+import '../../core/widgets/statement_range_picker.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
@@ -72,6 +73,12 @@ class PersonDetailScreen extends ConsumerWidget {
             pinned: true,
             title: Text(person.name),
             actions: [
+              IconButton(
+                tooltip: 'Share statement',
+                icon: const Icon(Icons.ios_share_rounded),
+                onPressed: () =>
+                    _shareStatement(context, ref, person, balance),
+              ),
               IconButton(
                 tooltip: 'Edit person',
                 icon: const Icon(Icons.edit_outlined),
@@ -432,6 +439,59 @@ class _ActionButtons extends ConsumerWidget {
         ],
       ),
     );
+  }
+}
+
+/// Generates and shares a PDF of [person]'s ledger for a range the user
+/// picks, same "Generating..." → share-sheet flow as an account statement
+/// (see `_downloadStatement` in account_detail_screen.dart). [balance] is
+/// the live net balance, carried straight through as the PDF's "current
+/// balance" line rather than recomputed.
+Future<void> _shareStatement(
+  BuildContext context,
+  WidgetRef ref,
+  PersonRow person,
+  Money balance,
+) async {
+  final range = await pickStatementRange(context);
+  if (range == null || !context.mounted) return;
+
+  final messenger = ScaffoldMessenger.of(context);
+  final entries = await ref.read(personEntriesProvider(person.id).future);
+  final periodEntries = entries
+      .where(
+        (e) =>
+            !e.date.isBefore(range.start) &&
+            e.date.isBefore(range.end.add(const Duration(days: 1))),
+      )
+      .toList();
+
+  final service = ref.read(backupServiceProvider);
+  messenger
+    ..hideCurrentSnackBar()
+    ..showSnackBar(const SnackBar(content: Text('Generating statement...')));
+  try {
+    final file = await service.writePersonStatementPdf(
+      person: person,
+      entries: periodEntries,
+      currentBalance: balance,
+      start: range.start,
+      end: range.end,
+    );
+    await service.share(file, subject: '${person.name} statement');
+    if (!context.mounted) return;
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text('Exported ${file.uri.pathSegments.last}')),
+      );
+  } catch (e) {
+    if (!context.mounted) return;
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text("Couldn't generate statement: $e")),
+      );
   }
 }
 
