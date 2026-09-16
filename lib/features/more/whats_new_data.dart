@@ -23,141 +23,141 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
-    icon: Icons.groups_outlined,
-    title: 'Split group expenses',
-    location: 'Persons → Group tab',
+    icon: Icons.currency_exchange_rounded,
+    title: 'Multi-currency accounts',
+    location: 'Accounts → Add Account',
     description:
-        'Create a group from your people and log a shared expense split '
-        'equally, by percentage, or by manual amount. Whoever paid — you or '
-        'a group member — the split is computed and recorded automatically, '
-        'and each person\'s balance updates right alongside their individual '
-        'one.',
+        'Open an account in any supported currency. Balances, statements '
+        'and PDFs render in its own currency, transfers between different '
+        'currencies show a live conversion preview, and Net Worth converts '
+        'everything into your home currency automatically.',
   ),
   WhatsNewEntry(
-    icon: Icons.currency_rupee_rounded,
-    title: 'Pay or Request via UPI (Beta)',
-    location: 'Persons → tap a person',
+    icon: Icons.pie_chart_outline_rounded,
+    title: 'Ready to Assign replaces Budgets vs. Envelope',
+    location: 'Settings → Budgeting',
     description:
-        'A person\'s page now offers a "Pay" or "Request" button — whichever '
-        'way the balance runs — pre-filled with what\'s owed. One tap opens '
-        'a UPI intent Android hands to whatever app you have installed. New '
-        'edit-person flow too: UPI ID, phone and more, where before there '
-        'was only Add, Archive or Remove.',
+        'Budget limits are always on now, and Ready to Assign is a single '
+        'toggle on top — turn it on to pool every account into one shared '
+        '"assign before you spend" figure, instead of choosing one system '
+        'or the other.',
   ),
   WhatsNewEntry(
-    icon: Icons.dashboard_customize_outlined,
-    title: 'Customize the bottom nav',
-    location: 'Settings → Customize bottom nav',
-    description:
-        'Pick which two destinations sit next to the ➕ button — '
-        'Transactions, Persons, Calendar, Budgets, Accounts, Stats or '
-        'Payees. Dashboard and More stay pinned. Labels under each icon can '
-        'be turned off too.',
-  ),
-  WhatsNewEntry(
-    icon: Icons.savings_outlined,
-    title: 'Goals & Loans hub',
-    location: 'More → Goals & Loans',
-    description:
-        'Savings Goals is now Goals & Loans — the same screen tracks money '
-        'you\'ve borrowed as a loan alongside goals you\'re saving toward, '
-        'instead of splitting them across two places.',
-  ),
-  WhatsNewEntry(
-    icon: Icons.donut_large_rounded,
-    title: 'Interactive dashboard charts',
-    location: 'Dashboard → Budgets / Spending',
-    description:
-        'Tap or hold a wedge to see its name and amount instead of a '
-        'permanent legend underneath. A category over its budget now gets a '
-        'diagonal hazard-stripe pattern on its wedge, not just a thin ring.',
-  ),
-  WhatsNewEntry(
-    icon: Icons.space_dashboard_outlined,
-    title: 'Redesigned dashboard',
-    location: 'Dashboard',
-    description:
-        'The hero card switches between metrics — Total Money, Net Worth — '
-        'via tabs, and Budgets/Spending render as pie charts instead of '
-        'bars.',
-  ),
-  WhatsNewEntry(
-    icon: Icons.key_outlined,
-    title: 'Master recovery phrase',
+    icon: Icons.lock_outline_rounded,
+    title: 'Independent unlock method toggles',
     location: 'Settings → Security',
     description:
-        'Set a 10-word recovery phrase as a backup unlock method, and '
-        'choose how many wrong PIN attempts before XPENC asks for it '
-        'instead — a real fallback instead of an unlimited-attempts PIN.',
+        'Turn on PIN, master password and/or an authenticator app in any '
+        'combination — any one of them unlocks the app — instead of '
+        'picking exactly one.',
   ),
   WhatsNewEntry(
-    icon: Icons.text_fields_rounded,
-    title: 'Font settings',
-    location: 'Settings → Font',
+    icon: Icons.leaderboard_outlined,
+    title: 'Standings in Stats',
+    location: 'Stats → Standings',
     description:
-        'Adjust text size, boldness and font family app-wide, with a live '
-        'preview — for readability, not just as an accessibility '
-        'afterthought.',
+        'A ranked, high-to-low list of top transactions or top categories '
+        'for the period. Every category view now also shows its share of '
+        'total spend and links straight into that category\'s detail.',
   ),
   WhatsNewEntry(
-    icon: Icons.palette_outlined,
-    title: 'Bold theme',
-    location: 'Settings → Theme',
+    icon: Icons.folder_copy_outlined,
+    title: 'Category templates',
+    location: 'Categories → templates icon',
     description:
-        'A near-black theme with a coral-and-gold accent and Sora/Manrope '
-        'typography — bigger, bolder headlines than the other presets.',
+        'Save your current category structure as a named template and '
+        'switch between saved templates any time — switching never '
+        'touches a transaction.',
   ),
   WhatsNewEntry(
-    icon: Icons.link_rounded,
-    title: 'Link related transactions',
-    location: 'Transactions',
+    icon: Icons.category_outlined,
+    title: 'Bigger, searchable icon picker',
+    location: 'Categories / Add Account',
     description:
-        'Link two or more transactions together — a refund to its original '
-        'purchase, say — and filter the list to only linked transactions '
-        'with the new "Linked" chip.',
+        'Category and account icons grow from 28 to 76, picked from a '
+        'searchable sheet with a "Frequently used" row instead of an '
+        'inline grid.',
   ),
   WhatsNewEntry(
-    icon: Icons.account_balance_wallet_outlined,
-    title: 'Customize Dashboard net worth',
-    location: 'Settings → Customize dashboard',
+    icon: Icons.autorenew_rounded,
+    title: 'Auto rules: Goals & Loans',
+    location: 'Auto → add/edit a rule',
     description:
-        'Choose which accounts count toward the Dashboard\'s Net Worth '
-        'figure — exclude a loan or goal account you don\'t want pulling '
-        'the number around.',
+        'A recurring rule can now post a transfer into a goal or a loan '
+        'payment on schedule, alongside the existing Expense/Income kinds.',
   ),
   WhatsNewEntry(
-    icon: Icons.calendar_month_outlined,
-    title: 'Calendar day totals',
-    location: 'More → Calendar & Reminders',
+    icon: Icons.sell_outlined,
+    title: 'Tag groups',
+    location: 'Tags → group icon',
     description:
-        'Selecting a day now shows that day\'s total money in and out — '
-        'toggleable in Settings → Calendar.',
+        'Bundle tags that always go together (e.g. "Work trip" = Travel + '
+        'Meals) and pick the whole group at once from the tag picker.',
   ),
   WhatsNewEntry(
-    icon: Icons.call_split_rounded,
-    title: 'Split cash change across accounts',
-    location: 'Add Transaction',
+    icon: Icons.copy_all_outlined,
+    title: 'Duplicate a transaction',
+    location: 'Transactions → long-press',
     description:
-        'An expense\'s change can now be split across two accounts instead '
-        'of assuming it all went to one — useful when change from a cash '
-        'purchase gets split between a wallet and a bank top-up.',
+        'Long-press a transaction for Duplicate / Edit / Delete. Duplicate '
+        'prefills a new entry from the source but resets the date to today.',
   ),
   WhatsNewEntry(
-    icon: Icons.archive_outlined,
-    title: 'Archived Auto rules',
-    location: 'More → Auto',
+    icon: Icons.bookmark_add_outlined,
+    title: 'Transaction templates',
+    location: 'Add transaction → ➕',
     description:
-        'A paused recurring rule moves to an Archived list instead of '
-        'cluttering the active one — the same pattern Accounts and Persons '
-        'already use.',
+        '"Create template from this transaction" snapshots its details for '
+        'reuse — the ➕ button offers a template once you\'ve saved one.',
   ),
   WhatsNewEntry(
-    icon: Icons.height_rounded,
-    title: 'Bottom spacing setting',
-    location: 'Settings → Customize bottom nav → Bottom spacing',
+    icon: Icons.event_repeat_rounded,
+    title: 'Turn a transaction into a recurring payment',
+    location: 'Transaction detail',
     description:
-        'A manual slider that adds clearance above the bottom nav bar and '
-        'the PIN lock screen\'s keypad, for phones whose on-screen '
-        'navigation buttons don\'t report their own size correctly.',
+        '"Make recurring" opens the auto rule sheet pre-filled with that '
+        'transaction\'s amount, account, category, payee, note and tags.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.event_available_outlined,
+    title: 'Custom budget cycle start day',
+    location: 'Settings → Budgeting',
+    description:
+        'Treat any day 1–28 as the start of a "month," so a payday-anchored '
+        'cycle doesn\'t reset mid-paycheck. Defaults to the 1st.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.view_week_outlined,
+    title: 'Filter transactions by ISO week',
+    location: 'Transactions → filter',
+    description:
+        'A "Week" toggle steps through standard Monday–Sunday weeks '
+        'instead of requiring a manual date range.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.picture_as_pdf_outlined,
+    title: 'Share a person or group ledger as a PDF',
+    location: 'Person / Group detail',
+    description:
+        'The same statement flow accounts already had — a lend/borrow '
+        'ledger for a person, a shared-expense history for a group.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.wifi_off_rounded,
+    title: 'Pay without internet — *99# (Beta)',
+    location: 'Persons → Individual tab',
+    description:
+        'Turn on Settings → Payment Support → UPI\'s new sub-toggle to pay '
+        'a person via the offline USSD *99# menu when there\'s no data '
+        'signal.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.auto_delete_outlined,
+    title: 'Keep-last-X backup retention & batch delete',
+    location: 'Settings → Backups',
+    description:
+        'An alternative, count-based auto-backup retention mode, plus '
+        'long-press batch-select to delete several backups from the list '
+        'at once.',
   ),
 ];

@@ -8,17 +8,40 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
-### Changed
-- **Unlock methods are now independent on/off toggles** (Settings → Security)
-  instead of picking exactly one. Turn on PIN, master password and/or the
-  authenticator app in any combination — any one of them unlocks the app
-  (OR, not AND) — and switch between whichever are turned on from "Try
-  another method" on the lock screen. Replaces the old single-choice picker
-  and the "PIN + Authenticator" two-factor combo: an install that had that
-  combo active now has both toggles on, so either credential alone unlocks
-  it going forward.
+## [1.6.0] — 2026-09-16
 
 ### Added
+- **Multi-currency accounts** — an account can now be opened in any
+  supported currency, locked in once its first transaction posts. Balances,
+  transaction/account detail, statements and PDFs all render in that
+  account's own currency; Net Worth converts every foreign-currency account
+  into the home currency at the live rate. Settings → Currency manages
+  exchange rates, and a transfer between two differently-currencied accounts
+  shows a live conversion preview and credits the destination in its own
+  currency.
+- **Foreign-currency annotation for transactions & auto rules** (#85) — for
+  a home-currency account, a transaction or recurring rule can optionally
+  record what it really cost in another currency (e.g. "$9.99" for a
+  subscription charged as ₹830), with the rate implied and shown live. Only
+  the home-currency amount ever moves balances, net worth, envelope pooling
+  or budgets — this is a lighter-weight annotation, distinct from giving an
+  entire account its own currency above.
+- **Guided first-run tour** — onboarding now asks upfront whether you're new
+  to XPENC or already know it. New: a short skippable tour covering Normal
+  vs. Envelope account mode, accounts, Persons & Groups, Auto/Goals/Loans,
+  and Payees/Budgets/Security. Already-know-it: straight to an explicit
+  restore-from-backup screen instead. Neither path collects any data
+  upfront anymore — currency, opening balances and accounts are all left to
+  their normal in-app flows once you land on the dashboard.
+- **Edit an account's opening balance directly** — a pencil icon on Account
+  Detail lets you correct an account's opening balance on the spot, instead
+  of faking an income transaction to fix a balance you forgot to seed at
+  creation.
+- **Standings in Stats** (#95) — a ranked list view of top transactions or
+  top categories for the current period, high-to-low by default with a
+  toggle to reverse it. Both Stats category views (the donut legend and
+  Standings) now also show each category's share of total spend and link
+  straight into its Budget Detail screen.
 - **Category templates** (#101) — save your current category/sub-category
   structure as a named template from Categories → the new templates icon,
   and switch between saved templates any time. Switching never touches a
@@ -26,24 +49,116 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   (same as a manual archive — their transactions keep them), categories it
   does have are created or relabelled in place, and switching back later
   reactivates the same categories rather than duplicating them.
+- **Bigger, searchable icon set** (#102) — category/account icons grow from
+  28 to 76 (food & drink, shopping, transport, home, health, entertainment,
+  work/tech, travel, family, finance), picked from a shared search sheet
+  with a "Frequently used" row, replacing the old inline icon grids in both
+  the category editor and Add Account.
 - **Auto rules: Goals & Loans (G&L)** — a recurring rule's Expense/Income
   toggle now has a third option, G&L: on schedule, it posts a transfer into
   a goal or a payment toward a loan instead of a category-tagged
   income/expense — funding a savings goal or paying down a loan
   automatically, the same way a bill or subscription already posts itself.
-- **More screen layout** (Settings → More screen layout) — the More hub can
-  render as the original one-column list or as two-per-row cards. Defaults
-  to list, so existing users see no change.
-- **Tag groups** (#92) — a named bundle of tags (e.g. "Work trip" = Travel +
-  Meals + Client), managed from Tags → the new group icon. Picking a group
-  from the tag picker selects every tag in it at once, instead of hunting
-  each one down individually every time the same combination gets used.
+- **Turn a transaction into a recurring payment** (#129) — "Make recurring"
+  on a transaction's detail app bar opens the auto rule sheet pre-filled
+  with its amount, account, category, payee, note and tags.
+- **Transaction templates** (#125) — "Create template from this
+  transaction" snapshots a transaction's details into a named, reusable
+  template. Once at least one exists, the + button offers a choice between
+  starting from scratch or picking a template, which prefills a new
+  transaction the same way duplicating one already does.
 - **Duplicate a transaction** (#92) — long-press a transaction in the list
   (or tap the new icon on its detail screen) for Duplicate / Edit / Delete
   quick actions. Duplicate prefills a new transaction from the source —
   account, category, amount, note, payee, tags — but resets the date to
   today and never copies its receipt, so it's clearly a new, separate entry
   rather than a change to the original.
+- **Adjust the exact time of a transaction** (#124) — the Date card always
+  shows a transaction's exact time now, with its own clock icon to change
+  just the time without opening the date picker.
+- **Filter transactions by ISO week** (#121) — a "Week" toggle next to
+  Custom range steps through standard Monday–Sunday ISO weeks (e.g. "Week
+  37, 2026 · 7–13 Sep") instead of requiring a manual date range.
+- **Custom budget cycle start day** — Settings → Budgeting → "Budget cycle
+  start day" lets Dashboard, Budgets and Stats treat any day 1–28 as the
+  start of a "month," so a payday-anchored cycle (e.g. 15th-to-14th) doesn't
+  reset mid-paycheck. Defaults to the 1st, so nothing changes unless set.
+- **Tag groups** (#92) — a named bundle of tags (e.g. "Work trip" = Travel +
+  Meals + Client), managed from Tags → the new group icon. Picking a group
+  from the tag picker selects every tag in it at once, instead of hunting
+  each one down individually every time the same combination gets used.
+- **More screen layout** (Settings → More screen layout) — the More hub can
+  render as the original one-column list or as two-per-row cards. Defaults
+  to list, so existing users see no change.
+- **Share a person or group ledger as a PDF statement** (#128) — the same
+  period-picker-and-share flow accounts already had, now on Person and
+  Group detail too: a lend/borrow ledger PDF for a person, a shared-expense
+  history PDF for a group.
+- **Pay without internet — *99# (Beta)** — Settings → Payment Support → UPI
+  gets a sub-toggle for offline USSD payment via *99#. A Persons-tab FAB
+  collects a UPI ID/phone number, copies it, and dials *99# (no
+  CALL_PHONE permission needed); logging the payment afterward hands off to
+  a plain expense entry rather than touching the Persons ledger, since it's
+  usually a merchant, not a contact.
+- **Persons/Groups polish** — Individual and Group tabs sort by balance
+  magnitude (dues/owes on top); a person auto-archives once their balance
+  settles to exactly zero (cascading to fully-settled groups); Add Person
+  can pull a name straight from the native contact picker; and Add Person
+  now opens the same sheet as Edit, so payment IDs can be filled in upfront.
+- **Pre-select the last-used account on a new transaction** — a brand-new
+  transaction now defaults "Paid via" to whichever account the most recent
+  transaction used, still freely changeable before saving.
+- **Keep-last-X backup retention & batch delete** (#131) — an alternative,
+  count-based automatic-backup retention mode (alongside the existing
+  time-based one): once there are more backups than the configured count,
+  the oldest is deleted automatically. The backup list also gained
+  batch-select (long-press to start, tap to add more) to delete several
+  backups at once.
+
+### Changed
+- **Ready to Assign replaces the Budgets/Envelope mode switch** (#100, #48)
+  — Budget (the per-category ceiling) is now always on for everyone,
+  instead of being one of two mutually-exclusive systems. Ready to Assign
+  becomes a single on/off layer on top (Settings → Budgeting): turning it on
+  auto-enrolls every account into a shared pool (a new account joins
+  automatically too), and it turns itself back off the moment the pool
+  would otherwise go empty, with a non-blocking notice rather than a block.
+  The shared Ready to Assign figure and every category's envelope balance
+  now genuinely pool across every enrolled account instead of siloing per
+  account (#48); the assign/unassign sheet gains an account picker once
+  more than one account shares the pool. Budgets, the Ready to Assign
+  screen and the dashboard's donut chart show a green/amber/red
+  funded/underfunded/overspent indicator once it's on.
+- **Unlock methods are now independent on/off toggles** (Settings →
+  Security) instead of picking exactly one. Turn on PIN, master password
+  and/or the authenticator app in any combination — any one of them unlocks
+  the app (OR, not AND) — and switch between whichever are turned on from
+  "Try another method" on the lock screen. Replaces the old single-choice
+  picker and the "PIN + Authenticator" two-factor combo: an install that
+  had that combo active now has both toggles on, so either credential alone
+  unlocks it going forward.
+
+### Fixed
+- **"Try another method" threw silently on the lock screen** (#127) — the
+  lock screen had no Navigator ancestor of its own, so opening the method
+  picker crashed with no visible feedback; only reproduced with 2+ unlock
+  methods enabled.
+- **A pure hours-only automatic backup interval couldn't be saved** (#123)
+  — the custom-interval Days field forced a stored 0 to redisplay as 1, so
+  a genuine "every 12 hours" setting silently became "every 1 day 12
+  hours" the next time the sheet was opened.
+- **Upgrading from an old install could crash on open** — two separate
+  migration bugs, both found on real devices: a settings migration step
+  below schema v62 could read a column added even later and crash on a
+  null check, and RecurringRules could throw "no such column" migrating
+  from before schema v55. Both are fixed with regression tests covering the
+  exact device states that triggered them.
+- **A dialog closing right after typing could crash** — New group and three
+  other short-lived-controller dialogs disposed their `TextEditingController`
+  the instant Cancel/Save was tapped, which could race the dialog's own
+  closing animation.
+- **Privacy policy contact email** — corrected to the address actually
+  monitored, and the effective date bumped to match.
 
 ## [1.5.1] — 2026-09-01
 
@@ -719,7 +834,8 @@ First public release. 🎉
 - `tool/verify_apk.sh` gates every shipped APK against the missing
   `libsqlite3.so` class of crash.
 
-[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.5.1...HEAD
+[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/PATILYASHH/XPENC/compare/v1.5.1...v1.6.0
 [1.5.1]: https://github.com/PATILYASHH/XPENC/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/PATILYASHH/XPENC/compare/v1.4.5...v1.5.0
 [1.4.5]: https://github.com/PATILYASHH/XPENC/compare/v1.4.4...v1.4.5
