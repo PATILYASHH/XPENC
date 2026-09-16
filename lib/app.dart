@@ -358,9 +358,34 @@ class _XpencAppState extends ConsumerState<XpencApp>
                               ),
                             if (_locked)
                               Positioned.fill(
-                                child: LockScreen(
-                                  onUnlocked: () =>
-                                      setState(() => _locked = false),
+                                // `LockScreen` sits here as a sibling of the
+                                // routed `child` above, not a descendant of
+                                // it — the app's real `Navigator` lives
+                                // inside `child`, built by go_router, so
+                                // `LockScreen`'s own context would otherwise
+                                // have no `Navigator` ancestor at all. That
+                                // silently broke "Try another method"'s
+                                // `showModalBottomSheet` (GitHub #127): it
+                                // threw on tap with no visible feedback,
+                                // since only 2+ ready unlock methods ever
+                                // show that button in the first place. A
+                                // small nested `Navigator` — never touched by
+                                // the app's own routing — gives it one.
+                                // `HeroControllerScope.none`: a bare
+                                // `Navigator` otherwise inherits the
+                                // ambient `HeroController` `MaterialApp
+                                // .router` provides, which throws once two
+                                // Navigators (this one and go_router's,
+                                // inside `child`) end up sharing it.
+                                child: HeroControllerScope.none(
+                                  child: Navigator(
+                                    onGenerateRoute: (_) => MaterialPageRoute(
+                                      builder: (_) => LockScreen(
+                                        onUnlocked: () =>
+                                            setState(() => _locked = false),
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
                           ],
