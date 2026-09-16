@@ -1541,7 +1541,9 @@ typedef AutoBackupSettings = ({
   AutoBackupFrequency frequency,
   int customDays,
   int customHours,
+  BackupRetentionMode retentionMode,
   int retentionDays,
+  int retentionCount,
   DateTime? lastAutoBackupAt,
 });
 
@@ -1552,7 +1554,9 @@ final autoBackupSettingsProvider = Provider<AutoBackupSettings>((ref) {
     frequency: s?.autoBackupFrequency ?? AutoBackupFrequency.daily,
     customDays: s?.autoBackupCustomDays ?? 0,
     customHours: s?.autoBackupCustomHours ?? 0,
+    retentionMode: s?.backupRetentionMode ?? BackupRetentionMode.days,
     retentionDays: s?.backupRetentionDays ?? 180,
+    retentionCount: s?.backupRetentionCount ?? 0,
     lastAutoBackupAt: s?.lastAutoBackupAt,
   );
 });

@@ -32,6 +32,20 @@ class BackupScreen extends ConsumerStatefulWidget {
 class _BackupScreenState extends ConsumerState<BackupScreen> {
   bool _busy = false;
 
+  /// File names of the backups checked in batch-select mode (GitHub #131 —
+  /// "a way to delete several backups at once"). Non-empty means the list
+  /// is in selection mode; [BackupRecords.fileName] is unique, so it's a
+  /// stable key even across a resync that rewrites row ids.
+  final Set<String> _selected = {};
+
+  bool get _selecting => _selected.isNotEmpty;
+
+  void _toggleSelected(String fileName) {
+    setState(() {
+      if (!_selected.remove(fileName)) _selected.add(fileName);
+    });
+  }
+
   Future<void> _backupNow() async {
     if (_busy) return;
     final messenger = ScaffoldMessenger.of(context);
@@ -203,6 +217,65 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
     }
   }
 
+  Future<void> _deleteSelected(List<BackupRecordRow> all) async {
+    final targets = all.where((b) => _selected.contains(b.fileName)).toList();
+    if (targets.isEmpty) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Delete ${targets.length} backups?'),
+        content: Text(
+          '${targets.length} backup${targets.length == 1 ? '' : 's'} will be '
+          'removed from this phone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(dialogContext).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || confirmed != true) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final service = ref.read(backupServiceProvider);
+    setState(() => _busy = true);
+    var failures = 0;
+    for (final b in targets) {
+      try {
+        await service.deleteBackup(b);
+      } catch (_) {
+        failures++;
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _selected.clear();
+    });
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            failures == 0
+                ? '${targets.length} backup${targets.length == 1 ? '' : 's'} '
+                      'deleted'
+                : '${targets.length - failures} deleted, $failures failed',
+          ),
+        ),
+      );
+  }
+
   Future<void> _share(BackupRecordRow b) async {
     final messenger = ScaffoldMessenger.of(context);
     final service = ref.read(backupServiceProvider);
@@ -303,17 +376,36 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
             children: [
               Expanded(
                 child: Text(
-                  'Backups',
+                  _selecting ? '${_selected.length} selected' : 'Backups',
                   style: theme.textTheme.titleSmall?.copyWith(
                     color: cs.onSurfaceVariant,
                   ),
                 ),
               ),
-              TextButton.icon(
-                onPressed: _busy ? null : _findExistingBackups,
-                icon: const Icon(Icons.search_rounded, size: 18),
-                label: const Text('Find existing'),
-              ),
+              if (_selecting) ...[
+                TextButton(
+                  onPressed: _busy
+                      ? null
+                      : () => setState(() => _selected.clear()),
+                  child: const Text('Cancel'),
+                ),
+                TextButton.icon(
+                  onPressed: _busy
+                      ? null
+                      : () => _deleteSelected(
+                          backupsAsync.valueOrNull ?? const [],
+                        ),
+                  icon: const Icon(Icons.delete_outline, size: 18),
+                  label: const Text('Delete'),
+                  style: TextButton.styleFrom(foregroundColor: cs.error),
+                ),
+              ] else ...[
+                TextButton.icon(
+                  onPressed: _busy ? null : _findExistingBackups,
+                  icon: const Icon(Icons.search_rounded, size: 18),
+                  label: const Text('Find existing'),
+                ),
+              ],
             ],
           ),
           backupsAsync.when(
@@ -342,9 +434,12 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
                   for (final b in backups)
                     _BackupTile(
                       backup: b,
+                      selecting: _selecting,
+                      selected: _selected.contains(b.fileName),
                       onRestore: () => _restore(b),
                       onShare: () => _share(b),
                       onDelete: () => _delete(b),
+                      onToggleSelect: () => _toggleSelected(b.fileName),
                     ),
                 ],
               );
@@ -363,9 +458,15 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
       AutoBackupFrequency.custom =>
         'Every ${_intervalLabel(s.customDays, s.customHours)}',
     };
-    final keep = s.retentionDays == 0
-        ? 'kept forever'
-        : 'kept for ${_daysLabel(s.retentionDays)}';
+    final keep = switch (s.retentionMode) {
+      BackupRetentionMode.count =>
+        s.retentionCount <= 0
+            ? 'keep count not set'
+            : 'last ${s.retentionCount} kept',
+      BackupRetentionMode.days => s.retentionDays == 0
+          ? 'kept forever'
+          : 'kept for ${_daysLabel(s.retentionDays)}',
+    };
     return '$freq · $keep';
   }
 
@@ -404,19 +505,27 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
 }
 
 /// One backup file: name, size and timestamp, with an overflow menu for the
-/// three things you can do with it.
+/// three things you can do with it. Long-pressing (or, once any tile is
+/// already checked, tapping) enters batch-select mode (GitHub #131) — same
+/// discovery pattern as `_ExpenseRow` in group_detail_screen.dart.
 class _BackupTile extends StatelessWidget {
   const _BackupTile({
     required this.backup,
+    required this.selecting,
+    required this.selected,
     required this.onRestore,
     required this.onShare,
     required this.onDelete,
+    required this.onToggleSelect,
   });
 
   final BackupRecordRow backup;
+  final bool selecting;
+  final bool selected;
   final VoidCallback onRestore;
   final VoidCallback onShare;
   final VoidCallback onDelete;
+  final VoidCallback onToggleSelect;
 
   @override
   Widget build(BuildContext context) {
@@ -428,58 +537,74 @@ class _BackupTile extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    backup.fileName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontFamily: 'monospace',
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 4),
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert),
-              onSelected: (value) {
-                switch (value) {
-                  case 'restore':
-                    onRestore();
-                  case 'share':
-                    onShare();
-                  case 'delete':
-                    onDelete();
-                }
-              },
-              itemBuilder: (_) => [
-                const PopupMenuItem(value: 'restore', child: Text('Restore')),
-                const PopupMenuItem(value: 'share', child: Text('Share')),
-                PopupMenuItem(
-                  value: 'delete',
-                  child: Text('Delete', style: TextStyle(color: cs.error)),
+      color: selected ? cs.primaryContainer.withValues(alpha: 0.4) : null,
+      child: InkWell(
+        onTap: selecting ? onToggleSelect : null,
+        onLongPress: onToggleSelect,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+          child: Row(
+            children: [
+              if (selecting) ...[
+                Checkbox(
+                  value: selected,
+                  onChanged: (_) => onToggleSelect(),
                 ),
+                const SizedBox(width: 4),
               ],
-            ),
-          ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      backup.fileName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 4),
+              if (!selecting)
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert),
+                  onSelected: (value) {
+                    switch (value) {
+                      case 'restore':
+                        onRestore();
+                      case 'share':
+                        onShare();
+                      case 'delete':
+                        onDelete();
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    const PopupMenuItem(
+                      value: 'restore',
+                      child: Text('Restore'),
+                    ),
+                    const PopupMenuItem(value: 'share', child: Text('Share')),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Text('Delete', style: TextStyle(color: cs.error)),
+                    ),
+                  ],
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -508,6 +633,8 @@ class _AutoBackupSettingsSheetState
     ('Forever', 0),
   ];
 
+  static const _countPresets = <int>[3, 5, 10, 20];
+
   late bool _enabled = widget.current.enabled;
   late AutoBackupFrequency _frequency = widget.current.frequency;
   late final _daysCtrl = TextEditingController(
@@ -516,13 +643,20 @@ class _AutoBackupSettingsSheetState
   late final _hoursCtrl = TextEditingController(
     text: '${widget.current.customHours}',
   );
+  late BackupRetentionMode _retentionMode = widget.current.retentionMode;
   late int _retentionDays = widget.current.retentionDays;
+  late final _retentionCountCtrl = TextEditingController(
+    text: widget.current.retentionCount > 0
+        ? '${widget.current.retentionCount}'
+        : '',
+  );
   bool _saving = false;
 
   @override
   void dispose() {
     _daysCtrl.dispose();
     _hoursCtrl.dispose();
+    _retentionCountCtrl.dispose();
     super.dispose();
   }
 
@@ -534,6 +668,12 @@ class _AutoBackupSettingsSheetState
 
   bool _retentionAllowed(int days) =>
       days == 0 || Duration(days: days) >= _interval;
+
+  int? get _retentionCount => int.tryParse(_retentionCountCtrl.text.trim());
+
+  bool get _retentionCountValid =>
+      _retentionMode != BackupRetentionMode.count ||
+      (_retentionCount != null && _retentionCount! >= 1);
 
   /// Days and hours are independent — 0 days plus some hours is a perfectly
   /// good hours-only interval (e.g. every 12 hours), not a placeholder that
@@ -553,7 +693,9 @@ class _AutoBackupSettingsSheetState
             frequency: _frequency,
             customDays: int.tryParse(_daysCtrl.text) ?? 0,
             customHours: int.tryParse(_hoursCtrl.text) ?? 0,
+            retentionMode: _retentionMode,
             retentionDays: _retentionDays,
+            retentionCount: _retentionCount ?? 0,
           );
       if (!mounted) return;
       Navigator.of(context).pop();
@@ -681,29 +823,88 @@ class _AutoBackupSettingsSheetState
                 ),
               ],
               const SizedBox(height: 20),
-              _label(theme, 'KEEP BACKUPS FOR'),
+              _label(theme, 'KEEP BACKUPS BY'),
               const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final (label, days) in _retentionPresets)
-                    ChoiceChip(
-                      label: Text(label),
-                      selected: _retentionDays == days,
-                      onSelected: _retentionAllowed(days)
-                          ? (_) => setState(() => _retentionDays = days)
-                          : null,
+              SizedBox(
+                width: double.infinity,
+                child: SegmentedButton<BackupRetentionMode>(
+                  segments: const [
+                    ButtonSegment(
+                      value: BackupRetentionMode.days,
+                      label: Text('Time'),
                     ),
-                ],
+                    ButtonSegment(
+                      value: BackupRetentionMode.count,
+                      label: Text('Count'),
+                    ),
+                  ],
+                  selected: {_retentionMode},
+                  showSelectedIcon: false,
+                  onSelectionChanged: (s) =>
+                      setState(() => _retentionMode = s.first),
+                ),
               ),
-              if (!_retentionAllowed(_retentionDays)) ...[
-                const SizedBox(height: 8),
+              const SizedBox(height: 14),
+              if (_retentionMode == BackupRetentionMode.days) ...[
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final (label, days) in _retentionPresets)
+                      ChoiceChip(
+                        label: Text(label),
+                        selected: _retentionDays == days,
+                        onSelected: _retentionAllowed(days)
+                            ? (_) => setState(() => _retentionDays = days)
+                            : null,
+                      ),
+                  ],
+                ),
+                if (!_retentionAllowed(_retentionDays)) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    "That's shorter than how often backups run — pick a "
+                    'longer window, or backups could be deleted before the '
+                    'next one is made.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.error,
+                    ),
+                  ),
+                ],
+              ] else ...[
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final n in _countPresets)
+                      ChoiceChip(
+                        label: Text('Last $n'),
+                        selected: _retentionCount == n,
+                        onSelected: (_) => setState(
+                          () => _retentionCountCtrl.text = '$n',
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _retentionCountCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Number of backups to keep',
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+                const SizedBox(height: 6),
                 Text(
-                  "That's shorter than how often backups run — pick a longer "
-                  'window, or backups could be deleted before the next one '
-                  'is made.',
-                  style: theme.textTheme.bodySmall?.copyWith(color: cs.error),
+                  _retentionCountValid
+                      ? 'Each new automatic backup deletes the oldest one '
+                            "once there are more than this many. Doesn't "
+                            'affect manual backups you delete yourself.'
+                      : 'Enter how many backups to keep (at least 1).',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: _retentionCountValid ? cs.onSurfaceVariant : cs.error,
+                  ),
                 ),
               ],
             ],
@@ -712,8 +913,10 @@ class _AutoBackupSettingsSheetState
               onPressed:
                   _saving ||
                       (_enabled &&
-                          (!_retentionAllowed(_retentionDays) ||
-                              !_customIntervalValid))
+                          (!_customIntervalValid ||
+                              (_retentionMode == BackupRetentionMode.days
+                                  ? !_retentionAllowed(_retentionDays)
+                                  : !_retentionCountValid)))
                   ? null
                   : _save,
               child: _saving

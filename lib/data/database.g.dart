@@ -9346,6 +9346,30 @@ class $SettingsTable extends Settings
     requiredDuringInsert: false,
     defaultValue: const Constant(180),
   );
+  @override
+  late final GeneratedColumnWithTypeConverter<BackupRetentionMode, String>
+  backupRetentionMode =
+      GeneratedColumn<String>(
+        'backup_retention_mode',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('days'),
+      ).withConverter<BackupRetentionMode>(
+        $SettingsTable.$converterbackupRetentionMode,
+      );
+  static const VerificationMeta _backupRetentionCountMeta =
+      const VerificationMeta('backupRetentionCount');
+  @override
+  late final GeneratedColumn<int> backupRetentionCount = GeneratedColumn<int>(
+    'backup_retention_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _preventScreenshotsMeta =
       const VerificationMeta('preventScreenshots');
   @override
@@ -9571,6 +9595,8 @@ class $SettingsTable extends Settings
     autoBackupCustomHours,
     lastAutoBackupAt,
     backupRetentionDays,
+    backupRetentionMode,
+    backupRetentionCount,
     preventScreenshots,
     screenshotReminderEnabled,
     hideAmounts,
@@ -9981,6 +10007,15 @@ class $SettingsTable extends Settings
         ),
       );
     }
+    if (data.containsKey('backup_retention_count')) {
+      context.handle(
+        _backupRetentionCountMeta,
+        backupRetentionCount.isAcceptableOrUnknown(
+          data['backup_retention_count']!,
+          _backupRetentionCountMeta,
+        ),
+      );
+    }
     if (data.containsKey('prevent_screenshots')) {
       context.handle(
         _preventScreenshotsMeta,
@@ -10322,6 +10357,16 @@ class $SettingsTable extends Settings
         DriftSqlType.int,
         data['${effectivePrefix}backup_retention_days'],
       )!,
+      backupRetentionMode: $SettingsTable.$converterbackupRetentionMode.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}backup_retention_mode'],
+        )!,
+      ),
+      backupRetentionCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}backup_retention_count'],
+      )!,
       preventScreenshots: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}prevent_screenshots'],
@@ -10401,6 +10446,10 @@ class $SettingsTable extends Settings
   static JsonTypeConverter2<AutoBackupFrequency, String, String>
   $converterautoBackupFrequency = const EnumNameConverter<AutoBackupFrequency>(
     AutoBackupFrequency.values,
+  );
+  static JsonTypeConverter2<BackupRetentionMode, String, String>
+  $converterbackupRetentionMode = const EnumNameConverter<BackupRetentionMode>(
+    BackupRetentionMode.values,
   );
 }
 
@@ -10622,8 +10671,22 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// How many days a backup is kept before automatic cleanup removes it.
   /// `0` means "keep forever". Must be at least as long as the auto-backup
   /// interval (see `AppDatabase.setAutoBackupSettings`) — otherwise cleanup
-  /// could delete a backup before the next one exists to replace it.
+  /// could delete a backup before the next one exists to replace it. Only
+  /// consulted when [backupRetentionMode] is [BackupRetentionMode.days].
   final int backupRetentionDays;
+
+  /// Which of [backupRetentionDays] / [backupRetentionCount] cleanup
+  /// actually uses (GitHub #131). Defaults to `days` so an existing
+  /// install's schedule behaves exactly as it did before this setting
+  /// existed.
+  final BackupRetentionMode backupRetentionMode;
+
+  /// How many of the newest backups to keep, when [backupRetentionMode] is
+  /// [BackupRetentionMode.count] — each new automatic backup deletes the
+  /// oldest one once there are more than this many. Unlike
+  /// [backupRetentionDays], `0` is not a valid "forever" here; it's simply
+  /// unset until the user picks a count.
+  final int backupRetentionCount;
 
   /// Blocks screenshots and hides XPENC from the recent-apps thumbnail —
   /// applied natively as `FLAG_SECURE` on the Android window (see
@@ -10759,6 +10822,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     required this.autoBackupCustomHours,
     this.lastAutoBackupAt,
     required this.backupRetentionDays,
+    required this.backupRetentionMode,
+    required this.backupRetentionCount,
     required this.preventScreenshots,
     required this.screenshotReminderEnabled,
     required this.hideAmounts,
@@ -10884,6 +10949,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       map['last_auto_backup_at'] = Variable<DateTime>(lastAutoBackupAt);
     }
     map['backup_retention_days'] = Variable<int>(backupRetentionDays);
+    {
+      map['backup_retention_mode'] = Variable<String>(
+        $SettingsTable.$converterbackupRetentionMode.toSql(backupRetentionMode),
+      );
+    }
+    map['backup_retention_count'] = Variable<int>(backupRetentionCount);
     map['prevent_screenshots'] = Variable<bool>(preventScreenshots);
     map['screenshot_reminder_enabled'] = Variable<bool>(
       screenshotReminderEnabled,
@@ -10988,6 +11059,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ? const Value.absent()
           : Value(lastAutoBackupAt),
       backupRetentionDays: Value(backupRetentionDays),
+      backupRetentionMode: Value(backupRetentionMode),
+      backupRetentionCount: Value(backupRetentionCount),
       preventScreenshots: Value(preventScreenshots),
       screenshotReminderEnabled: Value(screenshotReminderEnabled),
       hideAmounts: Value(hideAmounts),
@@ -11103,6 +11176,11 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       backupRetentionDays: serializer.fromJson<int>(
         json['backupRetentionDays'],
       ),
+      backupRetentionMode: $SettingsTable.$converterbackupRetentionMode
+          .fromJson(serializer.fromJson<String>(json['backupRetentionMode'])),
+      backupRetentionCount: serializer.fromJson<int>(
+        json['backupRetentionCount'],
+      ),
       preventScreenshots: serializer.fromJson<bool>(json['preventScreenshots']),
       screenshotReminderEnabled: serializer.fromJson<bool>(
         json['screenshotReminderEnabled'],
@@ -11200,6 +11278,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'autoBackupCustomHours': serializer.toJson<int>(autoBackupCustomHours),
       'lastAutoBackupAt': serializer.toJson<DateTime?>(lastAutoBackupAt),
       'backupRetentionDays': serializer.toJson<int>(backupRetentionDays),
+      'backupRetentionMode': serializer.toJson<String>(
+        $SettingsTable.$converterbackupRetentionMode.toJson(
+          backupRetentionMode,
+        ),
+      ),
+      'backupRetentionCount': serializer.toJson<int>(backupRetentionCount),
       'preventScreenshots': serializer.toJson<bool>(preventScreenshots),
       'screenshotReminderEnabled': serializer.toJson<bool>(
         screenshotReminderEnabled,
@@ -11271,6 +11355,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     int? autoBackupCustomHours,
     Value<DateTime?> lastAutoBackupAt = const Value.absent(),
     int? backupRetentionDays,
+    BackupRetentionMode? backupRetentionMode,
+    int? backupRetentionCount,
     bool? preventScreenshots,
     bool? screenshotReminderEnabled,
     bool? hideAmounts,
@@ -11355,6 +11441,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
         ? lastAutoBackupAt.value
         : this.lastAutoBackupAt,
     backupRetentionDays: backupRetentionDays ?? this.backupRetentionDays,
+    backupRetentionMode: backupRetentionMode ?? this.backupRetentionMode,
+    backupRetentionCount: backupRetentionCount ?? this.backupRetentionCount,
     preventScreenshots: preventScreenshots ?? this.preventScreenshots,
     screenshotReminderEnabled:
         screenshotReminderEnabled ?? this.screenshotReminderEnabled,
@@ -11510,6 +11598,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       backupRetentionDays: data.backupRetentionDays.present
           ? data.backupRetentionDays.value
           : this.backupRetentionDays,
+      backupRetentionMode: data.backupRetentionMode.present
+          ? data.backupRetentionMode.value
+          : this.backupRetentionMode,
+      backupRetentionCount: data.backupRetentionCount.present
+          ? data.backupRetentionCount.value
+          : this.backupRetentionCount,
       preventScreenshots: data.preventScreenshots.present
           ? data.preventScreenshots.value
           : this.preventScreenshots,
@@ -11609,6 +11703,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('autoBackupCustomHours: $autoBackupCustomHours, ')
           ..write('lastAutoBackupAt: $lastAutoBackupAt, ')
           ..write('backupRetentionDays: $backupRetentionDays, ')
+          ..write('backupRetentionMode: $backupRetentionMode, ')
+          ..write('backupRetentionCount: $backupRetentionCount, ')
           ..write('preventScreenshots: $preventScreenshots, ')
           ..write('screenshotReminderEnabled: $screenshotReminderEnabled, ')
           ..write('hideAmounts: $hideAmounts, ')
@@ -11680,6 +11776,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     autoBackupCustomHours,
     lastAutoBackupAt,
     backupRetentionDays,
+    backupRetentionMode,
+    backupRetentionCount,
     preventScreenshots,
     screenshotReminderEnabled,
     hideAmounts,
@@ -11752,6 +11850,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.autoBackupCustomHours == this.autoBackupCustomHours &&
           other.lastAutoBackupAt == this.lastAutoBackupAt &&
           other.backupRetentionDays == this.backupRetentionDays &&
+          other.backupRetentionMode == this.backupRetentionMode &&
+          other.backupRetentionCount == this.backupRetentionCount &&
           other.preventScreenshots == this.preventScreenshots &&
           other.screenshotReminderEnabled == this.screenshotReminderEnabled &&
           other.hideAmounts == this.hideAmounts &&
@@ -11820,6 +11920,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<int> autoBackupCustomHours;
   final Value<DateTime?> lastAutoBackupAt;
   final Value<int> backupRetentionDays;
+  final Value<BackupRetentionMode> backupRetentionMode;
+  final Value<int> backupRetentionCount;
   final Value<bool> preventScreenshots;
   final Value<bool> screenshotReminderEnabled;
   final Value<bool> hideAmounts;
@@ -11886,6 +11988,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.autoBackupCustomHours = const Value.absent(),
     this.lastAutoBackupAt = const Value.absent(),
     this.backupRetentionDays = const Value.absent(),
+    this.backupRetentionMode = const Value.absent(),
+    this.backupRetentionCount = const Value.absent(),
     this.preventScreenshots = const Value.absent(),
     this.screenshotReminderEnabled = const Value.absent(),
     this.hideAmounts = const Value.absent(),
@@ -11953,6 +12057,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.autoBackupCustomHours = const Value.absent(),
     this.lastAutoBackupAt = const Value.absent(),
     this.backupRetentionDays = const Value.absent(),
+    this.backupRetentionMode = const Value.absent(),
+    this.backupRetentionCount = const Value.absent(),
     this.preventScreenshots = const Value.absent(),
     this.screenshotReminderEnabled = const Value.absent(),
     this.hideAmounts = const Value.absent(),
@@ -12020,6 +12126,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<int>? autoBackupCustomHours,
     Expression<DateTime>? lastAutoBackupAt,
     Expression<int>? backupRetentionDays,
+    Expression<String>? backupRetentionMode,
+    Expression<int>? backupRetentionCount,
     Expression<bool>? preventScreenshots,
     Expression<bool>? screenshotReminderEnabled,
     Expression<bool>? hideAmounts,
@@ -12103,6 +12211,10 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       if (lastAutoBackupAt != null) 'last_auto_backup_at': lastAutoBackupAt,
       if (backupRetentionDays != null)
         'backup_retention_days': backupRetentionDays,
+      if (backupRetentionMode != null)
+        'backup_retention_mode': backupRetentionMode,
+      if (backupRetentionCount != null)
+        'backup_retention_count': backupRetentionCount,
       if (preventScreenshots != null) 'prevent_screenshots': preventScreenshots,
       if (screenshotReminderEnabled != null)
         'screenshot_reminder_enabled': screenshotReminderEnabled,
@@ -12175,6 +12287,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<int>? autoBackupCustomHours,
     Value<DateTime?>? lastAutoBackupAt,
     Value<int>? backupRetentionDays,
+    Value<BackupRetentionMode>? backupRetentionMode,
+    Value<int>? backupRetentionCount,
     Value<bool>? preventScreenshots,
     Value<bool>? screenshotReminderEnabled,
     Value<bool>? hideAmounts,
@@ -12251,6 +12365,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           autoBackupCustomHours ?? this.autoBackupCustomHours,
       lastAutoBackupAt: lastAutoBackupAt ?? this.lastAutoBackupAt,
       backupRetentionDays: backupRetentionDays ?? this.backupRetentionDays,
+      backupRetentionMode: backupRetentionMode ?? this.backupRetentionMode,
+      backupRetentionCount: backupRetentionCount ?? this.backupRetentionCount,
       preventScreenshots: preventScreenshots ?? this.preventScreenshots,
       screenshotReminderEnabled:
           screenshotReminderEnabled ?? this.screenshotReminderEnabled,
@@ -12462,6 +12578,16 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     if (backupRetentionDays.present) {
       map['backup_retention_days'] = Variable<int>(backupRetentionDays.value);
     }
+    if (backupRetentionMode.present) {
+      map['backup_retention_mode'] = Variable<String>(
+        $SettingsTable.$converterbackupRetentionMode.toSql(
+          backupRetentionMode.value,
+        ),
+      );
+    }
+    if (backupRetentionCount.present) {
+      map['backup_retention_count'] = Variable<int>(backupRetentionCount.value);
+    }
     if (preventScreenshots.present) {
       map['prevent_screenshots'] = Variable<bool>(preventScreenshots.value);
     }
@@ -12565,6 +12691,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('autoBackupCustomHours: $autoBackupCustomHours, ')
           ..write('lastAutoBackupAt: $lastAutoBackupAt, ')
           ..write('backupRetentionDays: $backupRetentionDays, ')
+          ..write('backupRetentionMode: $backupRetentionMode, ')
+          ..write('backupRetentionCount: $backupRetentionCount, ')
           ..write('preventScreenshots: $preventScreenshots, ')
           ..write('screenshotReminderEnabled: $screenshotReminderEnabled, ')
           ..write('hideAmounts: $hideAmounts, ')
@@ -33202,6 +33330,8 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<int> autoBackupCustomHours,
       Value<DateTime?> lastAutoBackupAt,
       Value<int> backupRetentionDays,
+      Value<BackupRetentionMode> backupRetentionMode,
+      Value<int> backupRetentionCount,
       Value<bool> preventScreenshots,
       Value<bool> screenshotReminderEnabled,
       Value<bool> hideAmounts,
@@ -33270,6 +33400,8 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<int> autoBackupCustomHours,
       Value<DateTime?> lastAutoBackupAt,
       Value<int> backupRetentionDays,
+      Value<BackupRetentionMode> backupRetentionMode,
+      Value<int> backupRetentionCount,
       Value<bool> preventScreenshots,
       Value<bool> screenshotReminderEnabled,
       Value<bool> hideAmounts,
@@ -33579,6 +33711,21 @@ class $$SettingsTableFilterComposer
 
   ColumnFilters<int> get backupRetentionDays => $composableBuilder(
     column: $table.backupRetentionDays,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<
+    BackupRetentionMode,
+    BackupRetentionMode,
+    String
+  >
+  get backupRetentionMode => $composableBuilder(
+    column: $table.backupRetentionMode,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<int> get backupRetentionCount => $composableBuilder(
+    column: $table.backupRetentionCount,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -33935,6 +34082,16 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get backupRetentionMode => $composableBuilder(
+    column: $table.backupRetentionMode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get backupRetentionCount => $composableBuilder(
+    column: $table.backupRetentionCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get preventScreenshots => $composableBuilder(
     column: $table.preventScreenshots,
     builder: (column) => ColumnOrderings(column),
@@ -34275,6 +34432,17 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumnWithTypeConverter<BackupRetentionMode, String>
+  get backupRetentionMode => $composableBuilder(
+    column: $table.backupRetentionMode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get backupRetentionCount => $composableBuilder(
+    column: $table.backupRetentionCount,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get preventScreenshots => $composableBuilder(
     column: $table.preventScreenshots,
     builder: (column) => column,
@@ -34446,6 +34614,9 @@ class $$SettingsTableTableManager
                 Value<int> autoBackupCustomHours = const Value.absent(),
                 Value<DateTime?> lastAutoBackupAt = const Value.absent(),
                 Value<int> backupRetentionDays = const Value.absent(),
+                Value<BackupRetentionMode> backupRetentionMode =
+                    const Value.absent(),
+                Value<int> backupRetentionCount = const Value.absent(),
                 Value<bool> preventScreenshots = const Value.absent(),
                 Value<bool> screenshotReminderEnabled = const Value.absent(),
                 Value<bool> hideAmounts = const Value.absent(),
@@ -34512,6 +34683,8 @@ class $$SettingsTableTableManager
                 autoBackupCustomHours: autoBackupCustomHours,
                 lastAutoBackupAt: lastAutoBackupAt,
                 backupRetentionDays: backupRetentionDays,
+                backupRetentionMode: backupRetentionMode,
+                backupRetentionCount: backupRetentionCount,
                 preventScreenshots: preventScreenshots,
                 screenshotReminderEnabled: screenshotReminderEnabled,
                 hideAmounts: hideAmounts,
@@ -34582,6 +34755,9 @@ class $$SettingsTableTableManager
                 Value<int> autoBackupCustomHours = const Value.absent(),
                 Value<DateTime?> lastAutoBackupAt = const Value.absent(),
                 Value<int> backupRetentionDays = const Value.absent(),
+                Value<BackupRetentionMode> backupRetentionMode =
+                    const Value.absent(),
+                Value<int> backupRetentionCount = const Value.absent(),
                 Value<bool> preventScreenshots = const Value.absent(),
                 Value<bool> screenshotReminderEnabled = const Value.absent(),
                 Value<bool> hideAmounts = const Value.absent(),
@@ -34648,6 +34824,8 @@ class $$SettingsTableTableManager
                 autoBackupCustomHours: autoBackupCustomHours,
                 lastAutoBackupAt: lastAutoBackupAt,
                 backupRetentionDays: backupRetentionDays,
+                backupRetentionMode: backupRetentionMode,
+                backupRetentionCount: backupRetentionCount,
                 preventScreenshots: preventScreenshots,
                 screenshotReminderEnabled: screenshotReminderEnabled,
                 hideAmounts: hideAmounts,

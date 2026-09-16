@@ -183,7 +183,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 67;
+  int get schemaVersion => 68;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -627,6 +627,11 @@ class AppDatabase extends _$AppDatabase {
         // Transaction templates (GitHub #125).
         await m.createTable(transactionTemplates);
         await m.createTable(transactionTemplateTags);
+      }
+      if (from < 68) {
+        // Keep-last-X backups (GitHub #131).
+        await _addColumnIfMissing(m, settings, settings.backupRetentionMode);
+        await _addColumnIfMissing(m, settings, settings.backupRetentionCount);
       }
     },
     beforeOpen: (details) async {
@@ -5071,17 +5076,26 @@ class AppDatabase extends _$AppDatabase {
 
   /// Turns automatic backups on/off and sets their schedule and retention.
   ///
-  /// [retentionDays] must be at least as long as the interval implied by
-  /// [frequency] (and [customDays]/[customHours] when `frequency` is
+  /// [retentionMode] picks which of [retentionDays] / [retentionCount]
+  /// cleanup actually uses (GitHub #131 — "keep last X backups").
+  ///
+  /// In [BackupRetentionMode.days] mode, [retentionDays] must be at least as
+  /// long as the interval implied by [frequency] (and
+  /// [customDays]/[customHours] when `frequency` is
   /// [AutoBackupFrequency.custom]) — otherwise cleanup could delete a backup
   /// before the next one exists to replace it, silently leaving zero backups
-  /// on disk. `0` means "keep forever" and always satisfies this.
+  /// on disk. `0` means "keep forever" and always satisfies this. In
+  /// [BackupRetentionMode.count] mode that risk doesn't exist — cleanup
+  /// always keeps the newest [retentionCount] regardless of timing — so
+  /// [retentionCount] just needs to be at least 1.
   Future<void> setAutoBackupSettings({
     required bool enabled,
     required AutoBackupFrequency frequency,
     int customDays = 0,
     int customHours = 0,
+    BackupRetentionMode retentionMode = BackupRetentionMode.days,
     required int retentionDays,
+    int retentionCount = 0,
   }) async {
     if (frequency == AutoBackupFrequency.custom &&
         customDays <= 0 &&
@@ -5091,12 +5105,17 @@ class AppDatabase extends _$AppDatabase {
     if (retentionDays < 0) {
       throw ArgumentError('Retention days cannot be negative.');
     }
+    if (retentionMode == BackupRetentionMode.count && retentionCount < 1) {
+      throw ArgumentError('Keep at least 1 backup.');
+    }
     final interval = autoBackupInterval(
       frequency: frequency,
       customDays: customDays,
       customHours: customHours,
     );
-    if (retentionDays != 0 && Duration(days: retentionDays) < interval) {
+    if (retentionMode == BackupRetentionMode.days &&
+        retentionDays != 0 &&
+        Duration(days: retentionDays) < interval) {
       throw ArgumentError(
         "Keep-backups-for can't be shorter than how often backups run.",
       );
@@ -5107,7 +5126,9 @@ class AppDatabase extends _$AppDatabase {
         autoBackupFrequency: Value(frequency),
         autoBackupCustomDays: Value(customDays),
         autoBackupCustomHours: Value(customHours),
+        backupRetentionMode: Value(retentionMode),
         backupRetentionDays: Value(retentionDays),
+        backupRetentionCount: Value(retentionCount),
       ),
     );
   }
@@ -5162,11 +5183,20 @@ class AppDatabase extends _$AppDatabase {
           ]))
           .watch();
 
-  /// Records older than the current retention window — what
-  /// `BackupService.cleanupOldBackups` should delete next. Always empty when
-  /// retention is `0` ("keep forever").
+  /// Records the current retention setting says to remove next — what
+  /// `BackupService.cleanupOldBackups` should delete. In
+  /// [BackupRetentionMode.days] mode that's everything older than the
+  /// window, always empty when retention is `0` ("keep forever"). In
+  /// [BackupRetentionMode.count] mode (GitHub #131) it's every record past
+  /// the newest [SettingRow.backupRetentionCount], oldest first.
   Future<List<BackupRecordRow>> staleBackupRecords({DateTime? now}) async {
     final s = await getSettings();
+    if (s.backupRetentionMode == BackupRetentionMode.count) {
+      if (s.backupRetentionCount <= 0) return const [];
+      final all = await watchBackupRecords().first;
+      if (all.length <= s.backupRetentionCount) return const [];
+      return all.sublist(s.backupRetentionCount);
+    }
     if (s.backupRetentionDays <= 0) return const [];
     final cutoff = (now ?? DateTime.now()).subtract(
       Duration(days: s.backupRetentionDays),

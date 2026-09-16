@@ -99,6 +99,12 @@ enum RecurringFrequency { daily, weekly, biweekly, monthly }
 /// instead.
 enum AutoBackupFrequency { daily, monthly, custom }
 
+/// What decides which backups automatic cleanup removes (GitHub #131).
+/// `days` is the original scheme — [Settings.backupRetentionDays] since a
+/// backup was made. `count` instead keeps the newest
+/// [Settings.backupRetentionCount] backups regardless of their age.
+enum BackupRetentionMode { days, count }
+
 /// Which numpad the lock screen (and the set/change-passcode screen) draws
 /// (GitHub #81). `classic` is plain text digits, no button background —
 /// XPENC's original look. `bigNumpad` is large filled circular buttons in
@@ -994,9 +1000,25 @@ class Settings extends Table {
   /// How many days a backup is kept before automatic cleanup removes it.
   /// `0` means "keep forever". Must be at least as long as the auto-backup
   /// interval (see `AppDatabase.setAutoBackupSettings`) — otherwise cleanup
-  /// could delete a backup before the next one exists to replace it.
+  /// could delete a backup before the next one exists to replace it. Only
+  /// consulted when [backupRetentionMode] is [BackupRetentionMode.days].
   IntColumn get backupRetentionDays =>
       integer().withDefault(const Constant(180))();
+
+  /// Which of [backupRetentionDays] / [backupRetentionCount] cleanup
+  /// actually uses (GitHub #131). Defaults to `days` so an existing
+  /// install's schedule behaves exactly as it did before this setting
+  /// existed.
+  TextColumn get backupRetentionMode =>
+      textEnum<BackupRetentionMode>().withDefault(const Constant('days'))();
+
+  /// How many of the newest backups to keep, when [backupRetentionMode] is
+  /// [BackupRetentionMode.count] — each new automatic backup deletes the
+  /// oldest one once there are more than this many. Unlike
+  /// [backupRetentionDays], `0` is not a valid "forever" here; it's simply
+  /// unset until the user picks a count.
+  IntColumn get backupRetentionCount =>
+      integer().withDefault(const Constant(0))();
 
   /// Blocks screenshots and hides XPENC from the recent-apps thumbnail —
   /// applied natively as `FLAG_SECURE` on the Android window (see

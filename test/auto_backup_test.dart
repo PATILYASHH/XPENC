@@ -65,7 +65,9 @@ void main() {
       autoBackupCustomDays: customDays,
       autoBackupCustomHours: customHours,
       lastAutoBackupAt: lastAutoBackupAt,
+      backupRetentionMode: BackupRetentionMode.days,
       backupRetentionDays: 180,
+      backupRetentionCount: 0,
       preventScreenshots: false,
       hideAmounts: false,
       pinTimeoutMinutes: 0,
@@ -257,6 +259,36 @@ void main() {
       );
       expect((await db.getSettings()).backupRetentionDays, 5);
     });
+
+    test(
+      'GitHub #131: count mode persists the count and ignores the days '
+      'interval check',
+      () async {
+        await db.setAutoBackupSettings(
+          enabled: true,
+          frequency: AutoBackupFrequency.daily,
+          retentionMode: BackupRetentionMode.count,
+          retentionDays: 0,
+          retentionCount: 3,
+        );
+        final s = await db.getSettings();
+        expect(s.backupRetentionMode, BackupRetentionMode.count);
+        expect(s.backupRetentionCount, 3);
+      },
+    );
+
+    test('count mode rejects a count below 1', () {
+      expect(
+        () => db.setAutoBackupSettings(
+          enabled: true,
+          frequency: AutoBackupFrequency.daily,
+          retentionMode: BackupRetentionMode.count,
+          retentionDays: 0,
+          retentionCount: 0,
+        ),
+        throwsArgumentError,
+      );
+    });
   });
 
   group('backup records', () {
@@ -310,6 +342,61 @@ void main() {
       final stale = await db.staleBackupRecords(now: now);
       expect(stale.map((r) => r.fileName), ['old.json']);
     });
+
+    test(
+      'GitHub #131: count mode keeps the newest N, reports the rest stale',
+      () async {
+        await db.setAutoBackupSettings(
+          enabled: true,
+          frequency: AutoBackupFrequency.daily,
+          retentionMode: BackupRetentionMode.count,
+          retentionDays: 0,
+          retentionCount: 2,
+        );
+        final now = DateTime(2026, 8, 5);
+        await db.upsertBackupRecord(
+          fileName: 'newest.json',
+          uri: 'content://newest',
+          sizeBytes: 1,
+          createdAt: now,
+        );
+        await db.upsertBackupRecord(
+          fileName: 'middle.json',
+          uri: 'content://middle',
+          sizeBytes: 1,
+          createdAt: now.subtract(const Duration(days: 1)),
+        );
+        await db.upsertBackupRecord(
+          fileName: 'oldest.json',
+          uri: 'content://oldest',
+          sizeBytes: 1,
+          createdAt: now.subtract(const Duration(days: 2)),
+        );
+
+        final stale = await db.staleBackupRecords(now: now);
+        expect(stale.map((r) => r.fileName), ['oldest.json']);
+      },
+    );
+
+    test(
+      'count mode with fewer backups than the count reports nothing stale',
+      () async {
+        await db.setAutoBackupSettings(
+          enabled: true,
+          frequency: AutoBackupFrequency.daily,
+          retentionMode: BackupRetentionMode.count,
+          retentionDays: 0,
+          retentionCount: 5,
+        );
+        await db.upsertBackupRecord(
+          fileName: 'only.json',
+          uri: 'content://only',
+          sizeBytes: 1,
+          createdAt: DateTime(2026, 8, 5),
+        );
+        expect(await db.staleBackupRecords(), isEmpty);
+      },
+    );
 
     test('retention of 0 (forever) never reports anything stale', () async {
       await db.setAutoBackupSettings(
