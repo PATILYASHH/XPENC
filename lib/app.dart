@@ -352,8 +352,8 @@ class _XpencAppState extends ConsumerState<XpencApp>
                                 !ref.watch(preventScreenshotsProvider) &&
                                 ref.watch(screenshotReminderEnabledProvider))
                               const Positioned(
-                                left: 12,
-                                bottom: 12,
+                                right: 12,
+                                bottom: 84,
                                 child: _ScreenshotAllowedTag(),
                               ),
                             if (_locked)

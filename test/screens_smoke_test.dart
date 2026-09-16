@@ -148,7 +148,7 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('Onboarding currency step lets you search and pick a currency', (
+  testWidgets('Onboarding new-user path walks the guided tour and Skip jumps to the end', (
     tester,
   ) async {
     await pump(tester, const OnboardingScreen());
@@ -158,26 +158,53 @@ void main() {
     for (var i = 0; i < 6; i++) {
       await tester.pump(const Duration(milliseconds: 60));
     }
-    expect(find.text('What currency do you use?'), findsOneWidget);
+    expect(find.text('Are you new to XPENC?'), findsOneWidget);
 
-    await tester.enterText(
-      find.byKey(const Key('onboardingCurrencySearch')),
-      'USD',
-    );
-    await tester.pump();
+    await tester.tap(find.text("I'm new here"));
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 60));
+    }
     expect(tester.takeException(), isNull);
-    expect(find.text('US Dollar'), findsOneWidget);
+    expect(find.text('Two ways to track money'), findsOneWidget);
+    expect(find.text('Skip'), findsOneWidget);
 
-    await tester.tap(find.text('US Dollar'));
-    await tester.pump();
+    await tester.tap(find.text('Skip'));
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 60));
+    }
     expect(tester.takeException(), isNull);
-    expect(
-      find.descendant(
-        of: find.widgetWithText(ListTile, 'US Dollar'),
-        matching: find.byIcon(Icons.check_rounded),
-      ),
-      findsOneWidget,
-    );
+    expect(find.text("You're all set"), findsOneWidget);
+    expect(find.text('Get Started'), findsOneWidget);
+
+    await unmount(tester);
+  });
+
+  testWidgets('Onboarding returning-user path offers restore then Continue', (
+    tester,
+  ) async {
+    await pump(tester, const OnboardingScreen());
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('Next'));
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 60));
+    }
+    expect(find.text('Are you new to XPENC?'), findsOneWidget);
+
+    await tester.tap(find.text('I already know XPENC'));
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 60));
+    }
+    expect(tester.takeException(), isNull);
+    expect(find.text('Restore your data?'), findsOneWidget);
+
+    await tester.tap(find.text('Skip'));
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 60));
+    }
+    expect(tester.takeException(), isNull);
+    expect(find.text('Welcome back'), findsOneWidget);
+    expect(find.text('Continue'), findsOneWidget);
 
     await unmount(tester);
   });

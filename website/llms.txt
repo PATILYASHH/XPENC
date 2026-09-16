@@ -2,7 +2,7 @@
 
 > XPENC is a free, open-source, offline-first personal finance app for Android. It tracks income, expenses, transfers, budgets, savings goals, loans/EMIs, and person-to-person dues entirely in an on-device SQLite database — there is no server, no user account, no analytics, and release builds don't even request the INTERNET permission.
 
-XPENC is built and maintained by one developer, Yash Patil (GitHub: PATILYASHH), and is licensed under the MIT license. The current release is v1.5.0 (August 2026).
+XPENC is built and maintained by one developer, Yash Patil (GitHub: PATILYASHH), and is licensed under the MIT license. The current release is v1.5.1 (September 2026).
 
 ## Key facts
 
@@ -10,20 +10,22 @@ XPENC is built and maintained by one developer, Yash Patil (GitHub: PATILYASHH),
 - Price: free, no ads, no in-app purchases, no subscription.
 - Privacy: no server, no accounts, no analytics/trackers, no ads, no SMS permission. Release builds request no INTERNET permission at all.
 - License: MIT — source code is public and auditable.
-- Distribution: F-Droid (recommended, reproducible build from source), direct APK download, OpenAPK mirror. A Google Play listing is in progress.
+- Distribution: F-Droid (recommended, reproducible build from source), direct APK download, OpenAPK mirror. Also in closed testing on Google Play — email feedback.yashpatil@gmail.com to join as a tester.
 
 ## Core features
 
 - Accounts: Cash, Bank, Card and Prepaid Balance types with real, non-double-counted balances.
 - Transactions: income, expense and transfer, kept strictly separate; tags and receipt photos supported.
 - Budgets: per-category budgets with live progress and overspend alerts; an opt-in "Envelope Mode" for zero-based, every-rupee-has-a-job budgeting.
-- Dues: track money lent or borrowed between people, with partial settlements, kept out of budget totals. A Group tab splits a shared expense equally, by percentage, or by manual amount, and settle-up uses a Pay/Request button that opens a UPI app directly.
+- Dues: track money lent or borrowed between people, with partial settlements, kept out of budget totals. A Group tab splits a shared expense equally, by percentage, or by manual amount, and settle-up uses a Pay/Request button that opens UPI, PayPal, Venmo, Cash App or Revolut directly.
 - Goals & Loans hub: savings goals with contribution history, plus EMI/loan accounts with an outstanding-balance ring and payment logging.
-- Data entry automation: share a bank SMS or a UPI payment screenshot (Paytm/Google Pay/PhonePe) into the app from the Android Share sheet, or import a CSV bank statement — all parsed entirely on-device.
+- Credit cards: track a card's statement close day and payment due day, with the current billing cycle, days remaining, and a due-date reminder.
+- Auto rules: recurring bills/subscriptions can carry a promo price for their first N occurrences, and support a one-off "Pay now" to post an early occurrence without disturbing the regular schedule.
+- Data entry automation: share a bank SMS or a UPI payment screenshot (Paytm/Google Pay/PhonePe) into the app from the Android Share sheet, or import a CSV bank statement (including an optional Category column) — all parsed entirely on-device.
 - Split payments: one purchase paid from more than one account posts as linked transactions.
 - Shopping lists, calendar/reminders, and PDF statement / CSV export.
 - Customization: pick which two tabs sit in the bottom nav (and hide their text labels for icon-only), toggle any account out of the dashboard's Net Worth total, and app-wide text size/boldness/font controls.
-- Security: optional 4/5/6-digit PIN with fingerprint/face unlock, a master recovery phrase that backs up the PIN after too many wrong tries, and a per-balance "hide amounts" toggle.
+- Security: optional 4/5/6-digit PIN with fingerprint/face unlock and a choice of Classic, Big or Scrambled numpad styles, a master recovery phrase that backs up the PIN after too many wrong tries, and a per-balance "hide amounts" toggle.
 - Seven themes including a true-black AMOLED dark mode.
 
 ## Pages
@@ -37,7 +39,7 @@ XPENC is built and maintained by one developer, Yash Patil (GitHub: PATILYASHH),
 
 ## Support
 
-- Email: xpenc.app@gmail.com
+- Email: feedback.yashpatil@gmail.com
 - Bug reports and feature requests: [GitHub Issues](https://github.com/PATILYASHH/XPENC/issues/new/choose)
 - Questions and open-ended discussion: [GitHub Discussions](https://github.com/PATILYASHH/XPENC/discussions)
 - Security vulnerabilities: [private reporting](https://github.com/PATILYASHH/XPENC/security)

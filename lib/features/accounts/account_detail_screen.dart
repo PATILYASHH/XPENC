@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -297,6 +298,13 @@ class _HeaderCard extends ConsumerWidget {
                   ),
                   const Spacer(),
                   const AmountVisibilityToggle(),
+                  if (!_isDebitCard)
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 20),
+                      tooltip: 'Edit balance',
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => _editOpeningBalance(context, ref),
+                    ),
                 ],
               ),
               const SizedBox(height: 6),
@@ -325,6 +333,102 @@ class _HeaderCard extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  /// Lets the user set the opening balance directly instead of faking an
+  /// income transaction to fix a balance they forgot to seed at creation.
+  /// Mirrors [AddAccountSheet]'s own sign convention: a credit card / pay
+  /// later account stores its outstanding as negative, everything else as
+  /// entered.
+  Future<void> _editOpeningBalance(BuildContext context, WidgetRef ref) async {
+    final label = _owesLikeCredit
+        ? 'Outstanding'
+        : account.type == AccountType.prepaidBalance
+        ? 'Starting balance'
+        : 'Opening balance';
+    final current = _owesLikeCredit
+        ? account.openingBalance.abs
+        : account.openingBalance;
+    final controller = TextEditingController(text: MoneyFormat.bare(current));
+    final messenger = ScaffoldMessenger.of(context);
+
+    final newAmount = await showDialog<Money>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Edit balance'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Sets the opening balance directly — it does not create or '
+              'change any transaction.',
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+              ],
+              decoration: InputDecoration(
+                labelText: label,
+                prefixText: MoneyFormat.inputPrefix,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final parsed = Money.tryParse(controller.text);
+              if (parsed == null) {
+                messenger
+                  ..hideCurrentSnackBar()
+                  ..showSnackBar(
+                    const SnackBar(content: Text('Enter a valid amount.')),
+                  );
+                return;
+              }
+              Navigator.of(
+                dialogContext,
+              ).pop(_owesLikeCredit ? -parsed.abs : parsed);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    // Deliberately not disposed — see the same note in
+    // persons_screen.dart's _createGroup: disposing right after showDialog
+    // resolves can crash the TextField mid exit-transition.
+    if (newAmount == null) return;
+
+    try {
+      await ref
+          .read(dbProvider)
+          .correctAccountOpeningBalance(
+            accountId: account.id,
+            openingBalance: newAmount,
+          );
+    } catch (e) {
+      if (!context.mounted) return;
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text("Couldn't save: $e")));
+      return;
+    }
+    if (!context.mounted) return;
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Balance updated')));
   }
 
   /// "HDFC •••• 1234" — whichever parts are present.

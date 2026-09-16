@@ -3000,6 +3000,35 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
+  /// One-time correction for an account's opening balance — e.g. the user
+  /// forgot to set it when creating the account and doesn't want to fake an
+  /// income transaction to fix it (GitHub issue: pencil-edit balance). Not
+  /// offered for a goal (see [correctGoalOpeningBalance] instead) or a
+  /// linked instrument (debit card), which holds no balance of its own.
+  /// [openingBalance] carries whatever sign the caller has already resolved
+  /// — negative for a credit card / pay-later "outstanding", same as
+  /// [addAccount].
+  Future<void> correctAccountOpeningBalance({
+    required int accountId,
+    required Money openingBalance,
+  }) {
+    return transaction(() async {
+      final account = await (select(
+        accounts,
+      )..where((a) => a.id.equals(accountId))).getSingleOrNull();
+      if (account == null || account.type == AccountType.goal) {
+        throw ArgumentError('This account cannot be corrected here.');
+      }
+      if (account.linkedAccountId != null) {
+        throw ArgumentError('This card holds no balance of its own.');
+      }
+      await (update(accounts)..where((a) => a.id.equals(accountId))).write(
+        AccountsCompanion(openingBalance: Value(openingBalance)),
+      );
+      await recalculateBalances();
+    });
+  }
+
   Future<void> archiveAccount(int id) =>
       (update(accounts)..where((a) => a.id.equals(id))).write(
         const AccountsCompanion(isArchived: Value(true)),

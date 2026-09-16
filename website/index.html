@@ -372,6 +372,23 @@
     .bento-hero .fi svg { width: 26px; height: 26px; }
     .bento-hero h3 { font-size: 23px; margin-bottom: 12px; }
     .bento-hero p { font-size: 15px; max-width: 400px; }
+
+    /* code-drawn mini mockup — used where we don't have a real screenshot */
+    .mini-ui { display: flex; flex-direction: column; gap: 8px; margin: 2px 0 22px; max-width: 280px; }
+    .mini-bubble {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 11px; line-height: 1.5;
+      color: var(--muted); background: #fff; border: 1px solid var(--line);
+      border-radius: 14px 14px 14px 4px; padding: 10px 13px; box-shadow: var(--shadow-1);
+    }
+    .mini-arrow { font-size: 11px; font-weight: 600; color: var(--faint); padding-left: 4px; }
+    .mini-row {
+      display: flex; align-items: center; gap: 9px;
+      background: #fff; border: 1px solid var(--line); border-radius: 14px;
+      padding: 11px 14px; box-shadow: var(--shadow-1);
+    }
+    .mini-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+    .mini-row-label { font-size: 13px; font-weight: 600; color: var(--ink); }
+    .mini-row-amt { margin-left: auto; font-family: var(--font-display); font-weight: 700; font-size: 13.5px; color: var(--rose); }
     .bento-wide {
       grid-column: span 2;
       display: flex; align-items: center; gap: 22px;
@@ -550,7 +567,6 @@
       text-decoration: none; width: 90px;
     }
     .dl-tile:hover .dl-icon { transform: translateY(-3px); box-shadow: var(--shadow-2); border-color: var(--c); }
-    .dl-tile.disabled { opacity: .45; cursor: default; pointer-events: none; }
     .dl-label {
       font-family: var(--font-body); font-weight: 600; font-size: 12.5px;
       color: var(--muted); text-align: center;
@@ -794,7 +810,7 @@
     "url": "https://xpenc.in/",
     "downloadUrl": "https://f-droid.org/packages/com.yash.xpenc/",
     "installUrl": "https://f-droid.org/packages/com.yash.xpenc/",
-    "softwareVersion": "1.5.0",
+    "softwareVersion": "1.5.1",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "INR" },
     "isAccessibleForFree": true,
     "author": { "@type": "Person", "name": "Yash Patil", "url": "https://github.com/PATILYASHH" },
@@ -812,7 +828,9 @@
       "CSV bank statement import",
       "Split payments across accounts",
       "PDF statements and CSV export",
-      "Passcode lock with fingerprint/face unlock and a master recovery phrase",
+      "Passcode lock with fingerprint/face unlock, Big and Scrambled numpad styles, and a master recovery phrase",
+      "Pay or request via UPI, PayPal, Venmo, Cash App or Revolut",
+      "Credit card statement close day and payment due-date tracking",
       "Customizable bottom nav and dashboard",
       "App-wide text size, boldness and font controls",
       "Seven themes including a true-black AMOLED dark mode"
@@ -852,7 +870,7 @@
       {
         "@type": "Question",
         "name": "Where can I download XPENC?",
-        "acceptedAnswer": { "@type": "Answer", "text": "F-Droid (recommended, builds straight from source), a direct APK from GitHub Releases, or the OpenAPK mirror. A Google Play listing is coming soon." }
+        "acceptedAnswer": { "@type": "Answer", "text": "F-Droid (recommended — builds straight from source), a direct APK from GitHub Releases, or the OpenAPK mirror. XPENC is also in closed testing on Google Play right now — email to be added as a tester." }
       }
     ]
   }
@@ -884,7 +902,7 @@
     <div class="wrap hero-grid">
       <div class="hero-copy">
         <div class="hero-badges">
-          <span class="version-pill"><span class="live-dot"></span><b id="version">v1.5.0</b>&nbsp;· free &amp; open source</span>
+          <span class="version-pill"><span class="live-dot"></span><b id="version">v1.5.1</b>&nbsp;· free &amp; open source</span>
           <a class="star-pill" href="https://github.com/PATILYASHH/XPENC" target="_blank" rel="noopener">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.9 6.6 7.1.6-5.4 4.7 1.7 7-6.3-3.9-6.3 3.9 1.7-7L2 9.7l7.1-.6z"/></svg>
             <b data-count-to="18" id="heroStars">18</b> on GitHub
@@ -948,6 +966,15 @@
       <div class="bento">
         <div class="feat bento-hero f8" data-reveal>
           <div class="fi"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.5L3 21l2-5.6A8.5 8.5 0 1 1 21 11.5z"/></svg></div>
+          <div class="mini-ui" aria-hidden="true">
+            <div class="mini-bubble">"HDFC Bank: Rs.450 debited via UPI to Swiggy on 12-09-26…"</div>
+            <div class="mini-arrow">parsed on-device ↓</div>
+            <div class="mini-row">
+              <span class="mini-dot" style="background:var(--rose)"></span>
+              <span class="mini-row-label">Food &amp; Dining</span>
+              <span class="mini-row-amt">−₹450</span>
+            </div>
+          </div>
           <h3>Share it in — SMS or screenshot</h3>
           <p>Share a bank SMS, or a Paytm/Google Pay/PhonePe payment screenshot, straight from your bank app — read entirely on-device (no READ_SMS permission, no network call), parsed and dropped into your Review Inbox to confirm.</p>
         </div>
@@ -966,12 +993,12 @@
         <div class="feat f4" data-reveal>
           <div class="fi"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="8.5" cy="8" r="3.2"/><path d="M2.8 19c.7-3 3-4.6 5.7-4.6s5 1.6 5.7 4.6"/><circle cx="16.8" cy="9" r="2.6"/><path d="M15.5 14.7c2.6-.4 5 1 5.7 3.8"/></svg></div>
           <h3>Dues, loans &amp; group splits</h3>
-          <p>Who owes what, partial settlements, running balances — plus a Group tab to split a shared expense equally, by percentage or by manual amount, and settle up with a Pay/Request button that opens UPI directly. Lending is not spending — dues stay out of your budgets.</p>
+          <p>Who owes what, partial settlements, running balances — plus a Group tab to split a shared expense equally, by percentage or by manual amount, and settle up with a Pay/Request button that opens UPI, PayPal, Venmo, Cash App or Revolut directly. Lending is not spending — dues stay out of your budgets.</p>
         </div>
         <div class="feat f9" data-reveal>
           <div class="fi"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg></div>
           <h3>Passcode lock</h3>
-          <p>An optional 4, 5 or 6-digit PIN gates the app on open, with fingerprint or face unlock on top — your ledger stays yours even if your phone doesn't.</p>
+          <p>An optional 4, 5 or 6-digit PIN gates the app on open, with fingerprint or face unlock on top — plus a Big or Scrambled numpad style so a shoulder-surfer can't learn your PIN from the shape of your taps. Your ledger stays yours even if your phone doesn't.</p>
         </div>
         <div class="feat f10" data-reveal>
           <div class="fi"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.2"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg></div>
@@ -1031,6 +1058,14 @@
         <div class="fm-item" data-reveal>
           <span class="fm-ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="8" width="19" height="8" rx="4"/><circle cx="8" cy="12" r="3" fill="currentColor" stroke="none"/></svg></span>
           <div><h4>Customize the dashboard</h4><p>Flip any account out of the Net Worth total per-account — a goal you're tracking separately doesn't have to inflate it.</p></div>
+        </div>
+        <div class="fm-item" data-reveal>
+          <span class="fm-ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="3"/><path d="M2.5 10h19"/><path d="M6.5 15h5"/></svg></span>
+          <div><h4>Credit card due-date tracker</h4><p>Set a card's statement close day and payment due day to see the current billing cycle, days left and a reminder before it's due.</p></div>
+        </div>
+        <div class="fm-item" data-reveal>
+          <span class="fm-ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 6.5A6 6 0 1 0 19 12"/><path d="M19 4v4h-4"/><path d="M12 8v4l2.5 2.5"/></svg></span>
+          <div><h4>Smarter Auto rules</h4><p>Give a recurring rule a promo price for its first N occurrences, or long-press it for "Pay now" to post an early bill right away without disturbing its regular due date.</p></div>
         </div>
         <div class="fm-item" data-reveal>
           <span class="fm-ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
@@ -1207,20 +1242,21 @@
       <div class="sec-head" data-reveal>
         <div class="kicker k-violet">Download</div>
         <h2>Get XPENC</h2>
-        <p>Four ways to install it — all free, and every build comes from the same
-           tagged commit, compiled and checksummed by GitHub Actions. Hover an icon
-           for details.</p>
+        <p>F-Droid, a direct APK or the OpenAPK mirror — all free, and every build
+           comes from the same tagged commit, compiled and checksummed by GitHub
+           Actions. XPENC is also in closed testing on Google Play right now —
+           email to be added as a tester. Hover an icon for details.</p>
       </div>
 
       <div class="dl-icons">
 
-        <div class="dl-tile disabled" data-reveal title="Google Play — coming soon" aria-label="Google Play — coming soon">
+        <a class="dl-tile" data-reveal href="mailto:feedback.yashpatil@gmail.com?subject=Join%20XPENC%20closed%20testing" title="Google Play — in closed testing, email to join" aria-label="Google Play — in closed testing, email to join">
           <span class="dl-icon s1">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><title>Google Play</title><path d="M22.018 13.298l-3.919 2.218-3.515-3.493 3.543-3.521 3.891 2.202a1.49 1.49 0 0 1 0 2.594zM1.337.924a1.486 1.486 0 0 0-.112.568v21.017c0 .217.045.419.124.6l11.155-11.087L1.337.924zm12.207 10.065l3.258-3.238L3.45.195a1.466 1.466 0 0 0-.946-.179l11.04 10.973zm0 2.067l-11 10.933c.298.036.612-.016.906-.183l13.324-7.54-3.23-3.21z"/></svg>
           </span>
-          <span class="dl-countdown" data-target="2026-09-14T18:00:00+05:30" data-live="Live!">--d</span>
+          <span class="dl-countdown">Closed testing</span>
           <span class="dl-label">Play Store</span>
-        </div>
+        </a>
 
         <a class="dl-tile" data-reveal href="https://f-droid.org/packages/com.yash.xpenc/" target="_blank" rel="noopener" title="F-Droid — recommended, builds from source" aria-label="F-Droid — recommended, builds from source">
           <span class="dl-icon s2">
@@ -1274,7 +1310,19 @@
       <div class="rmap">
         <div class="rmap-item next" data-reveal>
           <span class="rmap-dot"><i></i></span>
-          <div class="rmap-head"><span class="rmap-badge">Latest</span><span class="rmap-ver">v1.5.0</span><span class="rmap-date">27 Aug 2026</span></div>
+          <div class="rmap-head"><span class="rmap-badge">Latest</span><span class="rmap-ver">v1.5.1</span><span class="rmap-date">1 Sep 2026</span></div>
+          <p>Pay/Request a person via PayPal, Venmo, Cash App or Revolut, not just UPI. A credit
+             card can now track its own statement close day and payment due date with a
+             reminder. Auto rules learn promo pricing ("₹99 for 3 months, then usual price")
+             and a "Pay now" action for posting an early occurrence, plus a Big or Scrambled
+             numpad lock-screen style, a This Month home-screen widget, account renaming, and
+             a CSV importer that can now map a bank statement's Category column too.</p>
+        </div>
+        <div class="rmap-item" data-reveal>
+          <span class="rmap-dot">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg>
+          </span>
+          <div class="rmap-head"><span class="rmap-ver">v1.5.0</span><span class="rmap-date">27 Aug 2026</span></div>
           <p>Persons gets a Group tab — split a shared expense equally, by percentage or by
              manual amount, and settle up with a Pay/Request button that opens UPI directly.
              A Goals &amp; Loans hub adds EMI/loan tracking alongside savings goals, a
@@ -1292,25 +1340,6 @@
           <p>A configurable PIN lock timeout instead of always locking instantly, the Payee
              field opened up to income transactions, and preset tags an Auto rule can stamp
              onto every transaction it posts.</p>
-        </div>
-        <div class="rmap-item" data-reveal>
-          <span class="rmap-dot">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg>
-          </span>
-          <div class="rmap-head"><span class="rmap-ver">v1.4.4</span><span class="rmap-date">19 Aug 2026</span></div>
-          <p>Screenshot OCR no longer depends on a vendored prebuilt binary blob — a small
-             local fork resolves the same Tesseract library from JitPack instead, clearing
-             the last F-Droid build-policy blocker with no user-facing change.</p>
-        </div>
-        <div class="rmap-item" data-reveal>
-          <span class="rmap-dot">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg>
-          </span>
-          <div class="rmap-head"><span class="rmap-ver">v1.4.3</span><span class="rmap-date">19 Aug 2026</span></div>
-          <p>OCR corrections — test a payment-screenshot capture against the real on-device
-             parser and flag what it got wrong. Screenshot OCR moved from Google ML Kit to
-             Tesseract for full F-Droid compatibility, plus calendar dots for transfers and
-             upcoming reminders.</p>
         </div>
       </div>
 
@@ -1342,12 +1371,12 @@
               <div class="sup-kind">Private · anything at all</div>
             </div>
           </div>
-          <p>Account trouble, a backup that won't restore, or something you'd rather not post publicly — write to me directly.</p>
+          <p>Account trouble, a backup that won't restore, a feature idea, or something you'd rather not post publicly — write to me directly.</p>
           <div class="sup-value">
-            <span id="mailValue">xpenc.app@gmail.com</span>
-            <button class="copy-btn" type="button" data-copy="xpenc.app@gmail.com">Copy</button>
+            <span id="mailValue">feedback.yashpatil@gmail.com</span>
+            <button class="copy-btn" type="button" data-copy="feedback.yashpatil@gmail.com">Copy</button>
           </div>
-          <a class="sup-cta" href="mailto:xpenc.app@gmail.com?subject=XPENC%20support">Send an email →</a>
+          <a class="sup-cta" href="mailto:feedback.yashpatil@gmail.com?subject=XPENC%20feedback">Send an email →</a>
         </div>
 
         <!-- GitHub Issues -->
@@ -1503,7 +1532,7 @@
         </details>
         <details class="faq-item" data-reveal>
           <summary>Where can I download XPENC?</summary>
-          <p>F-Droid (recommended — builds straight from source), a direct APK from GitHub Releases, or the OpenAPK mirror. A Google Play listing is coming soon.</p>
+          <p>F-Droid (recommended — builds straight from source), a direct APK from GitHub Releases, or the OpenAPK mirror. XPENC is also in closed testing on Google Play right now — <a href="mailto:feedback.yashpatil@gmail.com?subject=Join%20XPENC%20closed%20testing">email to be added as a tester</a>.</p>
         </details>
       </div>
     </div>
@@ -1559,7 +1588,7 @@
         <div class="foot">
           <h5>Support</h5>
           <ul>
-            <li><a href="mailto:xpenc.app@gmail.com?subject=XPENC%20support">Email me</a></li>
+            <li><a href="mailto:feedback.yashpatil@gmail.com?subject=XPENC%20feedback">Email me</a></li>
             <li><a href="https://github.com/PATILYASHH/XPENC/issues/new/choose" target="_blank" rel="noopener">Report a bug</a></li>
             <li><a href="https://github.com/PATILYASHH/XPENC/discussions" target="_blank" rel="noopener">Discussions</a></li>
             <li><a href="#support">Discord · patilyashh</a></li>
@@ -1712,20 +1741,7 @@
       sync();
     })();
 
-    // ── small Play Store countdown badge ──
-    (function () {
-      const badge = document.querySelector('.dl-countdown');
-      if (!badge) return;
-      const target = new Date(badge.dataset.target).getTime();
-      const tick = () => {
-        const days = Math.ceil((target - Date.now()) / 86400000);
-        badge.textContent = days <= 0 ? (badge.dataset.live || 'Live!') : days + 'd';
-      };
-      tick();
-      setInterval(tick, 60000);
-    })();
-
-    // ── scroll reveal: fade+slide sections/cards in, staggered within their group ──
+// ── scroll reveal: fade+slide sections/cards in, staggered within their group ──
     (function () {
       const items = [...document.querySelectorAll('[data-reveal]')];
       const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
