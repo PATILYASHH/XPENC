@@ -191,3 +191,26 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# characters/matcher/material_color_utilities/meta/test_api/vector_math/
+# image_picker_android aren't pinned anywhere above — they're pulled in by
+# the Flutter SDK's own bundled `flutter`/`flutter_test` packages, whose
+# declared constraint on each one changes release to release. A `pub get`
+# run on a newer local SDK (e.g. the Flutter beta channel) happily resolves
+# them upward; CI's `beta-release.yml`/`release.yml` pin an older stable
+# Flutter (see their `flutter-version`) whose bundled packages cap these
+# lower, so `flutter pub get --enforce-lockfile` there fails with "Unable to
+# satisfy pubspec.yaml using pubspec.lock" the moment anyone's newer local
+# SDK has last touched this lockfile (GitHub CI run 35206949018 was the
+# first time this actually happened). Pinning them here to versions the
+# CI-pinned SDK is happy with makes the lockfile SDK-version-independent —
+# a newer local SDK no longer bumps them, so this can't recur. Bump these
+# only alongside a bump of every workflow's `flutter-version`.
+dependency_overrides:
+  characters: 1.4.0
+  image_picker_android: 0.8.13+17
+  matcher: 0.12.17
+  material_color_utilities: 0.11.1
+  meta: 1.17.0
+  test_api: 0.7.7
+  vector_math: 2.2.0
