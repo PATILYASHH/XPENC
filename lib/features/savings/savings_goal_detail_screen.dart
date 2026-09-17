@@ -6,6 +6,7 @@ import '../../core/app_icons.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/money_text.dart';
+import '../../core/widgets/transaction_history.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'savings_goals_screen.dart';
@@ -21,6 +22,9 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final progress = ref.watch(goalProgressProvider(goalId));
+    final txAsync = ref.watch(accountTransactionsProvider(goalId));
+    final accountMap = ref.watch(accountMapProvider);
+    final categoryMap = ref.watch(categoryMapProvider);
 
     if (progress == null) {
       return Scaffold(
@@ -191,6 +195,21 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
               ),
             ),
           ],
+          const SizedBox(height: 28),
+          Text(
+            'History',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          TransactionHistorySection(
+            txAsync: txAsync,
+            accountMap: accountMap,
+            categoryMap: categoryMap,
+            ownIds: {goalId},
+            currency: null,
+            emptyMessage: 'No funding activity yet.',
+          ),
         ],
       ),
     );
@@ -598,8 +617,12 @@ class _FundsSheetState extends ConsumerState<_FundsSheet> {
             .toList();
     final categories = widget.isAdd
         ? [
-            ...ref.watch(categoriesProvider(CategoryKind.expense)).valueOrNull ?? [],
-            ...ref.watch(categoriesProvider(CategoryKind.income)).valueOrNull ?? [],
+            ...ref
+                    .watch(categoriesProvider(CategoryKind.expense))
+                    .valueOrNull ??
+                [],
+            ...ref.watch(categoriesProvider(CategoryKind.income)).valueOrNull ??
+                [],
           ]
         : const [];
 
@@ -654,7 +677,9 @@ class _FundsSheetState extends ConsumerState<_FundsSheet> {
             DropdownButtonFormField<int?>(
               initialValue: _categoryId,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Category (optional)'),
+              decoration: const InputDecoration(
+                labelText: 'Category (optional)',
+              ),
               items: [
                 const DropdownMenuItem(value: null, child: Text('None')),
                 for (final c in categories)

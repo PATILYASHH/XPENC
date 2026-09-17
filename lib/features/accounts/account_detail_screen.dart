@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
-import '../../core/app_icons.dart';
 import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/error_view.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/statement_range_picker.dart';
+import '../../core/widgets/transaction_history.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
@@ -21,7 +19,10 @@ import 'envelope_section.dart';
 /// [AccountRow.currencyCode]'s own convention. A debit/UPI instrument
 /// carries no currency of its own, so this follows [AccountRow.linkedAccountId]
 /// once to the account that actually holds the money.
-Currency? _accountCurrency(AccountRow account, Map<int, AccountRow> accountMap) {
+Currency? _accountCurrency(
+  AccountRow account,
+  Map<int, AccountRow> accountMap,
+) {
   final code = account.linkedAccountId == null
       ? account.currencyCode
       : accountMap[account.linkedAccountId]?.currencyCode;
@@ -186,36 +187,17 @@ class _AccountDetailView extends ConsumerWidget {
           ];
         }
 
-        final sorted = [...txns]..sort((a, b) => b.date.compareTo(a.date));
-        final groups = <DateTime, List<TransactionRow>>{};
-        for (final tx in sorted) {
-          final day = DateTime(tx.date.year, tx.date.month, tx.date.day);
-          groups.putIfAbsent(day, () => []).add(tx);
-        }
-        final days = groups.keys.toList()..sort((a, b) => b.compareTo(a));
-
-        final children = <Widget>[];
-        for (final day in days) {
-          final rows = groups[day]!;
-          var net = const Money.zero();
-          for (final tx in rows) {
-            net += accountMovement(tx, ownIds);
-          }
-          children.add(_DayHeader(day: day, net: net, currency: currency));
-          for (final tx in rows) {
-            children.add(
-              _HistoryRow(
-                tx: tx,
-                accountMap: accountMap,
-                categoryMap: categoryMap,
-                ownIds: ownIds,
-                currency: currency,
-              ),
-            );
-          }
-        }
-
-        return [SliverList.list(children: children)];
+        return [
+          SliverList.list(
+            children: historyChildren(
+              txns: txns,
+              accountMap: accountMap,
+              categoryMap: categoryMap,
+              ownIds: ownIds,
+              currency: currency,
+            ),
+          ),
+        ];
       },
     );
   }
@@ -465,127 +447,6 @@ class _InfoChip extends StatelessWidget {
   }
 }
 
-// ── History ─────────────────────────────────────────────────────────────────
-
-class _DayHeader extends StatelessWidget {
-  const _DayHeader({required this.day, required this.net, required this.currency});
-
-  final DateTime day;
-  final Money net;
-  final Currency? currency;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final Color netColor = net.isPositive
-        ? AppColors.income
-        : net.isNegative
-        ? AppColors.expense
-        : theme.colorScheme.onSurfaceVariant;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              _dayLabel(day),
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-          MoneyText(
-            net,
-            signed: true,
-            color: netColor,
-            currency: currency,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// One history row, signed relative to *this* account.
-class _HistoryRow extends StatelessWidget {
-  const _HistoryRow({
-    required this.tx,
-    required this.accountMap,
-    required this.categoryMap,
-    required this.ownIds,
-    required this.currency,
-  });
-
-  final TransactionRow tx;
-  final Map<int, AccountRow> accountMap;
-  final Map<int, CategoryRow> categoryMap;
-  final Set<int> ownIds;
-  final Currency? currency;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isTransfer = tx.type == TxType.transfer;
-    final category = tx.categoryId == null ? null : categoryMap[tx.categoryId];
-
-    final Color accent = isTransfer
-        ? AppColors.transfer
-        : (category != null
-              ? Color(category.colorValue)
-              : theme.colorScheme.onSurfaceVariant);
-    final IconData icon = isTransfer
-        ? Icons.swap_horiz_rounded
-        : AppIcons.resolve(category?.iconKey ?? 'other');
-    final title = isTransfer ? 'Transfer' : (category?.name ?? 'Uncategorised');
-
-    // Signed movement: negative = money out of this account, positive = in.
-    final movement = accountMovement(tx, ownIds);
-
-    final String? subtitle = _subtitle(isTransfer);
-
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      onTap: () => context.push('/transaction/${tx.id}'),
-      leading: CircleAvatar(
-        backgroundColor: accent.withValues(alpha: 0.15),
-        child: Icon(icon, color: accent, size: 22),
-      ),
-      title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: subtitle == null
-          ? null
-          : Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
-      trailing: MoneyText(
-        movement,
-        signed: true,
-        color: colorForTxType(tx.type),
-        currency: currency,
-        style: theme.textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-
-  String? _subtitle(bool isTransfer) {
-    final note = tx.note?.trim();
-    if (isTransfer) {
-      final out = ownIds.contains(tx.accountId);
-      final otherId = out ? tx.toAccountId : tx.accountId;
-      final other = otherId == null ? null : accountMap[otherId];
-      final base = out
-          ? 'To ${other?.name ?? '—'}'
-          : 'From ${other?.name ?? '—'}';
-      return (note != null && note.isNotEmpty) ? '$base · $note' : base;
-    }
-    return (note != null && note.isNotEmpty) ? note : null;
-  }
-}
-
 // ── Direction ─────────────────────────────────────────────────────────────
 
 String _typeLabel(AccountType type) => switch (type) {
@@ -597,15 +458,6 @@ String _typeLabel(AccountType type) => switch (type) {
   AccountType.goal => 'Goal',
   AccountType.loan => 'Loan',
 };
-
-String _dayLabel(DateTime day) {
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
-  final diff = today.difference(day).inDays;
-  if (diff == 0) return 'Today';
-  if (diff == 1) return 'Yesterday';
-  return DateFormat('EEE, d MMM').format(day);
-}
 
 // ── Statement download ───────────────────────────────────────────────────────
 

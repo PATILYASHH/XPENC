@@ -8,6 +8,7 @@ import '../../core/budget_cycle.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/theme_preset.dart';
+import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/motion.dart';
 import '../../data/database.dart';
@@ -330,11 +331,12 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
     // ledger row. For a picked metric, colour names the metric instead —
     // Expense stays red whether spending rose or fell this month.
     final tint = switch (metric) {
-      null => !trendReady || delta.isZero
-          ? theme.colorScheme.onSurfaceVariant
-          : delta.isNegative
-          ? AppColors.expense
-          : AppColors.income,
+      null =>
+        !trendReady || delta.isZero
+            ? theme.colorScheme.onSurfaceVariant
+            : delta.isNegative
+            ? AppColors.expense
+            : AppColors.income,
       _MoneyMetric.income => AppColors.income,
       _MoneyMetric.expense => AppColors.expense,
       _MoneyMetric.savings => AppColors.transfer,
@@ -436,9 +438,8 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
                 const SizedBox(height: 22),
               _MoneyMetricTabs(
                 selected: _metric,
-                onSelect: (m) => setState(
-                  () => _metric = _metric == m ? null : m,
-                ),
+                onSelect: (m) =>
+                    setState(() => _metric = _metric == m ? null : m),
               ),
             ],
           ),
@@ -1724,7 +1725,12 @@ class _TxRow extends StatelessWidget {
           shape: BoxShape.circle,
           color: iconColor.withValues(alpha: 0.14),
         ),
-        child: Icon(icon, size: 20, color: iconColor),
+        child: transactionRowIcon(
+          customIcon: tx.customIcon,
+          fallback: icon,
+          size: 20,
+          color: iconColor,
+        ),
       ),
       title: Text(
         title,

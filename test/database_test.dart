@@ -1121,6 +1121,28 @@ void main() {
         expect(archived.map((p) => p.id), contains(ram));
       },
     );
+
+    test(
+      'photoPath round-trips through add and update, including clearing it',
+      () async {
+        final ram = await db.addPerson(
+          'Ram',
+          phone: '9876543210',
+          photoPath: '/data/person_photos/1.jpg',
+        );
+        var row = (await db.watchPersons().first).firstWhere(
+          (p) => p.id == ram,
+        );
+        expect(row.phone, '9876543210');
+        expect(row.photoPath, '/data/person_photos/1.jpg');
+
+        // updatePerson's "every field passed every time" contract: leaving
+        // photoPath out here must clear it, not leave the old one in place.
+        await db.updatePerson(id: ram, name: 'Ram', phone: '9876543210');
+        row = (await db.watchPersons().first).firstWhere((p) => p.id == ram);
+        expect(row.photoPath, isNull);
+      },
+    );
   });
 
   group('payee — expense or income, free text', () {

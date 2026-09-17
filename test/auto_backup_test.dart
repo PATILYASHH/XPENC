@@ -43,6 +43,8 @@ void main() {
       AutoBackupFrequency frequency = AutoBackupFrequency.daily,
       int customDays = 0,
       int customHours = 0,
+      int cooldownMinutes = 10,
+      bool pending = false,
       DateTime? lastAutoBackupAt,
     }) => SettingRow(
       id: 1,
@@ -64,6 +66,8 @@ void main() {
       autoBackupFrequency: frequency,
       autoBackupCustomDays: customDays,
       autoBackupCustomHours: customHours,
+      autoBackupCooldownMinutes: cooldownMinutes,
+      autoBackupPending: pending,
       lastAutoBackupAt: lastAutoBackupAt,
       backupRetentionMode: BackupRetentionMode.days,
       backupRetentionDays: 180,
@@ -172,6 +176,84 @@ void main() {
       expect(isAutoBackupDue(justUnder, now), isFalse);
       expect(isAutoBackupDue(atOrPast, now), isTrue);
     });
+
+    group('onChange (GitHub #132)', () {
+      test(
+        'no pending change is never due, no matter how much time passed',
+        () {
+          expect(
+            isAutoBackupDue(
+              settingsWith(
+                frequency: AutoBackupFrequency.onChange,
+                pending: false,
+                lastAutoBackupAt: now.subtract(const Duration(days: 30)),
+              ),
+              now,
+            ),
+            isFalse,
+          );
+        },
+      );
+
+      test('a pending change with no prior backup is due immediately', () {
+        expect(
+          isAutoBackupDue(
+            settingsWith(
+              frequency: AutoBackupFrequency.onChange,
+              pending: true,
+              lastAutoBackupAt: null,
+            ),
+            now,
+          ),
+          isTrue,
+        );
+      });
+
+      test('a pending change inside the cooldown is not yet due', () {
+        expect(
+          isAutoBackupDue(
+            settingsWith(
+              frequency: AutoBackupFrequency.onChange,
+              cooldownMinutes: 10,
+              pending: true,
+              lastAutoBackupAt: now.subtract(const Duration(minutes: 9)),
+            ),
+            now,
+          ),
+          isFalse,
+        );
+      });
+
+      test('a pending change past the cooldown is due', () {
+        expect(
+          isAutoBackupDue(
+            settingsWith(
+              frequency: AutoBackupFrequency.onChange,
+              cooldownMinutes: 10,
+              pending: true,
+              lastAutoBackupAt: now.subtract(const Duration(minutes: 10)),
+            ),
+            now,
+          ),
+          isTrue,
+        );
+      });
+
+      test('cooldown of 0 means every change is due right away', () {
+        expect(
+          isAutoBackupDue(
+            settingsWith(
+              frequency: AutoBackupFrequency.onChange,
+              cooldownMinutes: 0,
+              pending: true,
+              lastAutoBackupAt: now,
+            ),
+            now,
+          ),
+          isTrue,
+        );
+      });
+    });
   });
 
   group('AppDatabase auto-backup settings', () {
@@ -224,30 +306,27 @@ void main() {
       );
     });
 
-    test(
-      'GitHub #123: accepts a pure hours-only interval — 0 days is not a '
-      'placeholder that has to be bumped to at least 1',
-      () async {
-        await db.setAutoBackupSettings(
-          enabled: true,
-          frequency: AutoBackupFrequency.custom,
-          customDays: 0,
-          customHours: 12,
-          retentionDays: 8,
-        );
-        final s = await db.getSettings();
-        expect(s.autoBackupCustomDays, 0);
-        expect(s.autoBackupCustomHours, 12);
-        expect(
-          autoBackupInterval(
-            frequency: s.autoBackupFrequency,
-            customDays: s.autoBackupCustomDays,
-            customHours: s.autoBackupCustomHours,
-          ),
-          const Duration(hours: 12),
-        );
-      },
-    );
+    test('GitHub #123: accepts a pure hours-only interval — 0 days is not a '
+        'placeholder that has to be bumped to at least 1', () async {
+      await db.setAutoBackupSettings(
+        enabled: true,
+        frequency: AutoBackupFrequency.custom,
+        customDays: 0,
+        customHours: 12,
+        retentionDays: 8,
+      );
+      final s = await db.getSettings();
+      expect(s.autoBackupCustomDays, 0);
+      expect(s.autoBackupCustomHours, 12);
+      expect(
+        autoBackupInterval(
+          frequency: s.autoBackupFrequency,
+          customDays: s.autoBackupCustomDays,
+          customHours: s.autoBackupCustomHours,
+        ),
+        const Duration(hours: 12),
+      );
+    });
 
     test('accepts a custom interval right at the retention boundary', () async {
       await db.setAutoBackupSettings(
@@ -260,22 +339,19 @@ void main() {
       expect((await db.getSettings()).backupRetentionDays, 5);
     });
 
-    test(
-      'GitHub #131: count mode persists the count and ignores the days '
-      'interval check',
-      () async {
-        await db.setAutoBackupSettings(
-          enabled: true,
-          frequency: AutoBackupFrequency.daily,
-          retentionMode: BackupRetentionMode.count,
-          retentionDays: 0,
-          retentionCount: 3,
-        );
-        final s = await db.getSettings();
-        expect(s.backupRetentionMode, BackupRetentionMode.count);
-        expect(s.backupRetentionCount, 3);
-      },
-    );
+    test('GitHub #131: count mode persists the count and ignores the days '
+        'interval check', () async {
+      await db.setAutoBackupSettings(
+        enabled: true,
+        frequency: AutoBackupFrequency.daily,
+        retentionMode: BackupRetentionMode.count,
+        retentionDays: 0,
+        retentionCount: 3,
+      );
+      final s = await db.getSettings();
+      expect(s.backupRetentionMode, BackupRetentionMode.count);
+      expect(s.backupRetentionCount, 3);
+    });
 
     test('count mode rejects a count below 1', () {
       expect(
@@ -288,6 +364,84 @@ void main() {
         ),
         throwsArgumentError,
       );
+    });
+
+    test('onChange mode persists its cooldown', () async {
+      await db.setAutoBackupSettings(
+        enabled: true,
+        frequency: AutoBackupFrequency.onChange,
+        cooldownMinutes: 15,
+        retentionDays: 0,
+      );
+      final s = await db.getSettings();
+      expect(s.autoBackupFrequency, AutoBackupFrequency.onChange);
+      expect(s.autoBackupCooldownMinutes, 15);
+    });
+
+    test('onChange mode rejects a negative cooldown', () {
+      expect(
+        () => db.setAutoBackupSettings(
+          enabled: true,
+          frequency: AutoBackupFrequency.onChange,
+          cooldownMinutes: -1,
+          retentionDays: 0,
+        ),
+        throwsArgumentError,
+      );
+    });
+  });
+
+  group('markLedgerChanged (GitHub #132)', () {
+    late AppDatabase db;
+    setUp(() => db = AppDatabase(NativeDatabase.memory()));
+    tearDown(() => db.close());
+
+    test('sets the pending flag only in onChange mode', () async {
+      await db.setAutoBackupSettings(
+        enabled: true,
+        frequency: AutoBackupFrequency.daily,
+        retentionDays: 180,
+      );
+      await db.markLedgerChanged();
+      expect((await db.getSettings()).autoBackupPending, isFalse);
+    });
+
+    test('sets the pending flag when enabled and in onChange mode', () async {
+      await db.setAutoBackupSettings(
+        enabled: true,
+        frequency: AutoBackupFrequency.onChange,
+        cooldownMinutes: 10,
+        retentionDays: 0,
+      );
+      await db.markLedgerChanged();
+      expect((await db.getSettings()).autoBackupPending, isTrue);
+    });
+
+    test('does nothing when automatic backups are off', () async {
+      await db.setAutoBackupSettings(
+        enabled: false,
+        frequency: AutoBackupFrequency.onChange,
+        cooldownMinutes: 10,
+        retentionDays: 0,
+      );
+      await db.markLedgerChanged();
+      expect((await db.getSettings()).autoBackupPending, isFalse);
+    });
+
+    test('setLastAutoBackupAt clears a pending change', () async {
+      await db.setAutoBackupSettings(
+        enabled: true,
+        frequency: AutoBackupFrequency.onChange,
+        cooldownMinutes: 10,
+        retentionDays: 0,
+      );
+      await db.markLedgerChanged();
+      expect((await db.getSettings()).autoBackupPending, isTrue);
+
+      await db.setLastAutoBackupAt(DateTime(2026, 8, 5));
+      final s = await db.getSettings();
+      expect(s.autoBackupPending, isFalse);
+      expect(s.lastAutoBackupAt, DateTime(2026, 8, 5));
     });
   });
 

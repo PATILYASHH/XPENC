@@ -1,16 +1,20 @@
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// Picks and stores receipt photos entirely on-device.
 ///
-/// Uses the same picker as backup import (`file_picker`, not `image_picker`)
-/// so attaching a receipt needs no camera or storage permission — matching
-/// this app's existing "pick any file, need zero extra permissions" pattern
-/// (see `BackupService`). A picked file is copied into the app's own
-/// documents directory immediately on pick; the caller only writes the
-/// returned path into the database once the transaction is actually saved.
+/// Gallery/file attach uses `file_picker` (same picker as backup import),
+/// needing no camera or storage permission — matching this app's existing
+/// "pick any file, need zero extra permissions" pattern (see
+/// `BackupService`). Camera capture is the one exception: it needs
+/// `image_picker` and the `CAMERA` runtime permission (see
+/// AndroidManifest.xml and PRIVACY.md). Either way, a picked file is copied
+/// into the app's own documents directory immediately on pick; the caller
+/// only writes the returned path into the database once the transaction is
+/// actually saved.
 class ReceiptStorage {
   const ReceiptStorage._();
 
@@ -22,6 +26,20 @@ class ReceiptStorage {
     final pickedPath = result?.files.single.path;
     if (pickedPath == null) return null;
     return _copyIntoAppStorage(File(pickedPath));
+  }
+
+  /// Opens the device camera. Returns the path the receipt now lives at, or
+  /// null if the user cancelled or backed out without taking a photo. Lets
+  /// a permission denial propagate as a [PlatformException] — the caller
+  /// shows the user why nothing happened rather than this silently
+  /// swallowing it.
+  static Future<String?> pickFromCamera() async {
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.camera,
+      imageQuality: 85,
+    );
+    if (picked == null) return null;
+    return _copyIntoAppStorage(File(picked.path));
   }
 
   /// Same copy-into-app-storage step as [pickAndStore], for a file that

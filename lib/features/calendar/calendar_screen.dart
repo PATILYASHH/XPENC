@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../core/app_icons.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -806,7 +807,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: accent.withValues(alpha: 0.15),
-          child: Icon(icon, color: accent, size: 22),
+          child: transactionRowIcon(
+            customIcon: tx.customIcon,
+            fallback: icon,
+            size: 22,
+            color: accent,
+          ),
         ),
         title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
         subtitle: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),

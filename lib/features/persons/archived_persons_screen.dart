@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/database.dart';
 import '../../data/providers.dart';
+import 'person_avatar.dart';
 
 /// People hidden via **Archive** on the Persons screen. Restoring one here is
 /// the only way back — archiving never touches their lend/borrow history.
@@ -72,14 +73,7 @@ class _ArchivedPersonTile extends ConsumerWidget {
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      leading: CircleAvatar(
-        backgroundColor: theme.colorScheme.surfaceContainerHighest,
-        foregroundColor: theme.colorScheme.onSurface,
-        child: Text(
-          _initials(person.name),
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-      ),
+      leading: PersonAvatar(name: person.name, photoPath: person.photoPath),
       title: Text(
         person.name,
         style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
@@ -105,17 +99,4 @@ class _ArchivedPersonTile extends ConsumerWidget {
       ),
     );
   }
-}
-
-/// Two-letter initials from a name, e.g. "Rahul Kumar" -> "RK".
-String _initials(String name) {
-  final parts = name
-      .trim()
-      .split(RegExp(r'\s+'))
-      .where((p) => p.isNotEmpty)
-      .toList();
-  if (parts.isEmpty) return '?';
-  if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
-  return (parts.first.substring(0, 1) + parts.last.substring(0, 1))
-      .toUpperCase();
 }

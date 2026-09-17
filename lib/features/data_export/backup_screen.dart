@@ -457,6 +457,10 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
       AutoBackupFrequency.monthly => 'Monthly',
       AutoBackupFrequency.custom =>
         'Every ${_intervalLabel(s.customDays, s.customHours)}',
+      AutoBackupFrequency.onChange =>
+        s.cooldownMinutes <= 0
+            ? 'On every change'
+            : 'On change, ${s.cooldownMinutes} min apart',
     };
     final keep = switch (s.retentionMode) {
       BackupRetentionMode.count =>
@@ -643,6 +647,9 @@ class _AutoBackupSettingsSheetState
   late final _hoursCtrl = TextEditingController(
     text: '${widget.current.customHours}',
   );
+  late final _cooldownCtrl = TextEditingController(
+    text: '${widget.current.cooldownMinutes}',
+  );
   late BackupRetentionMode _retentionMode = widget.current.retentionMode;
   late int _retentionDays = widget.current.retentionDays;
   late final _retentionCountCtrl = TextEditingController(
@@ -656,14 +663,18 @@ class _AutoBackupSettingsSheetState
   void dispose() {
     _daysCtrl.dispose();
     _hoursCtrl.dispose();
+    _cooldownCtrl.dispose();
     _retentionCountCtrl.dispose();
     super.dispose();
   }
+
+  int get _cooldownMinutes => int.tryParse(_cooldownCtrl.text.trim()) ?? 0;
 
   Duration get _interval => autoBackupInterval(
     frequency: _frequency,
     customDays: int.tryParse(_daysCtrl.text) ?? 0,
     customHours: int.tryParse(_hoursCtrl.text) ?? 0,
+    cooldownMinutes: _cooldownMinutes,
   );
 
   bool _retentionAllowed(int days) =>
@@ -682,6 +693,9 @@ class _AutoBackupSettingsSheetState
   bool get _customIntervalValid =>
       _frequency != AutoBackupFrequency.custom || _interval > Duration.zero;
 
+  bool get _cooldownValid =>
+      _frequency != AutoBackupFrequency.onChange || _cooldownMinutes >= 0;
+
   Future<void> _save() async {
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _saving = true);
@@ -693,6 +707,7 @@ class _AutoBackupSettingsSheetState
             frequency: _frequency,
             customDays: int.tryParse(_daysCtrl.text) ?? 0,
             customHours: int.tryParse(_hoursCtrl.text) ?? 0,
+            cooldownMinutes: _cooldownMinutes,
             retentionMode: _retentionMode,
             retentionDays: _retentionDays,
             retentionCount: _retentionCount ?? 0,
@@ -779,6 +794,10 @@ class _AutoBackupSettingsSheetState
                       value: AutoBackupFrequency.custom,
                       label: Text('Custom'),
                     ),
+                    ButtonSegment(
+                      value: AutoBackupFrequency.onChange,
+                      label: Text('On change'),
+                    ),
                   ],
                   selected: {_frequency},
                   showSelectedIcon: false,
@@ -786,6 +805,33 @@ class _AutoBackupSettingsSheetState
                       setState(() => _frequency = s.first),
                 ),
               ),
+              if (_frequency == AutoBackupFrequency.onChange) ...[
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _cooldownCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Minutes between backups',
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  _cooldownValid
+                      ? (_cooldownMinutes <= 0
+                            ? 'Backs up after every add, edit or delete. '
+                                  'Several changes made quickly still count '
+                                  'as one backup.'
+                            : 'Several changes within $_cooldownMinutes '
+                                  'minute${_cooldownMinutes == 1 ? '' : 's'} '
+                                  'of each other count as one backup, taken '
+                                  'once that window passes.')
+                      : 'Enter 0 or more minutes.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: _cooldownValid ? cs.onSurfaceVariant : cs.error,
+                  ),
+                ),
+              ],
               if (_frequency == AutoBackupFrequency.custom) ...[
                 const SizedBox(height: 14),
                 Row(
@@ -914,6 +960,7 @@ class _AutoBackupSettingsSheetState
                   _saving ||
                       (_enabled &&
                           (!_customIntervalValid ||
+                              !_cooldownValid ||
                               (_retentionMode == BackupRetentionMode.days
                                   ? !_retentionAllowed(_retentionDays)
                                   : !_retentionCountValid)))

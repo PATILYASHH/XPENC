@@ -34,10 +34,13 @@ to see, access, or recover it.
 
 ## Data the app collects or shares
 
-**None.** XPENC collects no personal data, no financial data, no device
-identifiers, no usage analytics, and no diagnostics. Nothing is shared with
-anyone, because nothing ever leaves the device. The app's Google Play Data
-safety section accordingly declares *no data collected, no data shared*.
+**Nothing beyond what you put in yourself.** XPENC collects no device
+identifiers, no usage analytics, and no diagnostics, and nothing is ever
+shared with anyone or transmitted anywhere. The one thing that comes from
+outside the app: if you use "Pick from contacts" when adding a person and
+grant the `READ_CONTACTS` permission, that one contact's name, phone number
+and photo are copied into the app's own local storage — the same
+never-transmitted, on-device storage as everything else in this policy.
 
 ## Permissions
 
@@ -45,8 +48,10 @@ safety section accordingly declares *no data collected, no data shared*.
 |---|---|
 | `POST_NOTIFICATIONS` (optional, asked at runtime) | To show budget alerts and the bill/EMI reminders you set. If you deny it, the app works normally — you just get no notifications. |
 | `RECEIVE_BOOT_COMPLETED` | To re-schedule your local reminders after the phone restarts. |
+| `CAMERA` (optional, asked at runtime) | Only if you tap "Take photo" when attaching a receipt to a transaction. The photo is copied straight into the app's own private storage and never leaves the device. If you deny it, or just attach from your gallery instead, the app works normally — nothing about the camera is used anywhere else. |
+| `READ_CONTACTS` (optional, asked at runtime) | Only if you tap "Pick from contacts" when adding a person, and only to also import that contact's phone number and photo — picking a contact's name works without this permission. If you deny it, the picker still fills in the name; you can still type the phone number by hand. Nothing from your address book is read except the one contact you explicitly pick, and it's copied into the app's own private storage, never transmitted anywhere. |
 
-XPENC requests **no** SMS, location, camera, microphone, contacts, storage, or
+XPENC requests **no** SMS, location, microphone, storage, or
 internet permission. (The final app package also contains `VIBRATE` — a
 standard, install-time permission added by the notifications library so
 notifications can vibrate — and an internal Android-library permission scoped

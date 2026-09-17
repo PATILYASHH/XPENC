@@ -8,6 +8,7 @@ import '../../core/app_icons.dart';
 import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/motion.dart';
 import '../../data/currency_conversion.dart';
@@ -125,14 +126,17 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await ref.read(dbProvider).createTemplateFromTransaction(
-        transactionId: tx.id,
-        name: name,
+      await ref
+          .read(dbProvider)
+          .createTemplateFromTransaction(transactionId: tx.id, name: name);
+      messenger.showSnackBar(
+        SnackBar(content: Text('Saved "$name" as a template')),
       );
-      messenger.showSnackBar(SnackBar(content: Text('Saved "$name" as a template')));
     } on ArgumentError catch (e) {
       messenger.showSnackBar(
-        SnackBar(content: Text(e.message?.toString() ?? "Couldn't save template")),
+        SnackBar(
+          content: Text(e.message?.toString() ?? "Couldn't save template"),
+        ),
       );
     }
   }
@@ -316,9 +320,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                     toAccount: tx.toAccountId == null
                         ? null
                         : accountMap[tx.toAccountId],
-                    person: tx.personId == null
-                        ? null
-                        : personMap[tx.personId],
+                    person: tx.personId == null ? null : personMap[tx.personId],
                     tags: tagsByTx[tx.id] ?? const [],
                     hasReceipt: tx.imagePath != null,
                     splitCategories: [
@@ -389,7 +391,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               onQuickFilterChanged: (value) {
                 ref.read(txLinkedOnlyProvider.notifier).state =
                     value == _QuickFilter.linked;
-                ref.read(txQuickFilterProvider.notifier).state = switch (value) {
+                ref
+                    .read(txQuickFilterProvider.notifier)
+                    .state = switch (value) {
                   _QuickFilter.all || _QuickFilter.linked => null,
                   _QuickFilter.income => TxType.income,
                   _QuickFilter.expense => TxType.expense,
@@ -957,8 +961,7 @@ class _TxCard extends StatelessWidget {
   final List<CategoryRow> splitCategories;
   final bool hasReceipt;
   final Future<void> Function(TransactionRow tx, String title) onDelete;
-  final Future<void> Function(TransactionRow tx, String title)
-  onCreateTemplate;
+  final Future<void> Function(TransactionRow tx, String title) onCreateTemplate;
 
   @override
   Widget build(BuildContext context) {
@@ -1060,7 +1063,12 @@ class _TxCard extends StatelessWidget {
                         color: iconColor.withValues(alpha: 0.14),
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      child: Icon(icon, color: iconColor, size: 21),
+                      child: transactionRowIcon(
+                        customIcon: tx.customIcon,
+                        fallback: icon,
+                        size: 21,
+                        color: iconColor,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -1332,8 +1340,7 @@ class _LinkedTxRow extends StatelessWidget {
   final List<CategoryRow> splitCategories;
   final bool hasReceipt;
   final Future<void> Function(TransactionRow tx, String title) onDelete;
-  final Future<void> Function(TransactionRow tx, String title)
-  onCreateTemplate;
+  final Future<void> Function(TransactionRow tx, String title) onCreateTemplate;
 
   @override
   Widget build(BuildContext context) {

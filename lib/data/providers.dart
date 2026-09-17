@@ -124,7 +124,8 @@ final allTransactionsProvider = StreamProvider<List<TransactionRow>>(
 /// month once a custom [budgetStartDayProvider] is set. Defaults to whichever
 /// period contains today.
 final selectedMonthProvider = StateProvider<DateTime>(
-  (ref) => budgetPeriodAnchorFor(DateTime.now(), ref.watch(budgetStartDayProvider)),
+  (ref) =>
+      budgetPeriodAnchorFor(DateTime.now(), ref.watch(budgetStartDayProvider)),
 );
 
 final monthTotalsProvider = StreamProvider<({Money income, Money expense})>((
@@ -678,6 +679,21 @@ final recurringRuleMapProvider = Provider<Map<int, RecurringRuleRow>>((ref) {
   final rules = ref.watch(recurringRulesProvider).valueOrNull ?? const [];
   return {for (final r in rules) r.id: r};
 });
+
+/// Every transaction a rule has actually posted, keyed by
+/// [TransactionRow.recurringRuleId] — the Auto equivalent of
+/// [accountTransactionsProvider] for a rule, which has no account id of its
+/// own. Composed from [allTransactionsProvider] rather than a dedicated
+/// query — same "compose, don't resubscribe" reasoning as
+/// [upcomingPaymentsProvider].
+final ruleTransactionsProvider =
+    Provider.family<AsyncValue<List<TransactionRow>>, int>((ref, ruleId) {
+      return ref
+          .watch(allTransactionsProvider)
+          .whenData(
+            (txs) => txs.where((t) => t.recurringRuleId == ruleId).toList(),
+          );
+    });
 
 // ── Settings ────────────────────────────────────────────────────────────────
 
@@ -1416,16 +1432,17 @@ final tagGroupTagsByGroupProvider = Provider<Map<int, List<TagRow>>>((ref) {
 // ── Transaction templates ────────────────────────────────────────────────────
 
 /// Saved ➕-flow prefills (GitHub #125), newest first.
-final transactionTemplatesProvider = StreamProvider<List<TransactionTemplateRow>>(
-  (ref) => ref.watch(dbProvider).watchTransactionTemplates(),
-);
+final transactionTemplatesProvider =
+    StreamProvider<List<TransactionTemplateRow>>(
+      (ref) => ref.watch(dbProvider).watchTransactionTemplates(),
+    );
 
 /// Whether the ➕ button needs to show its "blank or template" choice sheet
 /// at all — false (the common case) means it still jumps straight to `/add`,
 /// unchanged from before this feature existed.
 final hasTransactionTemplatesProvider = Provider<bool>(
-  (ref) =>
-      (ref.watch(transactionTemplatesProvider).valueOrNull ?? const []).isNotEmpty,
+  (ref) => (ref.watch(transactionTemplatesProvider).valueOrNull ?? const [])
+      .isNotEmpty,
 );
 
 // ── Split expenses ──────────────────────────────────────────────────────────
@@ -1541,6 +1558,7 @@ typedef AutoBackupSettings = ({
   AutoBackupFrequency frequency,
   int customDays,
   int customHours,
+  int cooldownMinutes,
   BackupRetentionMode retentionMode,
   int retentionDays,
   int retentionCount,
@@ -1554,6 +1572,7 @@ final autoBackupSettingsProvider = Provider<AutoBackupSettings>((ref) {
     frequency: s?.autoBackupFrequency ?? AutoBackupFrequency.daily,
     customDays: s?.autoBackupCustomDays ?? 0,
     customHours: s?.autoBackupCustomHours ?? 0,
+    cooldownMinutes: s?.autoBackupCooldownMinutes ?? 10,
     retentionMode: s?.backupRetentionMode ?? BackupRetentionMode.days,
     retentionDays: s?.backupRetentionDays ?? 180,
     retentionCount: s?.backupRetentionCount ?? 0,

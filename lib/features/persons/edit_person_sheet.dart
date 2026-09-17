@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/database.dart';
 import '../../data/providers.dart';
+import 'person_avatar.dart';
+import 'person_photo_storage.dart';
 
 /// Opens the "edit person" bottom sheet.
 Future<void> showEditPersonSheet(
@@ -65,6 +67,12 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
     text: widget.person?.phone ?? '',
   );
 
+  /// Set once a contact photo is picked (or cleared with the "x" on the
+  /// preview) — starts at whatever this person already has saved, in edit
+  /// mode. `null` on save means "no photo", same convention as every other
+  /// field on this sheet.
+  late String? _photoPath = widget.person?.photoPath;
+
   bool _saving = false;
 
   @override
@@ -87,18 +95,46 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
-  /// Hands off to the OS's own contact picker rather than reading the
-  /// address book into the app — no `READ_CONTACTS` permission, no Play
-  /// Data Safety entry, nothing for XPENC to ever store or leak. The
-  /// trade-off: only `displayName` comes back on Android without that
-  /// permission, so phone number still has to be typed in by hand.
+  /// Hands off to the OS's own contact picker. The picker itself is always
+  /// permissionless and always returns a name — but on Android, asking it
+  /// for phone or photo too requires `READ_CONTACTS`, so this requests that
+  /// permission first. A denial (or a platform that never asks, like a
+  /// contacts-less device) just falls back to the name-only pick this
+  /// button always did before phone/photo import existed — never a hard
+  /// failure.
   Future<void> _pickFromContacts() async {
     try {
-      final contact = await FlutterContacts.native.showPicker();
+      final status = await FlutterContacts.permissions.request(
+        PermissionType.read,
+      );
+      final granted =
+          status == PermissionStatus.granted ||
+          status == PermissionStatus.limited;
+      final contact = await FlutterContacts.native.showPicker(
+        properties: granted
+            ? const {ContactProperty.phone, ContactProperty.photoThumbnail}
+            : null,
+      );
       if (contact == null || !mounted) return;
+
       final name = contact.displayName;
       if (name != null && name.isNotEmpty) {
         _nameController.text = name;
+      }
+      if (!granted) {
+        _showError(
+          'Allow contacts access to also import their phone and photo.',
+        );
+        return;
+      }
+      if (contact.phones.isNotEmpty) {
+        _phoneController.text = contact.phones.first.number;
+      }
+      final thumbnail = contact.photo?.thumbnail;
+      if (thumbnail != null && thumbnail.isNotEmpty) {
+        final path = await PersonPhotoStorage.storeBytes(thumbnail);
+        if (!mounted) return;
+        setState(() => _photoPath = path);
       }
     } on PlatformException {
       if (!mounted) return;
@@ -127,6 +163,7 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
         venmo: _venmoController.text.trim().nullIfEmpty,
         cashapp: _cashappController.text.trim().nullIfEmpty,
         revolut: _revolutController.text.trim().nullIfEmpty,
+        photoPath: _photoPath,
       );
     } else {
       await db.updatePerson(
@@ -140,6 +177,7 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
         venmo: _venmoController.text.trim().nullIfEmpty,
         cashapp: _cashappController.text.trim().nullIfEmpty,
         revolut: _revolutController.text.trim().nullIfEmpty,
+        photoPath: _photoPath,
       );
     }
     if (!mounted) return;
@@ -182,6 +220,48 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
               ),
             ),
             const SizedBox(height: 20),
+
+            if (_photoPath != null) ...[
+              Center(
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    PersonAvatar(
+                      name: _nameController.text,
+                      photoPath: _photoPath,
+                      radius: 36,
+                    ),
+                    Positioned(
+                      right: -4,
+                      top: -4,
+                      child: Tooltip(
+                        message: 'Remove photo',
+                        child: InkWell(
+                          onTap: () => setState(() => _photoPath = null),
+                          customBorder: const CircleBorder(),
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surface,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: theme.colorScheme.outlineVariant,
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.close,
+                              size: 16,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
 
             TextField(
               controller: _nameController,

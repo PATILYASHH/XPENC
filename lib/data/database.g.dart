@@ -1653,6 +1653,17 @@ class $PersonsTable extends Persons with TableInfo<$PersonsTable, PersonRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _photoPathMeta = const VerificationMeta(
+    'photoPath',
+  );
+  @override
+  late final GeneratedColumn<String> photoPath = GeneratedColumn<String>(
+    'photo_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _paypalMeta = const VerificationMeta('paypal');
   @override
   late final GeneratedColumn<String> paypal = GeneratedColumn<String>(
@@ -1703,6 +1714,7 @@ class $PersonsTable extends Persons with TableInfo<$PersonsTable, PersonRow> {
     createdAt,
     upiId,
     phone,
+    photoPath,
     paypal,
     venmo,
     cashapp,
@@ -1765,6 +1777,12 @@ class $PersonsTable extends Persons with TableInfo<$PersonsTable, PersonRow> {
       context.handle(
         _phoneMeta,
         phone.isAcceptableOrUnknown(data['phone']!, _phoneMeta),
+      );
+    }
+    if (data.containsKey('photo_path')) {
+      context.handle(
+        _photoPathMeta,
+        photoPath.isAcceptableOrUnknown(data['photo_path']!, _photoPathMeta),
       );
     }
     if (data.containsKey('paypal')) {
@@ -1832,6 +1850,10 @@ class $PersonsTable extends Persons with TableInfo<$PersonsTable, PersonRow> {
         DriftSqlType.string,
         data['${effectivePrefix}phone'],
       ),
+      photoPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}photo_path'],
+      ),
       paypal: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}paypal'],
@@ -1874,6 +1896,13 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
   /// VPA, not a phone number) — stored for display/contact purposes.
   final String? phone;
 
+  /// Path to a locally-stored copy of their photo — either imported from
+  /// the device's contact picker (see `PersonPhotoStorage`) or, one day,
+  /// picked directly. Never a live link into the address book: like a
+  /// receipt image, it's copied into the app's own storage once and stands
+  /// on its own after that.
+  final String? photoPath;
+
   /// Their PayPal.me id (e.g. "rahul" for paypal.me/rahul). Powers the "Pay"
   /// button on their detail screen — used to build a `paypal.me` link when
   /// the app's user owes them (see `PaypalLauncher`).
@@ -1899,6 +1928,7 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
     required this.createdAt,
     this.upiId,
     this.phone,
+    this.photoPath,
     this.paypal,
     this.venmo,
     this.cashapp,
@@ -1922,6 +1952,9 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
     }
     if (!nullToAbsent || phone != null) {
       map['phone'] = Variable<String>(phone);
+    }
+    if (!nullToAbsent || photoPath != null) {
+      map['photo_path'] = Variable<String>(photoPath);
     }
     if (!nullToAbsent || paypal != null) {
       map['paypal'] = Variable<String>(paypal);
@@ -1954,6 +1987,9 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
       phone: phone == null && nullToAbsent
           ? const Value.absent()
           : Value(phone),
+      photoPath: photoPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(photoPath),
       paypal: paypal == null && nullToAbsent
           ? const Value.absent()
           : Value(paypal),
@@ -1983,6 +2019,7 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       upiId: serializer.fromJson<String?>(json['upiId']),
       phone: serializer.fromJson<String?>(json['phone']),
+      photoPath: serializer.fromJson<String?>(json['photoPath']),
       paypal: serializer.fromJson<String?>(json['paypal']),
       venmo: serializer.fromJson<String?>(json['venmo']),
       cashapp: serializer.fromJson<String?>(json['cashapp']),
@@ -2001,6 +2038,7 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'upiId': serializer.toJson<String?>(upiId),
       'phone': serializer.toJson<String?>(phone),
+      'photoPath': serializer.toJson<String?>(photoPath),
       'paypal': serializer.toJson<String?>(paypal),
       'venmo': serializer.toJson<String?>(venmo),
       'cashapp': serializer.toJson<String?>(cashapp),
@@ -2017,6 +2055,7 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
     DateTime? createdAt,
     Value<String?> upiId = const Value.absent(),
     Value<String?> phone = const Value.absent(),
+    Value<String?> photoPath = const Value.absent(),
     Value<String?> paypal = const Value.absent(),
     Value<String?> venmo = const Value.absent(),
     Value<String?> cashapp = const Value.absent(),
@@ -2030,6 +2069,7 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
     createdAt: createdAt ?? this.createdAt,
     upiId: upiId.present ? upiId.value : this.upiId,
     phone: phone.present ? phone.value : this.phone,
+    photoPath: photoPath.present ? photoPath.value : this.photoPath,
     paypal: paypal.present ? paypal.value : this.paypal,
     venmo: venmo.present ? venmo.value : this.venmo,
     cashapp: cashapp.present ? cashapp.value : this.cashapp,
@@ -2047,6 +2087,7 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       upiId: data.upiId.present ? data.upiId.value : this.upiId,
       phone: data.phone.present ? data.phone.value : this.phone,
+      photoPath: data.photoPath.present ? data.photoPath.value : this.photoPath,
       paypal: data.paypal.present ? data.paypal.value : this.paypal,
       venmo: data.venmo.present ? data.venmo.value : this.venmo,
       cashapp: data.cashapp.present ? data.cashapp.value : this.cashapp,
@@ -2065,6 +2106,7 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
           ..write('createdAt: $createdAt, ')
           ..write('upiId: $upiId, ')
           ..write('phone: $phone, ')
+          ..write('photoPath: $photoPath, ')
           ..write('paypal: $paypal, ')
           ..write('venmo: $venmo, ')
           ..write('cashapp: $cashapp, ')
@@ -2083,6 +2125,7 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
     createdAt,
     upiId,
     phone,
+    photoPath,
     paypal,
     venmo,
     cashapp,
@@ -2100,6 +2143,7 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
           other.createdAt == this.createdAt &&
           other.upiId == this.upiId &&
           other.phone == this.phone &&
+          other.photoPath == this.photoPath &&
           other.paypal == this.paypal &&
           other.venmo == this.venmo &&
           other.cashapp == this.cashapp &&
@@ -2115,6 +2159,7 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
   final Value<DateTime> createdAt;
   final Value<String?> upiId;
   final Value<String?> phone;
+  final Value<String?> photoPath;
   final Value<String?> paypal;
   final Value<String?> venmo;
   final Value<String?> cashapp;
@@ -2128,6 +2173,7 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
     this.createdAt = const Value.absent(),
     this.upiId = const Value.absent(),
     this.phone = const Value.absent(),
+    this.photoPath = const Value.absent(),
     this.paypal = const Value.absent(),
     this.venmo = const Value.absent(),
     this.cashapp = const Value.absent(),
@@ -2142,6 +2188,7 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
     this.createdAt = const Value.absent(),
     this.upiId = const Value.absent(),
     this.phone = const Value.absent(),
+    this.photoPath = const Value.absent(),
     this.paypal = const Value.absent(),
     this.venmo = const Value.absent(),
     this.cashapp = const Value.absent(),
@@ -2156,6 +2203,7 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
     Expression<DateTime>? createdAt,
     Expression<String>? upiId,
     Expression<String>? phone,
+    Expression<String>? photoPath,
     Expression<String>? paypal,
     Expression<String>? venmo,
     Expression<String>? cashapp,
@@ -2170,6 +2218,7 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
       if (createdAt != null) 'created_at': createdAt,
       if (upiId != null) 'upi_id': upiId,
       if (phone != null) 'phone': phone,
+      if (photoPath != null) 'photo_path': photoPath,
       if (paypal != null) 'paypal': paypal,
       if (venmo != null) 'venmo': venmo,
       if (cashapp != null) 'cashapp': cashapp,
@@ -2186,6 +2235,7 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
     Value<DateTime>? createdAt,
     Value<String?>? upiId,
     Value<String?>? phone,
+    Value<String?>? photoPath,
     Value<String?>? paypal,
     Value<String?>? venmo,
     Value<String?>? cashapp,
@@ -2200,6 +2250,7 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
       createdAt: createdAt ?? this.createdAt,
       upiId: upiId ?? this.upiId,
       phone: phone ?? this.phone,
+      photoPath: photoPath ?? this.photoPath,
       paypal: paypal ?? this.paypal,
       venmo: venmo ?? this.venmo,
       cashapp: cashapp ?? this.cashapp,
@@ -2234,6 +2285,9 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
     if (phone.present) {
       map['phone'] = Variable<String>(phone.value);
     }
+    if (photoPath.present) {
+      map['photo_path'] = Variable<String>(photoPath.value);
+    }
     if (paypal.present) {
       map['paypal'] = Variable<String>(paypal.value);
     }
@@ -2260,6 +2314,7 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
           ..write('createdAt: $createdAt, ')
           ..write('upiId: $upiId, ')
           ..write('phone: $phone, ')
+          ..write('photoPath: $photoPath, ')
           ..write('paypal: $paypal, ')
           ..write('venmo: $venmo, ')
           ..write('cashapp: $cashapp, ')
@@ -3769,6 +3824,17 @@ class $TransactionsTable extends Transactions
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _customIconMeta = const VerificationMeta(
+    'customIcon',
+  );
+  @override
+  late final GeneratedColumn<String> customIcon = GeneratedColumn<String>(
+    'custom_icon',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -3794,6 +3860,7 @@ class $TransactionsTable extends Transactions
     toAmount,
     toCurrencyCode,
     toFxRateToBaseMicros,
+    customIcon,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3949,6 +4016,12 @@ class $TransactionsTable extends Transactions
         ),
       );
     }
+    if (data.containsKey('custom_icon')) {
+      context.handle(
+        _customIconMeta,
+        customIcon.isAcceptableOrUnknown(data['custom_icon']!, _customIconMeta),
+      );
+    }
     return context;
   }
 
@@ -4057,6 +4130,10 @@ class $TransactionsTable extends Transactions
       toFxRateToBaseMicros: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}to_fx_rate_to_base_micros'],
+      ),
+      customIcon: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}custom_icon'],
       ),
     );
   }
@@ -4173,6 +4250,15 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   /// own independent snapshot.
   final String? toCurrencyCode;
   final int? toFxRateToBaseMicros;
+
+  /// A per-transaction visual marker, independent of [categoryId] — picked
+  /// from the Add/Edit screen's icon/emoji button next to the tags button.
+  /// Two encodings share this one column: an XPENC icon-library pick is
+  /// stored as `"icon:<AppIcons key>"` (see
+  /// `CustomIconBadge.encodeIconKey`); anything else is the raw emoji the
+  /// user typed via their own keyboard. Null means no custom marker — the
+  /// overwhelming majority, same convention as [imagePath].
+  final String? customIcon;
   const TransactionRow({
     required this.id,
     required this.type,
@@ -4197,6 +4283,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     this.toAmount,
     this.toCurrencyCode,
     this.toFxRateToBaseMicros,
+    this.customIcon,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4266,6 +4353,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     if (!nullToAbsent || toFxRateToBaseMicros != null) {
       map['to_fx_rate_to_base_micros'] = Variable<int>(toFxRateToBaseMicros);
     }
+    if (!nullToAbsent || customIcon != null) {
+      map['custom_icon'] = Variable<String>(customIcon);
+    }
     return map;
   }
 
@@ -4322,6 +4412,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       toFxRateToBaseMicros: toFxRateToBaseMicros == null && nullToAbsent
           ? const Value.absent()
           : Value(toFxRateToBaseMicros),
+      customIcon: customIcon == null && nullToAbsent
+          ? const Value.absent()
+          : Value(customIcon),
     );
   }
 
@@ -4360,6 +4453,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       toFxRateToBaseMicros: serializer.fromJson<int?>(
         json['toFxRateToBaseMicros'],
       ),
+      customIcon: serializer.fromJson<String?>(json['customIcon']),
     );
   }
   @override
@@ -4391,6 +4485,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       'toAmount': serializer.toJson<Money?>(toAmount),
       'toCurrencyCode': serializer.toJson<String?>(toCurrencyCode),
       'toFxRateToBaseMicros': serializer.toJson<int?>(toFxRateToBaseMicros),
+      'customIcon': serializer.toJson<String?>(customIcon),
     };
   }
 
@@ -4418,6 +4513,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     Value<Money?> toAmount = const Value.absent(),
     Value<String?> toCurrencyCode = const Value.absent(),
     Value<int?> toFxRateToBaseMicros = const Value.absent(),
+    Value<String?> customIcon = const Value.absent(),
   }) => TransactionRow(
     id: id ?? this.id,
     type: type ?? this.type,
@@ -4456,6 +4552,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     toFxRateToBaseMicros: toFxRateToBaseMicros.present
         ? toFxRateToBaseMicros.value
         : this.toFxRateToBaseMicros,
+    customIcon: customIcon.present ? customIcon.value : this.customIcon,
   );
   TransactionRow copyWithCompanion(TransactionsCompanion data) {
     return TransactionRow(
@@ -4504,6 +4601,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       toFxRateToBaseMicros: data.toFxRateToBaseMicros.present
           ? data.toFxRateToBaseMicros.value
           : this.toFxRateToBaseMicros,
+      customIcon: data.customIcon.present
+          ? data.customIcon.value
+          : this.customIcon,
     );
   }
 
@@ -4532,7 +4632,8 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           ..write('fxRateToBaseMicros: $fxRateToBaseMicros, ')
           ..write('toAmount: $toAmount, ')
           ..write('toCurrencyCode: $toCurrencyCode, ')
-          ..write('toFxRateToBaseMicros: $toFxRateToBaseMicros')
+          ..write('toFxRateToBaseMicros: $toFxRateToBaseMicros, ')
+          ..write('customIcon: $customIcon')
           ..write(')'))
         .toString();
   }
@@ -4562,6 +4663,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     toAmount,
     toCurrencyCode,
     toFxRateToBaseMicros,
+    customIcon,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -4589,7 +4691,8 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           other.fxRateToBaseMicros == this.fxRateToBaseMicros &&
           other.toAmount == this.toAmount &&
           other.toCurrencyCode == this.toCurrencyCode &&
-          other.toFxRateToBaseMicros == this.toFxRateToBaseMicros);
+          other.toFxRateToBaseMicros == this.toFxRateToBaseMicros &&
+          other.customIcon == this.customIcon);
 }
 
 class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
@@ -4616,6 +4719,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   final Value<Money?> toAmount;
   final Value<String?> toCurrencyCode;
   final Value<int?> toFxRateToBaseMicros;
+  final Value<String?> customIcon;
   const TransactionsCompanion({
     this.id = const Value.absent(),
     this.type = const Value.absent(),
@@ -4640,6 +4744,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.toAmount = const Value.absent(),
     this.toCurrencyCode = const Value.absent(),
     this.toFxRateToBaseMicros = const Value.absent(),
+    this.customIcon = const Value.absent(),
   });
   TransactionsCompanion.insert({
     this.id = const Value.absent(),
@@ -4665,6 +4770,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.toAmount = const Value.absent(),
     this.toCurrencyCode = const Value.absent(),
     this.toFxRateToBaseMicros = const Value.absent(),
+    this.customIcon = const Value.absent(),
   }) : type = Value(type),
        amount = Value(amount),
        accountId = Value(accountId),
@@ -4693,6 +4799,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Expression<int>? toAmount,
     Expression<String>? toCurrencyCode,
     Expression<int>? toFxRateToBaseMicros,
+    Expression<String>? customIcon,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -4721,6 +4828,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       if (toCurrencyCode != null) 'to_currency_code': toCurrencyCode,
       if (toFxRateToBaseMicros != null)
         'to_fx_rate_to_base_micros': toFxRateToBaseMicros,
+      if (customIcon != null) 'custom_icon': customIcon,
     });
   }
 
@@ -4748,6 +4856,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Value<Money?>? toAmount,
     Value<String?>? toCurrencyCode,
     Value<int?>? toFxRateToBaseMicros,
+    Value<String?>? customIcon,
   }) {
     return TransactionsCompanion(
       id: id ?? this.id,
@@ -4773,6 +4882,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       toAmount: toAmount ?? this.toAmount,
       toCurrencyCode: toCurrencyCode ?? this.toCurrencyCode,
       toFxRateToBaseMicros: toFxRateToBaseMicros ?? this.toFxRateToBaseMicros,
+      customIcon: customIcon ?? this.customIcon,
     );
   }
 
@@ -4860,6 +4970,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
         toFxRateToBaseMicros.value,
       );
     }
+    if (customIcon.present) {
+      map['custom_icon'] = Variable<String>(customIcon.value);
+    }
     return map;
   }
 
@@ -4888,7 +5001,8 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
           ..write('fxRateToBaseMicros: $fxRateToBaseMicros, ')
           ..write('toAmount: $toAmount, ')
           ..write('toCurrencyCode: $toCurrencyCode, ')
-          ..write('toFxRateToBaseMicros: $toFxRateToBaseMicros')
+          ..write('toFxRateToBaseMicros: $toFxRateToBaseMicros, ')
+          ..write('customIcon: $customIcon')
           ..write(')'))
         .toString();
   }
@@ -9323,6 +9437,33 @@ class $SettingsTable extends Settings
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _autoBackupCooldownMinutesMeta =
+      const VerificationMeta('autoBackupCooldownMinutes');
+  @override
+  late final GeneratedColumn<int> autoBackupCooldownMinutes =
+      GeneratedColumn<int>(
+        'auto_backup_cooldown_minutes',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(10),
+      );
+  static const VerificationMeta _autoBackupPendingMeta = const VerificationMeta(
+    'autoBackupPending',
+  );
+  @override
+  late final GeneratedColumn<bool> autoBackupPending = GeneratedColumn<bool>(
+    'auto_backup_pending',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("auto_backup_pending" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _lastAutoBackupAtMeta = const VerificationMeta(
     'lastAutoBackupAt',
   );
@@ -9593,6 +9734,8 @@ class $SettingsTable extends Settings
     autoBackupFrequency,
     autoBackupCustomDays,
     autoBackupCustomHours,
+    autoBackupCooldownMinutes,
+    autoBackupPending,
     lastAutoBackupAt,
     backupRetentionDays,
     backupRetentionMode,
@@ -9989,6 +10132,24 @@ class $SettingsTable extends Settings
         ),
       );
     }
+    if (data.containsKey('auto_backup_cooldown_minutes')) {
+      context.handle(
+        _autoBackupCooldownMinutesMeta,
+        autoBackupCooldownMinutes.isAcceptableOrUnknown(
+          data['auto_backup_cooldown_minutes']!,
+          _autoBackupCooldownMinutesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('auto_backup_pending')) {
+      context.handle(
+        _autoBackupPendingMeta,
+        autoBackupPending.isAcceptableOrUnknown(
+          data['auto_backup_pending']!,
+          _autoBackupPendingMeta,
+        ),
+      );
+    }
     if (data.containsKey('last_auto_backup_at')) {
       context.handle(
         _lastAutoBackupAtMeta,
@@ -10349,6 +10510,14 @@ class $SettingsTable extends Settings
         DriftSqlType.int,
         data['${effectivePrefix}auto_backup_custom_hours'],
       )!,
+      autoBackupCooldownMinutes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}auto_backup_cooldown_minutes'],
+      )!,
+      autoBackupPending: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}auto_backup_pending'],
+      )!,
       lastAutoBackupAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}last_auto_backup_at'],
@@ -10663,6 +10832,20 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   final int autoBackupCustomDays;
   final int autoBackupCustomHours;
 
+  /// The cooldown [AutoBackupFrequency.onChange] waits out between
+  /// automatic backups (GitHub #132) — a floor, not a schedule: several
+  /// ledger changes inside this window coalesce into the one backup taken
+  /// when it next elapses. `0` means no minimum — every change backs up.
+  final int autoBackupCooldownMinutes;
+
+  /// Durable "something changed since the last automatic backup" bit, set
+  /// by [AppDatabase.markLedgerChanged] and cleared once that backup runs.
+  /// Only meaningful for [AutoBackupFrequency.onChange]: a timer would die
+  /// with the process, so this survives the app being closed mid-cooldown,
+  /// letting the pending backup fire at the next opportunity — a new
+  /// change, app start, or resume — instead of being lost.
+  final bool autoBackupPending;
+
   /// When the last *automatic* backup ran — the due-date anchor. A manual
   /// "Back up now" never touches this, so it can't push an automatic backup
   /// later than the schedule promises.
@@ -10820,6 +11003,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     required this.autoBackupFrequency,
     required this.autoBackupCustomDays,
     required this.autoBackupCustomHours,
+    required this.autoBackupCooldownMinutes,
+    required this.autoBackupPending,
     this.lastAutoBackupAt,
     required this.backupRetentionDays,
     required this.backupRetentionMode,
@@ -10945,6 +11130,10 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     }
     map['auto_backup_custom_days'] = Variable<int>(autoBackupCustomDays);
     map['auto_backup_custom_hours'] = Variable<int>(autoBackupCustomHours);
+    map['auto_backup_cooldown_minutes'] = Variable<int>(
+      autoBackupCooldownMinutes,
+    );
+    map['auto_backup_pending'] = Variable<bool>(autoBackupPending);
     if (!nullToAbsent || lastAutoBackupAt != null) {
       map['last_auto_backup_at'] = Variable<DateTime>(lastAutoBackupAt);
     }
@@ -11055,6 +11244,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       autoBackupFrequency: Value(autoBackupFrequency),
       autoBackupCustomDays: Value(autoBackupCustomDays),
       autoBackupCustomHours: Value(autoBackupCustomHours),
+      autoBackupCooldownMinutes: Value(autoBackupCooldownMinutes),
+      autoBackupPending: Value(autoBackupPending),
       lastAutoBackupAt: lastAutoBackupAt == null && nullToAbsent
           ? const Value.absent()
           : Value(lastAutoBackupAt),
@@ -11170,6 +11361,10 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       autoBackupCustomHours: serializer.fromJson<int>(
         json['autoBackupCustomHours'],
       ),
+      autoBackupCooldownMinutes: serializer.fromJson<int>(
+        json['autoBackupCooldownMinutes'],
+      ),
+      autoBackupPending: serializer.fromJson<bool>(json['autoBackupPending']),
       lastAutoBackupAt: serializer.fromJson<DateTime?>(
         json['lastAutoBackupAt'],
       ),
@@ -11276,6 +11471,10 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       ),
       'autoBackupCustomDays': serializer.toJson<int>(autoBackupCustomDays),
       'autoBackupCustomHours': serializer.toJson<int>(autoBackupCustomHours),
+      'autoBackupCooldownMinutes': serializer.toJson<int>(
+        autoBackupCooldownMinutes,
+      ),
+      'autoBackupPending': serializer.toJson<bool>(autoBackupPending),
       'lastAutoBackupAt': serializer.toJson<DateTime?>(lastAutoBackupAt),
       'backupRetentionDays': serializer.toJson<int>(backupRetentionDays),
       'backupRetentionMode': serializer.toJson<String>(
@@ -11353,6 +11552,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     AutoBackupFrequency? autoBackupFrequency,
     int? autoBackupCustomDays,
     int? autoBackupCustomHours,
+    int? autoBackupCooldownMinutes,
+    bool? autoBackupPending,
     Value<DateTime?> lastAutoBackupAt = const Value.absent(),
     int? backupRetentionDays,
     BackupRetentionMode? backupRetentionMode,
@@ -11437,6 +11638,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     autoBackupFrequency: autoBackupFrequency ?? this.autoBackupFrequency,
     autoBackupCustomDays: autoBackupCustomDays ?? this.autoBackupCustomDays,
     autoBackupCustomHours: autoBackupCustomHours ?? this.autoBackupCustomHours,
+    autoBackupCooldownMinutes:
+        autoBackupCooldownMinutes ?? this.autoBackupCooldownMinutes,
+    autoBackupPending: autoBackupPending ?? this.autoBackupPending,
     lastAutoBackupAt: lastAutoBackupAt.present
         ? lastAutoBackupAt.value
         : this.lastAutoBackupAt,
@@ -11592,6 +11796,12 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       autoBackupCustomHours: data.autoBackupCustomHours.present
           ? data.autoBackupCustomHours.value
           : this.autoBackupCustomHours,
+      autoBackupCooldownMinutes: data.autoBackupCooldownMinutes.present
+          ? data.autoBackupCooldownMinutes.value
+          : this.autoBackupCooldownMinutes,
+      autoBackupPending: data.autoBackupPending.present
+          ? data.autoBackupPending.value
+          : this.autoBackupPending,
       lastAutoBackupAt: data.lastAutoBackupAt.present
           ? data.lastAutoBackupAt.value
           : this.lastAutoBackupAt,
@@ -11701,6 +11911,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('autoBackupFrequency: $autoBackupFrequency, ')
           ..write('autoBackupCustomDays: $autoBackupCustomDays, ')
           ..write('autoBackupCustomHours: $autoBackupCustomHours, ')
+          ..write('autoBackupCooldownMinutes: $autoBackupCooldownMinutes, ')
+          ..write('autoBackupPending: $autoBackupPending, ')
           ..write('lastAutoBackupAt: $lastAutoBackupAt, ')
           ..write('backupRetentionDays: $backupRetentionDays, ')
           ..write('backupRetentionMode: $backupRetentionMode, ')
@@ -11774,6 +11986,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     autoBackupFrequency,
     autoBackupCustomDays,
     autoBackupCustomHours,
+    autoBackupCooldownMinutes,
+    autoBackupPending,
     lastAutoBackupAt,
     backupRetentionDays,
     backupRetentionMode,
@@ -11848,6 +12062,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.autoBackupFrequency == this.autoBackupFrequency &&
           other.autoBackupCustomDays == this.autoBackupCustomDays &&
           other.autoBackupCustomHours == this.autoBackupCustomHours &&
+          other.autoBackupCooldownMinutes == this.autoBackupCooldownMinutes &&
+          other.autoBackupPending == this.autoBackupPending &&
           other.lastAutoBackupAt == this.lastAutoBackupAt &&
           other.backupRetentionDays == this.backupRetentionDays &&
           other.backupRetentionMode == this.backupRetentionMode &&
@@ -11918,6 +12134,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<AutoBackupFrequency> autoBackupFrequency;
   final Value<int> autoBackupCustomDays;
   final Value<int> autoBackupCustomHours;
+  final Value<int> autoBackupCooldownMinutes;
+  final Value<bool> autoBackupPending;
   final Value<DateTime?> lastAutoBackupAt;
   final Value<int> backupRetentionDays;
   final Value<BackupRetentionMode> backupRetentionMode;
@@ -11986,6 +12204,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.autoBackupFrequency = const Value.absent(),
     this.autoBackupCustomDays = const Value.absent(),
     this.autoBackupCustomHours = const Value.absent(),
+    this.autoBackupCooldownMinutes = const Value.absent(),
+    this.autoBackupPending = const Value.absent(),
     this.lastAutoBackupAt = const Value.absent(),
     this.backupRetentionDays = const Value.absent(),
     this.backupRetentionMode = const Value.absent(),
@@ -12055,6 +12275,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.autoBackupFrequency = const Value.absent(),
     this.autoBackupCustomDays = const Value.absent(),
     this.autoBackupCustomHours = const Value.absent(),
+    this.autoBackupCooldownMinutes = const Value.absent(),
+    this.autoBackupPending = const Value.absent(),
     this.lastAutoBackupAt = const Value.absent(),
     this.backupRetentionDays = const Value.absent(),
     this.backupRetentionMode = const Value.absent(),
@@ -12124,6 +12346,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<String>? autoBackupFrequency,
     Expression<int>? autoBackupCustomDays,
     Expression<int>? autoBackupCustomHours,
+    Expression<int>? autoBackupCooldownMinutes,
+    Expression<bool>? autoBackupPending,
     Expression<DateTime>? lastAutoBackupAt,
     Expression<int>? backupRetentionDays,
     Expression<String>? backupRetentionMode,
@@ -12208,6 +12432,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
         'auto_backup_custom_days': autoBackupCustomDays,
       if (autoBackupCustomHours != null)
         'auto_backup_custom_hours': autoBackupCustomHours,
+      if (autoBackupCooldownMinutes != null)
+        'auto_backup_cooldown_minutes': autoBackupCooldownMinutes,
+      if (autoBackupPending != null) 'auto_backup_pending': autoBackupPending,
       if (lastAutoBackupAt != null) 'last_auto_backup_at': lastAutoBackupAt,
       if (backupRetentionDays != null)
         'backup_retention_days': backupRetentionDays,
@@ -12285,6 +12512,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<AutoBackupFrequency>? autoBackupFrequency,
     Value<int>? autoBackupCustomDays,
     Value<int>? autoBackupCustomHours,
+    Value<int>? autoBackupCooldownMinutes,
+    Value<bool>? autoBackupPending,
     Value<DateTime?>? lastAutoBackupAt,
     Value<int>? backupRetentionDays,
     Value<BackupRetentionMode>? backupRetentionMode,
@@ -12363,6 +12592,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       autoBackupCustomDays: autoBackupCustomDays ?? this.autoBackupCustomDays,
       autoBackupCustomHours:
           autoBackupCustomHours ?? this.autoBackupCustomHours,
+      autoBackupCooldownMinutes:
+          autoBackupCooldownMinutes ?? this.autoBackupCooldownMinutes,
+      autoBackupPending: autoBackupPending ?? this.autoBackupPending,
       lastAutoBackupAt: lastAutoBackupAt ?? this.lastAutoBackupAt,
       backupRetentionDays: backupRetentionDays ?? this.backupRetentionDays,
       backupRetentionMode: backupRetentionMode ?? this.backupRetentionMode,
@@ -12572,6 +12804,14 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
         autoBackupCustomHours.value,
       );
     }
+    if (autoBackupCooldownMinutes.present) {
+      map['auto_backup_cooldown_minutes'] = Variable<int>(
+        autoBackupCooldownMinutes.value,
+      );
+    }
+    if (autoBackupPending.present) {
+      map['auto_backup_pending'] = Variable<bool>(autoBackupPending.value);
+    }
     if (lastAutoBackupAt.present) {
       map['last_auto_backup_at'] = Variable<DateTime>(lastAutoBackupAt.value);
     }
@@ -12689,6 +12929,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('autoBackupFrequency: $autoBackupFrequency, ')
           ..write('autoBackupCustomDays: $autoBackupCustomDays, ')
           ..write('autoBackupCustomHours: $autoBackupCustomHours, ')
+          ..write('autoBackupCooldownMinutes: $autoBackupCooldownMinutes, ')
+          ..write('autoBackupPending: $autoBackupPending, ')
           ..write('lastAutoBackupAt: $lastAutoBackupAt, ')
           ..write('backupRetentionDays: $backupRetentionDays, ')
           ..write('backupRetentionMode: $backupRetentionMode, ')
@@ -25403,6 +25645,7 @@ typedef $$PersonsTableCreateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<String?> upiId,
       Value<String?> phone,
+      Value<String?> photoPath,
       Value<String?> paypal,
       Value<String?> venmo,
       Value<String?> cashapp,
@@ -25418,6 +25661,7 @@ typedef $$PersonsTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<String?> upiId,
       Value<String?> phone,
+      Value<String?> photoPath,
       Value<String?> paypal,
       Value<String?> venmo,
       Value<String?> cashapp,
@@ -25592,6 +25836,11 @@ class $$PersonsTableFilterComposer
 
   ColumnFilters<String> get phone => $composableBuilder(
     column: $table.phone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get photoPath => $composableBuilder(
+    column: $table.photoPath,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -25815,6 +26064,11 @@ class $$PersonsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get photoPath => $composableBuilder(
+    column: $table.photoPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get paypal => $composableBuilder(
     column: $table.paypal,
     builder: (column) => ColumnOrderings(column),
@@ -25870,6 +26124,9 @@ class $$PersonsTableAnnotationComposer
 
   GeneratedColumn<String> get phone =>
       $composableBuilder(column: $table.phone, builder: (column) => column);
+
+  GeneratedColumn<String> get photoPath =>
+      $composableBuilder(column: $table.photoPath, builder: (column) => column);
 
   GeneratedColumn<String> get paypal =>
       $composableBuilder(column: $table.paypal, builder: (column) => column);
@@ -26078,6 +26335,7 @@ class $$PersonsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<String?> upiId = const Value.absent(),
                 Value<String?> phone = const Value.absent(),
+                Value<String?> photoPath = const Value.absent(),
                 Value<String?> paypal = const Value.absent(),
                 Value<String?> venmo = const Value.absent(),
                 Value<String?> cashapp = const Value.absent(),
@@ -26091,6 +26349,7 @@ class $$PersonsTableTableManager
                 createdAt: createdAt,
                 upiId: upiId,
                 phone: phone,
+                photoPath: photoPath,
                 paypal: paypal,
                 venmo: venmo,
                 cashapp: cashapp,
@@ -26106,6 +26365,7 @@ class $$PersonsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<String?> upiId = const Value.absent(),
                 Value<String?> phone = const Value.absent(),
+                Value<String?> photoPath = const Value.absent(),
                 Value<String?> paypal = const Value.absent(),
                 Value<String?> venmo = const Value.absent(),
                 Value<String?> cashapp = const Value.absent(),
@@ -26119,6 +26379,7 @@ class $$PersonsTableTableManager
                 createdAt: createdAt,
                 upiId: upiId,
                 phone: phone,
+                photoPath: photoPath,
                 paypal: paypal,
                 venmo: venmo,
                 cashapp: cashapp,
@@ -27355,6 +27616,7 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<Money?> toAmount,
       Value<String?> toCurrencyCode,
       Value<int?> toFxRateToBaseMicros,
+      Value<String?> customIcon,
     });
 typedef $$TransactionsTableUpdateCompanionBuilder =
     TransactionsCompanion Function({
@@ -27381,6 +27643,7 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<Money?> toAmount,
       Value<String?> toCurrencyCode,
       Value<int?> toFxRateToBaseMicros,
+      Value<String?> customIcon,
     });
 
 final class $$TransactionsTableReferences
@@ -27740,6 +28003,11 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<int> get toFxRateToBaseMicros => $composableBuilder(
     column: $table.toFxRateToBaseMicros,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get customIcon => $composableBuilder(
+    column: $table.customIcon,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -28126,6 +28394,11 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get customIcon => $composableBuilder(
+    column: $table.customIcon,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$AccountsTableOrderingComposer get accountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -28337,6 +28610,11 @@ class $$TransactionsTableAnnotationComposer
 
   GeneratedColumn<int> get toFxRateToBaseMicros => $composableBuilder(
     column: $table.toFxRateToBaseMicros,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get customIcon => $composableBuilder(
+    column: $table.customIcon,
     builder: (column) => column,
   );
 
@@ -28695,6 +28973,7 @@ class $$TransactionsTableTableManager
                 Value<Money?> toAmount = const Value.absent(),
                 Value<String?> toCurrencyCode = const Value.absent(),
                 Value<int?> toFxRateToBaseMicros = const Value.absent(),
+                Value<String?> customIcon = const Value.absent(),
               }) => TransactionsCompanion(
                 id: id,
                 type: type,
@@ -28719,6 +28998,7 @@ class $$TransactionsTableTableManager
                 toAmount: toAmount,
                 toCurrencyCode: toCurrencyCode,
                 toFxRateToBaseMicros: toFxRateToBaseMicros,
+                customIcon: customIcon,
               ),
           createCompanionCallback:
               ({
@@ -28745,6 +29025,7 @@ class $$TransactionsTableTableManager
                 Value<Money?> toAmount = const Value.absent(),
                 Value<String?> toCurrencyCode = const Value.absent(),
                 Value<int?> toFxRateToBaseMicros = const Value.absent(),
+                Value<String?> customIcon = const Value.absent(),
               }) => TransactionsCompanion.insert(
                 id: id,
                 type: type,
@@ -28769,6 +29050,7 @@ class $$TransactionsTableTableManager
                 toAmount: toAmount,
                 toCurrencyCode: toCurrencyCode,
                 toFxRateToBaseMicros: toFxRateToBaseMicros,
+                customIcon: customIcon,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -33328,6 +33610,8 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<AutoBackupFrequency> autoBackupFrequency,
       Value<int> autoBackupCustomDays,
       Value<int> autoBackupCustomHours,
+      Value<int> autoBackupCooldownMinutes,
+      Value<bool> autoBackupPending,
       Value<DateTime?> lastAutoBackupAt,
       Value<int> backupRetentionDays,
       Value<BackupRetentionMode> backupRetentionMode,
@@ -33398,6 +33682,8 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<AutoBackupFrequency> autoBackupFrequency,
       Value<int> autoBackupCustomDays,
       Value<int> autoBackupCustomHours,
+      Value<int> autoBackupCooldownMinutes,
+      Value<bool> autoBackupPending,
       Value<DateTime?> lastAutoBackupAt,
       Value<int> backupRetentionDays,
       Value<BackupRetentionMode> backupRetentionMode,
@@ -33701,6 +33987,16 @@ class $$SettingsTableFilterComposer
 
   ColumnFilters<int> get autoBackupCustomHours => $composableBuilder(
     column: $table.autoBackupCustomHours,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get autoBackupCooldownMinutes => $composableBuilder(
+    column: $table.autoBackupCooldownMinutes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get autoBackupPending => $composableBuilder(
+    column: $table.autoBackupPending,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -34072,6 +34368,16 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get autoBackupCooldownMinutes => $composableBuilder(
+    column: $table.autoBackupCooldownMinutes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get autoBackupPending => $composableBuilder(
+    column: $table.autoBackupPending,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get lastAutoBackupAt => $composableBuilder(
     column: $table.lastAutoBackupAt,
     builder: (column) => ColumnOrderings(column),
@@ -34422,6 +34728,16 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get autoBackupCooldownMinutes => $composableBuilder(
+    column: $table.autoBackupCooldownMinutes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get autoBackupPending => $composableBuilder(
+    column: $table.autoBackupPending,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get lastAutoBackupAt => $composableBuilder(
     column: $table.lastAutoBackupAt,
     builder: (column) => column,
@@ -34612,6 +34928,8 @@ class $$SettingsTableTableManager
                     const Value.absent(),
                 Value<int> autoBackupCustomDays = const Value.absent(),
                 Value<int> autoBackupCustomHours = const Value.absent(),
+                Value<int> autoBackupCooldownMinutes = const Value.absent(),
+                Value<bool> autoBackupPending = const Value.absent(),
                 Value<DateTime?> lastAutoBackupAt = const Value.absent(),
                 Value<int> backupRetentionDays = const Value.absent(),
                 Value<BackupRetentionMode> backupRetentionMode =
@@ -34681,6 +34999,8 @@ class $$SettingsTableTableManager
                 autoBackupFrequency: autoBackupFrequency,
                 autoBackupCustomDays: autoBackupCustomDays,
                 autoBackupCustomHours: autoBackupCustomHours,
+                autoBackupCooldownMinutes: autoBackupCooldownMinutes,
+                autoBackupPending: autoBackupPending,
                 lastAutoBackupAt: lastAutoBackupAt,
                 backupRetentionDays: backupRetentionDays,
                 backupRetentionMode: backupRetentionMode,
@@ -34753,6 +35073,8 @@ class $$SettingsTableTableManager
                     const Value.absent(),
                 Value<int> autoBackupCustomDays = const Value.absent(),
                 Value<int> autoBackupCustomHours = const Value.absent(),
+                Value<int> autoBackupCooldownMinutes = const Value.absent(),
+                Value<bool> autoBackupPending = const Value.absent(),
                 Value<DateTime?> lastAutoBackupAt = const Value.absent(),
                 Value<int> backupRetentionDays = const Value.absent(),
                 Value<BackupRetentionMode> backupRetentionMode =
@@ -34822,6 +35144,8 @@ class $$SettingsTableTableManager
                 autoBackupFrequency: autoBackupFrequency,
                 autoBackupCustomDays: autoBackupCustomDays,
                 autoBackupCustomHours: autoBackupCustomHours,
+                autoBackupCooldownMinutes: autoBackupCooldownMinutes,
+                autoBackupPending: autoBackupPending,
                 lastAutoBackupAt: lastAutoBackupAt,
                 backupRetentionDays: backupRetentionDays,
                 backupRetentionMode: backupRetentionMode,

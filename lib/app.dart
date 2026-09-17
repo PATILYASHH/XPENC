@@ -182,6 +182,19 @@ class _XpencAppState extends ConsumerState<XpencApp>
     await service.runAutoBackupIfDue();
   }
 
+  /// The "new event" trigger for [AutoBackupFrequency.onChange] (GitHub
+  /// #132): fires on every ledger add, edit or delete. Marks the change,
+  /// then leaves the actual due-or-not call to `runAutoBackupIfDue` — the
+  /// same cooldown check `_runAutoBackup` uses on start/resume — so several
+  /// changes inside the cooldown window coalesce into the one backup taken
+  /// once it elapses, and every other schedule (which this never marks as
+  /// pending) simply no-ops here.
+  Future<void> _onLedgerChanged() async {
+    final db = ref.read(dbProvider);
+    await db.markLedgerChanged();
+    await ref.read(backupServiceProvider).runAutoBackupIfDue();
+  }
+
   Future<void> _scanMessages() async {
     final result = await ref.read(captureServiceProvider).scan();
     if (!result.didRun) return;
@@ -235,6 +248,7 @@ class _XpencAppState extends ConsumerState<XpencApp>
     ref.listen(allTransactionsProvider, (_, next) {
       if (next.hasValue) {
         ref.read(notificationServiceProvider).checkBudgets();
+        _onLedgerChanged();
       }
     });
     // Keeps the home-screen widgets live while the app is open — neither

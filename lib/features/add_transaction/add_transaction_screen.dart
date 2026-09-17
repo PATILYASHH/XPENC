@@ -9,6 +9,8 @@ import '../../core/app_icons.dart';
 import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/custom_icon_badge.dart';
+import '../../core/widgets/icon_picker_sheet.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/currency_conversion.dart';
 import '../../data/database.dart';
@@ -208,6 +210,11 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   /// rather than leaking a copy nothing will ever reference.
   String? _unsavedPickedPath;
 
+  /// A per-transaction visual marker independent of [_categoryId] — see the
+  /// doc on `Transactions.customIcon` for its two encodings. Cuts across
+  /// category/account/type, same as [_tagIds]; null means none picked.
+  String? _customIcon;
+
   /// True while an existing transaction is being fetched for editing.
   bool _loading = false;
 
@@ -281,8 +288,12 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       _loading = true;
       WidgetsBinding.instance.addPostFrameCallback((_) => _loadForTemplate());
     } else {
-      if (widget.initialPayee != null) _payeeController.text = widget.initialPayee!;
-      if (widget.initialNote != null) _noteController.text = widget.initialNote!;
+      if (widget.initialPayee != null) {
+        _payeeController.text = widget.initialPayee!;
+      }
+      if (widget.initialNote != null) {
+        _noteController.text = widget.initialNote!;
+      }
       if (widget.initialAmount != null) {
         _buffer = _bufferFromMoney(widget.initialAmount!);
         _freshAmountEntry = true;
@@ -378,6 +389,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       _payeeController.text = row.payee ?? '';
       _tagIds = tagIds.toSet();
       _imagePath = row.imagePath;
+      _customIcon = row.customIcon;
       _isSplit = splits.isNotEmpty;
       for (final s in splits) {
         _splitRows.add(
@@ -447,6 +459,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       _noteController.text = row.note ?? '';
       _payeeController.text = row.payee ?? '';
       _tagIds = tagIds.toSet();
+      _customIcon = row.customIcon;
       _isSplit = splits.isNotEmpty;
       for (final s in splits) {
         _splitRows.add(
@@ -593,7 +606,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   /// currency of its own (see `tables.dart`'s doc on `Accounts.currencyCode`)
   /// so this follows [AccountRow.linkedAccountId] once to the account that
   /// actually holds the money.
-  Currency? _currencyForAccount(int? accountId, Map<int, AccountRow> accountMap) {
+  Currency? _currencyForAccount(
+    int? accountId,
+    Map<int, AccountRow> accountMap,
+  ) {
     final account = accountMap[accountId];
     if (account == null) return null;
     final code = account.linkedAccountId == null
@@ -691,10 +707,251 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     setState(() => _date = combineDateAndTime(_date, picked));
   }
 
+  // ── Custom icon / emoji ──────────────────────────────────────────────────
+
+  /// AppBar shortcut, next to the tags button — filled with the picked
+  /// icon/emoji once one is set. Tapping when empty opens the source choice
+  /// sheet directly; tapping when set opens a small preview sheet with
+  /// change/remove, same shape as [_receiptAction]/[_openReceiptSheet].
+  Widget _customIconAction(ThemeData theme) {
+    final value = _customIcon;
+    return IconButton(
+      icon: value == null
+          ? Icon(
+              Icons.emoji_emotions_outlined,
+              color: theme.colorScheme.onSurfaceVariant,
+            )
+          : CustomIconBadge(value: value, size: 26),
+      tooltip: value == null ? 'Add an icon or emoji' : 'Icon set',
+      onPressed: value == null ? _pickCustomIcon : _openCustomIconSheet,
+    );
+  }
+
+  Future<void> _pickCustomIcon() async {
+    final choice = await showModalBottomSheet<_CustomIconSource>(
+      context: context,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.grid_view_rounded),
+              title: const Text('XPENC icon'),
+              subtitle: const Text('Pick from the app\'s own icon library'),
+              onTap: () =>
+                  Navigator.of(sheetContext).pop(_CustomIconSource.library),
+            ),
+            ListTile(
+              leading: const Icon(Icons.emoji_emotions_outlined),
+              title: const Text('Emoji'),
+              subtitle: const Text('Type one with your keyboard\'s emoji key'),
+              onTap: () =>
+                  Navigator.of(sheetContext).pop(_CustomIconSource.emoji),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (choice == null || !mounted) return;
+    if (choice == _CustomIconSource.library) {
+      final key = await showIconPickerSheet(
+        context,
+        selected: _customIcon == null
+            ? null
+            : CustomIconBadge.iconKeyOf(_customIcon!),
+      );
+      if (key == null || !mounted) return;
+      setState(() => _customIcon = CustomIconBadge.encodeIconKey(key));
+    } else {
+      final emoji = await _pickEmoji();
+      if (emoji == null || emoji.isEmpty || !mounted) return;
+      setState(() => _customIcon = emoji);
+    }
+  }
+
+  /// A plain [TextField] rather than a bundled emoji browser — focusing it
+  /// brings up the user's own keyboard, emoji key included, so this needs no
+  /// extra dependency or maintained emoji data set of its own.
+  Future<String?> _pickEmoji() async {
+    final current = _customIcon;
+    final controller = TextEditingController(
+      text: (current != null && !CustomIconBadge.isIconKey(current))
+          ? current
+          : '',
+    );
+    final result = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 8,
+          bottom:
+              MediaQuery.of(sheetContext).padding.bottom +
+              MediaQuery.of(sheetContext).viewInsets.bottom +
+              20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Emoji',
+              style: Theme.of(
+                sheetContext,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              textAlign: TextAlign.center,
+              // Room for a multi-codepoint emoji (skin tone / ZWJ sequence),
+              // not a limit on typing several separate characters.
+              maxLength: 8,
+              style: const TextStyle(fontSize: 40),
+              decoration: const InputDecoration(
+                hintText: '🙂',
+                counterText: '',
+              ),
+              onSubmitted: (v) => Navigator.of(sheetContext).pop(v.trim()),
+            ),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: () =>
+                  Navigator.of(sheetContext).pop(controller.text.trim()),
+              child: const Text('Done'),
+            ),
+          ],
+        ),
+      ),
+    );
+    // Deliberately not disposed — see the same note in
+    // persons_screen.dart's _createGroup: disposing right after showDialog
+    // resolves can crash the TextField mid exit-transition.
+    return result;
+  }
+
+  Future<void> _openCustomIconSheet() async {
+    final value = _customIcon;
+    if (value == null) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CustomIconBadge(value: value, size: 64),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.of(sheetContext).pop();
+                        _pickCustomIcon();
+                      },
+                      icon: const Icon(Icons.swap_horiz_rounded),
+                      label: const Text('Change'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.expense,
+                      ),
+                      onPressed: () {
+                        Navigator.of(sheetContext).pop();
+                        setState(() => _customIcon = null);
+                      },
+                      icon: const Icon(Icons.delete_outline),
+                      label: const Text('Remove'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   // ── Receipt photo ────────────────────────────────────────────────────────
 
-  Future<void> _pickReceipt() async {
-    final path = await ReceiptStorage.pickAndStore();
+  /// Two ways onto [_pickReceipt]: the camera (needs the `CAMERA` permission,
+  /// see PRIVACY.md) or the existing permission-free gallery/file picker.
+  Future<void> _showAttachReceiptSheet() async {
+    final source = await showModalBottomSheet<_ReceiptSource>(
+      context: context,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Take photo'),
+              onTap: () =>
+                  Navigator.of(sheetContext).pop(_ReceiptSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from gallery'),
+              onTap: () =>
+                  Navigator.of(sheetContext).pop(_ReceiptSource.gallery),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+    await _pickReceipt(source);
+  }
+
+  Future<void> _pickReceipt(_ReceiptSource source) async {
+    final messenger = ScaffoldMessenger.of(context);
+    String? path;
+    try {
+      path = source == _ReceiptSource.camera
+          ? await ReceiptStorage.pickFromCamera()
+          : await ReceiptStorage.pickAndStore();
+    } catch (_) {
+      if (!mounted) return;
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              "Couldn't open the camera — check its permission in system "
+              'settings.',
+            ),
+          ),
+        );
+      return;
+    }
     if (path == null || !mounted) return;
     // Replacing an already-picked-this-session file before ever saving —
     // that earlier copy is now unreferenced.
@@ -716,17 +973,18 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   }
 
   /// AppBar shortcut — filled once a receipt is attached. Tapping when empty
-  /// opens the picker directly; tapping when attached opens a small preview
-  /// sheet with replace/remove, instead of a card buried in the field list.
+  /// opens the camera/gallery choice sheet; tapping when attached opens a
+  /// small preview sheet with replace/remove, instead of a card buried in
+  /// the field list.
   Widget _receiptAction(ThemeData theme) {
     final attached = _imagePath != null;
     return IconButton(
       icon: Icon(
-        attached ? Icons.receipt_long_rounded : Icons.receipt_long_outlined,
+        attached ? Icons.camera_alt_rounded : Icons.camera_alt_outlined,
         color: attached ? theme.colorScheme.primary : null,
       ),
       tooltip: attached ? 'Receipt attached' : 'Attach receipt',
-      onPressed: attached ? _openReceiptSheet : _pickReceipt,
+      onPressed: attached ? _openReceiptSheet : _showAttachReceiptSheet,
     );
   }
 
@@ -768,7 +1026,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                     child: OutlinedButton.icon(
                       onPressed: () {
                         Navigator.of(sheetContext).pop();
-                        _pickReceipt();
+                        _showAttachReceiptSheet();
                       },
                       icon: const Icon(Icons.swap_horiz_rounded),
                       label: const Text('Replace'),
@@ -866,36 +1124,132 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     setState(() => _hybridLegs[index].accountId = selected);
   }
 
-  Widget _hybridToggleTile() {
+  /// Merges what used to be two separate toggle cards
+  /// (`_splitToggleTile` / the old hybrid-payment switch) into one: tap
+  /// either label and the knob between them slides to that side and turns
+  /// it on; tap the active side again and it slides back to the neutral
+  /// middle — the shared default, and the only state where neither
+  /// [_isSplit] nor [_isHybridPayment] is set. Creation-only, same as
+  /// [_isHybridPayment] itself — [_splitToggleTile] above is what an
+  /// existing transaction being edited gets instead, since there's nothing
+  /// to merge it with there.
+  Widget _splitModeToggleTile() {
     final theme = Theme.of(context);
+    final mode = _isSplit
+        ? _SplitMode.categories
+        : (_isHybridPayment ? _SplitMode.accounts : null);
+
     return Card(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
-      child: SwitchListTile(
-        value: _isHybridPayment,
-        onChanged: (v) => setState(() {
-          _isHybridPayment = v;
-          if (v) {
-            _isSplit = false;
-            _hasChange = false;
-            _hasForeignCurrency = false;
-          }
-          while (v && _hybridLegs.length < 2) {
-            _hybridLegs.add(
-              _PaymentLegEntry(onFocusChange: _onFieldFocusChanged),
-            );
-          }
-        }),
-        secondary: Icon(
-          Icons.account_balance_wallet_outlined,
-          color: theme.colorScheme.onSurfaceVariant,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: _splitModeLabel(
+                    theme,
+                    'Split into categories',
+                    active: mode == _SplitMode.categories,
+                    onTap: () => _setSplitMode(_SplitMode.categories),
+                  ),
+                ),
+                _SplitModeKnob(mode: mode),
+                Expanded(
+                  child: _splitModeLabel(
+                    theme,
+                    'Split into accounts',
+                    active: mode == _SplitMode.accounts,
+                    onTap: () => _setSplitMode(_SplitMode.accounts),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              switch (mode) {
+                null => 'One expense — tap either side to split it up',
+                _SplitMode.categories => 'One expense, more than one category',
+                _SplitMode.accounts =>
+                  'One purchase, paid from more than one account',
+              },
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
         ),
-        title: const Text('Split payment across accounts'),
-        subtitle: _isHybridPayment
-            ? null
-            : const Text('One purchase, paid from more than one account'),
       ),
     );
+  }
+
+  Widget _splitModeLabel(
+    ThemeData theme,
+    String text, {
+    required bool active,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+        child: Text(
+          text,
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+            color: active
+                ? theme.colorScheme.primary
+                : theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Tapping the side that's already active turns it off (back to the
+  /// neutral middle); tapping the other side — or the middle — turns that
+  /// side on instead. The on-path for each side keeps exactly the side
+  /// effects its old standalone switch had (see the removed
+  /// `_hybridToggleTile` / [_splitToggleTile]'s own `onChanged`): split
+  /// turns off hybrid and change; hybrid turns off split, change and
+  /// foreign currency.
+  void _setSplitMode(_SplitMode side) {
+    setState(() {
+      final currentlyOn = side == _SplitMode.categories
+          ? _isSplit
+          : _isHybridPayment;
+      if (currentlyOn) {
+        if (side == _SplitMode.categories) {
+          _isSplit = false;
+        } else {
+          _isHybridPayment = false;
+        }
+        return;
+      }
+      if (side == _SplitMode.categories) {
+        _isSplit = true;
+        _isHybridPayment = false;
+        _hasChange = false;
+        while (_splitRows.length < 2) {
+          _splitRows.add(_SplitEntry(onFocusChange: _onFieldFocusChanged));
+        }
+      } else {
+        _isHybridPayment = true;
+        _isSplit = false;
+        _hasChange = false;
+        _hasForeignCurrency = false;
+        while (_hybridLegs.length < 2) {
+          _hybridLegs.add(
+            _PaymentLegEntry(onFocusChange: _onFieldFocusChanged),
+          );
+        }
+      }
+    });
   }
 
   Widget _hybridEditorCard(Map<int, AccountRow> accountMap) {
@@ -1437,12 +1791,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         );
         return;
       }
-      if (_categoryId == null) {
-        messenger.showSnackBar(
-          const SnackBar(content: Text('Choose a category')),
-        );
-        return;
-      }
+      // No category requirement here — an uncategorised split payment is a
+      // legitimate choice, same as an ordinary uncategorised expense below.
       try {
         final db = ref.read(dbProvider);
         final note = _noteController.text.trim();
@@ -1457,6 +1807,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           note: note.isEmpty ? null : note,
           payee: payeeText.isEmpty ? null : payeeText,
           imagePath: _imagePath,
+          customIcon: _customIcon,
         );
         // The receipt (if any) is now referenced by a saved row — no longer
         // an orphan `dispose()` needs to clean up. Tags apply to the anchor
@@ -1502,12 +1853,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         );
         return;
       }
-      if (_categoryId == null) {
-        messenger.showSnackBar(
-          const SnackBar(content: Text('Choose a category')),
-        );
-        return;
-      }
+      // No category requirement here either — see the same note on the
+      // hybrid-payment path above.
       try {
         final db = ref.read(dbProvider);
         final note = _noteController.text.trim();
@@ -1515,13 +1862,14 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         final ids = await db.addExpenseWithChange(
           amount: amount,
           accountId: _accountId!,
-          categoryId: _categoryId!,
+          categoryId: _categoryId,
           changeAccountId: _changeAccountId!,
           changeAmount: _changeAmount,
           date: _date,
           note: note.isEmpty ? null : note,
           payee: payeeText.isEmpty ? null : payeeText,
           imagePath: _imagePath,
+          customIcon: _customIcon,
         );
         _unsavedPickedPath = null;
         await db.setTransactionTags(ids.first, _tagIds);
@@ -1603,18 +1951,16 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         );
         return;
       }
-    } else if (_categoryId == null) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Choose a category')),
-      );
-      return;
     }
+    // No `else if (_categoryId == null)` branch here — an ordinary income or
+    // expense with no category picked is a legitimate, intentional choice:
+    // it just posts uncategorised, same as any transaction whose category
+    // was later deleted already renders (see `_categoryValue` on the
+    // transaction detail screen).
     if (_isForeignCurrency &&
         (_foreignCurrencyCode == null || !_foreignAmount.isPositive)) {
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Choose a currency and enter its amount'),
-        ),
+        const SnackBar(content: Text('Choose a currency and enter its amount')),
       );
       return;
     }
@@ -1631,7 +1977,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final categoryId = (_type == TxType.transfer || _isSplitting)
         ? null
         : _categoryId;
-    final foreignCurrencyCode = _isForeignCurrency ? _foreignCurrencyCode : null;
+    final foreignCurrencyCode = _isForeignCurrency
+        ? _foreignCurrencyCode
+        : null;
     final foreignAmount = _isForeignCurrency ? _foreignAmount : null;
     try {
       final db = ref.read(dbProvider);
@@ -1651,6 +1999,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           imagePath: _imagePath,
           foreignCurrencyCode: foreignCurrencyCode,
           foreignAmount: foreignAmount,
+          customIcon: _customIcon,
         );
       } else {
         id = await db.addTransaction(
@@ -1665,6 +2014,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           imagePath: _imagePath,
           foreignCurrencyCode: foreignCurrencyCode,
           foreignAmount: foreignAmount,
+          customIcon: _customIcon,
         );
       }
       // The receipt (if any) is now referenced by a saved row — no longer an
@@ -1787,6 +2137,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         actions: _loading
             ? null
             : [
+                _customIconAction(theme),
                 _tagsAction(theme),
                 _receiptAction(theme),
                 if (_isEditing)
@@ -1937,11 +2288,13 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         tiles.add(const SizedBox(height: 12));
       }
       if (_type == TxType.expense) {
-        tiles.add(_splitToggleTile());
+        // Editing an existing hybrid payment's legs together isn't
+        // supported here (see the doc on [_isHybridPayment]) — there's
+        // nothing to merge the split toggle with while editing, so that
+        // case keeps the plain single-purpose switch instead.
+        tiles.add(_isEditing ? _splitToggleTile() : _splitModeToggleTile());
         tiles.add(const SizedBox(height: 12));
         if (!_isEditing) {
-          tiles.add(_hybridToggleTile());
-          tiles.add(const SizedBox(height: 12));
           // Change only ever makes sense out of a cash account, and only if
           // there's a second cash-type account (e.g. Coins) for it to land
           // in — otherwise the toggle leads nowhere. See GitHub #55.
@@ -2243,6 +2596,61 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                   )
                 : Text(k, style: theme.textTheme.titleLarge),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+enum _ReceiptSource { camera, gallery }
+
+enum _CustomIconSource { library, emoji }
+
+enum _SplitMode { categories, accounts }
+
+/// The knob in [_AddTransactionScreenState._splitModeToggleTile] — a small
+/// pill track whose filled circle animates to the left, right, or neutral
+/// middle as [mode] changes, so picking a side visibly "moves" the button
+/// the way a physical slider would, without needing a raw drag gesture.
+class _SplitModeKnob extends StatelessWidget {
+  const _SplitModeKnob({required this.mode});
+
+  final _SplitMode? mode;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final alignment = switch (mode) {
+      _SplitMode.categories => Alignment.centerLeft,
+      _SplitMode.accounts => Alignment.centerRight,
+      null => Alignment.center,
+    };
+    final knobColor = mode == null
+        ? theme.colorScheme.onSurfaceVariant
+        : theme.colorScheme.primary;
+    final knobIcon = switch (mode) {
+      _SplitMode.categories => Icons.call_split_rounded,
+      _SplitMode.accounts => Icons.account_balance_wallet_outlined,
+      null => Icons.remove_rounded,
+    };
+
+    return Container(
+      width: 64,
+      height: 30,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: AnimatedAlign(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        alignment: alignment,
+        child: Container(
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(color: knobColor, shape: BoxShape.circle),
+          child: Icon(knobIcon, size: 14, color: theme.colorScheme.surface),
         ),
       ),
     );

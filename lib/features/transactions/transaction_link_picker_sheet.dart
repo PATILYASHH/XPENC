@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/app_icons.dart';
+import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -54,7 +55,10 @@ class _TransactionLinkPickerSheetState
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-              child: Text('Link transaction', style: theme.textTheme.titleLarge),
+              child: Text(
+                'Link transaction',
+                style: theme.textTheme.titleLarge,
+              ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
@@ -188,7 +192,12 @@ class _TxTile extends StatelessWidget {
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: accent.withValues(alpha: 0.15),
-        child: Icon(icon, color: accent, size: 20),
+        child: transactionRowIcon(
+          customIcon: tx.customIcon,
+          fallback: icon,
+          size: 20,
+          color: accent,
+        ),
       ),
       title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -196,7 +205,9 @@ class _TxTile extends StatelessWidget {
         displayAmount,
         signed: !isTransfer,
         color: colorForTxType(tx.type),
-        style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+        style: theme.textTheme.bodyMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
       ),
       onTap: onTap,
     );

@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../core/app_icons.dart';
 import '../../core/currency.dart';
 import '../../core/money.dart';
+import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/error_view.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
@@ -371,6 +372,23 @@ class _Hero extends StatelessWidget {
     return Column(
       children: [
         const SizedBox(height: 8),
+        if (t.customIcon != null) ...[
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: CustomIconBadge(
+              value: t.customIcon!,
+              size: 52,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
         FittedBox(
           fit: BoxFit.scaleDown,
           child: MoneyText(
@@ -616,9 +634,7 @@ class _LinkedTransactionsCard extends ConsumerWidget {
   Future<void> _unlink(BuildContext context, WidgetRef ref, int otherId) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await ref
-          .read(dbProvider)
-          .removeTransactionLink(transaction.id, otherId);
+      await ref.read(dbProvider).removeTransactionLink(transaction.id, otherId);
     } catch (e) {
       messenger
         ..hideCurrentSnackBar()
@@ -643,7 +659,9 @@ class _LinkedTxRow extends StatelessWidget {
     final payee = linked.payee?.trim();
     final title = (note != null && note.isNotEmpty)
         ? note
-        : (payee != null && payee.isNotEmpty) ? payee : _typeLabel(linked.type);
+        : (payee != null && payee.isNotEmpty)
+        ? payee
+        : _typeLabel(linked.type);
     final displayAmount =
         (linked.type == TxType.expense || linked.type == TxType.personOut)
         ? -linked.amount

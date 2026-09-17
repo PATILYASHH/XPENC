@@ -32,6 +32,24 @@
         android:maxSdkVersion="32"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="29"/>
+    <!-- Only for "Take photo" on a receipt (Add/Edit > receipt button >
+         image_picker's ImageSource.camera). Attaching from the gallery
+         still goes through file_picker above, needing no permission at
+         all; this exists only for the in-app camera shortcut.
+         android:required="false" on the feature declaration keeps the app
+         installable on a device with no camera (e.g. some tablets) — the
+         button just won't have anything to open there. -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
+    <uses-feature android:name="android.hardware.camera.any" android:required="false"/>
+    <!-- Only for "Pick from contacts" on the Add Person sheet
+         (edit_person_sheet.dart). The native picker itself is permissionless
+         and always returns a name; this is requested at runtime only when
+         the user taps that button, and only unlocks importing that
+         contact's phone number and photo too — a denial just leaves the
+         picker name-only, exactly as it behaved before this permission
+         existed. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS"/>
     <application
         android:label="@string/app_name"
         android:name="${applicationName}"

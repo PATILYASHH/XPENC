@@ -53,6 +53,11 @@ dependencies:
   share_plus: ^12.0.2
   # Import a backup file from anywhere on the device (transfer between phones).
   file_picker: ^8.1.6
+  # Camera capture for receipts (Add/Edit > receipt button > Take photo).
+  # Gallery/file attach still goes through file_picker above, which needs no
+  # permission at all — this is the one dependency in this app that brings a
+  # runtime permission (CAMERA, see AndroidManifest.xml) along with it.
+  image_picker: ^1.1.2
   # Opens the developer's GitHub / LinkedIn from the About screen.
   url_launcher: ^6.3.2
   # Builds account/budget statement PDFs, entirely on-device — no network font

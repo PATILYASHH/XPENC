@@ -262,7 +262,7 @@ class _RuleTile extends ConsumerWidget {
           ),
         ),
       ),
-      onTap: () => showRecurringRuleSheet(context, existing: rule),
+      onTap: () => context.push('/more/auto/rule/${rule.id}'),
       onLongPress: () => _showActions(context, ref),
     );
   }

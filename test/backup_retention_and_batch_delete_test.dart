@@ -76,8 +76,36 @@ void main() {
     },
   );
 
+  testWidgets('Count mode blocks Save until a count of at least 1 is entered', (
+    tester,
+  ) async {
+    await pump(tester, const BackupScreen());
+
+    await tester.tap(find.text('Automatic backups').last);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.text('Back up automatically'));
+    await tester.pump();
+    await tester.tap(find.text('Count'));
+    await tester.pump();
+
+    // No preset tapped, the count field is empty — Save must be disabled.
+    final saveButton = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Save'),
+    );
+    expect(saveButton.onPressed, isNull);
+    expect(
+      find.text('Enter how many backups to keep (at least 1).'),
+      findsOneWidget,
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(Duration.zero);
+  });
+
   testWidgets(
-    'Count mode blocks Save until a count of at least 1 is entered',
+    'GitHub #132: switching to On change with count retention saves an '
+    'event-triggered schedule with a cooldown',
     (tester) async {
       await pump(tester, const BackupScreen());
 
@@ -86,16 +114,32 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
       await tester.tap(find.text('Back up automatically'));
       await tester.pump();
+
+      await tester.tap(find.text('On change'));
+      await tester.pump();
+      expect(
+        find.widgetWithText(TextField, 'Minutes between backups'),
+        findsOneWidget,
+      );
+
       await tester.tap(find.text('Count'));
       await tester.pump();
+      await tester.tap(find.text('Last 3'));
+      await tester.pump();
 
-      // No preset tapped, the count field is empty — Save must be disabled.
-      final saveButton = tester.widget<FilledButton>(
-        find.widgetWithText(FilledButton, 'Save'),
-      );
-      expect(saveButton.onPressed, isNull);
-      expect(find.text('Enter how many backups to keep (at least 1).'),
-          findsOneWidget);
+      await tester.ensureVisible(find.text('Save'));
+      await tester.pump();
+      await tester.tap(find.text('Save'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      final s = await db.getSettings();
+      expect(s.autoBackupEnabled, isTrue);
+      expect(s.autoBackupFrequency, AutoBackupFrequency.onChange);
+      expect(s.autoBackupCooldownMinutes, 10); // the sheet's default
+      expect(s.backupRetentionMode, BackupRetentionMode.count);
+      expect(s.backupRetentionCount, 3);
+      expect(tester.takeException(), isNull);
 
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump(Duration.zero);

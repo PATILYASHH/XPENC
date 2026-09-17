@@ -247,6 +247,25 @@ void main() {
     await reopened.close();
   });
 
+  test('the v70 autoBackupCooldownMinutes/autoBackupPending columns '
+      '(event-triggered auto backups, GitHub #132) survive a rolled-back '
+      're-open', () async {
+    final file = await buildRolledBackDatabase(69);
+
+    final reopened = AppDatabase(NativeDatabase(file));
+    await expectLater(reopened.select(reopened.settings).get(), completes);
+    await reopened.close();
+  });
+
+  test('the v71 persons.photoPath column (contact photo import) survives a '
+      'rolled-back re-open', () async {
+    final file = await buildRolledBackDatabase(70);
+
+    final reopened = AppDatabase(NativeDatabase(file));
+    await expectLater(reopened.select(reopened.persons).get(), completes);
+    await reopened.close();
+  });
+
   test('GitHub #112: a settings row whose stored unlock_method is not a '
       "current UnlockMethod name (e.g. a rolling-BETA build's stale value) "
       'no longer crashes "Couldn\'t open your data" on reopen, and is '

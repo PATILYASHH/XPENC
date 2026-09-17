@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -42,7 +43,9 @@ class PayeeDetailScreen extends ConsumerWidget {
               ),
             ],
           ),
-          SliverToBoxAdapter(child: _TotalHero(net: net, count: txs.length)),
+          SliverToBoxAdapter(
+            child: _TotalHero(net: net, count: txs.length),
+          ),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 14, 24, 6),
@@ -189,7 +192,12 @@ class _TxRow extends StatelessWidget {
       leading: CircleAvatar(
         backgroundColor: color.withValues(alpha: 0.14),
         foregroundColor: color,
-        child: Icon(iconForTxType(tx.type), size: 20),
+        child: transactionRowIcon(
+          customIcon: tx.customIcon,
+          fallback: iconForTxType(tx.type),
+          size: 20,
+          color: color,
+        ),
       ),
       title: Text(
         title,

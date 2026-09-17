@@ -37,28 +37,43 @@ Money accountMovement(TransactionRow tx, Set<int> ownIds) => switch (tx.type) {
 /// The gap between automatic backups for a given schedule. `monthly` is
 /// approximated as 30 days — good enough for "about once a month" without
 /// pulling in calendar-month arithmetic for what is, after all, just a
-/// safety copy, not a bill due date.
+/// safety copy, not a bill due date. `onChange`'s "interval" is really a
+/// cooldown floor, in minutes rather than days/hours — see
+/// [Settings.autoBackupCooldownMinutes].
 Duration autoBackupInterval({
   required AutoBackupFrequency frequency,
   int customDays = 0,
   int customHours = 0,
+  int cooldownMinutes = 0,
 }) => switch (frequency) {
   AutoBackupFrequency.daily => const Duration(days: 1),
   AutoBackupFrequency.monthly => const Duration(days: 30),
   AutoBackupFrequency.custom => Duration(days: customDays, hours: customHours),
+  AutoBackupFrequency.onChange => Duration(minutes: cooldownMinutes),
 };
 
 /// Whether an automatic backup is due, given the schedule in [settings] and
 /// the current time [now]. Pure — no I/O — so every combination of
 /// frequency and elapsed time is trivial to test without a database.
+///
+/// [AutoBackupFrequency.onChange] (GitHub #132) adds one extra gate on top
+/// of the usual elapsed-time check: [SettingRow.autoBackupPending] must be
+/// set, i.e. something actually changed since the last automatic backup. No
+/// event, no backup — a cooldown that has merely elapsed with nothing new
+/// to save is not "due".
 bool isAutoBackupDue(SettingRow settings, DateTime now) {
   if (!settings.autoBackupEnabled) return false;
+  if (settings.autoBackupFrequency == AutoBackupFrequency.onChange &&
+      !settings.autoBackupPending) {
+    return false;
+  }
   final last = settings.lastAutoBackupAt;
   if (last == null) return true; // never run — due immediately
   final interval = autoBackupInterval(
     frequency: settings.autoBackupFrequency,
     customDays: settings.autoBackupCustomDays,
     customHours: settings.autoBackupCustomHours,
+    cooldownMinutes: settings.autoBackupCooldownMinutes,
   );
   return !now.isBefore(last.add(interval));
 }
@@ -183,7 +198,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 68;
+  int get schemaVersion => 71;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -632,6 +647,24 @@ class AppDatabase extends _$AppDatabase {
         // Keep-last-X backups (GitHub #131).
         await _addColumnIfMissing(m, settings, settings.backupRetentionMode);
         await _addColumnIfMissing(m, settings, settings.backupRetentionCount);
+      }
+      if (from < 69) {
+        // Per-transaction icon/emoji, independent of category.
+        await _addColumnIfMissing(m, transactions, transactions.customIcon);
+      }
+      if (from < 70) {
+        // Event-triggered auto backups with a cooldown window (GitHub #132).
+        await _addColumnIfMissing(
+          m,
+          settings,
+          settings.autoBackupCooldownMinutes,
+        );
+        await _addColumnIfMissing(m, settings, settings.autoBackupPending);
+      }
+      if (from < 71) {
+        // Importing a phone number + photo from "Pick from contacts" when
+        // adding a person.
+        await _addColumnIfMissing(m, persons, persons.photoPath);
       }
     },
     beforeOpen: (details) async {
@@ -1304,6 +1337,7 @@ class AppDatabase extends _$AppDatabase {
     bool needsAmountReview = false,
     String? foreignCurrencyCode,
     Money? foreignAmount,
+    String? customIcon,
   }) async {
     await _validateTx(
       type: type,
@@ -1359,6 +1393,7 @@ class AppDatabase extends _$AppDatabase {
           toAmount: Value(toAmt),
           toCurrencyCode: Value(toCode),
           toFxRateToBaseMicros: Value(toRate),
+          customIcon: Value(customIcon),
         ),
       );
       final row = await (select(
@@ -1386,6 +1421,7 @@ class AppDatabase extends _$AppDatabase {
     String? note,
     String? payee,
     String? imagePath,
+    String? customIcon,
   }) async {
     if (legs.length < 2) {
       throw ArgumentError('A split payment needs at least two accounts.');
@@ -1404,7 +1440,8 @@ class AppDatabase extends _$AppDatabase {
       final ids = <int>[];
       for (final leg in legs) {
         // The receipt (if any) is attached to the anchor leg only — the
-        // rest are plain money movements with nothing more to say.
+        // rest are plain money movements with nothing more to say. Same
+        // reasoning for the custom icon.
         final isAnchor = ids.isEmpty;
         ids.add(
           await into(transactions).insert(
@@ -1417,6 +1454,7 @@ class AppDatabase extends _$AppDatabase {
               note: Value(note),
               payee: Value(payee),
               imagePath: Value(isAnchor ? imagePath : null),
+              customIcon: Value(isAnchor ? customIcon : null),
             ),
           ),
         );
@@ -1451,13 +1489,14 @@ class AppDatabase extends _$AppDatabase {
   Future<List<int>> addExpenseWithChange({
     required Money amount,
     required int accountId,
-    required int categoryId,
+    int? categoryId,
     required int changeAccountId,
     required Money changeAmount,
     required DateTime date,
     String? note,
     String? payee,
     String? imagePath,
+    String? customIcon,
   }) async {
     if (changeAccountId == accountId) {
       throw ArgumentError('Change must go to a different account.');
@@ -1487,6 +1526,7 @@ class AppDatabase extends _$AppDatabase {
           note: Value(note),
           payee: Value(payee),
           imagePath: Value(imagePath),
+          customIcon: Value(customIcon),
         ),
       );
       final changeId = await into(transactions).insert(
@@ -1649,6 +1689,7 @@ class AppDatabase extends _$AppDatabase {
     String? imagePath,
     String? foreignCurrencyCode,
     Money? foreignAmount,
+    String? customIcon,
   }) async {
     await _validateTx(
       type: type,
@@ -1692,6 +1733,7 @@ class AppDatabase extends _$AppDatabase {
           needsAmountReview: const Value(false),
           foreignCurrencyCode: Value(foreignCurrencyCode),
           foreignAmount: Value(foreignAmount),
+          customIcon: Value(customIcon),
         ),
       );
 
@@ -3143,6 +3185,7 @@ class AppDatabase extends _$AppDatabase {
     String? venmo,
     String? cashapp,
     String? revolut,
+    String? photoPath,
   }) => into(persons).insert(
     PersonsCompanion.insert(
       name: name,
@@ -3154,12 +3197,14 @@ class AppDatabase extends _$AppDatabase {
       venmo: Value(venmo),
       cashapp: Value(cashapp),
       revolut: Value(revolut),
+      photoPath: Value(photoPath),
     ),
   );
 
   /// Full edit — unlike [addPersonEntry]'s pattern, every field the edit
   /// sheet shows is passed every time, so `null` here means "clear this
-  /// field", not "leave unchanged".
+  /// field", not "leave unchanged" — [photoPath] included, so removing a
+  /// photo is just saving with it left null.
   Future<void> updatePerson({
     required int id,
     required String name,
@@ -3171,6 +3216,7 @@ class AppDatabase extends _$AppDatabase {
     String? venmo,
     String? cashapp,
     String? revolut,
+    String? photoPath,
   }) => (update(persons)..where((p) => p.id.equals(id))).write(
     PersonsCompanion(
       name: Value(name),
@@ -3182,6 +3228,7 @@ class AppDatabase extends _$AppDatabase {
       venmo: Value(venmo),
       cashapp: Value(cashapp),
       revolut: Value(revolut),
+      photoPath: Value(photoPath),
     ),
   );
 
@@ -5122,6 +5169,7 @@ class AppDatabase extends _$AppDatabase {
     required AutoBackupFrequency frequency,
     int customDays = 0,
     int customHours = 0,
+    int cooldownMinutes = 10,
     BackupRetentionMode retentionMode = BackupRetentionMode.days,
     required int retentionDays,
     int retentionCount = 0,
@@ -5130,6 +5178,9 @@ class AppDatabase extends _$AppDatabase {
         customDays <= 0 &&
         customHours <= 0) {
       throw ArgumentError('Set a custom interval of at least 1 hour.');
+    }
+    if (frequency == AutoBackupFrequency.onChange && cooldownMinutes < 0) {
+      throw ArgumentError('The cooldown cannot be negative.');
     }
     if (retentionDays < 0) {
       throw ArgumentError('Retention days cannot be negative.');
@@ -5141,6 +5192,7 @@ class AppDatabase extends _$AppDatabase {
       frequency: frequency,
       customDays: customDays,
       customHours: customHours,
+      cooldownMinutes: cooldownMinutes,
     );
     if (retentionMode == BackupRetentionMode.days &&
         retentionDays != 0 &&
@@ -5155,6 +5207,7 @@ class AppDatabase extends _$AppDatabase {
         autoBackupFrequency: Value(frequency),
         autoBackupCustomDays: Value(customDays),
         autoBackupCustomHours: Value(customHours),
+        autoBackupCooldownMinutes: Value(cooldownMinutes),
         backupRetentionMode: Value(retentionMode),
         backupRetentionDays: Value(retentionDays),
         backupRetentionCount: Value(retentionCount),
@@ -5162,8 +5215,34 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
-  Future<void> setLastAutoBackupAt(DateTime when) =>
-      update(settings).write(SettingsCompanion(lastAutoBackupAt: Value(when)));
+  /// Records that an automatic backup just ran: resets the schedule anchor
+  /// every frequency reads, and clears [SettingRow.autoBackupPending] — the
+  /// change that just got backed up is covered now.
+  Future<void> setLastAutoBackupAt(DateTime when) => update(settings).write(
+    SettingsCompanion(
+      lastAutoBackupAt: Value(when),
+      autoBackupPending: const Value(false),
+    ),
+  );
+
+  /// Marks that the ledger changed since the last automatic backup — the
+  /// durable "something to save" bit [isAutoBackupDue] checks for
+  /// [AutoBackupFrequency.onChange] (GitHub #132). A plain boolean is
+  /// enough: XPENC has no background service and no sync, so the app being
+  /// open is the only way a change can happen, and this session always
+  /// knows about it. Cheap to call after every write — it no-ops unless
+  /// that schedule is actually the one in use.
+  Future<void> markLedgerChanged() async {
+    final s = await getSettings();
+    if (!s.autoBackupEnabled ||
+        s.autoBackupFrequency != AutoBackupFrequency.onChange ||
+        s.autoBackupPending) {
+      return;
+    }
+    await update(
+      settings,
+    ).write(const SettingsCompanion(autoBackupPending: Value(true)));
+  }
 
   /// Whether an automatic backup should run right now, per the current
   /// schedule — see [isAutoBackupDue] for the actual (pure, testable) rule.

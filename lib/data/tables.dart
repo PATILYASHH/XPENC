@@ -96,8 +96,10 @@ enum RecurringFrequency { daily, weekly, biweekly, monthly }
 
 /// How often automatic backups run. `custom` ignores the fixed cadences and
 /// uses [Settings.autoBackupCustomDays] + [Settings.autoBackupCustomHours]
-/// instead.
-enum AutoBackupFrequency { daily, monthly, custom }
+/// instead. `onChange` (GitHub #132) ignores all of that and instead backs
+/// up after a ledger change (add, edit or delete), coalesced by
+/// [Settings.autoBackupCooldownMinutes].
+enum AutoBackupFrequency { daily, monthly, custom, onChange }
 
 /// What decides which backups automatic cleanup removes (GitHub #131).
 /// `days` is the original scheme — [Settings.backupRetentionDays] since a
@@ -399,6 +401,15 @@ class Transactions extends Table {
   TextColumn get toCurrencyCode =>
       text().withLength(min: 3, max: 3).nullable()();
   IntColumn get toFxRateToBaseMicros => integer().nullable()();
+
+  /// A per-transaction visual marker, independent of [categoryId] — picked
+  /// from the Add/Edit screen's icon/emoji button next to the tags button.
+  /// Two encodings share this one column: an XPENC icon-library pick is
+  /// stored as `"icon:<AppIcons key>"` (see
+  /// `CustomIconBadge.encodeIconKey`); anything else is the raw emoji the
+  /// user typed via their own keyboard. Null means no custom marker — the
+  /// overwhelming majority, same convention as [imagePath].
+  TextColumn get customIcon => text().nullable()();
 }
 
 @DataClassName('BudgetRow')
@@ -462,6 +473,13 @@ class Persons extends Table {
   /// Their phone number. Not wired to any deep link yet (UPI links need a
   /// VPA, not a phone number) — stored for display/contact purposes.
   TextColumn get phone => text().nullable()();
+
+  /// Path to a locally-stored copy of their photo — either imported from
+  /// the device's contact picker (see `PersonPhotoStorage`) or, one day,
+  /// picked directly. Never a live link into the address book: like a
+  /// receipt image, it's copied into the app's own storage once and stands
+  /// on its own after that.
+  TextColumn get photoPath => text().nullable()();
 
   /// Their PayPal.me id (e.g. "rahul" for paypal.me/rahul). Powers the "Pay"
   /// button on their detail screen — used to build a `paypal.me` link when
@@ -991,6 +1009,22 @@ class Settings extends Table {
       integer().withDefault(const Constant(0))();
   IntColumn get autoBackupCustomHours =>
       integer().withDefault(const Constant(0))();
+
+  /// The cooldown [AutoBackupFrequency.onChange] waits out between
+  /// automatic backups (GitHub #132) — a floor, not a schedule: several
+  /// ledger changes inside this window coalesce into the one backup taken
+  /// when it next elapses. `0` means no minimum — every change backs up.
+  IntColumn get autoBackupCooldownMinutes =>
+      integer().withDefault(const Constant(10))();
+
+  /// Durable "something changed since the last automatic backup" bit, set
+  /// by [AppDatabase.markLedgerChanged] and cleared once that backup runs.
+  /// Only meaningful for [AutoBackupFrequency.onChange]: a timer would die
+  /// with the process, so this survives the app being closed mid-cooldown,
+  /// letting the pending backup fire at the next opportunity — a new
+  /// change, app start, or resume — instead of being lost.
+  BoolColumn get autoBackupPending =>
+      boolean().withDefault(const Constant(false))();
 
   /// When the last *automatic* backup ran — the due-date anchor. A manual
   /// "Back up now" never touches this, so it can't push an automatic backup

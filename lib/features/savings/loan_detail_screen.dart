@@ -5,6 +5,7 @@ import '../../core/app_icons.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/money_text.dart';
+import '../../core/widgets/transaction_history.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'savings_goals_screen.dart';
@@ -20,6 +21,9 @@ class LoanDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final loan = ref.watch(loanProgressProvider(accountId));
+    final txAsync = ref.watch(accountTransactionsProvider(accountId));
+    final accountMap = ref.watch(accountMapProvider);
+    final categoryMap = ref.watch(categoryMapProvider);
 
     if (loan == null) {
       return Scaffold(
@@ -66,14 +70,19 @@ class LoanDetailScreen extends ConsumerWidget {
                     child: CircularProgressIndicator(
                       value: loan.fraction,
                       strokeWidth: 12,
-                      backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                      backgroundColor:
+                          theme.colorScheme.surfaceContainerHighest,
                       color: color,
                     ),
                   ),
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(AppIcons.resolve(account.iconKey), color: color, size: 28),
+                      Icon(
+                        AppIcons.resolve(account.iconKey),
+                        color: color,
+                        size: 28,
+                      ),
                       const SizedBox(height: 6),
                       Text(
                         '${(loan.fraction * 100).round()}%',
@@ -101,11 +110,11 @@ class LoanDetailScreen extends ConsumerWidget {
                   onPressed: isPaidOff
                       ? null
                       : () => _openPaymentSheet(
-                            context,
-                            loanAccountId: accountId,
-                            defaultCategoryId: detail.categoryId,
-                            emiAmount: detail.emiAmount,
-                          ),
+                          context,
+                          loanAccountId: accountId,
+                          defaultCategoryId: detail.categoryId,
+                          emiAmount: detail.emiAmount,
+                        ),
                   icon: const Icon(Icons.payments_outlined),
                   label: const Text('Make a payment'),
                 ),
@@ -144,7 +153,10 @@ class LoanDetailScreen extends ConsumerWidget {
                     _row(
                       context,
                       'Monthly EMI',
-                      _plainValue(context, MoneyFormat.symbol(detail.emiAmount!)),
+                      _plainValue(
+                        context,
+                        MoneyFormat.symbol(detail.emiAmount!),
+                      ),
                     ),
                   ],
                   if (isPaidOff) ...[
@@ -155,8 +167,11 @@ class LoanDetailScreen extends ConsumerWidget {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.check_circle_rounded,
-                              color: AppColors.income, size: 18),
+                          Icon(
+                            Icons.check_circle_rounded,
+                            color: AppColors.income,
+                            size: 18,
+                          ),
                           const SizedBox(width: 6),
                           Text(
                             'Paid off',
@@ -172,6 +187,21 @@ class LoanDetailScreen extends ConsumerWidget {
                 ],
               ),
             ),
+          ),
+          const SizedBox(height: 28),
+          Text(
+            'History',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          TransactionHistorySection(
+            txAsync: txAsync,
+            accountMap: accountMap,
+            categoryMap: categoryMap,
+            ownIds: {accountId},
+            currency: null,
+            emptyMessage: 'No payments yet.',
           ),
         ],
       ),
@@ -336,7 +366,9 @@ class LoanDetailScreen extends ConsumerWidget {
 
     bool rtaAutoDisabled;
     try {
-      rtaAutoDisabled = await ref.read(dbProvider).deleteAccount(loan.account.id);
+      rtaAutoDisabled = await ref
+          .read(dbProvider)
+          .deleteAccount(loan.account.id);
     } on ArgumentError catch (e) {
       messenger
         ..hideCurrentSnackBar()
@@ -443,7 +475,9 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
     setState(() => _submitting = true);
     final navigator = Navigator.of(context);
     try {
-      await ref.read(dbProvider).addTransaction(
+      await ref
+          .read(dbProvider)
+          .addTransaction(
             type: TxType.transfer,
             accountId: sourceId,
             toAccountId: widget.loanAccountId,

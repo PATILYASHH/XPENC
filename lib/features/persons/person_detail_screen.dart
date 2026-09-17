@@ -20,6 +20,7 @@ import '../../data/tables.dart';
 import '../accounts/envelope_outflow.dart';
 import 'edit_person_sheet.dart';
 import 'payment_action_row.dart';
+import 'person_avatar.dart';
 
 /// One person's ledger. Net balance = Σ(theyOwe) − Σ(iOwe).
 /// `+` they owe you · `-` you owe them.
@@ -71,7 +72,24 @@ class PersonDetailScreen extends ConsumerWidget {
         slivers: [
           SliverAppBar(
             pinned: true,
-            title: Text(person.name),
+            title: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                PersonAvatar(
+                  name: person.name,
+                  photoPath: person.photoPath,
+                  radius: 15,
+                ),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Text(
+                    person.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
             actions: [
               IconButton(
                 tooltip: 'Share statement',
