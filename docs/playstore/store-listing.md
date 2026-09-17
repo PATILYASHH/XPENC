@@ -47,7 +47,7 @@ PRIVATE BY ARCHITECTURE
 • Works fully offline — the app makes no network calls at all.
 • No sign-up, no account, no cloud.
 • No analytics, no trackers, no ads.
-• The only runtime permission is notifications, used for the budget alerts and reminders you set.
+• Every runtime permission is optional and asked only when you use the feature that needs it: notifications for budget alerts and reminders, camera for "Take photo" on a receipt, and contacts only if you tap "Pick from contacts" when adding a person.
 • Backups are files you create and keep — you decide where they go.
 
 ACCURATE BY DESIGN

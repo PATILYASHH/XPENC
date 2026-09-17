@@ -12,7 +12,7 @@ and the [fastlane metadata spec](https://f-droid.org/docs/All_About_Descriptions
 |---|---|
 | FLOSS license | ✅ MIT, `LICENSE` at repo root |
 | No Google Play Services / Firebase / Crashlytics | ✅ none — pure Flutter + androidx |
-| No proprietary dependencies | ✅ all pub packages are BSD/MIT/Apache (riverpod, drift, go_router, fl_chart, intl, flutter_local_notifications, timezone, flutter_slidable, sqlite3_flutter_libs, path_provider, share_plus, url_launcher) |
+| No proprietary dependencies | ✅ every pub dependency in `pubspec.yaml` is BSD/MIT/Apache-2.0 — re-audit with `flutter pub deps` + each package's `LICENSE` whenever one is added |
 | No ads / trackers / analytics | ✅ zero; release builds have **no INTERNET permission** |
 | No binary blobs in the repo | ✅ verified — no .jar/.aar/.so/.ttf tracked (`branding/fonts/` is gitignored) |
 | Flutter SDK prebuilt binaries | ✅ explicitly permitted by F-Droid policy |
@@ -34,27 +34,29 @@ No anti-features apply (no NonFreeNet, no NonFreeDep, no Ads, no Tracking).
 
 ## versionCode contract (important)
 
-`pubspec.yaml` `version: X.Y.Z+N` → `flutter build apk --split-per-abi` emits:
+The recipe's own `VercodeOperation` — not `flutter build apk` — is what actually
+sets each ABI's versionCode, from `pubspec.yaml`'s `version: X.Y.Z+N`:
 
 | ABI | versionCode |
 |---|---|
-| armeabi-v7a | N + 1000 |
-| arm64-v8a | N + 2000 |
-| x86_64 | N + 4000 |
+| armeabi-v7a | N × 10 + 1 |
+| arm64-v8a | N × 10 + 2 |
+| x86_64 | N × 10 + 3 |
 
-Verified with aapt on the 1.1.0+2 build (1002 / 2002 / 4002). The recipe's
-`VercodeOperation` encodes exactly this. **On every release**, add
-`changelogs/<N>.txt` plus copies named `<N+1000>.txt`, `<N+2000>.txt`,
-`<N+4000>.txt` (see the 1.1.0 files for the pattern).
+e.g. `1.6.0+18` → `181 / 182 / 183` (see the `Builds:` entries in
+[`metadata-com.yash.xpenc.yml`](metadata-com.yash.xpenc.yml) for the pattern
+every release since 1.1.3 has followed — an earlier `N + 1000/2000/4000`
+scheme was used only for the very first 1.1.0/1.1.1 submission and is long
+gone). **On every release**, add one `changelogs/<versionCode>.txt` per ABI
+(identical content in all three — see any existing trio for the pattern).
 
-## How to submit (one-time)
+## Already on F-Droid — submission was one-time
 
-0. **Tag `v1.1.1` first.** F-Droid reads the fastlane texts/images from the
-   commit it builds, and the existing `v1.1.0` tag predates them. The repo is
-   already prepared for this: `pubspec.yaml` is `1.1.1+3`, the fastlane
-   screenshots/changelogs are in place, and the recipe below is already set to
-   `commit: v1.1.1` with versionCodes `1003/2003/4003`. All that's left is
-   `git tag v1.1.1 && git push origin master v1.1.1`.
+XPENC has been on F-Droid since 1.1.3; the steps below are the **original**
+submission process, kept for history/reference. For an already-released app,
+skip to "Maintenance after acceptance" below — normal releases need no
+GitLab MR at all.
+
 1. Create a [GitLab](https://gitlab.com) account.
 2. Fork [fdroiddata](https://gitlab.com/fdroid/fdroiddata), branch `com.yash.xpenc`.
 3. Copy [`metadata-com.yash.xpenc.yml`](metadata-com.yash.xpenc.yml) to
@@ -76,10 +78,12 @@ appears on f-droid.org after the next build cycle (typically a few days).
 - **Releases are picked up automatically**: `AutoUpdateMode: Version` +
   `UpdateCheckMode: Tags` watch the repo's `v*` tags and read the version from
   `pubspec.yaml`. Tag → F-Droid builds it. No MR needed per release.
-- **Except** when the Flutter version changes: the recipe pins
-  `flutter@3.38.9`; a Flutter upgrade needs a one-line MR to fdroiddata (or a
-  reviewer may switch the recipe to extract the version from
-  `.github/workflows/release.yml` — accept that suggestion if offered).
+- **Flutter version bumps need no recipe edit either**: each `Build`'s
+  `prebuild` step already extracts the pinned version straight from
+  `.github/workflows/release.yml` at build time (`sed` on the
+  `flutter-version:` line) and checks that exact commit out of the `flutter`
+  srclib — bumping it there is enough, on both this repo's side and
+  fdroiddata's.
 - Keep the fastlane texts in sync with the Play listing when copy changes.
 
 ## Signature caveat (put in release notes when F-Droid goes live)

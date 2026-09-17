@@ -114,6 +114,26 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   the oldest is deleted automatically. The backup list also gained
   batch-select (long-press to start, tap to add more) to delete several
   backups at once.
+- **Event-triggered automatic backups** (#132) — a new "On change" schedule
+  backs up after any ledger add/edit/delete instead of a fixed interval,
+  coalesced by a configurable cooldown so several changes made quickly still
+  count as one backup. Works alongside the existing keep-last-X / keep-for-N
+  retention above.
+- **Add Person: import phone and photo from contacts** — "Pick from
+  contacts" now also imports the picked contact's phone number and photo
+  (requesting contacts access only at that moment); declining still fills in
+  the name as before. Imported photos show up in place of initials on the
+  Persons list, Archived list and Person Detail.
+- **Take a photo for a receipt** — the receipt attach button can now open
+  the camera directly, alongside the existing gallery/file attach.
+- **Per-transaction custom icon/emoji** — pick an icon or type an emoji for
+  an individual transaction, independent of its category; it now renders
+  everywhere that transaction appears (Account/Payee/Transaction detail, the
+  transaction link picker, the Transactions list, Calendar, Dashboard, and
+  Loan/Goal detail).
+- **Auto rule detail screen** — a rule in Auto (or Archived Auto) now opens
+  a full detail screen, matching the Account/Person/Loan/Goal detail
+  pattern, instead of jumping straight into the edit sheet.
 
 ### Changed
 - **Ready to Assign replaces the Budgets/Envelope mode switch** (#100, #48)

@@ -13,7 +13,7 @@
 <li><b>True-black design</b> — a clean, monochrome Material 3 interface that is easy on AMOLED screens and on the eyes.</li>
 </ul>
 
-<p><b>Private by architecture.</b> Fully offline, no sign-up, no cloud, no analytics, no trackers, no ads. The only runtime permission is notifications, used for the budget alerts and reminders you set. Backups are files you create and keep — you decide where they go.</p>
+<p><b>Private by architecture.</b> Fully offline, no sign-up, no cloud, no analytics, no trackers, no ads. Every runtime permission is optional and asked only when you use the feature that needs it: notifications for budget alerts and reminders, camera for "Take photo" on a receipt, and contacts only if you tap "Pick from contacts" when adding a person — and even then, only the one contact you pick is ever read. Backups are files you create and keep — you decide where they go.</p>
 
 <p><b>Accurate by design.</b> All money math is done in whole paise, never floating point, so totals are always exact.</p>
 
