@@ -56,19 +56,26 @@ class _MasterPhraseFieldState extends State<MasterPhraseField> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        TextField(
-          controller: _controller,
-          enabled: !widget.busy,
-          autocorrect: false,
-          textCapitalization: TextCapitalization.none,
-          minLines: 2,
-          maxLines: 3,
-          textInputAction: TextInputAction.done,
-          onSubmitted: (_) => _submit(),
-          decoration: InputDecoration(
-            border: const OutlineInputBorder(),
-            hintText: 'word1 word2 word3 …',
-            errorText: error,
+        // AutofillGroup + autofillHints (GitHub #127): without these, Android
+        // never tells a password manager this field wants a credential, so
+        // it never offers to fill it — the user has to copy/paste the phrase
+        // in the clear instead.
+        AutofillGroup(
+          child: TextField(
+            controller: _controller,
+            enabled: !widget.busy,
+            autocorrect: false,
+            textCapitalization: TextCapitalization.none,
+            minLines: 2,
+            maxLines: 3,
+            textInputAction: TextInputAction.done,
+            autofillHints: const [AutofillHints.password],
+            onSubmitted: (_) => _submit(),
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              hintText: 'word1 word2 word3 …',
+              errorText: error,
+            ),
           ),
         ),
         const SizedBox(height: 16),

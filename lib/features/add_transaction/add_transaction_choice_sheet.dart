@@ -14,6 +14,7 @@ import '../../data/providers.dart';
 Future<void> openAddTransactionChoiceSheet(BuildContext context) async {
   final result = await showModalBottomSheet<_AddChoiceResult>(
     context: context,
+    isScrollControlled: true,
     showDragHandle: true,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
@@ -42,62 +43,76 @@ class _AddChoiceSheet extends ConsumerWidget {
         ref.watch(transactionTemplatesProvider).valueOrNull ?? const [];
     final categoryMap = ref.watch(categoryMapProvider);
 
-    return SafeArea(
-      top: false,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'New transaction',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.add_circle_outline_rounded),
-            title: const Text('Start from scratch'),
-            subtitle: const Text('A blank transaction.'),
-            onTap: () =>
-                Navigator.of(context).pop(const _AddChoiceResult.blank()),
-          ),
-          if (templates.isNotEmpty) ...[
+    // DraggableScrollableSheet (not a plain Column) so a long template list
+    // can be dragged up past its initial size and scrolled — a fixed-height
+    // sheet left the tail of the list clipped behind the system/gesture nav
+    // bar with no way to reach it (GitHub issue: templates hidden by bottom
+    // nav).
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.55,
+      minChildSize: 0.3,
+      maxChildSize: 0.92,
+      builder: (context, scrollController) => SafeArea(
+        top: false,
+        child: ListView(
+          controller: scrollController,
+          padding: const EdgeInsets.only(bottom: 8),
+          children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'TEMPLATES',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                  'New transaction',
+                  style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
-                    letterSpacing: 1.1,
                   ),
                 ),
               ),
             ),
-            for (final t in templates)
-              ListTile(
-                leading: Icon(iconForTxType(t.type), color: colorForTxType(t.type)),
-                title: Text(t.name),
-                subtitle: Text(_subtitle(t, categoryMap)),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete_outline_rounded),
-                  tooltip: 'Delete template',
-                  onPressed: () => _confirmDelete(context, ref, t),
+            ListTile(
+              leading: const Icon(Icons.add_circle_outline_rounded),
+              title: const Text('Start from scratch'),
+              subtitle: const Text('A blank transaction.'),
+              onTap: () =>
+                  Navigator.of(context).pop(const _AddChoiceResult.blank()),
+            ),
+            if (templates.isNotEmpty) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'TEMPLATES',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
                 ),
-                onTap: () => Navigator.of(
-                  context,
-                ).pop(_AddChoiceResult.template(t.id)),
               ),
+              for (final t in templates)
+                ListTile(
+                  leading: Icon(
+                    iconForTxType(t.type),
+                    color: colorForTxType(t.type),
+                  ),
+                  title: Text(t.name),
+                  subtitle: Text(_subtitle(t, categoryMap)),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete_outline_rounded),
+                    tooltip: 'Delete template',
+                    onPressed: () => _confirmDelete(context, ref, t),
+                  ),
+                  onTap: () => Navigator.of(
+                    context,
+                  ).pop(_AddChoiceResult.template(t.id)),
+                ),
+            ],
           ],
-          const SizedBox(height: 8),
-        ],
+        ),
       ),
     );
   }
