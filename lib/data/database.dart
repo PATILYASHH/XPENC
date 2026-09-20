@@ -198,7 +198,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 71;
+  int get schemaVersion => 72;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -665,6 +665,34 @@ class AppDatabase extends _$AppDatabase {
         // Importing a phone number + photo from "Pick from contacts" when
         // adding a person.
         await _addColumnIfMissing(m, persons, persons.photoPath);
+      }
+      if (from < 72) {
+        // 3-tier app mode (Basic/Medium/Pro), plus Overflow + Rollover
+        // budgets (GitHub #134).
+        await _addColumnIfMissing(m, settings, settings.appMode);
+        await _addColumnIfMissing(
+          m,
+          budgets,
+          budgets.overflowTargetCategoryId,
+        );
+        await _addColumnIfMissing(m, budgets, budgets.rolloverEnabled);
+        await _addColumnIfMissing(m, budgets, budgets.rolloverDecayPct);
+
+        // Auto-assign existing users a tier so nothing they already use
+        // disappears: Pro if any account is already in Envelope Mode, else
+        // Medium. Raw SQL rather than a typed `select` since this runs
+        // before later migration steps might add columns a typed row
+        // mapper for this version would otherwise choke decoding.
+        final envelopeRows = await customSelect(
+          'SELECT 1 FROM accounts WHERE envelope_mode = 1 LIMIT 1',
+        ).get();
+        await update(settings).write(
+          SettingsCompanion(
+            appMode: Value(
+              envelopeRows.isNotEmpty ? AppMode.pro : AppMode.medium,
+            ),
+          ),
+        );
       }
     },
     beforeOpen: (details) async {
@@ -3370,6 +3398,94 @@ class AppDatabase extends _$AppDatabase {
   Stream<List<BudgetRow>> watchBudgets() =>
       (select(budgets)..where((b) => b.isActive.equals(true))).watch();
 
+  /// Sets or clears [categoryId]'s overflow target — see
+  /// [Budgets.overflowTargetCategoryId]. [categoryId] must already have a
+  /// budget (see [upsertBudget]). Throws [ArgumentError] on a self-target,
+  /// the target being this category's own parent or child (would
+  /// double-count against the parent/child roll-up in
+  /// `budgetProgressProvider`), or a cycle — walking the existing target
+  /// chain starting at [targetCategoryId] and rejecting if it ever reaches
+  /// [categoryId] (each category has at most one target, so this is a
+  /// linked-list walk, not a general graph search).
+  Future<void> setBudgetOverflowTarget(
+    int categoryId,
+    int? targetCategoryId,
+  ) async {
+    final existing =
+        await (select(
+          budgets,
+        )..where((b) => b.categoryId.equals(categoryId))).getSingleOrNull();
+    if (existing == null) {
+      throw ArgumentError('Set a budget for this category first.');
+    }
+    if (targetCategoryId != null) {
+      if (targetCategoryId == categoryId) {
+        throw ArgumentError("A category can't overflow into itself.");
+      }
+      final category = await categoryById(categoryId);
+      final target = await categoryById(targetCategoryId);
+      if (category == null || target == null) {
+        throw ArgumentError('That category no longer exists.');
+      }
+      if (target.parentId == categoryId ||
+          category.parentId == targetCategoryId) {
+        throw ArgumentError(
+          "A category can't overflow into its own parent or child — the "
+          'budget roll-up already combines them.',
+        );
+      }
+      var cursor = targetCategoryId;
+      final visited = <int>{categoryId};
+      while (true) {
+        if (!visited.add(cursor)) break; // defensive: pre-existing bad chain
+        final next =
+            await (select(
+              budgets,
+            )..where((b) => b.categoryId.equals(cursor))).getSingleOrNull();
+        if (next?.overflowTargetCategoryId == null) break;
+        if (next!.overflowTargetCategoryId == categoryId) {
+          throw ArgumentError(
+            'That would create a loop — the target category already '
+            'overflows (directly or indirectly) back into this one.',
+          );
+        }
+        cursor = next.overflowTargetCategoryId!;
+      }
+    }
+    await (update(
+      budgets,
+    )..where((b) => b.categoryId.equals(categoryId))).write(
+      BudgetsCompanion(overflowTargetCategoryId: Value(targetCategoryId)),
+    );
+  }
+
+  /// Turns Rollover on/off for [categoryId]'s budget and sets its decay
+  /// rate — see [Budgets.rolloverEnabled] / [Budgets.rolloverDecayPct].
+  /// [decayPct] is clamped 0-100 so a bad input can never carry in more
+  /// than the previous period actually left unspent. [categoryId] must
+  /// already have a budget (see [upsertBudget]).
+  Future<void> setBudgetRollover(
+    int categoryId, {
+    required bool enabled,
+    required int decayPct,
+  }) async {
+    final existing =
+        await (select(
+          budgets,
+        )..where((b) => b.categoryId.equals(categoryId))).getSingleOrNull();
+    if (existing == null) {
+      throw ArgumentError('Set a budget for this category first.');
+    }
+    await (update(
+      budgets,
+    )..where((b) => b.categoryId.equals(categoryId))).write(
+      BudgetsCompanion(
+        rolloverEnabled: Value(enabled),
+        rolloverDecayPct: Value(decayPct.clamp(0, 100)),
+      ),
+    );
+  }
+
   // ── Envelope Mode ─────────────────────────────────────────────────────────
   //
   // `category_balance` and `ready_to_assign` are never stored — always
@@ -5041,6 +5157,12 @@ class AppDatabase extends _$AppDatabase {
   Future<void> setHideAmounts(bool value) =>
       update(settings).write(SettingsCompanion(hideAmounts: Value(value)));
 
+  /// Switches the active tier — see [AppMode]. Purely a UI/nav gate; never
+  /// touches budgets, allocations, or any other data, so there is nothing
+  /// to migrate or reconcile on a switch in either direction.
+  Future<void> setAppMode(AppMode mode) =>
+      update(settings).write(SettingsCompanion(appMode: Value(mode)));
+
   Future<void> setShowCalendarDayTotals(bool value) => update(
     settings,
   ).write(SettingsCompanion(showCalendarDayTotals: Value(value)));
@@ -5831,7 +5953,12 @@ class AppDatabase extends _$AppDatabase {
   /// parent's budget rolls its children's spend into it, exactly like
   /// [budgetProgressProvider] shows on screen (duplicated here rather than
   /// shared, since that provider is a Riverpod composition this data-only
-  /// layer must not depend on).
+  /// layer must not depend on). `budgeted` includes Rollover's carried-in
+  /// amount when applicable (Pro only), matching
+  /// `effectiveBudgetAmountsProvider` — but `spent` is NOT Overflow-adjusted
+  /// (see `overflowAdjustedSpendProvider`), so a category with an overflow
+  /// target can show as over budget here even though the in-app view, which
+  /// reassigns the excess, does not. Known gap, not planned to be closed.
   Future<List<BudgetStatementLine>> budgetStatement(
     DateTime month,
     int startDay,
@@ -5843,6 +5970,17 @@ class AppDatabase extends _$AppDatabase {
     };
     final spend = await watchSpendByCategory(period.start, period.end).first;
 
+    final isPro = (await getSettings()).appMode == AppMode.pro;
+    Map<int, Money> prevSpend = const {};
+    if (isPro && budgetRows.any((b) => b.rolloverEnabled)) {
+      final prevAnchor = DateTime(month.year, month.month - 1);
+      final prevPeriod = budgetPeriodFor(prevAnchor, startDay);
+      prevSpend = await watchSpendByCategory(
+        prevPeriod.start,
+        prevPeriod.end,
+      ).first;
+    }
+
     final out = <BudgetStatementLine>[];
     for (final b in budgetRows) {
       final category = categoriesById[b.categoryId];
@@ -5853,7 +5991,14 @@ class AppDatabase extends _$AppDatabase {
           spent += spend[c.id] ?? const Money.zero();
         }
       }
-      out.add((category: category, budgeted: b.amount, spent: spent));
+      var budgeted = b.amount;
+      if (isPro && b.rolloverEnabled) {
+        final prevSpent = prevSpend[b.categoryId] ?? const Money.zero();
+        final unspent = b.amount - prevSpent;
+        final carried = unspent.isPositive ? unspent : const Money.zero();
+        budgeted += Money.fromPaise((carried.paise * b.rolloverDecayPct) ~/ 100);
+      }
+      out.add((category: category, budgeted: budgeted, spent: spent));
     }
     out.sort((a, b) => a.category.name.compareTo(b.category.name));
     return out;

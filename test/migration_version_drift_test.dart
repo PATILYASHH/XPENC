@@ -5,7 +5,8 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:xpenc/core/money.dart';
 import 'package:xpenc/data/database.dart';
-import 'package:xpenc/data/tables.dart' show CategoryKind, RecurringFrequency, UnlockMethod;
+import 'package:xpenc/data/tables.dart'
+    show AppMode, CategoryKind, RecurringFrequency, UnlockMethod;
 
 /// GitHub #49 / #50: some real devices ended up with a database whose
 /// stored `PRAGMA user_version` was *lower* than the schema version its
@@ -265,6 +266,53 @@ void main() {
     await expectLater(reopened.select(reopened.persons).get(), completes);
     await reopened.close();
   });
+
+  test(
+    'the v72 appMode/overflowTargetCategoryId/rolloverEnabled/'
+    'rolloverDecayPct columns (3-tier app mode + Overflow + Rollover '
+    'budgets, GitHub #134) survive a rolled-back re-open',
+    () async {
+      final file = await buildRolledBackDatabase(71);
+
+      final reopened = AppDatabase(NativeDatabase(file));
+      await expectLater(reopened.select(reopened.settings).get(), completes);
+      await expectLater(reopened.select(reopened.budgets).get(), completes);
+      await reopened.close();
+    },
+  );
+
+  test(
+    'GitHub #134: an existing user already in Envelope Mode on some account '
+    'is auto-assigned Pro by the v72 migration backfill, not left at the '
+    "medium default a fresh install's settings row would otherwise carry",
+    () async {
+      final file = File('${tempDir.path}/existing_envelope_user.sqlite');
+      var db = AppDatabase(NativeDatabase(file));
+      final cash = (await db.watchAccounts().first).first.id;
+      await db.setEnvelopeMode(cash, true);
+      await db.customStatement('PRAGMA user_version = 71');
+      await db.close();
+
+      final reopened = AppDatabase(NativeDatabase(file));
+      final row = await reopened.select(reopened.settings).getSingle();
+      expect(row.appMode, AppMode.pro);
+      await reopened.close();
+    },
+  );
+
+  test(
+    'GitHub #134: an existing user with no account in Envelope Mode is '
+    'auto-assigned Medium (not Basic) by the v72 migration backfill, so '
+    'their existing budgets and net worth keep showing',
+    () async {
+      final file = await buildRolledBackDatabase(71);
+
+      final reopened = AppDatabase(NativeDatabase(file));
+      final row = await reopened.select(reopened.settings).getSingle();
+      expect(row.appMode, AppMode.medium);
+      await reopened.close();
+    },
+  );
 
   test('GitHub #112: a settings row whose stored unlock_method is not a '
       "current UnlockMethod name (e.g. a rolling-BETA build's stale value) "

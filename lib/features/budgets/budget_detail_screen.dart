@@ -204,7 +204,7 @@ class _SummaryCard extends StatelessWidget {
                     child: _stat(
                       context,
                       'Budgeted',
-                      p.budget.amount,
+                      p.effectiveAmount,
                       alignEnd: true,
                     ),
                   ),
@@ -230,8 +230,8 @@ class _SummaryCard extends StatelessWidget {
               const SizedBox(height: 12),
               Text(
                 p.overspent
-                    ? '${MoneyFormat.symbol((p.budget.amount - p.spent).abs)} over budget'
-                    : '${MoneyFormat.symbol(p.budget.amount - p.spent)} left to spend',
+                    ? '${MoneyFormat.symbol((p.effectiveAmount - p.spent).abs)} over budget'
+                    : '${MoneyFormat.symbol(p.effectiveAmount - p.spent)} left to spend',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: p.overspent ? AppColors.expense : cs.onSurfaceVariant,
                 ),

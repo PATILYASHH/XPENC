@@ -69,6 +69,7 @@ void main() {
       autoBackupCooldownMinutes: cooldownMinutes,
       autoBackupPending: pending,
       lastAutoBackupAt: lastAutoBackupAt,
+      appMode: AppMode.medium,
       backupRetentionMode: BackupRetentionMode.days,
       backupRetentionDays: 180,
       backupRetentionCount: 0,

@@ -5105,6 +5105,47 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _overflowTargetCategoryIdMeta =
+      const VerificationMeta('overflowTargetCategoryId');
+  @override
+  late final GeneratedColumn<int> overflowTargetCategoryId =
+      GeneratedColumn<int>(
+        'overflow_target_category_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES categories (id)',
+        ),
+      );
+  static const VerificationMeta _rolloverEnabledMeta = const VerificationMeta(
+    'rolloverEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> rolloverEnabled = GeneratedColumn<bool>(
+    'rollover_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("rollover_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _rolloverDecayPctMeta = const VerificationMeta(
+    'rolloverDecayPct',
+  );
+  @override
+  late final GeneratedColumn<int> rolloverDecayPct = GeneratedColumn<int>(
+    'rollover_decay_pct',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -5115,6 +5156,9 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
     alertThresholdPct,
     isActive,
     note,
+    overflowTargetCategoryId,
+    rolloverEnabled,
+    rolloverDecayPct,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -5168,6 +5212,33 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
         note.isAcceptableOrUnknown(data['note']!, _noteMeta),
       );
     }
+    if (data.containsKey('overflow_target_category_id')) {
+      context.handle(
+        _overflowTargetCategoryIdMeta,
+        overflowTargetCategoryId.isAcceptableOrUnknown(
+          data['overflow_target_category_id']!,
+          _overflowTargetCategoryIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('rollover_enabled')) {
+      context.handle(
+        _rolloverEnabledMeta,
+        rolloverEnabled.isAcceptableOrUnknown(
+          data['rollover_enabled']!,
+          _rolloverEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('rollover_decay_pct')) {
+      context.handle(
+        _rolloverDecayPctMeta,
+        rolloverDecayPct.isAcceptableOrUnknown(
+          data['rollover_decay_pct']!,
+          _rolloverDecayPctMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -5217,6 +5288,18 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
         DriftSqlType.string,
         data['${effectivePrefix}note'],
       ),
+      overflowTargetCategoryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}overflow_target_category_id'],
+      ),
+      rolloverEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}rollover_enabled'],
+      )!,
+      rolloverDecayPct: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}rollover_decay_pct'],
+      )!,
     );
   }
 
@@ -5242,6 +5325,26 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
   /// Free-form context for this budget — why it's set the way it is, what
   /// it's meant to cover, a reminder for next month. Entirely optional.
   final String? note;
+
+  /// Overflow (opt-in, Medium/Pro — see [AppMode]): when this category's
+  /// spend exceeds [amount] for the period, the excess is displayed as
+  /// landing in this category's spend instead of this one's. Null = off,
+  /// the default — silently reclassifying spend hurts report accuracy, so
+  /// this is never turned on automatically. One-directional only; see
+  /// `AppDatabase.setBudgetOverflowTarget` for the no-cycle and
+  /// no-parent/child-target enforcement.
+  final int? overflowTargetCategoryId;
+
+  /// Rollover (opt-in, Pro only): whether unspent from the *previous*
+  /// period carries into this one — see
+  /// `AppDatabase.effectiveBudgetAmountsProvider`. Off by default, same
+  /// explicit-opt-in rule as [overflowTargetCategoryId].
+  final bool rolloverEnabled;
+
+  /// What % (0-100) of the previous period's unspent amount carries in when
+  /// [rolloverEnabled]. 100 = full carryover, 0 = none (flag on but inert).
+  /// Meaningless while [rolloverEnabled] is false.
+  final int rolloverDecayPct;
   const BudgetRow({
     required this.id,
     required this.categoryId,
@@ -5251,6 +5354,9 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
     required this.alertThresholdPct,
     required this.isActive,
     this.note,
+    this.overflowTargetCategoryId,
+    required this.rolloverEnabled,
+    required this.rolloverDecayPct,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5273,6 +5379,13 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
     if (!nullToAbsent || note != null) {
       map['note'] = Variable<String>(note);
     }
+    if (!nullToAbsent || overflowTargetCategoryId != null) {
+      map['overflow_target_category_id'] = Variable<int>(
+        overflowTargetCategoryId,
+      );
+    }
+    map['rollover_enabled'] = Variable<bool>(rolloverEnabled);
+    map['rollover_decay_pct'] = Variable<int>(rolloverDecayPct);
     return map;
   }
 
@@ -5286,6 +5399,11 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
       alertThresholdPct: Value(alertThresholdPct),
       isActive: Value(isActive),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      overflowTargetCategoryId: overflowTargetCategoryId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(overflowTargetCategoryId),
+      rolloverEnabled: Value(rolloverEnabled),
+      rolloverDecayPct: Value(rolloverDecayPct),
     );
   }
 
@@ -5305,6 +5423,11 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
       alertThresholdPct: serializer.fromJson<int>(json['alertThresholdPct']),
       isActive: serializer.fromJson<bool>(json['isActive']),
       note: serializer.fromJson<String?>(json['note']),
+      overflowTargetCategoryId: serializer.fromJson<int?>(
+        json['overflowTargetCategoryId'],
+      ),
+      rolloverEnabled: serializer.fromJson<bool>(json['rolloverEnabled']),
+      rolloverDecayPct: serializer.fromJson<int>(json['rolloverDecayPct']),
     );
   }
   @override
@@ -5321,6 +5444,11 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
       'alertThresholdPct': serializer.toJson<int>(alertThresholdPct),
       'isActive': serializer.toJson<bool>(isActive),
       'note': serializer.toJson<String?>(note),
+      'overflowTargetCategoryId': serializer.toJson<int?>(
+        overflowTargetCategoryId,
+      ),
+      'rolloverEnabled': serializer.toJson<bool>(rolloverEnabled),
+      'rolloverDecayPct': serializer.toJson<int>(rolloverDecayPct),
     };
   }
 
@@ -5333,6 +5461,9 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
     int? alertThresholdPct,
     bool? isActive,
     Value<String?> note = const Value.absent(),
+    Value<int?> overflowTargetCategoryId = const Value.absent(),
+    bool? rolloverEnabled,
+    int? rolloverDecayPct,
   }) => BudgetRow(
     id: id ?? this.id,
     categoryId: categoryId ?? this.categoryId,
@@ -5342,6 +5473,11 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
     alertThresholdPct: alertThresholdPct ?? this.alertThresholdPct,
     isActive: isActive ?? this.isActive,
     note: note.present ? note.value : this.note,
+    overflowTargetCategoryId: overflowTargetCategoryId.present
+        ? overflowTargetCategoryId.value
+        : this.overflowTargetCategoryId,
+    rolloverEnabled: rolloverEnabled ?? this.rolloverEnabled,
+    rolloverDecayPct: rolloverDecayPct ?? this.rolloverDecayPct,
   );
   BudgetRow copyWithCompanion(BudgetsCompanion data) {
     return BudgetRow(
@@ -5357,6 +5493,15 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
           : this.alertThresholdPct,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
       note: data.note.present ? data.note.value : this.note,
+      overflowTargetCategoryId: data.overflowTargetCategoryId.present
+          ? data.overflowTargetCategoryId.value
+          : this.overflowTargetCategoryId,
+      rolloverEnabled: data.rolloverEnabled.present
+          ? data.rolloverEnabled.value
+          : this.rolloverEnabled,
+      rolloverDecayPct: data.rolloverDecayPct.present
+          ? data.rolloverDecayPct.value
+          : this.rolloverDecayPct,
     );
   }
 
@@ -5370,7 +5515,10 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
           ..write('startDate: $startDate, ')
           ..write('alertThresholdPct: $alertThresholdPct, ')
           ..write('isActive: $isActive, ')
-          ..write('note: $note')
+          ..write('note: $note, ')
+          ..write('overflowTargetCategoryId: $overflowTargetCategoryId, ')
+          ..write('rolloverEnabled: $rolloverEnabled, ')
+          ..write('rolloverDecayPct: $rolloverDecayPct')
           ..write(')'))
         .toString();
   }
@@ -5385,6 +5533,9 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
     alertThresholdPct,
     isActive,
     note,
+    overflowTargetCategoryId,
+    rolloverEnabled,
+    rolloverDecayPct,
   );
   @override
   bool operator ==(Object other) =>
@@ -5397,7 +5548,10 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
           other.startDate == this.startDate &&
           other.alertThresholdPct == this.alertThresholdPct &&
           other.isActive == this.isActive &&
-          other.note == this.note);
+          other.note == this.note &&
+          other.overflowTargetCategoryId == this.overflowTargetCategoryId &&
+          other.rolloverEnabled == this.rolloverEnabled &&
+          other.rolloverDecayPct == this.rolloverDecayPct);
 }
 
 class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
@@ -5409,6 +5563,9 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
   final Value<int> alertThresholdPct;
   final Value<bool> isActive;
   final Value<String?> note;
+  final Value<int?> overflowTargetCategoryId;
+  final Value<bool> rolloverEnabled;
+  final Value<int> rolloverDecayPct;
   const BudgetsCompanion({
     this.id = const Value.absent(),
     this.categoryId = const Value.absent(),
@@ -5418,6 +5575,9 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     this.alertThresholdPct = const Value.absent(),
     this.isActive = const Value.absent(),
     this.note = const Value.absent(),
+    this.overflowTargetCategoryId = const Value.absent(),
+    this.rolloverEnabled = const Value.absent(),
+    this.rolloverDecayPct = const Value.absent(),
   });
   BudgetsCompanion.insert({
     this.id = const Value.absent(),
@@ -5428,6 +5588,9 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     this.alertThresholdPct = const Value.absent(),
     this.isActive = const Value.absent(),
     this.note = const Value.absent(),
+    this.overflowTargetCategoryId = const Value.absent(),
+    this.rolloverEnabled = const Value.absent(),
+    this.rolloverDecayPct = const Value.absent(),
   }) : categoryId = Value(categoryId),
        amount = Value(amount),
        period = Value(period),
@@ -5441,6 +5604,9 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     Expression<int>? alertThresholdPct,
     Expression<bool>? isActive,
     Expression<String>? note,
+    Expression<int>? overflowTargetCategoryId,
+    Expression<bool>? rolloverEnabled,
+    Expression<int>? rolloverDecayPct,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -5451,6 +5617,10 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
       if (alertThresholdPct != null) 'alert_threshold_pct': alertThresholdPct,
       if (isActive != null) 'is_active': isActive,
       if (note != null) 'note': note,
+      if (overflowTargetCategoryId != null)
+        'overflow_target_category_id': overflowTargetCategoryId,
+      if (rolloverEnabled != null) 'rollover_enabled': rolloverEnabled,
+      if (rolloverDecayPct != null) 'rollover_decay_pct': rolloverDecayPct,
     });
   }
 
@@ -5463,6 +5633,9 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     Value<int>? alertThresholdPct,
     Value<bool>? isActive,
     Value<String?>? note,
+    Value<int?>? overflowTargetCategoryId,
+    Value<bool>? rolloverEnabled,
+    Value<int>? rolloverDecayPct,
   }) {
     return BudgetsCompanion(
       id: id ?? this.id,
@@ -5473,6 +5646,10 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
       alertThresholdPct: alertThresholdPct ?? this.alertThresholdPct,
       isActive: isActive ?? this.isActive,
       note: note ?? this.note,
+      overflowTargetCategoryId:
+          overflowTargetCategoryId ?? this.overflowTargetCategoryId,
+      rolloverEnabled: rolloverEnabled ?? this.rolloverEnabled,
+      rolloverDecayPct: rolloverDecayPct ?? this.rolloverDecayPct,
     );
   }
 
@@ -5507,6 +5684,17 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     if (note.present) {
       map['note'] = Variable<String>(note.value);
     }
+    if (overflowTargetCategoryId.present) {
+      map['overflow_target_category_id'] = Variable<int>(
+        overflowTargetCategoryId.value,
+      );
+    }
+    if (rolloverEnabled.present) {
+      map['rollover_enabled'] = Variable<bool>(rolloverEnabled.value);
+    }
+    if (rolloverDecayPct.present) {
+      map['rollover_decay_pct'] = Variable<int>(rolloverDecayPct.value);
+    }
     return map;
   }
 
@@ -5520,7 +5708,10 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
           ..write('startDate: $startDate, ')
           ..write('alertThresholdPct: $alertThresholdPct, ')
           ..write('isActive: $isActive, ')
-          ..write('note: $note')
+          ..write('note: $note, ')
+          ..write('overflowTargetCategoryId: $overflowTargetCategoryId, ')
+          ..write('rolloverEnabled: $rolloverEnabled, ')
+          ..write('rolloverDecayPct: $rolloverDecayPct')
           ..write(')'))
         .toString();
   }
@@ -9198,6 +9389,16 @@ class $SettingsTable extends Settings
     ),
     defaultValue: const Constant(false),
   );
+  @override
+  late final GeneratedColumnWithTypeConverter<AppMode, String> appMode =
+      GeneratedColumn<String>(
+        'app_mode',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('medium'),
+      ).withConverter<AppMode>($SettingsTable.$converterappMode);
   static const VerificationMeta _pinTimeoutMinutesMeta = const VerificationMeta(
     'pinTimeoutMinutes',
   );
@@ -9715,6 +9916,7 @@ class $SettingsTable extends Settings
     moreScreenViewMode,
     budgetingMode,
     rtaEnabled,
+    appMode,
     pinTimeoutMinutes,
     masterPhraseHash,
     masterPhraseSalt,
@@ -10430,6 +10632,12 @@ class $SettingsTable extends Settings
         DriftSqlType.bool,
         data['${effectivePrefix}rta_enabled'],
       )!,
+      appMode: $SettingsTable.$converterappMode.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}app_mode'],
+        )!,
+      ),
       pinTimeoutMinutes: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}pin_timeout_minutes'],
@@ -10608,6 +10816,8 @@ class $SettingsTable extends Settings
   $converterbudgetingMode = const EnumNameConverter<BudgetingMode>(
     BudgetingMode.values,
   );
+  static JsonTypeConverter2<AppMode, String, String> $converterappMode =
+      const EnumNameConverter<AppMode>(AppMode.values);
   static JsonTypeConverter2<UnlockMethod, String, String>
   $converterunlockMethod = const EnumNameConverter<UnlockMethod>(
     UnlockMethod.values,
@@ -10739,6 +10949,15 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// turns itself back off automatically the moment the pool would
   /// otherwise go empty (see `AppDatabase._maybeAutoDisableRta`).
   final bool rtaEnabled;
+
+  /// Which of the three tiers is active — see [AppMode]. Defaults to
+  /// `medium` so a schema-fresh install (before onboarding writes a real
+  /// choice) lands on today's actual feature set rather than silently
+  /// losing budgets/net worth. New users overwrite this from the onboarding
+  /// mode picker (`OnboardingScreen._finishOnboarding`); existing users get
+  /// it backfilled once, from whether any account already has
+  /// [Accounts.envelopeMode] on, by the `from < 72` migration.
+  final AppMode appMode;
 
   /// Minutes the app may sit backgrounded before the next resume re-locks it
   /// — `0` means immediately (see GitHub #60). Checked against how long the
@@ -10984,6 +11203,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     required this.moreScreenViewMode,
     required this.budgetingMode,
     required this.rtaEnabled,
+    required this.appMode,
     required this.pinTimeoutMinutes,
     this.masterPhraseHash,
     this.masterPhraseSalt,
@@ -11089,6 +11309,11 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       );
     }
     map['rta_enabled'] = Variable<bool>(rtaEnabled);
+    {
+      map['app_mode'] = Variable<String>(
+        $SettingsTable.$converterappMode.toSql(appMode),
+      );
+    }
     map['pin_timeout_minutes'] = Variable<int>(pinTimeoutMinutes);
     if (!nullToAbsent || masterPhraseHash != null) {
       map['master_phrase_hash'] = Variable<String>(masterPhraseHash);
@@ -11217,6 +11442,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       moreScreenViewMode: Value(moreScreenViewMode),
       budgetingMode: Value(budgetingMode),
       rtaEnabled: Value(rtaEnabled),
+      appMode: Value(appMode),
       pinTimeoutMinutes: Value(pinTimeoutMinutes),
       masterPhraseHash: masterPhraseHash == null && nullToAbsent
           ? const Value.absent()
@@ -11321,6 +11547,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
         serializer.fromJson<String>(json['budgetingMode']),
       ),
       rtaEnabled: serializer.fromJson<bool>(json['rtaEnabled']),
+      appMode: $SettingsTable.$converterappMode.fromJson(
+        serializer.fromJson<String>(json['appMode']),
+      ),
       pinTimeoutMinutes: serializer.fromJson<int>(json['pinTimeoutMinutes']),
       masterPhraseHash: serializer.fromJson<String?>(json['masterPhraseHash']),
       masterPhraseSalt: serializer.fromJson<String?>(json['masterPhraseSalt']),
@@ -11440,6 +11669,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
         $SettingsTable.$converterbudgetingMode.toJson(budgetingMode),
       ),
       'rtaEnabled': serializer.toJson<bool>(rtaEnabled),
+      'appMode': serializer.toJson<String>(
+        $SettingsTable.$converterappMode.toJson(appMode),
+      ),
       'pinTimeoutMinutes': serializer.toJson<int>(pinTimeoutMinutes),
       'masterPhraseHash': serializer.toJson<String?>(masterPhraseHash),
       'masterPhraseSalt': serializer.toJson<String?>(masterPhraseSalt),
@@ -11533,6 +11765,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     MoreScreenViewMode? moreScreenViewMode,
     BudgetingMode? budgetingMode,
     bool? rtaEnabled,
+    AppMode? appMode,
     int? pinTimeoutMinutes,
     Value<String?> masterPhraseHash = const Value.absent(),
     Value<String?> masterPhraseSalt = const Value.absent(),
@@ -11608,6 +11841,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     moreScreenViewMode: moreScreenViewMode ?? this.moreScreenViewMode,
     budgetingMode: budgetingMode ?? this.budgetingMode,
     rtaEnabled: rtaEnabled ?? this.rtaEnabled,
+    appMode: appMode ?? this.appMode,
     pinTimeoutMinutes: pinTimeoutMinutes ?? this.pinTimeoutMinutes,
     masterPhraseHash: masterPhraseHash.present
         ? masterPhraseHash.value
@@ -11739,6 +11973,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       rtaEnabled: data.rtaEnabled.present
           ? data.rtaEnabled.value
           : this.rtaEnabled,
+      appMode: data.appMode.present ? data.appMode.value : this.appMode,
       pinTimeoutMinutes: data.pinTimeoutMinutes.present
           ? data.pinTimeoutMinutes.value
           : this.pinTimeoutMinutes,
@@ -11890,6 +12125,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('moreScreenViewMode: $moreScreenViewMode, ')
           ..write('budgetingMode: $budgetingMode, ')
           ..write('rtaEnabled: $rtaEnabled, ')
+          ..write('appMode: $appMode, ')
           ..write('pinTimeoutMinutes: $pinTimeoutMinutes, ')
           ..write('masterPhraseHash: $masterPhraseHash, ')
           ..write('masterPhraseSalt: $masterPhraseSalt, ')
@@ -11967,6 +12203,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     moreScreenViewMode,
     budgetingMode,
     rtaEnabled,
+    appMode,
     pinTimeoutMinutes,
     masterPhraseHash,
     masterPhraseSalt,
@@ -12041,6 +12278,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.moreScreenViewMode == this.moreScreenViewMode &&
           other.budgetingMode == this.budgetingMode &&
           other.rtaEnabled == this.rtaEnabled &&
+          other.appMode == this.appMode &&
           other.pinTimeoutMinutes == this.pinTimeoutMinutes &&
           other.masterPhraseHash == this.masterPhraseHash &&
           other.masterPhraseSalt == this.masterPhraseSalt &&
@@ -12115,6 +12353,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<MoreScreenViewMode> moreScreenViewMode;
   final Value<BudgetingMode> budgetingMode;
   final Value<bool> rtaEnabled;
+  final Value<AppMode> appMode;
   final Value<int> pinTimeoutMinutes;
   final Value<String?> masterPhraseHash;
   final Value<String?> masterPhraseSalt;
@@ -12185,6 +12424,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.moreScreenViewMode = const Value.absent(),
     this.budgetingMode = const Value.absent(),
     this.rtaEnabled = const Value.absent(),
+    this.appMode = const Value.absent(),
     this.pinTimeoutMinutes = const Value.absent(),
     this.masterPhraseHash = const Value.absent(),
     this.masterPhraseSalt = const Value.absent(),
@@ -12256,6 +12496,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.moreScreenViewMode = const Value.absent(),
     this.budgetingMode = const Value.absent(),
     this.rtaEnabled = const Value.absent(),
+    this.appMode = const Value.absent(),
     this.pinTimeoutMinutes = const Value.absent(),
     this.masterPhraseHash = const Value.absent(),
     this.masterPhraseSalt = const Value.absent(),
@@ -12327,6 +12568,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<String>? moreScreenViewMode,
     Expression<String>? budgetingMode,
     Expression<bool>? rtaEnabled,
+    Expression<String>? appMode,
     Expression<int>? pinTimeoutMinutes,
     Expression<String>? masterPhraseHash,
     Expression<String>? masterPhraseSalt,
@@ -12403,6 +12645,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
         'more_screen_view_mode': moreScreenViewMode,
       if (budgetingMode != null) 'budgeting_mode': budgetingMode,
       if (rtaEnabled != null) 'rta_enabled': rtaEnabled,
+      if (appMode != null) 'app_mode': appMode,
       if (pinTimeoutMinutes != null) 'pin_timeout_minutes': pinTimeoutMinutes,
       if (masterPhraseHash != null) 'master_phrase_hash': masterPhraseHash,
       if (masterPhraseSalt != null) 'master_phrase_salt': masterPhraseSalt,
@@ -12493,6 +12736,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<MoreScreenViewMode>? moreScreenViewMode,
     Value<BudgetingMode>? budgetingMode,
     Value<bool>? rtaEnabled,
+    Value<AppMode>? appMode,
     Value<int>? pinTimeoutMinutes,
     Value<String?>? masterPhraseHash,
     Value<String?>? masterPhraseSalt,
@@ -12566,6 +12810,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       moreScreenViewMode: moreScreenViewMode ?? this.moreScreenViewMode,
       budgetingMode: budgetingMode ?? this.budgetingMode,
       rtaEnabled: rtaEnabled ?? this.rtaEnabled,
+      appMode: appMode ?? this.appMode,
       pinTimeoutMinutes: pinTimeoutMinutes ?? this.pinTimeoutMinutes,
       masterPhraseHash: masterPhraseHash ?? this.masterPhraseHash,
       masterPhraseSalt: masterPhraseSalt ?? this.masterPhraseSalt,
@@ -12724,6 +12969,11 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     }
     if (rtaEnabled.present) {
       map['rta_enabled'] = Variable<bool>(rtaEnabled.value);
+    }
+    if (appMode.present) {
+      map['app_mode'] = Variable<String>(
+        $SettingsTable.$converterappMode.toSql(appMode.value),
+      );
     }
     if (pinTimeoutMinutes.present) {
       map['pin_timeout_minutes'] = Variable<int>(pinTimeoutMinutes.value);
@@ -12908,6 +13158,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('moreScreenViewMode: $moreScreenViewMode, ')
           ..write('budgetingMode: $budgetingMode, ')
           ..write('rtaEnabled: $rtaEnabled, ')
+          ..write('appMode: $appMode, ')
           ..write('pinTimeoutMinutes: $pinTimeoutMinutes, ')
           ..write('masterPhraseHash: $masterPhraseHash, ')
           ..write('masterPhraseSalt: $masterPhraseSalt, ')
@@ -24174,25 +24425,6 @@ final class $$CategoriesTableReferences
     );
   }
 
-  static MultiTypedResultKey<$BudgetsTable, List<BudgetRow>> _budgetsRefsTable(
-    _$AppDatabase db,
-  ) => MultiTypedResultKey.fromTable(
-    db.budgets,
-    aliasName: $_aliasNameGenerator(db.categories.id, db.budgets.categoryId),
-  );
-
-  $$BudgetsTableProcessedTableManager get budgetsRefs {
-    final manager = $$BudgetsTableTableManager(
-      $_db,
-      $_db.budgets,
-    ).filter((f) => f.categoryId.id.sqlEquals($_itemColumn<int>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(_budgetsRefsTable($_db));
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
-    );
-  }
-
   static MultiTypedResultKey<$PersonEntriesTable, List<PersonEntryRow>>
   _personEntriesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
     db.personEntries,
@@ -24502,31 +24734,6 @@ class $$CategoriesTableFilterComposer
           }) => $$TransactionsTableFilterComposer(
             $db: $db,
             $table: $db.transactions,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-
-  Expression<bool> budgetsRefs(
-    Expression<bool> Function($$BudgetsTableFilterComposer f) f,
-  ) {
-    final $$BudgetsTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.budgets,
-      getReferencedColumn: (t) => t.categoryId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$BudgetsTableFilterComposer(
-            $db: $db,
-            $table: $db.budgets,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -24924,31 +25131,6 @@ class $$CategoriesTableAnnotationComposer
     return f(composer);
   }
 
-  Expression<T> budgetsRefs<T extends Object>(
-    Expression<T> Function($$BudgetsTableAnnotationComposer a) f,
-  ) {
-    final $$BudgetsTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.budgets,
-      getReferencedColumn: (t) => t.categoryId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$BudgetsTableAnnotationComposer(
-            $db: $db,
-            $table: $db.budgets,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-
   Expression<T> personEntriesRefs<T extends Object>(
     Expression<T> Function($$PersonEntriesTableAnnotationComposer a) f,
   ) {
@@ -25218,7 +25400,6 @@ class $$CategoriesTableTableManager
           PrefetchHooks Function({
             bool recurringRulesRefs,
             bool transactionsRefs,
-            bool budgetsRefs,
             bool personEntriesRefs,
             bool groupExpensesRefs,
             bool remindersRefs,
@@ -25294,7 +25475,6 @@ class $$CategoriesTableTableManager
               ({
                 recurringRulesRefs = false,
                 transactionsRefs = false,
-                budgetsRefs = false,
                 personEntriesRefs = false,
                 groupExpensesRefs = false,
                 remindersRefs = false,
@@ -25311,7 +25491,6 @@ class $$CategoriesTableTableManager
                   explicitlyWatchedTables: [
                     if (recurringRulesRefs) db.recurringRules,
                     if (transactionsRefs) db.transactions,
-                    if (budgetsRefs) db.budgets,
                     if (personEntriesRefs) db.personEntries,
                     if (groupExpensesRefs) db.groupExpenses,
                     if (remindersRefs) db.reminders,
@@ -25362,27 +25541,6 @@ class $$CategoriesTableTableManager
                                 table,
                                 p0,
                               ).transactionsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.categoryId == item.id,
-                              ),
-                          typedResults: items,
-                        ),
-                      if (budgetsRefs)
-                        await $_getPrefetchedData<
-                          CategoryRow,
-                          $CategoriesTable,
-                          BudgetRow
-                        >(
-                          currentTable: table,
-                          referencedTable: $$CategoriesTableReferences
-                              ._budgetsRefsTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$CategoriesTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).budgetsRefs,
                           referencedItemsForCurrentItem:
                               (item, referencedItems) => referencedItems.where(
                                 (e) => e.categoryId == item.id,
@@ -25622,7 +25780,6 @@ typedef $$CategoriesTableProcessedTableManager =
       PrefetchHooks Function({
         bool recurringRulesRefs,
         bool transactionsRefs,
-        bool budgetsRefs,
         bool personEntriesRefs,
         bool groupExpensesRefs,
         bool remindersRefs,
@@ -29367,6 +29524,9 @@ typedef $$BudgetsTableCreateCompanionBuilder =
       Value<int> alertThresholdPct,
       Value<bool> isActive,
       Value<String?> note,
+      Value<int?> overflowTargetCategoryId,
+      Value<bool> rolloverEnabled,
+      Value<int> rolloverDecayPct,
     });
 typedef $$BudgetsTableUpdateCompanionBuilder =
     BudgetsCompanion Function({
@@ -29378,6 +29538,9 @@ typedef $$BudgetsTableUpdateCompanionBuilder =
       Value<int> alertThresholdPct,
       Value<bool> isActive,
       Value<String?> note,
+      Value<int?> overflowTargetCategoryId,
+      Value<bool> rolloverEnabled,
+      Value<int> rolloverDecayPct,
     });
 
 final class $$BudgetsTableReferences
@@ -29397,6 +29560,30 @@ final class $$BudgetsTableReferences
       $_db.categories,
     ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_categoryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $CategoriesTable _overflowTargetCategoryIdTable(_$AppDatabase db) =>
+      db.categories.createAlias(
+        $_aliasNameGenerator(
+          db.budgets.overflowTargetCategoryId,
+          db.categories.id,
+        ),
+      );
+
+  $$CategoriesTableProcessedTableManager? get overflowTargetCategoryId {
+    final $_column = $_itemColumn<int>('overflow_target_category_id');
+    if ($_column == null) return null;
+    final manager = $$CategoriesTableTableManager(
+      $_db,
+      $_db.categories,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(
+      _overflowTargetCategoryIdTable($_db),
+    );
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -29450,10 +29637,43 @@ class $$BudgetsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get rolloverEnabled => $composableBuilder(
+    column: $table.rolloverEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get rolloverDecayPct => $composableBuilder(
+    column: $table.rolloverDecayPct,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$CategoriesTableFilterComposer get categoryId {
     final $$CategoriesTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableFilterComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CategoriesTableFilterComposer get overflowTargetCategoryId {
+    final $$CategoriesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.overflowTargetCategoryId,
       referencedTable: $db.categories,
       getReferencedColumn: (t) => t.id,
       builder:
@@ -29518,10 +29738,43 @@ class $$BudgetsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get rolloverEnabled => $composableBuilder(
+    column: $table.rolloverEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get rolloverDecayPct => $composableBuilder(
+    column: $table.rolloverDecayPct,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CategoriesTableOrderingComposer get categoryId {
     final $$CategoriesTableOrderingComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableOrderingComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CategoriesTableOrderingComposer get overflowTargetCategoryId {
+    final $$CategoriesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.overflowTargetCategoryId,
       referencedTable: $db.categories,
       getReferencedColumn: (t) => t.id,
       builder:
@@ -29574,10 +29827,43 @@ class $$BudgetsTableAnnotationComposer
   GeneratedColumn<String> get note =>
       $composableBuilder(column: $table.note, builder: (column) => column);
 
+  GeneratedColumn<bool> get rolloverEnabled => $composableBuilder(
+    column: $table.rolloverEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get rolloverDecayPct => $composableBuilder(
+    column: $table.rolloverDecayPct,
+    builder: (column) => column,
+  );
+
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CategoriesTableAnnotationComposer get overflowTargetCategoryId {
+    final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.overflowTargetCategoryId,
       referencedTable: $db.categories,
       getReferencedColumn: (t) => t.id,
       builder:
@@ -29611,7 +29897,10 @@ class $$BudgetsTableTableManager
           $$BudgetsTableUpdateCompanionBuilder,
           (BudgetRow, $$BudgetsTableReferences),
           BudgetRow,
-          PrefetchHooks Function({bool categoryId})
+          PrefetchHooks Function({
+            bool categoryId,
+            bool overflowTargetCategoryId,
+          })
         > {
   $$BudgetsTableTableManager(_$AppDatabase db, $BudgetsTable table)
     : super(
@@ -29634,6 +29923,9 @@ class $$BudgetsTableTableManager
                 Value<int> alertThresholdPct = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<String?> note = const Value.absent(),
+                Value<int?> overflowTargetCategoryId = const Value.absent(),
+                Value<bool> rolloverEnabled = const Value.absent(),
+                Value<int> rolloverDecayPct = const Value.absent(),
               }) => BudgetsCompanion(
                 id: id,
                 categoryId: categoryId,
@@ -29643,6 +29935,9 @@ class $$BudgetsTableTableManager
                 alertThresholdPct: alertThresholdPct,
                 isActive: isActive,
                 note: note,
+                overflowTargetCategoryId: overflowTargetCategoryId,
+                rolloverEnabled: rolloverEnabled,
+                rolloverDecayPct: rolloverDecayPct,
               ),
           createCompanionCallback:
               ({
@@ -29654,6 +29949,9 @@ class $$BudgetsTableTableManager
                 Value<int> alertThresholdPct = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<String?> note = const Value.absent(),
+                Value<int?> overflowTargetCategoryId = const Value.absent(),
+                Value<bool> rolloverEnabled = const Value.absent(),
+                Value<int> rolloverDecayPct = const Value.absent(),
               }) => BudgetsCompanion.insert(
                 id: id,
                 categoryId: categoryId,
@@ -29663,6 +29961,9 @@ class $$BudgetsTableTableManager
                 alertThresholdPct: alertThresholdPct,
                 isActive: isActive,
                 note: note,
+                overflowTargetCategoryId: overflowTargetCategoryId,
+                rolloverEnabled: rolloverEnabled,
+                rolloverDecayPct: rolloverDecayPct,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -29672,47 +29973,62 @@ class $$BudgetsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({categoryId = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [],
-              addJoins:
-                  <
-                    T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic
-                    >
-                  >(state) {
-                    if (categoryId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.categoryId,
-                                referencedTable: $$BudgetsTableReferences
-                                    ._categoryIdTable(db),
-                                referencedColumn: $$BudgetsTableReferences
-                                    ._categoryIdTable(db)
-                                    .id,
-                              )
-                              as T;
-                    }
+          prefetchHooksCallback:
+              ({categoryId = false, overflowTargetCategoryId = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (categoryId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.categoryId,
+                                    referencedTable: $$BudgetsTableReferences
+                                        ._categoryIdTable(db),
+                                    referencedColumn: $$BudgetsTableReferences
+                                        ._categoryIdTable(db)
+                                        .id,
+                                  )
+                                  as T;
+                        }
+                        if (overflowTargetCategoryId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn:
+                                        table.overflowTargetCategoryId,
+                                    referencedTable: $$BudgetsTableReferences
+                                        ._overflowTargetCategoryIdTable(db),
+                                    referencedColumn: $$BudgetsTableReferences
+                                        ._overflowTargetCategoryIdTable(db)
+                                        .id,
+                                  )
+                                  as T;
+                        }
 
-                    return state;
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [];
                   },
-              getPrefetchedDataCallback: (items) async {
-                return [];
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -29729,7 +30045,7 @@ typedef $$BudgetsTableProcessedTableManager =
       $$BudgetsTableUpdateCompanionBuilder,
       (BudgetRow, $$BudgetsTableReferences),
       BudgetRow,
-      PrefetchHooks Function({bool categoryId})
+      PrefetchHooks Function({bool categoryId, bool overflowTargetCategoryId})
     >;
 typedef $$PersonEntriesTableCreateCompanionBuilder =
     PersonEntriesCompanion Function({
@@ -33591,6 +33907,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<MoreScreenViewMode> moreScreenViewMode,
       Value<BudgetingMode> budgetingMode,
       Value<bool> rtaEnabled,
+      Value<AppMode> appMode,
       Value<int> pinTimeoutMinutes,
       Value<String?> masterPhraseHash,
       Value<String?> masterPhraseSalt,
@@ -33663,6 +33980,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<MoreScreenViewMode> moreScreenViewMode,
       Value<BudgetingMode> budgetingMode,
       Value<bool> rtaEnabled,
+      Value<AppMode> appMode,
       Value<int> pinTimeoutMinutes,
       Value<String?> masterPhraseHash,
       Value<String?> masterPhraseSalt,
@@ -33893,6 +34211,12 @@ class $$SettingsTableFilterComposer
     column: $table.rtaEnabled,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnWithTypeConverterFilters<AppMode, AppMode, String> get appMode =>
+      $composableBuilder(
+        column: $table.appMode,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
 
   ColumnFilters<int> get pinTimeoutMinutes => $composableBuilder(
     column: $table.pinTimeoutMinutes,
@@ -34278,6 +34602,11 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get appMode => $composableBuilder(
+    column: $table.appMode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get pinTimeoutMinutes => $composableBuilder(
     column: $table.pinTimeoutMinutes,
     builder: (column) => ColumnOrderings(column),
@@ -34636,6 +34965,9 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumnWithTypeConverter<AppMode, String> get appMode =>
+      $composableBuilder(column: $table.appMode, builder: (column) => column);
+
   GeneratedColumn<int> get pinTimeoutMinutes => $composableBuilder(
     column: $table.pinTimeoutMinutes,
     builder: (column) => column,
@@ -34908,6 +35240,7 @@ class $$SettingsTableTableManager
                     const Value.absent(),
                 Value<BudgetingMode> budgetingMode = const Value.absent(),
                 Value<bool> rtaEnabled = const Value.absent(),
+                Value<AppMode> appMode = const Value.absent(),
                 Value<int> pinTimeoutMinutes = const Value.absent(),
                 Value<String?> masterPhraseHash = const Value.absent(),
                 Value<String?> masterPhraseSalt = const Value.absent(),
@@ -34980,6 +35313,7 @@ class $$SettingsTableTableManager
                 moreScreenViewMode: moreScreenViewMode,
                 budgetingMode: budgetingMode,
                 rtaEnabled: rtaEnabled,
+                appMode: appMode,
                 pinTimeoutMinutes: pinTimeoutMinutes,
                 masterPhraseHash: masterPhraseHash,
                 masterPhraseSalt: masterPhraseSalt,
@@ -35053,6 +35387,7 @@ class $$SettingsTableTableManager
                     const Value.absent(),
                 Value<BudgetingMode> budgetingMode = const Value.absent(),
                 Value<bool> rtaEnabled = const Value.absent(),
+                Value<AppMode> appMode = const Value.absent(),
                 Value<int> pinTimeoutMinutes = const Value.absent(),
                 Value<String?> masterPhraseHash = const Value.absent(),
                 Value<String?> masterPhraseSalt = const Value.absent(),
@@ -35125,6 +35460,7 @@ class $$SettingsTableTableManager
                 moreScreenViewMode: moreScreenViewMode,
                 budgetingMode: budgetingMode,
                 rtaEnabled: rtaEnabled,
+                appMode: appMode,
                 pinTimeoutMinutes: pinTimeoutMinutes,
                 masterPhraseHash: masterPhraseHash,
                 masterPhraseSalt: masterPhraseSalt,

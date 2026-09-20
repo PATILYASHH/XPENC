@@ -128,7 +128,12 @@ void main() {
       expect(find.text('Ready to Assign'), findsNothing);
       await unmount(tester);
 
-      await tester.runAsync(() => db.setRtaEnabled(true));
+      // Ready to Assign is Pro-only (see AppMode), on top of the existing
+      // rtaEnabled + on-budget-account requirements.
+      await tester.runAsync(() async {
+        await db.setAppMode(AppMode.pro);
+        await db.setRtaEnabled(true);
+      });
 
       await pump(tester, const DashboardScreen());
       expect(tester.takeException(), isNull);

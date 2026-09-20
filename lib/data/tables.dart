@@ -144,6 +144,15 @@ enum MoreScreenViewMode { list, cards }
 /// anymore.
 enum BudgetingMode { budgets, envelope }
 
+/// The three feature tiers a user (or the `from < 72` migration backfill)
+/// picks — see [Settings.appMode]. `basic`: transactions + persons only.
+/// `medium`: today's full app (accounts, budgets, net worth) minus envelope
+/// mode, plus Overflow. `pro`: everything in `medium`, plus envelope mode,
+/// plus Rollover (Overflow still available too). Purely a UI/nav gate — see
+/// `appModeProvider` and its call sites in `AppShell`/`DashboardScreen` — it
+/// never blocks a write the data layer would otherwise allow.
+enum AppMode { basic, medium, pro }
+
 // ─── Converters ─────────────────────────────────────────────────────────────
 
 /// Money crosses the DB boundary as an integer number of paise. Never a double.
@@ -426,6 +435,29 @@ class Budgets extends Table {
   /// Free-form context for this budget — why it's set the way it is, what
   /// it's meant to cover, a reminder for next month. Entirely optional.
   TextColumn get note => text().nullable()();
+
+  /// Overflow (opt-in, Medium/Pro — see [AppMode]): when this category's
+  /// spend exceeds [amount] for the period, the excess is displayed as
+  /// landing in this category's spend instead of this one's. Null = off,
+  /// the default — silently reclassifying spend hurts report accuracy, so
+  /// this is never turned on automatically. One-directional only; see
+  /// `AppDatabase.setBudgetOverflowTarget` for the no-cycle and
+  /// no-parent/child-target enforcement.
+  IntColumn get overflowTargetCategoryId =>
+      integer().nullable().references(Categories, #id)();
+
+  /// Rollover (opt-in, Pro only): whether unspent from the *previous*
+  /// period carries into this one — see
+  /// `AppDatabase.effectiveBudgetAmountsProvider`. Off by default, same
+  /// explicit-opt-in rule as [overflowTargetCategoryId].
+  BoolColumn get rolloverEnabled =>
+      boolean().withDefault(const Constant(false))();
+
+  /// What % (0-100) of the previous period's unspent amount carries in when
+  /// [rolloverEnabled]. 100 = full carryover, 0 = none (flag on but inert).
+  /// Meaningless while [rolloverEnabled] is false.
+  IntColumn get rolloverDecayPct =>
+      integer().withDefault(const Constant(0))();
 
   @override
   List<Set<Column>> get uniqueKeys => [
@@ -901,6 +933,16 @@ class Settings extends Table {
   /// turns itself back off automatically the moment the pool would
   /// otherwise go empty (see `AppDatabase._maybeAutoDisableRta`).
   BoolColumn get rtaEnabled => boolean().withDefault(const Constant(false))();
+
+  /// Which of the three tiers is active — see [AppMode]. Defaults to
+  /// `medium` so a schema-fresh install (before onboarding writes a real
+  /// choice) lands on today's actual feature set rather than silently
+  /// losing budgets/net worth. New users overwrite this from the onboarding
+  /// mode picker (`OnboardingScreen._finishOnboarding`); existing users get
+  /// it backfilled once, from whether any account already has
+  /// [Accounts.envelopeMode] on, by the `from < 72` migration.
+  TextColumn get appMode =>
+      textEnum<AppMode>().withDefault(const Constant('medium'))();
 
   /// Minutes the app may sit backgrounded before the next resume re-locks it
   /// — `0` means immediately (see GitHub #60). Checked against how long the

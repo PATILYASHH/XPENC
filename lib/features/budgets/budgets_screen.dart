@@ -65,7 +65,7 @@ class BudgetsScreen extends ConsumerWidget {
       // 2000, not 4000).
       final parentId = p.category.parentId;
       if (parentId != null && progressById.containsKey(parentId)) continue;
-      totalBudgeted += p.budget.amount;
+      totalBudgeted += p.effectiveAmount;
       totalSpent += p.spent;
     }
 
@@ -504,7 +504,7 @@ class _BudgetTile extends ConsumerWidget {
         ),
         SizedBox(height: compact ? 4 : 6),
         Text(
-          '${MoneyFormat.symbol(p.spent)} of ${MoneyFormat.symbol(p.budget.amount)}',
+          '${MoneyFormat.symbol(p.spent)} of ${MoneyFormat.symbol(p.effectiveAmount)}',
           style: theme.textTheme.bodySmall?.copyWith(
             color: cs.onSurfaceVariant,
           ),
@@ -653,6 +653,9 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
   late final TextEditingController _amountCtrl;
   late final TextEditingController _noteCtrl;
   late double _threshold;
+  int? _overflowTarget;
+  late bool _rolloverEnabled;
+  late double _rolloverDecayPct;
 
   @override
   void initState() {
@@ -664,6 +667,11 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
     _noteCtrl = TextEditingController(text: existing?.budget.note ?? '');
     _threshold = (existing?.budget.alertThresholdPct ?? 80)
         .clamp(50, 95)
+        .toDouble();
+    _overflowTarget = existing?.budget.overflowTargetCategoryId;
+    _rolloverEnabled = existing?.budget.rolloverEnabled ?? false;
+    _rolloverDecayPct = (existing?.budget.rolloverDecayPct ?? 100)
+        .clamp(0, 100)
         .toDouble();
   }
 
@@ -683,15 +691,14 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
       return;
     }
     final messenger = ScaffoldMessenger.of(context);
+    final db = ref.read(dbProvider);
     try {
-      await ref
-          .read(dbProvider)
-          .upsertBudget(
-            categoryId: widget.category.id,
-            amount: amount,
-            alertThresholdPct: _threshold.round(),
-            note: _noteCtrl.text,
-          );
+      await db.upsertBudget(
+        categoryId: widget.category.id,
+        amount: amount,
+        alertThresholdPct: _threshold.round(),
+        note: _noteCtrl.text,
+      );
     } on ArgumentError catch (e) {
       messenger.showSnackBar(
         SnackBar(
@@ -699,6 +706,31 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
         ),
       );
       return;
+    }
+    // Overflow is Medium/Pro-only UI (see AppMode) — only touch it when the
+    // control was actually shown, so a Basic-mode save never clears a value
+    // set before a downgrade.
+    if (widget.existing != null &&
+        ref.read(appModeProvider) != AppMode.basic) {
+      try {
+        await db.setBudgetOverflowTarget(widget.category.id, _overflowTarget);
+      } on ArgumentError catch (e) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(e.message?.toString() ?? 'Could not set overflow'),
+          ),
+        );
+        return;
+      }
+    }
+    // Rollover is Pro-only UI (see AppMode) — same "only touch what was
+    // actually shown" rule as Overflow above.
+    if (widget.existing != null && ref.read(appModeProvider) == AppMode.pro) {
+      await db.setBudgetRollover(
+        widget.category.id,
+        enabled: _rolloverEnabled,
+        decayPct: _rolloverDecayPct.round(),
+      );
     }
     if (mounted) Navigator.of(context).pop();
   }
@@ -863,6 +895,79 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
             label: '${_threshold.round()}%',
             onChanged: (v) => setState(() => _threshold = v),
           ),
+          if (hasBudget && ref.watch(appModeProvider) != AppMode.basic) ...[
+            const SizedBox(height: 8),
+            _OverflowTargetTile(
+              targetCategoryId: _overflowTarget,
+              onTap: () async {
+                final chosen = await _pickOverflowTargetCategory(
+                  context: context,
+                  excludeCategoryId: widget.category.id,
+                  currentTarget: _overflowTarget,
+                );
+                if (chosen == null) return; // dismissed — no change
+                setState(
+                  () => _overflowTarget = identical(
+                    chosen,
+                    _clearOverflowTarget,
+                  )
+                      ? null
+                      : chosen as int,
+                );
+              },
+            ),
+          ],
+          if (hasBudget && ref.watch(appModeProvider) == AppMode.pro) ...[
+            const SizedBox(height: 8),
+            Material(
+              color: cs.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(14),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Rollover'),
+                      subtitle: Text(
+                        _rolloverEnabled
+                            ? 'Unspent budget carries into next period'
+                            : 'Off — each period starts fresh',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                      value: _rolloverEnabled,
+                      onChanged: (v) => setState(() => _rolloverEnabled = v),
+                    ),
+                    if (_rolloverEnabled) ...[
+                      Text(
+                        'Carries in ${_rolloverDecayPct.round()}% of what '
+                        "was left over last period",
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                      Slider(
+                        value: _rolloverDecayPct,
+                        min: 0,
+                        max: 100,
+                        divisions: 20,
+                        label: '${_rolloverDecayPct.round()}%',
+                        onChanged: (v) =>
+                            setState(() => _rolloverDecayPct = v),
+                      ),
+                      const SizedBox(height: 4),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           FilledButton(
             onPressed: _save,
@@ -880,6 +985,186 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// Shows the current Overflow target (see [Budgets.overflowTargetCategoryId])
+/// for this budget, or that it's off — tap to change.
+class _OverflowTargetTile extends ConsumerWidget {
+  const _OverflowTargetTile({required this.targetCategoryId, required this.onTap});
+
+  final int? targetCategoryId;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final targetName = targetCategoryId == null
+        ? null
+        : ref.watch(categoryMapProvider)[targetCategoryId]?.name;
+
+    return Material(
+      color: cs.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Icon(Icons.call_split_rounded, color: cs.onSurfaceVariant),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Overflow',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      targetName == null
+                          ? 'Off — spending over budget just shows overspent'
+                          : 'Excess counted against $targetName',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Sentinel [_pickOverflowTargetCategory] returns for "Off" (clear the
+/// target) — distinct from `null`, which means the sheet was dismissed
+/// without a choice and nothing should change.
+const _clearOverflowTarget = Object();
+
+/// Prompts for [BudgetEditSheet]'s overflow target. Returns the chosen
+/// category id, [_clearOverflowTarget] for "Off", or `null` if the user
+/// backed out. Excludes [excludeCategoryId] itself and its parent/child —
+/// the DB layer ([AppDatabase.setBudgetOverflowTarget]) is the authority on
+/// cycles and rejects those with a message surfaced on save; this is just a
+/// head start that avoids the obvious, common round-trip.
+Future<Object?> _pickOverflowTargetCategory({
+  required BuildContext context,
+  required int excludeCategoryId,
+  required int? currentTarget,
+}) {
+  return showModalBottomSheet<Object>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (_) => _OverflowTargetSheet(
+      excludeCategoryId: excludeCategoryId,
+      currentTarget: currentTarget,
+    ),
+  );
+}
+
+class _OverflowTargetSheet extends ConsumerWidget {
+  const _OverflowTargetSheet({
+    required this.excludeCategoryId,
+    required this.currentTarget,
+  });
+
+  final int excludeCategoryId;
+  final int? currentTarget;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final cats = ref.watch(categoryMapProvider);
+    final self = cats[excludeCategoryId];
+    final categoriesAsync = ref.watch(
+      categoriesProvider(CategoryKind.expense),
+    );
+
+    return SafeArea(
+      top: false,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.7,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
+              child: Text(
+                'Overflow into which category?',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+              child: Text(
+                'Spending over this budget will show up against the chosen '
+                "category's total instead — never the other way around.",
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+            ),
+            Flexible(
+              child: categoriesAsync.when(
+                loading: () => const Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                error: (_, _) => const SizedBox.shrink(),
+                data: (categories) {
+                  final options = categories.where((c) {
+                    if (c.id == excludeCategoryId) return false;
+                    if (self != null && c.id == self.parentId) return false;
+                    if (c.parentId == excludeCategoryId) return false;
+                    return true;
+                  }).toList();
+                  return ListView(
+                    shrinkWrap: true,
+                    children: [
+                      ListTile(
+                        leading: const Icon(Icons.block_rounded),
+                        title: const Text('Off'),
+                        selected: currentTarget == null,
+                        onTap: () => Navigator.of(
+                          context,
+                        ).pop(_clearOverflowTarget),
+                      ),
+                      for (final c in options)
+                        ListTile(
+                          leading: Icon(
+                            AppIcons.resolve(c.iconKey),
+                            color: Color(c.colorValue),
+                          ),
+                          title: Text(c.name),
+                          selected: currentTarget == c.id,
+                          onTap: () => Navigator.of(context).pop(c.id),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

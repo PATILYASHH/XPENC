@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/branding/brand_mark.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/providers.dart';
+import '../../data/tables.dart' show AppMode;
 import '../data_export/backup_service.dart' show backupAppFolder;
 
 const _pageDuration = Duration(milliseconds: 280);
@@ -34,6 +35,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   bool _submitting = false;
   bool _restoring = false;
 
+  /// The mode chosen on [_EnvelopeModeStep] (new-user path only) — written
+  /// via [AppDatabase.setAppMode] in [_finishOnboarding]. Pre-selected to
+  /// `medium` so tapping isn't required to proceed, matching
+  /// `Settings.appMode`'s schema default.
+  AppMode _chosenMode = AppMode.medium;
+
   /// Only [_Welcome] and [_PathChoice] exist until a path is chosen — after
   /// that the branch's pages are appended. Index 2 is always the first page
   /// of whichever branch is active, and the last index is always that
@@ -44,7 +51,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     ...switch (_path) {
       null => const <Widget>[],
       _UserPath.newUser => [
-        _EnvelopeModeStep(onSkip: _skipToEnd),
+        _EnvelopeModeStep(
+          selected: _chosenMode,
+          onChoose: _chooseMode,
+          onSkip: _skipToEnd,
+        ),
         _AccountsStep(onSkip: _skipToEnd),
         _PersonsGroupsStep(onSkip: _skipToEnd),
         _AutoGoalsLoansStep(onSkip: _skipToEnd),
@@ -77,6 +88,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       curve: Curves.easeInOut,
     );
   }
+
+  void _chooseMode(AppMode mode) => setState(() => _chosenMode = mode);
 
   void _next() {
     FocusScope.of(context).unfocus();
@@ -122,7 +135,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
     setState(() => _submitting = true);
     try {
-      await ref.read(dbProvider).markOnboarded();
+      final db = ref.read(dbProvider);
+      await db.markOnboarded();
+      // Old-user path already got its tier from the `from < 72` migration
+      // backfill (Pro if any account was already in Envelope Mode, else
+      // Medium) before onboarding ever ran — only a fresh new-user choice
+      // overwrites it here.
+      if (_path == _UserPath.newUser) {
+        await db.setAppMode(_chosenMode);
+      }
       if (!mounted) return;
       router.go('/dashboard');
     } catch (_) {
@@ -512,36 +533,135 @@ class _ChoiceCard extends StatelessWidget {
   }
 }
 
-/// NU1 — Normal (default) vs Envelope mode, per account.
+/// NU1 — pick a tier (see [AppMode]). Pre-selects Medium so tapping isn't
+/// required to proceed; the choice can be changed any time in Settings.
 class _EnvelopeModeStep extends StatelessWidget {
-  const _EnvelopeModeStep({required this.onSkip});
+  const _EnvelopeModeStep({
+    required this.selected,
+    required this.onChoose,
+    required this.onSkip,
+  });
 
+  final AppMode selected;
+  final ValueChanged<AppMode> onChoose;
   final VoidCallback onSkip;
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return _StepScaffold(
       onSkip: onSkip,
-      title: 'Two ways to track money',
-      subtitle:
-          'Every account picks its own mode, any time — nothing to decide now.',
+      title: 'How do you want to track money?',
+      subtitle: 'You can change this any time in Settings.',
       rows: [
-        _FeatureRow(
-          icon: Icons.account_balance_wallet_outlined,
-          color: cs.primary,
-          text:
-              'Normal mode (default) — a plain running balance. Add income '
-              'and expenses, that\'s it.',
+        _ModeCard(
+          icon: Icons.receipt_long_outlined,
+          title: 'Basic',
+          subtitle: 'Just transactions, and people you owe or are owed by.',
+          selected: selected == AppMode.basic,
+          onTap: () => onChoose(AppMode.basic),
         ),
-        _FeatureRow(
+        const SizedBox(height: 12),
+        _ModeCard(
+          icon: Icons.account_balance_wallet_outlined,
+          title: 'Medium',
+          subtitle:
+              'Adds accounts, budgets and net worth — the full app, without '
+              'envelope budgeting.',
+          selected: selected == AppMode.medium,
+          onTap: () => onChoose(AppMode.medium),
+        ),
+        const SizedBox(height: 12),
+        _ModeCard(
           icon: Icons.mail_outline_rounded,
-          color: AppColors.transfer,
-          text:
-              'Envelope mode — assign money to categories from a shared '
-              '"Ready to Assign" pool before you spend it.',
+          title: 'Pro',
+          subtitle:
+              'Adds Envelope mode — assign money to categories from a '
+              'shared "Ready to Assign" pool before you spend it — plus '
+              'budget rollover.',
+          selected: selected == AppMode.pro,
+          onTap: () => onChoose(AppMode.pro),
         ),
       ],
+    );
+  }
+}
+
+/// A tappable tier choice on [_EnvelopeModeStep] — like [_ChoiceCard] but
+/// stays on the same page and shows a persistent selected state instead of
+/// advancing on tap.
+class _ModeCard extends StatelessWidget {
+  const _ModeCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final fg = selected ? cs.onPrimaryContainer : cs.primary;
+
+    return Material(
+      color: selected ? cs.primaryContainer : cs.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: fg.withValues(alpha: 0.14),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: fg, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: selected
+                            ? cs.onPrimaryContainer.withValues(alpha: 0.85)
+                            : cs.onSurfaceVariant,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                selected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                color: selected ? cs.onPrimaryContainer : cs.outlineVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

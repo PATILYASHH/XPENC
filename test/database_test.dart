@@ -2227,6 +2227,151 @@ void main() {
     });
   });
 
+  group('budgets — overflow target (GitHub #134)', () {
+    test('requires an existing budget on the category', () async {
+      final food = await expenseCategory('Food');
+      final shopping = await expenseCategory('Shopping');
+      await db.upsertBudget(categoryId: shopping, amount: Money.fromRupees(1000));
+
+      await expectLater(
+        db.setBudgetOverflowTarget(food, shopping),
+        throwsArgumentError,
+      );
+    });
+
+    test('round-trips through set and clear', () async {
+      final food = await expenseCategory('Food');
+      final shopping = await expenseCategory('Shopping');
+      await db.upsertBudget(categoryId: food, amount: Money.fromRupees(2000));
+      await db.upsertBudget(categoryId: shopping, amount: Money.fromRupees(1000));
+
+      await db.setBudgetOverflowTarget(food, shopping);
+      var budget = (await db.watchBudgets().first).firstWhere(
+        (b) => b.categoryId == food,
+      );
+      expect(budget.overflowTargetCategoryId, shopping);
+
+      await db.setBudgetOverflowTarget(food, null);
+      budget = (await db.watchBudgets().first).firstWhere(
+        (b) => b.categoryId == food,
+      );
+      expect(budget.overflowTargetCategoryId, isNull);
+    });
+
+    test('rejects a self-target', () async {
+      final food = await expenseCategory('Food');
+      await db.upsertBudget(categoryId: food, amount: Money.fromRupees(2000));
+
+      await expectLater(
+        db.setBudgetOverflowTarget(food, food),
+        throwsArgumentError,
+      );
+    });
+
+    test('rejects a direct cycle (A -> B -> A)', () async {
+      final food = await expenseCategory('Food');
+      final shopping = await expenseCategory('Shopping');
+      await db.upsertBudget(categoryId: food, amount: Money.fromRupees(2000));
+      await db.upsertBudget(categoryId: shopping, amount: Money.fromRupees(1000));
+      await db.setBudgetOverflowTarget(food, shopping);
+
+      await expectLater(
+        db.setBudgetOverflowTarget(shopping, food),
+        throwsArgumentError,
+      );
+    });
+
+    test('rejects an indirect cycle (A -> B -> C -> A)', () async {
+      final food = await expenseCategory('Food');
+      final shopping = await expenseCategory('Shopping');
+      final entertainment = await db.addCategory(
+        name: 'Fun',
+        kind: CategoryKind.expense,
+        colorValue: 0,
+        iconKey: 'food',
+      );
+      await db.upsertBudget(categoryId: food, amount: Money.fromRupees(2000));
+      await db.upsertBudget(categoryId: shopping, amount: Money.fromRupees(1000));
+      await db.upsertBudget(
+        categoryId: entertainment,
+        amount: Money.fromRupees(500),
+      );
+      await db.setBudgetOverflowTarget(food, shopping);
+      await db.setBudgetOverflowTarget(shopping, entertainment);
+
+      await expectLater(
+        db.setBudgetOverflowTarget(entertainment, food),
+        throwsArgumentError,
+      );
+    });
+
+    test('rejects targeting its own parent or child — the budget roll-up '
+        'already combines them', () async {
+      final food = await expenseCategory('Food');
+      final groceries = await db.addCategory(
+        name: 'Groceries',
+        kind: CategoryKind.expense,
+        colorValue: 0,
+        iconKey: 'food',
+        parentId: food,
+      );
+      await db.upsertBudget(categoryId: food, amount: Money.fromRupees(2000));
+      await db.upsertBudget(
+        categoryId: groceries,
+        amount: Money.fromRupees(500),
+      );
+
+      await expectLater(
+        db.setBudgetOverflowTarget(food, groceries),
+        throwsArgumentError,
+      );
+      await expectLater(
+        db.setBudgetOverflowTarget(groceries, food),
+        throwsArgumentError,
+      );
+    });
+  });
+
+  group('budgets — rollover (GitHub #134)', () {
+    test('requires an existing budget on the category', () async {
+      final food = await expenseCategory('Food');
+
+      await expectLater(
+        db.setBudgetRollover(food, enabled: true, decayPct: 50),
+        throwsArgumentError,
+      );
+    });
+
+    test('round-trips enabled + decayPct', () async {
+      final food = await expenseCategory('Food');
+      await db.upsertBudget(categoryId: food, amount: Money.fromRupees(2000));
+
+      await db.setBudgetRollover(food, enabled: true, decayPct: 50);
+      final budget = (await db.watchBudgets().first).firstWhere(
+        (b) => b.categoryId == food,
+      );
+      expect(budget.rolloverEnabled, isTrue);
+      expect(budget.rolloverDecayPct, 50);
+    });
+
+    test('clamps decayPct to 0-100', () async {
+      final food = await expenseCategory('Food');
+      await db.upsertBudget(categoryId: food, amount: Money.fromRupees(2000));
+
+      await db.setBudgetRollover(food, enabled: true, decayPct: 150);
+      var budget = (await db.watchBudgets().first).firstWhere(
+        (b) => b.categoryId == food,
+      );
+      expect(budget.rolloverDecayPct, 100);
+
+      await db.setBudgetRollover(food, enabled: true, decayPct: -10);
+      budget = (await db.watchBudgets().first).firstWhere(
+        (b) => b.categoryId == food,
+      );
+      expect(budget.rolloverDecayPct, 0);
+    });
+  });
+
   group('accountStatement', () {
     test(
       'opening balance carries forward, running balance accumulates',
@@ -2370,6 +2515,36 @@ void main() {
     test('a category with no budget does not appear', () async {
       final lines = await db.budgetStatement(DateTime(2026, 7, 1), 1);
       expect(lines, isEmpty);
+    });
+
+    test('budgeted includes Rollover carry-in (Pro only, GitHub #134)', () async {
+      final cash = await cashId();
+      final food = await expenseCategory('Food');
+      await db.upsertBudget(categoryId: food, amount: Money.fromRupees(1000));
+      await db.setBudgetRollover(food, enabled: true, decayPct: 50);
+
+      // June: spent 600 of 1000 -> 400 unspent, 50% decay carries in 200.
+      await db.addTransaction(
+        type: TxType.expense,
+        amount: Money.fromRupees(600),
+        accountId: cash,
+        categoryId: food,
+        date: DateTime(2026, 6, 10),
+      );
+
+      final beforePro = await db.budgetStatement(DateTime(2026, 7, 1), 1);
+      expect(
+        beforePro.firstWhere((l) => l.category.id == food).budgeted,
+        Money.fromRupees(1000),
+        reason: 'Rollover is Pro-only — inert below Pro',
+      );
+
+      await db.setAppMode(AppMode.pro);
+      final lines = await db.budgetStatement(DateTime(2026, 7, 1), 1);
+      expect(
+        lines.firstWhere((l) => l.category.id == food).budgeted,
+        Money.fromRupees(1200),
+      );
     });
   });
 

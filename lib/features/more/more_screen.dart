@@ -6,7 +6,7 @@ import '../../core/branding/app_info.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/providers.dart';
-import '../../data/tables.dart' show MoreScreenViewMode;
+import '../../data/tables.dart' show AppMode, MoreScreenViewMode;
 
 /// Hub page. Grouped, not a flat dump. Every tile navigates to a real route.
 class MoreScreen extends ConsumerWidget {
@@ -18,6 +18,7 @@ class MoreScreen extends ConsumerWidget {
     final cs = theme.colorScheme;
 
     // ── Live badges ──────────────────────────────────────────────────────────
+    final appMode = ref.watch(appModeProvider);
     final rtaEnabled = ref.watch(rtaEnabledProvider);
     final progress = ref.watch(budgetProgressProvider);
     final overCount = progress.where((p) => p.overspent).length;
@@ -28,8 +29,11 @@ class MoreScreen extends ConsumerWidget {
         ? AppColors.expense
         : cs.onSurfaceVariant;
 
-    final netWorth =
-        ref.watch(netWorthProvider).valueOrNull ?? const Money.zero();
+    // Basic mode doesn't track net worth — the Accounts tile falls back to
+    // a plain description instead of a total that mode has no concept of.
+    final netWorth = appMode == AppMode.basic
+        ? null
+        : ref.watch(netWorthProvider).valueOrNull ?? const Money.zero();
 
     final rules = ref.watch(recurringRulesProvider).valueOrNull ?? const [];
     final activeRuleCount = rules.where((r) => r.isActive).length;
@@ -43,7 +47,9 @@ class MoreScreen extends ConsumerWidget {
           Icons.account_balance_wallet_outlined,
           'Accounts',
           route: '/more/accounts',
-          subtitle: 'Total money: ${MoneyFormat.compact(netWorth)}',
+          subtitle: netWorth == null
+              ? 'Manage where your money is'
+              : 'Total money: ${MoneyFormat.compact(netWorth)}',
         ),
         _Item(
           Icons.receipt_long_outlined,
@@ -57,14 +63,15 @@ class MoreScreen extends ConsumerWidget {
           route: '/more/persons',
           subtitle: 'Who owes you, who you owe',
         ),
-        _Item(
-          Icons.donut_large_rounded,
-          'Budgets',
-          route: '/more/budgets',
-          subtitle: budgetSubtitle,
-          subtitleColor: budgetSubtitleColor,
-        ),
-        if (rtaEnabled)
+        if (appMode != AppMode.basic)
+          _Item(
+            Icons.donut_large_rounded,
+            'Budgets',
+            route: '/more/budgets',
+            subtitle: budgetSubtitle,
+            subtitleColor: budgetSubtitleColor,
+          ),
+        if (appMode == AppMode.pro && rtaEnabled)
           _Item(
             Icons.savings_outlined,
             'Ready to Assign',

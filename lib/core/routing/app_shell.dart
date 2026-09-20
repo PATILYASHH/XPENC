@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/providers.dart';
+import '../../data/tables.dart' show AppMode;
 import 'hold_menu_geometry.dart';
 import '../../features/add_transaction/add_transaction_choice_sheet.dart';
 import '../../features/persons/persons_screen.dart' show showAddPersonDialog;
@@ -83,16 +84,22 @@ class AppShell extends ConsumerWidget {
   };
 
   static (String, String) _slotIds(WidgetRef ref) {
+    final basic = ref.watch(appModeProvider) == AppMode.basic;
     final raw =
         ref.watch(settingsProvider).valueOrNull?.bottomNavSlots ??
         'transactions,persons';
     final parts = raw.split(',');
     if (parts.length != 2 ||
         !_catalog.containsKey(parts[0]) ||
-        !_catalog.containsKey(parts[1])) {
+        !_catalog.containsKey(parts[1]) ||
+        (basic &&
+            (basicModeHiddenCatalogIds.contains(parts[0]) ||
+                basicModeHiddenCatalogIds.contains(parts[1])))) {
       // A value that somehow doesn't parse (shouldn't happen — only
-      // `setBottomNavSlots` ever writes this column, and it validates) falls
-      // back to the same default the column itself defaults to.
+      // `setBottomNavSlots` ever writes this column, and it validates), or
+      // names a slot Basic mode doesn't have, falls back to the same
+      // default the column itself defaults to. The stored preference is
+      // left untouched — switching back to Medium/Pro restores it.
       return ('transactions', 'persons');
     }
     return (parts[0], parts[1]);
@@ -451,6 +458,11 @@ const bottomNavCatalogLabels = <String, String>{
   'stats': 'Stats',
   'payees': 'Payees',
 };
+
+/// Catalog ids Basic mode (see [AppMode]) has nothing to show for — no
+/// budgets, no net worth. Excluded from [AppShell._slotIds]'s resolution and
+/// from the "Customize bottom nav" picker while Basic is active.
+const basicModeHiddenCatalogIds = {'budgets', 'accounts'};
 
 class _TabSpec {
   const _TabSpec(this.branch, this.icon, this.activeIcon, this.label);

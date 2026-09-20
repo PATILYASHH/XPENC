@@ -262,6 +262,10 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
 
   @override
   Widget build(BuildContext context) {
+    // Basic mode (see AppMode) doesn't track net worth at all.
+    if (ref.watch(appModeProvider) == AppMode.basic) {
+      return const SizedBox.shrink();
+    }
     final theme = Theme.of(context);
     // Every metric is rebuilt from the full ledger. Until that stream lands
     // it would report a flat line at the opening balance, which is a lie.
@@ -865,6 +869,10 @@ class _AccountsStrip extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Basic mode (see AppMode) doesn't track balances/net worth at all.
+    if (ref.watch(appModeProvider) == AppMode.basic) {
+      return const SizedBox.shrink();
+    }
     final accounts = ref.watch(balanceAccountsProvider);
 
     return accounts.when(
@@ -999,7 +1007,9 @@ class _ReadyToAssignSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (!ref.watch(rtaEnabledProvider)) {
+    // Envelope mode / Ready to Assign is Pro-only (see AppMode).
+    if (ref.watch(appModeProvider) != AppMode.pro ||
+        !ref.watch(rtaEnabledProvider)) {
       return const SizedBox.shrink();
     }
     final poolAccounts = ref.watch(envelopeModeAccountsProvider);
@@ -1393,6 +1403,10 @@ class _BudgetsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Basic mode (see AppMode) doesn't have budgets at all.
+    if (ref.watch(appModeProvider) == AppMode.basic) {
+      return const SizedBox.shrink();
+    }
     final progress = ref.watch(budgetProgressProvider);
 
     if (progress.isEmpty) return const _SetBudgetCard();
@@ -1422,7 +1436,7 @@ class _BudgetsSection extends ConsumerWidget {
                     for (final p in progress)
                       (
                         label: p.category.name,
-                        budget: p.budget.amount,
+                        budget: p.effectiveAmount,
                         spent: p.spent,
                         color: Color(p.category.colorValue),
                         fundingColor: rtaOn

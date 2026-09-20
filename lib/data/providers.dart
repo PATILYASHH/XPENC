@@ -228,6 +228,44 @@ final spendByCategoryProvider = StreamProvider<Map<int, Money>>((ref) {
   return ref.watch(dbProvider).watchSpendByCategory(period.start, period.end);
 });
 
+/// [spendByCategoryProvider] with Overflow (Medium/Pro — see
+/// [Budgets.overflowTargetCategoryId]) applied on top: for every budgeted
+/// category whose own spend exceeds its budget and has an overflow target,
+/// the excess (never the whole spend, only the part over the cap) is moved
+/// into the target's entry. Off entirely in Basic mode, since the flag is
+/// meaningless without budgets. Runs to a fixed point (repeating the pass
+/// until nothing changes, capped at one pass per budget) so a chain
+/// (A -> B -> C) cascades correctly regardless of list order, not just a
+/// direct A -> B move.
+///
+/// Only [budgetProgressProvider] reads this. [categoryTransactionsProvider]
+/// and [spendByCategoryProvider] itself deliberately keep showing every
+/// transaction under its real category — Overflow re-labels a *summary*
+/// number, it never rewrites the ledger.
+final overflowAdjustedSpendProvider = Provider<Map<int, Money>>((ref) {
+  final raw = ref.watch(spendByCategoryProvider).valueOrNull ?? {};
+  if (ref.watch(appModeProvider) == AppMode.basic) return raw;
+  final budgetsList = ref.watch(budgetsProvider).valueOrNull ?? const [];
+
+  final out = Map<int, Money>.from(raw);
+  for (var pass = 0; pass < budgetsList.length; pass++) {
+    var changed = false;
+    for (final b in budgetsList) {
+      final target = b.overflowTargetCategoryId;
+      if (target == null) continue;
+      final spent = out[b.categoryId] ?? const Money.zero();
+      if (spent.paise <= b.amount.paise) continue;
+      final excess = spent - b.amount;
+      if (excess.isZero) continue;
+      out[b.categoryId] = b.amount;
+      out[target] = (out[target] ?? const Money.zero()) + excess;
+      changed = true;
+    }
+    if (!changed) break;
+  }
+  return out;
+});
+
 // ── Budgets ─────────────────────────────────────────────────────────────────
 
 final budgetsProvider = StreamProvider<List<BudgetRow>>(
@@ -291,11 +329,68 @@ final categoryTransactionsProvider = Provider.family<List<CategoryTx>, int>((
   return out;
 });
 
+/// Live "previous period unspent" per rollover-enabled budgeted category —
+/// max(0, previous period's [Budgets.amount] minus previous period's actual
+/// spend), computed fresh from transactions exactly like
+/// [spendByCategoryProvider], never from a stored ledger — a real device's
+/// prior-period transactions never go away, so this can always be
+/// recomputed on demand instead of needing its own running total. Doesn't
+/// gate on [appModeProvider] itself — [effectiveBudgetAmountsProvider] does
+/// — so a mode switch can never leave a stale carried-in amount cached here.
+final _previousPeriodUnspentProvider = FutureProvider<Map<int, Money>>((
+  ref,
+) async {
+  final month = ref.watch(selectedMonthProvider);
+  final startDay = ref.watch(budgetStartDayProvider);
+  final prevAnchor = DateTime(month.year, month.month - 1);
+  final prevPeriod = budgetPeriodFor(prevAnchor, startDay);
+  final prevSpend = await ref
+      .watch(dbProvider)
+      .watchSpendByCategory(prevPeriod.start, prevPeriod.end)
+      .first;
+  final budgetsList = ref.watch(budgetsProvider).valueOrNull ?? const [];
+
+  final out = <int, Money>{};
+  for (final b in budgetsList) {
+    if (!b.rolloverEnabled) continue;
+    final spent = prevSpend[b.categoryId] ?? const Money.zero();
+    final unspent = b.amount - spent;
+    out[b.categoryId] = unspent.isPositive ? unspent : const Money.zero();
+  }
+  return out;
+});
+
+/// Each budget's effective amount for the currently viewed period — base
+/// [Budgets.amount] plus, when [Budgets.rolloverEnabled] (Pro only — see
+/// [AppMode]), the previous period's unspent times [Budgets.rolloverDecayPct]
+/// percent. Everything that shows or compares against "the budget" must read
+/// this, not [BudgetRow.amount] directly, or Rollover silently does nothing.
+final effectiveBudgetAmountsProvider = Provider<Map<int, Money>>((ref) {
+  final budgetsList = ref.watch(budgetsProvider).valueOrNull ?? const [];
+  final out = <int, Money>{
+    for (final b in budgetsList) b.categoryId: b.amount,
+  };
+  if (ref.watch(appModeProvider) != AppMode.pro) return out;
+  final prevUnspent =
+      ref.watch(_previousPeriodUnspentProvider).valueOrNull ?? const {};
+  for (final b in budgetsList) {
+    if (!b.rolloverEnabled) continue;
+    final carried = prevUnspent[b.categoryId] ?? const Money.zero();
+    if (carried.isZero) continue;
+    final decayed = Money.fromPaise(
+      (carried.paise * b.rolloverDecayPct) ~/ 100,
+    );
+    out[b.categoryId] = out[b.categoryId]! + decayed;
+  }
+  return out;
+});
+
 /// A budget joined with what has actually been spent this period.
 typedef BudgetProgress = ({
   BudgetRow budget,
   CategoryRow category,
   Money spent,
+  Money effectiveAmount,
   double fraction,
   bool overspent,
   bool nearingLimit,
@@ -303,7 +398,8 @@ typedef BudgetProgress = ({
 
 final budgetProgressProvider = Provider<List<BudgetProgress>>((ref) {
   final budgets = ref.watch(budgetsProvider).valueOrNull ?? [];
-  final spend = ref.watch(spendByCategoryProvider).valueOrNull ?? {};
+  final spend = ref.watch(overflowAdjustedSpendProvider);
+  final amounts = ref.watch(effectiveBudgetAmountsProvider);
   final cats = ref.watch(categoryMapProvider);
 
   final out = <BudgetProgress>[];
@@ -319,11 +415,15 @@ final budgetProgressProvider = Provider<List<BudgetProgress>>((ref) {
         spent += spend[c.id] ?? const Money.zero();
       }
     }
-    final fraction = b.amount.isZero ? 0.0 : spent.paise / b.amount.paise;
+    final effectiveAmount = amounts[b.categoryId] ?? b.amount;
+    final fraction = effectiveAmount.isZero
+        ? 0.0
+        : spent.paise / effectiveAmount.paise;
     out.add((
       budget: b,
       category: cat,
       spent: spent,
+      effectiveAmount: effectiveAmount,
       fraction: fraction,
       overspent: fraction > 1.0,
       nearingLimit: fraction >= b.alertThresholdPct / 100 && fraction <= 1.0,
@@ -340,7 +440,7 @@ final widgetBudgetSummaryProvider = Provider<List<WidgetBudgetLine>>((ref) {
   final progress = ref.watch(budgetProgressProvider);
   return [
     for (final p in progress.take(HomeWidgetService.maxBudgetLines))
-      (name: p.category.name, spent: p.spent, limit: p.budget.amount),
+      (name: p.category.name, spent: p.spent, limit: p.effectiveAmount),
   ];
 });
 
@@ -483,7 +583,7 @@ final categoryFundingStateProvider =
       if (p == null) return null;
       if (p.overspent) return CategoryFundingState.overspent;
       final balance = ref.watch(categoryBalanceProvider(categoryId));
-      return balance >= p.budget.amount
+      return balance >= p.effectiveAmount
           ? CategoryFundingState.funded
           : CategoryFundingState.underfunded;
     });
@@ -997,6 +1097,13 @@ final moreScreenViewModeProvider = Provider<MoreScreenViewMode>((ref) {
 /// `AmountVisibilityScope` in `money_text.dart`.
 final hideAmountsProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.hideAmounts ?? false;
+});
+
+/// The active tier — see [AppMode]. Purely a UI/nav gate: `AppShell` and
+/// `DashboardScreen` read this to decide what to show, but it never blocks a
+/// database write the data layer would otherwise allow.
+final appModeProvider = Provider<AppMode>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.appMode ?? AppMode.medium;
 });
 
 /// Whether Ready to Assign — the shared envelope pool — is turned on

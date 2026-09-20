@@ -165,7 +165,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 60));
     }
     expect(tester.takeException(), isNull);
-    expect(find.text('Two ways to track money'), findsOneWidget);
+    expect(find.text('How do you want to track money?'), findsOneWidget);
     expect(find.text('Skip'), findsOneWidget);
 
     await tester.tap(find.text('Skip'));
@@ -557,6 +557,9 @@ void main() {
       late int cash;
       await tester.runAsync(() async {
         cash = (await seed()).cash;
+        // Envelope mode is Pro-only (see AppMode) — the On-budget tile
+        // never renders below Pro regardless of rtaEnabled.
+        await db.setAppMode(AppMode.pro);
         await db.setRtaEnabled(true);
         await db.addAllocation(
           accountId: cash,
@@ -642,8 +645,10 @@ void main() {
       late int cash;
       await tester.runAsync(() async {
         cash = (await seed()).cash;
-        // RTA has to be on for the On-budget toggle to render at all — then
-        // opt this one account back out so there's something to turn on.
+        // Envelope mode is Pro-only (see AppMode), and RTA has to be on for
+        // the On-budget toggle to render at all — then opt this one account
+        // back out so there's something to turn on.
+        await db.setAppMode(AppMode.pro);
         await db.setRtaEnabled(true);
         await db.setEnvelopeMode(cash, false);
       });
@@ -852,6 +857,8 @@ void main() {
     'Settings: Ready to Assign defaults off and turning it on persists '
     '(GitHub #100 v2)',
     (tester) async {
+      // The Ready to Assign toggle is Pro-only (see AppMode).
+      await db.setAppMode(AppMode.pro);
       await pump(tester, const SettingsScreen());
       expect(tester.takeException(), isNull);
 
@@ -886,6 +893,8 @@ void main() {
     'More hub: a Ready to Assign tile appears alongside Budgets once RTA '
     'is on (GitHub #100 v2)',
     (tester) async {
+      // The Ready to Assign tile is Pro-only (see AppMode).
+      await db.setAppMode(AppMode.pro);
       await db.setRtaEnabled(true);
       await pump(tester, const MoreScreen());
       expect(tester.takeException(), isNull);

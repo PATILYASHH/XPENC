@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/routing/app_router.dart' show appRouter;
-import '../../core/routing/app_shell.dart' show bottomNavCatalogLabels;
+import '../../core/routing/app_shell.dart'
+    show basicModeHiddenCatalogIds, bottomNavCatalogLabels;
 import '../../data/providers.dart';
+import '../../data/tables.dart' show AppMode;
 
 /// Pick which of the 7 catalog destinations occupy the two configurable
 /// bottom-nav slots flanking the ➕ button — GitHub #70. Dashboard and More
@@ -291,7 +293,7 @@ class _SlotTile extends StatelessWidget {
   }
 }
 
-class _CatalogPickerSheet extends StatelessWidget {
+class _CatalogPickerSheet extends ConsumerWidget {
   const _CatalogPickerSheet({required this.excluded});
 
   /// Ids already used by the *other* slot(s) — omitted so the result is
@@ -299,7 +301,11 @@ class _CatalogPickerSheet extends StatelessWidget {
   final Set<String> excluded;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Basic mode has no budgets and no net worth — offering a slot for
+    // either here would let a user pick a destination the bar then refuses
+    // to show (see AppShell._slotIds).
+    final basic = ref.watch(appModeProvider) == AppMode.basic;
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
@@ -307,7 +313,8 @@ class _CatalogPickerSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             for (final entry in bottomNavCatalogLabels.entries)
-              if (!excluded.contains(entry.key))
+              if (!excluded.contains(entry.key) &&
+                  !(basic && basicModeHiddenCatalogIds.contains(entry.key)))
                 ListTile(
                   title: Text(entry.value),
                   onTap: () => Navigator.of(context).pop(entry.key),

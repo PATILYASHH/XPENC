@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/database.dart';
 import '../../data/providers.dart';
+import '../../data/tables.dart' show AppMode;
 
 /// The on-budget (pool participation) toggle for [account] — only shown
 /// while Ready to Assign is on globally (GitHub #100 v2); there's nothing to
@@ -19,7 +20,11 @@ class EnvelopeSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (!ref.watch(rtaEnabledProvider)) return const SizedBox.shrink();
+    // Envelope mode is Pro-only (see AppMode).
+    if (ref.watch(appModeProvider) != AppMode.pro ||
+        !ref.watch(rtaEnabledProvider)) {
+      return const SizedBox.shrink();
+    }
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final poolSize = ref.watch(envelopeModeAccountsProvider).length;
