@@ -43,8 +43,8 @@ XPENC is built and maintained by one developer, Yash Patil (GitHub: PATILYASHH),
 - Bug reports and feature requests: [GitHub Issues](https://github.com/PATILYASHH/XPENC/issues/new/choose)
 - Questions and open-ended discussion: [GitHub Discussions](https://github.com/PATILYASHH/XPENC/discussions)
 - Security vulnerabilities: [private reporting](https://github.com/PATILYASHH/XPENC/security)
-- Community discussion (not run by the maintainer alone): [r/XPENC](https://www.reddit.com/r/XPENC/)
-- Instagram: [@xpenc.app](https://www.instagram.com/xpenc.app/)
+- Reddit: [u/XPENC](https://www.reddit.com/user/XPENC/)
+- Instagram: [@xpenc.in](https://www.instagram.com/xpenc.in/)
 
 ## Optional
 
