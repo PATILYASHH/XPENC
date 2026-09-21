@@ -8,7 +8,7 @@ import 'package:xpenc/core/theme/theme_preset.dart';
 import 'package:xpenc/data/database.dart';
 import 'package:xpenc/data/providers.dart';
 import 'package:xpenc/data/tables.dart';
-import 'package:xpenc/features/settings/settings_screen.dart';
+import 'package:xpenc/features/settings/general_settings_screen.dart';
 import 'package:xpenc/features/settings/theme_picker_sheet.dart';
 import 'package:xpenc/features/transactions/transactions_screen.dart';
 
@@ -232,7 +232,7 @@ void main() {
     ) async {
       await tester.runAsync(() => db.setThemeName(ThemePreset.midnight.name));
 
-      await pump(tester, const SettingsScreen());
+      await pump(tester, const GeneralSettingsScreen());
       expect(tester.takeException(), isNull);
       expect(find.text('Midnight'), findsOneWidget);
       expect(find.text('System'), findsNothing);

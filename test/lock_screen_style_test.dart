@@ -11,7 +11,7 @@ import 'package:xpenc/data/providers.dart';
 import 'package:xpenc/data/tables.dart';
 import 'package:xpenc/features/security/lock_screen.dart';
 import 'package:xpenc/features/settings/lock_screen_style_sheet.dart';
-import 'package:xpenc/features/settings/settings_screen.dart';
+import 'package:xpenc/features/settings/security_privacy_settings_screen.dart';
 
 /// [shuffledPinKeys] is pure — no widget needed — and [LockScreen]/
 /// [LockScreenStyleSheet] follow the three rules in `smoke_test.dart`
@@ -145,7 +145,7 @@ void main() {
       'Settings shows the lock screen style row once a passcode is set',
       (tester) async {
         await tester.runAsync(() => db.setPasscode('1234'));
-        await pump(tester, const SettingsScreen());
+        await pump(tester, const SecurityPrivacySettingsScreen());
         expect(tester.takeException(), isNull);
         await tester.scrollUntilVisible(find.text('Lock screen style'), 240);
         expect(find.text('Lock screen style'), findsOneWidget);
