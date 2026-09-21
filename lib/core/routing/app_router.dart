@@ -49,7 +49,14 @@ import '../../features/security/totp_verify_screen.dart';
 import '../../features/settings/bottom_nav_settings_screen.dart';
 import '../../features/settings/currency_settings_screen.dart';
 import '../../features/settings/dashboard_settings_screen.dart';
+import '../../features/settings/data_settings_screen.dart';
 import '../../features/settings/font_settings_screen.dart';
+import '../../features/settings/general_settings_screen.dart';
+import '../../features/settings/mode_budgeting_settings_screen.dart';
+import '../../features/settings/notifications_settings_screen.dart';
+import '../../features/settings/persons_settings_screen.dart';
+import '../../features/settings/quick_actions_settings_screen.dart';
+import '../../features/settings/security_privacy_settings_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/settings/widgets_screen.dart';
 import '../../features/shopping/shopping_list_screen.dart';
@@ -174,6 +181,41 @@ final appRouter = GoRouter(
                   parentNavigatorKey: _rootKey,
                   builder: (_, _) => const SettingsScreen(),
                   routes: [
+                    GoRoute(
+                      path: 'general',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const GeneralSettingsScreen(),
+                    ),
+                    GoRoute(
+                      path: 'mode-budgeting',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const ModeBudgetingSettingsScreen(),
+                    ),
+                    GoRoute(
+                      path: 'persons',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const PersonsSettingsScreen(),
+                    ),
+                    GoRoute(
+                      path: 'security',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const SecurityPrivacySettingsScreen(),
+                    ),
+                    GoRoute(
+                      path: 'notifications',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const NotificationsSettingsScreen(),
+                    ),
+                    GoRoute(
+                      path: 'quick-actions',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const QuickActionsSettingsScreen(),
+                    ),
+                    GoRoute(
+                      path: 'data',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const DataSettingsScreen(),
+                    ),
                     GoRoute(
                       path: 'passcode',
                       parentNavigatorKey: _rootKey,

@@ -27,7 +27,11 @@ import 'package:xpenc/features/reports/account_reports_screen.dart';
 import 'package:xpenc/features/reports/stats_screen.dart';
 import 'package:xpenc/features/savings/savings_goal_detail_screen.dart';
 import 'package:xpenc/features/savings/savings_goals_screen.dart';
+import 'package:xpenc/features/settings/general_settings_screen.dart';
+import 'package:xpenc/features/settings/mode_budgeting_settings_screen.dart';
 import 'package:xpenc/features/settings/more_screen_layout_sheet.dart';
+import 'package:xpenc/features/settings/persons_settings_screen.dart';
+import 'package:xpenc/features/settings/security_privacy_settings_screen.dart';
 import 'package:xpenc/features/settings/settings_screen.dart';
 import 'package:xpenc/features/settings/widgets_screen.dart';
 import 'package:xpenc/features/tags/tag_groups_screen.dart';
@@ -825,7 +829,7 @@ void main() {
   testWidgets(
     'Settings: More screen layout row shows the stored mode',
     (tester) async {
-      await pump(tester, const SettingsScreen());
+      await pump(tester, const GeneralSettingsScreen());
       expect(tester.takeException(), isNull);
 
       await tester.scrollUntilVisible(find.text('More screen layout'), 300);
@@ -859,7 +863,7 @@ void main() {
     (tester) async {
       // The Ready to Assign toggle is Pro-only (see AppMode).
       await db.setAppMode(AppMode.pro);
-      await pump(tester, const SettingsScreen());
+      await pump(tester, const ModeBudgetingSettingsScreen());
       expect(tester.takeException(), isNull);
 
       await tester.scrollUntilVisible(find.text('Ready to Assign'), 300);
@@ -925,7 +929,7 @@ void main() {
   testWidgets(
     'Settings: saving My UPI ID survives the dialog close animation',
     (tester) async {
-      await pump(tester, const SettingsScreen());
+      await pump(tester, const PersonsSettingsScreen());
       expect(tester.takeException(), isNull);
 
       await tester.scrollUntilVisible(find.text('My UPI ID'), 300);
@@ -964,7 +968,7 @@ void main() {
     'Settings: the screenshot reminder toggle defaults off and persists '
     'when switched (GitHub #90)',
     (tester) async {
-      await pump(tester, const SettingsScreen());
+      await pump(tester, const SecurityPrivacySettingsScreen());
       expect(tester.takeException(), isNull);
 
       await tester.scrollUntilVisible(
@@ -1011,7 +1015,7 @@ void main() {
         'anchor', 'bear', 'cliff', 'dawn', 'ember',
         'falcon', 'garden', 'harbor', 'island', 'jungle',
       ]);
-      await pump(tester, const SettingsScreen());
+      await pump(tester, const SecurityPrivacySettingsScreen());
       expect(tester.takeException(), isNull);
       await tester.scrollUntilVisible(
         find.text('Master recovery phrase'),

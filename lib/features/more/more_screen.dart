@@ -153,22 +153,10 @@ class MoreScreen extends ConsumerWidget {
           subtitle: 'Label transactions, cutting across category',
         ),
         _Item(
-          Icons.sms_outlined,
-          'Message Capture',
-          route: '/more/capture',
-          subtitle: 'Auto-capture — coming soon',
-        ),
-        _Item(
           Icons.settings_outlined,
           'Settings',
           route: '/more/settings',
           subtitle: 'Currency · theme · notifications',
-        ),
-        _Item(
-          Icons.dashboard_customize_outlined,
-          'Customize bottom nav',
-          route: '/more/bottom-nav',
-          subtitle: 'Choose what goes next to the ➕ button',
         ),
         _Item(
           Icons.auto_awesome_outlined,
