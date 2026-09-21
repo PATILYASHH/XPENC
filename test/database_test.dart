@@ -1647,6 +1647,74 @@ void main() {
       },
     );
 
+    test('yearly rule advances by exactly one year', () async {
+      final cash = await cashId();
+      final food = await expenseCategory('Food');
+      final anniversary = DateTime(2026, 3, 15);
+
+      await db.addRecurringRule(
+        name: 'Insurance',
+        kind: CategoryKind.expense,
+        amount: Money.fromRupees(12000),
+        accountId: cash,
+        categoryId: food,
+        frequency: RecurringFrequency.yearly,
+        startsOn: anniversary,
+      );
+
+      await db.runDueRecurringRules(now: anniversary);
+      final rule = (await db.watchRecurringRules().first).single;
+      expect(rule.nextDueDate, DateTime(2027, 3, 15));
+      expect(await balanceOf(cash), Money.fromRupees(-12000));
+    });
+
+    test(
+      'yearly rule anchored to Feb 29 snaps to Feb 28 on a non-leap year, '
+      'then returns to Feb 29 the next leap year',
+      () async {
+        final cash = await cashId();
+        final food = await expenseCategory('Food');
+        final leapDay = DateTime(2024, 2, 29);
+
+        await db.addRecurringRule(
+          name: 'Leap day subscription',
+          kind: CategoryKind.expense,
+          amount: Money.fromRupees(500),
+          accountId: cash,
+          categoryId: food,
+          frequency: RecurringFrequency.yearly,
+          startsOn: leapDay,
+        );
+
+        // Posts the initial Feb 29, 2024 occurrence. 2025/2026/2027 are not
+        // leap years, so Feb only has 28 days in each.
+        await db.runDueRecurringRules(now: leapDay);
+        var rule = (await db.watchRecurringRules().first).single;
+        expect(
+          rule.nextDueDate,
+          DateTime(2025, 2, 28),
+          reason: '2025 has no Feb 29',
+        );
+
+        await db.runDueRecurringRules(now: DateTime(2025, 2, 28));
+        rule = (await db.watchRecurringRules().first).single;
+        expect(rule.nextDueDate, DateTime(2026, 2, 28));
+
+        await db.runDueRecurringRules(now: DateTime(2026, 2, 28));
+        rule = (await db.watchRecurringRules().first).single;
+        expect(rule.nextDueDate, DateTime(2027, 2, 28));
+
+        // 2028 is a leap year again — back to the original target day.
+        await db.runDueRecurringRules(now: DateTime(2027, 2, 28));
+        rule = (await db.watchRecurringRules().first).single;
+        expect(
+          rule.nextDueDate,
+          DateTime(2028, 2, 29),
+          reason: 'the next leap year returns to Feb 29, not stuck at 28',
+        );
+      },
+    );
+
     test('a paused rule is skipped', () async {
       final cash = await cashId();
       final food = await expenseCategory('Food');

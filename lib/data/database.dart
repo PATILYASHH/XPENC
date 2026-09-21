@@ -198,7 +198,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 72;
+  int get schemaVersion => 73;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -693,6 +693,11 @@ class AppDatabase extends _$AppDatabase {
             ),
           ),
         );
+      }
+      if (from < 73) {
+        // Yearly Auto rules, pinning a target month alongside the existing
+        // day-of-month anchor.
+        await _addColumnIfMissing(m, recurringRules, recurringRules.monthOfYear);
       }
     },
     beforeOpen: (details) async {
@@ -3917,6 +3922,7 @@ class AppDatabase extends _$AppDatabase {
     required CategoryRow? category,
     required RecurringFrequency frequency,
     int? dayOfMonth,
+    int? monthOfYear,
     Money? promoAmount,
     int? promoOccurrences,
     String? foreignCurrencyCode,
@@ -3936,8 +3942,20 @@ class AppDatabase extends _$AppDatabase {
       if (dayOfMonth == null || dayOfMonth < 1 || dayOfMonth > 31) {
         throw ArgumentError('A monthly rule needs a day of the month (1–31).');
       }
-    } else if (dayOfMonth != null) {
-      throw ArgumentError('Only a monthly rule pins a day of the month.');
+      if (monthOfYear != null) {
+        throw ArgumentError('Only a yearly rule pins a month.');
+      }
+    } else if (frequency == RecurringFrequency.yearly) {
+      if (dayOfMonth == null || dayOfMonth < 1 || dayOfMonth > 31) {
+        throw ArgumentError('A yearly rule needs a day of the month (1–31).');
+      }
+      if (monthOfYear == null || monthOfYear < 1 || monthOfYear > 12) {
+        throw ArgumentError('A yearly rule needs a month.');
+      }
+    } else if (dayOfMonth != null || monthOfYear != null) {
+      throw ArgumentError(
+        'Only a monthly or yearly rule pins a day of the month.',
+      );
     }
     if (promoAmount != null) {
       // Zero is valid — a free trial period, not just a discount (GitHub
@@ -4016,8 +4034,13 @@ class AppDatabase extends _$AppDatabase {
         throw ArgumentError('That category no longer exists.');
       }
     }
-    final dayOfMonth = frequency == RecurringFrequency.monthly
+    final dayOfMonth =
+        frequency == RecurringFrequency.monthly ||
+            frequency == RecurringFrequency.yearly
         ? startsOn.day
+        : null;
+    final monthOfYear = frequency == RecurringFrequency.yearly
+        ? startsOn.month
         : null;
     _validateRecurringRule(
       amount: amount,
@@ -4025,6 +4048,7 @@ class AppDatabase extends _$AppDatabase {
       category: category,
       frequency: frequency,
       dayOfMonth: dayOfMonth,
+      monthOfYear: monthOfYear,
       promoAmount: promoAmount,
       promoOccurrences: promoOccurrences,
       foreignCurrencyCode: foreignCurrencyCode,
@@ -4044,6 +4068,7 @@ class AppDatabase extends _$AppDatabase {
           note: Value(note),
           frequency: frequency,
           dayOfMonth: Value(dayOfMonth),
+          monthOfYear: Value(monthOfYear),
           nextDueDate: DateTime(startsOn.year, startsOn.month, startsOn.day),
           notifyDaysBefore: Value(notifyDaysBefore),
           isEstimate: Value(isEstimate),
@@ -4093,8 +4118,13 @@ class AppDatabase extends _$AppDatabase {
         throw ArgumentError('That category no longer exists.');
       }
     }
-    final dayOfMonth = frequency == RecurringFrequency.monthly
+    final dayOfMonth =
+        frequency == RecurringFrequency.monthly ||
+            frequency == RecurringFrequency.yearly
         ? nextDueDate.day
+        : null;
+    final monthOfYear = frequency == RecurringFrequency.yearly
+        ? nextDueDate.month
         : null;
     _validateRecurringRule(
       amount: amount,
@@ -4102,6 +4132,7 @@ class AppDatabase extends _$AppDatabase {
       category: category,
       frequency: frequency,
       dayOfMonth: dayOfMonth,
+      monthOfYear: monthOfYear,
       promoAmount: promoAmount,
       promoOccurrences: promoOccurrences,
       foreignCurrencyCode: foreignCurrencyCode,
@@ -4121,6 +4152,7 @@ class AppDatabase extends _$AppDatabase {
         note: Value(note),
         frequency: Value(frequency),
         dayOfMonth: Value(dayOfMonth),
+        monthOfYear: Value(monthOfYear),
         nextDueDate: Value(
           DateTime(nextDueDate.year, nextDueDate.month, nextDueDate.day),
         ),
@@ -4183,15 +4215,18 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// The occurrence after [from], for a rule whose target day is
-  /// [dayOfMonth] (monthly only). Short months snap to their last day, but
-  /// the *next* month's occurrence still targets the original [dayOfMonth]
-  /// rather than whatever day the snap landed on — so a rule for the 31st
-  /// posts on Feb 28 and then still on Mar 31, never drifting to the 28th
-  /// forever.
+  /// [dayOfMonth] (monthly, yearly) and target month is [monthOfYear]
+  /// (yearly only). A short month — or Feb 29 on a non-leap year — snaps to
+  /// its last day, but the *next* occurrence still targets the original
+  /// [dayOfMonth] rather than whatever day the snap landed on — so a rule
+  /// for the 31st posts on Feb 28 and then still on Mar 31, and a Feb 29
+  /// rule posts on Feb 28 in a non-leap year and still on Feb 29 the next
+  /// leap year, never drifting to the 28th forever.
   static DateTime _nextOccurrence(
     RecurringFrequency frequency,
     DateTime from, {
     int? dayOfMonth,
+    int? monthOfYear,
   }) {
     switch (frequency) {
       case RecurringFrequency.daily:
@@ -4207,6 +4242,12 @@ class AppDatabase extends _$AppDatabase {
           month = 1;
           year++;
         }
+        final lastDayOfMonth = DateTime(year, month + 1, 0).day;
+        final day = dayOfMonth! > lastDayOfMonth ? lastDayOfMonth : dayOfMonth;
+        return DateTime(year, month, day);
+      case RecurringFrequency.yearly:
+        final year = from.year + 1;
+        final month = monthOfYear!;
         final lastDayOfMonth = DateTime(year, month + 1, 0).day;
         final day = dayOfMonth! > lastDayOfMonth ? lastDayOfMonth : dayOfMonth;
         return DateTime(year, month, day);
@@ -4292,6 +4333,7 @@ class AppDatabase extends _$AppDatabase {
         rule.frequency,
         rule.nextDueDate,
         dayOfMonth: rule.dayOfMonth,
+        monthOfYear: rule.monthOfYear,
       );
       await (update(recurringRules)..where((r) => r.id.equals(ruleId))).write(
         RecurringRulesCompanion(
@@ -4353,6 +4395,7 @@ class AppDatabase extends _$AppDatabase {
               rule.frequency,
               next,
               dayOfMonth: rule.dayOfMonth,
+              monthOfYear: rule.monthOfYear,
             );
           }
           await (update(

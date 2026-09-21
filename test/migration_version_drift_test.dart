@@ -300,6 +300,18 @@ void main() {
     },
   );
 
+  test('the v73 monthOfYear column (yearly Auto rules) survives a '
+      'rolled-back re-open', () async {
+    final file = await buildRolledBackDatabase(72);
+
+    final reopened = AppDatabase(NativeDatabase(file));
+    await expectLater(
+      reopened.select(reopened.recurringRules).get(),
+      completes,
+    );
+    await reopened.close();
+  });
+
   test(
     'GitHub #134: an existing user with no account in Envelope Mode is '
     'auto-assigned Medium (not Basic) by the v72 migration backfill, so '

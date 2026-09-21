@@ -89,10 +89,12 @@ enum AlertLevel { threshold, overspent }
 
 /// How often a recurring rule fires. Daily/weekly/biweekly need no separate
 /// "which day" field — the day is implied by whatever date the rule's
-/// `nextDueDate` already carries; only monthly additionally pins
-/// [RecurringRules.dayOfMonth] so a short month can snap back to the
-/// intended day the following month instead of drifting.
-enum RecurringFrequency { daily, weekly, biweekly, monthly }
+/// `nextDueDate` already carries; monthly additionally pins
+/// [RecurringRules.dayOfMonth], and yearly pins both [RecurringRules.dayOfMonth]
+/// and [RecurringRules.monthOfYear], so a short month (or Feb 29 on a
+/// non-leap year) can snap back to the intended day the following
+/// month/year instead of drifting.
+enum RecurringFrequency { daily, weekly, biweekly, monthly, yearly }
 
 /// How often automatic backups run. `custom` ignores the fixed cadences and
 /// uses [Settings.autoBackupCustomDays] + [Settings.autoBackupCustomHours]
@@ -751,10 +753,15 @@ class RecurringRules extends Table {
 
   TextColumn get frequency => textEnum<RecurringFrequency>()();
 
-  /// Monthly only. Captured once from whichever "starts on" date is chosen —
-  /// not re-derived from [nextDueDate] each time, so a month too short for it
-  /// (see [nextDueDate]) still remembers the day to snap back to.
+  /// Monthly or yearly only. Captured once from whichever "starts on" date is
+  /// chosen — not re-derived from [nextDueDate] each time, so a month too
+  /// short for it (see [nextDueDate]) still remembers the day to snap back to.
   IntColumn get dayOfMonth => integer().nullable()();
+
+  /// Yearly only. Same idea as [dayOfMonth], pinning the target month so
+  /// Feb 29 on a non-leap year snaps to Feb 28 and still returns to Feb 29
+  /// the next leap year rather than drifting to the 28th forever.
+  IntColumn get monthOfYear => integer().nullable()();
 
   /// The next occurrence still to be posted. A catch-up run advances this one
   /// occurrence at a time until it lands in the future, backfilling every

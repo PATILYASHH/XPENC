@@ -8,6 +8,13 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
+### Added
+- **Yearly Auto rules** — a recurring rule can now be set to fire once a
+  year instead of just daily/weekly/2 weeks/monthly, for things like annual
+  insurance premiums or subscriptions. Anchored to both the target month and
+  day, so Feb 29 snaps to Feb 28 on a non-leap year and returns to Feb 29
+  the next leap year instead of drifting.
+
 ## [1.6.0] — 2026-09-16
 
 ### Added

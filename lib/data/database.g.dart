@@ -2458,6 +2458,17 @@ class $RecurringRulesTable extends RecurringRules
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _monthOfYearMeta = const VerificationMeta(
+    'monthOfYear',
+  );
+  @override
+  late final GeneratedColumn<int> monthOfYear = GeneratedColumn<int>(
+    'month_of_year',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _nextDueDateMeta = const VerificationMeta(
     'nextDueDate',
   );
@@ -2575,6 +2586,7 @@ class $RecurringRulesTable extends RecurringRules
     note,
     frequency,
     dayOfMonth,
+    monthOfYear,
     nextDueDate,
     notifyDaysBefore,
     isActive,
@@ -2649,6 +2661,15 @@ class $RecurringRulesTable extends RecurringRules
         dayOfMonth.isAcceptableOrUnknown(
           data['day_of_month']!,
           _dayOfMonthMeta,
+        ),
+      );
+    }
+    if (data.containsKey('month_of_year')) {
+      context.handle(
+        _monthOfYearMeta,
+        monthOfYear.isAcceptableOrUnknown(
+          data['month_of_year']!,
+          _monthOfYearMeta,
         ),
       );
     }
@@ -2767,6 +2788,10 @@ class $RecurringRulesTable extends RecurringRules
         DriftSqlType.int,
         data['${effectivePrefix}day_of_month'],
       ),
+      monthOfYear: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}month_of_year'],
+      ),
       nextDueDate: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}next_due_date'],
@@ -2869,10 +2894,15 @@ class RecurringRuleRow extends DataClass
   final String? note;
   final RecurringFrequency frequency;
 
-  /// Monthly only. Captured once from whichever "starts on" date is chosen —
-  /// not re-derived from [nextDueDate] each time, so a month too short for it
-  /// (see [nextDueDate]) still remembers the day to snap back to.
+  /// Monthly or yearly only. Captured once from whichever "starts on" date is
+  /// chosen — not re-derived from [nextDueDate] each time, so a month too
+  /// short for it (see [nextDueDate]) still remembers the day to snap back to.
   final int? dayOfMonth;
+
+  /// Yearly only. Same idea as [dayOfMonth], pinning the target month so
+  /// Feb 29 on a non-leap year snaps to Feb 28 and still returns to Feb 29
+  /// the next leap year rather than drifting to the 28th forever.
+  final int? monthOfYear;
 
   /// The next occurrence still to be posted. A catch-up run advances this one
   /// occurrence at a time until it lands in the future, backfilling every
@@ -2923,6 +2953,7 @@ class RecurringRuleRow extends DataClass
     this.note,
     required this.frequency,
     this.dayOfMonth,
+    this.monthOfYear,
     required this.nextDueDate,
     required this.notifyDaysBefore,
     required this.isActive,
@@ -2969,6 +3000,9 @@ class RecurringRuleRow extends DataClass
     if (!nullToAbsent || dayOfMonth != null) {
       map['day_of_month'] = Variable<int>(dayOfMonth);
     }
+    if (!nullToAbsent || monthOfYear != null) {
+      map['month_of_year'] = Variable<int>(monthOfYear);
+    }
     map['next_due_date'] = Variable<DateTime>(nextDueDate);
     map['notify_days_before'] = Variable<int>(notifyDaysBefore);
     map['is_active'] = Variable<bool>(isActive);
@@ -3014,6 +3048,9 @@ class RecurringRuleRow extends DataClass
       dayOfMonth: dayOfMonth == null && nullToAbsent
           ? const Value.absent()
           : Value(dayOfMonth),
+      monthOfYear: monthOfYear == null && nullToAbsent
+          ? const Value.absent()
+          : Value(monthOfYear),
       nextDueDate: Value(nextDueDate),
       notifyDaysBefore: Value(notifyDaysBefore),
       isActive: Value(isActive),
@@ -3055,6 +3092,7 @@ class RecurringRuleRow extends DataClass
         serializer.fromJson<String>(json['frequency']),
       ),
       dayOfMonth: serializer.fromJson<int?>(json['dayOfMonth']),
+      monthOfYear: serializer.fromJson<int?>(json['monthOfYear']),
       nextDueDate: serializer.fromJson<DateTime>(json['nextDueDate']),
       notifyDaysBefore: serializer.fromJson<int>(json['notifyDaysBefore']),
       isActive: serializer.fromJson<bool>(json['isActive']),
@@ -3089,6 +3127,7 @@ class RecurringRuleRow extends DataClass
         $RecurringRulesTable.$converterfrequency.toJson(frequency),
       ),
       'dayOfMonth': serializer.toJson<int?>(dayOfMonth),
+      'monthOfYear': serializer.toJson<int?>(monthOfYear),
       'nextDueDate': serializer.toJson<DateTime>(nextDueDate),
       'notifyDaysBefore': serializer.toJson<int>(notifyDaysBefore),
       'isActive': serializer.toJson<bool>(isActive),
@@ -3113,6 +3152,7 @@ class RecurringRuleRow extends DataClass
     Value<String?> note = const Value.absent(),
     RecurringFrequency? frequency,
     Value<int?> dayOfMonth = const Value.absent(),
+    Value<int?> monthOfYear = const Value.absent(),
     DateTime? nextDueDate,
     int? notifyDaysBefore,
     bool? isActive,
@@ -3134,6 +3174,7 @@ class RecurringRuleRow extends DataClass
     note: note.present ? note.value : this.note,
     frequency: frequency ?? this.frequency,
     dayOfMonth: dayOfMonth.present ? dayOfMonth.value : this.dayOfMonth,
+    monthOfYear: monthOfYear.present ? monthOfYear.value : this.monthOfYear,
     nextDueDate: nextDueDate ?? this.nextDueDate,
     notifyDaysBefore: notifyDaysBefore ?? this.notifyDaysBefore,
     isActive: isActive ?? this.isActive,
@@ -3169,6 +3210,9 @@ class RecurringRuleRow extends DataClass
       dayOfMonth: data.dayOfMonth.present
           ? data.dayOfMonth.value
           : this.dayOfMonth,
+      monthOfYear: data.monthOfYear.present
+          ? data.monthOfYear.value
+          : this.monthOfYear,
       nextDueDate: data.nextDueDate.present
           ? data.nextDueDate.value
           : this.nextDueDate,
@@ -3209,6 +3253,7 @@ class RecurringRuleRow extends DataClass
           ..write('note: $note, ')
           ..write('frequency: $frequency, ')
           ..write('dayOfMonth: $dayOfMonth, ')
+          ..write('monthOfYear: $monthOfYear, ')
           ..write('nextDueDate: $nextDueDate, ')
           ..write('notifyDaysBefore: $notifyDaysBefore, ')
           ..write('isActive: $isActive, ')
@@ -3223,7 +3268,7 @@ class RecurringRuleRow extends DataClass
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     name,
     kind,
@@ -3235,6 +3280,7 @@ class RecurringRuleRow extends DataClass
     note,
     frequency,
     dayOfMonth,
+    monthOfYear,
     nextDueDate,
     notifyDaysBefore,
     isActive,
@@ -3244,7 +3290,7 @@ class RecurringRuleRow extends DataClass
     createdAt,
     foreignCurrencyCode,
     foreignAmount,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3260,6 +3306,7 @@ class RecurringRuleRow extends DataClass
           other.note == this.note &&
           other.frequency == this.frequency &&
           other.dayOfMonth == this.dayOfMonth &&
+          other.monthOfYear == this.monthOfYear &&
           other.nextDueDate == this.nextDueDate &&
           other.notifyDaysBefore == this.notifyDaysBefore &&
           other.isActive == this.isActive &&
@@ -3283,6 +3330,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
   final Value<String?> note;
   final Value<RecurringFrequency> frequency;
   final Value<int?> dayOfMonth;
+  final Value<int?> monthOfYear;
   final Value<DateTime> nextDueDate;
   final Value<int> notifyDaysBefore;
   final Value<bool> isActive;
@@ -3304,6 +3352,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     this.note = const Value.absent(),
     this.frequency = const Value.absent(),
     this.dayOfMonth = const Value.absent(),
+    this.monthOfYear = const Value.absent(),
     this.nextDueDate = const Value.absent(),
     this.notifyDaysBefore = const Value.absent(),
     this.isActive = const Value.absent(),
@@ -3326,6 +3375,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     this.note = const Value.absent(),
     required RecurringFrequency frequency,
     this.dayOfMonth = const Value.absent(),
+    this.monthOfYear = const Value.absent(),
     required DateTime nextDueDate,
     this.notifyDaysBefore = const Value.absent(),
     this.isActive = const Value.absent(),
@@ -3353,6 +3403,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     Expression<String>? note,
     Expression<String>? frequency,
     Expression<int>? dayOfMonth,
+    Expression<int>? monthOfYear,
     Expression<DateTime>? nextDueDate,
     Expression<int>? notifyDaysBefore,
     Expression<bool>? isActive,
@@ -3375,6 +3426,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
       if (note != null) 'note': note,
       if (frequency != null) 'frequency': frequency,
       if (dayOfMonth != null) 'day_of_month': dayOfMonth,
+      if (monthOfYear != null) 'month_of_year': monthOfYear,
       if (nextDueDate != null) 'next_due_date': nextDueDate,
       if (notifyDaysBefore != null) 'notify_days_before': notifyDaysBefore,
       if (isActive != null) 'is_active': isActive,
@@ -3401,6 +3453,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     Value<String?>? note,
     Value<RecurringFrequency>? frequency,
     Value<int?>? dayOfMonth,
+    Value<int?>? monthOfYear,
     Value<DateTime>? nextDueDate,
     Value<int>? notifyDaysBefore,
     Value<bool>? isActive,
@@ -3423,6 +3476,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
       note: note ?? this.note,
       frequency: frequency ?? this.frequency,
       dayOfMonth: dayOfMonth ?? this.dayOfMonth,
+      monthOfYear: monthOfYear ?? this.monthOfYear,
       nextDueDate: nextDueDate ?? this.nextDueDate,
       notifyDaysBefore: notifyDaysBefore ?? this.notifyDaysBefore,
       isActive: isActive ?? this.isActive,
@@ -3477,6 +3531,9 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     if (dayOfMonth.present) {
       map['day_of_month'] = Variable<int>(dayOfMonth.value);
     }
+    if (monthOfYear.present) {
+      map['month_of_year'] = Variable<int>(monthOfYear.value);
+    }
     if (nextDueDate.present) {
       map['next_due_date'] = Variable<DateTime>(nextDueDate.value);
     }
@@ -3529,6 +3586,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
           ..write('note: $note, ')
           ..write('frequency: $frequency, ')
           ..write('dayOfMonth: $dayOfMonth, ')
+          ..write('monthOfYear: $monthOfYear, ')
           ..write('nextDueDate: $nextDueDate, ')
           ..write('notifyDaysBefore: $notifyDaysBefore, ')
           ..write('isActive: $isActive, ')
@@ -26740,6 +26798,7 @@ typedef $$RecurringRulesTableCreateCompanionBuilder =
       Value<String?> note,
       required RecurringFrequency frequency,
       Value<int?> dayOfMonth,
+      Value<int?> monthOfYear,
       required DateTime nextDueDate,
       Value<int> notifyDaysBefore,
       Value<bool> isActive,
@@ -26763,6 +26822,7 @@ typedef $$RecurringRulesTableUpdateCompanionBuilder =
       Value<String?> note,
       Value<RecurringFrequency> frequency,
       Value<int?> dayOfMonth,
+      Value<int?> monthOfYear,
       Value<DateTime> nextDueDate,
       Value<int> notifyDaysBefore,
       Value<bool> isActive,
@@ -26935,6 +26995,11 @@ class $$RecurringRulesTableFilterComposer
 
   ColumnFilters<int> get dayOfMonth => $composableBuilder(
     column: $table.dayOfMonth,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get monthOfYear => $composableBuilder(
+    column: $table.monthOfYear,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -27154,6 +27219,11 @@ class $$RecurringRulesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get monthOfYear => $composableBuilder(
+    column: $table.monthOfYear,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get nextDueDate => $composableBuilder(
     column: $table.nextDueDate,
     builder: (column) => ColumnOrderings(column),
@@ -27301,6 +27371,11 @@ class $$RecurringRulesTableAnnotationComposer
 
   GeneratedColumn<int> get dayOfMonth => $composableBuilder(
     column: $table.dayOfMonth,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get monthOfYear => $composableBuilder(
+    column: $table.monthOfYear,
     builder: (column) => column,
   );
 
@@ -27515,6 +27590,7 @@ class $$RecurringRulesTableTableManager
                 Value<String?> note = const Value.absent(),
                 Value<RecurringFrequency> frequency = const Value.absent(),
                 Value<int?> dayOfMonth = const Value.absent(),
+                Value<int?> monthOfYear = const Value.absent(),
                 Value<DateTime> nextDueDate = const Value.absent(),
                 Value<int> notifyDaysBefore = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
@@ -27536,6 +27612,7 @@ class $$RecurringRulesTableTableManager
                 note: note,
                 frequency: frequency,
                 dayOfMonth: dayOfMonth,
+                monthOfYear: monthOfYear,
                 nextDueDate: nextDueDate,
                 notifyDaysBefore: notifyDaysBefore,
                 isActive: isActive,
@@ -27559,6 +27636,7 @@ class $$RecurringRulesTableTableManager
                 Value<String?> note = const Value.absent(),
                 required RecurringFrequency frequency,
                 Value<int?> dayOfMonth = const Value.absent(),
+                Value<int?> monthOfYear = const Value.absent(),
                 required DateTime nextDueDate,
                 Value<int> notifyDaysBefore = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
@@ -27580,6 +27658,7 @@ class $$RecurringRulesTableTableManager
                 note: note,
                 frequency: frequency,
                 dayOfMonth: dayOfMonth,
+                monthOfYear: monthOfYear,
                 nextDueDate: nextDueDate,
                 notifyDaysBefore: notifyDaysBefore,
                 isActive: isActive,

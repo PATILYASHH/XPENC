@@ -241,6 +241,9 @@ class AutoRuleDetailScreen extends ConsumerWidget {
         return 'Every 2 weeks';
       case RecurringFrequency.monthly:
         return 'Monthly on the ${r.dayOfMonth}${_ordinalSuffix(r.dayOfMonth ?? 1)}';
+      case RecurringFrequency.yearly:
+        final month = DateFormat.MMMM().format(DateTime(2000, r.monthOfYear ?? 1));
+        return 'Yearly on $month ${r.dayOfMonth}${_ordinalSuffix(r.dayOfMonth ?? 1)}';
     }
   }
 

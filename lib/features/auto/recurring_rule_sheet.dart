@@ -657,6 +657,10 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
                     value: RecurringFrequency.monthly,
                     label: Text('Monthly'),
                   ),
+                  ButtonSegment(
+                    value: RecurringFrequency.yearly,
+                    label: Text('Yearly'),
+                  ),
                 ],
                 selected: {_frequency},
                 showSelectedIcon: false,
@@ -706,6 +710,14 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               Text(
                 'A shorter month snaps to its last day, then returns to the '
                 '${_dueDate.day}${_ordinalSuffix(_dueDate.day)} once it exists again.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+            if (_frequency == RecurringFrequency.yearly)
+              Text(
+                'Feb 29 snaps to Feb 28 in a non-leap year, then returns to '
+                'Feb 29 once it exists again.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: cs.onSurfaceVariant,
                 ),
