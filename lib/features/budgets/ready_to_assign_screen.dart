@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/app_icons.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/amount_keypad_field.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -215,7 +216,7 @@ class _AssignSheet extends ConsumerStatefulWidget {
 }
 
 class _AssignSheetState extends ConsumerState<_AssignSheet> {
-  final _amountCtrl = TextEditingController();
+  final _amountCtrl = AmountKeypadController();
   bool _unassign = false;
   int? _accountId;
 
@@ -337,21 +338,13 @@ class _AssignSheetState extends ConsumerState<_AssignSheet> {
                 onChanged: (v) => setState(() => _accountId = v),
               ),
             ),
-          TextField(
+          AmountKeypadField(
             controller: _amountCtrl,
             autofocus: true,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              fontFeatures: kTabularFigures,
-            ),
-            decoration: InputDecoration(
-              labelText: _unassign
-                  ? 'Move back to Ready to Assign'
-                  : 'Assign from Ready to Assign',
-              prefixText: MoneyFormat.inputPrefix,
-            ),
-            onSubmitted: (_) => _save(),
+            label: _unassign
+                ? 'Move back to Ready to Assign'
+                : 'Assign from Ready to Assign',
+            yieldTo: const [],
           ),
           const SizedBox(height: 16),
           FilledButton(

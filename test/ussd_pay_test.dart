@@ -83,6 +83,7 @@ void main() {
         await pump(tester, const UssdPayScreen());
         expect(tester.takeException(), isNull);
 
+        await tester.ensureVisible(find.text('Log payment'));
         await tester.tap(find.text('Log payment'));
         await tester.pump();
 
@@ -115,6 +116,7 @@ void main() {
       expect(tester.takeException(), isNull);
 
       await tester.enterText(find.byType(TextField).first, 'shop@okaxis');
+      await tester.ensureVisible(find.text('Copy ID'));
       await tester.tap(find.text('Copy ID'));
       await tester.pump();
 
@@ -224,7 +226,13 @@ void main() {
         await tester.pump();
 
         await tester.enterText(find.byType(TextField).first, 'shop@okaxis');
-        await tester.enterText(find.byType(TextField).last, '250');
+        await tester.tap(find.byKey(const Key('amountDisplay')));
+        await tester.pump();
+        for (final k in ['2', '5', '0']) {
+          await tester.tap(find.text(k));
+          await tester.pump();
+        }
+        await tester.ensureVisible(find.text('Log payment'));
         await tester.tap(find.text('Log payment'));
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 500));

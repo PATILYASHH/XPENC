@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../core/app_icons.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/amount_keypad_field.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/transaction_history.dart';
 import '../../data/providers.dart';
@@ -321,9 +322,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
     WidgetRef ref,
     GoalProgress progress,
   ) async {
-    final controller = TextEditingController(
-      text: MoneyFormat.bare(progress.saved),
-    );
+    final controller = AmountKeypadController()..setAmount(progress.saved);
     final messenger = ScaffoldMessenger.of(context);
     final newAmount = await showDialog<Money>(
       context: context,
@@ -338,16 +337,11 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
               'transaction.',
             ),
             const SizedBox(height: 16),
-            TextField(
+            AmountKeypadField(
               controller: controller,
               autofocus: true,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              decoration: InputDecoration(
-                labelText: 'Saved so far',
-                prefixText: MoneyFormat.inputPrefix,
-              ),
+              label: 'Saved so far',
+              yieldTo: const [],
             ),
           ],
         ),
@@ -378,7 +372,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
     );
     // Deliberately not disposed — see the same note in
     // persons_screen.dart's _createGroup: disposing right after showDialog
-    // resolves can crash the TextField mid exit-transition.
+    // resolves can crash the field mid exit-transition.
     if (newAmount == null) return;
 
     try {
@@ -543,7 +537,7 @@ class _FundsSheet extends ConsumerStatefulWidget {
 }
 
 class _FundsSheetState extends ConsumerState<_FundsSheet> {
-  final _amountController = TextEditingController();
+  final _amountController = AmountKeypadController();
   int? _otherAccountId;
   late int? _categoryId;
   bool _submitting = false;
@@ -660,17 +654,11 @@ class _FundsSheetState extends ConsumerState<_FundsSheet> {
             onChanged: (v) => setState(() => _otherAccountId = v),
           ),
           const SizedBox(height: 16),
-          TextField(
+          AmountKeypadField(
             controller: _amountController,
             autofocus: true,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-            decoration: InputDecoration(
-              labelText: 'Amount',
-              prefixText: MoneyFormat.inputPrefix,
-            ),
+            label: 'Amount',
+            yieldTo: const [],
           ),
           if (widget.isAdd) ...[
             const SizedBox(height: 16),

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/amount_keypad_field.dart';
 import '../../core/widgets/error_view.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/statement_range_picker.dart';
@@ -331,7 +331,7 @@ class _HeaderCard extends ConsumerWidget {
     final current = _owesLikeCredit
         ? account.openingBalance.abs
         : account.openingBalance;
-    final controller = TextEditingController(text: MoneyFormat.bare(current));
+    final controller = AmountKeypadController()..setAmount(current);
     final messenger = ScaffoldMessenger.of(context);
 
     final newAmount = await showDialog<Money>(
@@ -347,19 +347,11 @@ class _HeaderCard extends ConsumerWidget {
               'change any transaction.',
             ),
             const SizedBox(height: 16),
-            TextField(
+            AmountKeypadField(
               controller: controller,
+              label: label,
               autofocus: true,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-              ],
-              decoration: InputDecoration(
-                labelText: label,
-                prefixText: MoneyFormat.inputPrefix,
-              ),
+              yieldTo: const [],
             ),
           ],
         ),
@@ -389,8 +381,11 @@ class _HeaderCard extends ConsumerWidget {
       ),
     );
     // Deliberately not disposed — see the same note in
-    // persons_screen.dart's _createGroup: disposing right after showDialog
-    // resolves can crash the TextField mid exit-transition.
+    // persons_screen.dart's _createGroup: the dialog's widget tree is still
+    // mounted during the pop exit-transition, and a stray tap on the keypad
+    // in that window would call notifyListeners() on an already-disposed
+    // AmountKeypadController (an assertion failure), the same category of
+    // crash a TextField risks from disposing its controller too early.
     if (newAmount == null) return;
 
     try {

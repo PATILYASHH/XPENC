@@ -3,6 +3,8 @@ import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/widgets/amount_keypad_field.dart';
+
 enum _IdKind { upiId, phone }
 
 /// "Pay without internet" (Beta) — a merchant/anyone UPI payment over NPCI's
@@ -26,11 +28,13 @@ class UssdPayScreen extends StatefulWidget {
 class _UssdPayScreenState extends State<UssdPayScreen> {
   _IdKind _idKind = _IdKind.upiId;
   final _idController = TextEditingController();
-  final _amountController = TextEditingController();
+  final _idFocus = FocusNode();
+  final _amountController = AmountKeypadController();
 
   @override
   void dispose() {
     _idController.dispose();
+    _idFocus.dispose();
     _amountController.dispose();
     super.dispose();
   }
@@ -114,12 +118,12 @@ class _UssdPayScreenState extends State<UssdPayScreen> {
         );
       return;
     }
-    final amount = double.tryParse(_amountController.text.trim());
+    final amount = _amountController.amount;
     final query = {
       'type': 'expense',
       'payee': _id,
       'note': 'Paid via *99# (offline UPI)',
-      if (amount != null && amount > 0) 'amount': amount.toStringAsFixed(2),
+      if (amount.isPositive) 'amount': amount.rupees.toStringAsFixed(2),
     };
     context.push(Uri(path: '/add', queryParameters: query).toString());
   }
@@ -161,6 +165,7 @@ class _UssdPayScreenState extends State<UssdPayScreen> {
               const SizedBox(height: 12),
               TextField(
                 controller: _idController,
+                focusNode: _idFocus,
                 autocorrect: false,
                 keyboardType: _idKind == _IdKind.phone
                     ? TextInputType.phone
@@ -175,15 +180,12 @@ class _UssdPayScreenState extends State<UssdPayScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              TextField(
+              AmountKeypadField(
                 controller: _amountController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                decoration: const InputDecoration(
-                  labelText: 'Amount',
-                  hintText: 'Optional — fills it in when you log this later',
-                ),
+                label: 'Amount',
+                hintText: 'Optional — fills it in when you log this later',
+                yieldTo: [_idFocus],
+                displayKey: const Key('amountDisplay'),
               ),
               const SizedBox(height: 24),
 

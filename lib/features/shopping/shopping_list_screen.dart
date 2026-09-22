@@ -4,6 +4,7 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/amount_keypad_field.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 
@@ -328,7 +329,8 @@ class _ItemEditorSheet extends ConsumerStatefulWidget {
 
 class _ItemEditorSheetState extends ConsumerState<_ItemEditorSheet> {
   late final TextEditingController _nameController;
-  late final TextEditingController _amountController;
+  final _nameFocus = FocusNode();
+  final _amountController = AmountKeypadController();
   bool _submitting = false;
 
   bool get _isEdit => widget.existing != null;
@@ -337,16 +339,14 @@ class _ItemEditorSheetState extends ConsumerState<_ItemEditorSheet> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.existing?.name ?? '');
-    _amountController = TextEditingController(
-      text: widget.existing?.estimatedAmount == null
-          ? ''
-          : MoneyFormat.bare(widget.existing!.estimatedAmount!),
-    );
+    final existingAmount = widget.existing?.estimatedAmount;
+    if (existingAmount != null) _amountController.setAmount(existingAmount);
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _nameFocus.dispose();
     _amountController.dispose();
     super.dispose();
   }
@@ -417,6 +417,7 @@ class _ItemEditorSheetState extends ConsumerState<_ItemEditorSheet> {
             const SizedBox(height: 20),
             TextField(
               controller: _nameController,
+              focusNode: _nameFocus,
               autofocus: !_isEdit,
               textCapitalization: TextCapitalization.sentences,
               maxLength: 120,
@@ -428,17 +429,11 @@ class _ItemEditorSheetState extends ConsumerState<_ItemEditorSheet> {
               onSubmitted: (_) => _save(),
             ),
             const SizedBox(height: 16),
-            TextField(
+            AmountKeypadField(
               controller: _amountController,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              decoration: InputDecoration(
-                labelText: 'Estimated price (optional)',
-                prefixText: MoneyFormat.inputPrefix,
-                hintText: '0.00',
-              ),
-              onSubmitted: (_) => _save(),
+              label: 'Estimated price (optional)',
+              hintText: '0.00',
+              yieldTo: [_nameFocus],
             ),
             const SizedBox(height: 24),
             FilledButton(

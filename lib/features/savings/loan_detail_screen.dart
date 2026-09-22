@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/app_icons.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/amount_keypad_field.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/transaction_history.dart';
 import '../../data/providers.dart';
@@ -434,7 +435,7 @@ class _LoanPaymentSheet extends ConsumerStatefulWidget {
 }
 
 class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
-  late final TextEditingController _amountController;
+  final _amountController = AmountKeypadController();
   int? _sourceAccountId;
   late int? _categoryId;
   bool _submitting = false;
@@ -443,9 +444,7 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
   void initState() {
     super.initState();
     _categoryId = widget.defaultCategoryId;
-    _amountController = TextEditingController(
-      text: widget.emiAmount == null ? '' : MoneyFormat.bare(widget.emiAmount!),
-    );
+    if (widget.emiAmount != null) _amountController.setAmount(widget.emiAmount!);
   }
 
   @override
@@ -547,17 +546,11 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
             onChanged: (v) => setState(() => _sourceAccountId = v),
           ),
           const SizedBox(height: 16),
-          TextField(
+          AmountKeypadField(
             controller: _amountController,
             autofocus: true,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-            decoration: InputDecoration(
-              labelText: 'Amount',
-              prefixText: MoneyFormat.inputPrefix,
-            ),
+            label: 'Amount',
+            yieldTo: const [],
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<int?>(

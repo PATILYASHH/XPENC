@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/group_split_math.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/amount_keypad_field.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
@@ -24,10 +25,12 @@ class AddGroupExpenseScreen extends ConsumerStatefulWidget {
 
 class _AddGroupExpenseScreenState
     extends ConsumerState<AddGroupExpenseScreen> {
-  final _amountController = TextEditingController();
+  final _amountController = AmountKeypadController();
+  final _amountGroup = AmountKeypadFieldGroup();
   final _noteController = TextEditingController();
+  final _noteFocus = FocusNode();
   final Map<int?, TextEditingController> _percentControllers = {};
-  final Map<int?, TextEditingController> _manualControllers = {};
+  final Map<int?, AmountKeypadController> _manualControllers = {};
 
   DateTime _date = DateTime.now();
   int? _payerId; // null = me
@@ -42,7 +45,9 @@ class _AddGroupExpenseScreenState
   @override
   void dispose() {
     _amountController.dispose();
+    _amountGroup.dispose();
     _noteController.dispose();
+    _noteFocus.dispose();
     for (final c in _percentControllers.values) {
       c.dispose();
     }
@@ -55,8 +60,8 @@ class _AddGroupExpenseScreenState
   TextEditingController _percentController(int? id) =>
       _percentControllers.putIfAbsent(id, TextEditingController.new);
 
-  TextEditingController _manualController(int? id) =>
-      _manualControllers.putIfAbsent(id, TextEditingController.new);
+  AmountKeypadController _manualController(int? id) =>
+      _manualControllers.putIfAbsent(id, AmountKeypadController.new);
 
   /// Canonical order: me, then members in `groupMembersProvider`'s order —
   /// the same order a rounding remainder is distributed in, so a filtered
@@ -246,21 +251,25 @@ class _AddGroupExpenseScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextField(
+          AmountKeypadField(
             controller: _amountController,
+            label: 'Amount',
             autofocus: true,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: InputDecoration(
-              labelText: 'Amount',
-              prefixText: MoneyFormat.inputPrefix,
-              errorText: _amountError,
-              border: const OutlineInputBorder(),
-            ),
+            group: _amountGroup,
+            yieldTo: [_noteFocus],
             onChanged: (_) {
               if (_amountError != null) setState(() => _amountError = null);
               setState(() {});
             },
           ),
+          if (_amountError != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6, left: 12),
+              child: Text(
+                _amountError!,
+                style: theme.textTheme.bodySmall?.copyWith(color: cs.error),
+              ),
+            ),
           const SizedBox(height: 16),
           DropdownButtonFormField<int?>(
             initialValue: _payerId,
@@ -338,6 +347,7 @@ class _AddGroupExpenseScreenState
           const SizedBox(height: 16),
           TextField(
             controller: _noteController,
+            focusNode: _noteFocus,
             textCapitalization: TextCapitalization.sentences,
             decoration: const InputDecoration(
               labelText: 'Note (optional)',
@@ -437,17 +447,11 @@ class _AddGroupExpenseScreenState
               tracked: _trackedFor(id),
               trailing: SizedBox(
                 width: 110,
-                child: TextField(
+                child: AmountKeypadField(
                   controller: _manualController(id),
-                  textAlign: TextAlign.end,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: InputDecoration(
-                    prefixText: MoneyFormat.inputPrefix,
-                    isDense: true,
-                    border: const OutlineInputBorder(),
-                  ),
+                  group: _amountGroup,
+                  yieldTo: [_noteFocus],
+                  isDense: true,
                   onChanged: (_) => setState(() {}),
                 ),
               ),

@@ -4,6 +4,7 @@ import '../../core/app_icons.dart';
 import '../../core/money.dart';
 import '../../core/routing/app_router.dart' show appRouter;
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/amount_keypad_field.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -650,8 +651,9 @@ class BudgetEditSheet extends ConsumerStatefulWidget {
 }
 
 class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
-  late final TextEditingController _amountCtrl;
+  final _amountCtrl = AmountKeypadController();
   late final TextEditingController _noteCtrl;
+  final _noteFocus = FocusNode();
   late double _threshold;
   int? _overflowTarget;
   late bool _rolloverEnabled;
@@ -661,9 +663,7 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
   void initState() {
     super.initState();
     final existing = widget.existing;
-    _amountCtrl = TextEditingController(
-      text: existing == null ? '' : MoneyFormat.bare(existing.budget.amount),
-    );
+    if (existing != null) _amountCtrl.setAmount(existing.budget.amount);
     _noteCtrl = TextEditingController(text: existing?.budget.note ?? '');
     _threshold = (existing?.budget.alertThresholdPct ?? 80)
         .clamp(50, 95)
@@ -679,6 +679,7 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
   void dispose() {
     _amountCtrl.dispose();
     _noteCtrl.dispose();
+    _noteFocus.dispose();
     super.dispose();
   }
 
@@ -855,24 +856,17 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
             ],
           ),
           const SizedBox(height: 20),
-          TextField(
+          AmountKeypadField(
             controller: _amountCtrl,
             autofocus: !hasBudget,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              fontFeatures: kTabularFigures,
-            ),
-            decoration: InputDecoration(
-              labelText: 'Monthly budget',
-              prefixText: MoneyFormat.inputPrefix,
-            ),
-            onSubmitted: (_) => _save(),
+            label: 'Monthly budget',
+            yieldTo: [_noteFocus],
           ),
           ..._budgetHint(context),
           const SizedBox(height: 16),
           TextField(
             controller: _noteCtrl,
+            focusNode: _noteFocus,
             textCapitalization: TextCapitalization.sentences,
             maxLength: 200,
             maxLines: 3,

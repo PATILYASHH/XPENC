@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/currency.dart';
 import '../../core/money.dart';
+import '../../core/widgets/amount_keypad_field.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
@@ -55,13 +56,18 @@ enum _RuleKind { expense, income, goalOrLoan }
 
 class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
   final _nameController = TextEditingController();
-  final _amountController = TextEditingController();
+  final _nameFocus = FocusNode();
+  final _amountController = AmountKeypadController();
   final _payeeController = TextEditingController();
   final _payeeFocus = FocusNode();
   final _noteController = TextEditingController();
-  final _promoAmountController = TextEditingController();
+  final _promoAmountController = AmountKeypadController();
   final _promoOccurrencesController = TextEditingController();
-  final _foreignAmountController = TextEditingController();
+  final _foreignAmountController = AmountKeypadController();
+
+  /// Coordinates the three money fields above so only one keypad is open at
+  /// a time — same idea as one real `TextField`'s focus blurring another.
+  final _amountGroup = AmountKeypadFieldGroup();
 
   _RuleKind _ruleKind = _RuleKind.expense;
   int? _accountId;
@@ -103,7 +109,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
       return;
     }
     _nameController.text = e.name;
-    _amountController.text = _bufferFromMoney(e.amount);
+    _amountController.setAmount(e.amount);
     _payeeController.text = e.payee ?? '';
     _noteController.text = e.note ?? '';
     _ruleKind = e.toAccountId != null
@@ -118,7 +124,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     _isEstimate = e.isEstimate;
     _hasPromo = e.promoAmount != null;
     if (e.promoAmount != null) {
-      _promoAmountController.text = _bufferFromMoney(e.promoAmount!);
+      _promoAmountController.setAmount(e.promoAmount!);
     }
     if (e.promoOccurrencesLeft != null) {
       _promoOccurrencesController.text = '${e.promoOccurrencesLeft}';
@@ -126,7 +132,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     _hasForeignCurrency = e.foreignAmount != null;
     _foreignCurrencyCode = e.foreignCurrencyCode;
     if (e.foreignAmount != null) {
-      _foreignAmountController.text = _bufferFromMoney(e.foreignAmount!);
+      _foreignAmountController.setAmount(e.foreignAmount!);
     }
     _loadTagIds(e.id);
   }
@@ -146,7 +152,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
   /// more likely to surprise than help — the user picks the real start date.
   void _prefillFromTransaction(TransactionRow t) {
     _ruleKind = t.type == TxType.income ? _RuleKind.income : _RuleKind.expense;
-    _amountController.text = _bufferFromMoney(t.amount);
+    _amountController.setAmount(t.amount);
     _accountId = t.accountId;
     _categoryId = t.categoryId;
     final payee = t.payee?.trim();
@@ -169,17 +175,10 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     if (mounted) setState(() => _tagIds = ids.toSet());
   }
 
-  static String _bufferFromMoney(Money amount) {
-    final paise = amount.abs.paise;
-    final rupees = paise ~/ 100;
-    final fraction = paise % 100;
-    if (fraction == 0) return '$rupees';
-    return '$rupees.${fraction.toString().padLeft(2, '0')}';
-  }
-
   @override
   void dispose() {
     _nameController.dispose();
+    _nameFocus.dispose();
     _amountController.dispose();
     _payeeController.dispose();
     _payeeFocus.dispose();
@@ -187,6 +186,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     _promoAmountController.dispose();
     _promoOccurrencesController.dispose();
     _foreignAmountController.dispose();
+    _amountGroup.dispose();
     super.dispose();
   }
 
@@ -429,6 +429,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
             const SizedBox(height: 16),
             TextField(
               controller: _nameController,
+              focusNode: _nameFocus,
               autofocus: !_isEditing,
               textCapitalization: TextCapitalization.words,
               decoration: InputDecoration(
@@ -441,26 +442,22 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               ),
             ),
             const SizedBox(height: 16),
-            TextField(
+            AmountKeypadField(
               controller: _amountController,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-                fontFeatures: kTabularFigures,
-              ),
-              decoration: InputDecoration(
-                labelText: (_isEstimate || _hasPromo)
-                    ? 'Usual amount'
-                    : 'Amount',
-                prefixText: MoneyFormat.inputPrefix,
-                helperText: _isEstimate
-                    ? "You'll be nudged to confirm the exact figure each "
-                          'time it posts.'
-                    : null,
-              ),
+              group: _amountGroup,
+              yieldTo: [_nameFocus],
+              label: (_isEstimate || _hasPromo) ? 'Usual amount' : 'Amount',
             ),
+            if (_isEstimate) ...[
+              const SizedBox(height: 4),
+              Text(
+                "You'll be nudged to confirm the exact figure each time it "
+                'posts.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+            ],
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Amount varies each time'),
@@ -487,15 +484,11 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
                 children: [
                   Expanded(
                     flex: 3,
-                    child: TextField(
+                    child: AmountKeypadField(
                       controller: _promoAmountController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: 'Promo amount',
-                        prefixText: MoneyFormat.inputPrefix,
-                      ),
+                      group: _amountGroup,
+                      yieldTo: [_nameFocus],
+                      label: 'Promo amount',
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -548,14 +541,15 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
                     const SizedBox(width: 12),
                     Expanded(
                       flex: 2,
-                      child: TextField(
+                      child: AmountKeypadField(
                         controller: _foreignAmountController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        decoration: const InputDecoration(
-                          labelText: 'Foreign amount',
-                        ),
+                        group: _amountGroup,
+                        yieldTo: [_nameFocus],
+                        label: 'Foreign amount',
+                        // The currency chip to the left already shows which
+                        // currency this is — showing the home currency's
+                        // symbol here too would be misleading.
+                        showPrefix: false,
                       ),
                     ),
                   ],
@@ -657,10 +651,6 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
                     value: RecurringFrequency.monthly,
                     label: Text('Monthly'),
                   ),
-                  ButtonSegment(
-                    value: RecurringFrequency.yearly,
-                    label: Text('Yearly'),
-                  ),
                 ],
                 selected: {_frequency},
                 showSelectedIcon: false,
@@ -710,14 +700,6 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               Text(
                 'A shorter month snaps to its last day, then returns to the '
                 '${_dueDate.day}${_ordinalSuffix(_dueDate.day)} once it exists again.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
-                ),
-              ),
-            if (_frequency == RecurringFrequency.yearly)
-              Text(
-                'Feb 29 snaps to Feb 28 in a non-leap year, then returns to '
-                'Feb 29 once it exists again.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: cs.onSurfaceVariant,
                 ),

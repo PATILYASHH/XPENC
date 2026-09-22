@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/app_icons.dart';
 import '../../core/currency.dart';
 import '../../core/money.dart';
+import '../../core/widgets/amount_keypad_field.dart';
 import '../../core/widgets/icon_picker_sheet.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -49,9 +50,12 @@ class AddAccountSheet extends ConsumerStatefulWidget {
 
 class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
   final _nameController = TextEditingController();
+  final _nameFocus = FocusNode();
   final _bankNameController = TextEditingController();
+  final _bankNameFocus = FocusNode();
   final _last4Controller = TextEditingController();
-  final _amountController = TextEditingController();
+  final _last4Focus = FocusNode();
+  final _amountController = AmountKeypadController();
 
   AccountType _type = AccountType.cash;
   CardKind _cardKind = CardKind.credit;
@@ -68,8 +72,11 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
   @override
   void dispose() {
     _nameController.dispose();
+    _nameFocus.dispose();
     _bankNameController.dispose();
+    _bankNameFocus.dispose();
     _last4Controller.dispose();
+    _last4Focus.dispose();
     _amountController.dispose();
     super.dispose();
   }
@@ -195,6 +202,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
 
             TextField(
               controller: _nameController,
+              focusNode: _nameFocus,
               textCapitalization: TextCapitalization.words,
               textInputAction: TextInputAction.next,
               decoration: const InputDecoration(
@@ -297,6 +305,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
         return [
           TextField(
             controller: _bankNameController,
+            focusNode: _bankNameFocus,
             textCapitalization: TextCapitalization.words,
             decoration: const InputDecoration(
               labelText: 'Bank name',
@@ -415,15 +424,15 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
   }
 
   Widget _amountField({required String label}) {
-    return TextField(
+    return AmountKeypadField(
       controller: _amountController,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
-      decoration: InputDecoration(
-        labelText: label,
-        prefixText: MoneyFormat.inputPrefix,
-        hintText: '0.00',
-      ),
+      label: label,
+      hintText: '0.00',
+      // Matches this sheet's other fields' text size (Name, Bank name) —
+      // this form has no single "hero" amount, unlike Add Transaction/
+      // Budgets/etc., so it doesn't take the widget's larger bold default.
+      style: Theme.of(context).textTheme.bodyLarge,
+      yieldTo: [_nameFocus, _bankNameFocus, _last4Focus],
     );
   }
 
@@ -482,6 +491,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
   Widget _last4Field() {
     return TextField(
       controller: _last4Controller,
+      focusNode: _last4Focus,
       keyboardType: TextInputType.number,
       maxLength: 4,
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],

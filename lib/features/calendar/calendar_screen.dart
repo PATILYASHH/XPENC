@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../core/app_icons.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/amount_keypad_field.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
@@ -845,7 +846,8 @@ class _ReminderSheet extends ConsumerStatefulWidget {
 
 class _ReminderSheetState extends ConsumerState<_ReminderSheet> {
   final TextEditingController _titleCtrl = TextEditingController();
-  final TextEditingController _amountCtrl = TextEditingController();
+  final _titleFocus = FocusNode();
+  final _amountCtrl = AmountKeypadController();
 
   ReminderDirection _direction = ReminderDirection.pay;
   late DateTime _dueDate;
@@ -860,6 +862,7 @@ class _ReminderSheetState extends ConsumerState<_ReminderSheet> {
   @override
   void dispose() {
     _titleCtrl.dispose();
+    _titleFocus.dispose();
     _amountCtrl.dispose();
     super.dispose();
   }
@@ -953,6 +956,7 @@ class _ReminderSheetState extends ConsumerState<_ReminderSheet> {
           const SizedBox(height: 20),
           TextField(
             controller: _titleCtrl,
+            focusNode: _titleFocus,
             autofocus: true,
             textCapitalization: TextCapitalization.sentences,
             decoration: const InputDecoration(
@@ -961,17 +965,10 @@ class _ReminderSheetState extends ConsumerState<_ReminderSheet> {
             ),
           ),
           const SizedBox(height: 16),
-          TextField(
+          AmountKeypadField(
             controller: _amountCtrl,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-              fontFeatures: kTabularFigures,
-            ),
-            decoration: InputDecoration(
-              labelText: 'Amount (optional)',
-              prefixText: MoneyFormat.inputPrefix,
-            ),
+            label: 'Amount (optional)',
+            yieldTo: [_titleFocus],
           ),
           const SizedBox(height: 20),
           SegmentedButton<ReminderDirection>(

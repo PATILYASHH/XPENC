@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../core/app_icons.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/amount_keypad_field.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
@@ -512,7 +513,8 @@ class _GoalEditorSheet extends ConsumerStatefulWidget {
 
 class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
   late final TextEditingController _nameController;
-  late final TextEditingController _amountController;
+  final _nameFocus = FocusNode();
+  late final AmountKeypadController _amountController;
   late final TextEditingController _notesController;
   late int _colorValue;
   late String _iconKey;
@@ -529,11 +531,10 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
     super.initState();
     final existing = widget.existing;
     _nameController = TextEditingController(text: existing?.account.name ?? '');
-    _amountController = TextEditingController(
-      text: existing == null
-          ? ''
-          : MoneyFormat.bare(existing.detail.targetAmount),
-    );
+    _amountController = AmountKeypadController();
+    if (existing != null) {
+      _amountController.setAmount(existing.detail.targetAmount);
+    }
     _notesController = TextEditingController(text: existing?.detail.notes ?? '');
     _colorValue = existing?.account.colorValue ?? _presetColors.first;
     _iconKey = existing?.account.iconKey ?? _iconKeys.first;
@@ -544,6 +545,7 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
   @override
   void dispose() {
     _nameController.dispose();
+    _nameFocus.dispose();
     _amountController.dispose();
     _notesController.dispose();
     super.dispose();
@@ -739,6 +741,7 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
             ],
             TextField(
               controller: _nameController,
+              focusNode: _nameFocus,
               autofocus: !_isEdit,
               textCapitalization: TextCapitalization.words,
               maxLength: 60,
@@ -749,14 +752,11 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
               ),
             ),
             const SizedBox(height: 16),
-            TextField(
+            AmountKeypadField(
               controller: _amountController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                labelText: 'Target amount',
-                prefixText: MoneyFormat.inputPrefix,
-                hintText: '0.00',
-              ),
+              label: 'Target amount',
+              hintText: '0.00',
+              yieldTo: [_nameFocus],
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<int?>(
@@ -922,8 +922,13 @@ class _LoanEditorSheet extends ConsumerStatefulWidget {
 
 class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
   late final TextEditingController _nameController;
-  late final TextEditingController _principalController;
-  late final TextEditingController _emiController;
+  final _nameFocus = FocusNode();
+  late final AmountKeypadController _principalController;
+  late final AmountKeypadController _emiController;
+
+  /// Coordinates the two money fields above so only one keypad is open at a
+  /// time — same idea as one real `TextField`'s focus blurring another.
+  final _amountGroup = AmountKeypadFieldGroup();
   late int _colorValue;
   late String _iconKey;
   int? _categoryId;
@@ -936,14 +941,12 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
     super.initState();
     final existing = widget.existing;
     _nameController = TextEditingController(text: existing?.account.name ?? '');
-    _principalController = TextEditingController(
-      text: existing == null ? '' : MoneyFormat.bare(existing.principal),
-    );
-    _emiController = TextEditingController(
-      text: existing?.detail.emiAmount == null
-          ? ''
-          : MoneyFormat.bare(existing!.detail.emiAmount!),
-    );
+    _principalController = AmountKeypadController();
+    if (existing != null) _principalController.setAmount(existing.principal);
+    _emiController = AmountKeypadController();
+    if (existing?.detail.emiAmount != null) {
+      _emiController.setAmount(existing!.detail.emiAmount!);
+    }
     _colorValue = existing?.account.colorValue ?? _presetColors.first;
     _iconKey = existing?.account.iconKey ?? _iconKeys.first;
     _categoryId = existing?.detail.categoryId;
@@ -952,8 +955,10 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
   @override
   void dispose() {
     _nameController.dispose();
+    _nameFocus.dispose();
     _principalController.dispose();
     _emiController.dispose();
+    _amountGroup.dispose();
     super.dispose();
   }
 
@@ -1047,6 +1052,7 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
             const SizedBox(height: 20),
             TextField(
               controller: _nameController,
+              focusNode: _nameFocus,
               autofocus: true,
               textCapitalization: TextCapitalization.words,
               maxLength: 60,
@@ -1058,25 +1064,21 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
             ),
             const SizedBox(height: 16),
             if (!_isEdit) ...[
-              TextField(
+              AmountKeypadField(
                 controller: _principalController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(
-                  labelText: 'Amount borrowed',
-                  prefixText: MoneyFormat.inputPrefix,
-                  hintText: '0.00',
-                ),
+                group: _amountGroup,
+                yieldTo: [_nameFocus],
+                label: 'Amount borrowed',
+                hintText: '0.00',
               ),
               const SizedBox(height: 16),
             ],
-            TextField(
+            AmountKeypadField(
               controller: _emiController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                labelText: 'Monthly EMI (optional)',
-                prefixText: MoneyFormat.inputPrefix,
-                hintText: '0.00',
-              ),
+              group: _amountGroup,
+              yieldTo: [_nameFocus],
+              label: 'Monthly EMI (optional)',
+              hintText: '0.00',
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<int?>(

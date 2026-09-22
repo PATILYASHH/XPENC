@@ -12,6 +12,7 @@ import '../../core/payments/revolut_launcher.dart';
 import '../../core/payments/upi_launcher.dart';
 import '../../core/payments/venmo_launcher.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/amount_keypad_field.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/statement_range_picker.dart';
 import '../../data/database.dart';
@@ -663,14 +664,11 @@ class _EntrySheet extends ConsumerStatefulWidget {
 }
 
 class _EntrySheetState extends ConsumerState<_EntrySheet> {
-  late final _amountController = TextEditingController(
-    text: widget.existing == null
-        ? ''
-        : MoneyFormat.bare(widget.existing!.amount),
-  );
+  final _amountController = AmountKeypadController();
   late final _noteController = TextEditingController(
     text: widget.existing?.note ?? '',
   );
+  final _noteFocus = FocusNode();
   late DateTime _date = widget.existing?.date ?? DateTime.now();
   late DateTime? _dueDate = widget.existing?.dueDate;
 
@@ -685,6 +683,14 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
 
   bool get _isEdit => widget.existing != null;
   bool get _theyOwe => widget.direction == PersonDirection.theyOwe;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.existing != null) {
+      _amountController.setAmount(widget.existing!.amount);
+    }
+  }
 
   /// Preselect an account the first time we know what accounts exist:
   /// editing starts from whatever the entry already had (including `null` —
@@ -713,6 +719,7 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
   void dispose() {
     _amountController.dispose();
     _noteController.dispose();
+    _noteFocus.dispose();
     super.dispose();
   }
 
@@ -930,24 +937,26 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
                 ),
               ),
               const SizedBox(height: 18),
-              TextField(
+              AmountKeypadField(
                 controller: _amountController,
                 autofocus: true,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                decoration: InputDecoration(
-                  labelText: 'Amount',
-                  prefixText: MoneyFormat.inputPrefix,
-                  errorText: _amountError,
-                  border: const OutlineInputBorder(),
-                ),
+                label: 'Amount',
+                yieldTo: [_noteFocus],
                 onChanged: (_) {
                   if (_amountError != null) {
                     setState(() => _amountError = null);
                   }
                 },
               ),
+              if (_amountError != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  _amountError!,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+              ],
               const SizedBox(height: 14),
               Row(
                 children: [
@@ -984,6 +993,7 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
               const SizedBox(height: 14),
               TextField(
                 controller: _noteController,
+                focusNode: _noteFocus,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: const InputDecoration(
                   labelText: 'Note (optional)',
