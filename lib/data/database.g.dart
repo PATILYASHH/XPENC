@@ -220,6 +220,15 @@ class $AccountsTable extends Accounts
     requiredDuringInsert: false,
   );
   @override
+  late final GeneratedColumnWithTypeConverter<Money?, int> minimumBalance =
+      GeneratedColumn<int>(
+        'minimum_balance',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<Money?>($AccountsTable.$converterminimumBalancen);
+  @override
   List<GeneratedColumn> get $columns => [
     id,
     name,
@@ -238,6 +247,7 @@ class $AccountsTable extends Accounts
     envelopeMode,
     includeInNetWorth,
     currencyCode,
+    minimumBalance,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -429,6 +439,12 @@ class $AccountsTable extends Accounts
         DriftSqlType.string,
         data['${effectivePrefix}currency_code'],
       ),
+      minimumBalance: $AccountsTable.$converterminimumBalancen.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}minimum_balance'],
+        ),
+      ),
     );
   }
 
@@ -447,6 +463,10 @@ class $AccountsTable extends Accounts
       const MoneyConverter();
   static TypeConverter<Money, int> $convertercurrentBalance =
       const MoneyConverter();
+  static TypeConverter<Money, int> $converterminimumBalance =
+      const MoneyConverter();
+  static TypeConverter<Money?, int?> $converterminimumBalancen =
+      NullAwareTypeConverter.wrap($converterminimumBalance);
 }
 
 class AccountRow extends DataClass implements Insertable<AccountRow> {
@@ -502,6 +522,14 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   /// instrument (non-null `linkedAccountId`) never gets its own value here —
   /// it always mirrors its linked account's currency.
   final String? currencyCode;
+
+  /// Optional floor the user wants this account's balance to stay above —
+  /// e.g. a bank's minimum-balance requirement, or just a personal "don't go
+  /// below this" rule. Purely informational: nothing ever blocks a
+  /// transaction because of it. Null means no floor is set, the default.
+  /// Never offered for a debit-card/UPI instrument (non-null
+  /// [linkedAccountId]), which holds no balance of its own to warn about.
+  final Money? minimumBalance;
   const AccountRow({
     required this.id,
     required this.name,
@@ -520,6 +548,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     required this.envelopeMode,
     required this.includeInNetWorth,
     this.currencyCode,
+    this.minimumBalance,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -563,6 +592,11 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     if (!nullToAbsent || currencyCode != null) {
       map['currency_code'] = Variable<String>(currencyCode);
     }
+    if (!nullToAbsent || minimumBalance != null) {
+      map['minimum_balance'] = Variable<int>(
+        $AccountsTable.$converterminimumBalancen.toSql(minimumBalance),
+      );
+    }
     return map;
   }
 
@@ -595,6 +629,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       currencyCode: currencyCode == null && nullToAbsent
           ? const Value.absent()
           : Value(currencyCode),
+      minimumBalance: minimumBalance == null && nullToAbsent
+          ? const Value.absent()
+          : Value(minimumBalance),
     );
   }
 
@@ -625,6 +662,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       envelopeMode: serializer.fromJson<bool>(json['envelopeMode']),
       includeInNetWorth: serializer.fromJson<bool>(json['includeInNetWorth']),
       currencyCode: serializer.fromJson<String?>(json['currencyCode']),
+      minimumBalance: serializer.fromJson<Money?>(json['minimumBalance']),
     );
   }
   @override
@@ -652,6 +690,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       'envelopeMode': serializer.toJson<bool>(envelopeMode),
       'includeInNetWorth': serializer.toJson<bool>(includeInNetWorth),
       'currencyCode': serializer.toJson<String?>(currencyCode),
+      'minimumBalance': serializer.toJson<Money?>(minimumBalance),
     };
   }
 
@@ -673,6 +712,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     bool? envelopeMode,
     bool? includeInNetWorth,
     Value<String?> currencyCode = const Value.absent(),
+    Value<Money?> minimumBalance = const Value.absent(),
   }) => AccountRow(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -693,6 +733,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     envelopeMode: envelopeMode ?? this.envelopeMode,
     includeInNetWorth: includeInNetWorth ?? this.includeInNetWorth,
     currencyCode: currencyCode.present ? currencyCode.value : this.currencyCode,
+    minimumBalance: minimumBalance.present
+        ? minimumBalance.value
+        : this.minimumBalance,
   );
   AccountRow copyWithCompanion(AccountsCompanion data) {
     return AccountRow(
@@ -729,6 +772,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       currencyCode: data.currencyCode.present
           ? data.currencyCode.value
           : this.currencyCode,
+      minimumBalance: data.minimumBalance.present
+          ? data.minimumBalance.value
+          : this.minimumBalance,
     );
   }
 
@@ -751,7 +797,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           ..write('createdAt: $createdAt, ')
           ..write('envelopeMode: $envelopeMode, ')
           ..write('includeInNetWorth: $includeInNetWorth, ')
-          ..write('currencyCode: $currencyCode')
+          ..write('currencyCode: $currencyCode, ')
+          ..write('minimumBalance: $minimumBalance')
           ..write(')'))
         .toString();
   }
@@ -775,6 +822,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     envelopeMode,
     includeInNetWorth,
     currencyCode,
+    minimumBalance,
   );
   @override
   bool operator ==(Object other) =>
@@ -796,7 +844,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           other.createdAt == this.createdAt &&
           other.envelopeMode == this.envelopeMode &&
           other.includeInNetWorth == this.includeInNetWorth &&
-          other.currencyCode == this.currencyCode);
+          other.currencyCode == this.currencyCode &&
+          other.minimumBalance == this.minimumBalance);
 }
 
 class AccountsCompanion extends UpdateCompanion<AccountRow> {
@@ -817,6 +866,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
   final Value<bool> envelopeMode;
   final Value<bool> includeInNetWorth;
   final Value<String?> currencyCode;
+  final Value<Money?> minimumBalance;
   const AccountsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -835,6 +885,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.envelopeMode = const Value.absent(),
     this.includeInNetWorth = const Value.absent(),
     this.currencyCode = const Value.absent(),
+    this.minimumBalance = const Value.absent(),
   });
   AccountsCompanion.insert({
     this.id = const Value.absent(),
@@ -854,6 +905,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.envelopeMode = const Value.absent(),
     this.includeInNetWorth = const Value.absent(),
     this.currencyCode = const Value.absent(),
+    this.minimumBalance = const Value.absent(),
   }) : name = Value(name),
        type = Value(type),
        colorValue = Value(colorValue),
@@ -878,6 +930,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Expression<bool>? envelopeMode,
     Expression<bool>? includeInNetWorth,
     Expression<String>? currencyCode,
+    Expression<int>? minimumBalance,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -897,6 +950,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       if (envelopeMode != null) 'envelope_mode': envelopeMode,
       if (includeInNetWorth != null) 'include_in_net_worth': includeInNetWorth,
       if (currencyCode != null) 'currency_code': currencyCode,
+      if (minimumBalance != null) 'minimum_balance': minimumBalance,
     });
   }
 
@@ -918,6 +972,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Value<bool>? envelopeMode,
     Value<bool>? includeInNetWorth,
     Value<String?>? currencyCode,
+    Value<Money?>? minimumBalance,
   }) {
     return AccountsCompanion(
       id: id ?? this.id,
@@ -937,6 +992,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       envelopeMode: envelopeMode ?? this.envelopeMode,
       includeInNetWorth: includeInNetWorth ?? this.includeInNetWorth,
       currencyCode: currencyCode ?? this.currencyCode,
+      minimumBalance: minimumBalance ?? this.minimumBalance,
     );
   }
 
@@ -1002,6 +1058,11 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     if (currencyCode.present) {
       map['currency_code'] = Variable<String>(currencyCode.value);
     }
+    if (minimumBalance.present) {
+      map['minimum_balance'] = Variable<int>(
+        $AccountsTable.$converterminimumBalancen.toSql(minimumBalance.value),
+      );
+    }
     return map;
   }
 
@@ -1024,7 +1085,8 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
           ..write('createdAt: $createdAt, ')
           ..write('envelopeMode: $envelopeMode, ')
           ..write('includeInNetWorth: $includeInNetWorth, ')
-          ..write('currencyCode: $currencyCode')
+          ..write('currencyCode: $currencyCode, ')
+          ..write('minimumBalance: $minimumBalance')
           ..write(')'))
         .toString();
   }
@@ -22920,6 +22982,7 @@ typedef $$AccountsTableCreateCompanionBuilder =
       Value<bool> envelopeMode,
       Value<bool> includeInNetWorth,
       Value<String?> currencyCode,
+      Value<Money?> minimumBalance,
     });
 typedef $$AccountsTableUpdateCompanionBuilder =
     AccountsCompanion Function({
@@ -22940,6 +23003,7 @@ typedef $$AccountsTableUpdateCompanionBuilder =
       Value<bool> envelopeMode,
       Value<bool> includeInNetWorth,
       Value<String?> currencyCode,
+      Value<Money?> minimumBalance,
     });
 
 final class $$AccountsTableReferences
@@ -23250,6 +23314,12 @@ class $$AccountsTableFilterComposer
     column: $table.currencyCode,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnWithTypeConverterFilters<Money?, Money, int> get minimumBalance =>
+      $composableBuilder(
+        column: $table.minimumBalance,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
 
   $$AccountsTableFilterComposer get linkedAccountId {
     final $$AccountsTableFilterComposer composer = $composerBuilder(
@@ -23614,6 +23684,11 @@ class $$AccountsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get minimumBalance => $composableBuilder(
+    column: $table.minimumBalance,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$AccountsTableOrderingComposer get linkedAccountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -23710,6 +23785,12 @@ class $$AccountsTableAnnotationComposer
     column: $table.currencyCode,
     builder: (column) => column,
   );
+
+  GeneratedColumnWithTypeConverter<Money?, int> get minimumBalance =>
+      $composableBuilder(
+        column: $table.minimumBalance,
+        builder: (column) => column,
+      );
 
   $$AccountsTableAnnotationComposer get linkedAccountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
@@ -24043,6 +24124,7 @@ class $$AccountsTableTableManager
                 Value<bool> envelopeMode = const Value.absent(),
                 Value<bool> includeInNetWorth = const Value.absent(),
                 Value<String?> currencyCode = const Value.absent(),
+                Value<Money?> minimumBalance = const Value.absent(),
               }) => AccountsCompanion(
                 id: id,
                 name: name,
@@ -24061,6 +24143,7 @@ class $$AccountsTableTableManager
                 envelopeMode: envelopeMode,
                 includeInNetWorth: includeInNetWorth,
                 currencyCode: currencyCode,
+                minimumBalance: minimumBalance,
               ),
           createCompanionCallback:
               ({
@@ -24081,6 +24164,7 @@ class $$AccountsTableTableManager
                 Value<bool> envelopeMode = const Value.absent(),
                 Value<bool> includeInNetWorth = const Value.absent(),
                 Value<String?> currencyCode = const Value.absent(),
+                Value<Money?> minimumBalance = const Value.absent(),
               }) => AccountsCompanion.insert(
                 id: id,
                 name: name,
@@ -24099,6 +24183,7 @@ class $$AccountsTableTableManager
                 envelopeMode: envelopeMode,
                 includeInNetWorth: includeInNetWorth,
                 currencyCode: currencyCode,
+                minimumBalance: minimumBalance,
               ),
           withReferenceMapper: (p0) => p0
               .map(

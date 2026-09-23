@@ -198,7 +198,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 73;
+  int get schemaVersion => 74;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -698,6 +698,11 @@ class AppDatabase extends _$AppDatabase {
         // Yearly Auto rules, pinning a target month alongside the existing
         // day-of-month anchor.
         await _addColumnIfMissing(m, recurringRules, recurringRules.monthOfYear);
+      }
+      if (from < 74) {
+        // Optional per-account minimum-balance floor, warned about (never
+        // enforced) when a transaction would take an account below it.
+        await _addColumnIfMissing(m, accounts, accounts.minimumBalance);
       }
     },
     beforeOpen: (details) async {
@@ -2154,6 +2159,111 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
+  /// Posts an EMI (or advance) payment that can split between real interest
+  /// and principal — an Indian home-loan borrower's EMI is mostly interest
+  /// early on, and only the principal portion should ever reduce what
+  /// [_loanProgressOf] reports as outstanding. [interestAmount] (when
+  /// positive) posts as an ordinary [TxType.expense] — it never touches the
+  /// loan account — while the remainder ([amount] minus it) posts as the
+  /// same [TxType.transfer] into the loan account that a plain payment has
+  /// always been. `interestAmount == null` (or zero) reproduces that old
+  /// plain-transfer behaviour exactly. Both legs, when both exist, are
+  /// linked by `paymentGroupId` the same way [addExpenseWithChange] links
+  /// its legs. Returns the interest leg's id first (if any), then the
+  /// transfer leg's id (if any) — see GitHub issue from a home-loan user who
+  /// needs interest tracked apart from principal.
+  Future<List<int>> addLoanPayment({
+    required int sourceAccountId,
+    required int loanAccountId,
+    required Money amount,
+    Money? interestAmount,
+    int? interestCategoryId,
+    int? transferCategoryId,
+    required DateTime date,
+    String? note,
+  }) async {
+    if (!amount.isPositive) {
+      throw ArgumentError('Enter an amount greater than zero.');
+    }
+    final interest = (interestAmount != null && interestAmount.isPositive)
+        ? interestAmount
+        : null;
+    if (interest != null && interest.paise > amount.paise) {
+      throw ArgumentError('Interest cannot be more than the total payment.');
+    }
+    if (interest != null && interestCategoryId == null) {
+      throw ArgumentError('Pick a category for the interest portion.');
+    }
+    final principal = interest == null
+        ? amount
+        : Money.fromPaise(amount.paise - interest.paise);
+
+    if (principal.isPositive) {
+      await _validateTx(
+        type: TxType.transfer,
+        amount: principal,
+        accountId: sourceAccountId,
+        toAccountId: loanAccountId,
+        categoryId: transferCategoryId,
+      );
+    }
+    if (interest != null) {
+      await _validateTx(
+        type: TxType.expense,
+        amount: interest,
+        accountId: sourceAccountId,
+        categoryId: interestCategoryId,
+      );
+    }
+
+    return transaction(() async {
+      final ids = <int>[];
+      if (interest != null) {
+        ids.add(
+          await into(transactions).insert(
+            TransactionsCompanion.insert(
+              type: TxType.expense,
+              amount: interest,
+              accountId: sourceAccountId,
+              categoryId: Value(interestCategoryId),
+              date: date,
+              note: Value(note),
+            ),
+          ),
+        );
+      }
+      if (principal.isPositive) {
+        ids.add(
+          await into(transactions).insert(
+            TransactionsCompanion.insert(
+              type: TxType.transfer,
+              amount: principal,
+              accountId: sourceAccountId,
+              toAccountId: Value(loanAccountId),
+              categoryId: Value(transferCategoryId),
+              date: date,
+              note: Value(note),
+            ),
+          ),
+        );
+      }
+
+      if (ids.length > 1) {
+        await (update(transactions)..where((t) => t.id.isIn(ids))).write(
+          TransactionsCompanion(paymentGroupId: Value(ids.first)),
+        );
+      }
+
+      for (final id in ids) {
+        final row = await (select(
+          transactions,
+        )..where((t) => t.id.equals(id))).getSingle();
+        await _applyTxEffect(row, reverse: false);
+      }
+      return ids;
+    });
+  }
+
   // ── Credit card statements (GitHub #91) ─────────────────────────────────
 
   Future<CreditCardDetailRow?> getCreditCardDetails(int accountId) => (select(
@@ -3043,6 +3153,16 @@ class AppDatabase extends _$AppDatabase {
     }
     return (update(accounts)..where((a) => a.id.equals(id))).write(
       AccountsCompanion(name: Value(trimmed)),
+    );
+  }
+
+  /// Sets or clears the account's minimum-balance floor (null clears it).
+  /// Purely informational — see the doc on [Accounts.minimumBalance] — so,
+  /// unlike [setAccountCurrency], nothing here is ever locked or validated
+  /// against the account's current balance or history.
+  Future<void> setAccountMinimumBalance(int id, Money? minimumBalance) {
+    return (update(accounts)..where((a) => a.id.equals(id))).write(
+      AccountsCompanion(minimumBalance: Value(minimumBalance)),
     );
   }
 

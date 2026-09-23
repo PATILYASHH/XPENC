@@ -606,7 +606,10 @@ class _FundsSheetState extends ConsumerState<_FundsSheet> {
     final accounts =
         (ref.watch(balanceAccountsProvider).valueOrNull ?? const [])
             .where(
-              (a) => a.id != widget.goalAccountId && a.type != AccountType.goal,
+              (a) =>
+                  a.id != widget.goalAccountId &&
+                  a.type != AccountType.goal &&
+                  a.type != AccountType.loan,
             )
             .toList();
     final categories = widget.isAdd

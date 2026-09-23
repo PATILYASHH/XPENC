@@ -1200,7 +1200,7 @@ class _SourceAccountPicker extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final accounts = (ref.watch(balanceAccountsProvider).valueOrNull ?? const [])
-        .where((a) => a.type != AccountType.goal)
+        .where((a) => a.type != AccountType.goal && a.type != AccountType.loan)
         .toList();
 
     return DropdownButtonFormField<int>(

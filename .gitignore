@@ -61,3 +61,9 @@ issue.md
 # Gradle's own cache under the forked Tesseract package — regenerated on
 # every build, not source.
 packages/flutter_tesseract_ocr_floss/android/.gradle/
+
+# Play Integrity/App Set ID registration file, written locally by Google
+# Play services at run/build time — not a real Flutter asset (those live
+# under the top-level assets/, declared in pubspec.yaml) and must never
+# ship bundled into a release APK.
+/android/app/src/main/assets/adi-registration.properties

@@ -436,6 +436,8 @@ class _LoanPaymentSheet extends ConsumerStatefulWidget {
 
 class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
   final _amountController = AmountKeypadController();
+  final _interestController = AmountKeypadController();
+  final _amountGroup = AmountKeypadFieldGroup();
   int? _sourceAccountId;
   late int? _categoryId;
   bool _submitting = false;
@@ -445,11 +447,19 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
     super.initState();
     _categoryId = widget.defaultCategoryId;
     if (widget.emiAmount != null) _amountController.setAmount(widget.emiAmount!);
+    _amountController.addListener(_onAmountsChanged);
+    _interestController.addListener(_onAmountsChanged);
   }
+
+  void _onAmountsChanged() => setState(() {});
 
   @override
   void dispose() {
+    _amountController.removeListener(_onAmountsChanged);
     _amountController.dispose();
+    _interestController.removeListener(_onAmountsChanged);
+    _interestController.dispose();
+    _amountGroup.dispose();
     super.dispose();
   }
 
@@ -457,6 +467,18 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  bool get _hasInterest => _interestController.text.trim().isNotEmpty;
+
+  /// The portion left to reduce the loan once interest is taken out —
+  /// clamped at zero for display only; [_save] does the real validation.
+  Money get _principalPreview {
+    final amount = Money.tryParse(_amountController.text) ?? const Money.zero();
+    final interest =
+        Money.tryParse(_interestController.text) ?? const Money.zero();
+    final remaining = amount.paise - interest.paise;
+    return remaining > 0 ? Money.fromPaise(remaining) : const Money.zero();
   }
 
   Future<void> _save() async {
@@ -470,19 +492,36 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
       _showError('Choose a source account.');
       return;
     }
+    Money? interest;
+    if (_hasInterest) {
+      interest = Money.tryParse(_interestController.text);
+      if (interest == null || !interest.isPositive) {
+        _showError('Interest must be greater than zero, or leave it blank.');
+        return;
+      }
+      if (interest.paise > amount.paise) {
+        _showError('Interest cannot be more than the total payment.');
+        return;
+      }
+      if (_categoryId == null) {
+        _showError('Pick a category for the interest portion.');
+        return;
+      }
+    }
 
     setState(() => _submitting = true);
     final navigator = Navigator.of(context);
     try {
       await ref
           .read(dbProvider)
-          .addTransaction(
-            type: TxType.transfer,
-            accountId: sourceId,
-            toAccountId: widget.loanAccountId,
+          .addLoanPayment(
+            sourceAccountId: sourceId,
+            loanAccountId: widget.loanAccountId,
             amount: amount,
+            interestAmount: interest,
+            interestCategoryId: interest != null ? _categoryId : null,
+            transferCategoryId: interest == null ? _categoryId : null,
             date: DateTime.now(),
-            categoryId: _categoryId,
           );
       if (!mounted) return;
       navigator.pop();
@@ -548,15 +587,45 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
           const SizedBox(height: 16),
           AmountKeypadField(
             controller: _amountController,
+            group: _amountGroup,
             autofocus: true,
             label: 'Amount',
             yieldTo: const [],
           ),
           const SizedBox(height: 16),
+          AmountKeypadField(
+            controller: _interestController,
+            group: _amountGroup,
+            label: 'Interest (optional)',
+            hintText: '0.00',
+            yieldTo: const [],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 6, left: 4, right: 4),
+            child: Text(
+              _hasInterest
+                  ? 'Interest posts as a real expense; only the rest '
+                        '(${MoneyFormat.symbol(_principalPreview)}) '
+                        'reduces the loan.'
+                  : 'Split out the interest part of an EMI — it posts as an '
+                        'expense instead of reducing the loan balance.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
           DropdownButtonFormField<int?>(
             initialValue: _categoryId,
             isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Category (optional)'),
+            decoration: InputDecoration(
+              labelText: _hasInterest
+                  ? 'Interest category'
+                  : 'Category (optional)',
+              helperText: _hasInterest
+                  ? 'Required — tags the interest expense.'
+                  : null,
+            ),
             items: [
               const DropdownMenuItem(value: null, child: Text('None')),
               for (final c in categories)

@@ -254,6 +254,15 @@ class Accounts extends Table {
   /// instrument (non-null `linkedAccountId`) never gets its own value here —
   /// it always mirrors its linked account's currency.
   TextColumn get currencyCode => text().withLength(min: 3, max: 3).nullable()();
+
+  /// Optional floor the user wants this account's balance to stay above —
+  /// e.g. a bank's minimum-balance requirement, or just a personal "don't go
+  /// below this" rule. Purely informational: nothing ever blocks a
+  /// transaction because of it. Null means no floor is set, the default.
+  /// Never offered for a debit-card/UPI instrument (non-null
+  /// [linkedAccountId]), which holds no balance of its own to warn about.
+  IntColumn get minimumBalance =>
+      integer().map(const MoneyConverter()).nullable()();
 }
 
 @DataClassName('CategoryRow')

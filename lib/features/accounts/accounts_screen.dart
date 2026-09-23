@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/app_icons.dart';
 import '../../core/currency.dart';
 import '../../core/money.dart';
+import '../../core/widgets/amount_keypad_field.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/statement_range_picker.dart';
 import '../../data/database.dart';
@@ -400,6 +401,21 @@ class _AccountTile extends ConsumerWidget {
               onTap: () =>
                   Navigator.of(sheetContext).pop(_AccountAction.rename),
             ),
+            // A debit card/UPI instrument holds no balance of its own (see
+            // Accounts.linkedAccountId) — there's nothing to warn about.
+            if (account.linkedAccountId == null)
+              ListTile(
+                leading: const Icon(Icons.savings_outlined),
+                title: const Text('Minimum balance'),
+                subtitle: Text(
+                  account.minimumBalance == null
+                      ? 'Get a note when spending takes this below a floor'
+                      : 'Currently ${MoneyFormat.symbol(account.minimumBalance!)}',
+                ),
+                onTap: () => Navigator.of(
+                  sheetContext,
+                ).pop(_AccountAction.minimumBalance),
+              ),
             ListTile(
               leading: const Icon(Icons.archive_outlined),
               title: const Text('Archive'),
@@ -429,6 +445,8 @@ class _AccountTile extends ConsumerWidget {
     switch (action) {
       case _AccountAction.rename:
         await _confirmRename(context, ref);
+      case _AccountAction.minimumBalance:
+        await _confirmMinimumBalance(context, ref);
       case _AccountAction.archive:
         await _confirmArchive(context, ref);
       case _AccountAction.remove:
@@ -453,6 +471,34 @@ class _AccountTile extends ConsumerWidget {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(const SnackBar(content: Text('Account renamed')));
+  }
+
+  /// Purely informational floor (see the doc on [Accounts.minimumBalance]) —
+  /// `null` from the dialog clears it, same "empty means remove" convention
+  /// as every other optional-field editor in this app.
+  Future<void> _confirmMinimumBalance(BuildContext context, WidgetRef ref) async {
+    final result = await showDialog<_MinimumBalanceResult>(
+      context: context,
+      builder: (ctx) =>
+          _MinimumBalanceDialog(currentValue: account.minimumBalance),
+    );
+    if (result == null) return;
+
+    await ref
+        .read(dbProvider)
+        .setAccountMinimumBalance(account.id, result.value);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            result.value == null
+                ? 'Minimum balance cleared'
+                : 'Minimum balance updated',
+          ),
+        ),
+      );
   }
 
   Future<void> _confirmArchive(BuildContext context, WidgetRef ref) async {
@@ -598,7 +644,89 @@ class _RenameAccountDialogState extends State<_RenameAccountDialog> {
   }
 }
 
-enum _AccountAction { rename, archive, remove }
+enum _AccountAction { rename, minimumBalance, archive, remove }
+
+/// Wraps the picked value so "Clear" (value: null) is distinguishable from
+/// "Cancel" (the dialog's Future itself resolves null).
+class _MinimumBalanceResult {
+  const _MinimumBalanceResult(this.value);
+
+  final Money? value;
+}
+
+/// Same controller-lifetime reasoning as [_RenameAccountDialog] — owned by
+/// this `State` rather than disposed right after `showDialog` resolves.
+class _MinimumBalanceDialog extends StatefulWidget {
+  const _MinimumBalanceDialog({required this.currentValue});
+
+  final Money? currentValue;
+
+  @override
+  State<_MinimumBalanceDialog> createState() => _MinimumBalanceDialogState();
+}
+
+class _MinimumBalanceDialogState extends State<_MinimumBalanceDialog> {
+  late final _controller = AmountKeypadController()
+    ..setAmount(widget.currentValue ?? const Money.zero());
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Minimum balance'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "A note when spending would take this account's balance below "
+            'the amount you set here. Nothing is ever blocked.',
+          ),
+          const SizedBox(height: 16),
+          AmountKeypadField(
+            controller: _controller,
+            label: 'Minimum balance',
+            autofocus: true,
+            yieldTo: const [],
+          ),
+        ],
+      ),
+      actions: [
+        if (widget.currentValue != null)
+          TextButton(
+            onPressed: () => Navigator.of(
+              context,
+            ).pop(const _MinimumBalanceResult(null)),
+            child: const Text('Clear'),
+          ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final parsed = Money.tryParse(_controller.text);
+            if (parsed == null || !parsed.isPositive) {
+              ScaffoldMessenger.of(context)
+                ..hideCurrentSnackBar()
+                ..showSnackBar(
+                  const SnackBar(content: Text('Enter an amount above zero.')),
+                );
+              return;
+            }
+            Navigator.of(context).pop(_MinimumBalanceResult(parsed));
+          },
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+}
 
 /// A small outlined chip marking a debit card as an instrument of its bank.
 class _LinkedChip extends StatelessWidget {

@@ -613,6 +613,54 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     );
   }
 
+  /// A small note when this expense/transfer would take its source account
+  /// below the floor set on [AccountRow.minimumBalance] — purely
+  /// informational, never blocks Save (see the doc on that column). Creation
+  /// only: an existing transaction's amount has already been applied to
+  /// [AccountRow.currentBalance] once, so re-subtracting it here would
+  /// double-count and could warn (or fail to warn) wrongly.
+  Widget? _minimumBalanceWarning(Map<int, AccountRow> accountMap) {
+    if (_isEditing) return null;
+    if (_type != TxType.expense && _type != TxType.transfer) return null;
+    final account = accountMap[_accountId];
+    final minimumBalance = account?.minimumBalance;
+    if (account == null || minimumBalance == null) return null;
+    final amount = _amount;
+    if (!amount.isPositive) return null;
+
+    final projected = account.currentBalance - amount;
+    if (!(projected < minimumBalance)) return null;
+
+    final theme = Theme.of(context);
+    final currency = _currencyForAccount(_accountId, accountMap);
+    final formattedMin = currency == null
+        ? MoneyFormat.symbol(minimumBalance)
+        : MoneyFormat.symbolIn(minimumBalance, currency);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.warning_amber_rounded,
+            size: 16,
+            color: theme.colorScheme.error,
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              'This takes ${account.name} below your minimum balance of '
+              '$formattedMin.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.error,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Non-null only for an expense on an Envelope Mode account — the signal
   /// [_CategoryPickerSheet] uses to show each category's remaining balance
   /// inline instead of just its name.
@@ -2202,6 +2250,11 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         tiles.add(const SizedBox(height: 8));
         tiles.add(preview);
       }
+      final warning = _minimumBalanceWarning(accountMap);
+      if (warning != null) {
+        tiles.add(const SizedBox(height: 8));
+        tiles.add(warning);
+      }
     } else {
       // A hybrid payment has no single "paid via" account of its own — its
       // editor below picks each leg's account instead.
@@ -2216,6 +2269,11 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           ),
         );
         tiles.add(const SizedBox(height: 12));
+        final warning = _minimumBalanceWarning(accountMap);
+        if (warning != null) {
+          tiles.add(warning);
+          tiles.add(const SizedBox(height: 12));
+        }
       }
       // Foreign currency applies to both income and expense (unlike
       // split/hybrid/change, which are expense-only) and stays available

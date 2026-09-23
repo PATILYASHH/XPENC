@@ -129,6 +129,41 @@ class AboutScreen extends StatelessWidget {
               ),
             ),
 
+            _sectionLabel(context, 'Community'),
+            Card(
+              child: Column(
+                children: [
+                  _LinkTile(
+                    icon: Icons.camera_alt_outlined,
+                    label: 'Instagram',
+                    value: '@${AppInfo.instagramHandle}',
+                    url: AppInfo.instagramUrl,
+                  ),
+                  Divider(height: 1, indent: 60, color: cs.outline),
+                  _LinkTile(
+                    icon: Icons.chat_bubble_outline,
+                    label: 'WhatsApp Channel',
+                    value: 'Follow for updates',
+                    url: AppInfo.whatsappChannelUrl,
+                  ),
+                  Divider(height: 1, indent: 60, color: cs.outline),
+                  _LinkTile(
+                    icon: Icons.forum_outlined,
+                    label: 'Reddit',
+                    value: 'u/${AppInfo.redditHandle}',
+                    url: AppInfo.redditUrl,
+                  ),
+                  Divider(height: 1, indent: 60, color: cs.outline),
+                  _LinkTile(
+                    icon: Icons.rate_review_outlined,
+                    label: 'Leave feedback',
+                    value: 'Public testimonial page',
+                    url: AppInfo.testimonialUrl,
+                  ),
+                ],
+              ),
+            ),
+
             _sectionLabel(context, 'Project'),
             Card(
               child: Column(

@@ -14,6 +14,21 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   insurance premiums or subscriptions. Anchored to both the target month and
   day, so Feb 29 snaps to Feb 28 on a non-leap year and returns to Feb 29
   the next leap year instead of drifting.
+- **Per-account minimum balance** — set an optional floor (e.g. a bank's
+  minimum-balance requirement) from an account's menu. Purely informational:
+  Account Detail flags it when the balance drops below it, and Add
+  Transaction warns before an expense/transfer would take it there, but
+  nothing is ever blocked.
+- **Split loan payments into interest and principal** — a loan payment can
+  now record the real interest portion of an EMI as a separate expense, so
+  only the actual principal reduces what the loan shows as outstanding.
+  Leaving interest blank behaves exactly like a plain payment did before.
+- **Community links in About** — Instagram, WhatsApp Channel, Reddit and the
+  public testimonial/feedback page are now linked from the About screen.
+
+### Fixed
+- A loan account can no longer be picked as the funding source for a
+  savings goal's Add funds/Withdraw.
 
 ## [1.6.0] — 2026-09-16
 

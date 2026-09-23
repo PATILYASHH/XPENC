@@ -62,4 +62,17 @@ class AppInfo {
   static const licenseUrl = '$repoUrl/blob/master/LICENSE';
 
   static const copyright = '© 2026 Yash Patil';
+
+  // ── Community ──────────────────────────────────────────────────────────────
+  static const instagramHandle = 'xpenc.in';
+  static const instagramUrl = 'https://www.instagram.com/xpenc.in/';
+
+  static const whatsappChannelUrl =
+      'https://whatsapp.com/channel/0029VbDHdIx60eBiQTTW4L1y';
+
+  static const redditHandle = 'XPENC';
+  static const redditUrl = 'https://www.reddit.com/user/XPENC/';
+
+  /// Public page to leave a review — same one linked from the website.
+  static const testimonialUrl = 'https://testimonial.to/xpenc/';
 }

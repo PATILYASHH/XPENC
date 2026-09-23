@@ -260,6 +260,23 @@ class _HeaderCard extends ConsumerWidget {
     final bankLine = _bankLine(account);
     if (bankLine != null) chips.add(_InfoChip(label: bankLine));
 
+    final minimumBalance = account.minimumBalance;
+    final minimumBalanceText = minimumBalance == null
+        ? null
+        : (currency == null
+              ? MoneyFormat.symbol(minimumBalance)
+              : MoneyFormat.symbolIn(minimumBalance, currency!));
+    if (minimumBalanceText != null) {
+      chips.add(_InfoChip(label: 'Min $minimumBalanceText'));
+    }
+    // A debit card shows its linked bank's own balance above — that
+    // account's own detail page is where its minimum-balance floor (if any)
+    // is actually meaningful.
+    final belowMinimumBalance =
+        !_isDebitCard &&
+        minimumBalance != null &&
+        account.currentBalance < minimumBalance;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
       child: Card(
@@ -308,6 +325,16 @@ class _HeaderCard extends ConsumerWidget {
                   color: contextColor,
                 ),
               ),
+              if (belowMinimumBalance) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Below your minimum balance of $minimumBalanceText',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: cs.error,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               Wrap(spacing: 8, runSpacing: 8, children: chips),
             ],
