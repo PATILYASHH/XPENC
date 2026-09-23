@@ -23,6 +23,15 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   now record the real interest portion of an EMI as a separate expense, so
   only the actual principal reduces what the loan shows as outstanding.
   Leaving interest blank behaves exactly like a plain payment did before.
+- **Rate-based loan tracking** — a loan can now declare an annual interest
+  rate, tenure and start date, so it shows total interest payable, total
+  payable, interest paid so far, the next payment's interest/principal
+  split, and how much prepaying early or extra has saved (in money and
+  months). The manual payment sheet auto-suggests each payment's interest
+  from the rate (still editable to match a bank statement), and a recurring
+  EMI rule auto-pays with the same split, recomputed fresh every month as
+  the outstanding balance shrinks. A loan with no rate keeps behaving
+  exactly as before.
 - **Community links in About** — Instagram, WhatsApp Channel, Reddit and the
   public testimonial/feedback page are now linked from the About screen.
 

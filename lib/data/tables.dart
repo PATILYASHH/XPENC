@@ -1504,7 +1504,24 @@ class LoanDetails extends Table {
       integer().nullable().references(Categories, #id)();
 
   /// Pre-fills the payment sheet amount — informational, never enforced.
+  /// Auto-computed from [interestRatePct]/[tenureMonths] when both are set
+  /// and this is left blank at creation; a manually-entered value is never
+  /// silently recalculated afterwards.
   IntColumn get emiAmount => integer().map(const MoneyConverter()).nullable()();
+
+  /// Annual interest rate, e.g. `8.5` for 8.5% — reducing-balance only.
+  /// `null` keeps the loan in the old "basic" mode: no auto-split, no
+  /// interest/savings analytics, exactly today's behaviour.
+  RealColumn get interestRatePct => real().nullable()();
+
+  /// Original tenure in months, used with [interestRatePct] to derive
+  /// [emiAmount] and the full amortization schedule.
+  IntColumn get tenureMonths => integer().nullable()();
+
+  /// When repayment began — needed to know how many installments have
+  /// already elapsed for the prepayment-savings projection. Defaults to the
+  /// loan's creation date when a rate is set; otherwise unused.
+  DateTimeColumn get startDate => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {accountId};

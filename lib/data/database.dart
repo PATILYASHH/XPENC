@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import '../core/budget_cycle.dart';
 import '../core/currency.dart';
 import '../core/group_split_math.dart';
+import '../core/loan_amortization.dart';
 import '../core/money.dart';
 import '../core/security/passcode.dart';
 import '../core/security/totp.dart';
@@ -198,7 +199,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 74;
+  int get schemaVersion => 75;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -703,6 +704,14 @@ class AppDatabase extends _$AppDatabase {
         // Optional per-account minimum-balance floor, warned about (never
         // enforced) when a transaction would take an account below it.
         await _addColumnIfMissing(m, accounts, accounts.minimumBalance);
+      }
+      if (from < 75) {
+        // Rate-based interest tracking on a loan — reducing-balance EMI
+        // split, total-interest projection, prepayment savings. All three
+        // nullable, so an existing loan stays in "basic" mode untouched.
+        await _addColumnIfMissing(m, loanDetails, loanDetails.interestRatePct);
+        await _addColumnIfMissing(m, loanDetails, loanDetails.tenureMonths);
+        await _addColumnIfMissing(m, loanDetails, loanDetails.startDate);
       }
     },
     beforeOpen: (details) async {
@@ -2098,6 +2107,26 @@ class AppDatabase extends _$AppDatabase {
     loanDetails,
   )..where((l) => l.accountId.equals(accountId))).getSingleOrNull();
 
+  /// [emiAmount] when left blank (`null`) is auto-computed from
+  /// [interestRatePct]/[tenureMonths] when both are given — never the other
+  /// way around, so a manually-entered EMI is never silently recalculated.
+  static Money? _resolvedEmi({
+    required Money principal,
+    required Money? emiAmount,
+    required double? interestRatePct,
+    required int? tenureMonths,
+  }) {
+    if (emiAmount != null) return emiAmount;
+    if (interestRatePct == null || tenureMonths == null || tenureMonths <= 0) {
+      return null;
+    }
+    return LoanAmortization.calculateEmi(
+      principal: principal,
+      annualRatePct: interestRatePct,
+      tenureMonths: tenureMonths,
+    );
+  }
+
   Future<int> addLoan({
     required String name,
     required Money principal,
@@ -2105,6 +2134,9 @@ class AppDatabase extends _$AppDatabase {
     required String iconKey,
     int? categoryId,
     Money? emiAmount,
+    double? interestRatePct,
+    int? tenureMonths,
+    DateTime? startDate,
   }) {
     if (!principal.isPositive) {
       throw ArgumentError('Principal must be greater than zero.');
@@ -2125,7 +2157,17 @@ class AppDatabase extends _$AppDatabase {
         LoanDetailsCompanion.insert(
           accountId: Value(accountId),
           categoryId: Value(categoryId),
-          emiAmount: Value(emiAmount),
+          emiAmount: Value(
+            _resolvedEmi(
+              principal: principal,
+              emiAmount: emiAmount,
+              interestRatePct: interestRatePct,
+              tenureMonths: tenureMonths,
+            ),
+          ),
+          interestRatePct: Value(interestRatePct),
+          tenureMonths: Value(tenureMonths),
+          startDate: Value(startDate),
         ),
       );
       return accountId;
@@ -2139,6 +2181,9 @@ class AppDatabase extends _$AppDatabase {
     required String iconKey,
     int? categoryId,
     Money? emiAmount,
+    double? interestRatePct,
+    int? tenureMonths,
+    DateTime? startDate,
   }) {
     return transaction(() async {
       await (update(accounts)..where((a) => a.id.equals(accountId))).write(
@@ -2148,12 +2193,26 @@ class AppDatabase extends _$AppDatabase {
           iconKey: Value(iconKey),
         ),
       );
+      final loan = await (select(
+        accounts,
+      )..where((a) => a.id.equals(accountId))).getSingle();
+      final principal = Money.fromPaise(-loan.openingBalance.paise);
       await (update(
         loanDetails,
       )..where((l) => l.accountId.equals(accountId))).write(
         LoanDetailsCompanion(
           categoryId: Value(categoryId),
-          emiAmount: Value(emiAmount),
+          emiAmount: Value(
+            _resolvedEmi(
+              principal: principal,
+              emiAmount: emiAmount,
+              interestRatePct: interestRatePct,
+              tenureMonths: tenureMonths,
+            ),
+          ),
+          interestRatePct: Value(interestRatePct),
+          tenureMonths: Value(tenureMonths),
+          startDate: Value(startDate),
         ),
       );
     });
@@ -2216,52 +2275,94 @@ class AppDatabase extends _$AppDatabase {
       );
     }
 
-    return transaction(() async {
-      final ids = <int>[];
-      if (interest != null) {
-        ids.add(
-          await into(transactions).insert(
-            TransactionsCompanion.insert(
-              type: TxType.expense,
-              amount: interest,
-              accountId: sourceAccountId,
-              categoryId: Value(interestCategoryId),
-              date: date,
-              note: Value(note),
-            ),
-          ),
-        );
-      }
-      if (principal.isPositive) {
-        ids.add(
-          await into(transactions).insert(
-            TransactionsCompanion.insert(
-              type: TxType.transfer,
-              amount: principal,
-              accountId: sourceAccountId,
-              toAccountId: Value(loanAccountId),
-              categoryId: Value(transferCategoryId),
-              date: date,
-              note: Value(note),
-            ),
-          ),
-        );
-      }
+    return transaction(
+      () => _postLoanPaymentLegs(
+        sourceAccountId: sourceAccountId,
+        loanAccountId: loanAccountId,
+        principal: principal,
+        interest: interest,
+        interestCategoryId: interestCategoryId,
+        transferCategoryId: transferCategoryId,
+        date: date,
+        note: note,
+      ),
+    );
+  }
 
-      if (ids.length > 1) {
-        await (update(transactions)..where((t) => t.id.isIn(ids))).write(
-          TransactionsCompanion(paymentGroupId: Value(ids.first)),
-        );
-      }
+  /// Inserts a loan payment's one or two linked legs — an optional
+  /// [interest] expense plus the [principal] transfer into [loanAccountId]
+  /// — links them by `paymentGroupId` when both exist, tags every leg with
+  /// [tagIds], and applies their balance effects. Must run inside
+  /// [transaction]. The shared insert step behind both [addLoanPayment]
+  /// (interest typed by hand) and [_postRecurringOccurrence] (interest
+  /// computed from the loan's own [LoanDetails.interestRatePct]) — they
+  /// differ only in how they arrive at [interest], never in how it's
+  /// posted. Returns the interest leg's id first (if any), then the
+  /// transfer leg's id (if any).
+  Future<List<int>> _postLoanPaymentLegs({
+    required int sourceAccountId,
+    required int loanAccountId,
+    required Money principal,
+    Money? interest,
+    int? interestCategoryId,
+    int? transferCategoryId,
+    required DateTime date,
+    String? note,
+    int? recurringRuleId,
+    Set<int> tagIds = const {},
+  }) async {
+    final ids = <int>[];
+    if (interest != null && interest.isPositive) {
+      ids.add(
+        await into(transactions).insert(
+          TransactionsCompanion.insert(
+            type: TxType.expense,
+            amount: interest,
+            accountId: sourceAccountId,
+            categoryId: Value(interestCategoryId),
+            date: date,
+            note: Value(note),
+            recurringRuleId: Value(recurringRuleId),
+          ),
+        ),
+      );
+    }
+    if (principal.isPositive) {
+      ids.add(
+        await into(transactions).insert(
+          TransactionsCompanion.insert(
+            type: TxType.transfer,
+            amount: principal,
+            accountId: sourceAccountId,
+            toAccountId: Value(loanAccountId),
+            categoryId: Value(transferCategoryId),
+            date: date,
+            note: Value(note),
+            recurringRuleId: Value(recurringRuleId),
+          ),
+        ),
+      );
+    }
 
+    if (ids.length > 1) {
+      await (update(transactions)..where((t) => t.id.isIn(ids))).write(
+        TransactionsCompanion(paymentGroupId: Value(ids.first)),
+      );
+    }
+
+    if (tagIds.isNotEmpty) {
       for (final id in ids) {
-        final row = await (select(
-          transactions,
-        )..where((t) => t.id.equals(id))).getSingle();
-        await _applyTxEffect(row, reverse: false);
+        await setTransactionTags(id, tagIds);
       }
-      return ids;
-    });
+    }
+
+    for (final id in ids) {
+      final row = await (select(
+        transactions,
+      )..where((t) => t.id.equals(id))).getSingle();
+      await _applyTxEffect(row, reverse: false);
+    }
+    return ids;
   }
 
   // ── Credit card statements (GitHub #91) ─────────────────────────────────
@@ -4393,29 +4494,70 @@ class AppDatabase extends _$AppDatabase {
   }) async {
     final onPromo = promoAmount != null && (promoLeft ?? 0) > 0;
     final isGoalOrLoan = rule.toAccountId != null;
-    final txId = await addTransaction(
-      type: isGoalOrLoan
-          ? TxType.transfer
-          : (rule.kind == CategoryKind.expense
-                ? TxType.expense
-                : TxType.income),
-      amount: onPromo ? promoAmount : rule.amount,
-      accountId: rule.accountId,
-      toAccountId: rule.toAccountId,
-      categoryId: rule.categoryId,
-      date: date,
-      payee: isGoalOrLoan ? null : rule.payee,
-      recurringRuleId: rule.id,
-      needsAmountReview: rule.isEstimate,
-      // No tracked foreign equivalent for a promo price, so a promo
-      // occurrence posts with no foreign-currency annotation rather than a
-      // misleading one (GitHub #85).
-      foreignCurrencyCode: onPromo ? null : rule.foreignCurrencyCode,
-      foreignAmount: onPromo ? null : rule.foreignAmount,
-    );
-    if (tagIds.isNotEmpty) {
-      await setTransactionTags(txId, tagIds);
+    final amount = onPromo ? promoAmount : rule.amount;
+
+    // A loan rule with a declared interest rate auto-splits into a real
+    // interest expense plus the principal transfer — the same split
+    // [addLoanPayment] does by hand, but computed fresh each occurrence from
+    // the loan's outstanding balance (see [LoanAmortization.periodInterest]),
+    // so the interest portion correctly shrinks over the loan's life. A
+    // savings-goal rule, or a loan with no rate set, keeps the old
+    // single-transfer behaviour.
+    final loanDetail = isGoalOrLoan
+        ? await getLoanDetail(rule.toAccountId!)
+        : null;
+
+    if (loanDetail?.interestRatePct != null) {
+      final loanAccount = await (select(
+        accounts,
+      )..where((a) => a.id.equals(rule.toAccountId!))).getSingle();
+      final outstanding = loanAccount.currentBalance.isNegative
+          ? Money.fromPaise(-loanAccount.currentBalance.paise)
+          : const Money.zero();
+      var interest = LoanAmortization.periodInterest(
+        outstandingPrincipal: outstanding,
+        annualRatePct: loanDetail!.interestRatePct,
+      );
+      if (interest.paise > amount.paise) interest = amount;
+      final principal = Money.fromPaise(amount.paise - interest.paise);
+
+      await _postLoanPaymentLegs(
+        sourceAccountId: rule.accountId,
+        loanAccountId: rule.toAccountId!,
+        principal: principal,
+        interest: interest.isPositive ? interest : null,
+        interestCategoryId: loanDetail.categoryId,
+        transferCategoryId: rule.categoryId,
+        date: date,
+        recurringRuleId: rule.id,
+        tagIds: tagIds,
+      );
+    } else {
+      final txId = await addTransaction(
+        type: isGoalOrLoan
+            ? TxType.transfer
+            : (rule.kind == CategoryKind.expense
+                  ? TxType.expense
+                  : TxType.income),
+        amount: amount,
+        accountId: rule.accountId,
+        toAccountId: rule.toAccountId,
+        categoryId: rule.categoryId,
+        date: date,
+        payee: isGoalOrLoan ? null : rule.payee,
+        recurringRuleId: rule.id,
+        needsAmountReview: rule.isEstimate,
+        // No tracked foreign equivalent for a promo price, so a promo
+        // occurrence posts with no foreign-currency annotation rather than a
+        // misleading one (GitHub #85).
+        foreignCurrencyCode: onPromo ? null : rule.foreignCurrencyCode,
+        foreignAmount: onPromo ? null : rule.foreignAmount,
+      );
+      if (tagIds.isNotEmpty) {
+        await setTransactionTags(txId, tagIds);
+      }
     }
+
     if (onPromo) {
       promoLeft = promoLeft! - 1;
       if (promoLeft <= 0) {

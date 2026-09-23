@@ -1883,6 +1883,66 @@ void main() {
         expect(await balanceOf(loan), Money.fromRupees(-192000));
       });
 
+      test(
+        'a loan with a declared rate auto-splits the recurring EMI into '
+        'interest and principal, recomputed fresh each month as the '
+        'balance shrinks',
+        () async {
+          final cash = await cashId();
+          final interestCategory = await expenseCategory('Food');
+          final loan = await db.addLoan(
+            name: 'Car Loan',
+            principal: Money.fromRupees(100000),
+            colorValue: 0,
+            iconKey: 'loan',
+            categoryId: interestCategory,
+            interestRatePct: 12, // 1%/month
+            tenureMonths: 12,
+            startDate: DateTime(2026, 7, 1),
+          );
+          final month1 = DateTime(2026, 7, 1);
+          final month2 = DateTime(2026, 8, 1);
+
+          await db.addRecurringRule(
+            name: 'Car EMI',
+            kind: CategoryKind.expense,
+            amount: Money.fromRupees(8792),
+            accountId: cash,
+            toAccountId: loan,
+            frequency: RecurringFrequency.monthly,
+            startsOn: month1,
+          );
+
+          await db.runDueRecurringRules(now: month1);
+          // 1% of ₹1,00,000 outstanding.
+          expect(await balanceOf(loan), Money.fromRupees(-92208));
+
+          var txs = await db.watchTransactions().first;
+          expect(txs, hasLength(2));
+          final interestLeg1 = txs.firstWhere((t) => t.type == TxType.expense);
+          final transferLeg1 = txs.firstWhere(
+            (t) => t.type == TxType.transfer,
+          );
+          expect(interestLeg1.amount, Money.fromRupees(1000));
+          expect(interestLeg1.categoryId, interestCategory);
+          expect(transferLeg1.amount, Money.fromRupees(7792));
+          expect(interestLeg1.paymentGroupId, transferLeg1.paymentGroupId);
+          expect(interestLeg1.recurringRuleId, isNotNull);
+
+          await db.runDueRecurringRules(now: month2);
+          // watchTransactions() orders newest-first, so the latest
+          // occurrence's expense leg is the first match, not the last.
+          txs = await db.watchTransactions().first;
+          final interestLeg2 = txs.firstWhere((t) => t.type == TxType.expense);
+          // Outstanding shrank, so this month's interest is smaller than
+          // the first month's — the split isn't a fixed ratio.
+          expect(
+            interestLeg2.amount.paise,
+            lessThan(interestLeg1.amount.paise),
+          );
+        },
+      );
+
       test('rejects a destination that is not a goal or loan', () async {
         final cash = await cashId();
         final bank = await db.addAccount(

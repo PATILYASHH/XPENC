@@ -321,6 +321,15 @@ void main() {
     await reopened.close();
   });
 
+  test('the v75 loanDetails.interestRatePct/tenureMonths/startDate columns '
+      '(rate-based loan tracking) survive a rolled-back re-open', () async {
+    final file = await buildRolledBackDatabase(74);
+
+    final reopened = AppDatabase(NativeDatabase(file));
+    await expectLater(reopened.select(reopened.loanDetails).get(), completes);
+    await reopened.close();
+  });
+
   test(
     'GitHub #134: an existing user with no account in Envelope Mode is '
     'auto-assigned Medium (not Basic) by the v72 migration backfill, so '

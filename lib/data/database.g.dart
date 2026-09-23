@@ -17821,8 +17821,48 @@ class $LoanDetailsTable extends LoanDetails
         type: DriftSqlType.int,
         requiredDuringInsert: false,
       ).withConverter<Money?>($LoanDetailsTable.$converteremiAmountn);
+  static const VerificationMeta _interestRatePctMeta = const VerificationMeta(
+    'interestRatePct',
+  );
   @override
-  List<GeneratedColumn> get $columns => [accountId, categoryId, emiAmount];
+  late final GeneratedColumn<double> interestRatePct = GeneratedColumn<double>(
+    'interest_rate_pct',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _tenureMonthsMeta = const VerificationMeta(
+    'tenureMonths',
+  );
+  @override
+  late final GeneratedColumn<int> tenureMonths = GeneratedColumn<int>(
+    'tenure_months',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _startDateMeta = const VerificationMeta(
+    'startDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startDate = GeneratedColumn<DateTime>(
+    'start_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    accountId,
+    categoryId,
+    emiAmount,
+    interestRatePct,
+    tenureMonths,
+    startDate,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -17845,6 +17885,30 @@ class $LoanDetailsTable extends LoanDetails
       context.handle(
         _categoryIdMeta,
         categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
+      );
+    }
+    if (data.containsKey('interest_rate_pct')) {
+      context.handle(
+        _interestRatePctMeta,
+        interestRatePct.isAcceptableOrUnknown(
+          data['interest_rate_pct']!,
+          _interestRatePctMeta,
+        ),
+      );
+    }
+    if (data.containsKey('tenure_months')) {
+      context.handle(
+        _tenureMonthsMeta,
+        tenureMonths.isAcceptableOrUnknown(
+          data['tenure_months']!,
+          _tenureMonthsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('start_date')) {
+      context.handle(
+        _startDateMeta,
+        startDate.isAcceptableOrUnknown(data['start_date']!, _startDateMeta),
       );
     }
     return context;
@@ -17870,6 +17934,18 @@ class $LoanDetailsTable extends LoanDetails
           data['${effectivePrefix}emi_amount'],
         ),
       ),
+      interestRatePct: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}interest_rate_pct'],
+      ),
+      tenureMonths: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}tenure_months'],
+      ),
+      startDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}start_date'],
+      ),
     );
   }
 
@@ -17890,11 +17966,31 @@ class LoanDetailRow extends DataClass implements Insertable<LoanDetailRow> {
   final int? categoryId;
 
   /// Pre-fills the payment sheet amount — informational, never enforced.
+  /// Auto-computed from [interestRatePct]/[tenureMonths] when both are set
+  /// and this is left blank at creation; a manually-entered value is never
+  /// silently recalculated afterwards.
   final Money? emiAmount;
+
+  /// Annual interest rate, e.g. `8.5` for 8.5% — reducing-balance only.
+  /// `null` keeps the loan in the old "basic" mode: no auto-split, no
+  /// interest/savings analytics, exactly today's behaviour.
+  final double? interestRatePct;
+
+  /// Original tenure in months, used with [interestRatePct] to derive
+  /// [emiAmount] and the full amortization schedule.
+  final int? tenureMonths;
+
+  /// When repayment began — needed to know how many installments have
+  /// already elapsed for the prepayment-savings projection. Defaults to the
+  /// loan's creation date when a rate is set; otherwise unused.
+  final DateTime? startDate;
   const LoanDetailRow({
     required this.accountId,
     this.categoryId,
     this.emiAmount,
+    this.interestRatePct,
+    this.tenureMonths,
+    this.startDate,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -17908,6 +18004,15 @@ class LoanDetailRow extends DataClass implements Insertable<LoanDetailRow> {
         $LoanDetailsTable.$converteremiAmountn.toSql(emiAmount),
       );
     }
+    if (!nullToAbsent || interestRatePct != null) {
+      map['interest_rate_pct'] = Variable<double>(interestRatePct);
+    }
+    if (!nullToAbsent || tenureMonths != null) {
+      map['tenure_months'] = Variable<int>(tenureMonths);
+    }
+    if (!nullToAbsent || startDate != null) {
+      map['start_date'] = Variable<DateTime>(startDate);
+    }
     return map;
   }
 
@@ -17920,6 +18025,15 @@ class LoanDetailRow extends DataClass implements Insertable<LoanDetailRow> {
       emiAmount: emiAmount == null && nullToAbsent
           ? const Value.absent()
           : Value(emiAmount),
+      interestRatePct: interestRatePct == null && nullToAbsent
+          ? const Value.absent()
+          : Value(interestRatePct),
+      tenureMonths: tenureMonths == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tenureMonths),
+      startDate: startDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(startDate),
     );
   }
 
@@ -17932,6 +18046,9 @@ class LoanDetailRow extends DataClass implements Insertable<LoanDetailRow> {
       accountId: serializer.fromJson<int>(json['accountId']),
       categoryId: serializer.fromJson<int?>(json['categoryId']),
       emiAmount: serializer.fromJson<Money?>(json['emiAmount']),
+      interestRatePct: serializer.fromJson<double?>(json['interestRatePct']),
+      tenureMonths: serializer.fromJson<int?>(json['tenureMonths']),
+      startDate: serializer.fromJson<DateTime?>(json['startDate']),
     );
   }
   @override
@@ -17941,6 +18058,9 @@ class LoanDetailRow extends DataClass implements Insertable<LoanDetailRow> {
       'accountId': serializer.toJson<int>(accountId),
       'categoryId': serializer.toJson<int?>(categoryId),
       'emiAmount': serializer.toJson<Money?>(emiAmount),
+      'interestRatePct': serializer.toJson<double?>(interestRatePct),
+      'tenureMonths': serializer.toJson<int?>(tenureMonths),
+      'startDate': serializer.toJson<DateTime?>(startDate),
     };
   }
 
@@ -17948,10 +18068,18 @@ class LoanDetailRow extends DataClass implements Insertable<LoanDetailRow> {
     int? accountId,
     Value<int?> categoryId = const Value.absent(),
     Value<Money?> emiAmount = const Value.absent(),
+    Value<double?> interestRatePct = const Value.absent(),
+    Value<int?> tenureMonths = const Value.absent(),
+    Value<DateTime?> startDate = const Value.absent(),
   }) => LoanDetailRow(
     accountId: accountId ?? this.accountId,
     categoryId: categoryId.present ? categoryId.value : this.categoryId,
     emiAmount: emiAmount.present ? emiAmount.value : this.emiAmount,
+    interestRatePct: interestRatePct.present
+        ? interestRatePct.value
+        : this.interestRatePct,
+    tenureMonths: tenureMonths.present ? tenureMonths.value : this.tenureMonths,
+    startDate: startDate.present ? startDate.value : this.startDate,
   );
   LoanDetailRow copyWithCompanion(LoanDetailsCompanion data) {
     return LoanDetailRow(
@@ -17960,6 +18088,13 @@ class LoanDetailRow extends DataClass implements Insertable<LoanDetailRow> {
           ? data.categoryId.value
           : this.categoryId,
       emiAmount: data.emiAmount.present ? data.emiAmount.value : this.emiAmount,
+      interestRatePct: data.interestRatePct.present
+          ? data.interestRatePct.value
+          : this.interestRatePct,
+      tenureMonths: data.tenureMonths.present
+          ? data.tenureMonths.value
+          : this.tenureMonths,
+      startDate: data.startDate.present ? data.startDate.value : this.startDate,
     );
   }
 
@@ -17968,45 +18103,73 @@ class LoanDetailRow extends DataClass implements Insertable<LoanDetailRow> {
     return (StringBuffer('LoanDetailRow(')
           ..write('accountId: $accountId, ')
           ..write('categoryId: $categoryId, ')
-          ..write('emiAmount: $emiAmount')
+          ..write('emiAmount: $emiAmount, ')
+          ..write('interestRatePct: $interestRatePct, ')
+          ..write('tenureMonths: $tenureMonths, ')
+          ..write('startDate: $startDate')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(accountId, categoryId, emiAmount);
+  int get hashCode => Object.hash(
+    accountId,
+    categoryId,
+    emiAmount,
+    interestRatePct,
+    tenureMonths,
+    startDate,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is LoanDetailRow &&
           other.accountId == this.accountId &&
           other.categoryId == this.categoryId &&
-          other.emiAmount == this.emiAmount);
+          other.emiAmount == this.emiAmount &&
+          other.interestRatePct == this.interestRatePct &&
+          other.tenureMonths == this.tenureMonths &&
+          other.startDate == this.startDate);
 }
 
 class LoanDetailsCompanion extends UpdateCompanion<LoanDetailRow> {
   final Value<int> accountId;
   final Value<int?> categoryId;
   final Value<Money?> emiAmount;
+  final Value<double?> interestRatePct;
+  final Value<int?> tenureMonths;
+  final Value<DateTime?> startDate;
   const LoanDetailsCompanion({
     this.accountId = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.emiAmount = const Value.absent(),
+    this.interestRatePct = const Value.absent(),
+    this.tenureMonths = const Value.absent(),
+    this.startDate = const Value.absent(),
   });
   LoanDetailsCompanion.insert({
     this.accountId = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.emiAmount = const Value.absent(),
+    this.interestRatePct = const Value.absent(),
+    this.tenureMonths = const Value.absent(),
+    this.startDate = const Value.absent(),
   });
   static Insertable<LoanDetailRow> custom({
     Expression<int>? accountId,
     Expression<int>? categoryId,
     Expression<int>? emiAmount,
+    Expression<double>? interestRatePct,
+    Expression<int>? tenureMonths,
+    Expression<DateTime>? startDate,
   }) {
     return RawValuesInsertable({
       if (accountId != null) 'account_id': accountId,
       if (categoryId != null) 'category_id': categoryId,
       if (emiAmount != null) 'emi_amount': emiAmount,
+      if (interestRatePct != null) 'interest_rate_pct': interestRatePct,
+      if (tenureMonths != null) 'tenure_months': tenureMonths,
+      if (startDate != null) 'start_date': startDate,
     });
   }
 
@@ -18014,11 +18177,17 @@ class LoanDetailsCompanion extends UpdateCompanion<LoanDetailRow> {
     Value<int>? accountId,
     Value<int?>? categoryId,
     Value<Money?>? emiAmount,
+    Value<double?>? interestRatePct,
+    Value<int?>? tenureMonths,
+    Value<DateTime?>? startDate,
   }) {
     return LoanDetailsCompanion(
       accountId: accountId ?? this.accountId,
       categoryId: categoryId ?? this.categoryId,
       emiAmount: emiAmount ?? this.emiAmount,
+      interestRatePct: interestRatePct ?? this.interestRatePct,
+      tenureMonths: tenureMonths ?? this.tenureMonths,
+      startDate: startDate ?? this.startDate,
     );
   }
 
@@ -18036,6 +18205,15 @@ class LoanDetailsCompanion extends UpdateCompanion<LoanDetailRow> {
         $LoanDetailsTable.$converteremiAmountn.toSql(emiAmount.value),
       );
     }
+    if (interestRatePct.present) {
+      map['interest_rate_pct'] = Variable<double>(interestRatePct.value);
+    }
+    if (tenureMonths.present) {
+      map['tenure_months'] = Variable<int>(tenureMonths.value);
+    }
+    if (startDate.present) {
+      map['start_date'] = Variable<DateTime>(startDate.value);
+    }
     return map;
   }
 
@@ -18044,7 +18222,10 @@ class LoanDetailsCompanion extends UpdateCompanion<LoanDetailRow> {
     return (StringBuffer('LoanDetailsCompanion(')
           ..write('accountId: $accountId, ')
           ..write('categoryId: $categoryId, ')
-          ..write('emiAmount: $emiAmount')
+          ..write('emiAmount: $emiAmount, ')
+          ..write('interestRatePct: $interestRatePct, ')
+          ..write('tenureMonths: $tenureMonths, ')
+          ..write('startDate: $startDate')
           ..write(')'))
         .toString();
   }
@@ -40481,12 +40662,18 @@ typedef $$LoanDetailsTableCreateCompanionBuilder =
       Value<int> accountId,
       Value<int?> categoryId,
       Value<Money?> emiAmount,
+      Value<double?> interestRatePct,
+      Value<int?> tenureMonths,
+      Value<DateTime?> startDate,
     });
 typedef $$LoanDetailsTableUpdateCompanionBuilder =
     LoanDetailsCompanion Function({
       Value<int> accountId,
       Value<int?> categoryId,
       Value<Money?> emiAmount,
+      Value<double?> interestRatePct,
+      Value<int?> tenureMonths,
+      Value<DateTime?> startDate,
     });
 
 final class $$LoanDetailsTableReferences
@@ -40546,6 +40733,21 @@ class $$LoanDetailsTableFilterComposer
         column: $table.emiAmount,
         builder: (column) => ColumnWithTypeConverterFilters(column),
       );
+
+  ColumnFilters<double> get interestRatePct => $composableBuilder(
+    column: $table.interestRatePct,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get tenureMonths => $composableBuilder(
+    column: $table.tenureMonths,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
+    builder: (column) => ColumnFilters(column),
+  );
 
   $$AccountsTableFilterComposer get accountId {
     final $$AccountsTableFilterComposer composer = $composerBuilder(
@@ -40608,6 +40810,21 @@ class $$LoanDetailsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get interestRatePct => $composableBuilder(
+    column: $table.interestRatePct,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get tenureMonths => $composableBuilder(
+    column: $table.tenureMonths,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$AccountsTableOrderingComposer get accountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -40666,6 +40883,19 @@ class $$LoanDetailsTableAnnotationComposer
   });
   GeneratedColumnWithTypeConverter<Money?, int> get emiAmount =>
       $composableBuilder(column: $table.emiAmount, builder: (column) => column);
+
+  GeneratedColumn<double> get interestRatePct => $composableBuilder(
+    column: $table.interestRatePct,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get tenureMonths => $composableBuilder(
+    column: $table.tenureMonths,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get startDate =>
+      $composableBuilder(column: $table.startDate, builder: (column) => column);
 
   $$AccountsTableAnnotationComposer get accountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
@@ -40745,20 +40975,32 @@ class $$LoanDetailsTableTableManager
                 Value<int> accountId = const Value.absent(),
                 Value<int?> categoryId = const Value.absent(),
                 Value<Money?> emiAmount = const Value.absent(),
+                Value<double?> interestRatePct = const Value.absent(),
+                Value<int?> tenureMonths = const Value.absent(),
+                Value<DateTime?> startDate = const Value.absent(),
               }) => LoanDetailsCompanion(
                 accountId: accountId,
                 categoryId: categoryId,
                 emiAmount: emiAmount,
+                interestRatePct: interestRatePct,
+                tenureMonths: tenureMonths,
+                startDate: startDate,
               ),
           createCompanionCallback:
               ({
                 Value<int> accountId = const Value.absent(),
                 Value<int?> categoryId = const Value.absent(),
                 Value<Money?> emiAmount = const Value.absent(),
+                Value<double?> interestRatePct = const Value.absent(),
+                Value<int?> tenureMonths = const Value.absent(),
+                Value<DateTime?> startDate = const Value.absent(),
               }) => LoanDetailsCompanion.insert(
                 accountId: accountId,
                 categoryId: categoryId,
                 emiAmount: emiAmount,
+                interestRatePct: interestRatePct,
+                tenureMonths: tenureMonths,
+                startDate: startDate,
               ),
           withReferenceMapper: (p0) => p0
               .map(

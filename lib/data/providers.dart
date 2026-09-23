@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/budget_cycle.dart';
 import '../core/currency.dart';
 import '../core/home_widget/home_widget_service.dart';
+import '../core/loan_amortization.dart';
 import '../core/money.dart';
 import '../core/notifications/notification_service.dart';
 import '../core/security/unlock_method.dart';
@@ -1403,15 +1404,27 @@ typedef LoanProgress = ({
   Money outstanding,
   Money principal,
   double fraction,
+  // Everything below is null for a "basic" loan — one with no
+  // interestRatePct set — so an existing loan renders exactly as it always
+  // has (see LoanDetailScreen).
+  Money? emi,
+  Money? nextInterest,
+  Money? nextPrincipal,
+  Money? totalInterestScheduled,
+  Money? totalPayableScheduled,
+  Money totalInterestPaid,
+  Money? interestSaved,
+  int? monthsSaved,
 });
 
 final loanProgressListProvider = Provider<List<LoanProgress>>((ref) {
   final details = ref.watch(loanDetailsProvider).valueOrNull ?? const [];
   final accountMap = ref.watch(accountMapProvider);
+  final allTx = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
   final out = <LoanProgress>[
     for (final d in details)
       if (accountMap[d.accountId] case final account?)
-        _loanProgressOf(account, d),
+        _loanProgressOf(account, d, allTx),
   ];
   out.sort((a, b) => a.account.createdAt.compareTo(b.account.createdAt));
   return out;
@@ -1424,7 +1437,8 @@ final loanProgressProvider = Provider.family<LoanProgress?, int>((
   final detail = ref.watch(loanDetailProvider(accountId));
   final account = ref.watch(accountMapProvider)[accountId];
   if (detail == null || account == null) return null;
-  return _loanProgressOf(account, detail);
+  final allTx = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
+  return _loanProgressOf(account, detail, allTx);
 });
 
 // ── Credit card statements (GitHub #91) ─────────────────────────────────────
@@ -1465,21 +1479,148 @@ final creditCardStatementPeriodProvider =
       );
     });
 
-LoanProgress _loanProgressOf(AccountRow account, LoanDetailRow detail) {
+LoanProgress _loanProgressOf(
+  AccountRow account,
+  LoanDetailRow detail,
+  List<TransactionRow> allTx,
+) {
   final principal = Money.fromPaise(-account.openingBalance.paise);
   final currentBalance = account.currentBalance;
   final outstanding = currentBalance.isNegative
       ? Money.fromPaise(-currentBalance.paise)
       : const Money.zero();
   final paid = principal - outstanding;
+  final fraction = principal.isZero
+      ? 1.0
+      : (paid.paise / principal.paise).clamp(0.0, 1.0);
+
+  // Every interest expense ever posted against this loan — any expense
+  // leg sharing a paymentGroupId with a transfer into this loan account
+  // (see AppDatabase._postLoanPaymentLegs). Zero for a loan that's never
+  // had a split payment (old plain transfers, or a rate-less "basic" loan).
+  final groupIds = <int>{
+    for (final t in allTx)
+      if (t.type == TxType.transfer &&
+          t.toAccountId == account.id &&
+          t.paymentGroupId != null)
+        t.paymentGroupId!,
+  };
+  var totalInterestPaid = const Money.zero();
+  if (groupIds.isNotEmpty) {
+    for (final t in allTx) {
+      if (t.type == TxType.expense &&
+          t.paymentGroupId != null &&
+          groupIds.contains(t.paymentGroupId)) {
+        totalInterestPaid += t.amount;
+      }
+    }
+  }
+
+  final rate = detail.interestRatePct;
+  if (rate == null) {
+    return (
+      account: account,
+      detail: detail,
+      outstanding: outstanding,
+      principal: principal,
+      fraction: fraction,
+      emi: detail.emiAmount,
+      nextInterest: null,
+      nextPrincipal: null,
+      totalInterestScheduled: null,
+      totalPayableScheduled: null,
+      totalInterestPaid: totalInterestPaid,
+      interestSaved: null,
+      monthsSaved: null,
+    );
+  }
+
+  final tenure = detail.tenureMonths;
+  final emi =
+      detail.emiAmount ??
+      (tenure != null && tenure > 0
+          ? LoanAmortization.calculateEmi(
+              principal: principal,
+              annualRatePct: rate,
+              tenureMonths: tenure,
+            )
+          : null);
+
+  Money? nextInterest;
+  Money? nextPrincipal;
+  Money? totalInterestScheduled;
+  Money? totalPayableScheduled;
+  Money? interestSaved;
+  int? monthsSaved;
+
+  if (emi != null) {
+    nextInterest = LoanAmortization.periodInterest(
+      outstandingPrincipal: outstanding,
+      annualRatePct: rate,
+    );
+    if (nextInterest.paise > emi.paise) nextInterest = emi;
+    nextPrincipal = Money.fromPaise(emi.paise - nextInterest.paise);
+
+    final original = LoanAmortization.amortizeToZero(
+      startingBalance: principal,
+      annualRatePct: rate,
+      emi: emi,
+    );
+    totalInterestScheduled = original.totalInterest;
+    totalPayableScheduled = principal + original.totalInterest;
+
+    final startDate = detail.startDate;
+    if (startDate != null && outstanding.isPositive) {
+      final now = DateTime.now();
+      final elapsedMonths =
+          (now.year - startDate.year) * 12 + (now.month - startDate.month);
+      if (elapsedMonths > 0) {
+        // Where the ORIGINAL schedule (no prepayments) would be after the
+        // same number of months, so it can be compared against where the
+        // loan actually is now.
+        final elapsed = LoanAmortization.amortizeFor(
+          startingBalance: principal,
+          annualRatePct: rate,
+          emi: emi,
+          months: elapsedMonths,
+        );
+        final originalRemainingInterest = Money.fromPaise(
+          original.totalInterest.paise - elapsed.interestSoFar.paise,
+        );
+        final originalRemainingMonths = original.months - elapsed.monthsElapsed;
+
+        final projected = LoanAmortization.amortizeToZero(
+          startingBalance: outstanding,
+          annualRatePct: rate,
+          emi: emi,
+        );
+
+        final savedMoney = Money.fromPaise(
+          originalRemainingInterest.paise - projected.totalInterest.paise,
+        );
+        if (savedMoney.isPositive) {
+          interestSaved = savedMoney;
+          final savedMonths = originalRemainingMonths - projected.months;
+          monthsSaved = savedMonths > 0 ? savedMonths : 0;
+        }
+      }
+    }
+  }
+
   return (
     account: account,
     detail: detail,
     outstanding: outstanding,
     principal: principal,
-    fraction: principal.isZero
-        ? 1.0
-        : (paid.paise / principal.paise).clamp(0.0, 1.0),
+    fraction: fraction,
+    emi: emi,
+    nextInterest: nextInterest,
+    nextPrincipal: nextPrincipal,
+    totalInterestScheduled: totalInterestScheduled,
+    totalPayableScheduled: totalPayableScheduled,
+    totalInterestPaid: totalInterestPaid,
+    interestSaved: interestSaved,
+    monthsSaved: monthsSaved,
   );
 }
 

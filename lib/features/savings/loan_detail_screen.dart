@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_icons.dart';
+import '../../core/loan_amortization.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/amount_keypad_field.dart';
@@ -110,12 +111,7 @@ class LoanDetailScreen extends ConsumerWidget {
                 child: FilledButton.tonalIcon(
                   onPressed: isPaidOff
                       ? null
-                      : () => _openPaymentSheet(
-                          context,
-                          loanAccountId: accountId,
-                          defaultCategoryId: detail.categoryId,
-                          emiAmount: detail.emiAmount,
-                        ),
+                      : () => _openPaymentSheet(context, loan: loan),
                   icon: const Icon(Icons.payments_outlined),
                   label: const Text('Make a payment'),
                 ),
@@ -149,14 +145,85 @@ class LoanDetailScreen extends ConsumerWidget {
                       color: AppColors.income,
                     ),
                   ),
-                  if (detail.emiAmount != null) ...[
+                  if (loan.totalInterestPaid.isPositive) ...[
+                    _divider(theme),
+                    _row(
+                      context,
+                      'Interest paid',
+                      _plainValue(
+                        context,
+                        MoneyFormat.symbol(loan.totalInterestPaid),
+                        color: AppColors.expense,
+                      ),
+                    ),
+                  ],
+                  if (detail.interestRatePct != null) ...[
+                    _divider(theme),
+                    _row(
+                      context,
+                      'Interest rate',
+                      _plainValue(
+                        context,
+                        '${_formatRate(detail.interestRatePct!)}% / yr',
+                      ),
+                    ),
+                  ],
+                  if (loan.emi != null) ...[
                     _divider(theme),
                     _row(
                       context,
                       'Monthly EMI',
+                      _plainValue(context, MoneyFormat.symbol(loan.emi!)),
+                    ),
+                  ],
+                  if (!isPaidOff &&
+                      loan.nextInterest != null &&
+                      loan.nextPrincipal != null) ...[
+                    _divider(theme),
+                    _row(
+                      context,
+                      'Next payment',
                       _plainValue(
                         context,
-                        MoneyFormat.symbol(detail.emiAmount!),
+                        '${MoneyFormat.symbol(loan.nextInterest!)} interest + '
+                        '${MoneyFormat.symbol(loan.nextPrincipal!)} principal',
+                      ),
+                    ),
+                  ],
+                  if (loan.totalInterestScheduled != null) ...[
+                    _divider(theme),
+                    _row(
+                      context,
+                      'Total interest',
+                      _plainValue(
+                        context,
+                        MoneyFormat.symbol(loan.totalInterestScheduled!),
+                      ),
+                    ),
+                  ],
+                  if (loan.totalPayableScheduled != null) ...[
+                    _divider(theme),
+                    _row(
+                      context,
+                      'Total payable',
+                      _plainValue(
+                        context,
+                        MoneyFormat.symbol(loan.totalPayableScheduled!),
+                      ),
+                    ),
+                  ],
+                  if (loan.interestSaved != null) ...[
+                    _divider(theme),
+                    _row(
+                      context,
+                      "You're saving",
+                      _plainValue(
+                        context,
+                        loan.monthsSaved != null && loan.monthsSaved! > 0
+                            ? '~${MoneyFormat.symbol(loan.interestSaved!)} '
+                                  '(~${loan.monthsSaved} months)'
+                            : '~${MoneyFormat.symbol(loan.interestSaved!)}',
+                        color: AppColors.income,
                       ),
                     ),
                   ],
@@ -397,12 +464,14 @@ class LoanDetailScreen extends ConsumerWidget {
 
 enum _LoanAction { archive, delete }
 
-void _openPaymentSheet(
-  BuildContext context, {
-  required int loanAccountId,
-  int? defaultCategoryId,
-  Money? emiAmount,
-}) {
+/// `8.5` stays `8.5`, `8.0` becomes `8`.
+String _formatRate(double rate) {
+  return rate == rate.roundToDouble()
+      ? rate.toStringAsFixed(0)
+      : rate.toString();
+}
+
+void _openPaymentSheet(BuildContext context, {required LoanProgress loan}) {
   showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -411,24 +480,14 @@ void _openPaymentSheet(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
-    builder: (_) => _LoanPaymentSheet(
-      loanAccountId: loanAccountId,
-      defaultCategoryId: defaultCategoryId,
-      emiAmount: emiAmount,
-    ),
+    builder: (_) => _LoanPaymentSheet(loan: loan),
   );
 }
 
 class _LoanPaymentSheet extends ConsumerStatefulWidget {
-  const _LoanPaymentSheet({
-    required this.loanAccountId,
-    this.defaultCategoryId,
-    this.emiAmount,
-  });
+  const _LoanPaymentSheet({required this.loan});
 
-  final int loanAccountId;
-  final int? defaultCategoryId;
-  final Money? emiAmount;
+  final LoanProgress loan;
 
   @override
   ConsumerState<_LoanPaymentSheet> createState() => _LoanPaymentSheetState();
@@ -442,22 +501,57 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
   late int? _categoryId;
   bool _submitting = false;
 
+  /// Once the user types into the interest field themselves, the rate-based
+  /// estimate stops overwriting it — e.g. to match what the bank statement
+  /// actually charged this cycle.
+  bool _interestEditedByUser = false;
+  bool _autoFilling = false;
+
   @override
   void initState() {
     super.initState();
-    _categoryId = widget.defaultCategoryId;
-    if (widget.emiAmount != null) _amountController.setAmount(widget.emiAmount!);
-    _amountController.addListener(_onAmountsChanged);
-    _interestController.addListener(_onAmountsChanged);
+    _categoryId = widget.loan.detail.categoryId;
+    final emi = widget.loan.emi;
+    if (emi != null) _amountController.setAmount(emi);
+    _amountController.addListener(_onAmountChanged);
+    _interestController.addListener(_onInterestChanged);
+    _applyInterestEstimate();
   }
 
-  void _onAmountsChanged() => setState(() {});
+  void _onAmountChanged() {
+    _applyInterestEstimate();
+    setState(() {});
+  }
+
+  void _onInterestChanged() {
+    if (!_autoFilling) _interestEditedByUser = true;
+    setState(() {});
+  }
+
+  /// Suggests this period's interest from the loan's own rate — see
+  /// [LoanAmortization.periodInterest] — whenever there's a rate to work
+  /// from and the user hasn't already overridden the field. A loan with no
+  /// rate leaves the field exactly as manual as it's always been.
+  void _applyInterestEstimate() {
+    final rate = widget.loan.detail.interestRatePct;
+    if (rate == null || _interestEditedByUser) return;
+    final amount = Money.tryParse(_amountController.text);
+    if (amount == null || !amount.isPositive) return;
+    var estimate = LoanAmortization.periodInterest(
+      outstandingPrincipal: widget.loan.outstanding,
+      annualRatePct: rate,
+    );
+    if (estimate.paise > amount.paise) estimate = amount;
+    _autoFilling = true;
+    _interestController.setAmount(estimate);
+    _autoFilling = false;
+  }
 
   @override
   void dispose() {
-    _amountController.removeListener(_onAmountsChanged);
+    _amountController.removeListener(_onAmountChanged);
     _amountController.dispose();
-    _interestController.removeListener(_onAmountsChanged);
+    _interestController.removeListener(_onInterestChanged);
     _interestController.dispose();
     _amountGroup.dispose();
     super.dispose();
@@ -516,7 +610,7 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
           .read(dbProvider)
           .addLoanPayment(
             sourceAccountId: sourceId,
-            loanAccountId: widget.loanAccountId,
+            loanAccountId: widget.loan.account.id,
             amount: amount,
             interestAmount: interest,
             interestCategoryId: interest != null ? _categoryId : null,
@@ -543,7 +637,7 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
         (ref.watch(balanceAccountsProvider).valueOrNull ?? const [])
             .where(
               (a) =>
-                  a.id != widget.loanAccountId &&
+                  a.id != widget.loan.account.id &&
                   a.type != AccountType.goal &&
                   a.type != AccountType.loan,
             )
@@ -563,88 +657,96 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
             MediaQuery.of(context).viewInsets.bottom +
             20,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'Make a payment',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 20),
-          DropdownButtonFormField<int>(
-            initialValue: _sourceAccountId,
-            isExpanded: true,
-            decoration: const InputDecoration(labelText: 'From'),
-            items: [
-              for (final a in accounts)
-                DropdownMenuItem(value: a.id, child: Text(a.name)),
-            ],
-            onChanged: (v) => setState(() => _sourceAccountId = v),
-          ),
-          const SizedBox(height: 16),
-          AmountKeypadField(
-            controller: _amountController,
-            group: _amountGroup,
-            autofocus: true,
-            label: 'Amount',
-            yieldTo: const [],
-          ),
-          const SizedBox(height: 16),
-          AmountKeypadField(
-            controller: _interestController,
-            group: _amountGroup,
-            label: 'Interest (optional)',
-            hintText: '0.00',
-            yieldTo: const [],
-          ),
-          Padding(
-            padding: const EdgeInsets.only(top: 6, left: 4, right: 4),
-            child: Text(
-              _hasInterest
-                  ? 'Interest posts as a real expense; only the rest '
-                        '(${MoneyFormat.symbol(_principalPreview)}) '
-                        'reduces the loan.'
-                  : 'Split out the interest part of an EMI — it posts as an '
-                        'expense instead of reducing the loan balance.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Make a payment',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<int?>(
-            initialValue: _categoryId,
-            isExpanded: true,
-            decoration: InputDecoration(
-              labelText: _hasInterest
-                  ? 'Interest category'
-                  : 'Category (optional)',
-              helperText: _hasInterest
-                  ? 'Required — tags the interest expense.'
-                  : null,
+            const SizedBox(height: 20),
+            DropdownButtonFormField<int>(
+              initialValue: _sourceAccountId,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'From'),
+              items: [
+                for (final a in accounts)
+                  DropdownMenuItem(value: a.id, child: Text(a.name)),
+              ],
+              onChanged: (v) => setState(() => _sourceAccountId = v),
             ),
-            items: [
-              const DropdownMenuItem(value: null, child: Text('None')),
-              for (final c in categories)
-                DropdownMenuItem(value: c.id, child: Text(c.name)),
-            ],
-            onChanged: (v) => setState(() => _categoryId = v),
-          ),
-          const SizedBox(height: 20),
-          FilledButton(
-            onPressed: _submitting ? null : _save,
-            child: _submitting
-                ? const SizedBox(
-                    height: 22,
-                    width: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2.4),
-                  )
-                : const Text('Make a payment'),
-          ),
-        ],
+            const SizedBox(height: 16),
+            AmountKeypadField(
+              controller: _amountController,
+              group: _amountGroup,
+              autofocus: true,
+              label: 'Amount',
+              yieldTo: const [],
+            ),
+            const SizedBox(height: 16),
+            AmountKeypadField(
+              controller: _interestController,
+              group: _amountGroup,
+              label: 'Interest (optional)',
+              hintText: '0.00',
+              yieldTo: const [],
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 6, left: 4, right: 4),
+              child: Text(
+                _hasInterest
+                    ? widget.loan.detail.interestRatePct != null &&
+                              !_interestEditedByUser
+                          ? "Estimated from the loan's rate — edit to match "
+                                'your statement. Only '
+                                '${MoneyFormat.symbol(_principalPreview)} '
+                                'reduces the loan.'
+                          : 'Interest posts as a real expense; only the rest '
+                                '(${MoneyFormat.symbol(_principalPreview)}) '
+                                'reduces the loan.'
+                    : 'Split out the interest part of an EMI — it posts as an '
+                          'expense instead of reducing the loan balance.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<int?>(
+              initialValue: _categoryId,
+              isExpanded: true,
+              decoration: InputDecoration(
+                labelText: _hasInterest
+                    ? 'Interest category'
+                    : 'Category (optional)',
+                helperText: _hasInterest
+                    ? 'Required — tags the interest expense.'
+                    : null,
+              ),
+              items: [
+                const DropdownMenuItem(value: null, child: Text('None')),
+                for (final c in categories)
+                  DropdownMenuItem(value: c.id, child: Text(c.name)),
+              ],
+              onChanged: (v) => setState(() => _categoryId = v),
+            ),
+            const SizedBox(height: 20),
+            FilledButton(
+              onPressed: _submitting ? null : _save,
+              child: _submitting
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2.4),
+                    )
+                  : const Text('Make a payment'),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/app_icons.dart';
+import '../../core/loan_amortization.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/amount_keypad_field.dart';
@@ -925,6 +926,8 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
   final _nameFocus = FocusNode();
   late final AmountKeypadController _principalController;
   late final AmountKeypadController _emiController;
+  late final TextEditingController _rateController;
+  late final TextEditingController _tenureController;
 
   /// Coordinates the two money fields above so only one keypad is open at a
   /// time — same idea as one real `TextField`'s focus blurring another.
@@ -932,6 +935,7 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
   late int _colorValue;
   late String _iconKey;
   int? _categoryId;
+  late DateTime _startDate;
   bool _submitting = false;
 
   bool get _isEdit => widget.existing != null;
@@ -947,17 +951,35 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
     if (existing?.detail.emiAmount != null) {
       _emiController.setAmount(existing!.detail.emiAmount!);
     }
+    final existingRate = existing?.detail.interestRatePct;
+    _rateController = TextEditingController(
+      text: existingRate == null ? '' : _formatRate(existingRate),
+    );
+    _tenureController = TextEditingController(
+      text: existing?.detail.tenureMonths?.toString() ?? '',
+    );
+    _startDate = existing?.detail.startDate ?? DateTime.now();
     _colorValue = existing?.account.colorValue ?? _presetColors.first;
     _iconKey = existing?.account.iconKey ?? _iconKeys.first;
     _categoryId = existing?.detail.categoryId;
+    _rateController.addListener(_onProjectionInputsChanged);
+    _tenureController.addListener(_onProjectionInputsChanged);
+    _principalController.addListener(_onProjectionInputsChanged);
   }
+
+  void _onProjectionInputsChanged() => setState(() {});
 
   @override
   void dispose() {
     _nameController.dispose();
     _nameFocus.dispose();
+    _principalController.removeListener(_onProjectionInputsChanged);
     _principalController.dispose();
     _emiController.dispose();
+    _rateController.removeListener(_onProjectionInputsChanged);
+    _rateController.dispose();
+    _tenureController.removeListener(_onProjectionInputsChanged);
+    _tenureController.dispose();
     _amountGroup.dispose();
     super.dispose();
   }
@@ -966,6 +988,62 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  /// `8.5` stays `8.5`, `8.0` becomes `8` — a stored rate re-edited without
+  /// a trailing `.0` cluttering the field.
+  static String _formatRate(double rate) {
+    return rate == rate.roundToDouble()
+        ? rate.toStringAsFixed(0)
+        : rate.toString();
+  }
+
+  Future<void> _pickStartDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _startDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) setState(() => _startDate = picked);
+  }
+
+  /// The loan's declared principal for the projection preview — the
+  /// existing amount when editing (it can't change), otherwise whatever's
+  /// currently typed into the amount-borrowed field.
+  Money? get _previewPrincipal =>
+      widget.existing?.principal ?? Money.tryParse(_principalController.text);
+
+  /// Live "total payable / total interest" preview once a rate and tenure
+  /// are both entered — `null` otherwise, including while the principal
+  /// itself isn't known yet.
+  ({Money emi, Money totalInterest, Money totalPayable})? get _projection {
+    final principal = _previewPrincipal;
+    final rate = double.tryParse(_rateController.text.trim());
+    final tenure = int.tryParse(_tenureController.text.trim());
+    if (principal == null ||
+        !principal.isPositive ||
+        rate == null ||
+        rate <= 0 ||
+        tenure == null ||
+        tenure <= 0) {
+      return null;
+    }
+    final emi = LoanAmortization.calculateEmi(
+      principal: principal,
+      annualRatePct: rate,
+      tenureMonths: tenure,
+    );
+    final schedule = LoanAmortization.amortizeToZero(
+      startingBalance: principal,
+      annualRatePct: rate,
+      emi: emi,
+    );
+    return (
+      emi: emi,
+      totalInterest: schedule.totalInterest,
+      totalPayable: principal + schedule.totalInterest,
+    );
   }
 
   Future<void> _save() async {
@@ -985,6 +1063,18 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
       _showError('EMI must be greater than zero, or leave it blank.');
       return;
     }
+    final rateText = _rateController.text.trim();
+    final rate = rateText.isEmpty ? null : double.tryParse(rateText);
+    if (rateText.isNotEmpty && (rate == null || rate <= 0)) {
+      _showError('Interest rate must be greater than zero, or leave it blank.');
+      return;
+    }
+    final tenureText = _tenureController.text.trim();
+    final tenure = tenureText.isEmpty ? null : int.tryParse(tenureText);
+    if (tenureText.isNotEmpty && (tenure == null || tenure <= 0)) {
+      _showError('Tenure must be a whole number of months, or leave it blank.');
+      return;
+    }
 
     setState(() => _submitting = true);
     final db = ref.read(dbProvider);
@@ -998,6 +1088,9 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
           iconKey: _iconKey,
           categoryId: _categoryId,
           emiAmount: emi,
+          interestRatePct: rate,
+          tenureMonths: tenure,
+          startDate: rate == null ? null : _startDate,
         );
       } else {
         await db.addLoan(
@@ -1007,6 +1100,9 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
           iconKey: _iconKey,
           categoryId: _categoryId,
           emiAmount: emi,
+          interestRatePct: rate,
+          tenureMonths: tenure,
+          startDate: rate == null ? null : _startDate,
         );
       }
       if (!mounted) return;
@@ -1079,6 +1175,90 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
               yieldTo: [_nameFocus],
               label: 'Monthly EMI (optional)',
               hintText: '0.00',
+            ),
+            const SizedBox(height: 16),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _rateController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: 'Interest rate % / yr (optional)',
+                      hintText: 'e.g. 8.5',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: TextField(
+                    controller: _tenureController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Tenure, months (optional)',
+                      hintText: 'e.g. 60',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (_projection case final p?) ...[
+              Padding(
+                padding: const EdgeInsets.only(top: 8, left: 4, right: 4),
+                child: Text(
+                  'Suggested EMI ≈ ${MoneyFormat.symbol(p.emi)} · '
+                  'Total interest ≈ ${MoneyFormat.symbol(p.totalInterest)} · '
+                  'Total payable ≈ ${MoneyFormat.symbol(p.totalPayable)}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            InkWell(
+              onTap: _pickStartDate,
+              borderRadius: BorderRadius.circular(16),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 4,
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.event_rounded,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Repayment start date',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            DateFormat('EEE, d MMM yyyy').format(_startDate),
+                            style: theme.textTheme.titleMedium,
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<int?>(
