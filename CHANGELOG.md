@@ -8,6 +8,8 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
+## [1.6.1] — 2026-09-24
+
 ### Added
 - **Yearly Auto rules** — a recurring rule can now be set to fire once a
   year instead of just daily/weekly/2 weeks/monthly, for things like annual
@@ -40,6 +42,10 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   principal.
 - **Community links in About** — Instagram, WhatsApp Channel, Reddit and the
   public testimonial/feedback page are now linked from the About screen.
+- **Guide** — a new hub (More → Guide) explaining every module and feature
+  in the app: what it does, how to use it, and where to find it, plus a
+  dedicated explanation of the Basic/Medium/Pro app modes and what each
+  tier unlocks.
 
 ### Fixed
 - A loan account can no longer be picked as the funding source for a
@@ -894,7 +900,8 @@ First public release. 🎉
 - `tool/verify_apk.sh` gates every shipped APK against the missing
   `libsqlite3.so` class of crash.
 
-[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.6.1...HEAD
+[1.6.1]: https://github.com/PATILYASHH/XPENC/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/PATILYASHH/XPENC/compare/v1.5.1...v1.6.0
 [1.5.1]: https://github.com/PATILYASHH/XPENC/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/PATILYASHH/XPENC/compare/v1.4.5...v1.5.0

@@ -23,141 +23,59 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
-    icon: Icons.currency_exchange_rounded,
-    title: 'Multi-currency accounts',
-    location: 'Accounts → Add Account',
+    icon: Icons.percent_rounded,
+    title: 'Loan interest tracking',
+    location: 'Goals & Loans → a loan',
     description:
-        'Open an account in any supported currency. Balances, statements '
-        'and PDFs render in its own currency, transfers between different '
-        'currencies show a live conversion preview, and Net Worth converts '
-        'everything into your home currency automatically.',
+        'Give a loan its annual rate, tenure and start date and XPENC '
+        'computes the EMI, splits every payment — manual or recurring — '
+        'into interest and principal automatically, and shows how much '
+        'paying extra actually saves in interest and months.',
   ),
   WhatsNewEntry(
-    icon: Icons.pie_chart_outline_rounded,
-    title: 'Ready to Assign replaces Budgets vs. Envelope',
-    location: 'Settings → Budgeting',
+    icon: Icons.event_outlined,
+    title: 'Backdate a loan payment, see the extra you paid',
+    location: 'Goals & Loans → a loan → Make a payment',
     description:
-        'Budget limits are always on now, and Ready to Assign is a single '
-        'toggle on top — turn it on to pool every account into one shared '
-        '"assign before you spend" figure, instead of choosing one system '
-        'or the other.',
+        'The payment sheet now has its own date/time picker instead of '
+        'always posting "now", and breaks out anything paid beyond the '
+        'scheduled EMI as a separate "extra" figure.',
   ),
   WhatsNewEntry(
-    icon: Icons.lock_outline_rounded,
-    title: 'Independent unlock method toggles',
-    location: 'Settings → Security',
+    icon: Icons.menu_book_outlined,
+    title: 'Guide',
+    location: 'More → Guide',
     description:
-        'Turn on PIN, master password and/or an authenticator app in any '
-        'combination — any one of them unlocks the app — instead of '
-        'picking exactly one.',
-  ),
-  WhatsNewEntry(
-    icon: Icons.leaderboard_outlined,
-    title: 'Standings in Stats',
-    location: 'Stats → Standings',
-    description:
-        'A ranked, high-to-low list of top transactions or top categories '
-        'for the period. Every category view now also shows its share of '
-        'total spend and links straight into that category\'s detail.',
-  ),
-  WhatsNewEntry(
-    icon: Icons.folder_copy_outlined,
-    title: 'Category templates',
-    location: 'Categories → templates icon',
-    description:
-        'Save your current category structure as a named template and '
-        'switch between saved templates any time — switching never '
-        'touches a transaction.',
-  ),
-  WhatsNewEntry(
-    icon: Icons.category_outlined,
-    title: 'Bigger, searchable icon picker',
-    location: 'Categories / Add Account',
-    description:
-        'Category and account icons grow from 28 to 76, picked from a '
-        'searchable sheet with a "Frequently used" row instead of an '
-        'inline grid.',
-  ),
-  WhatsNewEntry(
-    icon: Icons.autorenew_rounded,
-    title: 'Auto rules: Goals & Loans',
-    location: 'Auto → add/edit a rule',
-    description:
-        'A recurring rule can now post a transfer into a goal or a loan '
-        'payment on schedule, alongside the existing Expense/Income kinds.',
-  ),
-  WhatsNewEntry(
-    icon: Icons.sell_outlined,
-    title: 'Tag groups',
-    location: 'Tags → group icon',
-    description:
-        'Bundle tags that always go together (e.g. "Work trip" = Travel + '
-        'Meals) and pick the whole group at once from the tag picker.',
-  ),
-  WhatsNewEntry(
-    icon: Icons.copy_all_outlined,
-    title: 'Duplicate a transaction',
-    location: 'Transactions → long-press',
-    description:
-        'Long-press a transaction for Duplicate / Edit / Delete. Duplicate '
-        'prefills a new entry from the source but resets the date to today.',
-  ),
-  WhatsNewEntry(
-    icon: Icons.bookmark_add_outlined,
-    title: 'Transaction templates',
-    location: 'Add transaction → ➕',
-    description:
-        '"Create template from this transaction" snapshots its details for '
-        'reuse — the ➕ button offers a template once you\'ve saved one.',
+        'Every module and feature explained — what it does, how to use '
+        'it, where to find it — plus a dedicated breakdown of the '
+        'Basic/Medium/Pro app modes and what each tier unlocks.',
   ),
   WhatsNewEntry(
     icon: Icons.event_repeat_rounded,
-    title: 'Turn a transaction into a recurring payment',
-    location: 'Transaction detail',
+    title: 'Yearly Auto rules',
+    location: 'Auto → add/edit a rule',
     description:
-        '"Make recurring" opens the auto rule sheet pre-filled with that '
-        'transaction\'s amount, account, category, payee, note and tags.',
+        'A recurring rule can now fire once a year instead of just '
+        'daily/weekly/2 weeks/monthly — for annual insurance premiums or '
+        'subscriptions. Anchored to both month and day, so Feb 29 behaves '
+        'correctly across leap years.',
   ),
   WhatsNewEntry(
-    icon: Icons.event_available_outlined,
-    title: 'Custom budget cycle start day',
-    location: 'Settings → Budgeting',
+    icon: Icons.account_balance_wallet_outlined,
+    title: 'Per-account minimum balance',
+    location: 'Accounts → an account → menu',
     description:
-        'Treat any day 1–28 as the start of a "month," so a payday-anchored '
-        'cycle doesn\'t reset mid-paycheck. Defaults to the 1st.',
+        'Set an optional floor for an account. Purely informational — '
+        'Account Detail flags it when the balance drops below it, and Add '
+        'Transaction warns before a transfer/expense would take it there, '
+        'but nothing is ever blocked.',
   ),
   WhatsNewEntry(
-    icon: Icons.view_week_outlined,
-    title: 'Filter transactions by ISO week',
-    location: 'Transactions → filter',
+    icon: Icons.forum_outlined,
+    title: 'Community links in About',
+    location: 'More → About',
     description:
-        'A "Week" toggle steps through standard Monday–Sunday weeks '
-        'instead of requiring a manual date range.',
-  ),
-  WhatsNewEntry(
-    icon: Icons.picture_as_pdf_outlined,
-    title: 'Share a person or group ledger as a PDF',
-    location: 'Person / Group detail',
-    description:
-        'The same statement flow accounts already had — a lend/borrow '
-        'ledger for a person, a shared-expense history for a group.',
-  ),
-  WhatsNewEntry(
-    icon: Icons.wifi_off_rounded,
-    title: 'Pay without internet — *99# (Beta)',
-    location: 'Persons → Individual tab',
-    description:
-        'Turn on Settings → Payment Support → UPI\'s new sub-toggle to pay '
-        'a person via the offline USSD *99# menu when there\'s no data '
-        'signal.',
-  ),
-  WhatsNewEntry(
-    icon: Icons.auto_delete_outlined,
-    title: 'Keep-last-X backup retention & batch delete',
-    location: 'Settings → Backups',
-    description:
-        'An alternative, count-based auto-backup retention mode, plus '
-        'long-press batch-select to delete several backups from the list '
-        'at once.',
+        'Instagram, WhatsApp Channel, Reddit and the public testimonial/'
+        'feedback page are now linked directly from the About screen.',
   ),
 ];
