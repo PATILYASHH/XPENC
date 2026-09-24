@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/app_icons.dart';
 import '../../core/loan_amortization.dart';
@@ -10,6 +11,7 @@ import '../../core/widgets/money_text.dart';
 import '../../core/widgets/transaction_history.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../add_transaction/date_time_combine.dart';
 import 'savings_goals_screen.dart';
 
 /// One loan: outstanding balance, original amount, repayment progress, and a
@@ -499,6 +501,7 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
   final _amountGroup = AmountKeypadFieldGroup();
   int? _sourceAccountId;
   late int? _categoryId;
+  DateTime _date = DateTime.now();
   bool _submitting = false;
 
   /// Once the user types into the interest field themselves, the rate-based
@@ -563,6 +566,32 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _date,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked == null || !mounted) return;
+    setState(
+      () => _date = combineDateAndTime(picked, TimeOfDay.fromDateTime(_date)),
+    );
+  }
+
+  /// Optional — most payments are logged the day they happen. Lets a loan
+  /// with years of history (its first payment long before this feature
+  /// existed) be backfilled at its real dates instead of everything
+  /// landing on "now".
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_date),
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _date = combineDateAndTime(_date, picked));
+  }
+
   bool get _hasInterest => _interestController.text.trim().isNotEmpty;
 
   /// The portion left to reduce the loan once interest is taken out —
@@ -573,6 +602,41 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
         Money.tryParse(_interestController.text) ?? const Money.zero();
     final remaining = amount.paise - interest.paise;
     return remaining > 0 ? Money.fromPaise(remaining) : const Money.zero();
+  }
+
+  /// What a normal EMI would reduce the loan by this cycle, per the loan's
+  /// own amortization schedule — `null` for a loan with no rate, where
+  /// there's no schedule to compare a payment against.
+  Money? get _scheduledPrincipal => widget.loan.nextPrincipal;
+
+  /// How much of [_principalPreview] is *beyond* [_scheduledPrincipal] — a
+  /// voluntary prepayment, not just this cycle's normal EMI. Zero whenever
+  /// there's no schedule to compare against, or the payment doesn't exceed
+  /// it.
+  Money get _extraPrincipal {
+    final scheduled = _scheduledPrincipal;
+    if (scheduled == null) return const Money.zero();
+    final extra = _principalPreview.paise - scheduled.paise;
+    return extra > 0 ? Money.fromPaise(extra) : const Money.zero();
+  }
+
+  String _paymentHint() {
+    if (!_hasInterest) {
+      return 'Split out the interest part of an EMI — it posts as an '
+          'expense instead of reducing the loan balance.';
+    }
+    final scheduled = _scheduledPrincipal;
+    final principalText = scheduled != null && _extraPrincipal.isPositive
+        ? '${MoneyFormat.symbol(scheduled)} scheduled + '
+              '${MoneyFormat.symbol(_extraPrincipal)} extra'
+        : MoneyFormat.symbol(_principalPreview);
+    final estimated =
+        widget.loan.detail.interestRatePct != null && !_interestEditedByUser;
+    return estimated
+        ? "Estimated from the loan's rate — edit to match your statement. "
+              'Only $principalText reduces the loan.'
+        : 'Interest posts as a real expense; only the rest ($principalText) '
+              'reduces the loan.';
   }
 
   Future<void> _save() async {
@@ -615,7 +679,7 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
             interestAmount: interest,
             interestCategoryId: interest != null ? _categoryId : null,
             transferCategoryId: interest == null ? _categoryId : null,
-            date: DateTime.now(),
+            date: _date,
           );
       if (!mounted) return;
       navigator.pop();
@@ -668,7 +732,50 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: _pickDate,
+              borderRadius: BorderRadius.circular(16),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.event_rounded,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Date',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            DateFormat('d MMM yyyy, h:mm a').format(_date),
+                            style: theme.textTheme.titleMedium,
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Change time',
+                      icon: Icon(
+                        Icons.access_time_rounded,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      onPressed: _pickTime,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
             DropdownButtonFormField<int>(
               initialValue: _sourceAccountId,
               isExpanded: true,
@@ -698,18 +805,7 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
             Padding(
               padding: const EdgeInsets.only(top: 6, left: 4, right: 4),
               child: Text(
-                _hasInterest
-                    ? widget.loan.detail.interestRatePct != null &&
-                              !_interestEditedByUser
-                          ? "Estimated from the loan's rate — edit to match "
-                                'your statement. Only '
-                                '${MoneyFormat.symbol(_principalPreview)} '
-                                'reduces the loan.'
-                          : 'Interest posts as a real expense; only the rest '
-                                '(${MoneyFormat.symbol(_principalPreview)}) '
-                                'reduces the loan.'
-                    : 'Split out the interest part of an EMI — it posts as an '
-                          'expense instead of reducing the loan balance.',
+                _paymentHint(),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),

@@ -2,12 +2,16 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/intl.dart';
 import 'package:xpenc/core/money.dart';
 import 'package:xpenc/core/theme/app_theme.dart';
+import 'package:xpenc/core/widgets/amount_keypad_field.dart';
 import 'package:xpenc/data/database.dart';
 import 'package:xpenc/data/providers.dart';
+import 'package:xpenc/data/tables.dart';
 import 'package:xpenc/features/savings/loan_detail_screen.dart';
 import 'package:xpenc/features/savings/savings_goals_screen.dart';
+import 'package:xpenc/features/transactions/transaction_detail_screen.dart';
 
 /// Rate-based loan tracking's new UI, rendered against a real database at a
 /// real phone size — same rule as test/screens_smoke_test.dart: must not
@@ -111,6 +115,73 @@ void main() {
     await unmount(tester);
   });
 
+  testWidgets('the payment sheet defaults to today and lets the date be '
+      'changed for backdating old payments', (tester) async {
+    final loanId = await db.addLoan(
+      name: 'Home Loan',
+      principal: Money.fromRupees(100000),
+      colorValue: 0xFF2563EB,
+      iconKey: 'loan',
+      interestRatePct: 12,
+      tenureMonths: 12,
+      startDate: DateTime(2026, 1, 1),
+    );
+
+    await pump(tester, LoanDetailScreen(accountId: loanId));
+    await tester.tap(find.text('Make a payment'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Date'), findsOneWidget);
+    // Defaults to today, down to the minute — exact seconds aren't shown.
+    expect(
+      find.textContaining(DateFormat('d MMM yyyy').format(DateTime.now())),
+      findsOneWidget,
+    );
+
+    await unmount(tester);
+  });
+
+  testWidgets(
+    'the payment sheet shows an extra-payment breakdown once the amount '
+    'exceeds the scheduled principal',
+    (tester) async {
+      final loanId = await db.addLoan(
+        name: 'Home Loan',
+        principal: Money.fromRupees(100000),
+        colorValue: 0xFF2563EB,
+        iconKey: 'loan',
+        interestRatePct: 12,
+        tenureMonths: 12,
+        startDate: DateTime(2026, 1, 1),
+      );
+
+      await pump(tester, LoanDetailScreen(accountId: loanId));
+      await tester.tap(find.text('Make a payment'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // No extra yet — the amount field is still at the plain EMI prefill.
+      expect(find.textContaining('extra'), findsNothing);
+
+      // The amount field starts "fresh" after a prefill, so the first
+      // keypad tap replaces it rather than appending — typing 9,0,0,0,0
+      // sets it to a clean ₹90,000, well above the scheduled principal.
+      final grid = find.byType(AmountKeypadGrid).first;
+      for (final digit in ['9', '0', '0', '0', '0']) {
+        await tester.tap(
+          find.descendant(of: grid, matching: find.text(digit)),
+        );
+        await tester.pump();
+      }
+
+      expect(find.textContaining('scheduled'), findsOneWidget);
+      expect(find.textContaining('extra'), findsOneWidget);
+
+      await unmount(tester);
+    },
+  );
+
   testWidgets(
     'the loan editor renders its new rate/tenure/start-date fields without '
     'overflowing, and the preview appears once they are filled',
@@ -155,6 +226,58 @@ void main() {
 
       // No preview yet — the amount-borrowed field is still empty.
       expect(find.textContaining('Suggested EMI'), findsNothing);
+
+      await unmount(tester);
+    },
+  );
+
+  testWidgets(
+    "a loan payment's interest/principal split shows a 'Loan payment' "
+    "banner on its transaction detail screen, not the cash-change wording "
+    "meant for a different kind of split",
+    (tester) async {
+      // addLoanPayment's multi-step write (validate, then a transaction with
+      // several queries) needs to run under tester.runAsync like every other
+      // multi-step database write in this suite — see pump()'s own
+      // runAsync-wrapped delay above for the same reason.
+      late List<int> legIds;
+      await tester.runAsync(() async {
+        final cash = (await db.watchAccounts().first)
+            .firstWhere((a) => a.type == AccountType.cash)
+            .id;
+        final interestCategory = (await db
+                .watchCategories(CategoryKind.expense)
+                .first)
+            .first
+            .id;
+        final loanId = await db.addLoan(
+          name: 'Home Loan',
+          principal: Money.fromRupees(100000),
+          colorValue: 0xFF2563EB,
+          iconKey: 'loan',
+        );
+        legIds = await db.addLoanPayment(
+          sourceAccountId: cash,
+          loanAccountId: loanId,
+          amount: Money.fromRupees(20000),
+          interestAmount: Money.fromRupees(9980),
+          interestCategoryId: interestCategory,
+          transferCategoryId: null,
+          date: DateTime(2026, 9, 8),
+        );
+      });
+
+      await pump(
+        tester,
+        TransactionDetailScreen(transactionId: legIds.first),
+      );
+      // The payment-group banner reads its siblings through a FutureProvider
+      // (paymentGroupLegsProvider) — one more pump past pump()'s own settle
+      // window lets it resolve before asserting on it.
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(find.textContaining('Loan payment'), findsOneWidget);
+      expect(find.textContaining('Change also went elsewhere'), findsNothing);
 
       await unmount(tester);
     },

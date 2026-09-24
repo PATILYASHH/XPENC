@@ -32,12 +32,21 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   EMI rule auto-pays with the same split, recomputed fresh every month as
   the outstanding balance shrinks. A loan with no rate keeps behaving
   exactly as before.
+- **Loan payment date/time, and a prepayment breakdown** — the payment
+  sheet now has its own date/time picker instead of always posting "now",
+  for backdating a loan's older history. When a payment exceeds the
+  cycle's scheduled EMI, the sheet also breaks the extra out separately
+  ("₹X scheduled + ₹Y extra") instead of folding it silently into
+  principal.
 - **Community links in About** — Instagram, WhatsApp Channel, Reddit and the
   public testimonial/feedback page are now linked from the About screen.
 
 ### Fixed
 - A loan account can no longer be picked as the funding source for a
   savings goal's Add funds/Withdraw.
+- A loan payment's interest/principal split showed "Change also went
+  elsewhere" on its transaction detail screen — wording meant for a cash
+  purchase's change, not a loan. Now labelled "Loan payment" instead.
 
 ## [1.6.0] — 2026-09-16
 

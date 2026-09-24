@@ -417,13 +417,14 @@ class _Hero extends StatelessWidget {
   }
 }
 
-/// A banner for any `paymentGroupId` group — either a hybrid/split payment
-/// (one purchase, several accounts, see GitHub #43) or a cash expense with
-/// change routed to another account (see GitHub #55). The two read
-/// differently: a hybrid group's legs are all expenses, so their sum is a
-/// meaningful "total spent"; a change group mixes an expense with a transfer,
-/// so summing them would mislabel the change amount as part of the purchase
-/// price. Lists every other leg so the full picture is one tap away.
+/// A banner for any `paymentGroupId` group — a hybrid/split payment (one
+/// purchase, several accounts, see GitHub #43), a cash expense with change
+/// routed to another account (see GitHub #55), or a loan payment split into
+/// interest and principal (see `AppDatabase._postLoanPaymentLegs`). The
+/// first and third read as a meaningful "total paid" when summed; a change
+/// group mixes an expense with a transfer that isn't part of the purchase
+/// price, so summing it would mislabel the change amount. Lists every other
+/// leg so the full picture is one tap away.
 class _PaymentGroupBanner extends ConsumerWidget {
   const _PaymentGroupBanner({required this.transaction});
 
@@ -443,12 +444,24 @@ class _PaymentGroupBanner extends ConsumerWidget {
         // nothing left worth calling "split".
         if (legs.length < 2) return const SizedBox.shrink();
 
-        final isChangeGroup = legs.any((l) => l.type == TxType.transfer);
+        TransactionRow? transferLeg;
+        for (final l in legs) {
+          if (l.type == TxType.transfer) {
+            transferLeg = l;
+            break;
+          }
+        }
+        final isLoanGroup =
+            transferLeg != null &&
+            accountMap[transferLeg.toAccountId]?.type == AccountType.loan;
+        final isChangeGroup = !isLoanGroup && transferLeg != null;
         final others = legs.where((l) => l.id != transaction.id).toList();
-        final headline = isChangeGroup
+        final total = legs.fold(const Money.zero(), (s, l) => s + l.amount);
+        final headline = isLoanGroup
+            ? 'Loan payment · total ${MoneyFormat.symbol(total)}'
+            : isChangeGroup
             ? 'Change also went elsewhere'
-            : 'Split payment · total '
-                  '${MoneyFormat.symbol(legs.fold(const Money.zero(), (s, l) => s + l.amount))}';
+            : 'Split payment · total ${MoneyFormat.symbol(total)}';
 
         return Card(
           color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.4),
@@ -461,7 +474,9 @@ class _PaymentGroupBanner extends ConsumerWidget {
                 Row(
                   children: [
                     Icon(
-                      isChangeGroup
+                      isLoanGroup
+                          ? Icons.account_balance_rounded
+                          : isChangeGroup
                           ? Icons.currency_exchange_rounded
                           : Icons.call_split_rounded,
                       size: 18,
