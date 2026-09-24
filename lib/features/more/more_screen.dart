@@ -165,6 +165,12 @@ class MoreScreen extends ConsumerWidget {
           subtitle: 'See what shipped in ${AppInfo.version}',
         ),
         _Item(
+          Icons.menu_book_outlined,
+          'Guide',
+          route: '/more/guide',
+          subtitle: 'Every feature explained, plus Basic/Medium/Pro',
+        ),
+        _Item(
           Icons.info_outline_rounded,
           'About ${AppInfo.name}',
           route: '/more/about',

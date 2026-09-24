@@ -19,6 +19,8 @@ import 'package:xpenc/features/calendar/calendar_screen.dart';
 import 'package:xpenc/features/categories/categories_screen.dart';
 import 'package:xpenc/features/data_export/backup_screen.dart';
 import 'package:xpenc/features/data_export/download_data_screen.dart';
+import 'package:xpenc/features/guide/guide_data.dart';
+import 'package:xpenc/features/guide/guide_screen.dart';
 import 'package:xpenc/features/message_capture/message_capture_screen.dart';
 import 'package:xpenc/features/message_capture/review_inbox_screen.dart';
 import 'package:xpenc/features/more/more_screen.dart';
@@ -1071,6 +1073,44 @@ void main() {
     }
     await unmount(tester);
   });
+
+  testWidgets('Guide renders every section, mode, and entry title', (
+    tester,
+  ) async {
+    await pump(tester, const GuideScreen());
+    expect(tester.takeException(), isNull);
+    expect(find.text('App modes'), findsOneWidget);
+    for (final mode in appModeGuide) {
+      expect(find.text(mode.title), findsOneWidget);
+    }
+    for (final section in guideSections) {
+      await tester.scrollUntilVisible(
+        find.text(section.title.toUpperCase()),
+        300,
+      );
+      expect(find.text(section.title.toUpperCase()), findsOneWidget);
+      for (final entry in section.entries) {
+        await tester.scrollUntilVisible(find.text(entry.title), 300);
+        expect(find.text(entry.title), findsOneWidget);
+      }
+    }
+    await unmount(tester);
+  });
+
+  testWidgets(
+    'Guide: expanding an entry shows its detail without overflowing',
+    (tester) async {
+      await pump(tester, const GuideScreen());
+      await tester.scrollUntilVisible(find.text('Accounts'), 300);
+      await tester.tap(find.text('Accounts'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.takeException(), isNull);
+      expect(find.text('WHAT IT DOES'), findsOneWidget);
+      expect(find.text('More → Accounts → +'), findsOneWidget);
+      await unmount(tester);
+    },
+  );
 
   testWidgets('Calendar renders', (tester) async {
     await tester.runAsync(seed);
