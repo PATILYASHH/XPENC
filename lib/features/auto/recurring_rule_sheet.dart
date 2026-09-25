@@ -14,10 +14,16 @@ import '../tags/tag_picker_sheet.dart';
 /// Opens the add/edit sheet. Pass [existing] to edit that rule instead of
 /// creating a new one, or [prefillFrom] to seed a new rule's fields from a
 /// past transaction (GitHub #129) — ignored when [existing] is set.
+/// [presetToAccountId] opens a new rule already in G&L mode, paying into
+/// that goal or loan, seeded with [presetAmount]/[presetName] — the goal and
+/// loan screens' "Set up auto-save / auto-pay" shortcut.
 Future<void> showRecurringRuleSheet(
   BuildContext context, {
   RecurringRuleRow? existing,
   TransactionRow? prefillFrom,
+  int? presetToAccountId,
+  Money? presetAmount,
+  String? presetName,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -27,8 +33,13 @@ Future<void> showRecurringRuleSheet(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
-    builder: (_) =>
-        RecurringRuleSheet(existing: existing, prefillFrom: prefillFrom),
+    builder: (_) => RecurringRuleSheet(
+      existing: existing,
+      prefillFrom: prefillFrom,
+      presetToAccountId: presetToAccountId,
+      presetAmount: presetAmount,
+      presetName: presetName,
+    ),
   );
 }
 
@@ -38,13 +49,26 @@ Future<void> showRecurringRuleSheet(
 /// the result via [Transactions.needsAmountReview] so the user is nudged to
 /// correct it. See [AppDatabase.runDueRecurringRules].
 class RecurringRuleSheet extends ConsumerStatefulWidget {
-  const RecurringRuleSheet({this.existing, this.prefillFrom, super.key});
+  const RecurringRuleSheet({
+    this.existing,
+    this.prefillFrom,
+    this.presetToAccountId,
+    this.presetAmount,
+    this.presetName,
+    super.key,
+  });
 
   final RecurringRuleRow? existing;
 
   /// A past transaction to seed a new rule's fields from. Ignored when
   /// [existing] is set — editing always wins.
   final TransactionRow? prefillFrom;
+
+  /// A goal or loan account a new rule should pay into — opens in G&L
+  /// mode. Ignored when [existing] or [prefillFrom] is set.
+  final int? presetToAccountId;
+  final Money? presetAmount;
+  final String? presetName;
 
   @override
   ConsumerState<RecurringRuleSheet> createState() => _RecurringRuleSheetState();
@@ -93,8 +117,9 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
   /// The [CategoryKind] the database call needs — meaningless for
   /// [_RuleKind.goalOrLoan] (see [RecurringRules.kind]), so pinned to
   /// [CategoryKind.expense] there.
-  CategoryKind get _kind =>
-      _ruleKind == _RuleKind.income ? CategoryKind.income : CategoryKind.expense;
+  CategoryKind get _kind => _ruleKind == _RuleKind.income
+      ? CategoryKind.income
+      : CategoryKind.expense;
 
   @override
   void initState() {
@@ -105,6 +130,15 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
       final source = widget.prefillFrom;
       if (source != null && source.type.isIncomeOrExpense) {
         _prefillFromTransaction(source);
+      } else if (widget.presetToAccountId != null) {
+        _ruleKind = _RuleKind.goalOrLoan;
+        _toAccountId = widget.presetToAccountId;
+        if (widget.presetAmount != null) {
+          _amountController.setAmount(widget.presetAmount!);
+        }
+        if (widget.presetName != null) {
+          _nameController.text = widget.presetName!;
+        }
       }
       return;
     }
@@ -114,7 +148,9 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     _noteController.text = e.note ?? '';
     _ruleKind = e.toAccountId != null
         ? _RuleKind.goalOrLoan
-        : (e.kind == CategoryKind.income ? _RuleKind.income : _RuleKind.expense);
+        : (e.kind == CategoryKind.income
+              ? _RuleKind.income
+              : _RuleKind.expense);
     _accountId = e.accountId;
     _categoryId = e.categoryId;
     _toAccountId = e.toAccountId;
@@ -219,7 +255,9 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     }
     final isGoalOrLoan = _ruleKind == _RuleKind.goalOrLoan;
     if (_accountId == null) {
-      _showError(isGoalOrLoan ? 'Choose a from account.' : 'Choose an account.');
+      _showError(
+        isGoalOrLoan ? 'Choose a from account.' : 'Choose an account.',
+      );
       return;
     }
     if (isGoalOrLoan) {
@@ -339,9 +377,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     // rule (or the "from" side of a G&L rule) never posts against one; only
     // a transfer can.
     final fromAccounts = allAccounts
-        .where(
-          (a) => a.type != AccountType.goal && a.type != AccountType.loan,
-        )
+        .where((a) => a.type != AccountType.goal && a.type != AccountType.loan)
         .toList();
     // A rule saved before loan accounts were excluded here may still point
     // at one — keep it selectable in its own dropdown rather than crashing
@@ -355,7 +391,9 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
         .toList();
     final categories = isGoalOrLoan
         ? [
-            ...ref.watch(categoriesProvider(CategoryKind.expense)).valueOrNull ??
+            ...ref
+                    .watch(categoriesProvider(CategoryKind.expense))
+                    .valueOrNull ??
                 const [],
             ...ref.watch(categoriesProvider(CategoryKind.income)).valueOrNull ??
                 const [],
@@ -402,15 +440,9 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
             const SizedBox(height: 20),
             SegmentedButton<_RuleKind>(
               segments: const [
-                ButtonSegment(
-                  value: _RuleKind.expense,
-                  label: Text('Expense'),
-                ),
+                ButtonSegment(value: _RuleKind.expense, label: Text('Expense')),
                 ButtonSegment(value: _RuleKind.income, label: Text('Income')),
-                ButtonSegment(
-                  value: _RuleKind.goalOrLoan,
-                  label: Text('G&L'),
-                ),
+                ButtonSegment(value: _RuleKind.goalOrLoan, label: Text('G&L')),
               ],
               selected: {_ruleKind},
               showSelectedIcon: false,
@@ -533,9 +565,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
                           if (picked == null || !mounted) return;
                           setState(() => _foreignCurrencyCode = picked.code);
                         },
-                        child: Text(
-                          currencyForCode(_foreignCurrencyCode).code,
-                        ),
+                        child: Text(currencyForCode(_foreignCurrencyCode).code),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -587,7 +617,10 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
                       ),
                     ),
                 ],
-                onChanged: (v) => setState(() => _toAccountId = v),
+                onChanged: (v) => setState(() {
+                  _toAccountId = v;
+                  _suggestFromTarget(v);
+                }),
               ),
             ],
             const SizedBox(height: 16),
@@ -733,6 +766,24 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
         ),
       ),
     );
+  }
+
+  /// Picking a loan with a known EMI (or a goal) for a rule that has no
+  /// amount/name yet fills them in — the obvious values, still editable.
+  void _suggestFromTarget(int? accountId) {
+    if (accountId == null) return;
+    final account = ref.read(accountMapProvider)[accountId];
+    if (account == null) return;
+    if (_nameController.text.trim().isEmpty) {
+      _nameController.text = account.type == AccountType.loan
+          ? '${account.name} EMI'
+          : account.name;
+    }
+    if (_amountController.text.trim().isEmpty &&
+        account.type == AccountType.loan) {
+      final emi = ref.read(loanProgressProvider(accountId))?.emi;
+      if (emi != null) _amountController.setAmount(emi);
+    }
   }
 
   Widget _payeeField(ThemeData theme) {

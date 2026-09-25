@@ -2137,11 +2137,22 @@ class AppDatabase extends _$AppDatabase {
     double? interestRatePct,
     int? tenureMonths,
     DateTime? startDate,
+    int? autoPayFromAccountId,
+    DateTime? autoPayStartsOn,
   }) {
     if (!principal.isPositive) {
       throw ArgumentError('Principal must be greater than zero.');
     }
     final negative = Money.fromPaise(-principal.paise);
+    final resolvedEmi = _resolvedEmi(
+      principal: principal,
+      emiAmount: emiAmount,
+      interestRatePct: interestRatePct,
+      tenureMonths: tenureMonths,
+    );
+    if (autoPayFromAccountId != null && resolvedEmi == null) {
+      throw ArgumentError('Enter the monthly EMI to set up auto-pay.');
+    }
     return transaction(() async {
       final accountId = await into(accounts).insert(
         AccountsCompanion.insert(
@@ -2157,19 +2168,25 @@ class AppDatabase extends _$AppDatabase {
         LoanDetailsCompanion.insert(
           accountId: Value(accountId),
           categoryId: Value(categoryId),
-          emiAmount: Value(
-            _resolvedEmi(
-              principal: principal,
-              emiAmount: emiAmount,
-              interestRatePct: interestRatePct,
-              tenureMonths: tenureMonths,
-            ),
-          ),
+          emiAmount: Value(resolvedEmi),
           interestRatePct: Value(interestRatePct),
           tenureMonths: Value(tenureMonths),
           startDate: Value(startDate),
         ),
       );
+      // "Auto-pay EMI" from the loan editor — an ordinary G&L Auto rule,
+      // created in the same transaction so a loan never ends up half set up.
+      if (autoPayFromAccountId != null) {
+        await addRecurringRule(
+          name: '$name EMI',
+          kind: CategoryKind.expense,
+          amount: resolvedEmi!,
+          accountId: autoPayFromAccountId,
+          toAccountId: accountId,
+          frequency: RecurringFrequency.monthly,
+          startsOn: autoPayStartsOn ?? DateTime.now(),
+        );
+      }
       return accountId;
     });
   }
@@ -4483,9 +4500,17 @@ class AppDatabase extends _$AppDatabase {
   /// A free (₹0) promo occurrence still posts a real ₹0 transaction — a
   /// legitimate income/expense (GitHub #87), not nothing, so it stays
   /// visible, taggable and editable in the ledger like any other occurrence.
+  /// A loan rule never pays past zero: the final occurrence is trimmed to
+  /// what's actually left owing, and once nothing is owed the occurrence
+  /// posts nothing at all. [loanCleared] reports that the loan is now paid
+  /// off, so callers can pause the rule instead of it quietly overpaying
+  /// the loan every month forever. [posted] is false only for that
+  /// nothing-owed case.
+  ///
   /// Returns the promo state after this occurrence. Must run inside
   /// [transaction].
-  Future<({Money? promoAmount, int? promoLeft})> _postRecurringOccurrence(
+  Future<({Money? promoAmount, int? promoLeft, bool posted, bool loanCleared})>
+  _postRecurringOccurrence(
     RecurringRuleRow rule, {
     required DateTime date,
     required Money? promoAmount,
@@ -4506,20 +4531,26 @@ class AppDatabase extends _$AppDatabase {
     final loanDetail = isGoalOrLoan
         ? await getLoanDetail(rule.toAccountId!)
         : null;
+    final outstanding = loanDetail == null
+        ? null
+        : await _loanOutstanding(rule.toAccountId!);
+    if (outstanding != null && !outstanding.isPositive) {
+      return (
+        promoAmount: promoAmount,
+        promoLeft: promoLeft,
+        posted: false,
+        loanCleared: true,
+      );
+    }
 
     if (loanDetail?.interestRatePct != null) {
-      final loanAccount = await (select(
-        accounts,
-      )..where((a) => a.id.equals(rule.toAccountId!))).getSingle();
-      final outstanding = loanAccount.currentBalance.isNegative
-          ? Money.fromPaise(-loanAccount.currentBalance.paise)
-          : const Money.zero();
       var interest = LoanAmortization.periodInterest(
-        outstandingPrincipal: outstanding,
+        outstandingPrincipal: outstanding!,
         annualRatePct: loanDetail!.interestRatePct,
       );
       if (interest.paise > amount.paise) interest = amount;
-      final principal = Money.fromPaise(amount.paise - interest.paise);
+      var principal = Money.fromPaise(amount.paise - interest.paise);
+      if (principal.paise > outstanding.paise) principal = outstanding;
 
       await _postLoanPaymentLegs(
         sourceAccountId: rule.accountId,
@@ -4539,7 +4570,9 @@ class AppDatabase extends _$AppDatabase {
             : (rule.kind == CategoryKind.expense
                   ? TxType.expense
                   : TxType.income),
-        amount: amount,
+        amount: outstanding != null && amount.paise > outstanding.paise
+            ? outstanding
+            : amount,
         accountId: rule.accountId,
         toAccountId: rule.toAccountId,
         categoryId: rule.categoryId,
@@ -4565,7 +4598,26 @@ class AppDatabase extends _$AppDatabase {
         promoLeft = null;
       }
     }
-    return (promoAmount: promoAmount, promoLeft: promoLeft);
+    final loanCleared =
+        loanDetail != null &&
+        !(await _loanOutstanding(rule.toAccountId!)).isPositive;
+    return (
+      promoAmount: promoAmount,
+      promoLeft: promoLeft,
+      posted: true,
+      loanCleared: loanCleared,
+    );
+  }
+
+  /// What's still owed on loan [loanAccountId] — its negative balance
+  /// flipped positive, or zero once it's paid off (or overpaid).
+  Future<Money> _loanOutstanding(int loanAccountId) async {
+    final loan = await (select(
+      accounts,
+    )..where((a) => a.id.equals(loanAccountId))).getSingle();
+    return loan.currentBalance.isNegative
+        ? Money.fromPaise(-loan.currentBalance.paise)
+        : const Money.zero();
   }
 
   /// Posts [ruleId]'s next occurrence right now, dated today, instead of
@@ -4602,6 +4654,10 @@ class AppDatabase extends _$AppDatabase {
           nextDueDate: Value(next),
           promoAmount: Value(result.promoAmount),
           promoOccurrencesLeft: Value(result.promoLeft),
+          // A paid-off loan's EMI rule has nothing left to pay.
+          isActive: result.loanCleared
+              ? const Value(false)
+              : const Value.absent(),
         ),
       );
     });
@@ -4642,6 +4698,7 @@ class AppDatabase extends _$AppDatabase {
           // very next iteration, not just on the following call.
           var promoAmount = rule.promoAmount;
           var promoLeft = rule.promoOccurrencesLeft;
+          var loanCleared = false;
           while (!next.isAfter(endOfToday)) {
             final result = await _postRecurringOccurrence(
               rule,
@@ -4652,13 +4709,19 @@ class AppDatabase extends _$AppDatabase {
             );
             promoAmount = result.promoAmount;
             promoLeft = result.promoLeft;
-            posted++;
-            next = _nextOccurrence(
-              rule.frequency,
-              next,
-              dayOfMonth: rule.dayOfMonth,
-              monthOfYear: rule.monthOfYear,
-            );
+            if (result.posted) {
+              posted++;
+              next = _nextOccurrence(
+                rule.frequency,
+                next,
+                dayOfMonth: rule.dayOfMonth,
+                monthOfYear: rule.monthOfYear,
+              );
+            }
+            if (result.loanCleared) {
+              loanCleared = true;
+              break;
+            }
           }
           await (update(
             recurringRules,
@@ -4667,6 +4730,9 @@ class AppDatabase extends _$AppDatabase {
               nextDueDate: Value(next),
               promoAmount: Value(promoAmount),
               promoOccurrencesLeft: Value(promoLeft),
+              // A paid-off loan's EMI rule pauses itself rather than
+              // overpaying the loan every month from here on.
+              isActive: loanCleared ? const Value(false) : const Value.absent(),
             ),
           );
         });

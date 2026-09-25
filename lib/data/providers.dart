@@ -775,6 +775,14 @@ final archivedRecurringRulesProvider = Provider<List<RecurringRuleRow>>((ref) {
   return rules.where((r) => !r.isActive).toList();
 });
 
+/// Every Auto rule (active or paused) that pays into goal/loan [accountId] —
+/// what the goal and loan detail screens show as their auto-save / auto-pay.
+final recurringRulesIntoAccountProvider =
+    Provider.family<List<RecurringRuleRow>, int>((ref, accountId) {
+      final rules = ref.watch(recurringRulesProvider).valueOrNull ?? const [];
+      return rules.where((r) => r.toAccountId == accountId).toList();
+    });
+
 /// For naming the rule behind a transaction's [TransactionRow.recurringRuleId].
 final recurringRuleMapProvider = Provider<Map<int, RecurringRuleRow>>((ref) {
   final rules = ref.watch(recurringRulesProvider).valueOrNull ?? const [];

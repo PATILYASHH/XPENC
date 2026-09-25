@@ -123,6 +123,46 @@ class LoanAmortization {
     return (months: result.monthsElapsed, totalInterest: result.interestSoFar);
   }
 
+  /// The full month-by-month schedule of paying [startingBalance] down at a
+  /// fixed [emi] plus an optional [extraPerMonth] prepayment on top — one
+  /// row per installment, in order, until the balance reaches zero (capped
+  /// at [_maxInstallments]). Empty when [emi] doesn't cover the first
+  /// period's interest, since such a loan never amortizes.
+  ///
+  /// The final row's payment is only what was actually left owing, not a
+  /// full EMI. Backs the loan insights charts and the prepayment simulator —
+  /// same per-period math as [amortizeFor], so the charts can't disagree
+  /// with the numbers on the loan detail card.
+  static List<({int index, Money interest, Money principal, Money balance})>
+  schedule({
+    required Money startingBalance,
+    required double annualRatePct,
+    required Money emi,
+    Money extraPerMonth = const Money.zero(),
+  }) {
+    final payment = emi + extraPerMonth;
+    final rows =
+        <({int index, Money interest, Money principal, Money balance})>[];
+    var balance = startingBalance;
+    while (balance.isPositive && rows.length < _maxInstallments) {
+      final interest = periodInterest(
+        outstandingPrincipal: balance,
+        annualRatePct: annualRatePct,
+      );
+      var principalPortion = Money.fromPaise(payment.paise - interest.paise);
+      if (!principalPortion.isPositive) break;
+      if (principalPortion.paise > balance.paise) principalPortion = balance;
+      balance -= principalPortion;
+      rows.add((
+        index: rows.length,
+        interest: interest,
+        principal: principalPortion,
+        balance: balance,
+      ));
+    }
+    return rows;
+  }
+
   static double _pow(double base, int exponent) {
     var result = 1.0;
     for (var i = 0; i < exponent; i++) {

@@ -10,6 +10,7 @@ import '../../core/widgets/money_text.dart';
 import '../../core/widgets/transaction_history.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../auto/linked_auto_rules_card.dart';
 import 'savings_goals_screen.dart';
 
 /// One goal: progress ring, target date, and the two shortcuts that move
@@ -173,6 +174,23 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
               ),
             ),
           ),
+          if (!progress.reached) ...[
+            const SizedBox(height: 12),
+            () {
+              final perMonth = _monthlyToReach(remaining, detail.targetDate);
+              return LinkedAutoRulesCard(
+                accountId: goalId,
+                isLoan: false,
+                accountName: account.name,
+                suggestedAmount: perMonth,
+                suggestionNote: perMonth == null
+                    ? null
+                    : '${MoneyFormat.symbol(perMonth)}/month reaches the '
+                          'target by '
+                          '${DateFormat('d MMM yyyy').format(detail.targetDate!)}.',
+              );
+            }(),
+          ],
           if (detail.notes != null && detail.notes!.trim().isNotEmpty) ...[
             const SizedBox(height: 20),
             Card(
@@ -694,4 +712,17 @@ class _FundsSheetState extends ConsumerState<_FundsSheet> {
       ),
     );
   }
+}
+
+/// What to put aside each month to close [remaining] by [targetDate] —
+/// null with no target date, or once it has passed. Rounded up to the
+/// rupee so following it never falls a few paise short.
+Money? _monthlyToReach(Money remaining, DateTime? targetDate) {
+  if (targetDate == null || !remaining.isPositive) return null;
+  final now = DateTime.now();
+  if (!targetDate.isAfter(now)) return null;
+  var months = (targetDate.year - now.year) * 12 + targetDate.month - now.month;
+  if (months < 1) months = 1;
+  final perMonthPaise = (remaining.paise / months / 100).ceil() * 100;
+  return Money.fromPaise(perMonthPaise);
 }

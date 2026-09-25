@@ -180,7 +180,10 @@ class _GoalCard extends StatelessWidget {
                         color: color.withValues(alpha: 0.14),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(AppIcons.resolve(account.iconKey), color: color),
+                      child: Icon(
+                        AppIcons.resolve(account.iconKey),
+                        color: color,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -347,7 +350,10 @@ class _LoanCard extends StatelessWidget {
                         color: color.withValues(alpha: 0.14),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(AppIcons.resolve(account.iconKey), color: color),
+                      child: Icon(
+                        AppIcons.resolve(account.iconKey),
+                        color: color,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -536,7 +542,9 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
     if (existing != null) {
       _amountController.setAmount(existing.detail.targetAmount);
     }
-    _notesController = TextEditingController(text: existing?.detail.notes ?? '');
+    _notesController = TextEditingController(
+      text: existing?.detail.notes ?? '',
+    );
     _colorValue = existing?.account.colorValue ?? _presetColors.first;
     _iconKey = existing?.account.iconKey ?? _iconKeys.first;
     _targetDate = existing?.detail.targetDate;
@@ -713,7 +721,8 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
       padding: EdgeInsets.only(
         left: 20,
         right: 20,
-        bottom: MediaQuery.of(context).padding.bottom +
+        bottom:
+            MediaQuery.of(context).padding.bottom +
             MediaQuery.of(context).viewInsets.bottom +
             20,
       ),
@@ -799,7 +808,8 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
               maxLength: 500,
               decoration: const InputDecoration(
                 labelText: 'Notes (optional)',
-                hintText: 'What this goal is for, or anything else worth noting',
+                hintText:
+                    'What this goal is for, or anything else worth noting',
                 alignLabelWithHint: true,
               ),
             ),
@@ -938,6 +948,12 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
   late DateTime _startDate;
   bool _submitting = false;
 
+  /// New loans only: also create a monthly G&L Auto rule for the EMI, so
+  /// it shows up (and posts itself) in Auto without a second trip there.
+  bool _autoPay = true;
+  int? _autoPayFromId;
+  DateTime? _autoPayStartOverride;
+
   bool get _isEdit => widget.existing != null;
 
   @override
@@ -965,6 +981,7 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
     _rateController.addListener(_onProjectionInputsChanged);
     _tenureController.addListener(_onProjectionInputsChanged);
     _principalController.addListener(_onProjectionInputsChanged);
+    _emiController.addListener(_onProjectionInputsChanged);
   }
 
   void _onProjectionInputsChanged() => setState(() {});
@@ -975,6 +992,7 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
     _nameFocus.dispose();
     _principalController.removeListener(_onProjectionInputsChanged);
     _principalController.dispose();
+    _emiController.removeListener(_onProjectionInputsChanged);
     _emiController.dispose();
     _rateController.removeListener(_onProjectionInputsChanged);
     _rateController.dispose();
@@ -1046,6 +1064,50 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
     );
   }
 
+  /// The EMI auto-pay would use — what's typed, else the rate-based
+  /// suggestion (the same value [AppDatabase.addLoan] resolves to).
+  Money? get _effectiveEmi {
+    final typed = Money.tryParse(_emiController.text);
+    if (typed != null && typed.isPositive) return typed;
+    return _projection?.emi;
+  }
+
+  /// First auto-pay date: the next date *after today* on the repayment start
+  /// date's day of month — never today or earlier, since an Auto rule
+  /// backfills every missed date and this cycle's EMI may already have been
+  /// paid by hand. Overridable from the date row.
+  DateTime get _autoPayStart {
+    if (_autoPayStartOverride != null) return _autoPayStartOverride!;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    DateTime onDay(int year, int month) {
+      final lastDay = DateTime(year, month + 1, 0).day;
+      final day = _startDate.day > lastDay ? lastDay : _startDate.day;
+      return DateTime(year, month, day);
+    }
+
+    var candidate = onDay(today.year, today.month);
+    if (!candidate.isAfter(today)) {
+      candidate = onDay(today.year, today.month + 1);
+    }
+    // A loan whose repayment starts later than that starts auto-pay then.
+    final start = DateTime(_startDate.year, _startDate.month, _startDate.day);
+    return start.isAfter(candidate) ? start : candidate;
+  }
+
+  Future<void> _pickAutoPayStart() async {
+    final now = DateTime.now();
+    final tomorrow = DateTime(now.year, now.month, now.day + 1);
+    final initial = _autoPayStart.isBefore(tomorrow) ? tomorrow : _autoPayStart;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: tomorrow,
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) setState(() => _autoPayStartOverride = picked);
+  }
+
   Future<void> _save() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
@@ -1076,9 +1138,17 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
       return;
     }
 
+    final wantsAutoPay = !_isEdit && _autoPay && _effectiveEmi != null;
+    if (wantsAutoPay && _autoPayFromId == null) {
+      _showError('Choose the account that pays the EMI, or turn off auto-pay.');
+      return;
+    }
+    final autoPayStart = _autoPayStart;
+
     setState(() => _submitting = true);
     final db = ref.read(dbProvider);
     final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
     try {
       if (_isEdit) {
         await db.updateLoan(
@@ -1103,10 +1173,24 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
           interestRatePct: rate,
           tenureMonths: tenure,
           startDate: rate == null ? null : _startDate,
+          autoPayFromAccountId: wantsAutoPay ? _autoPayFromId : null,
+          autoPayStartsOn: wantsAutoPay ? autoPayStart : null,
         );
       }
       if (!mounted) return;
       navigator.pop();
+      if (wantsAutoPay) {
+        messenger
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(
+                'Loan added · EMI auto-pay starts '
+                '${DateFormat('d MMM').format(autoPayStart)} (see Auto)',
+              ),
+            ),
+          );
+      }
     } on ArgumentError catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
@@ -1130,7 +1214,8 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
       padding: EdgeInsets.only(
         left: 20,
         right: 20,
-        bottom: MediaQuery.of(context).padding.bottom +
+        bottom:
+            MediaQuery.of(context).padding.bottom +
             MediaQuery.of(context).viewInsets.bottom +
             20,
       ),
@@ -1260,6 +1345,10 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
                 ),
               ),
             ),
+            if (!_isEdit && _effectiveEmi != null) ...[
+              const SizedBox(height: 8),
+              _autoPaySection(theme, _effectiveEmi!),
+            ],
             const SizedBox(height: 16),
             DropdownButtonFormField<int?>(
               initialValue: _categoryId,
@@ -1304,6 +1393,81 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _autoPaySection(ThemeData theme, Money emi) {
+    final cs = theme.colorScheme;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cs.outline),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Auto-pay EMI'),
+            subtitle: Text(
+              'Posts ${MoneyFormat.symbol(emi)} every month on its own and '
+              'shows up in Auto.',
+            ),
+            value: _autoPay,
+            onChanged: (v) => setState(() => _autoPay = v),
+          ),
+          if (_autoPay) ...[
+            _SourceAccountPicker(
+              selected: _autoPayFromId,
+              onChanged: (v) => setState(() => _autoPayFromId = v),
+              labelText: 'Pay from',
+              helperText: null,
+            ),
+            InkWell(
+              onTap: _pickAutoPayStart,
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Row(
+                  children: [
+                    Icon(Icons.autorenew_rounded, color: cs.onSurfaceVariant),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'First auto-payment',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            DateFormat('EEE, d MMM yyyy').format(_autoPayStart),
+                            style: theme.textTheme.titleMedium,
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Text(
+              'Stops by itself once the loan is paid off.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: cs.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -1369,27 +1533,34 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
   }
 }
 
-// ── Source account picker (used by goal editor) ──────────────────────────────
+// ── Source account picker (goal editor, loan auto-pay) ───────────────────────
 
 class _SourceAccountPicker extends ConsumerWidget {
-  const _SourceAccountPicker({required this.selected, required this.onChanged});
+  const _SourceAccountPicker({
+    required this.selected,
+    required this.onChanged,
+    this.labelText = 'Account',
+    this.helperText = 'Its balance can be moved into the goal next.',
+  });
 
   final int? selected;
   final ValueChanged<int?> onChanged;
+  final String labelText;
+  final String? helperText;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final accounts = (ref.watch(balanceAccountsProvider).valueOrNull ?? const [])
-        .where((a) => a.type != AccountType.goal && a.type != AccountType.loan)
-        .toList();
+    final accounts =
+        (ref.watch(balanceAccountsProvider).valueOrNull ?? const [])
+            .where(
+              (a) => a.type != AccountType.goal && a.type != AccountType.loan,
+            )
+            .toList();
 
     return DropdownButtonFormField<int>(
       initialValue: accounts.any((a) => a.id == selected) ? selected : null,
       isExpanded: true,
-      decoration: const InputDecoration(
-        labelText: 'Account',
-        helperText: 'Its balance can be moved into the goal next.',
-      ),
+      decoration: InputDecoration(labelText: labelText, helperText: helperText),
       items: [
         for (final a in accounts)
           DropdownMenuItem(

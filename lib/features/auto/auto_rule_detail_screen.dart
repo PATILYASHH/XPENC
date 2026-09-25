@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/money.dart';
@@ -116,7 +117,25 @@ class AutoRuleDetailScreen extends ConsumerWidget {
                     _row(
                       context,
                       destination.type == AccountType.loan ? 'Loan' : 'Goal',
-                      _plainValue(context, destination.name),
+                      InkWell(
+                        onTap: () => context.push(
+                          destination.type == AccountType.loan
+                              ? '/more/goals/loan/${destination.id}'
+                              : '/more/goals/goal/${destination.id}',
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: _plainValue(context, destination.name),
+                            ),
+                            Icon(
+                              Icons.chevron_right_rounded,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                   if (rule.payee != null && rule.payee!.isNotEmpty) ...[
@@ -242,7 +261,9 @@ class AutoRuleDetailScreen extends ConsumerWidget {
       case RecurringFrequency.monthly:
         return 'Monthly on the ${r.dayOfMonth}${_ordinalSuffix(r.dayOfMonth ?? 1)}';
       case RecurringFrequency.yearly:
-        final month = DateFormat.MMMM().format(DateTime(2000, r.monthOfYear ?? 1));
+        final month = DateFormat.MMMM().format(
+          DateTime(2000, r.monthOfYear ?? 1),
+        );
         return 'Yearly on $month ${r.dayOfMonth}${_ordinalSuffix(r.dayOfMonth ?? 1)}';
     }
   }

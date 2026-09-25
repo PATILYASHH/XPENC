@@ -126,4 +126,72 @@ void main() {
       expect(withPrepayment.months, lessThan(original.months));
     });
   });
+
+  group('schedule', () {
+    test('matches amortizeToZero month count and total interest', () {
+      final principal = Money.fromRupees(100000);
+      final emi = LoanAmortization.calculateEmi(
+        principal: principal,
+        annualRatePct: 10,
+        tenureMonths: 12,
+      );
+      final rows = LoanAmortization.schedule(
+        startingBalance: principal,
+        annualRatePct: 10,
+        emi: emi,
+      );
+      final summary = LoanAmortization.amortizeToZero(
+        startingBalance: principal,
+        annualRatePct: 10,
+        emi: emi,
+      );
+      expect(rows.length, summary.months);
+      expect(
+        rows.fold(const Money.zero(), (sum, r) => sum + r.interest),
+        summary.totalInterest,
+      );
+      expect(
+        rows.fold(const Money.zero(), (sum, r) => sum + r.principal),
+        principal,
+      );
+      expect(rows.last.balance, const Money.zero());
+    });
+
+    test('an extra monthly prepayment finishes sooner with less interest', () {
+      final principal = Money.fromRupees(500000);
+      final emi = LoanAmortization.calculateEmi(
+        principal: principal,
+        annualRatePct: 9,
+        tenureMonths: 60,
+      );
+      final base = LoanAmortization.schedule(
+        startingBalance: principal,
+        annualRatePct: 9,
+        emi: emi,
+      );
+      final faster = LoanAmortization.schedule(
+        startingBalance: principal,
+        annualRatePct: 9,
+        emi: emi,
+        extraPerMonth: Money.fromRupees(2000),
+      );
+      Money interestOf(
+        List<({int index, Money interest, Money principal, Money balance})>
+        rows,
+      ) => rows.fold(const Money.zero(), (sum, r) => sum + r.interest);
+      expect(faster.length, lessThan(base.length));
+      expect(interestOf(faster).paise, lessThan(interestOf(base).paise));
+    });
+
+    test('is empty when the EMI does not cover the first month interest', () {
+      expect(
+        LoanAmortization.schedule(
+          startingBalance: Money.fromRupees(100000),
+          annualRatePct: 12,
+          emi: Money.fromRupees(500),
+        ),
+        isEmpty,
+      );
+    });
+  });
 }

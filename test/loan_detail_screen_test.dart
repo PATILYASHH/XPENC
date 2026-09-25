@@ -169,9 +169,7 @@ void main() {
       // sets it to a clean ₹90,000, well above the scheduled principal.
       final grid = find.byType(AmountKeypadGrid).first;
       for (final digit in ['9', '0', '0', '0', '0']) {
-        await tester.tap(
-          find.descendant(of: grid, matching: find.text(digit)),
-        );
+        await tester.tap(find.descendant(of: grid, matching: find.text(digit)));
         await tester.pump();
       }
 
@@ -245,11 +243,8 @@ void main() {
         final cash = (await db.watchAccounts().first)
             .firstWhere((a) => a.type == AccountType.cash)
             .id;
-        final interestCategory = (await db
-                .watchCategories(CategoryKind.expense)
-                .first)
-            .first
-            .id;
+        final interestCategory =
+            (await db.watchCategories(CategoryKind.expense).first).first.id;
         final loanId = await db.addLoan(
           name: 'Home Loan',
           principal: Money.fromRupees(100000),
@@ -267,10 +262,7 @@ void main() {
         );
       });
 
-      await pump(
-        tester,
-        TransactionDetailScreen(transactionId: legIds.first),
-      );
+      await pump(tester, TransactionDetailScreen(transactionId: legIds.first));
       // The payment-group banner reads its siblings through a FutureProvider
       // (paymentGroupLegsProvider) — one more pump past pump()'s own settle
       // window lets it resolve before asserting on it.
@@ -282,4 +274,113 @@ void main() {
       await unmount(tester);
     },
   );
+
+  testWidgets('a rate-based loan shows insights: breakdown, monthly/yearly '
+      'charts and the prepayment simulator, without overflow', (tester) async {
+    final loanId = await db.addLoan(
+      name: 'Home Loan',
+      principal: Money.fromRupees(2000000),
+      colorValue: 0xFF2563EB,
+      iconKey: 'loan',
+      interestRatePct: 8.5,
+      tenureMonths: 240,
+      startDate: DateTime(2026, 1, 1),
+    );
+
+    await pump(tester, LoanDetailScreen(accountId: loanId));
+
+    final list = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(
+      find.text('WHAT THIS LOAN REALLY COSTS'),
+      300,
+      scrollable: list,
+    );
+    expect(find.textContaining('Interest adds'), findsOneWidget);
+
+    await tester.scrollUntilVisible(find.text('Yearly'), 300, scrollable: list);
+    await tester.ensureVisible(find.text('Yearly'));
+    await tester.pump();
+    await tester.tap(find.text('Yearly'));
+    await tester.pump();
+    expect(find.text('EACH YEAR: PRINCIPAL VS INTEREST'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('WHAT IF I PAY EXTRA?'),
+      300,
+      scrollable: list,
+    );
+    await tester.drag(find.byType(Slider), const Offset(120, 0));
+    await tester.pump();
+    expect(find.text('Interest saved'), findsOneWidget);
+    expect(find.text('Finish sooner by'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await unmount(tester);
+  });
+
+  testWidgets('the auto-pay card lists an EMI rule set up with the loan', (
+    tester,
+  ) async {
+    final accounts = await tester.runAsync(() => db.watchAccounts().first);
+    final cash = accounts!.firstWhere((a) => a.type == AccountType.cash).id;
+    final loanId = await db.addLoan(
+      name: 'Bike Loan',
+      principal: Money.fromRupees(60000),
+      colorValue: 0xFF2563EB,
+      iconKey: 'loan',
+      emiAmount: Money.fromRupees(5000),
+      autoPayFromAccountId: cash,
+      autoPayStartsOn: DateTime.now().add(const Duration(days: 10)),
+    );
+
+    await pump(tester, LoanDetailScreen(accountId: loanId));
+    await tester.scrollUntilVisible(
+      find.text('Bike Loan EMI'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Auto-pay'), findsOneWidget);
+    expect(find.text('Set up auto-pay'), findsNothing);
+
+    await unmount(tester);
+  });
+
+  testWidgets('the new-loan editor offers EMI auto-pay once an EMI can be '
+      'derived, without overflowing', (tester) async {
+    await pump(tester, const SavingsGoalsScreen());
+    await tester.tap(find.text('Loans'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byIcon(Icons.add));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Auto-pay EMI'), findsNothing);
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Interest rate % / yr (optional)'),
+      '12',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Tenure, months (optional)'),
+      '12',
+    );
+    await tester.tap(find.widgetWithText(AmountKeypadField, 'Amount borrowed'));
+    await tester.pump(const Duration(milliseconds: 300));
+    final grid = find.byType(AmountKeypadGrid).first;
+    for (final digit in ['5', '0', '0', '0', '0']) {
+      await tester.tap(find.descendant(of: grid, matching: find.text(digit)));
+      await tester.pump();
+    }
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.textContaining('Suggested EMI'), findsOneWidget);
+    await tester.ensureVisible(find.text('Auto-pay EMI'));
+    await tester.pump();
+    expect(find.text('Auto-pay EMI'), findsOneWidget);
+    expect(find.text('First auto-payment'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await unmount(tester);
+  });
 }

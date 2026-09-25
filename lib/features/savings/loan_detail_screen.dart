@@ -12,6 +12,8 @@ import '../../core/widgets/transaction_history.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../add_transaction/date_time_combine.dart';
+import '../auto/linked_auto_rules_card.dart';
+import 'loan_insights.dart';
 import 'savings_goals_screen.dart';
 
 /// One loan: outstanding balance, original amount, repayment progress, and a
@@ -258,6 +260,26 @@ class LoanDetailScreen extends ConsumerWidget {
               ),
             ),
           ),
+          if (!isPaidOff) ...[
+            const SizedBox(height: 12),
+            LinkedAutoRulesCard(
+              accountId: accountId,
+              isLoan: true,
+              accountName: account.name,
+              suggestedAmount: loan.emi,
+            ),
+          ],
+          if (LoanInsightsSection.canShow(loan)) ...[
+            const SizedBox(height: 28),
+            Text(
+              'Insights',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            LoanInsightsSection(loan: loan),
+          ],
           const SizedBox(height: 28),
           Text(
             'History',
