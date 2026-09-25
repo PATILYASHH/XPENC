@@ -530,9 +530,10 @@ class _PersonTile extends ConsumerWidget {
 enum _PersonAction { edit, archive, remove }
 
 /// Groups, each showing member count and the group's aggregate balance
-/// (`groupBalanceProvider` — a sum over `personBalancesProvider`, never new
-/// balance math). Renaming/editing membership lives on the group's own
-/// detail page, not here — this tab only lists and creates.
+/// (`groupBalanceProvider` — what this group's own split created, not its
+/// members' unrelated individual dues). Renaming/editing membership lives
+/// on the group's own detail page, not here — this tab only lists and
+/// creates.
 class _GroupTab extends ConsumerWidget {
   const _GroupTab();
 

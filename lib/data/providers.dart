@@ -4,6 +4,7 @@ import '../core/budget_cycle.dart';
 import '../core/currency.dart';
 import '../core/home_widget/home_widget_service.dart';
 import '../core/loan_amortization.dart';
+import '../core/group_split_math.dart';
 import '../core/money.dart';
 import '../core/notifications/notification_service.dart';
 import '../core/security/unlock_method.dart';
@@ -682,18 +683,57 @@ final groupExpensesProvider = StreamProvider.family<List<GroupExpenseRow>, int>(
   (ref, groupId) => ref.watch(dbProvider).watchGroupExpenses(groupId),
 );
 
-/// A group's aggregate balance — the sum of the already-correct, live
-/// [personBalancesProvider] over exactly that group's member ids. Not new
-/// balance math; a group is never a second source of truth for money.
+/// Entry id → group id for every group-born person entry — see
+/// [AppDatabase.watchPersonEntryGroupIds].
+final personEntryGroupIdsProvider = StreamProvider<Map<int, int>>(
+  (ref) => ref.watch(dbProvider).watchPersonEntryGroupIds(),
+);
+
+/// Person id → (group id → amount): what each person owes (`+`) or is owed
+/// (`-`) in each group, with their individual repayments applied to groups
+/// first — see [allocateGroupDues]. The Individual tab keeps showing each
+/// person's full total, which already includes these same group shares.
+final groupDuesByPersonProvider = Provider<Map<int, Map<int, Money>>>((ref) {
+  final entries = ref.watch(allPersonEntriesProvider).valueOrNull ?? const [];
+  final groupOf =
+      ref.watch(personEntryGroupIdsProvider).valueOrNull ?? const <int, int>{};
+  final byPerson = <int, List<PersonLedgerItem>>{};
+  for (final e in entries) {
+    byPerson
+        .putIfAbsent(e.personId, () => [])
+        .add((
+          id: e.id,
+          date: e.date,
+          signed: e.direction == PersonDirection.theyOwe ? e.amount : -e.amount,
+          groupId: groupOf[e.id],
+        ));
+  }
+  return {
+    for (final entry in byPerson.entries)
+      entry.key: allocateGroupDues(entry.value),
+  };
+});
+
+/// Each person's amount within group [groupId] (`+` they owe you, `-` you
+/// owe them) — only what this group's split created, less repayments.
+final groupMemberBalancesProvider = Provider.family<Map<int, Money>, int>((
+  ref,
+  groupId,
+) {
+  final dues = ref.watch(groupDuesByPersonProvider);
+  return {
+    for (final entry in dues.entries) entry.key: ?entry.value[groupId],
+  };
+});
+
+/// A group's aggregate balance — the sum of [groupMemberBalancesProvider],
+/// so it reflects only what this group's split created, never a member's
+/// unrelated individual dues.
 final groupBalanceProvider = Provider.family<Money, int>((ref, groupId) {
-  final members =
-      ref.watch(groupMembersProvider(groupId)).valueOrNull ?? const [];
-  final balances =
-      ref.watch(personBalancesProvider).valueOrNull ?? const <int, Money>{};
-  return members.fold(
-    const Money.zero(),
-    (sum, m) => sum + (balances[m.id] ?? const Money.zero()),
-  );
+  return ref
+      .watch(groupMemberBalancesProvider(groupId))
+      .values
+      .fold(const Money.zero(), (sum, b) => sum + b);
 });
 
 // ── Reminders ───────────────────────────────────────────────────────────────

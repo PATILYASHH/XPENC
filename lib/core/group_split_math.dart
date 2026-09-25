@@ -83,3 +83,58 @@ Map<int?, Money> _distributeRemainder(
   }
   return result;
 }
+
+/// One person's ledger entry as [allocateGroupDues] sees it: [signed] is
+/// `+` for "they owe me", `-` for "I owe them"; [groupId] is the group whose
+/// expense created it, or null for an individual entry (a loan, a
+/// repayment). [id] breaks ties between entries on the same date.
+typedef PersonLedgerItem = ({
+  int id,
+  DateTime date,
+  Money signed,
+  int? groupId,
+});
+
+/// What one person still owes (`+`) or is owed (`-`) per group, once their
+/// individual repayments are applied — keyed by group id.
+///
+/// Repayments are recorded on the person, not the group, so this decides
+/// where each one goes. Walking [items] oldest first:
+///
+/// * a group share adds to that group's amount;
+/// * an individual entry running the *opposite* way to a group's amount (a
+///   repayment) settles open group amounts first, oldest group first, and
+///   only what's left reaches the individual balance;
+/// * a repayment only ever settles what was already owed on its date — an
+///   old repayment never wipes out a group bill added after it.
+///
+/// Nothing is created or lost: the returned group amounts plus the
+/// individual remainder always add up to the person's real total.
+Map<int, Money> allocateGroupDues(Iterable<PersonLedgerItem> items) {
+  final sorted = [...items]
+    ..sort((a, b) {
+      final byDate = a.date.compareTo(b.date);
+      return byDate != 0 ? byDate : a.id.compareTo(b.id);
+    });
+  // Insertion-ordered, so iterating it visits the oldest group first.
+  final groups = <int, Money>{};
+  for (final item in sorted) {
+    final groupId = item.groupId;
+    if (groupId != null) {
+      groups[groupId] = (groups[groupId] ?? const Money.zero()) + item.signed;
+      continue;
+    }
+    var remaining = item.signed.paise;
+    for (final id in groups.keys) {
+      if (remaining == 0) break;
+      final owed = groups[id]!.paise;
+      // Only a payment running against the group's direction settles it.
+      if (owed == 0 || (owed > 0) == (remaining > 0)) continue;
+      final settled = owed.abs() < remaining.abs() ? owed.abs() : remaining.abs();
+      final towardZero = owed > 0 ? -settled : settled;
+      groups[id] = Money.fromPaise(owed + towardZero);
+      remaining -= towardZero;
+    }
+  }
+  return groups;
+}

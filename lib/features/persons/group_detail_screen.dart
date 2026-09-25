@@ -13,9 +13,10 @@ import '../../data/tables.dart';
 import 'group_member_picker_sheet.dart';
 
 /// One group's members and shared-expense history. Balances shown here
-/// (both the group's own aggregate and each member's individual figure)
-/// are read straight from `personBalancesProvider` — the same live,
-/// already-correct number the Individual tab shows, not recomputed.
+/// (the group's aggregate and each member's figure) come from this group's
+/// own split only — `groupMemberBalancesProvider` — never a member's
+/// unrelated individual dues. The Individual tab still shows each person's
+/// full total, group shares included.
 class GroupDetailScreen extends ConsumerWidget {
   const GroupDetailScreen({required this.groupId, super.key});
 
@@ -150,7 +151,7 @@ class GroupDetailScreen extends ConsumerWidget {
                       for (var i = 0; i < members.length; i++) ...[
                         if (i > 0)
                           Divider(height: 1, indent: 60, color: cs.outline),
-                        _MemberRow(person: members[i]),
+                        _MemberRow(person: members[i], groupId: group.id),
                       ],
                     ],
                   ),
@@ -280,7 +281,11 @@ class GroupDetailScreen extends ConsumerWidget {
     if (saved != true || name.isEmpty) return;
     await ref
         .read(dbProvider)
-        .updateGroup(id: group.id, name: name, note: note.isEmpty ? null : note);
+        .updateGroup(
+          id: group.id,
+          name: name,
+          note: note.isEmpty ? null : note,
+        );
   }
 
   Future<void> _onMenuAction(
@@ -366,7 +371,8 @@ Future<void> _shareGroupStatement(
   final personMap = ref.read(personMapProvider);
   final payerNames = {
     for (final e in periodExpenses)
-      if (e.payerId != null) e.payerId!: personMap[e.payerId]?.name ?? 'Someone',
+      if (e.payerId != null)
+        e.payerId!: personMap[e.payerId]?.name ?? 'Someone',
   };
 
   final service = ref.read(backupServiceProvider);
@@ -455,15 +461,16 @@ class _GroupBalanceHero extends StatelessWidget {
 }
 
 class _MemberRow extends ConsumerWidget {
-  const _MemberRow({required this.person});
+  const _MemberRow({required this.person, required this.groupId});
 
   final PersonRow person;
+  final int groupId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final balance =
-        ref.watch(personBalancesProvider).valueOrNull?[person.id] ??
+        ref.watch(groupMemberBalancesProvider(groupId))[person.id] ??
         const Money.zero();
     final color = balance.isPositive
         ? AppColors.income
@@ -483,10 +490,20 @@ class _MemberRow extends ConsumerWidget {
         ),
       ),
       title: Text(person.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: Text(
+        balance.isPositive
+            ? 'Owes you'
+            : balance.isNegative
+            ? 'You owe'
+            : 'Settled',
+        style: theme.textTheme.bodySmall?.copyWith(color: color),
+      ),
       trailing: MoneyText(
         balance.abs,
         color: color,
-        style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+        style: theme.textTheme.bodyMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
       ),
       onTap: () => context.push('/person/${person.id}'),
     );

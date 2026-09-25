@@ -2839,9 +2839,11 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 
-  /// Same idea as [_maybeAutoArchiveSettled], for a group's aggregate
-  /// balance across all its members — the same sum [groupBalanceProvider]
-  /// shows as "Settled" in the UI.
+  /// Same idea as [_maybeAutoArchiveSettled], for a group: archives it once
+  /// every member's amount in *this group* is zero — the same figures the
+  /// group screen shows ([allocateGroupDues]), so "Settled" there and
+  /// auto-archive always agree. A member's unrelated individual dues never
+  /// hold a settled group open.
   Future<void> _maybeAutoArchiveSettledGroup(int groupId) async {
     final group = await (select(
       groups,
@@ -2851,11 +2853,10 @@ class AppDatabase extends _$AppDatabase {
     final members = await (select(
       groupMembers,
     )..where((m) => m.groupId.equals(groupId))).get();
-    var total = const Money.zero();
     for (final member in members) {
-      total += await _personBalance(member.personId);
+      final dues = await _groupDuesForPerson(member.personId);
+      if (!(dues[groupId] ?? const Money.zero()).isZero) return;
     }
-    if (!total.isZero) return;
     await archiveGroup(groupId);
   }
 
@@ -2864,6 +2865,45 @@ class AppDatabase extends _$AppDatabase {
       personEntries,
     )..where((e) => e.personId.equals(personId))).get();
     return _netOf(rows);
+  }
+
+  /// Which group created each group-born [PersonEntries] row — entry id →
+  /// group id, via the [GroupExpenseShares] that link them. An entry missing
+  /// here is an individual one (a loan, a repayment). Feeds
+  /// [allocateGroupDues], which works out each member's group amount.
+  Stream<Map<int, int>> watchPersonEntryGroupIds() {
+    final query = select(groupExpenseShares).join([
+      innerJoin(
+        groupExpenses,
+        groupExpenses.id.equalsExp(groupExpenseShares.groupExpenseId),
+      ),
+    ])..where(groupExpenseShares.personEntryId.isNotNull());
+    return query.watch().map(
+      (rows) => {
+        for (final r in rows)
+          r.readTable(groupExpenseShares).personEntryId!: r
+              .readTable(groupExpenses)
+              .groupId,
+      },
+    );
+  }
+
+  /// [personId]'s amount in each group they have shares in, repayments
+  /// applied group-first — see [allocateGroupDues].
+  Future<Map<int, Money>> _groupDuesForPerson(int personId) async {
+    final groupOf = await watchPersonEntryGroupIds().first;
+    final rows = await (select(
+      personEntries,
+    )..where((e) => e.personId.equals(personId))).get();
+    return allocateGroupDues([
+      for (final e in rows)
+        (
+          id: e.id,
+          date: e.date,
+          signed: e.direction == PersonDirection.theyOwe ? e.amount : -e.amount,
+          groupId: groupOf[e.id],
+        ),
+    ]);
   }
 
   /// `+` they owe you, `-` you owe them.
