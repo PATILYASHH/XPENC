@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -7,6 +8,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
+import 'contact_import.dart';
 import 'edit_person_sheet.dart';
 import 'group_member_picker_sheet.dart';
 import 'person_avatar.dart';
@@ -411,6 +413,13 @@ class _PersonTile extends ConsumerWidget {
               onTap: () => Navigator.of(sheetContext).pop(_PersonAction.edit),
             ),
             ListTile(
+              leading: const Icon(Icons.contacts_outlined),
+              title: const Text('Link contact'),
+              subtitle: const Text('Import their photo and phone number.'),
+              onTap: () =>
+                  Navigator.of(sheetContext).pop(_PersonAction.linkContact),
+            ),
+            ListTile(
               leading: const Icon(Icons.archive_outlined),
               title: const Text('Archive'),
               subtitle: const Text('Hide them. History stays intact.'),
@@ -437,11 +446,51 @@ class _PersonTile extends ConsumerWidget {
     if (action == null || !context.mounted) return;
     if (action == _PersonAction.edit) {
       await showEditPersonSheet(context, ref, person);
+    } else if (action == _PersonAction.linkContact) {
+      await _linkContact(context, ref);
     } else if (action == _PersonAction.archive) {
       await _confirmArchive(context, ref);
     } else {
       await _confirmRemove(context, ref);
     }
+  }
+
+  /// Connects this existing person to a phone contact: imports the
+  /// contact's photo and number, keeps the name the user already gave them.
+  Future<void> _linkContact(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    void say(String text) => messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(text)));
+
+    final PickedContact? contact;
+    try {
+      contact = await pickContact();
+    } on PlatformException {
+      say("Couldn't open contacts.");
+      return;
+    }
+    if (contact == null) return;
+    if (!contact.detailsAllowed) {
+      say('Allow contacts access to import their photo and phone.');
+      return;
+    }
+    if (contact.phone == null && contact.photoPath == null) {
+      say('That contact has no photo or phone number to import.');
+      return;
+    }
+    await ref
+        .read(dbProvider)
+        .linkPersonContact(
+          person.id,
+          phone: contact.phone,
+          photoPath: contact.photoPath,
+        );
+    say(
+      contact.photoPath != null
+          ? 'Linked: photo imported for ${person.name}'
+          : 'Linked: phone number imported for ${person.name}',
+    );
   }
 
   Future<void> _confirmArchive(BuildContext context, WidgetRef ref) async {
@@ -527,7 +576,7 @@ class _PersonTile extends ConsumerWidget {
   }
 }
 
-enum _PersonAction { edit, archive, remove }
+enum _PersonAction { edit, linkContact, archive, remove }
 
 /// Groups, each showing member count and the group's aggregate balance
 /// (`groupBalanceProvider` — what this group's own split created, not its

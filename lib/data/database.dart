@@ -3551,6 +3551,21 @@ class AppDatabase extends _$AppDatabase {
     ),
   );
 
+  /// "Link contact" on an existing person: writes only what the contact
+  /// actually provided — a null [phone]/[photoPath] leaves that field as it
+  /// was, unlike [updatePerson] where null means "clear it". The name is
+  /// never touched; the user chose it.
+  Future<void> linkPersonContact(
+    int id, {
+    String? phone,
+    String? photoPath,
+  }) => (update(persons)..where((p) => p.id.equals(id))).write(
+    PersonsCompanion(
+      phone: phone == null ? const Value.absent() : Value(phone),
+      photoPath: photoPath == null ? const Value.absent() : Value(photoPath),
+    ),
+  );
+
   Stream<List<PersonRow>> watchPersons() =>
       (select(persons)..where((p) => p.isArchived.equals(false))).watch();
 
@@ -3971,14 +3986,32 @@ class AppDatabase extends _$AppDatabase {
   /// scale. `GroupMembers.id`/`addedAt` are not stable across an edit;
   /// nothing references `GroupMembers.id` as a foreign key elsewhere, so
   /// that's fine.
+  ///
+  /// Someone archived who's *newly* added here comes back to the active
+  /// Individual list — adding them to a group means they're active again.
+  /// A member who was already in the group and has since been archived is
+  /// left archived: re-saving the member list isn't a choice to bring them
+  /// back.
   Future<void> setGroupMembers(int groupId, Set<int> personIds) =>
       transaction(() async {
+        final previous = {
+          for (final m in await (select(
+            groupMembers,
+          )..where((m) => m.groupId.equals(groupId))).get())
+            m.personId,
+        };
         await (delete(
           groupMembers,
         )..where((m) => m.groupId.equals(groupId))).go();
         for (final personId in personIds) {
           await into(groupMembers).insert(
             GroupMembersCompanion.insert(groupId: groupId, personId: personId),
+          );
+        }
+        final added = personIds.difference(previous);
+        if (added.isNotEmpty) {
+          await (update(persons)..where((p) => p.id.isIn(added))).write(
+            const PersonsCompanion(isArchived: Value(false)),
           );
         }
       });

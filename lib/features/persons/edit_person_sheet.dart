@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show PlatformException;
-import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/database.dart';
 import '../../data/providers.dart';
+import 'contact_import.dart';
 import 'person_avatar.dart';
-import 'person_photo_storage.dart';
 
 /// Opens the "edit person" bottom sheet.
 Future<void> showEditPersonSheet(
@@ -95,46 +94,26 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
-  /// Hands off to the OS's own contact picker. The picker itself is always
-  /// permissionless and always returns a name — but on Android, asking it
-  /// for phone or photo too requires `READ_CONTACTS`, so this requests that
-  /// permission first. A denial (or a platform that never asks, like a
-  /// contacts-less device) just falls back to the name-only pick this
-  /// button always did before phone/photo import existed — never a hard
-  /// failure.
+  /// Fills the sheet from a picked contact — see [pickContact]. Adding a
+  /// person takes their name too; editing one ("Link contact") keeps the
+  /// name already chosen and only brings in phone and photo.
   Future<void> _pickFromContacts() async {
     try {
-      final status = await FlutterContacts.permissions.request(
-        PermissionType.read,
-      );
-      final granted =
-          status == PermissionStatus.granted ||
-          status == PermissionStatus.limited;
-      final contact = await FlutterContacts.native.showPicker(
-        properties: granted
-            ? const {ContactProperty.phone, ContactProperty.photoThumbnail}
-            : null,
-      );
+      final contact = await pickContact();
       if (contact == null || !mounted) return;
-
-      final name = contact.displayName;
-      if (name != null && name.isNotEmpty) {
+      final name = contact.name;
+      if (widget.person == null && name != null) {
         _nameController.text = name;
       }
-      if (!granted) {
+      if (!contact.detailsAllowed) {
         _showError(
           'Allow contacts access to also import their phone and photo.',
         );
         return;
       }
-      if (contact.phones.isNotEmpty) {
-        _phoneController.text = contact.phones.first.number;
-      }
-      final thumbnail = contact.photo?.thumbnail;
-      if (thumbnail != null && thumbnail.isNotEmpty) {
-        final path = await PersonPhotoStorage.storeBytes(thumbnail);
-        if (!mounted) return;
-        setState(() => _photoPath = path);
+      if (contact.phone != null) _phoneController.text = contact.phone!;
+      if (contact.photoPath != null) {
+        setState(() => _photoPath = contact.photoPath);
       }
     } on PlatformException {
       if (!mounted) return;
@@ -271,13 +250,13 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
               decoration: InputDecoration(
                 labelText: 'Name',
                 hintText: 'e.g. Yash',
-                suffixIcon: widget.person == null
-                    ? IconButton(
-                        tooltip: 'Pick from contacts',
-                        icon: const Icon(Icons.contacts_outlined),
-                        onPressed: _pickFromContacts,
-                      )
-                    : null,
+                suffixIcon: IconButton(
+                  tooltip: widget.person == null
+                      ? 'Pick from contacts'
+                      : 'Link contact (phone & photo)',
+                  icon: const Icon(Icons.contacts_outlined),
+                  onPressed: _pickFromContacts,
+                ),
               ),
             ),
             const SizedBox(height: 16),
