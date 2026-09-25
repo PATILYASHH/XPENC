@@ -199,7 +199,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 75;
+  int get schemaVersion => 76;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -712,6 +712,14 @@ class AppDatabase extends _$AppDatabase {
         await _addColumnIfMissing(m, loanDetails, loanDetails.interestRatePct);
         await _addColumnIfMissing(m, loanDetails, loanDetails.tenureMonths);
         await _addColumnIfMissing(m, loanDetails, loanDetails.startDate);
+      }
+      if (from < 76) {
+        // Lock screen shortcut for screenshot blocking (GitHub #138).
+        await _addColumnIfMissing(
+          m,
+          settings,
+          settings.lockScreenScreenshotShortcut,
+        );
       }
     },
     beforeOpen: (details) async {
@@ -5348,6 +5356,10 @@ class AppDatabase extends _$AppDatabase {
   Future<void> setScreenshotReminderEnabled(bool value) => update(
     settings,
   ).write(SettingsCompanion(screenshotReminderEnabled: Value(value)));
+
+  Future<void> setLockScreenScreenshotShortcut(bool value) => update(
+    settings,
+  ).write(SettingsCompanion(lockScreenScreenshotShortcut: Value(value)));
 
   /// A no-op when nothing actually locks the app right now — a timeout
   /// means nothing without a lock to defer. Applies to whichever method is

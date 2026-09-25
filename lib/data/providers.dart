@@ -964,6 +964,16 @@ final screenshotReminderEnabledProvider = Provider<bool>((ref) {
       false;
 });
 
+/// Whether the lock screen shows its screenshot-blocking shortcut (GitHub
+/// #138). Off by default.
+final lockScreenScreenshotShortcutProvider = Provider<bool>((ref) {
+  return ref
+          .watch(settingsProvider)
+          .valueOrNull
+          ?.lockScreenScreenshotShortcut ??
+      false;
+});
+
 /// Whether a master recovery phrase is set — the switch the lock screen
 /// checks alongside [failedPasscodeAttemptsProvider] (GitHub #74).
 final hasMasterPhraseProvider = Provider<bool>((ref) {

@@ -9861,6 +9861,21 @@ class $SettingsTable extends Settings
         ),
         defaultValue: const Constant(false),
       );
+  static const VerificationMeta _lockScreenScreenshotShortcutMeta =
+      const VerificationMeta('lockScreenScreenshotShortcut');
+  @override
+  late final GeneratedColumn<bool> lockScreenScreenshotShortcut =
+      GeneratedColumn<bool>(
+        'lock_screen_screenshot_shortcut',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("lock_screen_screenshot_shortcut" IN (0, 1))',
+        ),
+        defaultValue: const Constant(false),
+      );
   static const VerificationMeta _hideAmountsMeta = const VerificationMeta(
     'hideAmounts',
   );
@@ -10064,6 +10079,7 @@ class $SettingsTable extends Settings
     backupRetentionCount,
     preventScreenshots,
     screenshotReminderEnabled,
+    lockScreenScreenshotShortcut,
     hideAmounts,
     bottomNavSlots,
     showBottomNavLabels,
@@ -10517,6 +10533,15 @@ class $SettingsTable extends Settings
         ),
       );
     }
+    if (data.containsKey('lock_screen_screenshot_shortcut')) {
+      context.handle(
+        _lockScreenScreenshotShortcutMeta,
+        lockScreenScreenshotShortcut.isAcceptableOrUnknown(
+          data['lock_screen_screenshot_shortcut']!,
+          _lockScreenScreenshotShortcutMeta,
+        ),
+      );
+    }
     if (data.containsKey('hide_amounts')) {
       context.handle(
         _hideAmountsMeta,
@@ -10872,6 +10897,10 @@ class $SettingsTable extends Settings
         DriftSqlType.bool,
         data['${effectivePrefix}screenshot_reminder_enabled'],
       )!,
+      lockScreenScreenshotShortcut: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}lock_screen_screenshot_shortcut'],
+      )!,
       hideAmounts: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}hide_amounts'],
@@ -11224,6 +11253,13 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// they ask to be.
   final bool screenshotReminderEnabled;
 
+  /// Shows a screenshot-blocking toggle on the lock screen itself (GitHub
+  /// #138) — set from Settings › Quick Actions › Lock screen shortcuts.
+  /// Turning blocking on applies at once; turning it off only takes effect
+  /// after a successful unlock, so the lock screen never lowers protection
+  /// for someone who can't get in.
+  final bool lockScreenScreenshotShortcut;
+
   /// Masks every amount rendered anywhere in the app (see
   /// `AmountVisibilityScope` in `money_text.dart`) — flipped from the eye
   /// icon in the top bar (`AppShell`). Persisted, not session-only: hiding
@@ -11351,6 +11387,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     required this.backupRetentionCount,
     required this.preventScreenshots,
     required this.screenshotReminderEnabled,
+    required this.lockScreenScreenshotShortcut,
     required this.hideAmounts,
     required this.bottomNavSlots,
     required this.showBottomNavLabels,
@@ -11493,6 +11530,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     map['screenshot_reminder_enabled'] = Variable<bool>(
       screenshotReminderEnabled,
     );
+    map['lock_screen_screenshot_shortcut'] = Variable<bool>(
+      lockScreenScreenshotShortcut,
+    );
     map['hide_amounts'] = Variable<bool>(hideAmounts);
     map['bottom_nav_slots'] = Variable<String>(bottomNavSlots);
     map['show_bottom_nav_labels'] = Variable<bool>(showBottomNavLabels);
@@ -11600,6 +11640,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       backupRetentionCount: Value(backupRetentionCount),
       preventScreenshots: Value(preventScreenshots),
       screenshotReminderEnabled: Value(screenshotReminderEnabled),
+      lockScreenScreenshotShortcut: Value(lockScreenScreenshotShortcut),
       hideAmounts: Value(hideAmounts),
       bottomNavSlots: Value(bottomNavSlots),
       showBottomNavLabels: Value(showBottomNavLabels),
@@ -11729,6 +11770,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       screenshotReminderEnabled: serializer.fromJson<bool>(
         json['screenshotReminderEnabled'],
       ),
+      lockScreenScreenshotShortcut: serializer.fromJson<bool>(
+        json['lockScreenScreenshotShortcut'],
+      ),
       hideAmounts: serializer.fromJson<bool>(json['hideAmounts']),
       bottomNavSlots: serializer.fromJson<String>(json['bottomNavSlots']),
       showBottomNavLabels: serializer.fromJson<bool>(
@@ -11839,6 +11883,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'screenshotReminderEnabled': serializer.toJson<bool>(
         screenshotReminderEnabled,
       ),
+      'lockScreenScreenshotShortcut': serializer.toJson<bool>(
+        lockScreenScreenshotShortcut,
+      ),
       'hideAmounts': serializer.toJson<bool>(hideAmounts),
       'bottomNavSlots': serializer.toJson<String>(bottomNavSlots),
       'showBottomNavLabels': serializer.toJson<bool>(showBottomNavLabels),
@@ -11913,6 +11960,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     int? backupRetentionCount,
     bool? preventScreenshots,
     bool? screenshotReminderEnabled,
+    bool? lockScreenScreenshotShortcut,
     bool? hideAmounts,
     String? bottomNavSlots,
     bool? showBottomNavLabels,
@@ -12004,6 +12052,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     preventScreenshots: preventScreenshots ?? this.preventScreenshots,
     screenshotReminderEnabled:
         screenshotReminderEnabled ?? this.screenshotReminderEnabled,
+    lockScreenScreenshotShortcut:
+        lockScreenScreenshotShortcut ?? this.lockScreenScreenshotShortcut,
     hideAmounts: hideAmounts ?? this.hideAmounts,
     bottomNavSlots: bottomNavSlots ?? this.bottomNavSlots,
     showBottomNavLabels: showBottomNavLabels ?? this.showBottomNavLabels,
@@ -12175,6 +12225,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       screenshotReminderEnabled: data.screenshotReminderEnabled.present
           ? data.screenshotReminderEnabled.value
           : this.screenshotReminderEnabled,
+      lockScreenScreenshotShortcut: data.lockScreenScreenshotShortcut.present
+          ? data.lockScreenScreenshotShortcut.value
+          : this.lockScreenScreenshotShortcut,
       hideAmounts: data.hideAmounts.present
           ? data.hideAmounts.value
           : this.hideAmounts,
@@ -12275,6 +12328,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('backupRetentionCount: $backupRetentionCount, ')
           ..write('preventScreenshots: $preventScreenshots, ')
           ..write('screenshotReminderEnabled: $screenshotReminderEnabled, ')
+          ..write(
+            'lockScreenScreenshotShortcut: $lockScreenScreenshotShortcut, ',
+          )
           ..write('hideAmounts: $hideAmounts, ')
           ..write('bottomNavSlots: $bottomNavSlots, ')
           ..write('showBottomNavLabels: $showBottomNavLabels, ')
@@ -12351,6 +12407,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     backupRetentionCount,
     preventScreenshots,
     screenshotReminderEnabled,
+    lockScreenScreenshotShortcut,
     hideAmounts,
     bottomNavSlots,
     showBottomNavLabels,
@@ -12428,6 +12485,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.backupRetentionCount == this.backupRetentionCount &&
           other.preventScreenshots == this.preventScreenshots &&
           other.screenshotReminderEnabled == this.screenshotReminderEnabled &&
+          other.lockScreenScreenshotShortcut ==
+              this.lockScreenScreenshotShortcut &&
           other.hideAmounts == this.hideAmounts &&
           other.bottomNavSlots == this.bottomNavSlots &&
           other.showBottomNavLabels == this.showBottomNavLabels &&
@@ -12501,6 +12560,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<int> backupRetentionCount;
   final Value<bool> preventScreenshots;
   final Value<bool> screenshotReminderEnabled;
+  final Value<bool> lockScreenScreenshotShortcut;
   final Value<bool> hideAmounts;
   final Value<String> bottomNavSlots;
   final Value<bool> showBottomNavLabels;
@@ -12572,6 +12632,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.backupRetentionCount = const Value.absent(),
     this.preventScreenshots = const Value.absent(),
     this.screenshotReminderEnabled = const Value.absent(),
+    this.lockScreenScreenshotShortcut = const Value.absent(),
     this.hideAmounts = const Value.absent(),
     this.bottomNavSlots = const Value.absent(),
     this.showBottomNavLabels = const Value.absent(),
@@ -12644,6 +12705,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.backupRetentionCount = const Value.absent(),
     this.preventScreenshots = const Value.absent(),
     this.screenshotReminderEnabled = const Value.absent(),
+    this.lockScreenScreenshotShortcut = const Value.absent(),
     this.hideAmounts = const Value.absent(),
     this.bottomNavSlots = const Value.absent(),
     this.showBottomNavLabels = const Value.absent(),
@@ -12716,6 +12778,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<int>? backupRetentionCount,
     Expression<bool>? preventScreenshots,
     Expression<bool>? screenshotReminderEnabled,
+    Expression<bool>? lockScreenScreenshotShortcut,
     Expression<bool>? hideAmounts,
     Expression<String>? bottomNavSlots,
     Expression<bool>? showBottomNavLabels,
@@ -12808,6 +12871,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       if (preventScreenshots != null) 'prevent_screenshots': preventScreenshots,
       if (screenshotReminderEnabled != null)
         'screenshot_reminder_enabled': screenshotReminderEnabled,
+      if (lockScreenScreenshotShortcut != null)
+        'lock_screen_screenshot_shortcut': lockScreenScreenshotShortcut,
       if (hideAmounts != null) 'hide_amounts': hideAmounts,
       if (bottomNavSlots != null) 'bottom_nav_slots': bottomNavSlots,
       if (showBottomNavLabels != null)
@@ -12884,6 +12949,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<int>? backupRetentionCount,
     Value<bool>? preventScreenshots,
     Value<bool>? screenshotReminderEnabled,
+    Value<bool>? lockScreenScreenshotShortcut,
     Value<bool>? hideAmounts,
     Value<String>? bottomNavSlots,
     Value<bool>? showBottomNavLabels,
@@ -12967,6 +13033,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       preventScreenshots: preventScreenshots ?? this.preventScreenshots,
       screenshotReminderEnabled:
           screenshotReminderEnabled ?? this.screenshotReminderEnabled,
+      lockScreenScreenshotShortcut:
+          lockScreenScreenshotShortcut ?? this.lockScreenScreenshotShortcut,
       hideAmounts: hideAmounts ?? this.hideAmounts,
       bottomNavSlots: bottomNavSlots ?? this.bottomNavSlots,
       showBottomNavLabels: showBottomNavLabels ?? this.showBottomNavLabels,
@@ -13206,6 +13274,11 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
         screenshotReminderEnabled.value,
       );
     }
+    if (lockScreenScreenshotShortcut.present) {
+      map['lock_screen_screenshot_shortcut'] = Variable<bool>(
+        lockScreenScreenshotShortcut.value,
+      );
+    }
     if (hideAmounts.present) {
       map['hide_amounts'] = Variable<bool>(hideAmounts.value);
     }
@@ -13308,6 +13381,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('backupRetentionCount: $backupRetentionCount, ')
           ..write('preventScreenshots: $preventScreenshots, ')
           ..write('screenshotReminderEnabled: $screenshotReminderEnabled, ')
+          ..write(
+            'lockScreenScreenshotShortcut: $lockScreenScreenshotShortcut, ',
+          )
           ..write('hideAmounts: $hideAmounts, ')
           ..write('bottomNavSlots: $bottomNavSlots, ')
           ..write('showBottomNavLabels: $showBottomNavLabels, ')
@@ -34280,6 +34356,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<int> backupRetentionCount,
       Value<bool> preventScreenshots,
       Value<bool> screenshotReminderEnabled,
+      Value<bool> lockScreenScreenshotShortcut,
       Value<bool> hideAmounts,
       Value<String> bottomNavSlots,
       Value<bool> showBottomNavLabels,
@@ -34353,6 +34430,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<int> backupRetentionCount,
       Value<bool> preventScreenshots,
       Value<bool> screenshotReminderEnabled,
+      Value<bool> lockScreenScreenshotShortcut,
       Value<bool> hideAmounts,
       Value<String> bottomNavSlots,
       Value<bool> showBottomNavLabels,
@@ -34701,6 +34779,11 @@ class $$SettingsTableFilterComposer
 
   ColumnFilters<bool> get screenshotReminderEnabled => $composableBuilder(
     column: $table.screenshotReminderEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get lockScreenScreenshotShortcut => $composableBuilder(
+    column: $table.lockScreenScreenshotShortcut,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -35082,6 +35165,11 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get lockScreenScreenshotShortcut => $composableBuilder(
+    column: $table.lockScreenScreenshotShortcut,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get hideAmounts => $composableBuilder(
     column: $table.hideAmounts,
     builder: (column) => ColumnOrderings(column),
@@ -35446,6 +35534,11 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get lockScreenScreenshotShortcut => $composableBuilder(
+    column: $table.lockScreenScreenshotShortcut,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get hideAmounts => $composableBuilder(
     column: $table.hideAmounts,
     builder: (column) => column,
@@ -35615,6 +35708,7 @@ class $$SettingsTableTableManager
                 Value<int> backupRetentionCount = const Value.absent(),
                 Value<bool> preventScreenshots = const Value.absent(),
                 Value<bool> screenshotReminderEnabled = const Value.absent(),
+                Value<bool> lockScreenScreenshotShortcut = const Value.absent(),
                 Value<bool> hideAmounts = const Value.absent(),
                 Value<String> bottomNavSlots = const Value.absent(),
                 Value<bool> showBottomNavLabels = const Value.absent(),
@@ -35686,6 +35780,7 @@ class $$SettingsTableTableManager
                 backupRetentionCount: backupRetentionCount,
                 preventScreenshots: preventScreenshots,
                 screenshotReminderEnabled: screenshotReminderEnabled,
+                lockScreenScreenshotShortcut: lockScreenScreenshotShortcut,
                 hideAmounts: hideAmounts,
                 bottomNavSlots: bottomNavSlots,
                 showBottomNavLabels: showBottomNavLabels,
@@ -35762,6 +35857,7 @@ class $$SettingsTableTableManager
                 Value<int> backupRetentionCount = const Value.absent(),
                 Value<bool> preventScreenshots = const Value.absent(),
                 Value<bool> screenshotReminderEnabled = const Value.absent(),
+                Value<bool> lockScreenScreenshotShortcut = const Value.absent(),
                 Value<bool> hideAmounts = const Value.absent(),
                 Value<String> bottomNavSlots = const Value.absent(),
                 Value<bool> showBottomNavLabels = const Value.absent(),
@@ -35833,6 +35929,7 @@ class $$SettingsTableTableManager
                 backupRetentionCount: backupRetentionCount,
                 preventScreenshots: preventScreenshots,
                 screenshotReminderEnabled: screenshotReminderEnabled,
+                lockScreenScreenshotShortcut: lockScreenScreenshotShortcut,
                 hideAmounts: hideAmounts,
                 bottomNavSlots: bottomNavSlots,
                 showBottomNavLabels: showBottomNavLabels,

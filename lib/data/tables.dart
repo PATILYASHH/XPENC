@@ -1128,6 +1128,14 @@ class Settings extends Table {
   BoolColumn get screenshotReminderEnabled =>
       boolean().withDefault(const Constant(false))();
 
+  /// Shows a screenshot-blocking toggle on the lock screen itself (GitHub
+  /// #138) — set from Settings › Quick Actions › Lock screen shortcuts.
+  /// Turning blocking on applies at once; turning it off only takes effect
+  /// after a successful unlock, so the lock screen never lowers protection
+  /// for someone who can't get in.
+  BoolColumn get lockScreenScreenshotShortcut =>
+      boolean().withDefault(const Constant(false))();
+
   /// Masks every amount rendered anywhere in the app (see
   /// `AmountVisibilityScope` in `money_text.dart`) — flipped from the eye
   /// icon in the top bar (`AppShell`). Persisted, not session-only: hiding

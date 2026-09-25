@@ -98,6 +98,7 @@ void main() {
       masterPhraseUnlockEnabled: false,
       totpUnlockEnabled: false,
       screenshotReminderEnabled: false,
+      lockScreenScreenshotShortcut: false,
       moreScreenViewMode: MoreScreenViewMode.list,
       frequentIconKeys: '',
       budgetingMode: BudgetingMode.budgets,

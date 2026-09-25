@@ -57,6 +57,11 @@ class _LockScreenState extends ConsumerState<LockScreen> {
   /// another method" changes it after that).
   UnlockMethod? _shownMethod;
 
+  /// Screenshot-blocking shortcut (GitHub #138): "turn blocking off" is only
+  /// remembered here and applied by [_unlock] — never before a correct
+  /// credential. Turning it *on* needs no credential and is written at once.
+  bool _screenshotOffPending = false;
+
   @override
   void initState() {
     super.initState();
@@ -88,11 +93,34 @@ class _LockScreenState extends ConsumerState<LockScreen> {
       );
       if (ok && mounted) {
         await ref.read(dbProvider).resetFailedPasscodeAttempts();
-        if (mounted) widget.onUnlocked();
+        if (mounted) await _unlock();
       }
     } catch (_) {
       // Falls through to the PIN pad — biometric is a shortcut, never the
       // only way in.
+    }
+  }
+
+  /// The one exit from the lock screen after any successful credential —
+  /// applies a pending "screenshots off" first, so it's never lowered by
+  /// someone who couldn't unlock.
+  Future<void> _unlock() async {
+    if (_screenshotOffPending) {
+      await ref.read(dbProvider).setPreventScreenshots(false);
+      if (!mounted) return;
+    }
+    widget.onUnlocked();
+  }
+
+  Future<void> _onScreenshotShortcut(bool blocked) async {
+    if (_screenshotOffPending) {
+      setState(() => _screenshotOffPending = false);
+    } else if (blocked) {
+      setState(() => _screenshotOffPending = true);
+    } else {
+      // Raising protection is always safe — and the point of the shortcut
+      // is to have it on *before* the PIN is typed.
+      await ref.read(dbProvider).setPreventScreenshots(true);
     }
   }
 
@@ -134,7 +162,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
       await db.resetFailedPasscodeAttempts();
       await db.setPreferredUnlockMethod(UnlockMethod.pin);
       if (!mounted) return;
-      widget.onUnlocked();
+      await _unlock();
       return;
     }
     await db.recordFailedPasscodeAttempt();
@@ -159,7 +187,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
       await db.resetFailedPasscodeAttempts();
       await db.setPreferredUnlockMethod(UnlockMethod.masterPhrase);
       if (!mounted) return;
-      widget.onUnlocked();
+      await _unlock();
       return;
     }
     setState(() {
@@ -191,7 +219,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
       await db.resetFailedPasscodeAttempts();
       await db.setPreferredUnlockMethod(UnlockMethod.totp);
       if (!mounted) return;
-      widget.onUnlocked();
+      await _unlock();
       return;
     }
     // Same counter a wrong PIN increments — the "too many wrong attempts"
@@ -314,50 +342,71 @@ class _LockScreenState extends ConsumerState<LockScreen> {
         // height, and still falls back to scrolling — never clipping —
         // if it doesn't fit at all (tiny screens, large font scale).
         body: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) => SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 32),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const BrandMark(size: 48),
-                        const SizedBox(height: 12),
-                        Text(
-                          AppInfo.name,
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 40),
-                        phraseLocked
-                            ? _buildPhraseBody(context, isFallback: true)
-                            : switch (shownMethod) {
-                                UnlockMethod.pin => _buildPinBody(context),
-                                UnlockMethod.masterPhrase => _buildPhraseBody(
+          child: Stack(
+            children: [
+              LayoutBuilder(
+                builder: (context, constraints) => SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight,
+                    ),
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 32),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const BrandMark(size: 48),
+                            const SizedBox(height: 12),
+                            Text(
+                              AppInfo.name,
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 40),
+                            phraseLocked
+                                ? _buildPhraseBody(context, isFallback: true)
+                                : switch (shownMethod) {
+                                    UnlockMethod.pin => _buildPinBody(context),
+                                    UnlockMethod.masterPhrase =>
+                                      _buildPhraseBody(
+                                        context,
+                                        isFallback: false,
+                                      ),
+                                    UnlockMethod.totp => _buildTotpBody(
+                                      context,
+                                    ),
+                                    null => const SizedBox.shrink(),
+                                  },
+                            if (otherReadyMethods.isNotEmpty) ...[
+                              const SizedBox(height: 20),
+                              TextButton(
+                                onPressed: () => _showMethodPicker(
                                   context,
-                                  isFallback: false,
+                                  otherReadyMethods,
                                 ),
-                                UnlockMethod.totp => _buildTotpBody(context),
-                                null => const SizedBox.shrink(),
-                              },
-                        if (otherReadyMethods.isNotEmpty) ...[
-                          const SizedBox(height: 20),
-                          TextButton(
-                            onPressed: () =>
-                                _showMethodPicker(context, otherReadyMethods),
-                            child: const Text('Try another method'),
-                          ),
-                        ],
-                      ],
+                                child: const Text('Try another method'),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
+              if (ref.watch(lockScreenScreenshotShortcutProvider))
+                Positioned(
+                  top: 8,
+                  right: 12,
+                  child: _ScreenshotShortcut(
+                    blocked: ref.watch(preventScreenshotsProvider),
+                    offPending: _screenshotOffPending,
+                    onPressed: _onScreenshotShortcut,
+                  ),
+                ),
+            ],
           ),
         ),
       ),
@@ -489,6 +538,50 @@ class _LockScreenState extends ConsumerState<LockScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// The lock screen's screenshot-blocking toggle (GitHub #138). Labelled, not
+/// a bare icon, so "allowed after unlock" can be told apart from "allowed".
+class _ScreenshotShortcut extends StatelessWidget {
+  const _ScreenshotShortcut({
+    required this.blocked,
+    required this.offPending,
+    required this.onPressed,
+  });
+
+  final bool blocked;
+  final bool offPending;
+  final ValueChanged<bool> onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final (icon, label, tooltip) = offPending
+        ? (
+            Icons.hourglass_top_rounded,
+            'Allowed after unlock',
+            'Tap to keep screenshots blocked',
+          )
+        : blocked
+        ? (
+            Icons.no_photography_outlined,
+            'Screenshots blocked',
+            'Allow screenshots after unlocking',
+          )
+        : (
+            Icons.photo_camera_outlined,
+            'Screenshots allowed',
+            'Block screenshots now',
+          );
+    return Tooltip(
+      message: tooltip,
+      child: ActionChip(
+        avatar: Icon(icon, size: 18, color: blocked ? cs.primary : null),
+        label: Text(label),
+        onPressed: () => onPressed(blocked),
+      ),
     );
   }
 }
