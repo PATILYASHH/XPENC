@@ -291,6 +291,8 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
     List<double> trendValues = const [];
     var delta = const Money.zero();
     Money? headline;
+    // Loan tab only: what makes up the headline, shown beneath it.
+    String? breakdown;
 
     switch (metric) {
       case null:
@@ -314,13 +316,35 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
         headline = trendReady
             ? (values.isEmpty ? const Money.zero() : values.last)
             : null;
-      case _MoneyMetric.savings:
       case _MoneyMetric.loan:
-        final type = metric == _MoneyMetric.savings
-            ? AccountType.goal
-            : AccountType.payLater;
+        // Everything owed: Loans-module loans, pay-later accounts and
+        // what you owe people. Used to be pay-later accounts alone, so a
+        // real loan never showed up here.
+        final trend = ref.watch(debtTrendProvider(_months));
+        trendValues = [for (final p in trend) p.total.paise.toDouble()];
+        delta = trend.length >= 2
+            ? trend.last.total - trend[trend.length - 2].total
+            : const Money.zero();
+        headline = trendReady
+            ? (trend.isEmpty ? const Money.zero() : trend.last.total)
+            : null;
+        if (trendReady && trend.isNotEmpty) {
+          final last = trend.last;
+          breakdown = [
+            if (last.loans.isPositive)
+              'Loans ${MoneyFormat.compact(last.loans)}',
+            if (last.payLater.isPositive)
+              'Pay later ${MoneyFormat.compact(last.payLater)}',
+            if (last.people.isPositive)
+              'You owe people ${MoneyFormat.compact(last.people)}',
+          ].join(' · ');
+        }
+      case _MoneyMetric.savings:
         final trend = ref.watch(
-          accountTypeBalanceTrendProvider((type: type, months: _months)),
+          accountTypeBalanceTrendProvider((
+            type: AccountType.goal,
+            months: _months,
+          )),
         );
         trendValues = [for (final p in trend) p.value.paise.toDouble()];
         delta = trend.length >= 2
@@ -422,6 +446,15 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
                           letterSpacing: -1,
                         ),
                       ),
+                    if (breakdown != null && breakdown.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        breakdown,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                     // Below the figure, not beside it: `+₹12.34Cr this month`
                     // beside a label has nowhere to go on a 360dp screen.
                     if (trendReady && !delta.isZero) ...[
@@ -608,28 +641,14 @@ class _DeltaChip extends StatelessWidget {
 
 // ── 2. This month ─────────────────────────────────────────────────────────
 
-class _ThisMonthCard extends ConsumerStatefulWidget {
+/// Income vs expense for the month picked in the top bar's month pill (see
+/// `_DashboardMonthButton` in app_shell.dart). The card itself no longer
+/// carries a month title or arrows.
+class _ThisMonthCard extends ConsumerWidget {
   const _ThisMonthCard();
 
   @override
-  ConsumerState<_ThisMonthCard> createState() => _ThisMonthCardState();
-}
-
-class _ThisMonthCardState extends ConsumerState<_ThisMonthCard> {
-  /// Which way the last month change went, so the title slides to match.
-  int _direction = 1;
-
-  void _step(int months) {
-    setState(() => _direction = months);
-    final m = ref.read(selectedMonthProvider);
-    ref.read(selectedMonthProvider.notifier).state = DateTime(
-      m.year,
-      m.month + months,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final month = ref.watch(selectedMonthProvider);
     final totals = ref.watch(monthTotalsProvider);
@@ -639,61 +658,22 @@ class _ThisMonthCardState extends ConsumerState<_ThisMonthCard> {
       padding: _sectionPad,
       child: Card(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 12, 10, 18),
+          padding: const EdgeInsets.fromLTRB(18, 18, 10, 18),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 260),
-                      transitionBuilder: (child, animation) => SlideTransition(
-                        position: Tween(
-                          begin: Offset(0.22 * _direction, 0),
-                          end: Offset.zero,
-                        ).animate(animation),
-                        child: FadeTransition(opacity: animation, child: child),
-                      ),
-                      child: Column(
-                        key: ValueKey(month),
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            DateFormat('MMMM yyyy').format(month),
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          // Only shown once someone's opted into a
-                          // payday-anchored cycle — "September 2026" alone
-                          // would otherwise misleadingly suggest the 1st.
-                          if (startDay != 1)
-                            Text(
-                              budgetPeriodRangeLabel(month, startDay),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
+              // Only shown once someone's opted into a payday-anchored
+              // cycle: the top bar's "Sep 2026" alone would otherwise
+              // misleadingly suggest the 1st.
+              if (startDay != 1) ...[
+                Text(
+                  budgetPeriodRangeLabel(month, startDay),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () => _step(-1),
-                    icon: const Icon(Icons.chevron_left),
-                    tooltip: 'Previous month',
-                  ),
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () => _step(1),
-                    icon: const Icon(Icons.chevron_right),
-                    tooltip: 'Next month',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
+                ),
+                const SizedBox(height: 10),
+              ],
               Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: totals.when(

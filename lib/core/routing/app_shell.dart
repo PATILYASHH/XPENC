@@ -3,15 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../data/providers.dart';
 import '../../data/tables.dart' show AppMode;
 import 'hold_menu_geometry.dart';
 import '../../features/add_transaction/add_transaction_choice_sheet.dart';
+import '../../features/dashboard/month_picker_sheet.dart';
 import '../../features/persons/persons_screen.dart' show showAddPersonDialog;
 import '../../features/transactions/transaction_filters.dart';
 import '../branding/app_info.dart';
 import '../branding/brand_mark.dart';
+import '../budget_cycle.dart';
 
 /// `Dashboard · slotLeft · ➕ · slotRight · More`
 ///
@@ -565,6 +568,8 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
     switch (index) {
       case 0: // Dashboard
         return [
+          const _DashboardMonthButton(),
+          const SizedBox(width: 4),
           _TonalIconButton(
             tooltip: 'About ${AppInfo.name}',
             icon: const BrandMark(size: 22),
@@ -640,6 +645,60 @@ class _TonalIconButton extends StatelessWidget {
       color: cs.secondary.withValues(alpha: 0.08),
       shape: const CircleBorder(),
       child: IconButton(tooltip: tooltip, icon: icon, onPressed: onPressed),
+    );
+  }
+}
+
+/// The Dashboard's month switcher: a tonal pill naming the month being
+/// viewed, opening [MonthPickerSheet]. Drives the same shared
+/// `selectedMonthProvider` the This Month card, budgets and spend
+/// breakdown read.
+class _DashboardMonthButton extends ConsumerWidget {
+  const _DashboardMonthButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final month = ref.watch(selectedMonthProvider);
+    final startDay = ref.watch(budgetStartDayProvider);
+
+    return Material(
+      color: cs.secondary.withValues(alpha: 0.08),
+      shape: const StadiumBorder(),
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: () async {
+          final picked = await showMonthPickerSheet(
+            context,
+            selected: month,
+            current: budgetPeriodAnchorFor(DateTime.now(), startDay),
+            startDay: startDay,
+          );
+          if (picked != null) {
+            ref.read(selectedMonthProvider.notifier).state = picked;
+          }
+        },
+        child: Tooltip(
+          message: 'Change month',
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.calendar_month_rounded, size: 18, color: cs.primary),
+                const SizedBox(width: 6),
+                Text(
+                  DateFormat('MMM yyyy').format(month),
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -1946,8 +1946,9 @@ final netWorthTrendProvider =
     });
 
 /// Combined balance of every account of one [AccountType], at the end of each
-/// of the last N months, oldest first. Dashboard's Savings/Loan sparkline
-/// tabs use this — goal accounts for Savings, pay-later accounts for Loan.
+/// of the last N months, oldest first. Dashboard's Savings tab uses this for
+/// goal accounts; its Loan tab uses [debtTrendProvider], built on this for
+/// loan and pay-later accounts.
 ///
 /// A transfer between two accounts of the *same* type nets to zero (the money
 /// never left the group); a transfer across the boundary counts as in/out,
@@ -1995,6 +1996,78 @@ final accountTypeBalanceTrendProvider =
         out.add((month: DateTime(end.year, end.month), value: total));
       }
       return out;
+    });
+
+/// Everything owed at the end of each of the last N months, oldest first —
+/// the Dashboard hero card's Loan tab. Positive = owed. Three parts, kept
+/// apart so the card can break them down:
+///
+/// * [loans] — outstanding on Loans-module accounts ([AccountType.loan]);
+/// * [payLater] — outstanding on pay-later accounts;
+/// * [people] — what you owe people: each person's net balance as of that
+///   month end, summed over only the ones where you're the one owing (a
+///   person who owes *you* never offsets someone you owe).
+final debtTrendProvider =
+    Provider.family<
+      List<({
+        DateTime month,
+        Money loans,
+        Money payLater,
+        Money people,
+        Money total,
+      })>,
+      int
+    >((ref, months) {
+      final loanTrend = ref.watch(
+        accountTypeBalanceTrendProvider((
+          type: AccountType.loan,
+          months: months,
+        )),
+      );
+      final payLaterTrend = ref.watch(
+        accountTypeBalanceTrendProvider((
+          type: AccountType.payLater,
+          months: months,
+        )),
+      );
+      final entries =
+          ref.watch(allPersonEntriesProvider).valueOrNull ?? const [];
+
+      Money owed(Money balance) =>
+          balance.isNegative ? -balance : const Money.zero();
+
+      return [
+        for (var i = 0; i < loanTrend.length; i++)
+          () {
+            final month = loanTrend[i].month;
+            final end = DateTime(
+              month.year,
+              month.month + 1,
+            ).subtract(const Duration(milliseconds: 1));
+            final byPerson = <int, Money>{};
+            for (final e in entries) {
+              if (e.date.isAfter(end)) continue;
+              final signed = e.direction == PersonDirection.theyOwe
+                  ? e.amount
+                  : -e.amount;
+              byPerson[e.personId] =
+                  (byPerson[e.personId] ?? const Money.zero()) + signed;
+            }
+            final people = byPerson.values.fold(
+              const Money.zero(),
+              (sum, b) => sum + owed(b),
+            );
+            final loans = owed(loanTrend[i].value);
+            final payLater = owed(payLaterTrend[i].value);
+            return (
+              month: month,
+              loans: loans,
+              payLater: payLater,
+              people: people,
+              total: loans + payLater + people,
+            );
+          }(),
+      ];
     });
 
 /// Income and expense per month for the last N months, oldest first.
