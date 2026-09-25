@@ -23,6 +23,30 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.speed_rounded,
+    title: 'XPENC Score',
+    location: 'Stats → XPENC Score card',
+    description:
+        'A 0–100 score for how well you manage money, built from seven '
+        'rules: savings rate, living within your means, debt load, repaying '
+        'loans and people on time, emergency fund, budgets and how regularly '
+        'you track. Tap it for what each rule earned and the top tips to '
+        'raise it. Rules for things you do not use, like loans or budgets, '
+        'are left out instead of counting against you.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.dashboard_customize_outlined,
+    title: 'Stats, organised by topic',
+    location: 'Stats',
+    description:
+        'Stats is now a hub with nine sections, each with its headline '
+        'number on the tile: Cash flow, Spending, Income, Net worth, Loans & '
+        'debt, People, Savings & goals, Budgets and Recurring. See your '
+        'savings rate, income sources, debt-to-income, who owes you, goal '
+        'progress, emergency runway and what recurring bills commit each '
+        'month.',
+  ),
+  WhatsNewEntry(
     icon: Icons.autorenew_rounded,
     title: 'Auto-pay your EMI when you add a loan',
     location: 'Goals & Loans → Loans → +',

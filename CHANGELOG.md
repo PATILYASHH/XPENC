@@ -9,6 +9,20 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 ## [Unreleased]
 
 ### Added
+- **XPENC Score** — a 0–100 money-management score on the Stats tab, from
+  seven weighted rules: savings rate (25), debt load (20), repayment
+  discipline (15), emergency fund (15), living within means (10), budget
+  discipline (10) and tracking habit (5). Rules with nothing to judge are
+  dropped and the rest rescaled; no score below 5 income/expense entries in
+  90 days. A breakdown screen shows each rule's points, the top tips and
+  the rules themselves.
+- **Stats hub** — Stats is split into nine modules (Cash flow, Spending,
+  Income, Net worth, Loans & debt, People, Savings & goals, Budgets,
+  Recurring), each a tile with a live headline that opens its own screen.
+  The previous single-page content lives on under Spending.
+- **Contacts for people** — add a person, link a contact to an existing
+  person, or add group members straight from the phone's contacts (phone
+  and photo when contacts access is allowed, name only otherwise).
 - **Auto-pay EMI when creating a loan** — once a loan has a monthly EMI
   (typed, or derived from its rate and tenure), the new-loan sheet offers
   "Auto-pay EMI": pick the paying account and the first payment date and a
@@ -33,6 +47,8 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   only takes effect after a successful unlock. Schema v76.
 
 ### Changed
+- **Adding an archived person to a group** brings them back to the active
+  list; re-saving a group leaves already-member archived people archived.
 - **Groups show only their own split** — a group's member amounts and
   total now come from that group's expenses alone, not each member's whole
   person balance. The Individual tab still shows each person's full total.

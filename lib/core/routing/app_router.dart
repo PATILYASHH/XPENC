@@ -38,7 +38,9 @@ import '../../features/persons/group_detail_screen.dart';
 import '../../features/persons/person_detail_screen.dart';
 import '../../features/persons/persons_screen.dart';
 import '../../features/reports/account_reports_screen.dart';
+import '../../features/reports/stats_modules.dart';
 import '../../features/reports/stats_screen.dart';
+import '../../features/reports/xpenc_score_screen.dart';
 import '../../features/savings/loan_detail_screen.dart';
 import '../../features/savings/savings_goal_detail_screen.dart';
 import '../../features/savings/savings_goals_screen.dart';
@@ -334,6 +336,19 @@ final appRouter = GoRouter(
                   path: 'stats',
                   parentNavigatorKey: _rootKey,
                   builder: (_, _) => const StatsScreen(),
+                  routes: [
+                    GoRoute(
+                      path: 'score',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const XpencScoreScreen(),
+                    ),
+                    for (final module in StatsModule.values)
+                      GoRoute(
+                        path: module.name,
+                        parentNavigatorKey: _rootKey,
+                        builder: (_, _) => StatsModuleScreen(module: module),
+                      ),
+                  ],
                 ),
                 GoRoute(
                   path: 'account-reports',

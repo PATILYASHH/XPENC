@@ -26,7 +26,9 @@ import 'package:xpenc/features/message_capture/review_inbox_screen.dart';
 import 'package:xpenc/features/more/more_screen.dart';
 import 'package:xpenc/features/onboarding/onboarding_screen.dart';
 import 'package:xpenc/features/reports/account_reports_screen.dart';
+import 'package:xpenc/features/reports/stats_modules.dart';
 import 'package:xpenc/features/reports/stats_screen.dart';
+import 'package:xpenc/features/reports/xpenc_score_screen.dart';
 import 'package:xpenc/features/savings/savings_goal_detail_screen.dart';
 import 'package:xpenc/features/savings/savings_goals_screen.dart';
 import 'package:xpenc/features/settings/general_settings_screen.dart';
@@ -383,6 +385,111 @@ void main() {
     await unmount(tester);
   });
 
+  testWidgets('Stats hub shows the XPENC Score card and every module', (
+    tester,
+  ) async {
+    await tester.runAsync(seed);
+    await pump(tester, const StatsScreen());
+    expect(tester.takeException(), isNull);
+    expect(find.text('XPENC SCORE'), findsOneWidget);
+    // One seeded income + two expenses is under the 5-entry minimum.
+    expect(find.text('Not enough data yet'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Recurring'), 200);
+    for (final m in StatsModule.values) {
+      expect(find.text(m.title), findsWidgets, reason: m.title);
+    }
+    await unmount(tester);
+  });
+
+  testWidgets('XPENC Score screen renders empty and with data', (
+    tester,
+  ) async {
+    await pump(tester, const XpencScoreScreen());
+    expect(tester.takeException(), isNull);
+    expect(find.text('Not enough data yet'), findsOneWidget);
+    await unmount(tester);
+
+    await tester.runAsync(() async {
+      final seeded = await seed();
+      for (var i = 0; i < 4; i++) {
+        await db.addTransaction(
+          type: TxType.expense,
+          amount: Money.fromRupees(100),
+          accountId: seeded.cash,
+          date: DateTime.now().subtract(Duration(days: i)),
+        );
+      }
+    });
+    await pump(tester, const XpencScoreScreen());
+    expect(tester.takeException(), isNull);
+    // Seven income/expense entries clears the minimum: a real grade shows.
+    expect(find.text('Not enough data yet'), findsNothing);
+    await tester.scrollUntilVisible(find.text('Tracking habit'), 300);
+    expect(tester.takeException(), isNull);
+    await unmount(tester);
+  });
+
+  for (final module in StatsModule.values) {
+    testWidgets('Stats module "${module.title}" renders empty and with data', (
+      tester,
+    ) async {
+      await pump(tester, StatsModuleScreen(module: module));
+      expect(tester.takeException(), isNull);
+      await unmount(tester);
+
+      // Every module's lists populated: a loan with a payment, people on
+      // both sides (one overdue), a group, a goal, a budget and a rule.
+      await tester.runAsync(() async {
+        final seeded = await seed();
+        final food = (await db.watchCategories(CategoryKind.expense).first)
+            .firstWhere((c) => c.name == 'Food')
+            .id;
+        final loan = await db.addLoan(
+          name: 'Car loan',
+          principal: Money.fromRupees(300000),
+          colorValue: 0xFF2563EB,
+          iconKey: 'bank',
+          emiAmount: Money.fromRupees(9000),
+          startDate: DateTime(2026, 1, 5),
+        );
+        await db.addTransaction(
+          type: TxType.transfer,
+          amount: Money.fromRupees(9000),
+          accountId: seeded.bank,
+          toAccountId: loan,
+          date: DateTime.now(),
+        );
+        final asha = await db.addPerson('Asha');
+        final ravi = await db.addPerson('Ravi');
+        await db.addPersonEntry(
+          personId: asha,
+          direction: PersonDirection.theyOwe,
+          amount: Money.fromRupees(1500),
+          date: DateTime.now(),
+        );
+        await db.addPersonEntry(
+          personId: ravi,
+          direction: PersonDirection.iOwe,
+          amount: Money.fromRupees(800),
+          date: DateTime(2026, 1, 1),
+          dueDate: DateTime(2026, 2, 1),
+        );
+        await db.addGroup('Goa trip');
+        await db.addGoal(
+          name: 'Emergency fund',
+          targetAmount: Money.fromRupees(100000),
+          colorValue: 0xFF16A34A,
+          iconKey: 'savings',
+        );
+        await db.upsertBudget(categoryId: food, amount: Money.fromRupees(1000));
+        await addRecurringRuleFixture(seeded.bank, name: 'Netflix');
+      });
+      await pump(tester, StatsModuleScreen(module: module));
+      expect(tester.takeException(), isNull);
+      await unmount(tester);
+    });
+  }
+
   testWidgets(
     'Stats: category standings show each category\'s share of total spend',
     (tester) async {
@@ -414,7 +521,9 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [dbProvider.overrideWithValue(db)],
-          child: const MaterialApp(home: StatsScreen()),
+          child: const MaterialApp(
+            home: StatsModuleScreen(module: StatsModule.spending),
+          ),
         ),
       );
       await tester.runAsync(
@@ -467,7 +576,9 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [dbProvider.overrideWithValue(db)],
-          child: const MaterialApp(home: StatsScreen()),
+          child: const MaterialApp(
+            home: StatsModuleScreen(module: StatsModule.spending),
+          ),
         ),
       );
       // spendByCategoryProvider is a drift stream query — give it one more
