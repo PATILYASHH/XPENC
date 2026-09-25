@@ -28,7 +28,13 @@ class CurrencySettingsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Currency')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+        // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
+        padding: EdgeInsets.fromLTRB(
+          20,
+          12,
+          20,
+          32 + MediaQuery.of(context).padding.bottom,
+        ),
         children: [
           _sectionLabel(theme, 'Parent currency'),
           Card(
@@ -155,9 +161,7 @@ class _RateTile extends ConsumerWidget {
       ),
       subtitle: Text(
         'Updated ${_dateFormat.format(rate.effectiveAt)}',
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: cs.onSurfaceVariant,
-        ),
+        style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
       ),
       trailing: const Icon(Icons.chevron_right_rounded),
       onTap: () => showAddRateDialog(context, ref, rate.currencyCode),
@@ -174,10 +178,11 @@ Future<void> showAddRateDialog(
   WidgetRef ref,
   String currencyCode,
 ) async {
-  final result = await showDialog<({int rateToBaseMicros, DateTime effectiveAt})>(
-    context: context,
-    builder: (_) => _AddRateDialog(currencyCode: currencyCode),
-  );
+  final result =
+      await showDialog<({int rateToBaseMicros, DateTime effectiveAt})>(
+        context: context,
+        builder: (_) => _AddRateDialog(currencyCode: currencyCode),
+      );
   if (result == null) return;
   await ref
       .read(dbProvider)

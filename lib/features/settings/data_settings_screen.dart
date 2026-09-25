@@ -15,7 +15,13 @@ class DataSettingsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Data')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+        // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
+        padding: EdgeInsets.fromLTRB(
+          20,
+          4,
+          20,
+          32 + MediaQuery.of(context).padding.bottom,
+        ),
         children: [
           Card(
             child: Column(
@@ -26,9 +32,9 @@ class DataSettingsScreen extends ConsumerWidget {
                   title: const Text('Recalculate balances'),
                   subtitle: Text(
                     'Rebuild every balance from the ledger. Safe to run any time.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () async {
@@ -52,9 +58,9 @@ class DataSettingsScreen extends ConsumerWidget {
                   subtitle: Text(
                     'Wipe every account, transaction, budget and person, and '
                     'start fresh. A safety backup is saved first.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => _clearAllData(context, ref),

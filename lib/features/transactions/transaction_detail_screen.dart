@@ -151,7 +151,13 @@ class _TransactionView extends ConsumerWidget {
         : recurringRuleMap[t.recurringRuleId];
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+      // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
+      padding: EdgeInsets.fromLTRB(
+        20,
+        12,
+        20,
+        32 + MediaQuery.of(context).padding.bottom,
+      ),
       children: [
         _Hero(transaction: t),
         if (t.paymentGroupId != null) ...[
@@ -852,10 +858,15 @@ Widget _splitCategoryValue(
                   color: color,
                 ),
                 const SizedBox(width: 6),
-                Text(
-                  category?.name ?? 'Uncategorised',
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w500,
+                // Flexible so a long category name wraps inside the card
+                // instead of overflowing past its edge (#137).
+                Flexible(
+                  child: Text(
+                    category?.name ?? 'Uncategorised',
+                    textAlign: TextAlign.right,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ],

@@ -48,7 +48,13 @@ class FontSettingsScreen extends ConsumerWidget {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+        // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
+        padding: EdgeInsets.fromLTRB(
+          20,
+          12,
+          20,
+          32 + MediaQuery.of(context).padding.bottom,
+        ),
         children: [
           _PreviewCard(family: family),
           const SizedBox(height: 20),

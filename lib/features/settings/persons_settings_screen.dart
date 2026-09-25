@@ -33,7 +33,13 @@ class PersonsSettingsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Persons')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+        // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
+        padding: EdgeInsets.fromLTRB(
+          20,
+          4,
+          20,
+          32 + MediaQuery.of(context).padding.bottom,
+        ),
         children: [
           Card(
             child: SwitchListTile(
@@ -82,9 +88,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                 if (upiEnabled) ...[
                   Divider(height: 1, indent: 16, color: cs.outline),
                   ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const Icon(Icons.qr_code_outlined),
                     title: const Text('My UPI ID'),
                     subtitle: Text(
@@ -106,10 +110,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                   ),
                   Divider(height: 1, indent: 16, color: cs.outline),
                   ListTile(
-                    contentPadding: const EdgeInsets.only(
-                      left: 16,
-                      right: 8,
-                    ),
+                    contentPadding: const EdgeInsets.only(left: 16, right: 8),
                     title: const Text('Pay without internet (Beta)'),
                     subtitle: const Text(
                       'Send via *99# USSD when you have no data — tap for '
@@ -140,9 +141,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                 if (paypalEnabled) ...[
                   Divider(height: 1, indent: 16, color: cs.outline),
                   ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const Icon(Icons.attach_money_rounded),
                     title: const Text('My PayPal.me ID'),
                     subtitle: Text(
@@ -182,9 +181,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                 if (venmoEnabled) ...[
                   Divider(height: 1, indent: 16, color: cs.outline),
                   ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const Icon(Icons.attach_money_rounded),
                     title: const Text('My Venmo username'),
                     subtitle: Text(
@@ -224,9 +221,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                 if (cashappEnabled) ...[
                   Divider(height: 1, indent: 16, color: cs.outline),
                   ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const Icon(Icons.attach_money_rounded),
                     title: const Text('My Cash App cashtag'),
                     subtitle: Text(
@@ -266,9 +261,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                 if (revolutEnabled) ...[
                   Divider(height: 1, indent: 16, color: cs.outline),
                   ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const Icon(Icons.attach_money_rounded),
                     title: const Text('My Revolut.me username'),
                     subtitle: Text(

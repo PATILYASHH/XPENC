@@ -16,7 +16,13 @@ class SettingsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+        // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
+        padding: EdgeInsets.fromLTRB(
+          20,
+          4,
+          20,
+          32 + MediaQuery.of(context).padding.bottom,
+        ),
         children: [
           _ModuleTile(
             icon: Icons.tune_rounded,
@@ -100,10 +106,7 @@ class _ModuleTile extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 4,
-        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         leading: Icon(icon),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(

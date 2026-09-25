@@ -66,7 +66,13 @@ class BottomNavSettingsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Customize bottom nav')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
+        padding: EdgeInsets.fromLTRB(
+          20,
+          16,
+          20,
+          32 + MediaQuery.of(context).padding.bottom,
+        ),
         children: [
           Text(
             'Dashboard and More always stay put. Pick what goes in the two '
@@ -100,8 +106,7 @@ class BottomNavSettingsScreen extends ConsumerWidget {
                 'Show each item\'s text under its icon. Off keeps icons only.',
               ),
               value: showLabels,
-              onChanged: (v) =>
-                  ref.read(dbProvider).setShowBottomNavLabels(v),
+              onChanged: (v) => ref.read(dbProvider).setShowBottomNavLabels(v),
             ),
           ),
           const SizedBox(height: 20),
@@ -144,7 +149,9 @@ class BottomNavSettingsScreen extends ConsumerWidget {
                     min: 0,
                     max: 40,
                     divisions: 10,
-                    label: extraBottomInset == 0 ? 'Off' : '${extraBottomInset}px',
+                    label: extraBottomInset == 0
+                        ? 'Off'
+                        : '${extraBottomInset}px',
                     onChanged: (v) =>
                         ref.read(dbProvider).setExtraBottomInset(v.round()),
                   ),
@@ -165,8 +172,7 @@ class BottomNavSettingsScreen extends ConsumerWidget {
                     'screen, drag a finger to one and let go to jump there.',
                   ),
                   value: holdMenuEnabled,
-                  onChanged: (v) =>
-                      ref.read(dbProvider).setHoldMenuEnabled(v),
+                  onChanged: (v) => ref.read(dbProvider).setHoldMenuEnabled(v),
                 ),
                 if (holdMenuEnabled) ...[
                   Divider(
@@ -183,7 +189,8 @@ class BottomNavSettingsScreen extends ConsumerWidget {
                         for (var i = 0; i < holdMenuSlots.length; i++) ...[
                           if (i > 0) const SizedBox(height: 8),
                           _SlotTile(
-                            label: bottomNavCatalogLabels[holdMenuSlots[i]] ??
+                            label:
+                                bottomNavCatalogLabels[holdMenuSlots[i]] ??
                                 holdMenuSlots[i],
                             onTap: () => pickHoldSlot(i),
                           ),

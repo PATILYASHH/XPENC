@@ -24,7 +24,13 @@ class DashboardSettingsScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Customize dashboard')),
       body: accountsAsync.when(
         data: (accounts) => ListView(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+          // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
+          padding: EdgeInsets.fromLTRB(
+            20,
+            12,
+            20,
+            32 + MediaQuery.of(context).padding.bottom,
+          ),
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(4, 0, 4, 16),
@@ -49,7 +55,8 @@ class DashboardSettingsScreen extends ConsumerWidget {
                 child: Column(
                   children: [
                     for (var i = 0; i < accounts.length; i++) ...[
-                      if (i > 0) Divider(height: 1, indent: 60, color: cs.outline),
+                      if (i > 0)
+                        Divider(height: 1, indent: 60, color: cs.outline),
                       _AccountToggleTile(account: accounts[i]),
                     ],
                   ],
@@ -57,8 +64,7 @@ class DashboardSettingsScreen extends ConsumerWidget {
               ),
           ],
         ),
-        loading: () =>
-            const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => Center(
           child: Text(
             'Could not load your accounts.',

@@ -45,7 +45,13 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Security & Privacy')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+        // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
+        padding: EdgeInsets.fromLTRB(
+          20,
+          4,
+          20,
+          32 + MediaQuery.of(context).padding.bottom,
+        ),
         children: [
           settingsSectionLabel(context, 'Security'),
           Card(

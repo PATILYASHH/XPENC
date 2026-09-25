@@ -24,7 +24,13 @@ class ModeBudgetingSettingsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Mode & Budgeting')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+        // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
+        padding: EdgeInsets.fromLTRB(
+          20,
+          4,
+          20,
+          32 + MediaQuery.of(context).padding.bottom,
+        ),
         children: [
           Card(
             child: Column(
@@ -35,8 +41,7 @@ class ModeBudgetingSettingsScreen extends ConsumerWidget {
                   title: const Text('App mode'),
                   subtitle: Text(
                     switch (appMode) {
-                      AppMode.basic =>
-                        'Basic — transactions & persons only',
+                      AppMode.basic => 'Basic — transactions & persons only',
                       AppMode.medium =>
                         'Medium — adds accounts, budgets, net worth',
                       AppMode.pro =>
@@ -53,9 +58,7 @@ class ModeBudgetingSettingsScreen extends ConsumerWidget {
                 if (appMode != AppMode.basic) ...[
                   Divider(height: 1, indent: 60, color: cs.outline),
                   ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const Icon(Icons.event_repeat_outlined),
                     title: const Text('Budget cycle start day'),
                     subtitle: Text(
@@ -76,9 +79,7 @@ class ModeBudgetingSettingsScreen extends ConsumerWidget {
                 if (appMode == AppMode.pro) ...[
                   Divider(height: 1, indent: 60, color: cs.outline),
                   SwitchListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     secondary: const Icon(Icons.savings_outlined),
                     title: const Text('Ready to Assign'),
                     subtitle: Text(
