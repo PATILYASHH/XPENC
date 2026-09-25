@@ -8,6 +8,50 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
+### Added
+- **Auto-pay EMI when creating a loan** — once a loan has a monthly EMI
+  (typed, or derived from its rate and tenure), the new-loan sheet offers
+  "Auto-pay EMI": pick the paying account and the first payment date and a
+  monthly G&L Auto rule is created together with the loan. The first date
+  defaults to the next EMI day after today, since an Auto rule backfills
+  every missed date.
+- **Loan insights** — a rate-based loan's screen now shows what interest
+  adds on top of the amount borrowed, the remaining balance month by month
+  or the principal/interest split year by year, and a prepayment simulator
+  (extra per month → new debt-free date, interest saved, months saved).
+- **Goals & Loans ↔ Auto** — goal and loan screens list the Auto rules
+  paying into them and can set one up in place, pre-filled with the EMI or
+  with the monthly amount that reaches a goal by its target date. An Auto
+  rule's goal/loan row opens that goal or loan, and picking a loan in the
+  Auto sheet fills in its EMI.
+- **Dashboard month picker** — a month button in the Dashboard's top bar
+  opens a themed month grid (with "This month"); it replaces the ‹ › arrows
+  on the income/expense card.
+- **Lock screen shortcuts** (#138) — Settings › Quick Actions › Lock screen
+  shortcuts adds a screenshot-blocking toggle to the lock screen. Turning
+  blocking on applies immediately, before the PIN is typed; turning it off
+  only takes effect after a successful unlock. Schema v76.
+
+### Changed
+- **Groups show only their own split** — a group's member amounts and
+  total now come from that group's expenses alone, not each member's whole
+  person balance. The Individual tab still shows each person's full total.
+  A repayment recorded on the person settles their group shares first
+  (oldest group first), and only ever settles what was already owed on its
+  date. A group auto-archives once every member's amount in it is zero.
+- **Dashboard Loan tab** — now totals loans from the Loans module,
+  pay-later accounts and what you owe people, with a breakdown under the
+  figure. It previously summed pay-later accounts only.
+
+### Fixed
+- **Auto EMI rules no longer overpay a finished loan** — the final
+  occurrence is trimmed to the outstanding balance and the rule pauses
+  itself once the loan is paid off.
+- **Settings pages and transaction details scroll to the bottom** (#137) —
+  the last items no longer sit under the system navigation bar.
+- **Long category names in a split transaction** now wrap inside the card
+  instead of running past its edge (#137).
+
 ## [1.6.1] — 2026-09-24
 
 ### Added

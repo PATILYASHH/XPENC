@@ -23,59 +23,82 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
-    icon: Icons.percent_rounded,
-    title: 'Loan interest tracking',
-    location: 'Goals & Loans → a loan',
+    icon: Icons.autorenew_rounded,
+    title: 'Auto-pay your EMI when you add a loan',
+    location: 'Goals & Loans → Loans → +',
     description:
-        'Give a loan its annual rate, tenure and start date and XPENC '
-        'computes the EMI, splits every payment — manual or recurring — '
-        'into interest and principal automatically, and shows how much '
-        'paying extra actually saves in interest and months.',
+        'Enter the monthly EMI (or a rate and tenure) and switch on '
+        'Auto-pay EMI: pick the account it comes from and the first payment '
+        'date, and the EMI shows up in Auto and posts itself every month. '
+        'It stops on its own once the loan is paid off — the last payment '
+        'is trimmed to exactly what is left.',
   ),
   WhatsNewEntry(
-    icon: Icons.event_outlined,
-    title: 'Backdate a loan payment, see the extra you paid',
-    location: 'Goals & Loans → a loan → Make a payment',
+    icon: Icons.insights_rounded,
+    title: 'Loan insights',
+    location: 'Goals & Loans → a loan → Insights',
     description:
-        'The payment sheet now has its own date/time picker instead of '
-        'always posting "now", and breaks out anything paid beyond the '
-        'scheduled EMI as a separate "extra" figure.',
+        'See what a loan really costs: how much interest adds on top of '
+        'what you borrowed, the balance month by month or the '
+        'principal-vs-interest split year by year, and a "What if I pay '
+        'extra?" slider showing the new debt-free date, interest saved and '
+        'months saved.',
   ),
   WhatsNewEntry(
-    icon: Icons.menu_book_outlined,
-    title: 'Guide',
-    location: 'More → Guide',
+    icon: Icons.link_rounded,
+    title: 'Goals, Loans and Auto, connected',
+    location: 'Goals & Loans → a goal or loan',
     description:
-        'Every module and feature explained — what it does, how to use '
-        'it, where to find it — plus a dedicated breakdown of the '
-        'Basic/Medium/Pro app modes and what each tier unlocks.',
+        'Each goal and loan now shows the Auto rules paying into it, and '
+        'you can set one up right there — pre-filled with the EMI, or with '
+        'the monthly amount that reaches a goal by its target date. From an '
+        'Auto rule, tap its goal or loan to jump straight to it.',
   ),
   WhatsNewEntry(
-    icon: Icons.event_repeat_rounded,
-    title: 'Yearly Auto rules',
-    location: 'Auto → add/edit a rule',
+    icon: Icons.calendar_month_rounded,
+    title: 'Pick a month from the Dashboard top bar',
+    location: 'Dashboard → month button in the top bar',
     description:
-        'A recurring rule can now fire once a year instead of just '
-        'daily/weekly/2 weeks/monthly — for annual insurance premiums or '
-        'subscriptions. Anchored to both month and day, so Feb 29 behaves '
-        'correctly across leap years.',
+        'Tap the month in the top bar to jump to any earlier month from a '
+        'themed month grid, or straight back to this month. It replaces the '
+        '‹ › arrows that used to sit on the income/expense card.',
   ),
   WhatsNewEntry(
-    icon: Icons.account_balance_wallet_outlined,
-    title: 'Per-account minimum balance',
-    location: 'Accounts → an account → menu',
+    icon: Icons.account_balance_outlined,
+    title: 'Loan tab shows everything you owe',
+    location: 'Dashboard → net worth card → Loan',
     description:
-        'Set an optional floor for an account. Purely informational — '
-        'Account Detail flags it when the balance drops below it, and Add '
-        'Transaction warns before a transfer/expense would take it there, '
-        'but nothing is ever blocked.',
+        'The Loan tab now adds up your loans from the Loans module, pay-later '
+        'accounts and what you owe people, with a breakdown under the total. '
+        'It used to count pay-later accounts only.',
   ),
   WhatsNewEntry(
-    icon: Icons.forum_outlined,
-    title: 'Community links in About',
-    location: 'More → About',
+    icon: Icons.groups_outlined,
+    title: 'Groups show their own split',
+    location: 'Persons → Group → a group',
     description:
-        'Instagram, WhatsApp Channel, Reddit and the public testimonial/'
-        'feedback page are now linked directly from the About screen.',
+        'A group now shows only what its own expenses created — a friend who '
+        'already owed you individually no longer inflates the hotel bill. '
+        'The Individual tab still shows their full total, and a repayment '
+        'made on the person settles their group share first.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.no_photography_outlined,
+    title: 'Screenshot blocking from the lock screen',
+    location: 'Settings → Quick Actions → Lock screen shortcuts',
+    description:
+        'Turn it on to get a screenshot-blocking button on the lock screen. '
+        'Blocking turns on the moment you tap — before you type your PIN — '
+        'while turning it off only takes effect after you unlock.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.build_outlined,
+    title: 'Fixes',
+    location: 'Settings, Transactions',
+    description:
+        'Settings pages and transaction details now scroll all the way to '
+        'the bottom instead of hiding the last items under the navigation '
+        'bar, and a long category name in a split transaction wraps inside '
+        'its card.',
   ),
 ];
