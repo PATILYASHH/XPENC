@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/branding/app_info.dart';
@@ -43,7 +44,30 @@ class AboutScreen extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             Center(child: _VersionPill()),
-            const SizedBox(height: 34),
+            const SizedBox(height: 22),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () => _openPlayStore(context),
+                    icon: const Icon(Icons.shop_rounded, size: 20),
+                    label: const Text('Google Play'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Builder(
+                    // Its own context, so the share popover anchors here.
+                    builder: (buttonContext) => OutlinedButton.icon(
+                      onPressed: () => _shareApp(buttonContext),
+                      icon: const Icon(Icons.share_rounded, size: 20),
+                      label: const Text('Share XPENC'),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 28),
 
             Card(
               child: Padding(
@@ -185,8 +209,15 @@ class AboutScreen extends StatelessWidget {
                   _LinkTile(
                     icon: Icons.system_update_alt_rounded,
                     label: 'Latest release',
-                    value: 'APKs & release notes',
-                    url: AppInfo.releasesUrl,
+                    value: 'Google Play or F-Droid',
+                    onTap: () => _GetUpdateSheet.show(context),
+                  ),
+                  Divider(height: 1, indent: 60, color: cs.outline),
+                  _LinkTile(
+                    icon: Icons.share_rounded,
+                    label: 'Share XPENC',
+                    value: 'Send the Play Store link to a friend',
+                    onTap: () => _shareApp(context),
                   ),
                   Divider(height: 1, indent: 60, color: cs.outline),
                   _LinkTile(
@@ -282,46 +313,146 @@ class _VersionPill extends StatelessWidget {
   }
 }
 
+Future<bool> _tryLaunch(String url) async {
+  try {
+    return await launchUrl(
+      Uri.parse(url),
+      mode: LaunchMode.externalApplication,
+    );
+  } catch (_) {
+    return false;
+  }
+}
+
 /// Opens [url] in a browser. If no handler exists — a stripped device, a test
-/// harness — the URL goes to the clipboard instead of the tap doing nothing.
+/// harness — [copyValue] (default [url]) goes to the clipboard instead of the
+/// tap doing nothing.
+Future<void> _openUrl(
+  BuildContext context,
+  String url, {
+  String? copyValue,
+}) async {
+  final messenger = ScaffoldMessenger.of(context);
+  if (await _tryLaunch(url)) return;
+
+  final fallback = copyValue ?? url;
+  await Clipboard.setData(ClipboardData(text: fallback));
+  messenger
+    ..hideCurrentSnackBar()
+    ..showSnackBar(SnackBar(content: Text('Copied — $fallback')));
+}
+
+/// The Play Store app when it's installed (`market://`), the web listing
+/// otherwise — F-Droid-only phones often have no Play Store at all.
+Future<void> _openPlayStore(BuildContext context) async {
+  if (await _tryLaunch(AppInfo.playStoreMarketUrl)) return;
+  if (!context.mounted) return;
+  await _openUrl(context, AppInfo.playStoreUrl);
+}
+
+/// The system share sheet with the Play Store link — WhatsApp, Instagram,
+/// SMS, whatever the user has installed.
+Future<void> _shareApp(BuildContext context) async {
+  final box = context.findRenderObject() as RenderBox?;
+  await SharePlus.instance.share(
+    ShareParams(
+      text: AppInfo.shareText,
+      subject: AppInfo.name,
+      // Tablets anchor the share popover here; ignored on phones.
+      sharePositionOrigin: box == null
+          ? null
+          : box.localToGlobal(Offset.zero) & box.size,
+    ),
+  );
+}
+
+/// "Latest release" — where to get updates. Play first: most installs come
+/// from there and it updates automatically.
+class _GetUpdateSheet extends StatelessWidget {
+  const _GetUpdateSheet();
+
+  static Future<void> show(BuildContext context) => showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (_) => const _GetUpdateSheet(),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Get the latest version',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Update from the store you installed ${AppInfo.name} from. '
+              'Play and F-Droid sign the app differently, so one can\'t '
+              'update the other.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: cs.onSurfaceVariant,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Card(
+              child: Column(
+                children: [
+                  _LinkTile(
+                    icon: Icons.shop_rounded,
+                    label: 'Google Play',
+                    value: 'Updates automatically',
+                    onTap: () => _openPlayStore(context),
+                  ),
+                  Divider(height: 1, indent: 60, color: cs.outline),
+                  _LinkTile(
+                    icon: Icons.storefront_outlined,
+                    label: 'F-Droid',
+                    value: 'Free & open-source app store',
+                    url: AppInfo.fdroidUrl,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _LinkTile extends StatelessWidget {
   const _LinkTile({
     required this.icon,
     required this.label,
     required this.value,
-    required this.url,
+    this.url,
     this.copyValue,
-  });
+    this.onTap,
+  }) : assert(url != null || onTap != null);
 
   final IconData icon;
   final String label;
   final String value;
-  final String url;
+  final String? url;
 
   /// What lands on the clipboard if nothing can open [url] — e.g. the bare
   /// email address for a `mailto:` link, rather than the `mailto:` scheme
   /// itself. Defaults to [url].
   final String? copyValue;
 
-  Future<void> _open(BuildContext context) async {
-    final messenger = ScaffoldMessenger.of(context);
-    var opened = false;
-    try {
-      opened = await launchUrl(
-        Uri.parse(url),
-        mode: LaunchMode.externalApplication,
-      );
-    } catch (_) {
-      opened = false;
-    }
-    if (opened) return;
-
-    final fallback = copyValue ?? url;
-    await Clipboard.setData(ClipboardData(text: fallback));
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('Copied — $fallback')));
-  }
+  /// Used instead of opening [url] — for tiles that open a sheet or share.
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -340,11 +471,11 @@ class _LinkTile extends StatelessWidget {
         style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
       ),
       trailing: Icon(
-        Icons.open_in_new_rounded,
+        url != null ? Icons.open_in_new_rounded : Icons.chevron_right_rounded,
         size: 18,
         color: cs.onSurfaceVariant,
       ),
-      onTap: () => _open(context),
+      onTap: onTap ?? () => _openUrl(context, url!, copyValue: copyValue),
     );
   }
 }

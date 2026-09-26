@@ -57,6 +57,7 @@ import '../../features/settings/font_settings_screen.dart';
 import '../../features/settings/general_settings_screen.dart';
 import '../../features/settings/mode_budgeting_settings_screen.dart';
 import '../../features/settings/notifications_settings_screen.dart';
+import '../../features/settings/permissions_settings_screen.dart';
 import '../../features/settings/persons_settings_screen.dart';
 import '../../features/settings/quick_actions_settings_screen.dart';
 import '../../features/settings/security_privacy_settings_screen.dart';
@@ -203,6 +204,11 @@ final appRouter = GoRouter(
                       path: 'security',
                       parentNavigatorKey: _rootKey,
                       builder: (_, _) => const SecurityPrivacySettingsScreen(),
+                    ),
+                    GoRoute(
+                      path: 'permissions',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const PermissionsSettingsScreen(),
                     ),
                     GoRoute(
                       path: 'notifications',

@@ -35,10 +35,18 @@ private const val SCREEN_SECURITY_CHANNEL = "xpenc/screen_security"
  * capability grant. Dart side: `ScreenSecurity` in
  * `lib/core/security/screen_security.dart`, driven by
  * `Settings.preventScreenshots` (GitHub #15).
+ *
+ * Permissions
+ * -----------
+ * `xpenc/permissions` lives in [PermissionsChannel] — created here as a field
+ * because its result launcher must be registered before the activity starts.
  */
 class MainActivity : FlutterFragmentActivity() {
+    private val permissions = PermissionsChannel(this)
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        permissions.attach(flutterEngine.dartExecutor.binaryMessenger)
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             SCREEN_SECURITY_CHANNEL,

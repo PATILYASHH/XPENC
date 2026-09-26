@@ -58,6 +58,22 @@ class AppInfo {
   /// Latest published APKs + SHA-256 checksums.
   static const releasesUrl = '$repoUrl/releases/latest';
 
+  /// Android application id — the same on Play and F-Droid.
+  static const packageId = 'com.yash.xpenc';
+
+  /// Play Store listing. The `market://` form opens the Play Store app
+  /// directly; the https one is the fallback and what gets shared.
+  static const playStoreUrl =
+      'https://play.google.com/store/apps/details?id=$packageId';
+  static const playStoreMarketUrl = 'market://details?id=$packageId';
+
+  static const fdroidUrl = 'https://f-droid.org/packages/$packageId/';
+
+  /// What "Share XPENC" sends.
+  static const shareText =
+      'I track my money with $name — offline, private, no ads. '
+      'Get it on Google Play: $playStoreUrl';
+
   static const licenseName = 'MIT License';
   static const licenseUrl = '$repoUrl/blob/master/LICENSE';
 

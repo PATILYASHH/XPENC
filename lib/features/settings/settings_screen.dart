@@ -49,6 +49,12 @@ class SettingsScreen extends StatelessWidget {
             onTap: () => context.push('/more/settings/security'),
           ),
           _ModuleTile(
+            icon: Icons.verified_user_outlined,
+            title: 'Permissions',
+            subtitle: 'What XPENC can access — turn each on or off',
+            onTap: () => context.push('/more/settings/permissions'),
+          ),
+          _ModuleTile(
             icon: Icons.notifications_outlined,
             title: 'Notifications',
             subtitle: 'Reminders and quick add from a notification',
