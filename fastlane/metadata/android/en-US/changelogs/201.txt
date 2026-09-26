@@ -1,0 +1,1 @@
+1.6.2 — First Google Play release. XPENC Score and a Stats hub with nine sections. Add people from contacts. Settings > Permissions shows each permission with a switch. EMI auto-pay and loan insights. Month picker on the Dashboard. Groups show their own split. About links to Google Play and F-Droid, plus Share XPENC. Still fully offline: no internet, no SMS permission.

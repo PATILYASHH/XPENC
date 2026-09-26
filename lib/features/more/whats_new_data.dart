@@ -47,6 +47,32 @@ const whatsNewEntries = <WhatsNewEntry>[
         'month.',
   ),
   WhatsNewEntry(
+    icon: Icons.contacts_outlined,
+    title: 'Add people from your contacts',
+    location: 'Persons → Add person, or a group → Add members',
+    description:
+        'Pick someone from your phone\'s contacts instead of typing them in. '
+        'With contacts access allowed, their number and photo come along '
+        'too; without it you still get the name.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.verified_user_outlined,
+    title: 'See and manage permissions',
+    location: 'Settings → Permissions',
+    description:
+        'Every permission XPENC can use — notifications, camera, contacts — '
+        'with what it is for and a switch for each. It also lists what '
+        'XPENC never asks for: no internet, no SMS, no location.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.shop_rounded,
+    title: 'XPENC is on Google Play',
+    location: 'Settings → About',
+    description:
+        'Open XPENC\'s Play Store page, share it with friends from any app, '
+        'or get the latest version from Google Play or F-Droid.',
+  ),
+  WhatsNewEntry(
     icon: Icons.autorenew_rounded,
     title: 'Auto-pay your EMI when you add a loan',
     location: 'Goals & Loans → Loans → +',

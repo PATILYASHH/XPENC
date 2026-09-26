@@ -118,7 +118,7 @@
       <div class="kicker">Privacy Policy</div>
       <h1>Everything stays on your phone.</h1>
       <p class="meta">
-        <b>Effective date:</b> 16 September 2026 &nbsp;·&nbsp;
+        <b>Effective date:</b> 26 September 2026 &nbsp;·&nbsp;
         <b>Applies to:</b> XPENC for Android (<code>com.yash.xpenc</code>), v1.1.0+ &nbsp;·&nbsp;
         <b>Developer:</b> Yash Patil &nbsp;·&nbsp;
         <b>Contact:</b> <a href="mailto:feedback.yashpatil@gmail.com">feedback.yashpatil@gmail.com</a>
@@ -158,7 +158,10 @@
       <p>
         <strong>None.</strong> XPENC collects no personal data, no financial data, no device
         identifiers, no usage analytics, and no diagnostics. Nothing is shared with anyone,
-        because nothing ever leaves the device. The app's Google Play Data safety section
+        because nothing ever leaves the device. If you pick a person from your contacts,
+        that one contact's name, number and photo are copied into the app's local storage —
+        the same on-device, never-transmitted storage as everything else here. The app's
+        Google Play Data safety section
         accordingly declares <em>no data collected, no data shared</em>.
       </p>
 
@@ -174,14 +177,38 @@
           <td><code>RECEIVE_BOOT_COMPLETED</code></td>
           <td>To re-schedule your local reminders after the phone restarts.</td>
         </tr>
+        <tr>
+          <td><code>CAMERA</code><br>(optional, asked at runtime)</td>
+          <td>Only if you tap "Take photo" when attaching a receipt to a transaction. The
+              photo is copied straight into the app's own private storage and never leaves
+              the device. If you deny it, or attach from your gallery instead, the app works
+              normally.</td>
+        </tr>
+        <tr>
+          <td><code>READ_CONTACTS</code><br>(optional, asked at runtime)</td>
+          <td>Only if you tap "Pick from contacts" when adding a person, and only to also
+              import that contact's phone number and photo — picking a name works without
+              it. Nothing from your address book is read except the one contact you pick,
+              and it is copied into the app's own private storage, never transmitted
+              anywhere.</td>
+        </tr>
+        <tr>
+          <td><code>USE_BIOMETRIC</code></td>
+          <td>Only if you turn on fingerprint/face unlock for the app lock. The app never
+              sees your biometric data — Android only tells it whether the check passed.</td>
+        </tr>
       </table>
       <p>
-        XPENC requests <strong>no</strong> SMS, location, camera, microphone, contacts,
-        storage, or internet permission. (The final app package also contains
-        <code>VIBRATE</code> — a standard, install-time permission added by the
-        notifications library so notifications can vibrate — and an internal
-        Android-library permission scoped to the app itself. Neither gives access to any
-        of your data.)
+        You can review each permission, and turn the optional ones on or off, in
+        <strong>Settings → Permissions</strong> inside the app.
+      </p>
+      <p>
+        XPENC requests <strong>no</strong> SMS, location, microphone, storage, or internet
+        permission. (The final app package also contains <code>VIBRATE</code>,
+        <code>WAKE_LOCK</code> and <code>FOREGROUND_SERVICE</code> — standard, install-time
+        permissions the notifications library uses to deliver reminders on time — and an
+        internal Android-library permission scoped to the app itself. None of them gives
+        access to any of your data.)
       </p>
 
       <h2>Backups and exports</h2>

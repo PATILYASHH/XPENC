@@ -8,7 +8,21 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
+## [1.6.2] — 2026-09-26
+
+First release on Google Play production.
+
 ### Added
+- **Settings › Permissions** — notifications, camera and contacts with
+  live status and a switch each. Turning one on shows Android's dialog;
+  turning one off (or allowing one Android has blocked) opens system
+  settings, since Android doesn't let an app revoke its own grants. Also
+  lists install-time grants and what XPENC never requests (internet, SMS,
+  location, microphone, phone).
+- **Google Play and Share in About** — a Google Play button (Play Store app,
+  web listing as fallback), "Share XPENC" sends the Play Store link through
+  the system share sheet, and "Latest release" offers Google Play or F-Droid
+  instead of the GitHub releases page.
 - **XPENC Score** — a 0–100 money-management score on the Stats tab, from
   seven weighted rules: savings rate (25), debt load (20), repayment
   discipline (15), emergency fund (15), living within means (10), budget
@@ -960,7 +974,8 @@ First public release. 🎉
 - `tool/verify_apk.sh` gates every shipped APK against the missing
   `libsqlite3.so` class of crash.
 
-[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.6.1...HEAD
+[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.6.2...HEAD
+[1.6.2]: https://github.com/PATILYASHH/XPENC/compare/v1.6.1...v1.6.2
 [1.6.1]: https://github.com/PATILYASHH/XPENC/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/PATILYASHH/XPENC/compare/v1.5.1...v1.6.0
 [1.5.1]: https://github.com/PATILYASHH/XPENC/compare/v1.5.0...v1.5.1

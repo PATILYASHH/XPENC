@@ -1,6 +1,6 @@
 # XPENC Privacy Policy
 
-**Effective date:** 16 September 2026
+**Effective date:** 26 September 2026
 **Applies to:** XPENC for Android (package name `com.yash.xpenc`), version 1.1.0 and later
 **Developer:** Yash Patil (individual developer)
 **Contact:** feedback.yashpatil@gmail.com
@@ -50,12 +50,17 @@ never-transmitted, on-device storage as everything else in this policy.
 | `RECEIVE_BOOT_COMPLETED` | To re-schedule your local reminders after the phone restarts. |
 | `CAMERA` (optional, asked at runtime) | Only if you tap "Take photo" when attaching a receipt to a transaction. The photo is copied straight into the app's own private storage and never leaves the device. If you deny it, or just attach from your gallery instead, the app works normally — nothing about the camera is used anywhere else. |
 | `READ_CONTACTS` (optional, asked at runtime) | Only if you tap "Pick from contacts" when adding a person, and only to also import that contact's phone number and photo — picking a contact's name works without this permission. If you deny it, the picker still fills in the name; you can still type the phone number by hand. Nothing from your address book is read except the one contact you explicitly pick, and it's copied into the app's own private storage, never transmitted anywhere. |
+| `USE_BIOMETRIC` | Only if you turn on fingerprint/face unlock for the app lock. The app never sees your biometric data — Android only tells it whether the check passed. |
+
+You can review each permission, and turn the optional ones on or off, in
+**Settings → Permissions** inside the app.
 
 XPENC requests **no** SMS, location, microphone, storage, or
-internet permission. (The final app package also contains `VIBRATE` — a
-standard, install-time permission added by the notifications library so
-notifications can vibrate — and an internal Android-library permission scoped
-to the app itself. Neither gives access to any of your data.)
+internet permission. (The final app package also contains `VIBRATE`,
+`WAKE_LOCK` and `FOREGROUND_SERVICE` — standard, install-time permissions the
+notifications library uses to deliver reminders on time — and an internal
+Android-library permission scoped to the app itself. None of them gives access
+to any of your data.)
 
 ## Backups and exports
 

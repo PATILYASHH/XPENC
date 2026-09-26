@@ -38,6 +38,8 @@ it deploys automatically from `website/privacy.html` on every push to `master`.
 |---|---|
 | Transactions, balances, budgets, persons/dues | Local SQLite in app-private storage. Never transmitted. |
 | JSON/CSV backup & export | Created only on user tap, handed to the Android share sheet; user picks destination → user-initiated transfer exemption. |
+| Contacts (`READ_CONTACTS`, 1.6.2+) | Only the one contact the user picks; name/number/photo copied into local storage. On-device only → not "collected". |
+| Receipt photos (`CAMERA`, 1.6.0+) | Saved to app-private storage. On-device only → not "collected". |
 | Notifications | Generated locally by `flutter_local_notifications`. No push service, no tokens. |
 | Crash / usage analytics | None. No Firebase, no Crashlytics, no ad SDK, no analytics SDK. |
 | Network access | Release manifest requests no `INTERNET` permission — transmission is technically impossible. |
