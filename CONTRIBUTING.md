@@ -89,7 +89,7 @@ and most of them are guarded by tests:
 
 | Package | Pinned | Why |
 |---|---|---|
-| `drift` / `drift_dev` / `drift_flutter` / `sqlite3_flutter_libs` | 2.31.0 / 0.2.8 / 0.5.24 | drift ≥ 2.32 silently drops `libsqlite3.so` from Android release builds (see structure.md — "the crash that shipped") |
+| `drift` / `drift_dev` / `drift_flutter` / `sqlite3_flutter_libs` | 2.31.0 / 0.2.8 / 0.5.42 | drift ≥ 2.32 silently drops `libsqlite3.so` from Android release builds (see structure.md — "the crash that shipped") |
 | `flutter_riverpod` | 2.6.1 | 3.x forces Dart ≥ 3.11, which breaks `drift_dev` on this SDK |
 
 If you believe a pin can be lifted, open an issue with evidence

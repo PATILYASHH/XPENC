@@ -678,7 +678,7 @@ so the APK contained `libapp.so`, `libflutter.so`, `libdartjni.so` and **no `lib
 | drift ≤ **2.31.0** / drift_flutter ≤ **0.2.8** | ^2.6.0 | **0.5.24 — a real Gradle plugin** | ✅ |
 | drift ≥ 2.32 / drift_flutter 0.3.0 | ^3.1.5 | 0.6.0 **+eol (no-op)** | ❌ hooks only |
 
-**Fix:** pinned to **drift 2.31.0 · drift_flutter 0.2.8 · sqlite3_flutter_libs 0.5.24**, plus an
+**Fix:** pinned to **drift 2.31.0 · drift_flutter 0.2.8 · sqlite3_flutter_libs 0.5.x** (0.5.24 then; 0.5.42 since 1.6.2 for 16 KB pages), plus an
 explicit `sqlite3_flutter_libs` dependency. **Do not bump drift past 2.31 until Flutter runs build
 hooks for Android release builds.**
 
@@ -697,6 +697,6 @@ Two guards now exist:
 | `flutter_riverpod` | **2.6.1 (pinned)** | Riverpod **3.x pulls in `test`**, forcing `test ≥1.31.2` → Dart ≥3.11, which breaks `drift_dev` on Dart 3.10.8. 2.6.x is the stable line. **Do not bump without re-checking `drift_dev`.** |
 | `drift` / `drift_dev` | **2.31.0 (pinned)** | See the crash box above. 2.32+ loses the Android `libsqlite3.so`. |
 | `drift_flutter` | **0.2.8 (pinned)** | Last version on the plugin-based `sqlite3` 2.x. |
-| `sqlite3_flutter_libs` | **0.5.24 (pinned)** | The version that actually bundles the native library. |
+| `sqlite3_flutter_libs` | **0.5.42 (pinned)** | Last 0.5.x — a real Gradle plugin that bundles the native library, and the first line we used with 16 KB-aligned `.so` files (0.5.24 was 4 KB-aligned; Play blocks that for targetSdk 35+). Never 0.6.0+eol. |
 | `go_router` | 17.x | `StatefulShellRoute.indexedStack` for tab state. |
 | `fl_chart` · `flutter_local_notifications` · `timezone` · `intl` · `flutter_slidable` | latest | Per §4. |

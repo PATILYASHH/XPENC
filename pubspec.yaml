@@ -20,7 +20,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # `AppInfo.version` / `AppInfo.buildNumber` mirror this line so the About screen
 # can show it without pulling in a platform plugin. `test/branding_test.dart`
 # parses this file and fails if the two ever disagree.
-version: 1.6.2+20
+version: 1.6.2+21
 
 environment:
   sdk: ^3.10.8
@@ -47,7 +47,7 @@ dependencies:
   flutter_local_notifications: ^22.0.1
   timezone: ^0.11.1
   flutter_slidable: ^4.0.3
-  sqlite3_flutter_libs: 0.5.24
+  sqlite3_flutter_libs: 0.5.42
   path_provider: ^2.1.6
   # Pinned below 13 so it shares win32 ^5 with file_picker (13 needs win32 ^6).
   share_plus: ^12.0.2
