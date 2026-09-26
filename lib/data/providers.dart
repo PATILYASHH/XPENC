@@ -689,6 +689,53 @@ final personEntryGroupIdsProvider = StreamProvider<Map<int, int>>(
   (ref) => ref.watch(dbProvider).watchPersonEntryGroupIds(),
 );
 
+/// Transaction id → group id for every group-born transaction — see
+/// [AppDatabase.watchTransactionGroupIds].
+final transactionGroupIdsProvider = StreamProvider<Map<int, int>>(
+  (ref) => ref.watch(dbProvider).watchTransactionGroupIds(),
+);
+
+/// Every group, archived ones included, by id — so a row born in a group
+/// that was later archived still names it.
+final allGroupsMapProvider = Provider<Map<int, GroupRow>>((ref) {
+  final active = ref.watch(groupsProvider).valueOrNull ?? const [];
+  final archived = ref.watch(archivedGroupsProvider).valueOrNull ?? const [];
+  return {
+    for (final g in [...active, ...archived]) g.id: g,
+  };
+});
+
+final groupExpenseSharesProvider =
+    StreamProvider.family<List<GroupExpenseShareRow>, int>(
+      (ref, groupId) => ref.watch(dbProvider).watchGroupExpenseShares(groupId),
+    );
+
+/// Every pairwise debt inside group [groupId] — see [computeGroupDebts].
+/// Pairs involving me use [groupMemberBalancesProvider] (repayments
+/// applied); pairs between two other members come straight from the
+/// shares, since their settle-ups can't be recorded.
+final groupDebtsProvider = Provider.family<List<GroupDebt>, int>((
+  ref,
+  groupId,
+) {
+  final expenses = ref.watch(groupExpensesProvider(groupId)).valueOrNull;
+  final shares = ref.watch(groupExpenseSharesProvider(groupId)).valueOrNull;
+  if (expenses == null || shares == null) return const [];
+  final payerOf = {for (final e in expenses) e.id: e.payerId};
+  return computeGroupDebts(
+    shares: [
+      for (final s in shares)
+        if (payerOf.containsKey(s.groupExpenseId))
+          (
+            payerId: payerOf[s.groupExpenseId],
+            memberId: s.personId,
+            amount: s.amount,
+          ),
+    ],
+    myBalances: ref.watch(groupMemberBalancesProvider(groupId)),
+  );
+});
+
 /// Person id → (group id → amount): what each person owes (`+`) or is owed
 /// (`-`) in each group, with their individual repayments applied to groups
 /// first — see [allocateGroupDues]. The Individual tab keeps showing each

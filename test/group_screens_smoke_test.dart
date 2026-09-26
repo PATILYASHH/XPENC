@@ -8,6 +8,7 @@ import 'package:xpenc/data/database.dart';
 import 'package:xpenc/data/providers.dart';
 import 'package:xpenc/data/tables.dart';
 import 'package:xpenc/features/persons/add_group_expense_screen.dart';
+import 'package:xpenc/features/persons/group_balances_screen.dart';
 import 'package:xpenc/features/persons/group_detail_screen.dart';
 import 'package:xpenc/features/persons/persons_screen.dart';
 
@@ -75,6 +76,36 @@ void main() {
     await tester.runAsync(() => db.addGroup('Trip'));
     await tester.pump(const Duration(milliseconds: 150));
     expect(find.text('Trip'), findsOneWidget);
+    await unmount(tester);
+  });
+
+  testWidgets('GroupBalancesScreen shows net, settle-up and pairwise debts', (
+    tester,
+  ) async {
+    final groupId = await tester.runAsync(() async {
+      final ram = await db.addPerson('Ram');
+      final shyam = await db.addPerson('Shyam');
+      final id = await db.addGroup('Trip');
+      await db.setGroupMembers(id, {ram, shyam});
+      // Ram paid; Shyam owes Ram, I owe Ram.
+      await db.addGroupExpense(
+        groupId: id,
+        amount: Money.fromRupees(300),
+        splitMethod: GroupSplitMethod.equal,
+        date: DateTime(2026, 7, 5),
+        payerId: ram,
+        participantIds: {null, ram, shyam},
+      );
+      return id;
+    });
+
+    await pump(tester, GroupBalancesScreen(groupId: groupId!));
+    expect(tester.takeException(), isNull);
+    expect(find.text('Who owes whom'), findsOneWidget);
+    expect(find.text('NET BALANCES'), findsOneWidget);
+    expect(find.text('SETTLE UP'), findsOneWidget);
+    expect(find.text('Gets back'), findsOneWidget);
+    expect(find.text('Owes'), findsNWidgets(2));
     await unmount(tester);
   });
 

@@ -13,6 +13,7 @@ import '../../core/payments/upi_launcher.dart';
 import '../../core/payments/venmo_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/amount_keypad_field.dart';
+import '../../core/widgets/group_tag.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/statement_range_picker.dart';
 import '../../data/database.dart';
@@ -550,6 +551,13 @@ class _EntryRow extends ConsumerWidget {
         ? ref.watch(categoryMapProvider)[entry.categoryId]?.name
         : null;
 
+    final groupId = ref
+        .watch(personEntryGroupIdsProvider)
+        .valueOrNull?[entry.id];
+    final group = groupId == null
+        ? null
+        : ref.watch(allGroupsMapProvider)[groupId];
+
     final dateStr = DateFormat('d MMM yyyy').format(entry.date);
     final subtitle = [
       dateStr,
@@ -594,11 +602,21 @@ class _EntryRow extends ConsumerWidget {
             fontWeight: FontWeight.w500,
           ),
         ),
-        subtitle: Text(
-          subtitle,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              subtitle,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            if (group != null) ...[
+              const SizedBox(height: 4),
+              GroupTag(group: group),
+            ],
+          ],
         ),
         trailing: MoneyText(
           entry.amount,

@@ -65,6 +65,11 @@ class GroupDetailScreen extends ConsumerWidget {
         title: Text(group.name),
         actions: [
           IconButton(
+            tooltip: 'Who owes whom',
+            icon: const Icon(Icons.open_in_full_rounded),
+            onPressed: () => context.push('/group/${group.id}/balances'),
+          ),
+          IconButton(
             tooltip: 'Share statement',
             icon: const Icon(Icons.ios_share_rounded),
             onPressed: () => _shareGroupStatement(context, ref, group, balance),
@@ -96,7 +101,12 @@ class GroupDetailScreen extends ConsumerWidget {
       ),
       body: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(child: _GroupBalanceHero(balance: balance)),
+          SliverToBoxAdapter(
+            child: _GroupBalanceHero(
+              balance: balance,
+              onSeeAll: () => context.push('/group/${group.id}/balances'),
+            ),
+          ),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 6),
@@ -406,9 +416,10 @@ Future<void> _shareGroupStatement(
 }
 
 class _GroupBalanceHero extends StatelessWidget {
-  const _GroupBalanceHero({required this.balance});
+  const _GroupBalanceHero({required this.balance, required this.onSeeAll});
 
   final Money balance;
+  final VoidCallback onSeeAll;
 
   @override
   Widget build(BuildContext context) {
@@ -435,7 +446,7 @@ class _GroupBalanceHero extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
       child: Card(
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
+          padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
           child: Column(
             children: [
               MoneyText(
@@ -451,6 +462,12 @@ class _GroupBalanceHero extends StatelessWidget {
                 style: theme.textTheme.titleMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
+              ),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: onSeeAll,
+                icon: const Icon(Icons.open_in_full_rounded, size: 16),
+                label: const Text('Who owes whom'),
               ),
             ],
           ),

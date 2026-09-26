@@ -2888,6 +2888,49 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
+  /// Which group created each group-born [Transactions] row — transaction id
+  /// → group id. Covers my own share's expense (when I paid) and the money
+  /// movement behind a group-born [PersonEntries] row (when it has one).
+  /// Lets any transaction list tag a row with the group it came from.
+  Stream<Map<int, int>> watchTransactionGroupIds() {
+    final query = select(groupExpenseShares).join([
+      innerJoin(
+        groupExpenses,
+        groupExpenses.id.equalsExp(groupExpenseShares.groupExpenseId),
+      ),
+      leftOuterJoin(
+        personEntries,
+        personEntries.id.equalsExp(groupExpenseShares.personEntryId),
+      ),
+    ]);
+    return query.watch().map((rows) {
+      final out = <int, int>{};
+      for (final r in rows) {
+        final groupId = r.readTable(groupExpenses).groupId;
+        final shareTx = r.readTable(groupExpenseShares).transactionId;
+        final entryTx = r.readTableOrNull(personEntries)?.transactionId;
+        if (shareTx != null) out[shareTx] = groupId;
+        if (entryTx != null) out[entryTx] = groupId;
+      }
+      return out;
+    });
+  }
+
+  /// Every share row of every expense in group [groupId] — tracked and
+  /// untracked alike, so the "who owes whom" view can see debts between
+  /// two other members that never became a [PersonEntries] row.
+  Stream<List<GroupExpenseShareRow>> watchGroupExpenseShares(int groupId) {
+    final query = select(groupExpenseShares).join([
+      innerJoin(
+        groupExpenses,
+        groupExpenses.id.equalsExp(groupExpenseShares.groupExpenseId),
+      ),
+    ])..where(groupExpenses.groupId.equals(groupId));
+    return query.watch().map(
+      (rows) => [for (final r in rows) r.readTable(groupExpenseShares)],
+    );
+  }
+
   /// [personId]'s amount in each group they have shares in, repayments
   /// applied group-first — see [allocateGroupDues].
   Future<Map<int, Money>> _groupDuesForPerson(int personId) async {

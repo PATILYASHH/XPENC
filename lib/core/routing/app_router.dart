@@ -34,6 +34,7 @@ import '../../features/payees/payees_screen.dart';
 import '../../features/payments/ussd_pay_screen.dart';
 import '../../features/persons/add_group_expense_screen.dart';
 import '../../features/persons/archived_persons_screen.dart';
+import '../../features/persons/group_balances_screen.dart';
 import '../../features/persons/group_detail_screen.dart';
 import '../../features/persons/person_detail_screen.dart';
 import '../../features/persons/persons_screen.dart';
@@ -620,6 +621,13 @@ final appRouter = GoRouter(
       builder: (_, state) => AddGroupExpenseScreen(
         groupId: int.parse(state.pathParameters['id']!),
       ),
+    ),
+
+    GoRoute(
+      path: '/group/:id/balances',
+      parentNavigatorKey: _rootKey,
+      builder: (_, state) =>
+          GroupBalancesScreen(groupId: int.parse(state.pathParameters['id']!)),
     ),
   ],
 );

@@ -9,6 +9,7 @@ import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/custom_icon_badge.dart';
+import '../../core/widgets/group_tag.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/motion.dart';
 import '../../data/currency_conversion.dart';
@@ -183,6 +184,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final personMap = ref.watch(personMapProvider);
     final tagsByTx = ref.watch(transactionTagsByTxProvider);
     final splitsByTx = ref.watch(transactionSplitsByTxProvider);
+    final groupIdByTx =
+        ref.watch(transactionGroupIdsProvider).valueOrNull ?? const {};
+    final groupMap = ref.watch(allGroupsMapProvider);
 
     final searchActive = ref.watch(txSearchActiveProvider);
     final query = ref.watch(txSearchQueryProvider);
@@ -295,6 +299,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   person: tx.personId == null ? null : personMap[tx.personId],
                   tags: tagsByTx[tx.id] ?? const [],
                   hasReceipt: tx.imagePath != null,
+                  group: groupMap[groupIdByTx[tx.id]],
                   splitCategories: [
                     for (final s in splitsByTx[tx.id] ?? const [])
                       if (categoryMap[s.categoryId] != null)
@@ -323,6 +328,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                     person: tx.personId == null ? null : personMap[tx.personId],
                     tags: tagsByTx[tx.id] ?? const [],
                     hasReceipt: tx.imagePath != null,
+                    group: groupMap[groupIdByTx[tx.id]],
                     splitCategories: [
                       for (final s in splitsByTx[tx.id] ?? const [])
                         if (categoryMap[s.categoryId] != null)
@@ -945,6 +951,7 @@ class _TxCard extends StatelessWidget {
     required this.tags,
     required this.splitCategories,
     required this.hasReceipt,
+    required this.group,
     required this.onDelete,
     required this.onCreateTemplate,
   });
@@ -960,6 +967,9 @@ class _TxCard extends StatelessWidget {
   /// itemised across, in place of a single [category].
   final List<CategoryRow> splitCategories;
   final bool hasReceipt;
+
+  /// The group this transaction was born in, if any.
+  final GroupRow? group;
   final Future<void> Function(TransactionRow tx, String title) onDelete;
   final Future<void> Function(TransactionRow tx, String title) onCreateTemplate;
 
@@ -1121,6 +1131,7 @@ class _TxCard extends StatelessWidget {
                             tags: tags,
                             splitCategories: splitCategories,
                             hasReceipt: hasReceipt,
+                            group: group,
                           ),
                         ],
                       ),
@@ -1184,6 +1195,7 @@ class _Meta extends StatelessWidget {
     required this.tags,
     required this.splitCategories,
     required this.hasReceipt,
+    required this.group,
   });
 
   final bool isTransfer;
@@ -1194,6 +1206,7 @@ class _Meta extends StatelessWidget {
   final List<TagRow> tags;
   final List<CategoryRow> splitCategories;
   final bool hasReceipt;
+  final GroupRow? group;
 
   @override
   Widget build(BuildContext context) {
@@ -1277,6 +1290,10 @@ class _Meta extends StatelessWidget {
             style: style,
           ),
         ],
+        if (group != null) ...[
+          const SizedBox(height: 4),
+          GroupTag(group: group!),
+        ],
         if (tags.isNotEmpty) ...[
           const SizedBox(height: 4),
           Wrap(
@@ -1325,6 +1342,7 @@ class _LinkedTxRow extends StatelessWidget {
     required this.tags,
     required this.splitCategories,
     required this.hasReceipt,
+    required this.group,
     required this.onDelete,
     required this.onCreateTemplate,
   });
@@ -1339,6 +1357,9 @@ class _LinkedTxRow extends StatelessWidget {
   final List<TagRow> tags;
   final List<CategoryRow> splitCategories;
   final bool hasReceipt;
+
+  /// The group this transaction was born in, if any.
+  final GroupRow? group;
   final Future<void> Function(TransactionRow tx, String title) onDelete;
   final Future<void> Function(TransactionRow tx, String title) onCreateTemplate;
 
@@ -1390,6 +1411,7 @@ class _LinkedTxRow extends StatelessWidget {
               tags: tags,
               splitCategories: splitCategories,
               hasReceipt: hasReceipt,
+              group: group,
               onDelete: onDelete,
               onCreateTemplate: onCreateTemplate,
             ),

@@ -138,3 +138,99 @@ Map<int, Money> allocateGroupDues(Iterable<PersonLedgerItem> items) {
   }
   return groups;
 }
+
+/// One member's share of one group expense, as [computeGroupDebts] sees
+/// it. `null` ids mean "me", matching [GroupExpenses.payerId] and
+/// [GroupExpenseShares.personId].
+typedef GroupShareItem = ({int? payerId, int? memberId, Money amount});
+
+/// [from] owes [to] [amount] (always positive). `null` = "me".
+typedef GroupDebt = ({int? from, int? to, Money amount});
+
+/// Every pairwise debt inside one group, netted per pair — the "who owes
+/// whom" view.
+///
+/// Pairs involving me come from [myBalances] (person id → `+` they owe me,
+/// `-` I owe them — `groupMemberBalancesProvider`), because that already has
+/// my repayments applied. Every other pair comes from [shares] alone: a
+/// member owes an expense's payer their share of it. Debts between two
+/// other members can't be settled in the app, so those are gross.
+///
+/// Sorted largest first; zero pairs are dropped.
+List<GroupDebt> computeGroupDebts({
+  required Iterable<GroupShareItem> shares,
+  required Map<int, Money> myBalances,
+}) {
+  // Keyed by (lower id, higher id); `+` = lower owes higher.
+  final pairs = <(int, int), int>{};
+  for (final s in shares) {
+    final payer = s.payerId;
+    final member = s.memberId;
+    if (payer == null || member == null || payer == member) continue;
+    final key = member < payer ? (member, payer) : (payer, member);
+    final signed = member < payer ? s.amount.paise : -s.amount.paise;
+    pairs[key] = (pairs[key] ?? 0) + signed;
+  }
+
+  final debts = <GroupDebt>[
+    for (final MapEntry(key: (a, b), value: paise) in pairs.entries)
+      if (paise > 0)
+        (from: a, to: b, amount: Money.fromPaise(paise))
+      else if (paise < 0)
+        (from: b, to: a, amount: Money.fromPaise(-paise)),
+    for (final MapEntry(key: id, value: b) in myBalances.entries)
+      if (b.isPositive)
+        (from: id, to: null, amount: b)
+      else if (b.isNegative)
+        (from: null, to: id, amount: b.abs),
+  ];
+  debts.sort((x, y) => y.amount.paise.compareTo(x.amount.paise));
+  return debts;
+}
+
+/// Each person's net position across [debts]: `+` they get money back,
+/// `-` they owe. Always sums to zero.
+Map<int?, Money> groupNetBalances(Iterable<GroupDebt> debts) {
+  final net = <int?, int>{};
+  for (final d in debts) {
+    net[d.from] = (net[d.from] ?? 0) - d.amount.paise;
+    net[d.to] = (net[d.to] ?? 0) + d.amount.paise;
+  }
+  return {for (final e in net.entries) e.key: Money.fromPaise(e.value)};
+}
+
+/// The fewest payments that clear every [net] balance — the usual "simplify
+/// debts" greedy: the biggest debtor pays the biggest creditor, repeat.
+/// A suggested payment can be between two people who never owed each other
+/// directly; only the totals are guaranteed to match.
+///
+/// Ties break on id (me first), so the plan is stable between rebuilds.
+List<GroupDebt> simplifyGroupDebts(Map<int?, Money> net) {
+  int byId(int? a, int? b) => (a ?? -1).compareTo(b ?? -1);
+  List<(int?, int)> side(bool creditors) =>
+      [
+        for (final e in net.entries)
+          if (creditors ? e.value.isPositive : e.value.isNegative)
+            (e.key, e.value.paise.abs()),
+      ]..sort((x, y) {
+        final byAmount = y.$2.compareTo(x.$2);
+        return byAmount != 0 ? byAmount : byId(x.$1, y.$1);
+      });
+
+  final creditors = side(true);
+  final debtors = side(false);
+  final plan = <GroupDebt>[];
+  var c = 0;
+  var d = 0;
+  while (c < creditors.length && d < debtors.length) {
+    final (to, owed) = creditors[c];
+    final (from, owes) = debtors[d];
+    final paid = owed < owes ? owed : owes;
+    plan.add((from: from, to: to, amount: Money.fromPaise(paid)));
+    creditors[c] = (to, owed - paid);
+    debtors[d] = (from, owes - paid);
+    if (creditors[c].$2 == 0) c++;
+    if (debtors[d].$2 == 0) d++;
+  }
+  return plan;
+}
