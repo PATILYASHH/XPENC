@@ -8,6 +8,42 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
+## [1.6.3] — 2026-09-27
+
+### Added
+- **Correct a balance** — the pencil next to an account's balance now
+  records the gap between what XPENC shows and what the account really
+  holds as one `Correction` transaction (new `correctionIn` /
+  `correctionOut` types, no schema change). History is left alone; a
+  correction is never income or expense, can only be deleted (which
+  restores the old balance), works on loans, cards and goals, and each one
+  in the last 30 days takes a quarter off the XPENC Score's Tracking habit.
+  Replaces the old opening-balance edit.
+- **Account Reports hub** — total money with its change since last month,
+  money in / out / moved / most-used for any month or year, and seven
+  modules: Balances, Activity, Balance history (any account, 6 months to 2
+  years), Transfers, Payment methods, Cards & pay later, Account health
+  (below zero, under minimum, idle 90+ days).
+- **Who owes whom** for groups — per-member net balance, a fewest-payments
+  settle-up plan and every pairwise debt; group tag on group transactions.
+- Payee on a loan's Auto rule, set on each EMI's interest leg.
+
+### Changed
+- Date pickers for Auto rules, budgets, calendar and statements go back to
+  2000 (were 2020); a loan's first auto-payment can start on its repayment
+  start date, and a backdated rule posts its missed payments on save.
+- Past-year dates in history headers show the year.
+- The transaction detail's "Added" row is gone — one date per transaction.
+- A loan payment card labels its legs Interest / Principal to <loan>.
+
+### Fixed
+- An auto-posted EMI's interest leg could be saved with no category when
+  the loan had none; it now falls back to the rule's category, then EMI.
+- Loans showed a phantom "You're saving" of one EMI once the month's due
+  day had passed (elapsed EMIs were counted one short).
+- The loan form's amount keypad stayed open alongside the system keyboard
+  when moving to the rate or tenure field.
+
 ## [1.6.2] — 2026-09-26
 
 First release on Google Play production.
@@ -974,7 +1010,8 @@ First public release. 🎉
 - `tool/verify_apk.sh` gates every shipped APK against the missing
   `libsqlite3.so` class of crash.
 
-[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.6.2...HEAD
+[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.6.3...HEAD
+[1.6.3]: https://github.com/PATILYASHH/XPENC/compare/v1.6.2...v1.6.3
 [1.6.2]: https://github.com/PATILYASHH/XPENC/compare/v1.6.1...v1.6.2
 [1.6.1]: https://github.com/PATILYASHH/XPENC/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/PATILYASHH/XPENC/compare/v1.5.1...v1.6.0

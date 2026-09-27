@@ -1,0 +1,1 @@
+1.6.3 — Correct an account's balance without faking a spend. Account Reports rebuilt with seven reports. Add loans that started years ago: past EMIs post on save. Clearer loan payments, payee on loan rules. Who owes whom in groups. Still fully offline.

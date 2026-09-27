@@ -101,15 +101,27 @@ jobs:
         working-directory: release
         run: sha256sum *.apk > SHA256SUMS.txt && cat SHA256SUMS.txt
 
-      - name: Short SHA
+      - name: Short SHA and version
         id: sha
-        run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          echo "version=$(grep -m1 '^version:' pubspec.yaml | cut -d' ' -f2 | cut -d+ -f1)" >> "$GITHUB_OUTPUT"
+
+      # softprops/action-gh-release only edits an existing release: it
+      # never moves the `beta` tag, so the tag (and its source archives)
+      # stayed on whichever commit first created it. Delete the release
+      # and its tag so every beta is a fresh release on this exact commit.
+      - name: Remove the previous beta release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release delete beta --cleanup-tag --yes || true
 
       - name: Publish beta pre-release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: beta
-          name: "Beta build (${{ steps.sha.outputs.short }})"
+          name: "XPENC ${{ steps.sha.outputs.version }} BETA (${{ steps.sha.outputs.short }})"
           prerelease: true
           target_commitish: ${{ github.sha }}
           files: |
@@ -119,7 +131,9 @@ jobs:
             release/SHA256SUMS.txt
           generate_release_notes: false
           body: |
-            **Beta build — built automatically from the `BETA` branch, commit ${{ steps.sha.outputs.short }}.**
+            **XPENC ${{ steps.sha.outputs.version }} BETA — built automatically from the `BETA` branch, commit ${{ steps.sha.outputs.short }}.**
+
+            What's in it: see [CHANGELOG.md](https://github.com/PATILYASHH/XPENC/blob/BETA/CHANGELOG.md).
 
             This is a work-in-progress build, not a stable release. Things can be broken.
             This link always points at the latest beta — every push to `BETA` replaces it.
