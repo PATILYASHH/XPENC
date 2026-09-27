@@ -228,15 +228,6 @@ class _TransactionView extends ConsumerWidget {
                 _TagsRow(transaction: t, tags: tags),
                 _divider(theme),
                 _detailRow(context, 'Note', _valueText(context, noteText)),
-                _divider(theme),
-                _detailRow(
-                  context,
-                  'Added',
-                  _valueText(
-                    context,
-                    DateFormat('d MMM yyyy, h:mm a').format(t.createdAt),
-                  ),
-                ),
               ],
             ),
           ),
@@ -511,7 +502,14 @@ class _PaymentGroupBanner extends ConsumerWidget {
                             // A leg's own type tells its own story — the
                             // transfer leg is "the change", whichever side
                             // of the group this banner happens to render on.
-                            leg.type == TxType.transfer
+                            // A loan payment's legs are principal + interest,
+                            // not change or a second paying account.
+                            isLoanGroup
+                                ? (leg.type == TxType.transfer
+                                      ? 'Principal to '
+                                            '${accountMap[leg.toAccountId]?.name ?? '—'}'
+                                      : 'Interest')
+                                : leg.type == TxType.transfer
                                 ? 'Change to '
                                       '${accountMap[leg.toAccountId]?.name ?? '—'}'
                                 : 'Also ${accountMap[leg.accountId]?.name ?? '—'}',

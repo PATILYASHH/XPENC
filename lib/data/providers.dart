@@ -1677,8 +1677,13 @@ LoanProgress _loanProgressOf(
     final startDate = detail.startDate;
     if (startDate != null && outstanding.isPositive) {
       final now = DateTime.now();
+      // EMIs already due: the start date is the *first* EMI, so it counts
+      // too once this month's due day has passed — comparing against one
+      // payment fewer reported a phantom one-EMI "saving" on every loan.
       final elapsedMonths =
-          (now.year - startDate.year) * 12 + (now.month - startDate.month);
+          (now.year - startDate.year) * 12 +
+          (now.month - startDate.month) +
+          (now.day >= startDate.day ? 1 : 0);
       if (elapsedMonths > 0) {
         // Where the ORIGINAL schedule (no prepayments) would be after the
         // same number of months, so it can be compared against where the

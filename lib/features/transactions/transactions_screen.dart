@@ -804,7 +804,10 @@ class _DayHeader extends StatelessWidget {
     final diff = today.difference(day).inDays;
     if (diff == 0) return 'Today';
     if (diff == 1) return 'Yesterday';
-    return DateFormat('EEE, d MMM').format(day);
+    // Backfilled history spans years — only the current one goes unstated.
+    return DateFormat(
+      day.year == now.year ? 'EEE, d MMM' : 'EEE, d MMM yyyy',
+    ).format(day);
   }
 }
 

@@ -2333,6 +2333,7 @@ class AppDatabase extends _$AppDatabase {
     int? transferCategoryId,
     required DateTime date,
     String? note,
+    String? payee,
     int? recurringRuleId,
     Set<int> tagIds = const {},
   }) async {
@@ -2363,6 +2364,7 @@ class AppDatabase extends _$AppDatabase {
             categoryId: Value(transferCategoryId),
             date: date,
             note: Value(note),
+            payee: Value(payee),
             recurringRuleId: Value(recurringRuleId),
           ),
         ),
@@ -2388,6 +2390,39 @@ class AppDatabase extends _$AppDatabase {
       await _applyTxEffect(row, reverse: false);
     }
     return ids;
+  }
+
+  /// The category an auto-posted EMI's interest expense lands under: the
+  /// loan's own, else the rule's, else the built-in "EMI" expense category
+  /// (recreated if the user deleted it). A loan's category is optional, and
+  /// this path skips [_validateTx], so without the fallback the interest
+  /// leg would post as an uncategorised expense.
+  Future<int> _emiInterestCategoryId(
+    LoanDetailRow loan,
+    RecurringRuleRow rule,
+  ) async {
+    final chosen = loan.categoryId ?? rule.categoryId;
+    if (chosen != null) return chosen;
+    final existing =
+        await (select(categories)
+              ..where(
+                (c) =>
+                    c.kind.equalsValue(CategoryKind.expense) &
+                    c.iconKey.equals('emi') &
+                    c.isArchived.equals(false),
+              )
+              ..orderBy([(c) => OrderingTerm.asc(c.id)])
+              ..limit(1))
+            .getSingleOrNull();
+    if (existing != null) return existing.id;
+    return into(categories).insert(
+      CategoriesCompanion.insert(
+        name: 'EMI',
+        kind: CategoryKind.expense,
+        colorValue: 0xFF78716C,
+        iconKey: 'emi',
+      ),
+    );
   }
 
   // ── Credit card statements (GitHub #91) ─────────────────────────────────
@@ -4681,9 +4716,12 @@ class AppDatabase extends _$AppDatabase {
         loanAccountId: rule.toAccountId!,
         principal: principal,
         interest: interest.isPositive ? interest : null,
-        interestCategoryId: loanDetail.categoryId,
+        interestCategoryId: interest.isPositive
+            ? await _emiInterestCategoryId(loanDetail, rule)
+            : null,
         transferCategoryId: rule.categoryId,
         date: date,
+        payee: rule.payee,
         recurringRuleId: rule.id,
         tagIds: tagIds,
       );

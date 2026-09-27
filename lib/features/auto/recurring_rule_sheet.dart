@@ -236,7 +236,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     final picked = await showDatePicker(
       context: context,
       initialDate: _dueDate,
-      firstDate: DateTime(2020),
+      firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
     if (picked != null) setState(() => _dueDate = picked);
@@ -269,7 +269,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
       _showError('Choose a category.');
       return;
     }
-    final payeeText = isGoalOrLoan ? '' : _payeeController.text.trim();
+    final payeeText = _allowsPayee ? _payeeController.text.trim() : '';
     final payee = payeeText.isEmpty ? null : payeeText;
     final noteText = _noteController.text.trim();
     final note = noteText.isEmpty ? null : noteText;
@@ -306,6 +306,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
 
     setState(() => _submitting = true);
     final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
     try {
       if (_isEditing) {
         await ref
@@ -364,7 +365,25 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
       _showError('Could not save.');
       return;
     }
+    // A due date today or earlier would otherwise wait for the next app
+    // resume to post — catch up now so a backdated rule's history shows up
+    // straight away.
+    final now = DateTime.now();
+    final posted = _dueDate.isAfter(DateTime(now.year, now.month, now.day))
+        ? 0
+        : await ref.read(dbProvider).runDueRecurringRules();
     navigator.pop();
+    if (posted > 0) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              '$posted past ${posted == 1 ? 'payment' : 'payments'} posted',
+            ),
+          ),
+        );
+    }
   }
 
   @override
@@ -373,6 +392,8 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     final cs = theme.colorScheme;
     final isGoalOrLoan = _ruleKind == _RuleKind.goalOrLoan;
     final allAccounts = ref.watch(accountsProvider).valueOrNull ?? const [];
+    // [_allowsPayee] reads loan rates — rebuild once they've loaded.
+    ref.watch(loanDetailsProvider);
     // A goal/loan is not a spendable/depositable account — an expense/income
     // rule (or the "from" side of a G&L rule) never posts against one; only
     // a transfer can.
@@ -643,7 +664,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               ],
               onChanged: (v) => setState(() => _categoryId = v),
             ),
-            if (!isGoalOrLoan) ...[
+            if (_allowsPayee) ...[
               const SizedBox(height: 16),
               _payeeField(theme),
             ],
@@ -786,8 +807,27 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     }
   }
 
+  /// A payee only ever lands on an income/expense. An ordinary rule posts
+  /// one; a loan rule posts one only as the interest leg of a rate-based
+  /// EMI split — a plain transfer can't carry a payee, and a goal has no
+  /// one to pay.
+  bool get _allowsPayee {
+    if (_ruleKind != _RuleKind.goalOrLoan) return true;
+    return _isRateLoan;
+  }
+
+  bool get _isRateLoan {
+    final id = _toAccountId;
+    if (id == null) return false;
+    if (ref.read(accountMapProvider)[id]?.type != AccountType.loan) {
+      return false;
+    }
+    return ref.read(loanDetailProvider(id))?.interestRatePct != null;
+  }
+
   Widget _payeeField(ThemeData theme) {
     final suggestions = ref.watch(payeeSuggestionsProvider);
+    final forLoan = _ruleKind == _RuleKind.goalOrLoan;
     return Autocomplete<String>(
       textEditingController: _payeeController,
       focusNode: _payeeFocus,
@@ -803,9 +843,12 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
           textCapitalization: TextCapitalization.words,
           decoration: InputDecoration(
             labelText: 'Payee (optional)',
-            hintText: _kind == CategoryKind.income
-                ? 'Who pays you?'
-                : 'Who gets paid?',
+            hintText: forLoan
+                ? 'The lender, e.g. your bank'
+                : (_kind == CategoryKind.income
+                      ? 'Who pays you?'
+                      : 'Who gets paid?'),
+            helperText: forLoan ? 'Set on the interest part of each EMI' : null,
           ),
         );
       },

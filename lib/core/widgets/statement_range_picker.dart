@@ -68,7 +68,7 @@ Future<DateTimeRange?> pickStatementRange(BuildContext context) async {
       if (!context.mounted) return null;
       return showDateRangePicker(
         context: context,
-        firstDate: DateTime(2020),
+        firstDate: DateTime(2000),
         lastDate: now,
         initialDateRange: DateTimeRange(
           start: DateTime(now.year, now.month),

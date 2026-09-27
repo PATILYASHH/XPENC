@@ -871,7 +871,7 @@ class _ReminderSheetState extends ConsumerState<_ReminderSheet> {
     final picked = await showDatePicker(
       context: context,
       initialDate: _dueDate,
-      firstDate: DateTime(2020),
+      firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
     if (picked != null) setState(() => _dueDate = picked);

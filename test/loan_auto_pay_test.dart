@@ -133,4 +133,106 @@ void main() {
     expect(await balanceOf(loan), const Money.zero());
     expect((await rules()).single.isActive, isFalse);
   });
+
+  test('a rated loan EMI rule puts its payee on the interest leg', () async {
+    final cash = await cashId();
+    final loan = await db.addLoan(
+      name: 'Home',
+      principal: Money.fromRupees(100000),
+      colorValue: 0xFF2563EB,
+      iconKey: 'card',
+      interestRatePct: 12,
+      tenureMonths: 12,
+      startDate: DateTime(2017, 1, 1),
+      categoryId:
+          (await db.watchCategories(CategoryKind.expense).first).first.id,
+    );
+    await db.addRecurringRule(
+      name: 'Home EMI',
+      kind: CategoryKind.expense,
+      amount: Money.fromRupees(9000),
+      accountId: cash,
+      toAccountId: loan,
+      payee: 'HDFC Bank',
+      frequency: RecurringFrequency.monthly,
+      startsOn: DateTime(2017, 1, 12),
+    );
+
+    await db.runDueRecurringRules(now: DateTime(2017, 1, 31));
+
+    final posted = await db.select(db.transactions).get();
+    expect(posted, hasLength(2));
+    final interest = posted.singleWhere((t) => t.type == TxType.expense);
+    final principal = posted.singleWhere((t) => t.type == TxType.transfer);
+    expect(interest.payee, 'HDFC Bank');
+    expect(principal.payee, isNull);
+    expect(interest.date, DateTime(2017, 1, 12));
+  });
+
+  group('an auto-posted EMI interest leg is never uncategorised', () {
+    Future<CategoryRow> expenseCat(String iconKey) async =>
+        (await db.watchCategories(CategoryKind.expense).first).firstWhere(
+          (c) => c.iconKey == iconKey,
+        );
+
+    Future<TransactionRow> postOneEmi({
+      int? loanCategoryId,
+      int? ruleCategoryId,
+    }) async {
+      final cash = await cashId();
+      final loan = await db.addLoan(
+        name: 'Home',
+        principal: Money.fromRupees(100000),
+        colorValue: 0xFF2563EB,
+        iconKey: 'card',
+        interestRatePct: 12,
+        tenureMonths: 12,
+        startDate: DateTime(2017, 1, 1),
+        categoryId: loanCategoryId,
+      );
+      await db.addRecurringRule(
+        name: 'Home EMI',
+        kind: CategoryKind.expense,
+        amount: Money.fromRupees(9000),
+        accountId: cash,
+        toAccountId: loan,
+        categoryId: ruleCategoryId,
+        frequency: RecurringFrequency.monthly,
+        startsOn: DateTime(2017, 1, 12),
+      );
+      await db.runDueRecurringRules(now: DateTime(2017, 1, 31));
+      return (await db.select(db.transactions).get()).singleWhere(
+        (t) => t.type == TxType.expense,
+      );
+    }
+
+    test('uses the loan category first', () async {
+      final loanCat = (await expenseCat('rent')).id;
+      final ruleCat = (await expenseCat('bills')).id;
+      final tx = await postOneEmi(
+        loanCategoryId: loanCat,
+        ruleCategoryId: ruleCat,
+      );
+      expect(tx.categoryId, loanCat);
+    });
+
+    test('falls back to the rule category', () async {
+      final ruleCat = (await expenseCat('bills')).id;
+      final tx = await postOneEmi(ruleCategoryId: ruleCat);
+      expect(tx.categoryId, ruleCat);
+    });
+
+    test('falls back to the built-in EMI category', () async {
+      final tx = await postOneEmi();
+      expect(tx.categoryId, (await expenseCat('emi')).id);
+    });
+
+    test('recreates EMI when the user deleted it', () async {
+      final emi = await expenseCat('emi');
+      await (db.delete(db.categories)..where((c) => c.id.equals(emi.id))).go();
+      final tx = await postOneEmi();
+      expect(tx.categoryId, isNotNull);
+      expect(tx.categoryId, isNot(emi.id));
+    });
+  });
 }

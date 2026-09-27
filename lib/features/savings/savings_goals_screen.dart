@@ -934,6 +934,8 @@ class _LoanEditorSheet extends ConsumerStatefulWidget {
 class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
   late final TextEditingController _nameController;
   final _nameFocus = FocusNode();
+  final _rateFocus = FocusNode();
+  final _tenureFocus = FocusNode();
   late final AmountKeypadController _principalController;
   late final AmountKeypadController _emiController;
   late final TextEditingController _rateController;
@@ -990,6 +992,8 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
   void dispose() {
     _nameController.dispose();
     _nameFocus.dispose();
+    _rateFocus.dispose();
+    _tenureFocus.dispose();
     _principalController.removeListener(_onProjectionInputsChanged);
     _principalController.dispose();
     _emiController.removeListener(_onProjectionInputsChanged);
@@ -1023,7 +1027,14 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
-    if (picked != null) setState(() => _startDate = picked);
+    if (picked == null) return;
+    setState(() {
+      _startDate = picked;
+      // Auto-pay can't begin before the loan's own repayments do.
+      if (_autoPayStartOverride?.isBefore(picked) ?? false) {
+        _autoPayStartOverride = null;
+      }
+    });
   }
 
   /// The loan's declared principal for the projection preview — the
@@ -1095,17 +1106,24 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
     return start.isAfter(candidate) ? start : candidate;
   }
 
+  /// Can go back as far as the repayment start date, so a loan being
+  /// backfilled (e.g. one that started years ago) can have every past EMI
+  /// posted by the rule's catch-up run.
   Future<void> _pickAutoPayStart() async {
-    final now = DateTime.now();
-    final tomorrow = DateTime(now.year, now.month, now.day + 1);
-    final initial = _autoPayStart.isBefore(tomorrow) ? tomorrow : _autoPayStart;
+    final first = DateTime(_startDate.year, _startDate.month, _startDate.day);
+    final initial = _autoPayStart.isBefore(first) ? first : _autoPayStart;
     final picked = await showDatePicker(
       context: context,
       initialDate: initial,
-      firstDate: tomorrow,
+      firstDate: first,
       lastDate: DateTime(2100),
     );
     if (picked != null) setState(() => _autoPayStartOverride = picked);
+  }
+
+  bool get _autoPayStartsInPast {
+    final now = DateTime.now();
+    return !_autoPayStart.isAfter(DateTime(now.year, now.month, now.day));
   }
 
   Future<void> _save() async {
@@ -1177,6 +1195,11 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
           autoPayStartsOn: wantsAutoPay ? autoPayStart : null,
         );
       }
+      // A backdated auto-pay start would otherwise sit unposted until the
+      // next app resume — post the missed EMIs now, as the sheet promised.
+      final backfilled = !_isEdit && wantsAutoPay && _autoPayStartsInPast
+          ? await db.runDueRecurringRules()
+          : 0;
       if (!mounted) return;
       navigator.pop();
       if (wantsAutoPay) {
@@ -1185,8 +1208,13 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
           ..showSnackBar(
             SnackBar(
               content: Text(
-                'Loan added · EMI auto-pay starts '
-                '${DateFormat('d MMM').format(autoPayStart)} (see Auto)',
+                backfilled > 0
+                    ? 'Loan added · $backfilled past '
+                          '${backfilled == 1 ? 'EMI' : 'EMIs'} posted '
+                          '(see Auto)'
+                    : 'Loan added · EMI auto-pay starts '
+                          '${DateFormat('d MMM yyyy').format(autoPayStart)} '
+                          '(see Auto)',
               ),
             ),
           );
@@ -1248,7 +1276,7 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
               AmountKeypadField(
                 controller: _principalController,
                 group: _amountGroup,
-                yieldTo: [_nameFocus],
+                yieldTo: [_nameFocus, _rateFocus, _tenureFocus],
                 label: 'Amount borrowed',
                 hintText: '0.00',
               ),
@@ -1257,7 +1285,7 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
             AmountKeypadField(
               controller: _emiController,
               group: _amountGroup,
-              yieldTo: [_nameFocus],
+              yieldTo: [_nameFocus, _rateFocus, _tenureFocus],
               label: 'Monthly EMI (optional)',
               hintText: '0.00',
             ),
@@ -1268,6 +1296,7 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
                 Expanded(
                   child: TextField(
                     controller: _rateController,
+                    focusNode: _rateFocus,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
@@ -1281,6 +1310,7 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
                 Expanded(
                   child: TextField(
                     controller: _tenureController,
+                    focusNode: _tenureFocus,
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
                       labelText: 'Tenure, months (optional)',
@@ -1461,7 +1491,10 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
               ),
             ),
             Text(
-              'Stops by itself once the loan is paid off.',
+              _autoPayStartsInPast
+                  ? 'Every EMI from this date up to today is posted as soon '
+                        'as you save. Stops by itself once the loan is paid off.'
+                  : 'Stops by itself once the loan is paid off.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: cs.onSurfaceVariant,
               ),

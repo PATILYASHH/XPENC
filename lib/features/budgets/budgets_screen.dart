@@ -228,7 +228,7 @@ class BudgetsScreen extends ConsumerWidget {
     final picked = await showDatePicker(
       context: context,
       initialDate: now,
-      firstDate: DateTime(2020),
+      firstDate: DateTime(2000),
       lastDate: now,
       helpText: 'Pick any day in the month to statement',
     );
