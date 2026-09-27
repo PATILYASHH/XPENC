@@ -3,36 +3,60 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/app_icons.dart';
+import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/error_view.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import 'account_report_modules.dart';
+import 'account_reports_data.dart';
 import 'chart_widgets.dart';
+import 'stats_sections.dart';
 
-/// A money-first view of every account: total money, how that money is split
-/// across balance-holders (as a pie), and a tappable list of each account.
-///
-/// The split deliberately excludes debit cards (they draw from a bank, never
-/// their own balance) and credit cards (a negative balance is money *owed*, not
-/// money you hold — a pie slice can't be negative). Credit cards are surfaced
-/// separately in an "Owed" list.
+/// Account Reports hub — the same shape as Stats: total money up top, this
+/// period across your accounts, then one tile per [AccountReportModule]
+/// (balances, activity, history, transfers, payment methods, cards, health),
+/// each opening a focused screen, and every account listed at the bottom.
 class AccountReportsScreen extends ConsumerWidget {
   const AccountReportsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    const modules = AccountReportModule.values;
     return Scaffold(
       appBar: AppBar(title: const Text('Account Reports')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-        children: const [
-          _HeroCard(),
-          SizedBox(height: 24),
-          _BalanceSplitCard(),
-          SizedBox(height: 24),
-          _AllAccountsList(),
+        children: [
+          const _HeroCard(),
+          const SizedBox(height: 28),
+          const SectionCaption('This period'),
+          const AccountPeriodControls(),
+          const SizedBox(height: 12),
+          const _PeriodTiles(),
+          const SizedBox(height: 28),
+          const SectionCaption('Explore'),
+          for (var i = 0; i < modules.length; i += 2) ...[
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: AccountReportTile(modules[i])),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: i + 1 < modules.length
+                        ? AccountReportTile(modules[i + 1])
+                        : const SizedBox.shrink(),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          const SizedBox(height: 16),
+          const _AllAccountsList(),
         ],
       ),
     );
@@ -41,15 +65,21 @@ class AccountReportsScreen extends ConsumerWidget {
 
 // ── Hero: total money ───────────────────────────────────────────────────────
 
-/// Net worth headline. Reads [netWorthProvider], which already excludes debit
-/// cards so a bank's balance is never counted twice.
+/// Net worth headline plus how it moved since last month-end. Reads
+/// [netWorthProvider], which already excludes debit cards so a bank's
+/// balance is never counted twice.
 class _HeroCard extends ConsumerWidget {
   const _HeroCard();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     final netWorth = ref.watch(netWorthProvider);
+    final trend = ref.watch(netWorthTrendProvider(2));
+    final change = trend.length < 2
+        ? null
+        : trend.last.value - trend.first.value;
 
     return Card(
       margin: EdgeInsets.zero,
@@ -61,7 +91,7 @@ class _HeroCard extends ConsumerWidget {
             Text(
               'Total money',
               style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+                color: cs.onSurfaceVariant,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -90,12 +120,24 @@ class _HeroCard extends ConsumerWidget {
               ),
               error: (_, _) => const InlineErrorView(),
             ),
+            if (change != null && !change.isZero) ...[
+              const SizedBox(height: 8),
+              Text(
+                '${MoneyFormat.signed(change)} since last month',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: change.isNegative
+                      ? AppColors.expense
+                      : AppColors.income,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
             const SizedBox(height: 8),
             Text(
               'Cash + Bank + Cards. Debit cards draw from their bank and are '
               'never counted twice.',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+                color: cs.onSurfaceVariant,
                 height: 1.35,
               ),
             ),
@@ -106,172 +148,65 @@ class _HeroCard extends ConsumerWidget {
   }
 }
 
-// ── Balance split (pie) + owed list ─────────────────────────────────────────
+// ── This period ─────────────────────────────────────────────────────────────
 
-/// Splits positive balances across a pie, and lists any negative-balance
-/// accounts (credit cards) separately because a slice can't be negative.
-class _BalanceSplitCard extends ConsumerWidget {
-  const _BalanceSplitCard();
+class _PeriodTiles extends ConsumerWidget {
+  const _PeriodTiles();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final accounts = ref.watch(balanceAccountsProvider);
+    final ledger = ref.watch(allTransactionsProvider);
+    if (ledger.hasError) return const InlineErrorView();
+    if (!ledger.hasValue) return const StatsSectionLoader(height: 180);
 
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: accounts.when(
-          data: (list) => _content(context, theme, list),
-          loading: () => const SizedBox(
-            height: 180,
-            child: Center(child: CircularProgressIndicator()),
-          ),
-          error: (_, _) => const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
-            child: InlineErrorView(),
-          ),
-        ),
+    final s = ref.watch(accountPeriodSummaryProvider);
+    final accounts = ref.watch(accountMapProvider);
+    final net = s.moneyIn - s.moneyOut;
+    final busiest = s.busiest == null ? null : accounts[s.busiest!.accountId];
+    final entries = s.busiest?.count ?? 0;
+
+    Widget pair(Widget a, Widget b) => IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: a),
+          const SizedBox(width: 12),
+          Expanded(child: b),
+        ],
       ),
     );
-  }
-
-  Widget _content(
-    BuildContext context,
-    ThemeData theme,
-    List<AccountRow> list,
-  ) {
-    final positive = list.where((a) => a.currentBalance.isPositive).toList();
-    final negative = list.where((a) => a.currentBalance.isNegative).toList();
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'Where your money sits',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
+        pair(
+          StatTile(
+            label: 'Money in',
+            value: MoneyFormat.symbol(s.moneyIn),
+            color: AppColors.income,
+          ),
+          StatTile(
+            label: 'Money out',
+            value: MoneyFormat.symbol(s.moneyOut),
+            sub: net.isZero ? null : 'Net ${MoneyFormat.signed(net)}',
+            color: AppColors.expense,
           ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          'Your balance split across accounts.',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+        const SizedBox(height: 12),
+        pair(
+          StatTile(
+            label: 'Moved between accounts',
+            value: MoneyFormat.symbol(s.moved),
+            sub: '${s.transfers} transfer${s.transfers == 1 ? '' : 's'}',
+          ),
+          StatTile(
+            label: 'Most used',
+            value: busiest?.name ?? '—',
+            sub: busiest == null
+                ? 'No activity'
+                : '$entries ${entries == 1 ? 'entry' : 'entries'}',
           ),
         ),
-        const SizedBox(height: 16),
-        // [CategoryPieChart] filters to positive slices, sorts, folds the tail
-        // into "Other" and renders its own legend + empty state — so we only
-        // hand it the positive balances and don't draw a legend ourselves.
-        if (positive.isNotEmpty)
-          CategoryPieChart(
-            slices: [
-              for (final a in positive)
-                (
-                  label: a.name,
-                  value: a.currentBalance,
-                  color: Color(a.colorValue),
-                  id: null,
-                ),
-            ],
-          )
-        else
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20),
-            child: Text(
-              'No positive balances to chart yet.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-        if (negative.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Divider(height: 1, color: theme.colorScheme.outline),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              const Icon(
-                Icons.credit_card_outlined,
-                size: 18,
-                color: AppColors.expense,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Owed',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.expense,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          for (final a in negative) _OwedRow(account: a),
-          const SizedBox(height: 10),
-          Text(
-            "Credit cards show what you owe, so they aren't part of the split "
-            'above.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              height: 1.35,
-            ),
-          ),
-        ],
       ],
-    );
-  }
-}
-
-/// A negative-balance account (a credit card). Its balance renders red because
-/// it is money owed.
-class _OwedRow extends StatelessWidget {
-  const _OwedRow({required this.account});
-
-  final AccountRow account;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppColors.expense.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              AppIcons.resolve(account.iconKey),
-              size: 18,
-              color: AppColors.expense,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              account.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodyMedium,
-            ),
-          ),
-          const SizedBox(width: 8),
-          BalanceText(
-            account.currentBalance,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

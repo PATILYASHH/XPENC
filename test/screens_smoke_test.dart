@@ -25,6 +25,7 @@ import 'package:xpenc/features/message_capture/message_capture_screen.dart';
 import 'package:xpenc/features/message_capture/review_inbox_screen.dart';
 import 'package:xpenc/features/more/more_screen.dart';
 import 'package:xpenc/features/onboarding/onboarding_screen.dart';
+import 'package:xpenc/features/reports/account_report_modules.dart';
 import 'package:xpenc/features/reports/account_reports_screen.dart';
 import 'package:xpenc/features/reports/stats_modules.dart';
 import 'package:xpenc/features/reports/stats_screen.dart';
@@ -603,6 +604,32 @@ void main() {
     expect(tester.takeException(), isNull);
     await unmount(tester);
   });
+
+  for (final module in AccountReportModule.values) {
+    testWidgets(
+      'Account Reports module "${module.title}" renders empty and with data',
+      (tester) async {
+        await pump(tester, AccountReportModuleScreen(module: module));
+        expect(tester.takeException(), isNull);
+        await unmount(tester);
+
+        // Transfers, a debit-card spend and a negative credit card.
+        await tester.runAsync(() async {
+          final seeded = await seed();
+          await db.addTransaction(
+            type: TxType.transfer,
+            amount: Money.fromRupees(2000),
+            accountId: seeded.bank,
+            toAccountId: seeded.cash,
+            date: DateTime.now(),
+          );
+        });
+        await pump(tester, AccountReportModuleScreen(module: module));
+        expect(tester.takeException(), isNull);
+        await unmount(tester);
+      },
+    );
+  }
 
   testWidgets('Account detail: bank shows its history', (tester) async {
     late int bank;

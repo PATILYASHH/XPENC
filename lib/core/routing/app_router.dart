@@ -38,6 +38,7 @@ import '../../features/persons/group_balances_screen.dart';
 import '../../features/persons/group_detail_screen.dart';
 import '../../features/persons/person_detail_screen.dart';
 import '../../features/persons/persons_screen.dart';
+import '../../features/reports/account_report_modules.dart';
 import '../../features/reports/account_reports_screen.dart';
 import '../../features/reports/stats_modules.dart';
 import '../../features/reports/stats_screen.dart';
@@ -361,6 +362,15 @@ final appRouter = GoRouter(
                   path: 'account-reports',
                   parentNavigatorKey: _rootKey,
                   builder: (_, _) => const AccountReportsScreen(),
+                  routes: [
+                    for (final module in AccountReportModule.values)
+                      GoRoute(
+                        path: module.name,
+                        parentNavigatorKey: _rootKey,
+                        builder: (_, _) =>
+                            AccountReportModuleScreen(module: module),
+                      ),
+                  ],
                 ),
                 GoRoute(
                   path: 'export',

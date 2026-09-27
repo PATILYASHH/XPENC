@@ -221,10 +221,14 @@ const guideSections = <GuideSection>[
       icon: Icons.account_balance_outlined,
       title: 'Account Reports',
       whatItDoes:
-          'A money-first view across every account: total net worth, how '
-          'it\'s split across accounts (as a pie chart), and a tappable '
-          'list to drill into any one.',
-      howToUse: 'Tap an account\'s slice or row to open its own statement.',
+          'A money-first view across every account: total money, money in '
+          'and out this month or year, and seven reports — Balances, '
+          'Activity per account, Balance history, Transfers between '
+          'accounts, Payment methods, Cards & pay later, and Account health '
+          '(accounts below zero, under their minimum, or sitting idle).',
+      howToUse:
+          'Switch Month/Year and step through periods at the top, then tap '
+          'a report tile. Tap any account row to open its own statement.',
       location: 'More → Account Reports',
     ),
   ]),
