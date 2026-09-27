@@ -94,6 +94,7 @@ Color colorForTxType(TxType type) => switch (type) {
       TxType.expense => AppColors.expense,
       TxType.transfer => AppColors.transfer,
       TxType.personOut || TxType.personIn => AppColors.person,
+      TxType.correctionIn || TxType.correctionOut => AppColors.correction,
     };
 
 /// The icon that stands for a transaction's kind, when there is no category.
@@ -108,6 +109,7 @@ IconData iconForTxType(TxType type) => switch (type) {
       TxType.personIn => Icons.person_outline_rounded,
       TxType.income => Icons.south_west_rounded,
       TxType.expense => Icons.north_east_rounded,
+      TxType.correctionIn || TxType.correctionOut => Icons.tune_rounded,
     };
 
 /// What to call a transaction that has no category. [personName] names the
@@ -118,6 +120,7 @@ String labelForTxType(TxType type, {String? personName}) => switch (type) {
       TxType.personIn => 'Received from ${personName ?? 'person'}',
       TxType.income => 'Income',
       TxType.expense => 'Expense',
+      TxType.correctionIn || TxType.correctionOut => 'Correction',
     };
 
 /// Renders an amount with tabular figures so columns line up.

@@ -898,32 +898,35 @@ Future<void> _openQuickActions(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          ListTile(
-            leading: const Icon(Icons.content_copy_outlined),
-            title: const Text('Duplicate'),
-            subtitle: const Text('Add a new transaction with these details'),
-            onTap: () {
-              Navigator.of(sheetContext).pop();
-              context.push('/add?duplicate=${tx.id}');
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.bookmark_add_outlined),
-            title: const Text('Save as template'),
-            subtitle: const Text('Reuse these details from the ➕ button'),
-            onTap: () {
-              Navigator.of(sheetContext).pop();
-              onCreateTemplate(tx, title);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.edit_outlined),
-            title: const Text('Edit'),
-            onTap: () {
-              Navigator.of(sheetContext).pop();
-              context.push('/add?id=${tx.id}');
-            },
-          ),
+          // A correction is only ever deleted — see the detail screen.
+          if (!tx.type.isCorrection) ...[
+            ListTile(
+              leading: const Icon(Icons.content_copy_outlined),
+              title: const Text('Duplicate'),
+              subtitle: const Text('Add a new transaction with these details'),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                context.push('/add?duplicate=${tx.id}');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.bookmark_add_outlined),
+              title: const Text('Save as template'),
+              subtitle: const Text('Reuse these details from the ➕ button'),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                onCreateTemplate(tx, title);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('Edit'),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                context.push('/add?id=${tx.id}');
+              },
+            ),
+          ],
           ListTile(
             leading: Icon(
               Icons.delete_outline_rounded,
@@ -1014,10 +1017,7 @@ class _TxCard extends StatelessWidget {
 
     // Money that left the account reads negative so its sign matches its
     // colour; transfers stay as stored (they render without a sign).
-    final displayAmount =
-        (tx.type == TxType.expense || tx.type == TxType.personOut)
-        ? -tx.amount
-        : tx.amount;
+    final displayAmount = tx.type.takesFromAccount ? -tx.amount : tx.amount;
     // The source account's own currency — this row always shows tx.amount,
     // which is native to accountId regardless of type (a transfer's amount
     // is its source leg). Doesn't follow a debit card to its linked bank

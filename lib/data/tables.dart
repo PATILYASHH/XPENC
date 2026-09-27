@@ -42,7 +42,20 @@ enum CategoryKind { income, expense }
 /// income/expense totals and budgets exactly like a transfer — but they DO move
 /// the account balance, and they appear in the ledger so the money is never
 /// seen to vanish.
-enum TxType { income, expense, transfer, personOut, personIn }
+/// [correctionIn]/[correctionOut] are balance corrections: the user told the
+/// app the account really holds a different amount (untracked spending,
+/// a forgotten refund…). They move the balance like income/expense do but
+/// are never income or expense — no category, no budget, no stats — and
+/// they count against the XPENC Score's Tracking habit.
+enum TxType {
+  income,
+  expense,
+  transfer,
+  personOut,
+  personIn,
+  correctionIn,
+  correctionOut,
+}
 
 extension TxTypeX on TxType {
   /// Only these two ever count toward income, expense, budgets and reports.
@@ -51,8 +64,21 @@ extension TxTypeX on TxType {
   bool get isPersonMovement =>
       this == TxType.personOut || this == TxType.personIn;
 
+  bool get isCorrection =>
+      this == TxType.correctionIn || this == TxType.correctionOut;
+
   /// Does this add to the account it names, or take from it?
-  bool get addsToAccount => this == TxType.income || this == TxType.personIn;
+  bool get addsToAccount =>
+      this == TxType.income ||
+      this == TxType.personIn ||
+      this == TxType.correctionIn;
+
+  /// Money leaving the account it names (a transfer is neither — it has two
+  /// sides).
+  bool get takesFromAccount =>
+      this == TxType.expense ||
+      this == TxType.personOut ||
+      this == TxType.correctionOut;
 }
 
 enum BudgetPeriod { weekly, monthly, yearly }

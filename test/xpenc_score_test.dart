@@ -243,6 +243,53 @@ void main() {
     expect(pillar(sparse, ScorePillarId.trackingHabit).fraction, 0.5);
   });
 
+  test('each balance correction costs a quarter of tracking habit', () {
+    // steadyLedger logs on 14 recent days — full marks on its own.
+    final clean = computeXpencScore(input());
+    expect(pillar(clean, ScorePillarId.trackingHabit).fraction, 1.0);
+
+    final corrected = computeXpencScore(
+      input(
+        txs: [
+          ...steadyLedger(),
+          tx(TxType.correctionOut, 25, now.subtract(const Duration(days: 2))),
+          tx(TxType.correctionIn, 40, now.subtract(const Duration(days: 9))),
+        ],
+      ),
+    );
+    final p = pillar(corrected, ScorePillarId.trackingHabit);
+    expect(p.fraction, 0.5);
+    expect(p.detail, contains('2 balance corrections'));
+    expect(p.tip, isNotNull);
+    // Never counted as income or expense either.
+    expect(corrected.windowExpense, clean.windowExpense);
+    expect(corrected.windowIncome, clean.windowIncome);
+  });
+
+  test('a correction older than 30 days no longer costs anything', () {
+    final s = computeXpencScore(
+      input(
+        txs: [
+          ...steadyLedger(),
+          tx(TxType.correctionOut, 25, now.subtract(const Duration(days: 45))),
+        ],
+      ),
+    );
+    expect(pillar(s, ScorePillarId.trackingHabit).fraction, 1.0);
+  });
+
+  test('a correction alone never counts as a day of tracking', () {
+    final s = computeXpencScore(
+      input(
+        txs: [
+          for (var i = 0; i < 12; i++)
+            tx(TxType.correctionIn, 1, now.subtract(Duration(days: i))),
+        ],
+      ),
+    );
+    expect(pillar(s, ScorePillarId.trackingHabit).fraction, 0.0);
+  });
+
   test('grades follow the published cut-offs', () {
     expect(gradeFor(100), ScoreGrade.excellent);
     expect(gradeFor(80), ScoreGrade.excellent);

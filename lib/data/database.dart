@@ -29,8 +29,8 @@ part 'database.g.dart';
 /// - transfer  → `-amount` when this account (or a debit card on it) is the
 ///   source, otherwise `+amount` because it is the destination.
 Money accountMovement(TransactionRow tx, Set<int> ownIds) => switch (tx.type) {
-  TxType.income || TxType.personIn => tx.amount,
-  TxType.expense || TxType.personOut => -tx.amount,
+  TxType.income || TxType.personIn || TxType.correctionIn => tx.amount,
+  TxType.expense || TxType.personOut || TxType.correctionOut => -tx.amount,
   TxType.transfer =>
     ownIds.contains(tx.accountId) ? -tx.amount : (tx.toAmount ?? tx.amount),
 };
@@ -1204,10 +1204,12 @@ class AppDatabase extends _$AppDatabase {
       case TxType.income:
       // Money came back from a person (they repaid you, or you borrowed).
       case TxType.personIn:
+      case TxType.correctionIn:
         await _adjust(t.accountId, amt);
       case TxType.expense:
       // Money went to a person (you lent, or you repaid them).
       case TxType.personOut:
+      case TxType.correctionOut:
         await _adjust(t.accountId, -amt);
       case TxType.transfer:
         await _adjust(t.accountId, -amt);
@@ -1264,8 +1266,8 @@ class AppDatabase extends _$AppDatabase {
       );
     }
     // Goals and loans are not spendable accounts — they are only ever funded
-    // or drawn down by a transfer.
-    if (type != TxType.transfer) {
+    // or drawn down by a transfer (or set straight by a balance correction).
+    if (type != TxType.transfer && !type.isCorrection) {
       final account = await (select(
         accounts,
       )..where((a) => a.id.equals(accountId))).getSingleOrNull();
@@ -1331,6 +1333,13 @@ class AppDatabase extends _$AppDatabase {
       case TxType.expense:
         if (toAccountId != null) {
           throw ArgumentError('Only transfers have a destination account.');
+        }
+      case TxType.correctionIn:
+      case TxType.correctionOut:
+        if (categoryId != null || personId != null || toAccountId != null) {
+          throw ArgumentError(
+            'A balance correction only names its account and amount.',
+          );
         }
     }
   }
@@ -2348,6 +2357,7 @@ class AppDatabase extends _$AppDatabase {
             categoryId: Value(interestCategoryId),
             date: date,
             note: Value(note),
+            payee: Value(payee),
             recurringRuleId: Value(recurringRuleId),
           ),
         ),
@@ -2364,7 +2374,6 @@ class AppDatabase extends _$AppDatabase {
             categoryId: Value(transferCategoryId),
             date: date,
             note: Value(note),
-            payee: Value(payee),
             recurringRuleId: Value(recurringRuleId),
           ),
         ),
@@ -3035,9 +3044,11 @@ class AppDatabase extends _$AppDatabase {
         switch (t.type) {
           case TxType.income:
           case TxType.personIn:
+          case TxType.correctionIn:
             bump(t.accountId, t.amount);
           case TxType.expense:
           case TxType.personOut:
+          case TxType.correctionOut:
             bump(t.accountId, -t.amount);
           case TxType.transfer:
             bump(t.accountId, -t.amount);
@@ -3466,6 +3477,40 @@ class AppDatabase extends _$AppDatabase {
       );
       await recalculateBalances();
     });
+  }
+
+  /// Sets [accountId]'s balance to what it really is by posting one
+  /// [TxType.correctionIn]/[TxType.correctionOut] for the difference, dated
+  /// [date] (today by default). Unlike [correctAccountOpeningBalance] this
+  /// leaves history alone: every earlier balance stays as it was, and the
+  /// correction shows in the ledger as its own "Correction" row. Returns the
+  /// correction's id, or null when the balance already matches.
+  /// [actualBalance] carries the account's own sign convention — negative
+  /// for what's outstanding on a credit card / pay-later account.
+  Future<int?> correctAccountBalance({
+    required int accountId,
+    required Money actualBalance,
+    DateTime? date,
+    String? note,
+  }) async {
+    final account = await (select(
+      accounts,
+    )..where((a) => a.id.equals(accountId))).getSingleOrNull();
+    if (account == null) throw ArgumentError('Account not found.');
+    if (account.linkedAccountId != null) {
+      throw ArgumentError(
+        'This card holds no balance of its own — correct its bank instead.',
+      );
+    }
+    final diff = actualBalance - account.currentBalance;
+    if (diff.isZero) return null;
+    return addTransaction(
+      type: diff.isPositive ? TxType.correctionIn : TxType.correctionOut,
+      amount: diff.abs,
+      accountId: accountId,
+      date: date ?? DateTime.now(),
+      note: note,
+    );
   }
 
   Future<void> archiveAccount(int id) =>
@@ -6437,6 +6482,9 @@ class AppDatabase extends _$AppDatabase {
           return t.type == TxType.personOut
               ? 'Given to ${person ?? 'person'}'
               : 'Received from ${person ?? 'person'}';
+        case TxType.correctionIn:
+        case TxType.correctionOut:
+          return 'Balance correction';
         case TxType.income:
         case TxType.expense:
           final category = t.categoryId == null
@@ -6663,6 +6711,7 @@ class AppDatabase extends _$AppDatabase {
       TxType.transfer => 'Transfer',
       TxType.personOut => 'Lending out',
       TxType.personIn => 'Lending in',
+      TxType.correctionIn || TxType.correctionOut => 'Correction',
     };
 
     String describe(TransactionRow t) {
@@ -6678,6 +6727,9 @@ class AppDatabase extends _$AppDatabase {
               ? null
               : personsById[t.personId]?.name;
           return person ?? 'Person';
+        case TxType.correctionIn:
+        case TxType.correctionOut:
+          return 'Balance correction';
         case TxType.income:
         case TxType.expense:
           final category = t.categoryId == null

@@ -801,7 +801,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final note = tx.note?.trim();
     final subtitle = (note != null && note.isNotEmpty) ? '$base · $note' : base;
 
-    final displayAmount = tx.type == TxType.expense ? -tx.amount : tx.amount;
+    final displayAmount = tx.type.takesFromAccount ? -tx.amount : tx.amount;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),

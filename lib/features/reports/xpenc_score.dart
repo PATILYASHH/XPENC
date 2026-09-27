@@ -98,7 +98,9 @@ const kScorePillars = <ScorePillarSpec>[
     weight: 5,
     rule:
         'Days with at least one entry in the last 30. 12 or more earns full '
-        'points — the score is only as accurate as the ledger behind it.',
+        'points — the score is only as accurate as the ledger behind it. '
+        'Each balance correction in the same 30 days takes away a quarter, '
+        'since it means entries were missed.',
   ),
 ];
 
@@ -572,24 +574,43 @@ ScorePillar _budgets(XpencScoreInput input) {
   );
 }
 
+/// How much of the Tracking habit pillar one balance correction costs.
+const kCorrectionPenalty = 0.25;
+
 ScorePillar _trackingHabit(XpencScoreInput input) {
   const id = ScorePillarId.trackingHabit;
   final since = input.now.subtract(const Duration(days: 30));
   final days = <int>{};
+  var corrections = 0;
   for (final t in input.txs) {
     if (t.date.isBefore(since) || t.date.isAfter(input.now)) continue;
+    // A correction is the ledger admitting it missed something — it never
+    // counts as a day of tracking, and it costs points.
+    if (t.type.isCorrection) {
+      corrections++;
+      continue;
+    }
     days.add(
       DateTime(t.date.year, t.date.month, t.date.day).millisecondsSinceEpoch,
     );
   }
-  final fraction = _ramp(days.length.toDouble(), zero: 0, full: 12);
+  final fraction = _clamp01(
+    _ramp(days.length.toDouble(), zero: 0, full: 12) -
+        corrections * kCorrectionPenalty,
+  );
+  final correctionNote = corrections == 0
+      ? ''
+      : ' · $corrections balance correction${corrections == 1 ? '' : 's'}';
   return ScorePillar(
     id: id,
     applicable: true,
     fraction: fraction,
-    detail: 'Entries on ${days.length} of the last 30 days',
+    detail: 'Entries on ${days.length} of the last 30 days$correctionNote',
     tip: fraction >= 1
         ? null
+        : corrections > 0
+        ? 'A correction means some spending never got logged. Add entries '
+              'as they happen so the balance stays right on its own.'
         : 'Log spending as it happens. A daily reminder '
               '(Settings › Notifications) helps.',
   );

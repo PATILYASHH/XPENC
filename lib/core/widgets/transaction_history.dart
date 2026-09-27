@@ -192,15 +192,24 @@ class HistoryRow extends StatelessWidget {
     final isTransfer = tx.type == TxType.transfer;
     final category = tx.categoryId == null ? null : categoryMap[tx.categoryId];
 
+    final isCorrection = tx.type.isCorrection;
     final Color accent = isTransfer
         ? AppColors.transfer
+        : isCorrection
+        ? AppColors.correction
         : (category != null
               ? Color(category.colorValue)
               : theme.colorScheme.onSurfaceVariant);
     final IconData icon = isTransfer
         ? Icons.swap_horiz_rounded
+        : isCorrection
+        ? iconForTxType(tx.type)
         : AppIcons.resolve(category?.iconKey ?? 'other');
-    final title = isTransfer ? 'Transfer' : (category?.name ?? 'Uncategorised');
+    final title = isTransfer
+        ? 'Transfer'
+        : isCorrection
+        ? 'Correction'
+        : (category?.name ?? 'Uncategorised');
 
     // Signed movement: negative = money out of this account, positive = in.
     final movement = accountMovement(tx, ownIds);

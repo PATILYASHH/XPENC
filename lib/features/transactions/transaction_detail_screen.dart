@@ -46,16 +46,21 @@ class TransactionDetailScreen extends ConsumerWidget {
               tooltip: 'Make recurring',
               onPressed: () => showRecurringRuleSheet(context, prefillFrom: t),
             ),
-          IconButton(
-            icon: const Icon(Icons.content_copy_outlined),
-            tooltip: 'Duplicate',
-            onPressed: () => context.push('/add?duplicate=$transactionId'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            tooltip: 'Edit',
-            onPressed: () => context.push('/add?id=$transactionId'),
-          ),
+          // A correction is the difference between two balances on one
+          // day — duplicating or re-typing it makes no sense. Delete undoes
+          // it; a new correction from the account fixes it.
+          if (t == null || !t.type.isCorrection) ...[
+            IconButton(
+              icon: const Icon(Icons.content_copy_outlined),
+              tooltip: 'Duplicate',
+              onPressed: () => context.push('/add?duplicate=$transactionId'),
+            ),
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Edit',
+              onPressed: () => context.push('/add?id=$transactionId'),
+            ),
+          ],
           IconButton(
             icon: const Icon(Icons.delete_outline),
             tooltip: 'Delete',
@@ -347,7 +352,7 @@ class _Hero extends StatelessWidget {
     // Money that left the account reads negative so its sign matches its
     // colour; transfers render without a sign at all.
     final displayAmount =
-        (t.type == TxType.expense || t.type == TxType.personOut)
+        t.type.takesFromAccount
         ? -t.amount
         : t.amount;
     // The row's own snapshotted currency — authoritative regardless of
@@ -364,6 +369,8 @@ class _Hero extends StatelessWidget {
       TxType.transfer => ('Transfer', Icons.swap_horiz_rounded),
       TxType.personOut => ('Gave to person', Icons.call_made_rounded),
       TxType.personIn => ('Received from person', Icons.call_received_rounded),
+      TxType.correctionIn => ('Correction · added', Icons.tune_rounded),
+      TxType.correctionOut => ('Correction · removed', Icons.tune_rounded),
     };
 
     return Column(
@@ -682,7 +689,7 @@ class _LinkedTxRow extends StatelessWidget {
         ? payee
         : _typeLabel(linked.type);
     final displayAmount =
-        (linked.type == TxType.expense || linked.type == TxType.personOut)
+        linked.type.takesFromAccount
         ? -linked.amount
         : linked.amount;
     final currency = linked.currencyCode == null
@@ -780,6 +787,7 @@ String _typeLabel(TxType type) => switch (type) {
   TxType.transfer => 'Transfer',
   TxType.personOut => 'Gave to person',
   TxType.personIn => 'Received from person',
+  TxType.correctionIn || TxType.correctionOut => 'Correction',
 };
 
 // ── Row helpers ───────────────────────────────────────────────────────────────
@@ -885,14 +893,16 @@ Widget _categoryValue(
 ) {
   final theme = Theme.of(context);
 
-  if (t.type == TxType.transfer) {
+  if (t.type == TxType.transfer || t.type.isCorrection) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         _valueText(context, '—'),
         const SizedBox(height: 2),
         Text(
-          'Transfers have no category',
+          t.type.isCorrection
+              ? 'Not income or expense — never counted in stats'
+              : 'Transfers have no category',
           textAlign: TextAlign.right,
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
@@ -977,6 +987,8 @@ Widget _accountValue(
     TxType.transfer => '$acctName → ${accountMap[t.toAccountId]?.name ?? '—'}',
     TxType.personOut => 'Given from $acctName',
     TxType.personIn => 'Received into $acctName',
+    TxType.correctionIn => 'Added to $acctName',
+    TxType.correctionOut => 'Removed from $acctName',
   };
 
   final linkedId = account?.linkedAccountId;

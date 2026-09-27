@@ -300,9 +300,9 @@ class _HeaderCard extends ConsumerWidget {
                   if (!_isDebitCard)
                     IconButton(
                       icon: const Icon(Icons.edit_outlined, size: 20),
-                      tooltip: 'Edit balance',
+                      tooltip: 'Correct balance',
                       visualDensity: VisualDensity.compact,
-                      onPressed: () => _editOpeningBalance(context, ref),
+                      onPressed: () => _correctBalance(context, ref),
                     ),
                 ],
               ),
@@ -344,83 +344,151 @@ class _HeaderCard extends ConsumerWidget {
     );
   }
 
-  /// Lets the user set the opening balance directly instead of faking an
-  /// income transaction to fix a balance they forgot to seed at creation.
-  /// Mirrors [AddAccountSheet]'s own sign convention: a credit card / pay
-  /// later account stores its outstanding as negative, everything else as
-  /// entered.
-  Future<void> _editOpeningBalance(BuildContext context, WidgetRef ref) async {
-    final label = _owesLikeCredit
-        ? 'Outstanding'
-        : account.type == AccountType.prepaidBalance
-        ? 'Starting balance'
-        : 'Opening balance';
-    final current = _owesLikeCredit
-        ? account.openingBalance.abs
-        : account.openingBalance;
-    final controller = AmountKeypadController()..setAmount(current);
+  /// Cards, pay-later and loans hold what's *owed* as a negative balance;
+  /// the user types that as a plain positive "outstanding" amount.
+  bool get _entersAsOwed => _owesLikeCredit || account.type == AccountType.loan;
+
+  String _fmt(Money m) => currency == null
+      ? MoneyFormat.symbol(m)
+      : MoneyFormat.symbolIn(m, currency!);
+
+  /// "My cash is really ₹75, the app says ₹100": the user types what the
+  /// account actually holds and the difference is posted as one
+  /// "Correction" transaction dated today (see
+  /// [AppDatabase.correctAccountBalance]) — no fake spend, history left
+  /// alone, and it counts against the XPENC Score's Tracking habit.
+  Future<void> _correctBalance(BuildContext context, WidgetRef ref) async {
+    final label = _entersAsOwed ? 'Actual outstanding' : 'Actual balance';
+    final shown = _entersAsOwed
+        ? account.currentBalance.abs
+        : account.currentBalance;
+    // Starts empty: pre-filling the shown balance would propose a
+    // correction before the user typed anything (and the keypad has no
+    // minus sign, so a negative balance would flip).
+    final controller = AmountKeypadController();
+    final noteController = TextEditingController();
     final messenger = ScaffoldMessenger.of(context);
 
-    final newAmount = await showDialog<Money>(
+    Money? target() {
+      final parsed = Money.tryParse(controller.text);
+      if (parsed == null) return null;
+      return _entersAsOwed ? -parsed.abs : parsed;
+    }
+
+    final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Edit balance'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Sets the opening balance directly — it does not create or '
-              'change any transaction.',
+      builder: (dialogContext) {
+        final theme = Theme.of(dialogContext);
+        return AlertDialog(
+          title: const Text('Correct balance'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'XPENC shows ${_fmt(shown)}${_entersAsOwed ? ' owed' : ''}. '
+                  'Enter what ${_entersAsOwed ? 'you really owe' : 'you really have'} '
+                  'and the difference is recorded as a Correction.',
+                ),
+                const SizedBox(height: 16),
+                AmountKeypadField(
+                  controller: controller,
+                  label: label,
+                  autofocus: true,
+                  yieldTo: const [],
+                ),
+                const SizedBox(height: 8),
+                ListenableBuilder(
+                  listenable: controller,
+                  builder: (context, _) {
+                    final t = target();
+                    final diff = t == null ? null : t - account.currentBalance;
+                    final String text;
+                    final Color color;
+                    if (diff == null) {
+                      text = 'Enter an amount.';
+                      color = theme.colorScheme.onSurfaceVariant;
+                    } else if (diff.isZero) {
+                      text = 'Matches — nothing to correct.';
+                      color = theme.colorScheme.onSurfaceVariant;
+                    } else {
+                      text =
+                          'Correction of ${diff.isNegative ? '-' : '+'}'
+                          '${_fmt(diff.abs)} will be added today.';
+                      color = AppColors.correction;
+                    }
+                    return Text(
+                      text,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: color,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: noteController,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: const InputDecoration(
+                    labelText: 'Note (optional)',
+                    hintText: 'e.g. forgot to log small cash spends',
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Corrections are never counted as income or spending, but '
+                  'they lower your XPENC Score\'s Tracking habit — logging as '
+                  'you go keeps the balance right on its own.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    height: 1.35,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            AmountKeypadField(
-              controller: controller,
-              label: label,
-              autofocus: true,
-              yieldTo: const [],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (target() == null) {
+                  messenger
+                    ..hideCurrentSnackBar()
+                    ..showSnackBar(
+                      const SnackBar(content: Text('Enter a valid amount.')),
+                    );
+                  return;
+                }
+                Navigator.of(dialogContext).pop(true);
+              },
+              child: const Text('Save'),
             ),
           ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final parsed = Money.tryParse(controller.text);
-              if (parsed == null) {
-                messenger
-                  ..hideCurrentSnackBar()
-                  ..showSnackBar(
-                    const SnackBar(content: Text('Enter a valid amount.')),
-                  );
-                return;
-              }
-              Navigator.of(
-                dialogContext,
-              ).pop(_owesLikeCredit ? -parsed.abs : parsed);
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+        );
+      },
     );
     // Deliberately not disposed — see the same note in
     // persons_screen.dart's _createGroup: the dialog's widget tree is still
     // mounted during the pop exit-transition, and a stray tap on the keypad
     // in that window would call notifyListeners() on an already-disposed
-    // AmountKeypadController (an assertion failure), the same category of
-    // crash a TextField risks from disposing its controller too early.
-    if (newAmount == null) return;
+    // AmountKeypadController (an assertion failure).
+    final actual = target();
+    if (confirmed != true || actual == null) return;
+    final note = noteController.text.trim();
 
+    final int? id;
     try {
-      await ref
+      id = await ref
           .read(dbProvider)
-          .correctAccountOpeningBalance(
+          .correctAccountBalance(
             accountId: account.id,
-            openingBalance: newAmount,
+            actualBalance: actual,
+            note: note.isEmpty ? null : note,
           );
     } catch (e) {
       if (!context.mounted) return;
@@ -430,9 +498,19 @@ class _HeaderCard extends ConsumerWidget {
       return;
     }
     if (!context.mounted) return;
+    final diff = actual - account.currentBalance;
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Balance updated')));
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            id == null
+                ? 'Balance already matches'
+                : 'Balance corrected · ${diff.isNegative ? '-' : '+'}'
+                      '${_fmt(diff.abs)} recorded as a Correction',
+          ),
+        ),
+      );
   }
 
   /// "HDFC •••• 1234" — whichever parts are present.

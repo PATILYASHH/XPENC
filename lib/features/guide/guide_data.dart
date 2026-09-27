@@ -85,6 +85,22 @@ const guideSections = <GuideSection>[
       location: 'More → Accounts → +',
     ),
     GuideEntry(
+      icon: Icons.tune_rounded,
+      title: 'Correct a balance',
+      whatItDoes:
+          'When an account shows the wrong amount — say ₹100 in cash but '
+          'your wallet has ₹75 — enter what you really have and the '
+          'difference is saved as one "Correction" transaction. No fake '
+          'expense, and your history stays as it was.',
+      howToUse:
+          'Open the account and tap the pencil next to its balance. '
+          'Corrections never count as income or spending, but each one in '
+          'the last 30 days lowers the XPENC Score\'s Tracking habit — '
+          'logging as you go keeps balances right on their own. Delete a '
+          'correction to undo it.',
+      location: 'More → Accounts → an account → ✎',
+    ),
+    GuideEntry(
       icon: Icons.receipt_long_outlined,
       title: 'Transactions',
       whatItDoes:

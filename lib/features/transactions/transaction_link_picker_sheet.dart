@@ -187,7 +187,7 @@ class _TxTile extends StatelessWidget {
       if (note != null && note.isNotEmpty) note,
     ].join(' · ');
 
-    final displayAmount = tx.type == TxType.expense ? -tx.amount : tx.amount;
+    final displayAmount = tx.type.takesFromAccount ? -tx.amount : tx.amount;
 
     return ListTile(
       leading: CircleAvatar(

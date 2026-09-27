@@ -33,10 +33,15 @@ class AccountActivity {
   Money toPeople = const Money.zero();
   Money transferIn = const Money.zero();
   Money transferOut = const Money.zero();
+
+  /// Balance corrections — real movements of the balance, but never income
+  /// or expense.
+  Money correctedUp = const Money.zero();
+  Money correctedDown = const Money.zero();
   int count = 0;
 
-  Money get moneyIn => income + fromPeople + transferIn;
-  Money get moneyOut => expense + toPeople + transferOut;
+  Money get moneyIn => income + fromPeople + transferIn + correctedUp;
+  Money get moneyOut => expense + toPeople + transferOut + correctedDown;
   Money get net => moneyIn - moneyOut;
 
   /// Total money that moved through the account either way — what the
@@ -115,6 +120,14 @@ List<AccountActivity> accountActivity({
       case TxType.personOut:
         of(from)
           ..toPeople += amount
+          ..count += 1;
+      case TxType.correctionIn:
+        of(from)
+          ..correctedUp += amount
+          ..count += 1;
+      case TxType.correctionOut:
+        of(from)
+          ..correctedDown += amount
           ..count += 1;
       case TxType.transfer:
         final toRaw = t.toAccountId;
@@ -201,9 +214,11 @@ Money balanceEffect(
   switch (t.type) {
     case TxType.income:
     case TxType.personIn:
+    case TxType.correctionIn:
       return from == accountId ? t.amount : const Money.zero();
     case TxType.expense:
     case TxType.personOut:
+    case TxType.correctionOut:
       return from == accountId ? -t.amount : const Money.zero();
     case TxType.transfer:
       final to = t.toAccountId == null

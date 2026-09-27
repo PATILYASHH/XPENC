@@ -20,6 +20,10 @@ class AppColors {
   /// neither green nor red.
   static const person = Color(0xFFA855F7);
 
+  /// A balance correction — the ledger catching up with reality. Neither
+  /// earned nor spent, and deliberately a "look at this" amber.
+  static const correction = Color(0xFFD97706);
+
   /// The default accent, used when no theme is loaded yet. Live code should
   /// read the accent off the theme (`colorScheme.secondary`) so it follows the
   /// palette the user picked.

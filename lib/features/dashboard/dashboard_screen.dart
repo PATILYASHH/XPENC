@@ -1780,6 +1780,12 @@ class _TxRow extends StatelessWidget {
         color: AppColors.person,
         style: style,
       ),
+      TxType.correctionIn || TxType.correctionOut => MoneyText(
+        tx.type == TxType.correctionIn ? tx.amount : -tx.amount,
+        signed: true,
+        color: AppColors.correction,
+        style: style,
+      ),
     };
   }
 }

@@ -1982,8 +1982,14 @@ final netWorthTrendProvider =
         for (final t in txs) {
           if (t.date.isAfter(end)) continue;
           // A transfer moves money between our own accounts: net zero.
-          if (t.type == TxType.income) total += t.amount;
-          if (t.type == TxType.expense) total -= t.amount;
+          // Corrections are real balance changes, so they count here even
+          // though they're never income or expense.
+          if (t.type == TxType.income || t.type == TxType.correctionIn) {
+            total += t.amount;
+          }
+          if (t.type == TxType.expense || t.type == TxType.correctionOut) {
+            total -= t.amount;
+          }
         }
         for (final e in entries) {
           if (e.accountId == null || e.date.isAfter(end)) continue;
@@ -2040,9 +2046,7 @@ final accountTypeBalanceTrendProvider =
             if (fromIn == toIn) continue;
             total += fromIn ? -t.amount : t.amount;
           } else if (ownIds.contains(t.accountId)) {
-            total += (t.type == TxType.income || t.type == TxType.personIn)
-                ? t.amount
-                : -t.amount;
+            total += t.type.addsToAccount ? t.amount : -t.amount;
           }
         }
         out.add((month: DateTime(end.year, end.month), value: total));
