@@ -587,11 +587,20 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 ..._tabActions(context, ref, currentIndex),
-                _TonalIconButton(
-                  tooltip: 'Review Inbox',
-                  icon: const Icon(Icons.inbox_outlined),
-                  onPressed: () => context.push('/inbox'),
-                ),
+                // Persons has no use for the Review Inbox — Settled takes
+                // that trailing slot there instead.
+                if (currentIndex == 2)
+                  _TonalIconButton(
+                    tooltip: 'Settled',
+                    icon: const Icon(Icons.task_alt_rounded),
+                    onPressed: () => context.push('/persons/settled'),
+                  )
+                else
+                  _TonalIconButton(
+                    tooltip: 'Review Inbox',
+                    icon: const Icon(Icons.inbox_outlined),
+                    onPressed: () => context.push('/inbox'),
+                  ),
               ],
             ),
           ),

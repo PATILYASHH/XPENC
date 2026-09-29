@@ -17,8 +17,9 @@ import '../../core/widgets/nav_bar_inset.dart';
 
 /// Who owes you, who you owe — split into Individual (a single named
 /// contact, unchanged from before groups existed), Group (shared expenses
-/// split across several people at once) and Settled (either kind, once the
-/// user moved it there — see `SettledPromptListener`).
+/// split across several people at once). Settled rows of either kind live
+/// on their own screen (`SettledScreen`, top-bar icon) — see
+/// `SettledPromptListener`.
 ///
 /// [embedded] is true when this screen is a bottom-nav tab (GitHub #70) —
 /// `AppShell`'s shared top bar owns the title/actions then. Default `false`
@@ -38,7 +39,7 @@ class PersonsScreen extends ConsumerStatefulWidget {
 
 class _PersonsScreenState extends ConsumerState<PersonsScreen>
     with SingleTickerProviderStateMixin {
-  late final _tabController = TabController(length: 3, vsync: this)
+  late final _tabController = TabController(length: 2, vsync: this)
     ..addListener(() => setState(() {})); // rebuilds the FAB on tab change
 
   @override
@@ -115,6 +116,11 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
                   icon: const Icon(Icons.person_add_alt_1_outlined),
                   onPressed: () => showAddPersonDialog(context, ref),
                 ),
+                IconButton(
+                  tooltip: 'Settled',
+                  icon: const Icon(Icons.task_alt_rounded),
+                  onPressed: () => context.push('/persons/settled'),
+                ),
               ],
             ),
       body: Column(
@@ -124,13 +130,12 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
             tabs: const [
               Tab(text: 'Individual'),
               Tab(text: 'Group'),
-              Tab(text: 'Settled'),
             ],
           ),
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: const [_IndividualTab(), _GroupTab(), _SettledTab()],
+              children: const [_IndividualTab(), _GroupTab()],
             ),
           ),
         ],
@@ -198,7 +203,7 @@ class _IndividualTab extends ConsumerWidget {
               return const SliverToBoxAdapter(
                 child: _EmptyNote(
                   icon: Icons.check_circle_outline_rounded,
-                  text: 'Everyone is settled — see the Settled tab.',
+                  text: 'Everyone is settled — see Settled in the top bar.',
                 ),
               );
             }
@@ -359,7 +364,7 @@ class _PersonTile extends ConsumerWidget {
     }
 
     return ListTile(
-      contentPadding: const EdgeInsets.fromLTRB(16, 6, 4, 6),
+      contentPadding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
       leading: PersonAvatar(name: person.name, photoPath: person.photoPath),
       title: Text(
         person.name,
@@ -398,16 +403,6 @@ class _PersonTile extends ConsumerWidget {
                 ),
               ),
             ),
-          ),
-          IconButton(
-            tooltip: 'Delete person',
-            visualDensity: VisualDensity.compact,
-            icon: Icon(
-              Icons.delete_outline_rounded,
-              size: 20,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-            onPressed: () => confirmDeletePerson(context, ref, person),
           ),
         ],
       ),
@@ -632,7 +627,7 @@ class _GroupTab extends ConsumerWidget {
         if (groups.isEmpty) {
           return const _EmptyNote(
             icon: Icons.check_circle_outline_rounded,
-            text: 'Every group is settled — see the Settled tab.',
+            text: 'Every group is settled — see Settled in the top bar.',
           );
         }
         // Same "dues on top" ordering as the Individual tab, reusing
@@ -701,7 +696,7 @@ class _GroupTile extends ConsumerWidget {
     }
 
     return ListTile(
-      contentPadding: const EdgeInsets.fromLTRB(16, 6, 4, 6),
+      contentPadding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
       leading: CircleAvatar(
         backgroundColor: theme.colorScheme.surfaceContainerHighest,
         foregroundColor: theme.colorScheme.onSurface,
@@ -738,16 +733,6 @@ class _GroupTile extends ConsumerWidget {
                 ),
               ),
             ),
-          ),
-          IconButton(
-            tooltip: 'Delete group',
-            visualDensity: VisualDensity.compact,
-            icon: Icon(
-              Icons.delete_outline_rounded,
-              size: 20,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-            onPressed: () => confirmDeleteGroup(context, ref, group),
           ),
         ],
       ),
@@ -887,8 +872,9 @@ enum _GroupAction { settle, unsettle, archive, remove }
 /// reached zero, or by hand from a row's long-press sheet. Unlike Archived
 /// these stay full, live rows: same tiles, same balances and history, and
 /// a new non-zero balance sends them back to their own tab on its own.
-class _SettledTab extends ConsumerWidget {
-  const _SettledTab();
+/// Reached from the Persons top bar (`/persons/settled`).
+class SettledScreen extends ConsumerWidget {
+  const SettledScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -905,11 +891,14 @@ class _SettledTab extends ConsumerWidget {
         ref.watch(personBalancesProvider).valueOrNull ?? const <int, Money>{};
 
     if (people.isEmpty && groups.isEmpty) {
-      return const _EmptyNote(
-        icon: Icons.check_circle_outline_rounded,
-        text:
-            'Nobody here yet. When a balance reaches zero you can move '
-            'the person or group here.',
+      return Scaffold(
+        appBar: AppBar(title: const Text('Settled')),
+        body: const _EmptyNote(
+          icon: Icons.check_circle_outline_rounded,
+          text:
+              'Nobody here yet. When a balance reaches zero you can move '
+              'the person or group here.',
+        ),
       );
     }
 
@@ -945,20 +934,23 @@ class _SettledTab extends ConsumerWidget {
       ],
     );
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 32).plusNavBar(context),
-      children: [
-        if (people.isNotEmpty)
-          section('Individual', [
-            for (final p in people)
-              _PersonTile(
-                person: p,
-                balance: balances[p.id] ?? const Money.zero(),
-              ),
-          ]),
-        if (groups.isNotEmpty)
-          section('Group', [for (final g in groups) _GroupTile(group: g)]),
-      ],
+    return Scaffold(
+      appBar: AppBar(title: const Text('Settled')),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 32).plusNavBar(context),
+        children: [
+          if (people.isNotEmpty)
+            section('Individual', [
+              for (final p in people)
+                _PersonTile(
+                  person: p,
+                  balance: balances[p.id] ?? const Money.zero(),
+                ),
+            ]),
+          if (groups.isNotEmpty)
+            section('Group', [for (final g in groups) _GroupTile(group: g)]),
+        ],
+      ),
     );
   }
 }

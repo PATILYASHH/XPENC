@@ -621,6 +621,12 @@ final appRouter = GoRouter(
     ),
 
     GoRoute(
+      path: '/persons/settled',
+      parentNavigatorKey: _rootKey,
+      builder: (_, _) => const SettledScreen(),
+    ),
+
+    GoRoute(
       path: '/persons/ussd-pay',
       parentNavigatorKey: _rootKey,
       builder: (_, _) => const UssdPayScreen(),
