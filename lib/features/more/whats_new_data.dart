@@ -23,6 +23,18 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.storefront_outlined,
+    title: 'People as payees',
+    location: 'Add expense/income → Payee',
+    description:
+        'Pick one of your people as the payee — like money given to a '
+        'parent that is not coming back. It shows on their page in a small '
+        '"As payee" list but never counts toward owe/due. Add people or '
+        'payees straight from contacts; someone already saved is reused, '
+        'never duplicated. In Payees, "Connect to person" joins a payee to '
+        'someone in People.',
+  ),
+  WhatsNewEntry(
     icon: Icons.radio_button_checked_rounded,
     title: 'Quick actions ring',
     location: 'Hold ➕ · set up in Settings → Quick Actions',

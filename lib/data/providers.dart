@@ -639,6 +639,16 @@ final personBalancesProvider = StreamProvider<Map<int, Money>>(
   (ref) => ref.watch(dbProvider).watchAllPersonBalances(),
 );
 
+/// Every person, archived included, by id — a payee linked to someone
+/// archived still needs their name and photo.
+final allPersonsByIdProvider = Provider<Map<int, PersonRow>>((ref) {
+  final active = ref.watch(personsProvider).valueOrNull ?? const [];
+  final archived = ref.watch(archivedPersonsProvider).valueOrNull ?? const [];
+  return {
+    for (final p in [...active, ...archived]) p.id: p,
+  };
+});
+
 /// For naming the person on a `personOut` / `personIn` ledger row.
 final personMapProvider = Provider<Map<int, PersonRow>>((ref) {
   final people = ref.watch(personsProvider).valueOrNull ?? const [];
@@ -1866,52 +1876,104 @@ final payeeSuggestionsProvider = Provider<List<String>>((ref) {
 /// One payee's net flow: income minus expense, how many transactions, and
 /// when one last happened. [net] is signed — positive when a payee has paid
 /// more than they've been paid (e.g. an employer, income-only), negative the
-/// other way (e.g. a shop, expense-only).
+/// other way (e.g. a shop, expense-only). [person] is set when this payee is
+/// one of the user's people (picked as a person, or connected later) — the
+/// hub then shows their avatar and [payee] is their current name.
 typedef PayeeSummary = ({
   String payee,
+  PersonRow? person,
   Money net,
   int count,
   DateTime lastUsed,
 });
 
 /// Every payee named on an expense or income, ranked by absolute net flow —
-/// the Payees hub.
+/// the Payees hub. Rows linked to a person group by that person (so a rename
+/// never splits them); everything else groups by the payee text.
 final payeeSummariesProvider = Provider<List<PayeeSummary>>((ref) {
   final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
+  final people = ref.watch(allPersonsByIdProvider);
   final nets = <String, Money>{};
   final counts = <String, int>{};
   final lastUsed = <String, DateTime>{};
+  final names = <String, String>{};
+  final personOf = <String, PersonRow>{};
   for (final t in txs) {
     final p = t.payee;
     if (!t.type.isIncomeOrExpense || p == null || p.isEmpty) continue;
+    final person = t.personId == null ? null : people[t.personId];
+    final key = person == null ? 'n:$p' : 'p:${person.id}';
+    if (person != null) personOf[key] = person;
+    names[key] = person?.name ?? p;
     final signed = t.type == TxType.expense ? -t.amount : t.amount;
-    nets[p] = (nets[p] ?? const Money.zero()) + signed;
-    counts[p] = (counts[p] ?? 0) + 1;
-    final seen = lastUsed[p];
-    if (seen == null || t.date.isAfter(seen)) lastUsed[p] = t.date;
+    nets[key] = (nets[key] ?? const Money.zero()) + signed;
+    counts[key] = (counts[key] ?? 0) + 1;
+    final seen = lastUsed[key];
+    if (seen == null || t.date.isAfter(seen)) lastUsed[key] = t.date;
   }
   final out = [
-    for (final name in nets.keys)
+    for (final key in nets.keys)
       (
-        payee: name,
-        net: nets[name]!,
-        count: counts[name]!,
-        lastUsed: lastUsed[name]!,
+        payee: names[key]!,
+        person: personOf[key],
+        net: nets[key]!,
+        count: counts[key]!,
+        lastUsed: lastUsed[key]!,
       ),
   ]..sort((a, b) => b.net.abs.paise.compareTo(a.net.abs.paise));
   return out;
 });
 
-/// One payee's expense/income history, newest first.
+/// One payee's expense/income history, newest first — by payee text, for a
+/// payee that isn't a person (see [personPayeeTransactionsProvider]).
 final payeeTransactionsProvider = Provider.family<List<TransactionRow>, String>(
   (ref, payee) {
     final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
     return txs
-        .where((t) => t.type.isIncomeOrExpense && t.payee == payee)
+        .where(
+          (t) =>
+              t.type.isIncomeOrExpense &&
+              t.payee == payee &&
+              t.personId == null,
+        )
         .toList()
       ..sort((a, b) => b.date.compareTo(a.date));
   },
 );
+
+/// Every income/expense that named this person as its payee, newest first.
+/// Shown on their page apart from lending/borrowing — none of it counts
+/// toward owe/due. A repayment counted as income also carries the person but
+/// has no payee (its entry already shows it), so it never appears here.
+final personPayeeTransactionsProvider =
+    Provider.family<List<TransactionRow>, int>((ref, personId) {
+      final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
+      return txs
+          .where(
+            (t) =>
+                t.type.isIncomeOrExpense &&
+                t.personId == personId &&
+                (t.payee?.isNotEmpty ?? false),
+          )
+          .toList()
+        ..sort((a, b) => b.date.compareTo(a.date));
+    });
+
+/// Payee names not linked to any person, most recently used first — the
+/// "Payees" half of the payee picker (people get their own half).
+final plainPayeeNamesProvider = Provider<List<String>>((ref) {
+  final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
+  final lastUsed = <String, DateTime>{};
+  for (final t in txs) {
+    final p = t.payee;
+    if (!t.type.isIncomeOrExpense || t.personId != null) continue;
+    if (p == null || p.isEmpty) continue;
+    final seen = lastUsed[p];
+    if (seen == null || t.date.isAfter(seen)) lastUsed[p] = t.date;
+  }
+  return lastUsed.keys.toList()
+    ..sort((a, b) => lastUsed[b]!.compareTo(lastUsed[a]!));
+});
 
 // ── Export / Backup ─────────────────────────────────────────────────────────
 

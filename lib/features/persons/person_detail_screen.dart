@@ -183,8 +183,164 @@ class PersonDetailScreen extends ConsumerWidget {
               );
             },
           ),
+          SliverToBoxAdapter(child: _PayeeActivity(personId: person.id)),
           const NavBarInsetSliver(),
         ],
+      ),
+    );
+  }
+}
+
+/// Income/expense where this person was picked as the payee — e.g. money
+/// given to a parent that isn't coming back. Deliberately small and set
+/// apart from the ledger above: none of it counts toward owe/due.
+class _PayeeActivity extends ConsumerWidget {
+  const _PayeeActivity({required this.personId});
+
+  final int personId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final txs = ref.watch(personPayeeTransactionsProvider(personId));
+    if (txs.isEmpty) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    final categories = ref.watch(categoryMapProvider);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    final net = txs.fold(
+      const Money.zero(),
+      (sum, t) => sum + (t.type == TxType.expense ? -t.amount : t.amount),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 0, 4, 2),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'AS PAYEE',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: muted,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                ),
+                MoneyText(
+                  net,
+                  signed: true,
+                  color: muted,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+            child: Text(
+              'Paid to or received from them. Not counted in owe/due.',
+              style: theme.textTheme.bodySmall?.copyWith(color: muted),
+            ),
+          ),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: theme.colorScheme.outlineVariant),
+            ),
+            child: Column(
+              children: [
+                for (var i = 0; i < txs.length; i++) ...[
+                  if (i > 0)
+                    Divider(
+                      height: 1,
+                      indent: 44,
+                      color: theme.colorScheme.outlineVariant,
+                    ),
+                  _PayeeTxRow(
+                    tx: txs[i],
+                    categoryName: categories[txs[i].categoryId]?.name,
+                    isFirst: i == 0,
+                    isLast: i == txs.length - 1,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PayeeTxRow extends StatelessWidget {
+  const _PayeeTxRow({
+    required this.tx,
+    required this.categoryName,
+    required this.isFirst,
+    required this.isLast,
+  });
+
+  final TransactionRow tx;
+  final String? categoryName;
+  final bool isFirst;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    final isExpense = tx.type == TxType.expense;
+    final note = tx.note?.trim();
+    final title = (note != null && note.isNotEmpty)
+        ? note
+        : categoryName ?? labelForTxType(tx.type);
+
+    return InkWell(
+      borderRadius: BorderRadius.vertical(
+        top: isFirst ? const Radius.circular(16) : Radius.zero,
+        bottom: isLast ? const Radius.circular(16) : Radius.zero,
+      ),
+      onTap: () => context.push('/transaction/${tx.id}'),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        child: Row(
+          children: [
+            Icon(
+              isExpense ? Icons.north_east_rounded : Icons.south_west_rounded,
+              size: 16,
+              color: muted,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              DateFormat('d MMM').format(tx.date),
+              style: theme.textTheme.bodySmall?.copyWith(color: muted),
+            ),
+            const SizedBox(width: 12),
+            MoneyText(
+              isExpense ? -tx.amount : tx.amount,
+              signed: true,
+              color: muted,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

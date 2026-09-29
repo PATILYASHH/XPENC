@@ -11,20 +11,31 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../persons/person_avatar.dart';
 
 /// One payee's expense/income history (GitHub #62). "Rename" bulk-edits
 /// every transaction that named this payee — renaming to a name that already
 /// exists elsewhere merges the two into one, since they simply end up
 /// sharing a name.
+///
+/// With [personId] set, this payee is one of the user's people: the history
+/// follows the person link (their name is the title, renamed from their own
+/// page), and it can be opened or disconnected. A plain payee gets "Connect
+/// to person" instead — for someone who's both a payee and in People.
 class PayeeDetailScreen extends ConsumerWidget {
-  const PayeeDetailScreen({required this.payee, super.key});
+  const PayeeDetailScreen({required this.payee, this.personId, super.key});
 
   final String payee;
+  final int? personId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final txs = ref.watch(payeeTransactionsProvider(payee));
+    final pid = personId;
+    final person = pid == null ? null : ref.watch(allPersonsByIdProvider)[pid];
+    final txs = pid == null
+        ? ref.watch(payeeTransactionsProvider(payee))
+        : ref.watch(personPayeeTransactionsProvider(pid));
     final net = txs.fold(
       const Money.zero(),
       (sum, t) => sum + (t.type == TxType.expense ? -t.amount : t.amount),
@@ -35,17 +46,55 @@ class PayeeDetailScreen extends ConsumerWidget {
         slivers: [
           SliverAppBar(
             pinned: true,
-            title: Text(payee),
+            title: Text(person?.name ?? payee),
             actions: [
-              IconButton(
-                icon: const Icon(Icons.edit_outlined),
-                tooltip: 'Rename',
-                onPressed: () => _renameDialog(context, ref),
-              ),
+              if (pid == null)
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined),
+                  tooltip: 'Rename',
+                  onPressed: () => _renameDialog(context, ref),
+                )
+              else
+                PopupMenuButton<void>(
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      onTap: () => _disconnect(context, ref, pid),
+                      child: const Text('Disconnect from person'),
+                    ),
+                  ],
+                ),
             ],
           ),
           SliverToBoxAdapter(
             child: _TotalHero(net: net, count: txs.length),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
+              child: pid == null
+                  ? FilledButton.tonalIcon(
+                      onPressed: () => _connect(context, ref),
+                      icon: const Icon(Icons.link_rounded),
+                      label: const Text('Connect to person'),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                      ),
+                    )
+                  : FilledButton.tonalIcon(
+                      onPressed: () => context.push('/person/$pid'),
+                      icon: person == null
+                          ? const Icon(Icons.person_outline_rounded)
+                          : PersonAvatar(
+                              name: person.name,
+                              photoPath: person.photoPath,
+                              radius: 11,
+                            ),
+                      label: const Text('Open person'),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                      ),
+                    ),
+            ),
           ),
           SliverToBoxAdapter(
             child: Padding(
@@ -75,9 +124,67 @@ class PayeeDetailScreen extends ConsumerWidget {
                 itemBuilder: (context, i) => _TxRow(tx: txs[i]),
               ),
             ),
-        const NavBarInsetSliver(),],
+          const NavBarInsetSliver(),
+        ],
       ),
     );
+  }
+
+  /// Links every transaction that named this payee to a person — picked from
+  /// People, or created from this payee's name. Only a label: owe/due never
+  /// changes.
+  Future<void> _connect(BuildContext context, WidgetRef ref) async {
+    final router = GoRouter.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final picked = await showModalBottomSheet<PersonRow>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      useRootNavigator: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (_) => _ConnectPersonSheet(payee: payee),
+    );
+    if (picked == null) return;
+    await ref
+        .read(dbProvider)
+        .connectPayeeToPerson(payee: payee, personId: picked.id);
+    // The route names the old payee — swap to the person-linked view.
+    router.pushReplacement(
+      '/more/payees/${Uri.encodeComponent(picked.name)}?person=${picked.id}',
+    );
+    messenger.showSnackBar(
+      SnackBar(content: Text('Connected to ${picked.name}')),
+    );
+  }
+
+  Future<void> _disconnect(BuildContext context, WidgetRef ref, int pid) async {
+    final router = GoRouter.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Disconnect from person?'),
+        content: const Text(
+          'These transactions stay under this payee name but no longer show '
+          "on the person's page.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Disconnect'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final name = ref.read(allPersonsByIdProvider)[pid]?.name ?? payee;
+    await ref.read(dbProvider).disconnectPersonPayee(pid);
+    router.pushReplacement('/more/payees/${Uri.encodeComponent(name)}');
   }
 
   Future<void> _renameDialog(BuildContext context, WidgetRef ref) async {
@@ -221,6 +328,142 @@ class _TxRow extends StatelessWidget {
         ),
       ),
       onTap: () => context.push('/transaction/${tx.id}'),
+    );
+  }
+}
+
+/// Picks the person a payee connects to: search People, or create one named
+/// after the payee. Pops the chosen person.
+class _ConnectPersonSheet extends ConsumerStatefulWidget {
+  const _ConnectPersonSheet({required this.payee});
+
+  final String payee;
+
+  @override
+  ConsumerState<_ConnectPersonSheet> createState() =>
+      _ConnectPersonSheetState();
+}
+
+class _ConnectPersonSheetState extends ConsumerState<_ConnectPersonSheet> {
+  String _query = '';
+
+  Future<void> _createFromPayee() async {
+    final navigator = Navigator.of(context);
+    final db = ref.read(dbProvider);
+    final id = await db.addPerson(widget.payee.trim());
+    final person = await db.personById(id);
+    navigator.pop(person);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final media = MediaQuery.of(context);
+    final q = _query.trim().toLowerCase();
+    final people = [...?ref.watch(personsProvider).valueOrNull]
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    final matched = [
+      for (final p in people)
+        if (q.isEmpty || p.name.toLowerCase().contains(q)) p,
+    ];
+    final sameName = people.any(
+      (p) => p.name.trim().toLowerCase() == widget.payee.trim().toLowerCase(),
+    );
+
+    return SizedBox(
+      height: media.size.height * 0.8,
+      child: Padding(
+        padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 32,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.4,
+                  ),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 4, 24, 4),
+              child: Text(
+                'Connect ${widget.payee} to',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+              child: Text(
+                'Their payments show on the person\'s page. Owe/due never '
+                'changes.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+              child: TextField(
+                onChanged: (v) => setState(() => _query = v),
+                decoration: InputDecoration(
+                  hintText: 'Search people',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  filled: true,
+                  fillColor: theme.colorScheme.surfaceContainerHighest,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: EdgeInsets.only(bottom: 24 + media.viewPadding.bottom),
+                children: [
+                  if (!sameName)
+                    ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                      ),
+                      leading: CircleAvatar(
+                        backgroundColor: theme.colorScheme.primaryContainer,
+                        foregroundColor: theme.colorScheme.onPrimaryContainer,
+                        child: const Icon(Icons.person_add_alt_1_outlined),
+                      ),
+                      title: Text('New person: ${widget.payee}'),
+                      onTap: _createFromPayee,
+                    ),
+                  for (final p in matched)
+                    ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                      ),
+                      leading: PersonAvatar(
+                        name: p.name,
+                        photoPath: p.photoPath,
+                      ),
+                      title: Text(p.name),
+                      onTap: () => Navigator.of(context).pop(p),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

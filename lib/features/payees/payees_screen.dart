@@ -6,6 +6,7 @@ import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/providers.dart';
+import '../persons/person_avatar.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 
 /// Who you pay, or who pays you. Derived from the `payee` typed on each
@@ -29,7 +30,8 @@ class PayeesScreen extends ConsumerWidget {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          if (!embedded) SliverAppBar(pinned: true, title: const Text('Payees')),
+          if (!embedded)
+            SliverAppBar(pinned: true, title: const Text('Payees')),
           SliverToBoxAdapter(
             child: _TotalsHeader(net: net, count: summaries.length),
           ),
@@ -58,7 +60,8 @@ class PayeesScreen extends ConsumerWidget {
               ),
             ),
           const SliverToBoxAdapter(child: SizedBox(height: 32)),
-        const NavBarInsetSliver(),],
+          const NavBarInsetSliver(),
+        ],
       ),
     );
   }
@@ -114,16 +117,46 @@ class _PayeeTile extends StatelessWidget {
     final theme = Theme.of(context);
     final s = summary;
 
+    final person = s.person;
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      leading: CircleAvatar(
-        backgroundColor: theme.colorScheme.surfaceContainerHighest,
-        foregroundColor: theme.colorScheme.onSurface,
-        child: Text(
-          _initials(s.payee),
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-      ),
+      leading: person == null
+          ? CircleAvatar(
+              backgroundColor: theme.colorScheme.surfaceContainerHighest,
+              foregroundColor: theme.colorScheme.onSurface,
+              child: Text(
+                _initials(s.payee),
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            )
+          // A person payee: their photo/initials with a small person badge,
+          // so they read apart from shops at a glance.
+          : Stack(
+              clipBehavior: Clip.none,
+              children: [
+                PersonAvatar(name: person.name, photoPath: person.photoPath),
+                Positioned(
+                  right: -3,
+                  bottom: -3,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: AppColors.person,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: theme.colorScheme.surface,
+                        width: 2,
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.person_rounded,
+                      size: 11,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
       title: Text(
         s.payee,
         maxLines: 1,
@@ -131,7 +164,10 @@ class _PayeeTile extends StatelessWidget {
         style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
       ),
       subtitle: Text(
-        s.count == 1 ? '1 transaction' : '${s.count} transactions',
+        [
+          if (person != null) 'Person',
+          s.count == 1 ? '1 transaction' : '${s.count} transactions',
+        ].join(' · '),
         style: theme.textTheme.bodySmall?.copyWith(
           color: theme.colorScheme.onSurfaceVariant,
         ),
@@ -151,7 +187,10 @@ class _PayeeTile extends StatelessWidget {
           ),
         ),
       ),
-      onTap: () => context.push('/more/payees/${Uri.encodeComponent(s.payee)}'),
+      onTap: () => context.push(
+        '/more/payees/${Uri.encodeComponent(s.payee)}'
+        '${person == null ? '' : '?person=${person.id}'}',
+      ),
     );
   }
 }

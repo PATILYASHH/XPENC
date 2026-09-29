@@ -1283,8 +1283,12 @@ class AppDatabase extends _$AppDatabase {
         );
       }
     }
-    if (!type.isPersonMovement && personId != null) {
-      throw ArgumentError('Only a person movement names a person.');
+    // An income/expense may name a person too — a person picked as its payee
+    // (e.g. money given to a parent that won't come back). That link is only
+    // a label: balances come from PersonEntries, so it never counts toward
+    // owe/due.
+    if (!type.isPersonMovement && !type.isIncomeOrExpense && personId != null) {
+      throw ArgumentError('Only a person movement or payee names a person.');
     }
     if (!type.isIncomeOrExpense && payee != null) {
       throw ArgumentError('Only an income or expense names a payee.');
@@ -1489,6 +1493,7 @@ class AppDatabase extends _$AppDatabase {
     required DateTime date,
     String? note,
     String? payee,
+    int? personId,
     String? imagePath,
     String? customIcon,
   }) async {
@@ -1501,6 +1506,7 @@ class AppDatabase extends _$AppDatabase {
         amount: leg.amount,
         accountId: leg.accountId,
         categoryId: categoryId,
+        personId: personId,
         payee: payee,
       );
     }
@@ -1522,6 +1528,7 @@ class AppDatabase extends _$AppDatabase {
               date: date,
               note: Value(note),
               payee: Value(payee),
+              personId: Value(personId),
               imagePath: Value(isAnchor ? imagePath : null),
               customIcon: Value(isAnchor ? customIcon : null),
             ),
@@ -1564,6 +1571,7 @@ class AppDatabase extends _$AppDatabase {
     required DateTime date,
     String? note,
     String? payee,
+    int? personId,
     String? imagePath,
     String? customIcon,
   }) async {
@@ -1575,6 +1583,7 @@ class AppDatabase extends _$AppDatabase {
       amount: amount,
       accountId: accountId,
       categoryId: categoryId,
+      personId: personId,
       payee: payee,
     );
     await _validateTx(
@@ -1594,6 +1603,7 @@ class AppDatabase extends _$AppDatabase {
           date: date,
           note: Value(note),
           payee: Value(payee),
+          personId: Value(personId),
           imagePath: Value(imagePath),
           customIcon: Value(customIcon),
         ),
@@ -1824,6 +1834,49 @@ class AppDatabase extends _$AppDatabase {
       TransactionsCompanion(payee: Value(trimmed)),
     );
   }
+
+  /// "Connect to person" on a payee: every income/expense that named [payee]
+  /// now points at [personId] and takes their name, so the payee and the
+  /// person read as one everywhere. Still only a label — never touches the
+  /// person's owe/due balance (see [_validateTx]).
+  Future<void> connectPayeeToPerson({
+    required String payee,
+    required int personId,
+  }) => transaction(() async {
+    final person = await (select(
+      persons,
+    )..where((p) => p.id.equals(personId))).getSingle();
+    await (update(transactions)..where(
+          (t) =>
+              t.payee.equals(payee) &
+              t.type.isInValues(const [TxType.income, TxType.expense]),
+        ))
+        .write(
+          TransactionsCompanion(
+            personId: Value(personId),
+            payee: Value(person.name),
+          ),
+        );
+  });
+
+  /// Undoes [connectPayeeToPerson]: the payee name stays on every row, the
+  /// person link goes. Person movements (lending/borrowing) and a repayment
+  /// counted as income are owned by a person entry and are left alone.
+  Future<void> disconnectPersonPayee(int personId) => transaction(() async {
+    final owned = {
+      for (final e in await (select(
+        personEntries,
+      )..where((e) => e.personId.equals(personId))).get())
+        if (e.transactionId != null) e.transactionId!,
+    };
+    await (update(transactions)..where(
+          (t) =>
+              t.personId.equals(personId) &
+              t.type.isInValues(const [TxType.income, TxType.expense]) &
+              t.id.isNotIn(owned),
+        ))
+        .write(const TransactionsCompanion(personId: Value(null)));
+  });
 
   // ── Tags ──────────────────────────────────────────────────────────────────
 
@@ -3653,20 +3706,31 @@ class AppDatabase extends _$AppDatabase {
     String? cashapp,
     String? revolut,
     String? photoPath,
-  }) => (update(persons)..where((p) => p.id.equals(id))).write(
-    PersonsCompanion(
-      name: Value(name),
-      contact: Value(contact),
-      note: Value(note),
-      upiId: Value(upiId),
-      phone: Value(phone),
-      paypal: Value(paypal),
-      venmo: Value(venmo),
-      cashapp: Value(cashapp),
-      revolut: Value(revolut),
-      photoPath: Value(photoPath),
-    ),
-  );
+  }) => transaction(() async {
+    await (update(persons)..where((p) => p.id.equals(id))).write(
+      PersonsCompanion(
+        name: Value(name),
+        contact: Value(contact),
+        note: Value(note),
+        upiId: Value(upiId),
+        phone: Value(phone),
+        paypal: Value(paypal),
+        venmo: Value(venmo),
+        cashapp: Value(cashapp),
+        revolut: Value(revolut),
+        photoPath: Value(photoPath),
+      ),
+    );
+    // A person picked as a payee carries their name as the payee text —
+    // keep it in step so the Payees hub never shows a stale name.
+    await (update(transactions)..where(
+          (t) =>
+              t.personId.equals(id) &
+              t.payee.isNotNull() &
+              t.type.isInValues(const [TxType.income, TxType.expense]),
+        ))
+        .write(TransactionsCompanion(payee: Value(name)));
+  });
 
   /// "Link contact" on an existing person: writes only what the contact
   /// actually provided — a null [phone]/[photoPath] leaves that field as it
@@ -3681,6 +3745,9 @@ class AppDatabase extends _$AppDatabase {
               : Value(photoPath),
         ),
       );
+
+  Future<PersonRow?> personById(int id) =>
+      (select(persons)..where((p) => p.id.equals(id))).getSingleOrNull();
 
   Stream<List<PersonRow>> watchPersons() =>
       (select(persons)..where((p) => p.isArchived.equals(false))).watch();
@@ -3762,6 +3829,15 @@ class AppDatabase extends _$AppDatabase {
     for (final entry in entries) {
       await deletePersonEntry(entry.id);
     }
+
+    // An income/expense that only named them as its payee is real spending —
+    // it survives, just no longer linked (its payee text stays).
+    await (update(transactions)..where(
+          (t) =>
+              t.personId.equals(id) &
+              t.type.isInValues(const [TxType.income, TxType.expense]),
+        ))
+        .write(const TransactionsCompanion(personId: Value(null)));
 
     // Any person movement not owned by an entry (shouldn't exist, but a
     // stale one must not block the delete on its foreign key).

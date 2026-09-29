@@ -468,6 +468,9 @@ final appRouter = GoRouter(
                         payee: Uri.decodeComponent(
                           state.pathParameters['name']!,
                         ),
+                        personId: int.tryParse(
+                          state.uri.queryParameters['person'] ?? '',
+                        ),
                       ),
                     ),
                   ],

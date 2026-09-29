@@ -101,6 +101,7 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
     try {
       final contact = await pickContact();
       if (contact == null || !mounted) return;
+      if (widget.person == null && await _reuseExisting(contact)) return;
       final name = contact.name;
       if (widget.person == null && name != null) {
         _nameController.text = name;
@@ -121,6 +122,45 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
     }
   }
 
+  /// Adding someone already in the app (same phone, else same name — active
+  /// or archived) from contacts must not create a second copy of them: this
+  /// keeps the existing person, fills in a phone/photo they don't have yet,
+  /// brings them back from the archive, and closes the sheet. True when it
+  /// did.
+  Future<bool> _reuseExisting(PickedContact contact) async {
+    final everyone = [
+      ...?ref.read(personsProvider).valueOrNull,
+      ...?ref.read(archivedPersonsProvider).valueOrNull,
+    ];
+    final existing = matchExistingPerson(contact, everyone);
+    if (existing == null) return false;
+    final db = ref.read(dbProvider);
+    if ((existing.photoPath == null && contact.photoPath != null) ||
+        (existing.phone == null && contact.phone != null)) {
+      await db.linkPersonContact(
+        existing.id,
+        phone: existing.phone == null ? contact.phone : null,
+        photoPath: existing.photoPath == null ? contact.photoPath : null,
+      );
+    }
+    if (existing.isArchived) await db.unarchivePerson(existing.id);
+    if (!mounted) return true;
+    final messenger = ScaffoldMessenger.of(context);
+    Navigator.of(context).pop();
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            existing.isArchived
+                ? '${existing.name} was archived — brought them back.'
+                : '${existing.name} is already in your people.',
+          ),
+        ),
+      );
+    return true;
+  }
+
   Future<void> _save() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
@@ -128,8 +168,55 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
       return;
     }
 
-    setState(() => _saving = true);
     final person = widget.person;
+    // A typed name/phone that matches someone already here is most likely
+    // them again — ask rather than silently add a duplicate (two different
+    // people can share a name, so it's never blocked outright).
+    if (person == null) {
+      final everyone = [
+        ...?ref.read(personsProvider).valueOrNull,
+        ...?ref.read(archivedPersonsProvider).valueOrNull,
+      ];
+      final existing = matchExistingPerson((
+        name: name,
+        phone: _phoneController.text.trim().nullIfEmpty,
+        photoPath: null,
+        detailsAllowed: true,
+      ), everyone);
+      if (existing != null) {
+        final addAnyway = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Already in your people'),
+            content: Text(
+              '${existing.name} already exists'
+              '${existing.isArchived ? ' (archived)' : ''}. '
+              'Keep the existing one, or add a separate person?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Add separate'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Keep existing'),
+              ),
+            ],
+          ),
+        );
+        if (addAnyway == null || !mounted) return;
+        if (!addAnyway) {
+          if (existing.isArchived) {
+            await ref.read(dbProvider).unarchivePerson(existing.id);
+          }
+          if (mounted) Navigator.of(context).pop();
+          return;
+        }
+      }
+    }
+
+    setState(() => _saving = true);
     final db = ref.read(dbProvider);
     if (person == null) {
       await db.addPerson(

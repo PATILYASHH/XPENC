@@ -11,6 +11,12 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 ## [1.6.3] — 2026-09-27
 
 ### Added
+- **People as payees** — the payee picker (now a full sheet sized above the
+  keyboard) lists People and past payees, plus "New person" / "New payee"
+  from contacts. An expense or income paid to a person shows on their page
+  under a small "As payee" list and never counts toward owe/due. In the
+  Payees hub, people get their photo and a person badge; a plain payee has
+  "Connect to person" (and a linked one "Disconnect").
 - **Calculators (Beta)** — a new More → Calculators group: FD & RD
   (FD compounding choice, RD compounded quarterly), Loan EMI (reuses the
   loan module's amortization, year-wise schedule, prepayment savings),
@@ -66,6 +72,11 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   when moving to the rate or tenure field.
 - The last item of lists could sit under the system navigation bar and be
   impossible to tap (#137).
+- Adding a contact who's already in People (same phone, else same name)
+  created a duplicate person; it now reuses the existing one (and brings
+  them back from the archive).
+- Recording a repayment counted as income failed with "Only a person
+  movement names a person."
 
 ## [1.6.2] — 2026-09-26
 

@@ -17,6 +17,8 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../accounts/envelope_outflow.dart';
+import '../payees/payee_picker_sheet.dart';
+import '../persons/person_avatar.dart';
 import '../settings/currency_picker_sheet.dart';
 import '../tags/tag_picker_sheet.dart';
 import 'date_time_combine.dart';
@@ -141,7 +143,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   /// Expense only — who got paid. Free text with autocomplete, never read for
   /// any other transaction type.
   final _payeeController = TextEditingController();
-  final _payeeFocus = FocusNode();
+
+  /// Set when the payee is one of the user's people (picked in the payee
+  /// sheet) — a label only, never owe/due. Cleared with the payee.
+  int? _payeePersonId;
 
   /// Cuts across category/account — any transaction type can carry tags.
   Set<int> _tagIds = {};
@@ -234,9 +239,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   /// typed. Every money field on this screen (main amount, split rows,
   /// hybrid legs, foreign, change) now shares the same in-app keypad instead
   /// of the OS keyboard (see GitHub #135), so the only real `TextField`s left
-  /// here are Note and Payee — the keypad only hides while one of those has
-  /// focus.
-  bool get _textFieldFocused => _noteFocus.hasFocus || _payeeFocus.hasFocus;
+  /// here is Note (Payee is picked in its own sheet) — the keypad only hides
+  /// while it has focus.
+  bool get _textFieldFocused => _noteFocus.hasFocus;
 
   @override
   void initState() {
@@ -250,7 +255,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         ? initial!
         : TxType.expense;
     _noteFocus.addListener(_onFieldFocusChanged);
-    _payeeFocus.addListener(_onFieldFocusChanged);
     if (_isEditing) {
       _loading = true;
       WidgetsBinding.instance.addPostFrameCallback((_) => _loadForEdit());
@@ -295,7 +299,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     _noteController.dispose();
     _noteFocus.dispose();
     _payeeController.dispose();
-    _payeeFocus.dispose();
     for (final row in _splitRows) {
       row.dispose();
     }
@@ -357,14 +360,13 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       _date = row.date;
       _noteController.text = row.note ?? '';
       _payeeController.text = row.payee ?? '';
+      _payeePersonId = row.type.isIncomeOrExpense ? row.personId : null;
       _tagIds = tagIds.toSet();
       _imagePath = row.imagePath;
       _customIcon = row.customIcon;
       _isSplit = splits.isNotEmpty;
       for (final s in splits) {
-        _splitRows.add(
-          _SplitEntry(categoryId: s.categoryId, amount: s.amount),
-        );
+        _splitRows.add(_SplitEntry(categoryId: s.categoryId, amount: s.amount));
       }
       _hasForeignCurrency = row.foreignAmount != null;
       _foreignCurrencyCode = row.foreignCurrencyCode;
@@ -423,13 +425,12 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       _categoryId = row.categoryId;
       _noteController.text = row.note ?? '';
       _payeeController.text = row.payee ?? '';
+      _payeePersonId = row.type.isIncomeOrExpense ? row.personId : null;
       _tagIds = tagIds.toSet();
       _customIcon = row.customIcon;
       _isSplit = splits.isNotEmpty;
       for (final s in splits) {
-        _splitRows.add(
-          _SplitEntry(categoryId: s.categoryId, amount: s.amount),
-        );
+        _splitRows.add(_SplitEntry(categoryId: s.categoryId, amount: s.amount));
       }
       _hasForeignCurrency = row.foreignAmount != null;
       _foreignCurrencyCode = row.foreignCurrencyCode;
@@ -1599,8 +1600,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
-                onPressed: () =>
-                    setState(() => _splitRows.add(_SplitEntry())),
+                onPressed: () => setState(() => _splitRows.add(_SplitEntry())),
                 icon: const Icon(Icons.add_rounded, size: 18),
                 label: const Text('Add category'),
               ),
@@ -1765,6 +1765,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           date: _date,
           note: note.isEmpty ? null : note,
           payee: payeeText.isEmpty ? null : payeeText,
+          personId: payeeText.isEmpty ? null : _payeePersonId,
           imagePath: _imagePath,
           customIcon: _customIcon,
         );
@@ -1827,6 +1828,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           date: _date,
           note: note.isEmpty ? null : note,
           payee: payeeText.isEmpty ? null : payeeText,
+          personId: payeeText.isEmpty ? null : _payeePersonId,
           imagePath: _imagePath,
           customIcon: _customIcon,
         );
@@ -1955,6 +1957,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           date: _date,
           note: note.isEmpty ? null : note,
           payee: payee,
+          personId: payee == null ? null : _payeePersonId,
           imagePath: _imagePath,
           foreignCurrencyCode: foreignCurrencyCode,
           foreignAmount: foreignAmount,
@@ -1970,6 +1973,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           date: _date,
           note: note.isEmpty ? null : note,
           payee: payee,
+          personId: payee == null ? null : _payeePersonId,
           imagePath: _imagePath,
           foreignCurrencyCode: foreignCurrencyCode,
           foreignAmount: foreignAmount,
@@ -2198,7 +2202,12 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                     const SizedBox(height: 20),
                     Expanded(
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 8).plusNavBar(context),
+                        padding: const EdgeInsets.fromLTRB(
+                          20,
+                          0,
+                          20,
+                          8,
+                        ).plusNavBar(context),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: _buildPickers(accountMap, categoryMap),
@@ -2452,44 +2461,111 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   }
 
   /// Expense or income only (GitHub #62 — a salary needs a payee too, same as
-  /// a purchase). Free text with autocomplete drawn from payees used before —
-  /// optional, so leaving it blank is a normal, unremarkable choice.
+  /// a purchase). Tapping opens the payee sheet — people, past payees and
+  /// contacts, sized above the keyboard — instead of an inline field whose
+  /// suggestions ended up hidden behind it. Optional: blank is normal.
   Widget _payeeCard() {
     final theme = Theme.of(context);
-    final suggestions = ref.watch(payeeSuggestionsProvider);
+    final name = _payeeController.text.trim();
+    final person = _payeePersonId == null
+        ? null
+        : ref.watch(allPersonsByIdProvider)[_payeePersonId];
     return Card(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Autocomplete<String>(
-          textEditingController: _payeeController,
-          focusNode: _payeeFocus,
-          optionsBuilder: (value) {
-            final q = value.text.trim().toLowerCase();
-            if (q.isEmpty) return const Iterable<String>.empty();
-            return suggestions.where((s) => s.toLowerCase().contains(q));
-          },
-          fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
-            return TextField(
-              controller: controller,
-              focusNode: focusNode,
-              textCapitalization: TextCapitalization.words,
-              decoration: InputDecoration(
-                hintText: _type == TxType.income
-                    ? 'Payee (optional) — who paid you?'
-                    : 'Payee (optional) — who did you pay?',
-                border: InputBorder.none,
-                icon: Icon(
+      child: InkWell(
+        onTap: _pickPayee,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 4, 12),
+          child: Row(
+            children: [
+              if (person != null)
+                PersonAvatar(
+                  name: person.name,
+                  photoPath: person.photoPath,
+                  radius: 14,
+                )
+              else
+                Icon(
                   Icons.storefront_outlined,
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: name.isEmpty
+                    ? Text(
+                        _type == TxType.income
+                            ? 'Payee (optional) — who paid you?'
+                            : 'Payee (optional) — who did you pay?',
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            person?.name ?? name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodyLarge,
+                          ),
+                          if (person != null)
+                            Text(
+                              'Person · not counted in owe/due',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                        ],
+                      ),
               ),
-            );
-          },
+              if (name.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.close_rounded),
+                  tooltip: 'Clear payee',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => setState(() {
+                    _payeeController.clear();
+                    _payeePersonId = null;
+                  }),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: Icon(
+                    Icons.chevron_right_rounded,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  Future<void> _pickPayee() async {
+    FocusScope.of(context).unfocus();
+    final current = _payeeController.text.trim();
+    final choice = await showPayeePickerSheet(
+      context,
+      isIncome: _type == TxType.income,
+      selectedName: current.isEmpty ? null : current,
+      selectedPersonId: _payeePersonId,
+    );
+    if (choice == null || !mounted) return;
+    setState(() {
+      _payeeController.text = choice.name;
+      _payeePersonId = choice.name.isEmpty ? null : choice.personId;
+    });
+    final notice = choice.notice;
+    if (notice != null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(notice)));
+    }
   }
 
   /// AppBar shortcut — badged with the count once any tag is picked. Cuts
@@ -2553,7 +2629,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     if (result == null || !mounted) return;
     setState(() => _tagIds = result);
   }
-
 }
 
 enum _ReceiptSource { camera, gallery }
