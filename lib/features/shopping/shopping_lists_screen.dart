@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/database.dart';
 import '../../data/providers.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// Preset colours for a shopping list. Its own decorative colour, same idea
 /// as a tag's — not a money-direction signal.
@@ -66,7 +67,7 @@ class ShoppingListsScreen extends ConsumerWidget {
             );
           }
           return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 96),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 96).plusNavBar(context),
             itemCount: lists.length,
             itemBuilder: (context, i) => _ShoppingListTile(
               list: lists[i],

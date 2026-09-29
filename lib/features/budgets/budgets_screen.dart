@@ -9,6 +9,7 @@ import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// A top-level category paired with its live (non-archived) children, in the
 /// tree shape the budgets list renders — see [_categoryTree].
@@ -84,6 +85,7 @@ class BudgetsScreen extends ConsumerWidget {
           ),
         ),
         data: (categories) => _body(
+          context,
           theme,
           cs,
           categories,
@@ -118,6 +120,7 @@ class BudgetsScreen extends ConsumerWidget {
           ),
         ),
         data: (categories) => _body(
+          context,
           theme,
           cs,
           categories,
@@ -130,6 +133,7 @@ class BudgetsScreen extends ConsumerWidget {
   }
 
   Widget _body(
+    BuildContext context,
     ThemeData theme,
     ColorScheme cs,
     List<CategoryRow> categories,
@@ -137,7 +141,7 @@ class BudgetsScreen extends ConsumerWidget {
     Money totalBudgeted,
     Money totalSpent,
   ) => ListView(
-    padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+    padding: const EdgeInsets.fromLTRB(20, 12, 20, 32).plusNavBar(context),
     children: [
       _SummaryCard(budgeted: totalBudgeted, spent: totalSpent),
       const SizedBox(height: 24),

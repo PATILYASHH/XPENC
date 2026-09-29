@@ -8,6 +8,7 @@ import '../../core/widgets/money_text.dart' show iconForTxType;
 import '../../data/providers.dart';
 import '../../data/tables.dart' show AppMode;
 import 'settings_common.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// Quick Actions — shortcuts that don't fit any other module. Bank-SMS
 /// capture and OCR corrections live under General's "Message Capture"
@@ -329,7 +330,7 @@ class _QuickActionPickerSheet extends ConsumerWidget {
         top: false,
         child: ListView(
           controller: scrollController,
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.only(bottom: 8).plusNavBar(context),
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),

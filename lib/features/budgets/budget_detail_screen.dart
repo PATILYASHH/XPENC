@@ -9,6 +9,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/providers.dart';
 import 'budgets_screen.dart' show BudgetEditSheet;
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// One category's budget: this period's transactions (a parent's page rolls
 /// up its children's, same as the summary tile that links here), with a
@@ -68,7 +69,7 @@ class BudgetDetailScreen extends ConsumerWidget {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32).plusNavBar(context),
         children: [
           _SummaryCard(
             color: catColor,

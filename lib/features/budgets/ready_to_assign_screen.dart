@@ -9,6 +9,7 @@ import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// The shared Ready to Assign figure, pooled across every Envelope-Mode
 /// account (see `readyToAssignProvider` in `data/providers.dart` —
@@ -74,7 +75,7 @@ class ReadyToAssignScreen extends ConsumerWidget {
       body: poolAccounts.isEmpty
           ? const _EmptyState()
           : ListView(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24).plusNavBar(context),
               children: [
                 const ReadyToAssignCard(),
                 const SizedBox(height: 16),

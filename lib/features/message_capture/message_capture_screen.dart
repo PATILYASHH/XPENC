@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/providers.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// Bank-SMS auto-capture is paused — this screen says so, honestly.
 ///
@@ -25,7 +26,7 @@ class MessageCaptureScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Message Capture')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 40).plusNavBar(context),
         children: [
           Card(
             child: Padding(

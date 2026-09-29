@@ -7,6 +7,7 @@ import '../../data/providers.dart';
 import 'stats_modules.dart';
 import 'stats_sections.dart';
 import 'xpenc_score_screen.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// The Stats hub: the XPENC Score up top, this month at a glance, then one
 /// tile per [StatsModule] — each opens a focused screen (cash flow, spending,
@@ -30,7 +31,7 @@ class StatsScreen extends ConsumerWidget {
 
     const modules = StatsModule.values;
     final body = ListView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 32).plusNavBar(context),
       children: [
         const XpencScoreCard(),
         const SizedBox(height: 28),

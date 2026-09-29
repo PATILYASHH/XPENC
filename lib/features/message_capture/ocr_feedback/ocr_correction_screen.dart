@@ -7,6 +7,7 @@ import '../../../core/branding/app_info.dart';
 import '../../../data/database.dart';
 import '../../../data/providers.dart';
 import 'ocr_correction_export.dart';
+import '../../../core/widgets/nav_bar_inset.dart';
 
 /// Settings > Message Capture > OCR corrections. See
 /// docs/superpowers/specs/2026-08-14-ocr-corrections-design.md.
@@ -28,7 +29,7 @@ class OcrCorrectionScreen extends ConsumerWidget {
         label: const Text('Test a screenshot'),
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 100).plusNavBar(context),
         children: [
           Card(
             child: Padding(

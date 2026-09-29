@@ -8,6 +8,7 @@ import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'backup_service.dart';
 import 'import_from_file.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 String _sizeLabel(int bytes) {
   if (bytes < 1024) return '$bytes B';
@@ -299,7 +300,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Backup & Restore')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32).plusNavBar(context),
         children: [
           Card(
             child: Padding(

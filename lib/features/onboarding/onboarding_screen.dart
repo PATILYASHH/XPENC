@@ -7,6 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart' show AppMode;
 import '../data_export/backup_service.dart' show backupAppFolder;
+import '../../core/widgets/nav_bar_inset.dart';
 
 const _pageDuration = Duration(milliseconds: 280);
 
@@ -318,7 +319,7 @@ class _StepScaffold extends StatelessWidget {
     final cs = theme.colorScheme;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 8, 16, 16),
+      padding: const EdgeInsets.fromLTRB(24, 8, 16, 16).plusNavBar(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -375,7 +376,7 @@ class _WelcomeStep extends StatelessWidget {
     final cs = theme.colorScheme;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 40, 24, 16),
+      padding: const EdgeInsets.fromLTRB(24, 40, 24, 16).plusNavBar(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -425,7 +426,7 @@ class _PathChoiceStep extends StatelessWidget {
     final cs = theme.colorScheme;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 56, 24, 16),
+      padding: const EdgeInsets.fromLTRB(24, 56, 24, 16).plusNavBar(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -821,7 +822,7 @@ class _StartStep extends StatelessWidget {
     final cs = theme.colorScheme;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 60, 24, 16),
+      padding: const EdgeInsets.fromLTRB(24, 60, 24, 16).plusNavBar(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -911,7 +912,7 @@ class _WelcomeBackStep extends StatelessWidget {
     final cs = theme.colorScheme;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 60, 24, 16),
+      padding: const EdgeInsets.fromLTRB(24, 60, 24, 16).plusNavBar(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

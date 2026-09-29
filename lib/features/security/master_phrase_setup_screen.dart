@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/security/recovery_words.dart';
 import '../../data/providers.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 enum _Step { reveal, confirm }
 
@@ -100,7 +101,7 @@ class _MasterPhraseSetupScreenState
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24).plusNavBar(context),
       children: [
         Text(
           'Write these ${_words.length} words down, in order, and keep them '

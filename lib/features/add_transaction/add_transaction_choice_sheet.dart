@@ -6,6 +6,7 @@ import '../../core/money.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// The ➕ button's entry point (GitHub #125): "start from scratch" or pick a
 /// saved template to prefill from. Only ever called when
@@ -57,7 +58,7 @@ class _AddChoiceSheet extends ConsumerWidget {
         top: false,
         child: ListView(
           controller: scrollController,
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.only(bottom: 8).plusNavBar(context),
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),

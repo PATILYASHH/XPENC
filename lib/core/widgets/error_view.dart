@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'nav_bar_inset.dart';
 
 /// Shown when something has genuinely failed.
 ///
@@ -24,7 +25,7 @@ class ErrorView extends StatelessWidget {
 
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(24).plusNavBar(context),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,

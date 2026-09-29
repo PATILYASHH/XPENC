@@ -6,6 +6,7 @@ import '../../core/app_icons.dart';
 import '../../core/iso_week.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// Which widget the "Date range" section shows — a plain range picker, or a
 /// week-at-a-time stepper (GitHub #121). Local to the sheet: neither
@@ -161,7 +162,7 @@ class _TransactionFiltersSheetState
             ),
             Flexible(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 8).plusNavBar(context),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

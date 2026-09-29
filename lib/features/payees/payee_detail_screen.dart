@@ -10,6 +10,7 @@ import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// One payee's expense/income history (GitHub #62). "Rename" bulk-edits
 /// every transaction that named this payee — renaming to a name that already
@@ -74,7 +75,7 @@ class PayeeDetailScreen extends ConsumerWidget {
                 itemBuilder: (context, i) => _TxRow(tx: txs[i]),
               ),
             ),
-        ],
+        const NavBarInsetSliver(),],
       ),
     );
   }

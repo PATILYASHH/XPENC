@@ -14,6 +14,7 @@ import 'account_report_modules.dart';
 import 'account_reports_data.dart';
 import 'chart_widgets.dart';
 import 'stats_sections.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// Account Reports hub — the same shape as Stats: total money up top, this
 /// period across your accounts, then one tile per [AccountReportModule]
@@ -28,7 +29,7 @@ class AccountReportsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Account Reports')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32).plusNavBar(context),
         children: [
           const _HeroCard(),
           const SizedBox(height: 28),

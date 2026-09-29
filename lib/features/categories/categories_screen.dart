@@ -9,6 +9,7 @@ import '../../core/widgets/icon_picker_sheet.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// Preset colours for a category. Plain ints — this is the category's own
 /// decorative colour, not a money-direction signal.
@@ -112,7 +113,7 @@ class _CategoryList extends ConsumerWidget {
       data: (categories) {
         final rows = _flatten(categories);
         return ListView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 96),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 96).plusNavBar(context),
           children: [
             if (categories.isEmpty)
               _EmptyCategories(kind: kind)

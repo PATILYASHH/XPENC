@@ -6,6 +6,7 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import 'contact_import.dart';
 import 'person_avatar.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// Bottom sheet: pick a group's members — used both when creating a group
 /// and when editing an existing one's membership. Returns the chosen person
@@ -148,7 +149,12 @@ class _GroupMemberPickerSheetState
                       child: Center(child: CircularProgressIndicator()),
                     )
                   : SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                      padding: const EdgeInsets.fromLTRB(
+                        20,
+                        0,
+                        20,
+                        20,
+                      ).plusNavBar(context),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [

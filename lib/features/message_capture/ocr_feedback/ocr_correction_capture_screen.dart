@@ -7,6 +7,7 @@ import '../../../data/tables.dart';
 import '../ocr_service.dart';
 import '../parser/bank_message.dart';
 import '../parser/screenshot_parser.dart';
+import '../../../core/widgets/nav_bar_inset.dart';
 
 const ocrCorrectionAppLabels = [
   'Google Pay',
@@ -149,7 +150,7 @@ class _OcrCorrectionCaptureScreenState
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(20).plusNavBar(context),
               children: [
                 if (_rawText == null) ...[
                   Text(

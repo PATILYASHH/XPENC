@@ -9,6 +9,7 @@ import '../../core/widgets/beta_badge.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart' show AppMode, MoreScreenViewMode;
 import '../calculators/calculator_kind.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// Hub page. Grouped, not a flat dump. Every tile navigates to a real route.
 class MoreScreen extends ConsumerWidget {
@@ -254,7 +255,7 @@ class MoreScreen extends ConsumerWidget {
               ),
           ],
           const SliverToBoxAdapter(child: SizedBox(height: 32)),
-        ],
+        const NavBarInsetSliver(),],
       ),
     );
   }

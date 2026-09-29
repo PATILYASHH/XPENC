@@ -14,6 +14,7 @@ import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'credit_card_statement_section.dart';
 import 'envelope_section.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// [account]'s own currency — null for the parent currency, matching
 /// [AccountRow.currencyCode]'s own convention. A debit/UPI instrument
@@ -135,7 +136,7 @@ class _AccountDetailView extends ConsumerWidget {
             currency: _accountCurrency(account, accountMap),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 32)),
-        ],
+        const NavBarInsetSliver(),],
       ),
     );
   }

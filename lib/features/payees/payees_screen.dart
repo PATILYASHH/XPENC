@@ -6,6 +6,7 @@ import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/providers.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// Who you pay, or who pays you. Derived from the `payee` typed on each
 /// expense or income (GitHub #62) — there is no separate table, so this
@@ -57,7 +58,7 @@ class PayeesScreen extends ConsumerWidget {
               ),
             ),
           const SliverToBoxAdapter(child: SizedBox(height: 32)),
-        ],
+        const NavBarInsetSliver(),],
       ),
     );
   }

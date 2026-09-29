@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/currency.dart';
 import '../../data/providers.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// A searchable list of every currency the app knows. Picking one writes it to
 /// settings; the whole app reformats immediately (see [CurrencyScope]).
@@ -128,7 +129,7 @@ class _CurrencyPickerSheetState extends ConsumerState<CurrencyPickerSheet> {
                       ),
                     )
                   : ListView.builder(
-                      padding: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.only(bottom: 8).plusNavBar(context),
                       itemCount: results.length,
                       itemBuilder: (context, i) {
                         final c = results[i];

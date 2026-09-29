@@ -18,6 +18,7 @@ import '../budgets/ready_to_assign_screen.dart';
 import '../message_capture/review_inbox_screen.dart';
 import '../reports/chart_widgets.dart';
 import 'sparkline.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// The graphical glance view: net worth, this-month income vs expense,
 /// account balances, budgets, spend breakdown and recent activity.
@@ -50,7 +51,7 @@ class DashboardScreen extends ConsumerWidget {
               const SizedBox(height: 32),
             ],
           ),
-        ],
+        const NavBarInsetSliver(),],
       ),
     );
   }

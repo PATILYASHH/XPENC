@@ -11,6 +11,7 @@ import '../../core/widgets/amount_keypad_field.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 const _presetColors = <int>[
   0xFF16A34A,
@@ -137,7 +138,7 @@ class _GoalsTab extends ConsumerWidget {
           );
         }
         return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 96),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 96).plusNavBar(context),
           itemCount: progress.length,
           itemBuilder: (context, i) => _GoalCard(progress: progress[i]),
         );
@@ -308,7 +309,7 @@ class _LoansTab extends ConsumerWidget {
           );
         }
         return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 96),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 96).plusNavBar(context),
           itemCount: loans.length,
           itemBuilder: (context, i) => _LoanCard(loan: loans[i]),
         );

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/widgets/error_view.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// Preset colours for a group. Same palette as a plain tag's — this is
 /// decorative only, not a money-direction signal.
@@ -42,7 +43,7 @@ class TagGroupsScreen extends ConsumerWidget {
         ),
         data: (groups) {
           return ListView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 96),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 96).plusNavBar(context),
             children: [
               if (groups.isEmpty)
                 _EmptyGroups(theme: theme)

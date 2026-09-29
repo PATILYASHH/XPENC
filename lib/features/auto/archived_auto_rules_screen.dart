@@ -6,6 +6,7 @@ import '../../core/theme/app_colors.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// Auto rules paused via **Pause** on [AutoScreen] — hidden from its main
 /// list entirely (see GitHub #61) and gathered here instead. Restoring one
@@ -42,7 +43,7 @@ class ArchivedAutoRulesScreen extends ConsumerWidget {
               ),
             )
           : ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.symmetric(vertical: 8).plusNavBar(context),
               itemCount: rules.length,
               separatorBuilder: (_, _) => const Divider(height: 1, indent: 70),
               itemBuilder: (context, i) => _ArchivedRuleTile(rule: rules[i]),

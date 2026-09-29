@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/database.dart';
 import '../../data/providers.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// Bottom sheet: pick any number of tags as toggleable filter chips. New tags
 /// are created from **More → Tags**, not from here — this sheet only selects.
@@ -105,7 +106,7 @@ class _TagPickerSheetState extends ConsumerState<TagPickerSheet> {
                     );
                   }
                   return SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20).plusNavBar(context),
                     child: Wrap(
                       spacing: 10,
                       runSpacing: 10,

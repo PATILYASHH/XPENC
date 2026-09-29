@@ -7,6 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/amount_keypad_field.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// One shopping list's items — not linked to the ledger. Checking an item
 /// off just marks it bought; logging the actual expense (if any) happens
@@ -105,7 +106,7 @@ class ShoppingListScreen extends ConsumerWidget {
           );
 
           return ListView(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 96),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 96).plusNavBar(context),
             children: [
               if (unchecked.isNotEmpty && !estimatedTotal.isZero)
                 Padding(

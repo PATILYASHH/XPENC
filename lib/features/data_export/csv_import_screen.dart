@@ -11,6 +11,7 @@ import '../../core/money.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'csv_import.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// Preset colours assigned round-robin to categories the importer creates
 /// on the fly — same palette `CategoriesScreen` offers by hand.
@@ -239,7 +240,7 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Import CSV')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32).plusNavBar(context),
         children: [
           if (summary != null)
             _SummaryCard(summary: summary, fileName: _fileName!)

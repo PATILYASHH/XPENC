@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/budget_cycle.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// Opens the month picker and returns the chosen period anchor (day 1 of its
 /// month, same shape `selectedMonthProvider` stores), or null if dismissed.
@@ -62,7 +63,7 @@ class _MonthPickerSheetState extends State<MonthPickerSheet> {
     final canGoForward = _year < widget.current.year;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20).plusNavBar(context),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,

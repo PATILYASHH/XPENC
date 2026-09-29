@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/widgets/error_view.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// Save the current category structure as a reusable template, and switch
 /// between saved templates (GitHub #101). Switching never touches a
@@ -28,7 +29,7 @@ class CategoryTemplatesScreen extends ConsumerWidget {
           ),
         ),
         data: (templates) => ListView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 96),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 96).plusNavBar(context),
           children: [
             Text(
               'A template is a saved snapshot of your category and '

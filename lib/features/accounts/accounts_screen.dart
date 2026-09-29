@@ -12,6 +12,7 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'add_account_sheet.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// Total money + per-account balances, grouped Cash · Bank · Cards.
 ///
@@ -79,7 +80,7 @@ class AccountsScreen extends ConsumerWidget {
             ],
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 32)),
-        ],
+        const NavBarInsetSliver(),],
       ),
     );
   }

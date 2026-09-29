@@ -15,6 +15,7 @@ import '../add_transaction/date_time_combine.dart';
 import '../auto/linked_auto_rules_card.dart';
 import 'loan_insights.dart';
 import 'savings_goals_screen.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// One loan: outstanding balance, original amount, repayment progress, and a
 /// "Make a payment" shortcut that posts an ordinary transfer into the loan
@@ -61,7 +62,7 @@ class LoanDetailScreen extends ConsumerWidget {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32).plusNavBar(context),
         children: [
           Center(
             child: SizedBox(

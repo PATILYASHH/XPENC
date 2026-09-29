@@ -12,6 +12,7 @@ import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../auto/linked_auto_rules_card.dart';
 import 'savings_goals_screen.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// One goal: progress ring, target date, and the two shortcuts that move
 /// money in and out of it — each just posts an ordinary transfer, the same
@@ -59,7 +60,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32).plusNavBar(context),
         children: [
           Center(
             child: SizedBox(

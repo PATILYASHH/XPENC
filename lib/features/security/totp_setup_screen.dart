@@ -7,6 +7,7 @@ import '../../core/security/pin_pad.dart';
 import '../../core/security/totp.dart';
 import '../../data/providers.dart';
 import 'lock_screen_keypad.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 enum _Step { scan, confirm }
 
@@ -110,7 +111,7 @@ class _TotpSetupScreenState extends ConsumerState<TotpSetupScreen> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24).plusNavBar(context),
       children: [
         Text(
           'Scan this QR code with Google Authenticator, Authy, or any '

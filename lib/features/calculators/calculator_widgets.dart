@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/money.dart';
 import '../../core/widgets/beta_badge.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// Shared building blocks for every More → Calculators screen: the page
 /// shell, number fields, the headline result card and breakdown rows.
@@ -71,7 +72,7 @@ class CalculatorScaffold extends StatelessWidget {
         onTap: () => FocusScope.of(context).unfocus(),
         behavior: HitTestBehavior.translucent,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 32).plusNavBar(context),
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           children: [
             ...children,

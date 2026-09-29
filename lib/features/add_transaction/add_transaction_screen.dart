@@ -21,6 +21,7 @@ import '../settings/currency_picker_sheet.dart';
 import '../tags/tag_picker_sheet.dart';
 import 'date_time_combine.dart';
 import 'receipt_storage.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// One editable row of a split expense: which category, and how much of the
 /// total it takes. Holds its own [AmountKeypadController] so its buffer text
@@ -2197,7 +2198,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                     const SizedBox(height: 20),
                     Expanded(
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 8).plusNavBar(context),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: _buildPickers(accountMap, categoryMap),

@@ -15,6 +15,7 @@ import '../../data/tables.dart';
 import 'account_reports_data.dart';
 import 'chart_widgets.dart';
 import 'stats_sections.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// Account Reports' modules — the same hub-and-module shape as Stats: each
 /// has a tile on the hub with one live headline and opens its own screen at
@@ -161,7 +162,7 @@ class _ModuleList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+    padding: const EdgeInsets.fromLTRB(20, 12, 20, 32).plusNavBar(context),
     children: children,
   );
 }

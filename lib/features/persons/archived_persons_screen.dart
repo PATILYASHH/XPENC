@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import 'person_avatar.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// People and groups hidden via **Archive** — only ever by hand (the
 /// Persons long-press sheet, a group's menu, or "Archive" on the settled
@@ -47,7 +48,9 @@ class _ArchivedPeople extends ConsumerWidget {
           data: (people) {
             if (people.isEmpty) return const _Message('No archived people.');
             return ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.symmetric(
+                vertical: 8,
+              ).plusNavBar(context),
               itemCount: people.length,
               separatorBuilder: (_, _) => const Divider(height: 1, indent: 72),
               itemBuilder: (context, i) =>
@@ -71,7 +74,9 @@ class _ArchivedGroups extends ConsumerWidget {
           data: (groups) {
             if (groups.isEmpty) return const _Message('No archived groups.');
             return ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.symmetric(
+                vertical: 8,
+              ).plusNavBar(context),
               itemCount: groups.length,
               separatorBuilder: (_, _) => const Divider(height: 1, indent: 72),
               itemBuilder: (context, i) => _ArchivedGroupTile(group: groups[i]),

@@ -13,6 +13,7 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../auto/recurring_rule_sheet.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// A month calendar built by hand (no calendar package). Each day cell shows the
 /// money in / out for that day and a dot when an open reminder falls on it.
@@ -243,7 +244,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     };
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32).plusNavBar(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

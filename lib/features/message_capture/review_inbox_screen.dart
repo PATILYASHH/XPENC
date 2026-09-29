@@ -11,6 +11,7 @@ import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// Warning tint for the "possible duplicate" banner. Amber is neither money-in
 /// nor money-out — it's a caution, so it deliberately sits outside the semantic
@@ -92,7 +93,7 @@ class ReviewInboxScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-            ],
+            const NavBarInsetSliver(),],
           );
         },
       ),
@@ -559,7 +560,7 @@ class _ApproveSheetState extends ConsumerState<_ApproveSheet> {
           maxHeight: MediaQuery.of(context).size.height * 0.9,
         ),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 16).plusNavBar(context),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

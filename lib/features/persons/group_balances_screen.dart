@@ -8,6 +8,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// "Who owes whom" for one group: every member against every other, not
 /// just me against each of them like [GroupDetailScreen].
@@ -69,7 +70,12 @@ class GroupBalancesScreen extends ConsumerWidget {
       body: !loaded
           ? const Center(child: CircularProgressIndicator())
           : ListView(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+              padding: const EdgeInsets.fromLTRB(
+                20,
+                8,
+                20,
+                32,
+              ).plusNavBar(context),
               children: [
                 const _Note(),
                 const _SectionLabel('NET BALANCES'),

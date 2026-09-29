@@ -11,6 +11,7 @@ import 'chart_widgets.dart';
 import 'stats_sections.dart';
 import 'xpenc_score.dart';
 import 'xpenc_score_provider.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// Where the full score breakdown lives. Pushed on the root navigator, so it
 /// opens full-screen from the Stats tab as well as from More › Stats.
@@ -248,7 +249,7 @@ class XpencScoreScreen extends ConsumerWidget {
       body: ledger.isLoading
           ? const StatsSectionLoader(height: 240)
           : ListView(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 32).plusNavBar(context),
               children: [
                 Center(child: ScoreGauge(score: result.score, size: 184)),
                 const SizedBox(height: 12),

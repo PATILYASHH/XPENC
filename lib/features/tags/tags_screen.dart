@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/widgets/error_view.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// Preset colours for a tag. Plain ints — this is the tag's own decorative
 /// colour, not a money-direction signal.
@@ -51,7 +52,7 @@ class TagsScreen extends ConsumerWidget {
         ),
         data: (tags) {
           return ListView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 96),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 96).plusNavBar(context),
             children: [
               if (tags.isEmpty)
                 _EmptyTags(theme: theme)

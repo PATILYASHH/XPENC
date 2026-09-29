@@ -10,6 +10,7 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'recurring_rule_sheet.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// Auto Expenses / Auto Income — transactions that post themselves on a
 /// schedule, with no confirmation step. A rule whose amount varies (e.g. a
@@ -98,7 +99,7 @@ class AutoScreen extends ConsumerWidget {
             },
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 32)),
-        ],
+        const NavBarInsetSliver(),],
       ),
     );
   }

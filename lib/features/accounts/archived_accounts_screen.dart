@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/app_icons.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// Accounts hidden via **Archive** on the Accounts screen. Restoring one here
 /// is the only way back — archiving never deletes anything, so this list is
@@ -52,7 +53,7 @@ class ArchivedAccountsScreen extends ConsumerWidget {
             );
           }
           return ListView.separated(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.symmetric(vertical: 8).plusNavBar(context),
             itemCount: accounts.length,
             separatorBuilder: (_, _) => const Divider(height: 1, indent: 70),
             itemBuilder: (context, i) =>

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/widgets/amount_keypad_field.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 enum _IdKind { upiId, phone }
 
@@ -137,7 +138,7 @@ class _UssdPayScreenState extends State<UssdPayScreen> {
       appBar: AppBar(title: const Text('Pay without internet (Beta)')),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24).plusNavBar(context),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

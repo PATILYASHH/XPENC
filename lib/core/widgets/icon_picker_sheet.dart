@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/providers.dart';
 import '../app_icons.dart';
+import 'nav_bar_inset.dart';
 
 /// Opens the icon picker and resolves to the chosen key, or `null` if the
 /// sheet was dismissed without a pick. [accentColor] tints the selected tile
@@ -128,7 +129,7 @@ class _IconPickerSheetState extends ConsumerState<_IconPickerSheet> {
                       ),
                     )
                   : SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 12).plusNavBar(context),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [

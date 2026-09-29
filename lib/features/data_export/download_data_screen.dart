@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/providers.dart';
 import 'import_from_file.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// Export the ledger to a file the user can carry off the phone, or bring
 /// one back in.
@@ -90,7 +91,7 @@ class _DownloadDataScreenState extends ConsumerState<DownloadDataScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Download Data')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32).plusNavBar(context),
         children: [
           const _IntroCard(),
           const SizedBox(height: 16),

@@ -17,6 +17,7 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'transaction_filters.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// All transactions, grouped day-wise (newest first) with a per-day net total.
 /// Searchable by note / category / account and filterable by [TxType].
@@ -411,7 +412,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           SliverToBoxAdapter(child: _SummaryStrip(txns: matched)),
           body,
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
-        ],
+        const NavBarInsetSliver(),],
       ),
     );
   }

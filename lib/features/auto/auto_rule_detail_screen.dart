@@ -12,6 +12,7 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'recurring_rule_sheet.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// One Auto rule: its schedule and posting details, plus the full history of
 /// every transaction it has actually posted (matched via
@@ -69,7 +70,7 @@ class AutoRuleDetailScreen extends ConsumerWidget {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32).plusNavBar(context),
         children: [
           Card(
             child: Padding(
