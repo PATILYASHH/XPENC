@@ -63,7 +63,7 @@ class SettingsScreen extends StatelessWidget {
           _ModuleTile(
             icon: Icons.flash_on_outlined,
             title: 'Quick Actions',
-            subtitle: 'Bank-SMS capture, OCR, home screen widgets',
+            subtitle: 'Hold ➕ shortcuts, home screen widgets',
             onTap: () => context.push('/more/settings/quick-actions'),
           ),
           _ModuleTile(

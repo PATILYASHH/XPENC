@@ -1194,17 +1194,17 @@ class Settings extends Table {
   /// Off by default — press-and-hold the ➕ button is a new, undiscoverable
   /// gesture on a control every existing user already knows; asking them to
   /// opt in avoids surprising anyone who just wants to add a transaction.
-  /// When on, holding ➕ floats 3 quick-access options (see
-  /// [holdMenuSlots]) the user drags a finger toward to jump to that
-  /// destination, without lifting.
+  /// When on, holding ➕ opens a radial menu mid-screen — ✕ (cancel) in the
+  /// centre, up to 8 quick actions around it (see [holdMenuSlots]) — the
+  /// user drags a finger toward one and lets go to open it.
   BoolColumn get holdMenuEnabled =>
       boolean().withDefault(const Constant(false))();
 
-  /// The 3 destinations the hold-➕ menu offers, comma-joined, same catalog
-  /// and id set as [bottomNavSlots] (`AppShell._catalog` /
-  /// `AppDatabase.bottomNavCatalogIds`). Deliberately allowed to overlap
-  /// with `bottomNavSlots` — quick access via a hold gesture and a pinned
-  /// tab aren't mutually exclusive.
+  /// The hold-➕ radial menu's 8 slots, comma-joined, clockwise from
+  /// straight up (`''` = empty) — quick-action ids or `template:<id>`, see
+  /// `lib/core/routing/quick_actions.dart`. The default is the pre-radial
+  /// 3-item format; `parseHoldMenuSlots` maps any 3-item value into the
+  /// ring's upper slots, so it never needed a migration.
   TextColumn get holdMenuSlots =>
       text().withDefault(const Constant('calendar,budgets,stats'))();
 

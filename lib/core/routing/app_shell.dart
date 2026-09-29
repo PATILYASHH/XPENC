@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart' show AppMode;
 import 'hold_menu_geometry.dart';
+import 'quick_actions.dart';
 import '../../features/add_transaction/add_transaction_choice_sheet.dart';
 import '../../features/dashboard/month_picker_sheet.dart';
 import '../../features/persons/persons_screen.dart' show showAddPersonDialog;
@@ -78,7 +79,12 @@ class AppShell extends ConsumerWidget {
       Icons.account_balance_wallet_rounded,
       'Accounts',
     ),
-    'stats': _TabSpec(7, Icons.insights_outlined, Icons.insights_rounded, 'Stats'),
+    'stats': _TabSpec(
+      7,
+      Icons.insights_outlined,
+      Icons.insights_rounded,
+      'Stats',
+    ),
     'payees': _TabSpec(
       8,
       Icons.storefront_outlined,
@@ -145,8 +151,7 @@ class AppShell extends ConsumerWidget {
                   _navItem(context, ref, left),
                   _AddButton(
                     holdEnabled: ref.watch(holdMenuEnabledProvider),
-                    slotIds: ref.watch(holdMenuSlotsProvider),
-                    catalog: _catalog,
+                    actions: ref.watch(holdMenuActionsProvider),
                     hasTemplates: ref.watch(hasTransactionTemplatesProvider),
                   ),
                   _navItem(context, ref, right),
@@ -191,34 +196,28 @@ class AppShell extends ConsumerWidget {
       ),
     );
   }
-
 }
 
 /// The ➕ button — a plain tap always pushes Add Transaction, unchanged. When
-/// [holdEnabled] (`Settings.holdMenuEnabled`) is on, holding it also floats
-/// 3 quick-access destinations (from [slotIds]/[catalog], the same catalog
-/// `bottomNavSlots` uses) in an arc above the button; dragging a finger
-/// toward one and releasing there pushes that destination's full `/more/*`
-/// route — deliberately not `navigationShell.goBranch`, which switches to
-/// the *embedded* tab instead. Several destinations' embedded tab is
-/// missing actions their full route has (Budgets/Stats' PDF download,
-/// Accounts' Statement/Archived/Add — see `_TopBar._tabActions`'s own
-/// `default` case comment, a known trade-off from GitHub #70 this menu
-/// would otherwise silently inherit). Pushing the full route always shows
-/// everything, regardless of which 2 destinations currently occupy the
-/// pinned/flex tab slots. Off by default — see `Settings.holdMenuEnabled`'s
-/// doc comment for why.
+/// [holdEnabled] (`Settings.holdMenuEnabled`) is on, holding it opens a
+/// radial menu in the middle of the screen: ✕ (cancel) in the centre, up
+/// to 8 quick actions ([actions], configured in Settings ▸ Quick Actions)
+/// in a ring around it. Where the finger went down counts as the centre —
+/// dragging it in a direction picks that ring slot, releasing opens it;
+/// releasing without moving (or after drifting back) is a cancel. Actions
+/// always push their full route, never `navigationShell.goBranch` — see
+/// `QuickActionSpec`. Off by default — see `Settings.holdMenuEnabled`.
 class _AddButton extends StatefulWidget {
   const _AddButton({
     required this.holdEnabled,
-    required this.slotIds,
-    required this.catalog,
+    required this.actions,
     required this.hasTemplates,
   });
 
   final bool holdEnabled;
-  final List<String> slotIds;
-  final Map<String, _TabSpec> catalog;
+
+  /// Index-aligned with `holdMenuSlotAngles`; `null` = empty slot.
+  final List<QuickActionSpec?> actions;
 
   /// Whether a plain tap should show the "blank or template" choice sheet
   /// (GitHub #125) instead of jumping straight to `/add` — see
@@ -230,47 +229,25 @@ class _AddButton extends StatefulWidget {
 }
 
 class _AddButtonState extends State<_AddButton> {
-  /// Degrees, screen convention (0° = right, clockwise, so -90° is
-  /// straight up) — an upward fan so the menu never renders under the nav
-  /// bar it's anchored to.
-  static const _angles = [-150.0, -90.0, -30.0];
-
-  /// How far out the options are drawn — well clear of the button, not
-  /// hugging it.
-  static const _radius = 150.0;
-
-  /// How far the finger has to move before a direction even counts, far
-  /// smaller than [_radius] on purpose: once past this, the *nearest*
-  /// option by angle is selected regardless of how much further the
-  /// options themselves are drawn — a short flick commits, the finger
-  /// never has to travel all the way out to where an icon actually sits.
-  static const _activationRadius = 26.0;
+  /// How far the finger has to move from where it went down before a
+  /// direction counts. Kept small: the ➕ sits at the very bottom of the
+  /// screen, so the three downward slots only have a few dozen pixels of
+  /// travel before the gesture nav area.
+  static const _activationRadius = 22.0;
 
   OverlayEntry? _overlayEntry;
   final _hoveredIndex = ValueNotifier<int>(-1);
   Offset _origin = Offset.zero;
 
-  List<({String id, _TabSpec spec})> get _specs => widget.slotIds
-      .map((id) {
-        final spec = widget.catalog[id];
-        return spec == null ? null : (id: id, spec: spec);
-      })
-      .whereType<({String id, _TabSpec spec})>()
-      .toList();
-
   void _onLongPressStart(LongPressStartDetails details) {
-    final specs = _specs;
-    if (specs.isEmpty) return;
+    if (widget.actions.every((a) => a == null)) return;
     _origin = details.globalPosition;
     _hoveredIndex.value = -1;
     HapticFeedback.mediumImpact();
     _overlayEntry = OverlayEntry(
       builder: (_) => Positioned.fill(
         child: _HoldMenuOverlay(
-          origin: _origin,
-          specs: specs.map((e) => e.spec).toList(),
-          angles: _angles,
-          radius: _radius,
+          actions: widget.actions,
           hoveredIndex: _hoveredIndex,
         ),
       ),
@@ -280,16 +257,19 @@ class _AddButtonState extends State<_AddButton> {
 
   void _onLongPressMoveUpdate(LongPressMoveUpdateDetails details) {
     if (_overlayEntry == null) return;
-    final nearest = holdMenuHoveredIndex(
+    var nearest = holdMenuHoveredIndex(
       origin: _origin,
       pointer: details.globalPosition,
-      anglesDegrees: _angles,
+      anglesDegrees: holdMenuSlotAngles,
       activationRadius: _activationRadius,
-      optionCount: _specs.length,
+      optionCount: holdMenuSlotCount,
     );
+    // Pointing at an empty slot is the same as not pointing anywhere —
+    // the ✕ stays selected and a release cancels.
+    if (nearest != -1 && widget.actions[nearest] == null) nearest = -1;
     if (nearest != _hoveredIndex.value) {
       _hoveredIndex.value = nearest;
-      if (nearest != -1) HapticFeedback.selectionClick();
+      HapticFeedback.selectionClick();
     }
   }
 
@@ -297,11 +277,12 @@ class _AddButtonState extends State<_AddButton> {
     final index = _hoveredIndex.value;
     _overlayEntry?.remove();
     _overlayEntry = null;
-    final specs = _specs;
     _hoveredIndex.value = -1;
-    if (!commit || index < 0 || index >= specs.length) return;
+    if (!commit || index < 0 || index >= widget.actions.length) return;
+    final action = widget.actions[index];
+    if (action == null) return;
     HapticFeedback.mediumImpact();
-    context.push('/more/${specs[index].id}');
+    context.push(action.route);
   }
 
   @override
@@ -345,107 +326,163 @@ class _AddButtonState extends State<_AddButton> {
   }
 }
 
-/// The floating options themselves, inserted into the root [Overlay] for
-/// the duration of the hold gesture. Purely visual — [IgnorePointer]'d,
-/// since the gesture that drives [hoveredIndex] is tracked by the
-/// long-press recognizer on the button itself (Flutter keeps routing a
-/// captured pointer's moves to whichever recognizer won it, regardless of
-/// what's drawn on top), not by this overlay.
+/// The radial menu itself, inserted into the root [Overlay] for the
+/// duration of the hold gesture and centred on screen (not on the ➕ — a
+/// full ring anchored at the bottom edge would put half of it off-screen).
+/// Purely visual — [IgnorePointer]'d, since the gesture that drives
+/// [hoveredIndex] is tracked by the long-press recognizer on the button
+/// itself (Flutter keeps routing a captured pointer's moves to whichever
+/// recognizer won it, regardless of what's drawn on top).
 class _HoldMenuOverlay extends StatelessWidget {
-  const _HoldMenuOverlay({
-    required this.origin,
-    required this.specs,
-    required this.angles,
-    required this.radius,
-    required this.hoveredIndex,
-  });
+  const _HoldMenuOverlay({required this.actions, required this.hoveredIndex});
 
-  final Offset origin;
-  final List<_TabSpec> specs;
-  final List<double> angles;
-  final double radius;
+  final List<QuickActionSpec?> actions;
   final ValueListenable<int> hoveredIndex;
+
+  static const _ballSize = 56.0;
+  static const _hoveredSize = 66.0;
 
   @override
   Widget build(BuildContext context) {
     return IgnorePointer(
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: ColoredBox(color: Colors.black.withValues(alpha: 0.35)),
-          ),
-          ValueListenableBuilder<int>(
-            valueListenable: hoveredIndex,
-            builder: (context, hovered, _) => Stack(
-              children: [
-                for (var i = 0; i < specs.length; i++)
-                  _option(context, i, hovered == i),
-              ],
-            ),
-          ),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final center = Offset(
+            constraints.maxWidth / 2,
+            constraints.maxHeight / 2,
+          );
+          final radius = (constraints.maxWidth * 0.32).clamp(104.0, 140.0);
+          return Stack(
+            children: [
+              Positioned.fill(
+                child: ColoredBox(color: Colors.black.withValues(alpha: 0.55)),
+              ),
+              ValueListenableBuilder<int>(
+                valueListenable: hoveredIndex,
+                builder: (context, hovered, _) => Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    _label(context, center, radius, hovered),
+                    _cancelBall(context, center, hovered == -1),
+                    for (var i = 0; i < actions.length; i++)
+                      _option(
+                        context,
+                        holdMenuOptionCenter(
+                          center,
+                          holdMenuSlotAngles,
+                          radius,
+                          i,
+                        ),
+                        actions[i],
+                        hovered == i,
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _option(BuildContext context, int i, bool isHovered) {
+  /// The hovered action's name (or the cancel hint), floating above the
+  /// ring.
+  Widget _label(BuildContext context, Offset center, double radius, int i) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final center = holdMenuOptionCenter(origin, angles, radius, i);
-    final size = isHovered ? 64.0 : 52.0;
-    final spec = specs[i];
+    final text = i == -1 ? 'Release to cancel' : actions[i]!.label;
+    return Positioned(
+      left: 16,
+      right: 16,
+      top: center.dy - radius - _hoveredSize / 2 - 56,
+      child: Center(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: cs.inverseSurface,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            child: Text(
+              text,
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: cs.onInverseSurface,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _cancelBall(BuildContext context, Offset center, bool isHovered) {
+    final cs = Theme.of(context).colorScheme;
+    final size = isHovered ? _hoveredSize : _ballSize;
+    return Positioned(
+      left: center.dx - size / 2,
+      top: center.dy - size / 2,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: isHovered ? cs.onSurface : cs.surfaceContainerHighest,
+        ),
+        child: Icon(
+          Icons.close_rounded,
+          color: isHovered ? cs.surface : cs.onSurface,
+          size: isHovered ? 30 : 26,
+        ),
+      ),
+    );
+  }
+
+  Widget _option(
+    BuildContext context,
+    Offset center,
+    QuickActionSpec? action,
+    bool isHovered,
+  ) {
+    final cs = Theme.of(context).colorScheme;
+    final size = isHovered ? _hoveredSize : _ballSize;
 
     return Positioned(
       left: center.dx - size / 2,
       top: center.dy - size / 2,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (isHovered)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: cs.inverseSurface,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: action == null
+              ? Colors.transparent
+              : isHovered
+              ? cs.secondary
+              : cs.surfaceContainerHighest,
+          border: action == null
+              ? Border.all(color: cs.outline.withValues(alpha: 0.5))
+              : null,
+          boxShadow: action == null
+              ? null
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
-                  child: Text(
-                    spec.label,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: cs.onInverseSurface,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
+                ],
+        ),
+        child: action == null
+            ? null
+            : Icon(
+                action.icon,
+                color: isHovered ? Colors.white : cs.onSurface,
+                size: isHovered ? 28 : 24,
               ),
-            ),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
-            width: size,
-            height: size,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isHovered ? cs.secondary : cs.surfaceContainerHighest,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Icon(
-              spec.activeIcon,
-              color: isHovered ? Colors.white : cs.onSurface,
-              size: isHovered ? 26 : 22,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -585,7 +622,7 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
       case 2: // Persons
         return [
           _TonalIconButton(
-            tooltip: 'Archived people',
+            tooltip: 'Archived',
             icon: const Icon(Icons.inventory_2_outlined),
             onPressed: () => context.push('/persons/archived'),
           ),

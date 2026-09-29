@@ -5825,6 +5825,10 @@ class AppDatabase extends _$AppDatabase {
   Future<void> setHoldMenuEnabled(bool value) =>
       update(settings).write(SettingsCompanion(holdMenuEnabled: Value(value)));
 
+  /// The hold-➕ radial menu's 8 slots, index-aligned with
+  /// `holdMenuSlotAngles` — `''` for an empty slot, otherwise a quick-action
+  /// id (`quickActionCatalog`) or `template:<id>`. Only the shape is checked
+  /// here; an id that doesn't resolve just shows as an empty slot.
   Future<void> setHoldMenuSlots(List<String> ids) async {
     if (ids.length != 8) {
       throw ArgumentError('The hold menu needs exactly 8 slots.');

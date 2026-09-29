@@ -7,6 +7,7 @@ import '../core/loan_amortization.dart';
 import '../core/group_split_math.dart';
 import '../core/money.dart';
 import '../core/notifications/notification_service.dart';
+import '../core/routing/quick_actions.dart';
 import '../core/security/unlock_method.dart';
 import '../core/theme/font_options.dart';
 import '../core/theme/theme_preset.dart';
@@ -1161,16 +1162,25 @@ final holdMenuEnabledProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.holdMenuEnabled ?? false;
 });
 
-/// The 3 destinations the hold-➕ menu offers. Falls back to the same
-/// default `Settings.holdMenuSlots` itself defaults to if the stored value
-/// somehow doesn't parse to exactly 3 ids — mirrors `AppShell._slotIds`'s
-/// defensive fallback for `bottomNavSlots`.
+/// The hold-➕ radial menu's 8 stored slot ids, index-aligned with
+/// `holdMenuSlotAngles` (`''` = empty). Unresolved here on purpose — see
+/// [holdMenuActionsProvider] for what the menu actually shows.
 final holdMenuSlotsProvider = Provider<List<String>>((ref) {
-  final raw =
-      ref.watch(settingsProvider).valueOrNull?.holdMenuSlots ??
-      'calendar,budgets,stats';
-  final parts = raw.split(',');
-  return parts.length == 3 ? parts : const ['calendar', 'budgets', 'stats'];
+  final raw = ref.watch(settingsProvider).valueOrNull?.holdMenuSlots ?? '';
+  return parseHoldMenuSlots(raw);
+});
+
+/// [holdMenuSlotsProvider] resolved against the live templates and app
+/// mode — `null` per empty/unavailable slot (deleted template, Basic-hidden
+/// module).
+final holdMenuActionsProvider = Provider<List<QuickActionSpec?>>((ref) {
+  final templates =
+      ref.watch(transactionTemplatesProvider).valueOrNull ?? const [];
+  final mode = ref.watch(appModeProvider);
+  return [
+    for (final id in ref.watch(holdMenuSlotsProvider))
+      resolveQuickAction(id, templates: templates, mode: mode),
+  ];
 });
 
 /// Extra logical pixels of bottom clearance layered over the OS's own
