@@ -10,7 +10,9 @@ import '../../core/widgets/statement_range_picker.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import 'delete_person_or_group.dart';
 import 'group_member_picker_sheet.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// One group's members and shared-expense history. Balances shown here
 /// (the group's aggregate and each member's figure) come from this group's
@@ -88,7 +90,7 @@ class GroupDetailScreen extends ConsumerWidget {
               ),
               PopupMenuItem(
                 value: _GroupMenuAction.remove,
-                child: Text('Remove'),
+                child: Text('Delete'),
               ),
             ],
           ),
@@ -222,6 +224,7 @@ class GroupDetailScreen extends ConsumerWidget {
               );
             },
           ),
+          const NavBarInsetSliver(),
         ],
       ),
     );
@@ -311,47 +314,9 @@ class GroupDetailScreen extends ConsumerWidget {
       return;
     }
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Remove "${group.name}"?'),
-        content: const Text(
-          "This permanently deletes the group — it can't be undone. It "
-          'only works if it has no expense history; otherwise archive it '
-          'instead.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(ctx).colorScheme.error,
-            ),
-            child: const Text('Remove'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !context.mounted) return;
-
-    try {
-      await ref.read(dbProvider).deleteGroup(group.id);
-    } on ArgumentError catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(e.message?.toString() ?? "Can't remove this group"),
-          ),
-        );
-      return;
+    if (await confirmDeleteGroup(context, ref, group) && context.mounted) {
+      Navigator.of(context).pop();
     }
-    if (!context.mounted) return;
-    Navigator.of(context).pop();
   }
 }
 

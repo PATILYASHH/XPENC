@@ -3723,23 +3723,71 @@ class AppDatabase extends _$AppDatabase {
     return rows.length;
   }
 
-  /// Mirrors [deleteAccount]: only ever succeeds on a person nothing has
-  /// touched yet — no lend/borrow history, no reminder naming them. Anything
-  /// used must be archived instead.
-  Future<void> deletePerson(int id) async {
-    if (await countEntriesForPerson(id) > 0) {
-      throw ArgumentError(
-        'This person has lend/borrow history — archive them instead.',
-      );
+  /// Permanently deletes a person and everything that only makes sense with
+  /// them — "as if they never existed". Unlike archiving, this is not
+  /// reversible:
+  /// - every lend/borrow entry goes through [deletePersonEntry], so any
+  ///   money it moved through an account is reversed too;
+  /// - group expenses *they* paid are removed whole ([deleteGroupExpense]),
+  ///   since the expense can't exist without its payer;
+  /// - their share of anyone else's group expense is dropped;
+  /// - their group memberships are dropped;
+  /// - reminders naming them are kept, just unlinked.
+  Future<void> deletePerson(int id) => transaction(() async {
+    final paid = await (select(
+      groupExpenses,
+    )..where((e) => e.payerId.equals(id))).get();
+    for (final expense in paid) {
+      await deleteGroupExpense(expense.id);
     }
-    final reminder = await (select(
-      reminders,
-    )..where((r) => r.personId.equals(id))).getSingleOrNull();
-    if (reminder != null) {
-      throw ArgumentError('A reminder still points at this person.');
+
+    // Shares must go before their entries — they foreign-key onto them.
+    final shares = await (select(
+      groupExpenseShares,
+    )..where((s) => s.personId.equals(id))).get();
+    await (delete(
+      groupExpenseShares,
+    )..where((s) => s.personId.equals(id))).go();
+    for (final share in shares) {
+      if (share.personEntryId == null) continue;
+      final exists = await (select(
+        personEntries,
+      )..where((e) => e.id.equals(share.personEntryId!))).getSingleOrNull();
+      if (exists != null) await deletePersonEntry(share.personEntryId!);
     }
+
+    final entries = await (select(
+      personEntries,
+    )..where((e) => e.personId.equals(id))).get();
+    for (final entry in entries) {
+      await deletePersonEntry(entry.id);
+    }
+
+    // Any person movement not owned by an entry (shouldn't exist, but a
+    // stale one must not block the delete on its foreign key).
+    final strays = await (select(
+      transactions,
+    )..where((t) => t.personId.equals(id))).get();
+    for (final tx in strays) {
+      await deleteTransaction(tx.id);
+    }
+
+    await (update(reminders)..where((r) => r.personId.equals(id))).write(
+      const RemindersCompanion(personId: Value(null)),
+    );
+
+    final groupIds = [
+      for (final m in await (select(
+        groupMembers,
+      )..where((m) => m.personId.equals(id))).get())
+        m.groupId,
+    ];
+    await (delete(groupMembers)..where((m) => m.personId.equals(id))).go();
     await (delete(persons)..where((p) => p.id.equals(id))).go();
-  }
+    for (final groupId in groupIds) {
+      await _syncSettledGroup(groupId);
+    }
+  });
 
   Stream<List<PersonEntryRow>> watchAllPersonEntries() =>
       select(personEntries).watch();
@@ -4110,19 +4158,19 @@ class AppDatabase extends _$AppDatabase {
     return rows.length;
   }
 
-  /// Mirrors [deletePerson]: only ever succeeds on a group with no expense
-  /// history. Anything used must be archived instead.
-  Future<void> deleteGroup(int id) async {
-    if (await countExpensesForGroup(id) > 0) {
-      throw ArgumentError(
-        'This group has expense history — archive it instead.',
-      );
+  /// Permanently deletes a group and every expense in it — each one through
+  /// [deleteGroupExpense], so the dues and money it created are reversed.
+  /// The members themselves stay; only their membership goes.
+  Future<void> deleteGroup(int id) => transaction(() async {
+    final expenses = await (select(
+      groupExpenses,
+    )..where((e) => e.groupId.equals(id))).get();
+    for (final expense in expenses) {
+      await deleteGroupExpense(expense.id);
     }
-    await transaction(() async {
-      await (delete(groupMembers)..where((m) => m.groupId.equals(id))).go();
-      await (delete(groups)..where((g) => g.id.equals(id))).go();
-    });
-  }
+    await (delete(groupMembers)..where((m) => m.groupId.equals(id))).go();
+    await (delete(groups)..where((g) => g.id.equals(id))).go();
+  });
 
   /// Replace-all semantics — simplest correct approach at this table's
   /// scale. `GroupMembers.id`/`addedAt` are not stable across an edit;

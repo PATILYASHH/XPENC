@@ -20,9 +20,11 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../accounts/envelope_outflow.dart';
+import 'delete_person_or_group.dart';
 import 'edit_person_sheet.dart';
 import 'payment_action_row.dart';
 import 'person_avatar.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// One person's ledger. Net balance = Σ(theyOwe) − Σ(iOwe).
 /// `+` they owe you · `-` you owe them.
@@ -96,13 +98,22 @@ class PersonDetailScreen extends ConsumerWidget {
               IconButton(
                 tooltip: 'Share statement',
                 icon: const Icon(Icons.ios_share_rounded),
-                onPressed: () =>
-                    _shareStatement(context, ref, person, balance),
+                onPressed: () => _shareStatement(context, ref, person, balance),
               ),
               IconButton(
                 tooltip: 'Edit person',
                 icon: const Icon(Icons.edit_outlined),
                 onPressed: () => showEditPersonSheet(context, ref, person),
+              ),
+              IconButton(
+                tooltip: 'Delete person',
+                icon: const Icon(Icons.delete_outline_rounded),
+                onPressed: () async {
+                  if (await confirmDeletePerson(context, ref, person) &&
+                      context.mounted) {
+                    Navigator.of(context).pop();
+                  }
+                },
               ),
             ],
           ),
@@ -172,6 +183,7 @@ class PersonDetailScreen extends ConsumerWidget {
               );
             },
           ),
+          const NavBarInsetSliver(),
         ],
       ),
     );
@@ -913,7 +925,12 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
       ),
       child: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          padding: const EdgeInsets.fromLTRB(
+            20,
+            12,
+            20,
+            20,
+          ).plusNavBar(context),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,

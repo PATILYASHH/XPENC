@@ -9,9 +9,11 @@ import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import 'contact_import.dart';
+import 'delete_person_or_group.dart';
 import 'edit_person_sheet.dart';
 import 'group_member_picker_sheet.dart';
 import 'person_avatar.dart';
+import '../../core/widgets/nav_bar_inset.dart';
 
 /// Who owes you, who you owe — split into Individual (a single named
 /// contact, unchanged from before groups existed), Group (shared expenses
@@ -203,11 +205,12 @@ class _IndividualTab extends ConsumerWidget {
             // Dues/owes on top (largest first) — anyone at zero here either
             // has no history yet or was kept here from the settled prompt,
             // so they trail at the bottom.
-            final sorted = [...persons]..sort((a, b) {
-              final ba = balances[a.id] ?? const Money.zero();
-              final bb = balances[b.id] ?? const Money.zero();
-              return bb.abs.compareTo(ba.abs);
-            });
+            final sorted = [...persons]
+              ..sort((a, b) {
+                final ba = balances[a.id] ?? const Money.zero();
+                final bb = balances[b.id] ?? const Money.zero();
+                return bb.abs.compareTo(ba.abs);
+              });
             return SliverPadding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
               sliver: SliverToBoxAdapter(
@@ -235,6 +238,7 @@ class _IndividualTab extends ConsumerWidget {
           },
         ),
         const SliverToBoxAdapter(child: _FooterCaption()),
+        const NavBarInsetSliver(),
       ],
     );
   }
@@ -355,7 +359,7 @@ class _PersonTile extends ConsumerWidget {
     }
 
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      contentPadding: const EdgeInsets.fromLTRB(16, 6, 4, 6),
       leading: PersonAvatar(name: person.name, photoPath: person.photoPath),
       title: Text(
         person.name,
@@ -378,27 +382,42 @@ class _PersonTile extends ConsumerWidget {
         ],
       ),
       // A lakh-sized balance must shrink, not shove the name off the row.
-      trailing: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 128),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerRight,
-          child: MoneyText(
-            shown,
-            color: color,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 112),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: MoneyText(
+                shown,
+                color: color,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
-        ),
+          IconButton(
+            tooltip: 'Delete person',
+            visualDensity: VisualDensity.compact,
+            icon: Icon(
+              Icons.delete_outline_rounded,
+              size: 20,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            onPressed: () => confirmDeletePerson(context, ref, person),
+          ),
+        ],
       ),
       onTap: () => context.push('/person/${person.id}'),
       onLongPress: () => _showActions(context, ref),
     );
   }
 
-  /// Hold-to-act: a sheet offering Archive (reversible, hides them) or Remove
-  /// (permanent, only works when they have no lend/borrow history).
+  /// Hold-to-act: a sheet offering Archive (reversible, hides them) or Delete
+  /// (permanent, takes their whole history with them).
   Future<void> _showActions(BuildContext context, WidgetRef ref) async {
     final theme = Theme.of(context);
     final action = await showModalBottomSheet<_PersonAction>(
@@ -465,10 +484,10 @@ class _PersonTile extends ConsumerWidget {
                 color: theme.colorScheme.error,
               ),
               title: Text(
-                'Remove',
+                'Delete',
                 style: TextStyle(color: theme.colorScheme.error),
               ),
-              subtitle: const Text('Delete permanently — only if unused.'),
+              subtitle: const Text('Permanently, with all their history.'),
               onTap: () => Navigator.of(sheetContext).pop(_PersonAction.remove),
             ),
             const SizedBox(height: 8),
@@ -577,54 +596,8 @@ class _PersonTile extends ConsumerWidget {
       ..showSnackBar(const SnackBar(content: Text('Person archived')));
   }
 
-  /// Unlike archiving, this can't be undone — [AppDatabase.deletePerson]
-  /// refuses (with a clear reason) whenever they still have lend/borrow
-  /// history, so this only ever succeeds on someone with none.
-  Future<void> _confirmRemove(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Remove "${person.name}"?'),
-        content: const Text(
-          "This permanently deletes the person — it can't be undone. It "
-          'only works if they have no lend/borrow history; otherwise '
-          'archive them instead.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(ctx).colorScheme.error,
-            ),
-            child: const Text('Remove'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-
-    try {
-      await ref.read(dbProvider).deletePerson(person.id);
-    } on ArgumentError catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(e.message?.toString() ?? "Can't remove this person"),
-          ),
-        );
-      return;
-    }
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Person removed')));
-  }
+  Future<void> _confirmRemove(BuildContext context, WidgetRef ref) =>
+      confirmDeletePerson(context, ref, person);
 }
 
 enum _PersonAction { edit, linkContact, settle, unsettle, archive, remove }
@@ -672,7 +645,7 @@ class _GroupTab extends ConsumerWidget {
             (a, b) => balanceById[b.id]!.abs.compareTo(balanceById[a.id]!.abs),
           );
         return ListView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 96),
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 96).plusNavBar(context),
           children: [
             Card(
               clipBehavior: Clip.antiAlias,
@@ -728,7 +701,7 @@ class _GroupTile extends ConsumerWidget {
     }
 
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      contentPadding: const EdgeInsets.fromLTRB(16, 6, 4, 6),
       leading: CircleAvatar(
         backgroundColor: theme.colorScheme.surfaceContainerHighest,
         foregroundColor: theme.colorScheme.onSurface,
@@ -749,19 +722,34 @@ class _GroupTile extends ConsumerWidget {
         overflow: TextOverflow.ellipsis,
         style: theme.textTheme.bodySmall?.copyWith(color: color),
       ),
-      trailing: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 128),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerRight,
-          child: MoneyText(
-            shown,
-            color: color,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 112),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: MoneyText(
+                shown,
+                color: color,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
-        ),
+          IconButton(
+            tooltip: 'Delete group',
+            visualDensity: VisualDensity.compact,
+            icon: Icon(
+              Icons.delete_outline_rounded,
+              size: 20,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            onPressed: () => confirmDeleteGroup(context, ref, group),
+          ),
+        ],
       ),
       onTap: () => context.push('/group/${group.id}'),
       onLongPress: () => _showActions(context, ref),
@@ -806,7 +794,8 @@ class _GroupTile extends ConsumerWidget {
                 leading: const Icon(Icons.check_circle_outline_rounded),
                 title: const Text('Move to Settled'),
                 subtitle: const Text('Balance is zero. History stays intact.'),
-                onTap: () => Navigator.of(sheetContext).pop(_GroupAction.settle),
+                onTap: () =>
+                    Navigator.of(sheetContext).pop(_GroupAction.settle),
               ),
             ListTile(
               leading: const Icon(Icons.archive_outlined),
@@ -819,8 +808,11 @@ class _GroupTile extends ConsumerWidget {
                 Icons.delete_outline,
                 color: theme.colorScheme.error,
               ),
-              title: Text('Remove', style: TextStyle(color: theme.colorScheme.error)),
-              subtitle: const Text('Delete permanently — only if unused.'),
+              title: Text(
+                'Delete',
+                style: TextStyle(color: theme.colorScheme.error),
+              ),
+              subtitle: const Text('Permanently, with all its expenses.'),
               onTap: () => Navigator.of(sheetContext).pop(_GroupAction.remove),
             ),
             const SizedBox(height: 8),
@@ -885,53 +877,8 @@ class _GroupTile extends ConsumerWidget {
       ..showSnackBar(const SnackBar(content: Text('Group archived')));
   }
 
-  /// Unlike archiving, this can't be undone — [AppDatabase.deleteGroup]
-  /// refuses (with a clear reason) whenever it still has expense history.
-  Future<void> _confirmRemove(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Remove "${group.name}"?'),
-        content: const Text(
-          "This permanently deletes the group — it can't be undone. It "
-          'only works if it has no expense history; otherwise archive it '
-          'instead.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(ctx).colorScheme.error,
-            ),
-            child: const Text('Remove'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-
-    try {
-      await ref.read(dbProvider).deleteGroup(group.id);
-    } on ArgumentError catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(e.message?.toString() ?? "Can't remove this group"),
-          ),
-        );
-      return;
-    }
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Group removed')));
-  }
+  Future<void> _confirmRemove(BuildContext context, WidgetRef ref) =>
+      confirmDeleteGroup(context, ref, group);
 }
 
 enum _GroupAction { settle, unsettle, archive, remove }
@@ -999,7 +946,7 @@ class _SettledTab extends ConsumerWidget {
     );
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 32).plusNavBar(context),
       children: [
         if (people.isNotEmpty)
           section('Individual', [
