@@ -493,8 +493,7 @@ class Budgets extends Table {
   /// What % (0-100) of the previous period's unspent amount carries in when
   /// [rolloverEnabled]. 100 = full carryover, 0 = none (flag on but inert).
   /// Meaningless while [rolloverEnabled] is false.
-  IntColumn get rolloverDecayPct =>
-      integer().withDefault(const Constant(0))();
+  IntColumn get rolloverDecayPct => integer().withDefault(const Constant(0))();
 
   @override
   List<Set<Column>> get uniqueKeys => [
@@ -533,6 +532,13 @@ class Persons extends Table {
   TextColumn get note => text().nullable()();
   BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  /// Moved to the Persons screen's **Settled** tab — offered by a prompt the
+  /// moment their balance reaches zero, never set silently. Unlike
+  /// [isArchived] (a manual "hide them"), a settled person is still a live
+  /// row everywhere else, and a new non-zero balance clears this on its own
+  /// so they come straight back to the Individual list.
+  BoolColumn get isSettled => boolean().withDefault(const Constant(false))();
 
   /// Their UPI VPA (e.g. "rahul@okhdfcbank"). Powers the "Pay" button on
   /// their detail screen — used as `pa` on a `upi://pay` deep link when the
@@ -613,6 +619,10 @@ class Groups extends Table {
   TextColumn get note => text().nullable()();
   BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  /// Same as [Persons.isSettled], for a group — shown under the Settled
+  /// tab, cleared on its own once the group's balance is non-zero again.
+  BoolColumn get isSettled => boolean().withDefault(const Constant(false))();
 }
 
 /// Junction: who belongs to a group. "Me" (the app's own user) is implicit

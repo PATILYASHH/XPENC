@@ -1074,8 +1074,8 @@ void main() {
     });
 
     test(
-      'settling back to zero auto-archives the person, but a fresh '
-      'person with no history yet is left alone',
+      'settling back to zero never archives or settles anyone by itself — '
+      'that is the prompt\'s job',
       () async {
         final cash = await cashId();
         final ram = await db.addPerson('Ram');
@@ -1109,18 +1109,35 @@ void main() {
         active = await db.watchPersons().first;
         expect(
           active.map((p) => p.id),
-          isNot(contains(ram)),
-          reason: 'settled — should auto-archive out of the active list',
+          containsAll([ram, freshPerson]),
+          reason: 'zero balance alone must not move anyone',
         );
-        expect(
-          active.map((p) => p.id),
-          contains(freshPerson),
-          reason: 'never had any history — must not be swept up too',
-        );
-        final archived = await db.watchArchivedPersons().first;
-        expect(archived.map((p) => p.id), contains(ram));
+        expect(active.firstWhere((p) => p.id == ram).isSettled, isFalse);
+        expect(await db.watchArchivedPersons().first, isEmpty);
       },
     );
+
+    test('a settled person comes back out of Settled once they owe again, '
+        'and archiving takes them out of Settled', () async {
+      final ram = await db.addPerson('Ram');
+      await db.settlePerson(ram);
+      var row = (await db.watchPersons().first).firstWhere((p) => p.id == ram);
+      expect(row.isSettled, isTrue);
+
+      await db.addPersonEntry(
+        personId: ram,
+        direction: PersonDirection.theyOwe,
+        amount: Money.fromRupees(200),
+        date: DateTime(2026, 7, 8),
+      );
+      row = (await db.watchPersons().first).firstWhere((p) => p.id == ram);
+      expect(row.isSettled, isFalse);
+
+      await db.settlePerson(ram);
+      await db.archivePerson(ram);
+      final archived = await db.watchArchivedPersons().first;
+      expect(archived.single.isSettled, isFalse);
+    });
 
     test(
       'photoPath round-trips through add and update, including clearing it',

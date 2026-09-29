@@ -282,10 +282,10 @@ void main() {
     });
   });
 
-  group('auto-archiving a settled group', () {
+  group('settling a group', () {
     test(
-      'once every member repays in full, the group and its members '
-      'auto-archive; the expense history that made it "settled" stays',
+      'once every member repays in full, nothing is archived or settled '
+      'automatically; the expense history stays',
       () async {
         final cash = await cashId();
         await seedCash(Money.fromRupees(5000));
@@ -324,17 +324,13 @@ void main() {
         );
 
         final activePersons = await db.watchPersons().first;
-        expect(
-          activePersons.map((p) => p.id),
-          isNot(anyOf(contains(ram), contains(shyam))),
-        );
-        final archivedPersons = await db.watchArchivedPersons().first;
-        expect(archivedPersons.map((p) => p.id), containsAll([ram, shyam]));
+        expect(activePersons.map((p) => p.id), containsAll([ram, shyam]));
+        expect(await db.watchArchivedPersons().first, isEmpty);
 
         groups = await db.watchGroups().first;
-        expect(groups.map((g) => g.id), isNot(contains(groupId)));
-        final archivedGroups = await db.watchArchivedGroups().first;
-        expect(archivedGroups.map((g) => g.id), contains(groupId));
+        expect(groups.map((g) => g.id), contains(groupId));
+        expect(groups.firstWhere((g) => g.id == groupId).isSettled, isFalse);
+        expect(await db.watchArchivedGroups().first, isEmpty);
 
         // The expense itself is history, not undone by the settlement.
         final expense = await (db.select(
@@ -343,6 +339,27 @@ void main() {
         expect(expense, isNotNull);
       },
     );
+
+    test('a new expense takes a settled group back out of Settled', () async {
+      final cash = await cashId();
+      await seedCash(Money.fromRupees(5000));
+      final food = await catId(CategoryKind.expense, 'Food');
+      final (groupId, ram, shyam) = await seedGroup();
+      await db.settleGroup(groupId);
+
+      await db.addGroupExpense(
+        groupId: groupId,
+        amount: Money.fromRupees(900),
+        splitMethod: GroupSplitMethod.equal,
+        date: DateTime(2026, 7, 5),
+        accountId: cash,
+        categoryId: food,
+        participantIds: {null, ram, shyam},
+      );
+
+      final groups = await db.watchGroups().first;
+      expect(groups.firstWhere((g) => g.id == groupId).isSettled, isFalse);
+    });
   });
 
   group('group-only balances', () {
@@ -485,7 +502,7 @@ void main() {
       expect(await groupDue(groupId, ram), const Money.zero());
     });
 
-    test('a group settles and auto-archives even while a member still owes '
+    test('a settled group stays settled while a member still owes '
         'individually', () async {
       final (:abc, :bcd, :hotel) = await seedHotel();
       await db.addPersonEntry(
@@ -501,9 +518,17 @@ void main() {
         date: DateTime(2026, 7, 10),
       );
 
-      final archived = await db.watchArchivedGroups().first;
-      expect(archived.map((g) => g.id), contains(hotel));
-      expect(await db.watchPersonBalance(abc).first, Money.fromRupees(500));
+      await db.settleGroup(hotel);
+      await db.addPersonEntry(
+        personId: abc,
+        direction: PersonDirection.theyOwe,
+        amount: Money.fromRupees(100),
+        date: DateTime(2026, 7, 12),
+      );
+
+      final groups = await db.watchGroups().first;
+      expect(groups.firstWhere((g) => g.id == hotel).isSettled, isTrue);
+      expect(await db.watchPersonBalance(abc).first, Money.fromRupees(600));
     });
   });
 

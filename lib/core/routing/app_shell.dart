@@ -11,6 +11,7 @@ import 'hold_menu_geometry.dart';
 import '../../features/add_transaction/add_transaction_choice_sheet.dart';
 import '../../features/dashboard/month_picker_sheet.dart';
 import '../../features/persons/persons_screen.dart' show showAddPersonDialog;
+import '../../features/persons/settled_prompt_listener.dart';
 import '../../features/transactions/transaction_filters.dart';
 import '../branding/app_info.dart';
 import '../branding/brand_mark.dart';
@@ -126,30 +127,32 @@ class AppShell extends ConsumerWidget {
     final left = _catalog[leftId]!;
     final right = _catalog[rightId]!;
 
-    return Scaffold(
-      appBar: _TopBar(currentIndex: navigationShell.currentIndex),
-      body: navigationShell,
-      bottomNavigationBar: DecoratedBox(
-        decoration: BoxDecoration(
-          border: Border(top: BorderSide(color: border)),
-        ),
-        child: SafeArea(
-          top: false,
-          child: SizedBox(
-            height: 68,
-            child: Row(
-              children: [
-                _navItem(context, ref, _dashboard),
-                _navItem(context, ref, left),
-                _AddButton(
-                  holdEnabled: ref.watch(holdMenuEnabledProvider),
-                  slotIds: ref.watch(holdMenuSlotsProvider),
-                  catalog: _catalog,
-                  hasTemplates: ref.watch(hasTransactionTemplatesProvider),
-                ),
-                _navItem(context, ref, right),
-                _navItem(context, ref, _more),
-              ],
+    return SettledPromptListener(
+      child: Scaffold(
+        appBar: _TopBar(currentIndex: navigationShell.currentIndex),
+        body: navigationShell,
+        bottomNavigationBar: DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: border)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: SizedBox(
+              height: 68,
+              child: Row(
+                children: [
+                  _navItem(context, ref, _dashboard),
+                  _navItem(context, ref, left),
+                  _AddButton(
+                    holdEnabled: ref.watch(holdMenuEnabledProvider),
+                    slotIds: ref.watch(holdMenuSlotsProvider),
+                    catalog: _catalog,
+                    hasTemplates: ref.watch(hasTransactionTemplatesProvider),
+                  ),
+                  _navItem(context, ref, right),
+                  _navItem(context, ref, _more),
+                ],
+              ),
             ),
           ),
         ),

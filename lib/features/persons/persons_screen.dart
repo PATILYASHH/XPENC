@@ -14,8 +14,9 @@ import 'group_member_picker_sheet.dart';
 import 'person_avatar.dart';
 
 /// Who owes you, who you owe — split into Individual (a single named
-/// contact, unchanged from before groups existed) and Group (shared
-/// expenses split across several people at once).
+/// contact, unchanged from before groups existed), Group (shared expenses
+/// split across several people at once) and Settled (either kind, once the
+/// user moved it there — see `SettledPromptListener`).
 ///
 /// [embedded] is true when this screen is a bottom-nav tab (GitHub #70) —
 /// `AppShell`'s shared top bar owns the title/actions then. Default `false`
@@ -35,7 +36,7 @@ class PersonsScreen extends ConsumerStatefulWidget {
 
 class _PersonsScreenState extends ConsumerState<PersonsScreen>
     with SingleTickerProviderStateMixin {
-  late final _tabController = TabController(length: 2, vsync: this)
+  late final _tabController = TabController(length: 3, vsync: this)
     ..addListener(() => setState(() {})); // rebuilds the FAB on tab change
 
   @override
@@ -103,7 +104,7 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
               title: const Text('Persons'),
               actions: [
                 IconButton(
-                  tooltip: 'Archived people',
+                  tooltip: 'Archived',
                   icon: const Icon(Icons.inventory_2_outlined),
                   onPressed: () => context.push('/persons/archived'),
                 ),
@@ -118,12 +119,16 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
         children: [
           TabBar(
             controller: _tabController,
-            tabs: const [Tab(text: 'Individual'), Tab(text: 'Group')],
+            tabs: const [
+              Tab(text: 'Individual'),
+              Tab(text: 'Group'),
+              Tab(text: 'Settled'),
+            ],
           ),
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: const [_IndividualTab(), _GroupTab()],
+              children: const [_IndividualTab(), _GroupTab(), _SettledTab()],
             ),
           ),
         ],
@@ -134,7 +139,7 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
               onPressed: () => _createGroup(context, ref),
               child: const Icon(Icons.add_rounded),
             )
-          : ussdPayEnabled
+          : _tabController.index == 0 && ussdPayEnabled
           ? FloatingActionButton(
               tooltip: 'Pay without internet',
               onPressed: () => context.push('/persons/ussd-pay'),
@@ -179,13 +184,25 @@ class _IndividualTab extends ConsumerWidget {
               ),
             ),
           ),
-          data: (persons) {
-            if (persons.isEmpty) {
+          data: (all) {
+            if (all.isEmpty) {
               return const SliverToBoxAdapter(child: _EmptyPersons());
             }
-            // Dues/owes on top (largest first) — anyone still at zero here
-            // has no history yet (settled ones auto-archive), so they trail
-            // at the bottom rather than mixing in with active balances.
+            final persons = [
+              for (final p in all)
+                if (!p.isSettled) p,
+            ];
+            if (persons.isEmpty) {
+              return const SliverToBoxAdapter(
+                child: _EmptyNote(
+                  icon: Icons.check_circle_outline_rounded,
+                  text: 'Everyone is settled — see the Settled tab.',
+                ),
+              );
+            }
+            // Dues/owes on top (largest first) — anyone at zero here either
+            // has no history yet or was kept here from the settled prompt,
+            // so they trail at the bottom.
             final sorted = [...persons]..sort((a, b) {
               final ba = balances[a.id] ?? const Money.zero();
               final bb = balances[b.id] ?? const Money.zero();
@@ -419,6 +436,22 @@ class _PersonTile extends ConsumerWidget {
               onTap: () =>
                   Navigator.of(sheetContext).pop(_PersonAction.linkContact),
             ),
+            if (person.isSettled)
+              ListTile(
+                leading: const Icon(Icons.undo_rounded),
+                title: const Text('Move out of Settled'),
+                subtitle: const Text('Back to the Individual list.'),
+                onTap: () =>
+                    Navigator.of(sheetContext).pop(_PersonAction.unsettle),
+              )
+            else if (balance.isZero)
+              ListTile(
+                leading: const Icon(Icons.check_circle_outline_rounded),
+                title: const Text('Move to Settled'),
+                subtitle: const Text('Balance is zero. History stays intact.'),
+                onTap: () =>
+                    Navigator.of(sheetContext).pop(_PersonAction.settle),
+              ),
             ListTile(
               leading: const Icon(Icons.archive_outlined),
               title: const Text('Archive'),
@@ -448,6 +481,24 @@ class _PersonTile extends ConsumerWidget {
       await showEditPersonSheet(context, ref, person);
     } else if (action == _PersonAction.linkContact) {
       await _linkContact(context, ref);
+    } else if (action == _PersonAction.settle ||
+        action == _PersonAction.unsettle) {
+      final db = ref.read(dbProvider);
+      action == _PersonAction.settle
+          ? await db.settlePerson(person.id)
+          : await db.unsettlePerson(person.id);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              action == _PersonAction.settle
+                  ? 'Moved to Settled'
+                  : 'Moved back to Individual',
+            ),
+          ),
+        );
     } else if (action == _PersonAction.archive) {
       await _confirmArchive(context, ref);
     } else {
@@ -576,7 +627,7 @@ class _PersonTile extends ConsumerWidget {
   }
 }
 
-enum _PersonAction { edit, linkContact, archive, remove }
+enum _PersonAction { edit, linkContact, settle, unsettle, archive, remove }
 
 /// Groups, each showing member count and the group's aggregate balance
 /// (`groupBalanceProvider` — what this group's own split created, not its
@@ -599,8 +650,18 @@ class _GroupTab extends ConsumerWidget {
           style: TextStyle(color: theme.colorScheme.error),
         ),
       ),
-      data: (groups) {
-        if (groups.isEmpty) return const _EmptyGroups();
+      data: (all) {
+        if (all.isEmpty) return const _EmptyGroups();
+        final groups = [
+          for (final g in all)
+            if (!g.isSettled) g,
+        ];
+        if (groups.isEmpty) {
+          return const _EmptyNote(
+            icon: Icons.check_circle_outline_rounded,
+            text: 'Every group is settled — see the Settled tab.',
+          );
+        }
         // Same "dues on top" ordering as the Individual tab, reusing
         // groupBalanceProvider's aggregate rather than recomputing it.
         final balanceById = {
@@ -709,6 +770,7 @@ class _GroupTile extends ConsumerWidget {
 
   Future<void> _showActions(BuildContext context, WidgetRef ref) async {
     final theme = Theme.of(context);
+    final balance = ref.read(groupBalanceProvider(group.id));
     final action = await showModalBottomSheet<_GroupAction>(
       context: context,
       showDragHandle: true,
@@ -731,6 +793,21 @@ class _GroupTile extends ConsumerWidget {
                 ),
               ),
             ),
+            if (group.isSettled)
+              ListTile(
+                leading: const Icon(Icons.undo_rounded),
+                title: const Text('Move out of Settled'),
+                subtitle: const Text('Back to the Group list.'),
+                onTap: () =>
+                    Navigator.of(sheetContext).pop(_GroupAction.unsettle),
+              )
+            else if (balance.isZero)
+              ListTile(
+                leading: const Icon(Icons.check_circle_outline_rounded),
+                title: const Text('Move to Settled'),
+                subtitle: const Text('Balance is zero. History stays intact.'),
+                onTap: () => Navigator.of(sheetContext).pop(_GroupAction.settle),
+              ),
             ListTile(
               leading: const Icon(Icons.archive_outlined),
               title: const Text('Archive'),
@@ -752,7 +829,24 @@ class _GroupTile extends ConsumerWidget {
       ),
     );
     if (action == null || !context.mounted) return;
-    if (action == _GroupAction.archive) {
+    if (action == _GroupAction.settle || action == _GroupAction.unsettle) {
+      final db = ref.read(dbProvider);
+      action == _GroupAction.settle
+          ? await db.settleGroup(group.id)
+          : await db.unsettleGroup(group.id);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              action == _GroupAction.settle
+                  ? 'Moved to Settled'
+                  : 'Moved back to Group',
+            ),
+          ),
+        );
+    } else if (action == _GroupAction.archive) {
       await _confirmArchive(context, ref);
     } else {
       await _confirmRemove(context, ref);
@@ -840,7 +934,115 @@ class _GroupTile extends ConsumerWidget {
   }
 }
 
-enum _GroupAction { archive, remove }
+enum _GroupAction { settle, unsettle, archive, remove }
+
+/// Everything the user moved to Settled — from the prompt when a balance
+/// reached zero, or by hand from a row's long-press sheet. Unlike Archived
+/// these stay full, live rows: same tiles, same balances and history, and
+/// a new non-zero balance sends them back to their own tab on its own.
+class _SettledTab extends ConsumerWidget {
+  const _SettledTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final people = [
+      for (final p in ref.watch(personsProvider).valueOrNull ?? <PersonRow>[])
+        if (p.isSettled) p,
+    ]..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    final groups = [
+      for (final g in ref.watch(groupsProvider).valueOrNull ?? <GroupRow>[])
+        if (g.isSettled) g,
+    ]..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    final balances =
+        ref.watch(personBalancesProvider).valueOrNull ?? const <int, Money>{};
+
+    if (people.isEmpty && groups.isEmpty) {
+      return const _EmptyNote(
+        icon: Icons.check_circle_outline_rounded,
+        text:
+            'Nobody here yet. When a balance reaches zero you can move '
+            'the person or group here.',
+      );
+    }
+
+    Widget section(String title, List<Widget> tiles) => Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
+          child: Text(
+            '$title · ${tiles.length}',
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Card(
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              for (var i = 0; i < tiles.length; i++) ...[
+                if (i > 0)
+                  Divider(
+                    height: 1,
+                    indent: 72,
+                    color: theme.colorScheme.outline,
+                  ),
+                tiles[i],
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+      children: [
+        if (people.isNotEmpty)
+          section('Individual', [
+            for (final p in people)
+              _PersonTile(
+                person: p,
+                balance: balances[p.id] ?? const Money.zero(),
+              ),
+          ]),
+        if (groups.isNotEmpty)
+          section('Group', [for (final g in groups) _GroupTile(group: g)]),
+      ],
+    );
+  }
+}
+
+class _EmptyNote extends StatelessWidget {
+  const _EmptyNote({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(32, 48, 32, 24),
+      child: Column(
+        children: [
+          Icon(icon, size: 48, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(height: 16),
+          Text(
+            text,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _EmptyGroups extends StatelessWidget {
   const _EmptyGroups();

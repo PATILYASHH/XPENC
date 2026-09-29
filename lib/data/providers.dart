@@ -369,9 +369,7 @@ final _previousPeriodUnspentProvider = FutureProvider<Map<int, Money>>((
 /// this, not [BudgetRow.amount] directly, or Rollover silently does nothing.
 final effectiveBudgetAmountsProvider = Provider<Map<int, Money>>((ref) {
   final budgetsList = ref.watch(budgetsProvider).valueOrNull ?? const [];
-  final out = <int, Money>{
-    for (final b in budgetsList) b.categoryId: b.amount,
-  };
+  final out = <int, Money>{for (final b in budgetsList) b.categoryId: b.amount};
   if (ref.watch(appModeProvider) != AppMode.pro) return out;
   final prevUnspent =
       ref.watch(_previousPeriodUnspentProvider).valueOrNull ?? const {};
@@ -746,14 +744,12 @@ final groupDuesByPersonProvider = Provider<Map<int, Map<int, Money>>>((ref) {
       ref.watch(personEntryGroupIdsProvider).valueOrNull ?? const <int, int>{};
   final byPerson = <int, List<PersonLedgerItem>>{};
   for (final e in entries) {
-    byPerson
-        .putIfAbsent(e.personId, () => [])
-        .add((
-          id: e.id,
-          date: e.date,
-          signed: e.direction == PersonDirection.theyOwe ? e.amount : -e.amount,
-          groupId: groupOf[e.id],
-        ));
+    byPerson.putIfAbsent(e.personId, () => []).add((
+      id: e.id,
+      date: e.date,
+      signed: e.direction == PersonDirection.theyOwe ? e.amount : -e.amount,
+      groupId: groupOf[e.id],
+    ));
   }
   return {
     for (final entry in byPerson.entries)
@@ -768,14 +764,26 @@ final groupMemberBalancesProvider = Provider.family<Map<int, Money>, int>((
   groupId,
 ) {
   final dues = ref.watch(groupDuesByPersonProvider);
-  return {
-    for (final entry in dues.entries) entry.key: ?entry.value[groupId],
-  };
+  return {for (final entry in dues.entries) entry.key: ?entry.value[groupId]};
 });
 
 /// A group's aggregate balance — the sum of [groupMemberBalancesProvider],
 /// so it reflects only what this group's split created, never a member's
 /// unrelated individual dues.
+/// Every group's aggregate balance by id, in one pass — what
+/// [groupBalanceProvider] gives one group at a time. A group with no
+/// shares yet has no entry at all.
+final allGroupBalancesProvider = Provider<Map<int, Money>>((ref) {
+  final totals = <int, Money>{};
+  for (final byGroup in ref.watch(groupDuesByPersonProvider).values) {
+    for (final entry in byGroup.entries) {
+      totals[entry.key] =
+          (totals[entry.key] ?? const Money.zero()) + entry.value;
+    }
+  }
+  return totals;
+});
+
 final groupBalanceProvider = Provider.family<Money, int>((ref, groupId) {
   return ref
       .watch(groupMemberBalancesProvider(groupId))
@@ -2065,13 +2073,15 @@ final accountTypeBalanceTrendProvider =
 ///   person who owes *you* never offsets someone you owe).
 final debtTrendProvider =
     Provider.family<
-      List<({
-        DateTime month,
-        Money loans,
-        Money payLater,
-        Money people,
-        Money total,
-      })>,
+      List<
+        ({
+          DateTime month,
+          Money loans,
+          Money payLater,
+          Money people,
+          Money total,
+        })
+      >,
       int
     >((ref, months) {
       final loanTrend = ref.watch(

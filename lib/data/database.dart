@@ -199,7 +199,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 76;
+  int get schemaVersion => 77;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -671,11 +671,7 @@ class AppDatabase extends _$AppDatabase {
         // 3-tier app mode (Basic/Medium/Pro), plus Overflow + Rollover
         // budgets (GitHub #134).
         await _addColumnIfMissing(m, settings, settings.appMode);
-        await _addColumnIfMissing(
-          m,
-          budgets,
-          budgets.overflowTargetCategoryId,
-        );
+        await _addColumnIfMissing(m, budgets, budgets.overflowTargetCategoryId);
         await _addColumnIfMissing(m, budgets, budgets.rolloverEnabled);
         await _addColumnIfMissing(m, budgets, budgets.rolloverDecayPct);
 
@@ -698,7 +694,11 @@ class AppDatabase extends _$AppDatabase {
       if (from < 73) {
         // Yearly Auto rules, pinning a target month alongside the existing
         // day-of-month anchor.
-        await _addColumnIfMissing(m, recurringRules, recurringRules.monthOfYear);
+        await _addColumnIfMissing(
+          m,
+          recurringRules,
+          recurringRules.monthOfYear,
+        );
       }
       if (from < 74) {
         // Optional per-account minimum-balance floor, warned about (never
@@ -720,6 +720,11 @@ class AppDatabase extends _$AppDatabase {
           settings,
           settings.lockScreenScreenshotShortcut,
         );
+      }
+      if (from < 77) {
+        // Settled tab on Persons — replaces the old silent auto-archive.
+        await _addColumnIfMissing(m, persons, persons.isSettled);
+        await _addColumnIfMissing(m, groups, groups.isSettled);
       }
     },
     beforeOpen: (details) async {
@@ -1950,17 +1955,14 @@ class AppDatabase extends _$AppDatabase {
 
   Stream<List<TransactionTemplateRow>> watchTransactionTemplates() =>
       (select(transactionTemplates)..orderBy([
-            (t) => OrderingTerm(
-              expression: t.createdAt,
-              mode: OrderingMode.desc,
-            ),
+            (t) =>
+                OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
           ]))
           .watch();
 
-  Future<TransactionTemplateRow?> transactionTemplateById(int id) =>
-      (select(
-        transactionTemplates,
-      )..where((t) => t.id.equals(id))).getSingleOrNull();
+  Future<TransactionTemplateRow?> transactionTemplateById(int id) => (select(
+    transactionTemplates,
+  )..where((t) => t.id.equals(id))).getSingleOrNull();
 
   Future<List<int>> tagIdsForTemplate(int templateId) async {
     final rows = await (select(
@@ -1982,8 +1984,7 @@ class AppDatabase extends _$AppDatabase {
 
     final isPersonLinked =
         row.type.isPersonMovement ||
-        (row.type.isIncomeOrExpense &&
-            await isPersonLinkedTransaction(row.id));
+        (row.type.isIncomeOrExpense && await isPersonLinkedTransaction(row.id));
     if (isPersonLinked) {
       throw ArgumentError("This can't be turned into a template.");
     }
@@ -2010,10 +2011,7 @@ class AppDatabase extends _$AppDatabase {
       );
       for (final tagId in tagIds) {
         await into(transactionTemplateTags).insert(
-          TransactionTemplateTagsCompanion.insert(
-            templateId: id,
-            tagId: tagId,
-          ),
+          TransactionTemplateTagsCompanion.insert(templateId: id, tagId: tagId),
         );
       }
       return id;
@@ -2024,9 +2022,7 @@ class AppDatabase extends _$AppDatabase {
     await (delete(
       transactionTemplateTags,
     )..where((t) => t.templateId.equals(id))).go();
-    await (delete(
-      transactionTemplates,
-    )..where((t) => t.id.equals(id))).go();
+    await (delete(transactionTemplates)..where((t) => t.id.equals(id))).go();
   });
 
   // ── Savings goals ────────────────────────────────────────────────────────
@@ -2752,7 +2748,7 @@ class AppDatabase extends _$AppDatabase {
           categoryId: Value(categoryId),
         ),
       );
-      await _maybeAutoArchiveSettled(personId);
+      await _syncSettledPerson(personId);
       return entryId;
     });
   }
@@ -2769,7 +2765,7 @@ class AppDatabase extends _$AppDatabase {
       if (row.transactionId != null) {
         await deleteTransaction(row.transactionId!);
       }
-      await _maybeAutoArchiveSettled(row.personId);
+      await _syncSettledPerson(row.personId);
     });
   }
 
@@ -2855,53 +2851,51 @@ class AppDatabase extends _$AppDatabase {
           categoryId: Value(categoryId),
         ),
       );
-      await _maybeAutoArchiveSettled(existing.personId);
+      await _syncSettledPerson(existing.personId);
     });
   }
 
-  /// After a person's ledger changes, silently archives them once they're
-  /// back to exactly zero — same "Settled" condition the UI already shows
-  /// (`!isPositive && !isNegative`). Requires at least one entry so a
-  /// freshly-added person with no history yet is never auto-archived on
-  /// sight. Reversible any time from the Archived screen. Cascades to any
-  /// group this person belongs to, in case the whole group just settled too.
-  Future<void> _maybeAutoArchiveSettled(int personId) async {
+  /// After a person's ledger changes, takes them back out of the Settled
+  /// tab once they owe (or are owed) again. Never archives or settles
+  /// anyone by itself — reaching zero only triggers the "Settled / Archive
+  /// / Keep here" prompt in the UI (see `SettledPromptListener`). Cascades
+  /// to every group they belong to, the same way.
+  Future<void> _syncSettledPerson(int personId) async {
     final person = await (select(
       persons,
     )..where((p) => p.id.equals(personId))).getSingleOrNull();
-    if (person == null || person.isArchived) return;
-    if (await countEntriesForPerson(personId) == 0) return;
-    final balance = await _personBalance(personId);
-    if (!balance.isZero) return;
-    await archivePerson(personId);
+    if (person == null) return;
+    if (person.isSettled && !(await _personBalance(personId)).isZero) {
+      await unsettlePerson(personId);
+    }
 
     final memberships = await (select(
       groupMembers,
     )..where((m) => m.personId.equals(personId))).get();
     for (final membership in memberships) {
-      await _maybeAutoArchiveSettledGroup(membership.groupId);
+      await _syncSettledGroup(membership.groupId);
     }
   }
 
-  /// Same idea as [_maybeAutoArchiveSettled], for a group: archives it once
-  /// every member's amount in *this group* is zero — the same figures the
-  /// group screen shows ([allocateGroupDues]), so "Settled" there and
-  /// auto-archive always agree. A member's unrelated individual dues never
-  /// hold a settled group open.
-  Future<void> _maybeAutoArchiveSettledGroup(int groupId) async {
+  /// Same idea as [_syncSettledPerson], for a group: out of Settled once
+  /// any member's amount in *this group* is non-zero — the same figures the
+  /// group screen shows ([allocateGroupDues]). A member's unrelated
+  /// individual dues never pull a settled group back out.
+  Future<void> _syncSettledGroup(int groupId) async {
     final group = await (select(
       groups,
     )..where((g) => g.id.equals(groupId))).getSingleOrNull();
-    if (group == null || group.isArchived) return;
-    if (await countExpensesForGroup(groupId) == 0) return;
+    if (group == null || !group.isSettled) return;
     final members = await (select(
       groupMembers,
     )..where((m) => m.groupId.equals(groupId))).get();
     for (final member in members) {
       final dues = await _groupDuesForPerson(member.personId);
-      if (!(dues[groupId] ?? const Money.zero()).isZero) return;
+      if (!(dues[groupId] ?? const Money.zero()).isZero) {
+        await unsettleGroup(groupId);
+        return;
+      }
     }
-    await archiveGroup(groupId);
   }
 
   Future<Money> _personBalance(int personId) async {
@@ -3592,10 +3586,10 @@ class AppDatabase extends _$AppDatabase {
         'that in Settings first.',
       );
     }
-    final template = await (select(transactionTemplates)..where(
-          (t) => t.accountId.equals(id) | t.toAccountId.equals(id),
-        ))
-        .getSingleOrNull();
+    final template =
+        await (select(transactionTemplates)
+              ..where((t) => t.accountId.equals(id) | t.toAccountId.equals(id)))
+            .getSingleOrNull();
     if (template != null) {
       throw ArgumentError(
         '"${template.name}" template still points at this account. Delete '
@@ -3678,16 +3672,15 @@ class AppDatabase extends _$AppDatabase {
   /// actually provided — a null [phone]/[photoPath] leaves that field as it
   /// was, unlike [updatePerson] where null means "clear it". The name is
   /// never touched; the user chose it.
-  Future<void> linkPersonContact(
-    int id, {
-    String? phone,
-    String? photoPath,
-  }) => (update(persons)..where((p) => p.id.equals(id))).write(
-    PersonsCompanion(
-      phone: phone == null ? const Value.absent() : Value(phone),
-      photoPath: photoPath == null ? const Value.absent() : Value(photoPath),
-    ),
-  );
+  Future<void> linkPersonContact(int id, {String? phone, String? photoPath}) =>
+      (update(persons)..where((p) => p.id.equals(id))).write(
+        PersonsCompanion(
+          phone: phone == null ? const Value.absent() : Value(phone),
+          photoPath: photoPath == null
+              ? const Value.absent()
+              : Value(photoPath),
+        ),
+      );
 
   Stream<List<PersonRow>> watchPersons() =>
       (select(persons)..where((p) => p.isArchived.equals(false))).watch();
@@ -3695,9 +3688,27 @@ class AppDatabase extends _$AppDatabase {
   Stream<List<PersonRow>> watchArchivedPersons() =>
       (select(persons)..where((p) => p.isArchived.equals(true))).watch();
 
+  /// Archive and Settled are exclusive: archiving takes them out of Settled
+  /// too, so a later restore lands them back in the Individual list.
   Future<void> archivePerson(int id) =>
       (update(persons)..where((p) => p.id.equals(id))).write(
-        const PersonsCompanion(isArchived: Value(true)),
+        const PersonsCompanion(
+          isArchived: Value(true),
+          isSettled: Value(false),
+        ),
+      );
+
+  Future<void> settlePerson(int id) =>
+      (update(persons)..where((p) => p.id.equals(id))).write(
+        const PersonsCompanion(
+          isSettled: Value(true),
+          isArchived: Value(false),
+        ),
+      );
+
+  Future<void> unsettlePerson(int id) =>
+      (update(persons)..where((p) => p.id.equals(id))).write(
+        const PersonsCompanion(isSettled: Value(false)),
       );
 
   Future<void> unarchivePerson(int id) =>
@@ -3840,10 +3851,9 @@ class AppDatabase extends _$AppDatabase {
     int categoryId,
     int? targetCategoryId,
   ) async {
-    final existing =
-        await (select(
-          budgets,
-        )..where((b) => b.categoryId.equals(categoryId))).getSingleOrNull();
+    final existing = await (select(
+      budgets,
+    )..where((b) => b.categoryId.equals(categoryId))).getSingleOrNull();
     if (existing == null) {
       throw ArgumentError('Set a budget for this category first.');
     }
@@ -3867,10 +3877,9 @@ class AppDatabase extends _$AppDatabase {
       final visited = <int>{categoryId};
       while (true) {
         if (!visited.add(cursor)) break; // defensive: pre-existing bad chain
-        final next =
-            await (select(
-              budgets,
-            )..where((b) => b.categoryId.equals(cursor))).getSingleOrNull();
+        final next = await (select(
+          budgets,
+        )..where((b) => b.categoryId.equals(cursor))).getSingleOrNull();
         if (next?.overflowTargetCategoryId == null) break;
         if (next!.overflowTargetCategoryId == categoryId) {
           throw ArgumentError(
@@ -3898,10 +3907,9 @@ class AppDatabase extends _$AppDatabase {
     required bool enabled,
     required int decayPct,
   }) async {
-    final existing =
-        await (select(
-          budgets,
-        )..where((b) => b.categoryId.equals(categoryId))).getSingleOrNull();
+    final existing = await (select(
+      budgets,
+    )..where((b) => b.categoryId.equals(categoryId))).getSingleOrNull();
     if (existing == null) {
       throw ArgumentError('Set a budget for this category first.');
     }
@@ -4074,9 +4082,20 @@ class AppDatabase extends _$AppDatabase {
   Stream<List<GroupRow>> watchArchivedGroups() =>
       (select(groups)..where((g) => g.isArchived.equals(true))).watch();
 
+  /// Exclusive with Settled, same as [archivePerson].
   Future<void> archiveGroup(int id) =>
       (update(groups)..where((g) => g.id.equals(id))).write(
-        const GroupsCompanion(isArchived: Value(true)),
+        const GroupsCompanion(isArchived: Value(true), isSettled: Value(false)),
+      );
+
+  Future<void> settleGroup(int id) =>
+      (update(groups)..where((g) => g.id.equals(id))).write(
+        const GroupsCompanion(isSettled: Value(true), isArchived: Value(false)),
+      );
+
+  Future<void> unsettleGroup(int id) =>
+      (update(groups)..where((g) => g.id.equals(id))).write(
+        const GroupsCompanion(isSettled: Value(false)),
       );
 
   Future<void> unarchiveGroup(int id) =>
@@ -4274,6 +4293,10 @@ class AppDatabase extends _$AppDatabase {
           ),
         );
       }
+      // Each member's entry was added before its share row linked it to
+      // this group, so the per-entry sync above couldn't see the group's
+      // new balance yet.
+      await _syncSettledGroup(groupId);
       return expenseId;
     });
   }
@@ -5803,10 +5826,15 @@ class AppDatabase extends _$AppDatabase {
       update(settings).write(SettingsCompanion(holdMenuEnabled: Value(value)));
 
   Future<void> setHoldMenuSlots(List<String> ids) async {
-    if (ids.length != 3 || ids.toSet().length != 3) {
-      throw ArgumentError('The hold menu needs exactly 3 distinct items.');
+    if (ids.length != 8) {
+      throw ArgumentError('The hold menu needs exactly 8 slots.');
     }
-    if (ids.any((id) => !bottomNavCatalogIds.contains(id))) {
+    final filled = ids.where((id) => id.isNotEmpty).toList();
+    if (filled.toSet().length != filled.length) {
+      throw ArgumentError('The same quick action is in two slots.');
+    }
+    final valid = RegExp(r'^([a-z0-9-]+|template:\d+)$');
+    if (filled.any((id) => !valid.hasMatch(id))) {
       throw ArgumentError('Unknown hold-menu item.');
     }
     await update(
@@ -6581,7 +6609,9 @@ class AppDatabase extends _$AppDatabase {
         final prevSpent = prevSpend[b.categoryId] ?? const Money.zero();
         final unspent = b.amount - prevSpent;
         final carried = unspent.isPositive ? unspent : const Money.zero();
-        budgeted += Money.fromPaise((carried.paise * b.rolloverDecayPct) ~/ 100);
+        budgeted += Money.fromPaise(
+          (carried.paise * b.rolloverDecayPct) ~/ 100,
+        );
       }
       out.add((category: category, budgeted: budgeted, spent: spent));
     }

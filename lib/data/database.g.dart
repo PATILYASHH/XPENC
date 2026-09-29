@@ -1697,6 +1697,21 @@ class $PersonsTable extends Persons with TableInfo<$PersonsTable, PersonRow> {
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _isSettledMeta = const VerificationMeta(
+    'isSettled',
+  );
+  @override
+  late final GeneratedColumn<bool> isSettled = GeneratedColumn<bool>(
+    'is_settled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_settled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _upiIdMeta = const VerificationMeta('upiId');
   @override
   late final GeneratedColumn<String> upiId = GeneratedColumn<String>(
@@ -1774,6 +1789,7 @@ class $PersonsTable extends Persons with TableInfo<$PersonsTable, PersonRow> {
     note,
     isArchived,
     createdAt,
+    isSettled,
     upiId,
     phone,
     photoPath,
@@ -1827,6 +1843,12 @@ class $PersonsTable extends Persons with TableInfo<$PersonsTable, PersonRow> {
       context.handle(
         _createdAtMeta,
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('is_settled')) {
+      context.handle(
+        _isSettledMeta,
+        isSettled.isAcceptableOrUnknown(data['is_settled']!, _isSettledMeta),
       );
     }
     if (data.containsKey('upi_id')) {
@@ -1904,6 +1926,10 @@ class $PersonsTable extends Persons with TableInfo<$PersonsTable, PersonRow> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      isSettled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_settled'],
+      )!,
       upiId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}upi_id'],
@@ -1949,6 +1975,13 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
   final bool isArchived;
   final DateTime createdAt;
 
+  /// Moved to the Persons screen's **Settled** tab — offered by a prompt the
+  /// moment their balance reaches zero, never set silently. Unlike
+  /// [isArchived] (a manual "hide them"), a settled person is still a live
+  /// row everywhere else, and a new non-zero balance clears this on its own
+  /// so they come straight back to the Individual list.
+  final bool isSettled;
+
   /// Their UPI VPA (e.g. "rahul@okhdfcbank"). Powers the "Pay" button on
   /// their detail screen — used as `pa` on a `upi://pay` deep link when the
   /// app's user owes them (see `UpiLauncher`).
@@ -1988,6 +2021,7 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
     this.note,
     required this.isArchived,
     required this.createdAt,
+    required this.isSettled,
     this.upiId,
     this.phone,
     this.photoPath,
@@ -2009,6 +2043,7 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
     }
     map['is_archived'] = Variable<bool>(isArchived);
     map['created_at'] = Variable<DateTime>(createdAt);
+    map['is_settled'] = Variable<bool>(isSettled);
     if (!nullToAbsent || upiId != null) {
       map['upi_id'] = Variable<String>(upiId);
     }
@@ -2043,6 +2078,7 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       isArchived: Value(isArchived),
       createdAt: Value(createdAt),
+      isSettled: Value(isSettled),
       upiId: upiId == null && nullToAbsent
           ? const Value.absent()
           : Value(upiId),
@@ -2079,6 +2115,7 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
       note: serializer.fromJson<String?>(json['note']),
       isArchived: serializer.fromJson<bool>(json['isArchived']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      isSettled: serializer.fromJson<bool>(json['isSettled']),
       upiId: serializer.fromJson<String?>(json['upiId']),
       phone: serializer.fromJson<String?>(json['phone']),
       photoPath: serializer.fromJson<String?>(json['photoPath']),
@@ -2098,6 +2135,7 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
       'note': serializer.toJson<String?>(note),
       'isArchived': serializer.toJson<bool>(isArchived),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'isSettled': serializer.toJson<bool>(isSettled),
       'upiId': serializer.toJson<String?>(upiId),
       'phone': serializer.toJson<String?>(phone),
       'photoPath': serializer.toJson<String?>(photoPath),
@@ -2115,6 +2153,7 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
     Value<String?> note = const Value.absent(),
     bool? isArchived,
     DateTime? createdAt,
+    bool? isSettled,
     Value<String?> upiId = const Value.absent(),
     Value<String?> phone = const Value.absent(),
     Value<String?> photoPath = const Value.absent(),
@@ -2129,6 +2168,7 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
     note: note.present ? note.value : this.note,
     isArchived: isArchived ?? this.isArchived,
     createdAt: createdAt ?? this.createdAt,
+    isSettled: isSettled ?? this.isSettled,
     upiId: upiId.present ? upiId.value : this.upiId,
     phone: phone.present ? phone.value : this.phone,
     photoPath: photoPath.present ? photoPath.value : this.photoPath,
@@ -2147,6 +2187,7 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
           ? data.isArchived.value
           : this.isArchived,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      isSettled: data.isSettled.present ? data.isSettled.value : this.isSettled,
       upiId: data.upiId.present ? data.upiId.value : this.upiId,
       phone: data.phone.present ? data.phone.value : this.phone,
       photoPath: data.photoPath.present ? data.photoPath.value : this.photoPath,
@@ -2166,6 +2207,7 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
           ..write('note: $note, ')
           ..write('isArchived: $isArchived, ')
           ..write('createdAt: $createdAt, ')
+          ..write('isSettled: $isSettled, ')
           ..write('upiId: $upiId, ')
           ..write('phone: $phone, ')
           ..write('photoPath: $photoPath, ')
@@ -2185,6 +2227,7 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
     note,
     isArchived,
     createdAt,
+    isSettled,
     upiId,
     phone,
     photoPath,
@@ -2203,6 +2246,7 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
           other.note == this.note &&
           other.isArchived == this.isArchived &&
           other.createdAt == this.createdAt &&
+          other.isSettled == this.isSettled &&
           other.upiId == this.upiId &&
           other.phone == this.phone &&
           other.photoPath == this.photoPath &&
@@ -2219,6 +2263,7 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
   final Value<String?> note;
   final Value<bool> isArchived;
   final Value<DateTime> createdAt;
+  final Value<bool> isSettled;
   final Value<String?> upiId;
   final Value<String?> phone;
   final Value<String?> photoPath;
@@ -2233,6 +2278,7 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
     this.note = const Value.absent(),
     this.isArchived = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.isSettled = const Value.absent(),
     this.upiId = const Value.absent(),
     this.phone = const Value.absent(),
     this.photoPath = const Value.absent(),
@@ -2248,6 +2294,7 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
     this.note = const Value.absent(),
     this.isArchived = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.isSettled = const Value.absent(),
     this.upiId = const Value.absent(),
     this.phone = const Value.absent(),
     this.photoPath = const Value.absent(),
@@ -2263,6 +2310,7 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
     Expression<String>? note,
     Expression<bool>? isArchived,
     Expression<DateTime>? createdAt,
+    Expression<bool>? isSettled,
     Expression<String>? upiId,
     Expression<String>? phone,
     Expression<String>? photoPath,
@@ -2278,6 +2326,7 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
       if (note != null) 'note': note,
       if (isArchived != null) 'is_archived': isArchived,
       if (createdAt != null) 'created_at': createdAt,
+      if (isSettled != null) 'is_settled': isSettled,
       if (upiId != null) 'upi_id': upiId,
       if (phone != null) 'phone': phone,
       if (photoPath != null) 'photo_path': photoPath,
@@ -2295,6 +2344,7 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
     Value<String?>? note,
     Value<bool>? isArchived,
     Value<DateTime>? createdAt,
+    Value<bool>? isSettled,
     Value<String?>? upiId,
     Value<String?>? phone,
     Value<String?>? photoPath,
@@ -2310,6 +2360,7 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
       note: note ?? this.note,
       isArchived: isArchived ?? this.isArchived,
       createdAt: createdAt ?? this.createdAt,
+      isSettled: isSettled ?? this.isSettled,
       upiId: upiId ?? this.upiId,
       phone: phone ?? this.phone,
       photoPath: photoPath ?? this.photoPath,
@@ -2340,6 +2391,9 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (isSettled.present) {
+      map['is_settled'] = Variable<bool>(isSettled.value);
     }
     if (upiId.present) {
       map['upi_id'] = Variable<String>(upiId.value);
@@ -2374,6 +2428,7 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
           ..write('note: $note, ')
           ..write('isArchived: $isArchived, ')
           ..write('createdAt: $createdAt, ')
+          ..write('isSettled: $isSettled, ')
           ..write('upiId: $upiId, ')
           ..write('phone: $phone, ')
           ..write('photoPath: $photoPath, ')
@@ -6585,8 +6640,30 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, GroupRow> {
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _isSettledMeta = const VerificationMeta(
+    'isSettled',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, name, note, isArchived, createdAt];
+  late final GeneratedColumn<bool> isSettled = GeneratedColumn<bool>(
+    'is_settled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_settled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    note,
+    isArchived,
+    createdAt,
+    isSettled,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -6628,6 +6705,12 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, GroupRow> {
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
+    if (data.containsKey('is_settled')) {
+      context.handle(
+        _isSettledMeta,
+        isSettled.isAcceptableOrUnknown(data['is_settled']!, _isSettledMeta),
+      );
+    }
     return context;
   }
 
@@ -6657,6 +6740,10 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, GroupRow> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      isSettled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_settled'],
+      )!,
     );
   }
 
@@ -6672,12 +6759,17 @@ class GroupRow extends DataClass implements Insertable<GroupRow> {
   final String? note;
   final bool isArchived;
   final DateTime createdAt;
+
+  /// Same as [Persons.isSettled], for a group — shown under the Settled
+  /// tab, cleared on its own once the group's balance is non-zero again.
+  final bool isSettled;
   const GroupRow({
     required this.id,
     required this.name,
     this.note,
     required this.isArchived,
     required this.createdAt,
+    required this.isSettled,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -6689,6 +6781,7 @@ class GroupRow extends DataClass implements Insertable<GroupRow> {
     }
     map['is_archived'] = Variable<bool>(isArchived);
     map['created_at'] = Variable<DateTime>(createdAt);
+    map['is_settled'] = Variable<bool>(isSettled);
     return map;
   }
 
@@ -6699,6 +6792,7 @@ class GroupRow extends DataClass implements Insertable<GroupRow> {
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       isArchived: Value(isArchived),
       createdAt: Value(createdAt),
+      isSettled: Value(isSettled),
     );
   }
 
@@ -6713,6 +6807,7 @@ class GroupRow extends DataClass implements Insertable<GroupRow> {
       note: serializer.fromJson<String?>(json['note']),
       isArchived: serializer.fromJson<bool>(json['isArchived']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      isSettled: serializer.fromJson<bool>(json['isSettled']),
     );
   }
   @override
@@ -6724,6 +6819,7 @@ class GroupRow extends DataClass implements Insertable<GroupRow> {
       'note': serializer.toJson<String?>(note),
       'isArchived': serializer.toJson<bool>(isArchived),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'isSettled': serializer.toJson<bool>(isSettled),
     };
   }
 
@@ -6733,12 +6829,14 @@ class GroupRow extends DataClass implements Insertable<GroupRow> {
     Value<String?> note = const Value.absent(),
     bool? isArchived,
     DateTime? createdAt,
+    bool? isSettled,
   }) => GroupRow(
     id: id ?? this.id,
     name: name ?? this.name,
     note: note.present ? note.value : this.note,
     isArchived: isArchived ?? this.isArchived,
     createdAt: createdAt ?? this.createdAt,
+    isSettled: isSettled ?? this.isSettled,
   );
   GroupRow copyWithCompanion(GroupsCompanion data) {
     return GroupRow(
@@ -6749,6 +6847,7 @@ class GroupRow extends DataClass implements Insertable<GroupRow> {
           ? data.isArchived.value
           : this.isArchived,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      isSettled: data.isSettled.present ? data.isSettled.value : this.isSettled,
     );
   }
 
@@ -6759,13 +6858,15 @@ class GroupRow extends DataClass implements Insertable<GroupRow> {
           ..write('name: $name, ')
           ..write('note: $note, ')
           ..write('isArchived: $isArchived, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('isSettled: $isSettled')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, note, isArchived, createdAt);
+  int get hashCode =>
+      Object.hash(id, name, note, isArchived, createdAt, isSettled);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -6774,7 +6875,8 @@ class GroupRow extends DataClass implements Insertable<GroupRow> {
           other.name == this.name &&
           other.note == this.note &&
           other.isArchived == this.isArchived &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.isSettled == this.isSettled);
 }
 
 class GroupsCompanion extends UpdateCompanion<GroupRow> {
@@ -6783,12 +6885,14 @@ class GroupsCompanion extends UpdateCompanion<GroupRow> {
   final Value<String?> note;
   final Value<bool> isArchived;
   final Value<DateTime> createdAt;
+  final Value<bool> isSettled;
   const GroupsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.note = const Value.absent(),
     this.isArchived = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.isSettled = const Value.absent(),
   });
   GroupsCompanion.insert({
     this.id = const Value.absent(),
@@ -6796,6 +6900,7 @@ class GroupsCompanion extends UpdateCompanion<GroupRow> {
     this.note = const Value.absent(),
     this.isArchived = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.isSettled = const Value.absent(),
   }) : name = Value(name);
   static Insertable<GroupRow> custom({
     Expression<int>? id,
@@ -6803,6 +6908,7 @@ class GroupsCompanion extends UpdateCompanion<GroupRow> {
     Expression<String>? note,
     Expression<bool>? isArchived,
     Expression<DateTime>? createdAt,
+    Expression<bool>? isSettled,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -6810,6 +6916,7 @@ class GroupsCompanion extends UpdateCompanion<GroupRow> {
       if (note != null) 'note': note,
       if (isArchived != null) 'is_archived': isArchived,
       if (createdAt != null) 'created_at': createdAt,
+      if (isSettled != null) 'is_settled': isSettled,
     });
   }
 
@@ -6819,6 +6926,7 @@ class GroupsCompanion extends UpdateCompanion<GroupRow> {
     Value<String?>? note,
     Value<bool>? isArchived,
     Value<DateTime>? createdAt,
+    Value<bool>? isSettled,
   }) {
     return GroupsCompanion(
       id: id ?? this.id,
@@ -6826,6 +6934,7 @@ class GroupsCompanion extends UpdateCompanion<GroupRow> {
       note: note ?? this.note,
       isArchived: isArchived ?? this.isArchived,
       createdAt: createdAt ?? this.createdAt,
+      isSettled: isSettled ?? this.isSettled,
     );
   }
 
@@ -6847,6 +6956,9 @@ class GroupsCompanion extends UpdateCompanion<GroupRow> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (isSettled.present) {
+      map['is_settled'] = Variable<bool>(isSettled.value);
+    }
     return map;
   }
 
@@ -6857,7 +6969,8 @@ class GroupsCompanion extends UpdateCompanion<GroupRow> {
           ..write('name: $name, ')
           ..write('note: $note, ')
           ..write('isArchived: $isArchived, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('isSettled: $isSettled')
           ..write(')'))
         .toString();
   }
@@ -26200,6 +26313,7 @@ typedef $$PersonsTableCreateCompanionBuilder =
       Value<String?> note,
       Value<bool> isArchived,
       Value<DateTime> createdAt,
+      Value<bool> isSettled,
       Value<String?> upiId,
       Value<String?> phone,
       Value<String?> photoPath,
@@ -26216,6 +26330,7 @@ typedef $$PersonsTableUpdateCompanionBuilder =
       Value<String?> note,
       Value<bool> isArchived,
       Value<DateTime> createdAt,
+      Value<bool> isSettled,
       Value<String?> upiId,
       Value<String?> phone,
       Value<String?> photoPath,
@@ -26383,6 +26498,11 @@ class $$PersonsTableFilterComposer
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSettled => $composableBuilder(
+    column: $table.isSettled,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -26611,6 +26731,11 @@ class $$PersonsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isSettled => $composableBuilder(
+    column: $table.isSettled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get upiId => $composableBuilder(
     column: $table.upiId,
     builder: (column) => ColumnOrderings(column),
@@ -26675,6 +26800,9 @@ class $$PersonsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSettled =>
+      $composableBuilder(column: $table.isSettled, builder: (column) => column);
 
   GeneratedColumn<String> get upiId =>
       $composableBuilder(column: $table.upiId, builder: (column) => column);
@@ -26890,6 +27018,7 @@ class $$PersonsTableTableManager
                 Value<String?> note = const Value.absent(),
                 Value<bool> isArchived = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<bool> isSettled = const Value.absent(),
                 Value<String?> upiId = const Value.absent(),
                 Value<String?> phone = const Value.absent(),
                 Value<String?> photoPath = const Value.absent(),
@@ -26904,6 +27033,7 @@ class $$PersonsTableTableManager
                 note: note,
                 isArchived: isArchived,
                 createdAt: createdAt,
+                isSettled: isSettled,
                 upiId: upiId,
                 phone: phone,
                 photoPath: photoPath,
@@ -26920,6 +27050,7 @@ class $$PersonsTableTableManager
                 Value<String?> note = const Value.absent(),
                 Value<bool> isArchived = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<bool> isSettled = const Value.absent(),
                 Value<String?> upiId = const Value.absent(),
                 Value<String?> phone = const Value.absent(),
                 Value<String?> photoPath = const Value.absent(),
@@ -26934,6 +27065,7 @@ class $$PersonsTableTableManager
                 note: note,
                 isArchived: isArchived,
                 createdAt: createdAt,
+                isSettled: isSettled,
                 upiId: upiId,
                 phone: phone,
                 photoPath: photoPath,
@@ -31304,6 +31436,7 @@ typedef $$GroupsTableCreateCompanionBuilder =
       Value<String?> note,
       Value<bool> isArchived,
       Value<DateTime> createdAt,
+      Value<bool> isSettled,
     });
 typedef $$GroupsTableUpdateCompanionBuilder =
     GroupsCompanion Function({
@@ -31312,6 +31445,7 @@ typedef $$GroupsTableUpdateCompanionBuilder =
       Value<String?> note,
       Value<bool> isArchived,
       Value<DateTime> createdAt,
+      Value<bool> isSettled,
     });
 
 final class $$GroupsTableReferences
@@ -31386,6 +31520,11 @@ class $$GroupsTableFilterComposer
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSettled => $composableBuilder(
+    column: $table.isSettled,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -31473,6 +31612,11 @@ class $$GroupsTableOrderingComposer
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get isSettled => $composableBuilder(
+    column: $table.isSettled,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$GroupsTableAnnotationComposer
@@ -31500,6 +31644,9 @@ class $$GroupsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSettled =>
+      $composableBuilder(column: $table.isSettled, builder: (column) => column);
 
   Expression<T> groupMembersRefs<T extends Object>(
     Expression<T> Function($$GroupMembersTableAnnotationComposer a) f,
@@ -31588,12 +31735,14 @@ class $$GroupsTableTableManager
                 Value<String?> note = const Value.absent(),
                 Value<bool> isArchived = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<bool> isSettled = const Value.absent(),
               }) => GroupsCompanion(
                 id: id,
                 name: name,
                 note: note,
                 isArchived: isArchived,
                 createdAt: createdAt,
+                isSettled: isSettled,
               ),
           createCompanionCallback:
               ({
@@ -31602,12 +31751,14 @@ class $$GroupsTableTableManager
                 Value<String?> note = const Value.absent(),
                 Value<bool> isArchived = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<bool> isSettled = const Value.absent(),
               }) => GroupsCompanion.insert(
                 id: id,
                 name: name,
                 note: note,
                 isArchived: isArchived,
                 createdAt: createdAt,
+                isSettled: isSettled,
               ),
           withReferenceMapper: (p0) => p0
               .map(
