@@ -36,6 +36,17 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 - **Who owes whom** for groups — per-member net balance, a fewest-payments
   settle-up plan and every pairwise debt; group tag on group transactions.
 - Payee on a loan's Auto rule, set on each EMI's interest leg.
+- **Quick actions ring** — holding ➕ opens a ring of 8 configurable
+  shortcuts (✕ in the centre cancels), picked by sliding toward one. Slots
+  take any module, calculator, Add expense/income or a transaction
+  template; set up in Settings ▸ Quick Actions. Old 3-slot setups carry over.
+- **Settled** for persons and groups — at zero balance XPENC asks Move to
+  Settled / Archive / Keep here instead of silently archiving (schema v77).
+  Settled rows move back on their own once they owe again; they live on
+  their own screen from the ✓ in the Persons top bar.
+- **Delete a person or group** with history — entries and group expenses
+  are deleted through the normal paths, so the money they moved is
+  reversed. Delete lives in the hold sheet and on the detail pages.
 
 ### Changed
 - Date pickers for Auto rules, budgets, calendar and statements go back to
@@ -44,6 +55,7 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 - Past-year dates in history headers show the year.
 - The transaction detail's "Added" row is gone — one date per transaction.
 - A loan payment card labels its legs Interest / Principal to <loan>.
+- Persons top bar shows Settled in place of Review Inbox.
 
 ### Fixed
 - An auto-posted EMI's interest leg could be saved with no category when
@@ -52,6 +64,8 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   day had passed (elapsed EMIs were counted one short).
 - The loan form's amount keypad stayed open alongside the system keyboard
   when moving to the rate or tenure field.
+- The last item of lists could sit under the system navigation bar and be
+  impossible to tap (#137).
 
 ## [1.6.2] — 2026-09-26
 

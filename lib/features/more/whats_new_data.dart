@@ -23,6 +23,35 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.radio_button_checked_rounded,
+    title: 'Quick actions ring',
+    location: 'Hold ➕ · set up in Settings → Quick Actions',
+    description:
+        'Hold the ➕ and a ring of 8 shortcuts opens mid-screen — slide '
+        'toward one to open it, or back to ✕ in the centre to cancel. Any '
+        'slot can be a screen, a calculator, Add expense/income or a saved '
+        'transaction template. Your old 3 shortcuts carry over.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.task_alt_rounded,
+    title: 'Settled, instead of vanishing',
+    location: 'Persons → ✓ in the top bar',
+    description:
+        'When someone\'s balance reaches zero, XPENC now asks: Move to '
+        'Settled, Archive, or Keep here — nothing disappears on its own. '
+        'Settled people and groups keep their history and move back by '
+        'themselves the moment money is owed again.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.delete_outline_rounded,
+    title: 'Delete a person or group',
+    location: 'Persons → hold a person or group → Delete',
+    description:
+        'Delete now works even with history: every entry and group expense '
+        'goes with it, and the money they moved is put back in your '
+        'accounts. The confirm dialog says exactly how much will be removed.',
+  ),
+  WhatsNewEntry(
     icon: Icons.calculate_outlined,
     title: 'Calculators (Beta)',
     location: 'More → Calculators',
@@ -83,5 +112,13 @@ const whatsNewEntries = <WhatsNewEntry>[
         'Each member\'s net balance, the fewest payments that settle the '
         'group, and every pairwise debt with the expenses behind it. Group '
         'expenses also carry a tappable group tag.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.fullscreen_exit_rounded,
+    title: 'Nothing hidden under the nav bar',
+    location: 'Every list',
+    description:
+        'The last item of every list now scrolls clear of Android\'s '
+        'gesture bar or buttons, so you can always reach and tap it.',
   ),
 ];

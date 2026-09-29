@@ -123,10 +123,38 @@ const guideSections = <GuideSection>[
           'being repaid isn\'t income.',
       howToUse:
           'Open a person to log a lend/borrow entry or a repayment, and '
-          'share their whole ledger as a PDF. Settings → Payment Support '
-          'can turn on paying a person offline through the *99# USSD menu '
-          'when there\'s no data signal.',
+          'share their whole ledger as a PDF. Hold a person for Edit, Link '
+          'contact, Move to Settled, Archive or Delete (delete takes their '
+          'whole history and puts the money back). Settings → Payment '
+          'Support can turn on paying a person offline through the *99# '
+          'USSD menu when there\'s no data signal.',
       location: 'More → Persons',
+    ),
+    GuideEntry(
+      icon: Icons.groups_outlined,
+      title: 'Groups & Who owes whom',
+      whatItDoes:
+          'Split a shared expense across several people at once. Each '
+          'group shows its overall balance, every member\'s net share, '
+          'and the fewest payments that settle everyone up.',
+      howToUse:
+          'On the Group tab tap + to name a group and pick members. Open '
+          'it to add expenses and see Who owes whom. Hold a group to '
+          'Settle, Archive or Delete it.',
+      location: 'Persons → Group',
+    ),
+    GuideEntry(
+      icon: Icons.task_alt_rounded,
+      title: 'Settled',
+      whatItDoes:
+          'People and groups whose balance is zero and that you\'ve moved '
+          'out of the way. They stay full, live rows — same history — and '
+          'come back to their list on their own once money is owed again.',
+      howToUse:
+          'When a balance hits zero XPENC asks: Move to Settled, Archive, '
+          'or Keep here. You can also hold a zero-balance row → Move to '
+          'Settled, and hold a settled row → Move out of Settled.',
+      location: 'Persons → ✓ in the top bar',
     ),
     GuideEntry(
       icon: Icons.donut_large_rounded,
@@ -210,6 +238,33 @@ const guideSections = <GuideSection>[
           'actual transactions until you decide to log them.',
       howToUse: 'Create a list, add items, tick them off as you shop.',
       location: 'More → Shopping List',
+    ),
+  ]),
+  GuideSection('Tools', [
+    GuideEntry(
+      icon: Icons.radio_button_checked_rounded,
+      title: 'Quick actions ring',
+      whatItDoes:
+          'Eight shortcuts one gesture away: hold the ➕ and a ring opens '
+          'mid-screen with ✕ (cancel) in the centre.',
+      howToUse:
+          'Keep holding and slide toward a shortcut, then let go. Choose '
+          'what sits in each slot — any screen, a calculator, Add '
+          'expense/income or a saved transaction template — in Settings → '
+          'Quick Actions.',
+      location: 'Hold ➕ · Settings → Quick Actions',
+    ),
+    GuideEntry(
+      icon: Icons.calculate_outlined,
+      title: 'Calculators (Beta)',
+      whatItDoes:
+          'FD & RD, Loan EMI (year-wise schedule, prepayment savings), SIP '
+          '& Lumpsum with yearly step-up, PPF, GST, and Income Tax for '
+          'India (new vs old regime), the US, the UK and Germany.',
+      howToUse:
+          'Pick a calculator and type — results update live. For Income '
+          'Tax, choose the country first. Nothing is saved to your ledger.',
+      location: 'More → Calculators',
     ),
   ]),
   GuideSection('Insights', [
