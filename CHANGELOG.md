@@ -11,6 +11,15 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 ## [1.6.3] — 2026-09-27
 
 ### Added
+- **Calculators (Beta)** — a new More → Calculators group: FD & RD
+  (FD compounding choice, RD compounded quarterly), Loan EMI (reuses the
+  loan module's amortization, year-wise schedule, prepayment savings),
+  SIP & Lumpsum (yearly step-up), PPF (year-end balances, ₹1.5L cap
+  warning), GST (add/remove, CGST/SGST/IGST) and Income Tax with a country
+  picker — India (FY 2025-26, new vs old regime, 87A marginal relief,
+  surcharge relief), United States (2025 federal + FICA), United Kingdom
+  (2025/26 income tax + NI) and Germany (2025 §32a tariff + Soli).
+- "Review on Google Play" in About; Google Play badge in the README.
 - **Correct a balance** — the pencil next to an account's balance now
   records the gap between what XPENC shows and what the account really
   holds as one `Correction` transaction (new `correctionIn` /

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/widgets/beta_badge.dart';
+
 /// One payment method's worth of state for a [PersonPaymentRow] — a button
 /// label, the id used to decide whether it's ready, and the launch attempt
 /// itself. [missingLabel] names the id in prose (e.g. "UPI ID") for the
@@ -86,10 +88,14 @@ class PersonPaymentRow extends StatelessWidget {
           padding: EdgeInsets.only(top: i == 0 ? 0 : 10),
           child: Row(
             children: [
-              Expanded(child: _MethodButton(method: first, onTap: _pay)),
+              Expanded(
+                child: _MethodButton(method: first, onTap: _pay),
+              ),
               if (second != null) ...[
                 const SizedBox(width: 10),
-                Expanded(child: _MethodButton(method: second, onTap: _pay)),
+                Expanded(
+                  child: _MethodButton(method: second, onTap: _pay),
+                ),
               ],
             ],
           ),
@@ -109,7 +115,7 @@ class PersonPaymentRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            const _BetaBadge(),
+            const BetaBadge(),
           ],
         ),
         const SizedBox(height: 8),
@@ -160,30 +166,6 @@ class _MissingHint extends StatelessWidget {
             color: cs.primary,
             decoration: TextDecoration.underline,
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BetaBadge extends StatelessWidget {
-  const _BetaBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: cs.tertiaryContainer,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        'BETA',
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: cs.onTertiaryContainer,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.5,
         ),
       ),
     );

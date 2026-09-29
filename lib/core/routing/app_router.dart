@@ -17,6 +17,8 @@ import '../../features/budgets/budget_detail_screen.dart';
 import '../../features/budgets/budgets_screen.dart';
 import '../../features/budgets/ready_to_assign_screen.dart';
 import '../../features/calendar/calendar_screen.dart';
+import '../../features/calculators/calculator_kind.dart';
+import '../../features/calculators/calculator_screen.dart';
 import '../../features/categories/categories_screen.dart';
 import '../../features/categories/category_templates_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
@@ -372,6 +374,12 @@ final appRouter = GoRouter(
                       ),
                   ],
                 ),
+                for (final kind in CalculatorKind.values)
+                  GoRoute(
+                    path: 'calculators/${kind.name}',
+                    parentNavigatorKey: _rootKey,
+                    builder: (_, _) => CalculatorScreen(kind: kind),
+                  ),
                 GoRoute(
                   path: 'export',
                   parentNavigatorKey: _rootKey,

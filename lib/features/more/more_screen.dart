@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../core/branding/app_info.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/beta_badge.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart' show AppMode, MoreScreenViewMode;
+import '../calculators/calculator_kind.dart';
 
 /// Hub page. Grouped, not a flat dump. Every tile navigates to a real route.
 class MoreScreen extends ConsumerWidget {
@@ -125,6 +127,15 @@ class MoreScreen extends ConsumerWidget {
           subtitle: 'Per-account breakdown',
         ),
       ]),
+      _Group('Calculators', beta: true, [
+        for (final kind in CalculatorKind.values)
+          _Item(
+            kind.icon,
+            kind.label,
+            route: kind.route,
+            subtitle: kind.subtitle,
+          ),
+      ]),
       _Group('Data', [
         _Item(
           Icons.download_outlined,
@@ -190,13 +201,21 @@ class MoreScreen extends ConsumerWidget {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(24, 16, 24, 10),
-                child: Text(
-                  group.title.toUpperCase(),
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.1,
-                  ),
+                child: Row(
+                  children: [
+                    Text(
+                      group.title.toUpperCase(),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.1,
+                      ),
+                    ),
+                    if (group.beta) ...[
+                      const SizedBox(width: 8),
+                      const BetaBadge(),
+                    ],
+                  ],
                 ),
               ),
             ),
@@ -204,13 +223,12 @@ class MoreScreen extends ConsumerWidget {
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 sliver: SliverGrid(
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        mainAxisSpacing: 12,
-                        crossAxisSpacing: 12,
-                        childAspectRatio: 1.35,
-                      ),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 1.35,
+                  ),
                   delegate: SliverChildBuilderDelegate(
                     (context, i) => _MoreCard(item: group.items[i]),
                     childCount: group.items.length,
@@ -322,9 +340,12 @@ class _MoreCard extends StatelessWidget {
 }
 
 class _Group {
-  const _Group(this.title, this.items);
+  const _Group(this.title, this.items, {this.beta = false});
   final String title;
   final List<_Item> items;
+
+  /// Shows a BETA pill next to the group heading.
+  final bool beta;
 }
 
 class _Item {

@@ -179,6 +179,13 @@ class AboutScreen extends StatelessWidget {
                   ),
                   Divider(height: 1, indent: 60, color: cs.outline),
                   _LinkTile(
+                    icon: Icons.star_rate_rounded,
+                    label: 'Review on Google Play',
+                    value: 'Rate ${AppInfo.name} — it helps others find it',
+                    onTap: () => _openPlayStore(context),
+                  ),
+                  Divider(height: 1, indent: 60, color: cs.outline),
+                  _LinkTile(
                     icon: Icons.rate_review_outlined,
                     label: 'Leave feedback',
                     value: 'Public testimonial page',

@@ -12,6 +12,7 @@
 ### Offline-first personal finance for Android.
 Income, expenses, transfers, budgets and dues — all on-device. Nothing is ever uploaded.
 
+[<img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" height="62">](https://play.google.com/store/apps/details?id=com.yash.xpenc)
 [<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid" height="62">](https://f-droid.org/packages/com.yash.xpenc/)
 
 [🌐 Website](https://xpenc.in) · [⬇️ Download APK](https://github.com/PATILYASHH/XPENC/releases/latest) · [🐛 Report a bug](../../issues/new?template=bug_report.yml) · [✨ Request a feature](../../issues/new?template=feature_request.yml) · [🏦 Add your bank](../../issues/new?template=bank_support.yml)
@@ -45,11 +46,13 @@ Full feature list and every decision behind it: [structure.md](structure.md) · 
 
 ## Download
 
-**[F-Droid](https://f-droid.org/packages/com.yash.xpenc/)** is recommended — auto-updates, and the app is built **from this source** by F-Droid itself.
+**[Google Play](https://play.google.com/store/apps/details?id=com.yash.xpenc)** — the easiest install, with automatic updates.
+
+**[F-Droid](https://f-droid.org/packages/com.yash.xpenc/)** — auto-updates too, and the app is built **from this source** by F-Droid itself.
 
 Or grab an APK from [Releases](https://github.com/PATILYASHH/XPENC/releases/latest) ([`arm64-v8a`](https://github.com/PATILYASHH/XPENC/releases/latest/download/xpenc-arm64-v8a.apk) for most phones since ~2017). Every release ships `SHA256SUMS.txt`.
 
-> Switching source (F-Droid ↔ direct APK)? They're signed differently, so Android won't update across them — **Backup → export JSON**, uninstall, reinstall, restore.
+> Switching source (Google Play ↔ F-Droid ↔ direct APK)? Each is signed differently, so Android won't update across them — **Backup → export JSON**, uninstall, reinstall, restore.
 
 ## Privacy
 

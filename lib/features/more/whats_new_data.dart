@@ -23,6 +23,16 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.calculate_outlined,
+    title: 'Calculators (Beta)',
+    location: 'More → Calculators',
+    description:
+        'FD & RD, Loan EMI with a year-wise schedule and prepayment savings, '
+        'SIP & Lumpsum with yearly step-up, PPF, GST, and Income Tax for '
+        'India (new vs old regime), the US, the UK and Germany. Results '
+        'update as you type.',
+  ),
+  WhatsNewEntry(
     icon: Icons.tune_rounded,
     title: 'Correct a balance',
     location: 'Accounts → an account → ✎ next to the balance',
