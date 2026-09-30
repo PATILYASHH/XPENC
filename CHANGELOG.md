@@ -8,7 +8,7 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
-## [1.6.3] — 2026-09-27
+## [1.6.3] — 2026-09-30
 
 ### Added
 - **People as payees** — the payee picker (now a full sheet sized above the
@@ -77,6 +77,13 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   them back from the archive).
 - Recording a repayment counted as income failed with "Only a person
   movement names a person."
+- **Updating from 1.5.1 or older no longer fails with "Couldn't open your
+  data"** ("no such column: month_of_year") — hit by F-Droid users jumping
+  straight to 1.6.2 (#145). Nothing was lost: the failed upgrade left the
+  old data untouched, and this version upgrades it cleanly.
+- "Restore my data" after a reinstall no longer fails with "That backup no
+  longer exists on this device" — it now reads the backup the folder picker
+  found, not only ones this install saved itself (#145).
 
 ## [1.6.2] — 2026-09-26
 
