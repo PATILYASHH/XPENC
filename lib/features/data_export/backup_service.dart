@@ -164,12 +164,26 @@ class BackupService {
     await _ensureMediaStoreReady();
     final tempDir = await getTemporaryDirectory();
     final tempFile = File('${tempDir.path}/${record.fileName}');
-    final ok = await MediaStore().readFile(
-      fileName: record.fileName,
-      tempFilePath: tempFile.path,
-      dirType: DirType.download,
-      dirName: DirName.download,
-    );
+    var ok = await MediaStore()
+        .readFile(
+          fileName: record.fileName,
+          tempFilePath: tempFile.path,
+          dirType: DirType.download,
+          dirName: DirName.download,
+        )
+        .catchError((_) => false);
+    // After a reinstall MediaStore won't hand a by-name read of a file the
+    // previous install created — but [resyncFromDevice] recorded each one's
+    // folder-picker document uri, which the granted tree access can still
+    // open (GitHub #145).
+    if ((!ok || !await tempFile.exists()) && record.uri.isNotEmpty) {
+      ok = await MediaStore()
+          .readFileUsingUri(
+            uriString: record.uri,
+            tempFilePath: tempFile.path,
+          )
+          .catchError((_) => false);
+    }
     if (!ok || !await tempFile.exists()) {
       throw ArgumentError('That backup no longer exists on this device.');
     }

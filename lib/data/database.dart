@@ -481,15 +481,15 @@ class AppDatabase extends _$AppDatabase {
         // `from < 59` step below) would otherwise get copied from a column
         // that doesn't exist on a device migrating from below 55 in the
         // same run — "no such column: foreign_currency_code" (GitHub #112).
+        // A hand-kept list missed v73's month_of_year the same way (GitHub
+        // #145), so it's now derived from what's actually on disk.
+        final missing = <GeneratedColumn>[
+          for (final column in recurringRules.$columns)
+            if (!await _hasColumn(recurringRules.actualTableName, column.name))
+              column,
+        ];
         await m.alterTable(
-          TableMigration(
-            recurringRules,
-            newColumns: [
-              recurringRules.toAccountId,
-              recurringRules.foreignCurrencyCode,
-              recurringRules.foreignAmount,
-            ],
-          ),
+          TableMigration(recurringRules, newColumns: missing),
         );
       }
       if (from < 56) {

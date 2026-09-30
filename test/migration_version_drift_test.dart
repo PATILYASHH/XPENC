@@ -202,6 +202,12 @@ void main() {
       await db.customStatement(
         'ALTER TABLE recurring_rules DROP COLUMN foreign_amount',
       );
+      // GitHub #145: v73's month_of_year hit the exact same trap — a
+      // F-Droid user jumping 1.5.1 (v54) → 1.6.2 got "no such column:
+      // month_of_year".
+      await db.customStatement(
+        'ALTER TABLE recurring_rules DROP COLUMN month_of_year',
+      );
       await db.customStatement('PRAGMA user_version = 54');
       await db.close();
 
