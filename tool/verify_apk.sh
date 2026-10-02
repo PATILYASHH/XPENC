@@ -9,6 +9,10 @@
 #
 # Usage: bash tool/verify_apk.sh [path/to/app.apk]
 set -uo pipefail
+# Checks below feed grep a here-string, never `printf | grep -q`: under
+# pipefail, grep -q exiting on its first match can SIGPIPE the printf and
+# fail the whole check -- beta run 37002564040 reported a present
+# libflutter.so as missing that way.
 
 APK="${1:-build/app/outputs/flutter-apk/app-release.apk}"
 fail=0
@@ -31,12 +35,12 @@ if [ -z "$abis" ]; then
   bad "no native libraries at all"
 else
   for abi in $abis; do
-    if printf '%s\n' "$libs" | grep -q "^${abi}libsqlite3\.so$"; then
+    if grep -q "^${abi}libsqlite3\.so$" <<<"$libs"; then
       ok "${abi}libsqlite3.so"
     else
       # Flutter's own libapp/libflutter mark a real code ABI; helper-only ABIs
       # (e.g. shipped by a plugin) don't need sqlite3.
-      if printf '%s\n' "$libs" | grep -q "^${abi}libflutter\.so$"; then
+      if grep -q "^${abi}libflutter\.so$" <<<"$libs"; then
         bad "${abi} has libflutter.so but NO libsqlite3.so -> app will crash on DB open"
       fi
     fi
@@ -44,8 +48,8 @@ else
 fi
 
 # 2. Flutter engine + compiled Dart must be there.
-printf '%s\n' "$libs" | grep -q 'libflutter\.so' && ok "libflutter.so" || bad "libflutter.so missing"
-printf '%s\n' "$libs" | grep -q 'libapp\.so'     && ok "libapp.so"     || bad "libapp.so missing (not a release build?)"
+grep -q 'libflutter\.so' <<<"$libs" && ok "libflutter.so" || bad "libflutter.so missing"
+grep -q 'libapp\.so' <<<"$libs"     && ok "libapp.so"     || bad "libapp.so missing (not a release build?)"
 
 # 3. Permissions we rely on / deliberately avoid.
 # aapt is rarely on PATH — fall back to the newest build-tools in the SDK, so
@@ -65,17 +69,17 @@ fi
 if command -v aapt2 >/dev/null 2>&1 || command -v aapt >/dev/null 2>&1; then
   AAPT=$(command -v aapt2 || command -v aapt)
   perms=$("$AAPT" dump permissions "$APK" 2>/dev/null || true)
-  if printf '%s' "$perms" | grep -q 'android.permission.READ_SMS'; then
+  if grep -q 'android.permission.READ_SMS' <<<"$perms"; then
     bad "READ_SMS declared -- paused in 1.1.0: Play Protect blocks sideloads and Play rejects it"
   else
     ok "READ_SMS absent (as designed since 1.1.0)"
   fi
-  if printf '%s' "$perms" | grep -q 'android.permission.RECEIVE_SMS'; then
+  if grep -q 'android.permission.RECEIVE_SMS' <<<"$perms"; then
     bad "RECEIVE_SMS declared -- we deliberately do not use a broadcast receiver"
   else
     ok "RECEIVE_SMS absent (as designed)"
   fi
-  if printf '%s' "$perms" | grep -q 'android.permission.INTERNET'; then
+  if grep -q 'android.permission.INTERNET' <<<"$perms"; then
     bad "INTERNET declared -- PRIVACY.md promises release builds request no internet permission (GitHub #59)"
   else
     ok "INTERNET absent (as designed)"
