@@ -182,7 +182,7 @@ class _SettledDialog extends StatelessWidget {
     final single = names.length == 1;
 
     return AlertDialog(
-      icon: const Icon(Icons.check_circle_outline_rounded),
+      icon: const AppIcon(Icons.check_circle_outline_rounded),
       title: const Text('All settled'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -243,7 +243,7 @@ class _NameRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: theme.colorScheme.onSurfaceVariant),
+          AppIcon(icon, size: 18, color: theme.colorScheme.onSurfaceVariant),
           const SizedBox(width: 8),
           Expanded(
             child: Text(

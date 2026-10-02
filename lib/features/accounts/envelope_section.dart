@@ -56,7 +56,7 @@ class EnvelopeSection extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
             child: AppCard(
               child: ListTile(
-                leading: const Icon(Icons.account_balance_wallet_outlined),
+                leading: const AppIcon(Icons.account_balance_wallet_outlined),
                 title: Text(
                   poolSize > 1
                       ? 'Shares one Ready to Assign pool with '
@@ -65,7 +65,7 @@ class EnvelopeSection extends ConsumerWidget {
                       : 'Its own Ready to Assign pool for now',
                 ),
                 subtitle: const Text('View shared budget'),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const AppIcon(Icons.chevron_right),
                 onTap: () => context.push('/more/ready-to-assign'),
               ),
             ),

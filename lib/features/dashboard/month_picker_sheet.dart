@@ -73,7 +73,7 @@ class _MonthPickerSheetState extends State<MonthPickerSheet> {
             children: [
               IconButton(
                 tooltip: 'Previous year',
-                icon: const Icon(Icons.chevron_left_rounded),
+                icon: const AppIcon(Icons.chevron_left_rounded),
                 onPressed: () => setState(() => _year--),
               ),
               Expanded(
@@ -87,7 +87,7 @@ class _MonthPickerSheetState extends State<MonthPickerSheet> {
               ),
               IconButton(
                 tooltip: 'Next year',
-                icon: const Icon(Icons.chevron_right_rounded),
+                icon: const AppIcon(Icons.chevron_right_rounded),
                 onPressed: canGoForward ? () => setState(() => _year++) : null,
               ),
             ],
@@ -121,7 +121,7 @@ class _MonthPickerSheetState extends State<MonthPickerSheet> {
             onPressed: widget.selected == widget.current
                 ? null
                 : () => Navigator.of(context).pop(widget.current),
-            icon: const Icon(Icons.today_rounded),
+            icon: const AppIcon(Icons.today_rounded),
             label: const Text('This month'),
           ),
         ],

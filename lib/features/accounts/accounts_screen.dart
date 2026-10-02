@@ -37,23 +37,23 @@ class AccountsScreen extends ConsumerWidget {
             SliverAppBar(
               pinned: true,
               title: const Text('Accounts'),
-              actions: [
+              actions: [GlassActionGroup(children: [
                 IconButton(
                   tooltip: 'Statement',
-                  icon: const Icon(Icons.picture_as_pdf_outlined),
+                  icon: const AppIcon(Icons.picture_as_pdf_outlined),
                   onPressed: () => _downloadCombinedStatement(context, ref),
                 ),
                 IconButton(
                   tooltip: 'Archived accounts',
-                  icon: const Icon(Icons.inventory_2_outlined),
+                  icon: const AppIcon(Icons.inventory_2_outlined),
                   onPressed: () => context.push('/more/accounts/archived'),
                 ),
                 IconButton(
                   tooltip: 'Add account',
-                  icon: const Icon(Icons.add_rounded),
+                  icon: const AppIcon(Icons.add_rounded),
                   onPressed: () => showAddAccountSheet(context),
                 ),
-              ],
+              ])],
             ),
           const SliverToBoxAdapter(child: _TotalMoneyCard()),
           ...accountsAsync.when(
@@ -249,7 +249,7 @@ class _TotalMoneyCard extends ConsumerWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
+                  AppIcon(
                     Icons.info_outline_rounded,
                     size: 16,
                     color: theme.colorScheme.onSurfaceVariant,
@@ -358,7 +358,7 @@ class _AccountTile extends ConsumerWidget {
         color: color.withValues(alpha: 0.14),
         shape: BoxShape.circle,
       ),
-      child: Icon(AppIcons.resolve(account.iconKey), color: color, size: 22),
+      child: AppIcon(AppIcons.resolve(account.iconKey), color: color, size: 22),
     );
   }
 
@@ -398,7 +398,7 @@ class _AccountTile extends ConsumerWidget {
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.edit_outlined),
+              leading: const AppIcon(Icons.edit_outlined),
               title: const Text('Rename'),
               onTap: () =>
                   Navigator.of(sheetContext).pop(_AccountAction.rename),
@@ -407,7 +407,7 @@ class _AccountTile extends ConsumerWidget {
             // Accounts.linkedAccountId) — there's nothing to warn about.
             if (account.linkedAccountId == null)
               ListTile(
-                leading: const Icon(Icons.savings_outlined),
+                leading: const AppIcon(Icons.savings_outlined),
                 title: const Text('Minimum balance'),
                 subtitle: Text(
                   account.minimumBalance == null
@@ -419,14 +419,14 @@ class _AccountTile extends ConsumerWidget {
                 ).pop(_AccountAction.minimumBalance),
               ),
             ListTile(
-              leading: const Icon(Icons.archive_outlined),
+              leading: const AppIcon(Icons.archive_outlined),
               title: const Text('Archive'),
               subtitle: const Text('Hide it. History stays intact.'),
               onTap: () =>
                   Navigator.of(sheetContext).pop(_AccountAction.archive),
             ),
             ListTile(
-              leading: Icon(
+              leading: AppIcon(
                 Icons.delete_outline,
                 color: theme.colorScheme.error,
               ),

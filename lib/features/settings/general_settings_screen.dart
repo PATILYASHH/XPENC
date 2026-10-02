@@ -26,7 +26,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
     final showCalendarDayTotals = ref.watch(showCalendarDayTotalsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('General')),
+      appBar: AppTopBar(title: const Text('General')),
       body: ListView(
         // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
         padding: EdgeInsets.fromLTRB(
@@ -41,7 +41,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
               children: [
                 ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  leading: const Icon(Icons.payments_outlined),
+                  leading: const AppIcon(Icons.payments_outlined),
                   title: const Text('Currency'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -51,7 +51,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
                         style: trailingStyle,
                       ),
                       const SizedBox(width: 4),
-                      Icon(
+                      AppIcon(
                         Icons.chevron_right_rounded,
                         color: cs.onSurfaceVariant,
                       ),
@@ -62,7 +62,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
                 Divider(height: 1, indent: 60, color: cs.outline),
                 SwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  secondary: const Icon(Icons.attach_money_rounded),
+                  secondary: const AppIcon(Icons.attach_money_rounded),
                   title: const Text('Show currency symbol'),
                   subtitle: Text(
                     showSymbol
@@ -80,14 +80,14 @@ class GeneralSettingsScreen extends ConsumerWidget {
                 Divider(height: 1, indent: 60, color: cs.outline),
                 ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  leading: Icon(themeChoice.style.icon),
+                  leading: AppIcon(themeChoice.style.icon),
                   title: const Text('Theme'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(themeChoice.style.label, style: trailingStyle),
                       const SizedBox(width: 4),
-                      Icon(
+                      AppIcon(
                         Icons.chevron_right_rounded,
                         color: cs.onSurfaceVariant,
                       ),
@@ -98,7 +98,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
                 Divider(height: 1, indent: 60, color: cs.outline),
                 ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  leading: const Icon(Icons.text_fields_rounded),
+                  leading: const AppIcon(Icons.text_fields_rounded),
                   title: const Text('Font'),
                   subtitle: Text(
                     'Text size, boldness and font family',
@@ -106,7 +106,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
                       color: cs.onSurfaceVariant,
                     ),
                   ),
-                  trailing: Icon(
+                  trailing: AppIcon(
                     Icons.chevron_right_rounded,
                     color: cs.onSurfaceVariant,
                   ),
@@ -115,7 +115,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
                 Divider(height: 1, indent: 60, color: cs.outline),
                 ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  leading: const Icon(Icons.dashboard_outlined),
+                  leading: const AppIcon(Icons.dashboard_outlined),
                   title: const Text('More screen layout'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -125,7 +125,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
                         style: trailingStyle,
                       ),
                       const SizedBox(width: 4),
-                      Icon(
+                      AppIcon(
                         Icons.chevron_right_rounded,
                         color: cs.onSurfaceVariant,
                       ),
@@ -141,7 +141,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
           AppCard(
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              leading: const Icon(Icons.dashboard_customize_outlined),
+              leading: const AppIcon(Icons.dashboard_customize_outlined),
               title: const Text('Customize dashboard'),
               subtitle: Text(
                 'Choose which accounts count toward Net Worth.',
@@ -149,7 +149,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
                   color: cs.onSurfaceVariant,
                 ),
               ),
-              trailing: const Icon(Icons.chevron_right_rounded),
+              trailing: const AppIcon(Icons.chevron_right_rounded),
               onTap: () => context.push('/more/settings/dashboard'),
             ),
           ),
@@ -158,7 +158,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
           AppCard(
             child: SwitchListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              secondary: const Icon(Icons.calendar_month_outlined),
+              secondary: const AppIcon(Icons.calendar_month_outlined),
               title: const Text('Show day totals'),
               subtitle: Text(
                 'Selecting a day on the calendar shows its money in/out '
@@ -177,7 +177,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
           AppCard(
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              leading: const Icon(Icons.dashboard_customize_outlined),
+              leading: const AppIcon(Icons.dashboard_customize_outlined),
               title: const Text('Customize bottom nav'),
               subtitle: Text(
                 'Choose what goes next to the ➕ button',
@@ -185,7 +185,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
                   color: cs.onSurfaceVariant,
                 ),
               ),
-              trailing: const Icon(Icons.chevron_right_rounded),
+              trailing: const AppIcon(Icons.chevron_right_rounded),
               onTap: () => context.push('/more/bottom-nav'),
             ),
           ),
@@ -196,7 +196,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
               children: [
                 ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  leading: const Icon(Icons.sms_outlined),
+                  leading: const AppIcon(Icons.sms_outlined),
                   title: const Text('Bank-SMS auto-capture'),
                   subtitle: Text(
                     'Coming soon — removed for now so the app installs '
@@ -205,13 +205,13 @@ class GeneralSettingsScreen extends ConsumerWidget {
                       color: cs.onSurfaceVariant,
                     ),
                   ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
+                  trailing: const AppIcon(Icons.chevron_right_rounded),
                   onTap: () => context.push('/more/capture'),
                 ),
                 Divider(height: 1, indent: 60, color: cs.outline),
                 ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  leading: const Icon(Icons.rate_review_outlined),
+                  leading: const AppIcon(Icons.rate_review_outlined),
                   title: const Text('OCR corrections'),
                   subtitle: Text(
                     'Optional — test a payment screenshot and help improve '
@@ -220,7 +220,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
                       color: cs.onSurfaceVariant,
                     ),
                   ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
+                  trailing: const AppIcon(Icons.chevron_right_rounded),
                   onTap: () => context.push('/more/capture/ocr-feedback'),
                 ),
               ],

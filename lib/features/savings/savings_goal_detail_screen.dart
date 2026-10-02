@@ -32,7 +32,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
 
     if (progress == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Savings goal')),
+        appBar: AppTopBar(title: const Text('Savings goal')),
         body: const Center(child: Text('Goal not found')),
       );
     }
@@ -45,16 +45,16 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
     final daysLeft = detail.targetDate?.difference(DateTime.now()).inDays;
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: AppTopBar(
         title: Text(account.name),
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit_outlined),
+            icon: const AppIcon(Icons.edit_outlined),
             tooltip: 'Edit',
             onPressed: () => openGoalEditor(context, progress),
           ),
           IconButton(
-            icon: const Icon(Icons.more_vert_rounded),
+            icon: const AppIcon(Icons.more_vert_rounded),
             tooltip: 'More',
             onPressed: () => _showActions(context, ref, progress),
           ),
@@ -84,7 +84,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
+                      AppIcon(
                         AppIcons.resolve(account.iconKey),
                         color: color,
                         size: 28,
@@ -113,7 +113,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
                     isAdd: true,
                     defaultCategoryId: detail.categoryId,
                   ),
-                  icon: const Icon(Icons.add_rounded),
+                  icon: const AppIcon(Icons.add_rounded),
                   label: const Text('Add funds'),
                 ),
               ),
@@ -123,7 +123,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
                   onPressed: progress.saved.isPositive
                       ? () => _openFundsSheet(context, goalId, isAdd: false)
                       : null,
-                  icon: const Icon(Icons.remove_rounded),
+                  icon: const AppIcon(Icons.remove_rounded),
                   label: const Text('Withdraw'),
                 ),
               ),
@@ -154,7 +154,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
                     context,
                     progress.reached ? 'Reached' : 'Remaining',
                     progress.reached
-                        ? Icon(
+                        ? AppIcon(
                             Icons.check_circle_rounded,
                             color: AppColors.income,
                           )
@@ -288,7 +288,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.tune_rounded),
+              leading: const AppIcon(Icons.tune_rounded),
               title: const Text('Fix starting amount'),
               subtitle: const Text(
                 'Correct "Saved" if it opened already showing money you '
@@ -299,7 +299,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
                   Navigator.of(sheetContext).pop(_GoalAction.fixStartingAmount),
             ),
             ListTile(
-              leading: const Icon(Icons.archive_outlined),
+              leading: const AppIcon(Icons.archive_outlined),
               title: const Text('Archive'),
               subtitle: const Text(
                 'Hides it from active goals. Its money and history stay.',
@@ -307,7 +307,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
               onTap: () => Navigator.of(sheetContext).pop(_GoalAction.archive),
             ),
             ListTile(
-              leading: Icon(
+              leading: AppIcon(
                 Icons.delete_outline,
                 color: Theme.of(sheetContext).colorScheme.error,
               ),

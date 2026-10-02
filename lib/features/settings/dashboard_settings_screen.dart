@@ -22,7 +22,7 @@ class DashboardSettingsScreen extends ConsumerWidget {
     final accountsAsync = ref.watch(balanceAccountsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Customize dashboard')),
+      appBar: AppTopBar(title: const Text('Customize dashboard')),
       body: accountsAsync.when(
         data: (accounts) => ListView(
           // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
@@ -97,7 +97,7 @@ class _AccountToggleTile extends ConsumerWidget {
           color: color.withValues(alpha: 0.14),
           shape: BoxShape.circle,
         ),
-        child: Icon(AppIcons.resolve(account.iconKey), color: color, size: 20),
+        child: AppIcon(AppIcons.resolve(account.iconKey), color: color, size: 20),
       ),
       title: Text(account.name),
       subtitle: BalanceText(

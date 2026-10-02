@@ -201,7 +201,7 @@ class _ModeOption extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(
+              AppIcon(
                 selected ? Icons.check_circle_rounded : Icons.circle_outlined,
                 color: selected ? cs.onPrimaryContainer : cs.outlineVariant,
               ),

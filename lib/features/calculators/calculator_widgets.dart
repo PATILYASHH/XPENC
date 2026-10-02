@@ -59,7 +59,7 @@ class CalculatorScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(
+      appBar: AppTopBar(
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [

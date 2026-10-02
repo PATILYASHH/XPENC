@@ -153,6 +153,11 @@ flutter:
   assets:
     - assets/tessdata/eng.traineddata
     - assets/tessdata_config.json
+    - assets/fonts/Inter-OFL.txt
+
+  # The Glass theme's Liquid Glass lens (see lib/core/theme/glass.dart).
+  shaders:
+    - shaders/liquid_glass.frag
 
   # The Bold theme's own typography (see ThemeShape.bold) — bundled once,
   # offline, rather than fetched at runtime with a package like google_fonts.
@@ -165,6 +170,12 @@ flutter:
     - family: Manrope
       fonts:
         - asset: assets/fonts/Manrope-Variable.ttf
+    # Glass's typeface — the closest open match to iOS's SF Pro. A Latin +
+    # currency-symbol subset of Inter 4.1 (variable, 184 KB; SIL OFL, see
+    # assets/fonts/Inter-OFL.txt).
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Variable.ttf
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

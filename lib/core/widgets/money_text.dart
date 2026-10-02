@@ -6,6 +6,7 @@ import '../../data/tables.dart';
 import '../currency.dart';
 import '../money.dart';
 import '../theme/app_colors.dart';
+import 'app_surfaces.dart';
 
 /// Broadcasts the active currency down the tree so every [MoneyText] rebuilds
 /// the instant it changes — even a screen kept alive in the background. The
@@ -79,7 +80,7 @@ class AmountVisibilityToggle extends ConsumerWidget {
       visualDensity: VisualDensity.compact,
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints(),
-      icon: Icon(
+      icon: AppIcon(
         hidden ? Icons.visibility_off_rounded : Icons.visibility_rounded,
       ),
       onPressed: () => ref.read(dbProvider).setHideAmounts(!hidden),

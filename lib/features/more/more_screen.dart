@@ -275,7 +275,7 @@ class _MoreTile extends StatelessWidget {
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-      leading: Icon(item.icon),
+      leading: AppIcon(item.icon),
       title: Text(
         item.label,
         style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
@@ -286,7 +286,7 @@ class _MoreTile extends StatelessWidget {
           color: item.subtitleColor ?? cs.onSurfaceVariant,
         ),
       ),
-      trailing: const Icon(Icons.chevron_right_rounded),
+      trailing: const AppIcon(Icons.chevron_right_rounded),
       onTap: () => context.push(item.route),
     );
   }
@@ -314,7 +314,7 @@ class _MoreCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(item.icon, color: cs.primary),
+              AppIcon(item.icon, color: cs.primary),
               const Spacer(),
               Text(
                 item.label,

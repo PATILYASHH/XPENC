@@ -58,7 +58,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final ok = await showAppDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        icon: const Icon(Icons.delete_outline_rounded),
+        icon: const AppIcon(Icons.delete_outline_rounded),
         title: const Text('Delete this transaction?'),
         content: Text(
           '$title · ${MoneyFormat.symbol(tx.amount)}\n\n'
@@ -78,7 +78,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(context, true),
-            icon: const Icon(Icons.delete_outline_rounded, size: 18),
+            icon: const AppIcon(Icons.delete_outline_rounded, size: 18),
             label: const Text('Delete'),
           ),
         ],
@@ -354,19 +354,19 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             SliverAppBar(
               pinned: true,
               title: const Text('Transactions'),
-              actions: [
+              actions: [GlassActionGroup(children: [
                 IconButton(
                   tooltip: 'Filters',
                   icon: Badge(
                     isLabelVisible: advanced.count > 0,
                     label: Text('${advanced.count}'),
-                    child: const Icon(Icons.tune_rounded),
+                    child: const AppIcon(Icons.tune_rounded),
                   ),
                   onPressed: () => _openFilters(advanced),
                 ),
                 IconButton(
                   tooltip: searchActive ? 'Close search' : 'Search',
-                  icon: Icon(
+                  icon: AppIcon(
                     searchActive ? Icons.close_rounded : Icons.search_rounded,
                   ),
                   onPressed: () {
@@ -377,7 +377,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                     }
                   },
                 ),
-              ],
+              ])],
             ),
           SliverPersistentHeader(
             pinned: true,
@@ -694,7 +694,7 @@ class _SummaryCell extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 15, color: color),
+        AppIcon(icon, size: 15, color: color),
         const SizedBox(height: 4),
         FittedBox(
           fit: BoxFit.scaleDown,
@@ -741,7 +741,7 @@ class _DayHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
       child: Row(
         children: [
-          Icon(_icon, size: 15, color: cs.onSurfaceVariant),
+          AppIcon(_icon, size: 15, color: cs.onSurfaceVariant),
           const SizedBox(width: 8),
           Flexible(
             child: Text(
@@ -843,7 +843,7 @@ class _ClusterHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
       child: Row(
         children: [
-          Icon(Icons.link_rounded, size: 15, color: cs.onSurfaceVariant),
+          AppIcon(Icons.link_rounded, size: 15, color: cs.onSurfaceVariant),
           const SizedBox(width: 8),
           Flexible(
             child: Text(
@@ -903,7 +903,7 @@ Future<void> _openQuickActions(
           // A correction is only ever deleted — see the detail screen.
           if (!tx.type.isCorrection) ...[
             ListTile(
-              leading: const Icon(Icons.content_copy_outlined),
+              leading: const AppIcon(Icons.content_copy_outlined),
               title: const Text('Duplicate'),
               subtitle: const Text('Add a new transaction with these details'),
               onTap: () {
@@ -912,7 +912,7 @@ Future<void> _openQuickActions(
               },
             ),
             ListTile(
-              leading: const Icon(Icons.bookmark_add_outlined),
+              leading: const AppIcon(Icons.bookmark_add_outlined),
               title: const Text('Save as template'),
               subtitle: const Text('Reuse these details from the ➕ button'),
               onTap: () {
@@ -921,7 +921,7 @@ Future<void> _openQuickActions(
               },
             ),
             ListTile(
-              leading: const Icon(Icons.edit_outlined),
+              leading: const AppIcon(Icons.edit_outlined),
               title: const Text('Edit'),
               onTap: () {
                 Navigator.of(sheetContext).pop();
@@ -930,7 +930,7 @@ Future<void> _openQuickActions(
             ),
           ],
           ListTile(
-            leading: Icon(
+            leading: AppIcon(
               Icons.delete_outline_rounded,
               color: theme.colorScheme.error,
             ),
@@ -1046,7 +1046,7 @@ class _TxCard extends StatelessWidget {
               child: const Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.delete_outline_rounded, size: 20),
+                  AppIcon(Icons.delete_outline_rounded, size: 20),
                   SizedBox(height: 4),
                   Text('Delete', style: TextStyle(fontSize: 11)),
                 ],
@@ -1094,7 +1094,7 @@ class _TxCard extends StatelessWidget {
                           Row(
                             children: [
                               if (tx.recurringRuleId != null) ...[
-                                Icon(
+                                AppIcon(
                                   Icons.autorenew_rounded,
                                   size: 13,
                                   color: cs.onSurfaceVariant,
@@ -1106,7 +1106,7 @@ class _TxCard extends StatelessWidget {
                                   message:
                                       'Posted from an estimate — tap to '
                                       'confirm the exact amount.',
-                                  child: Icon(
+                                  child: AppIcon(
                                     Icons.error_outline_rounded,
                                     size: 13,
                                     color: AppColors.expense,
@@ -1226,7 +1226,7 @@ class _Meta extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(
+            AppIcon(
               AppIcons.resolve(account?.iconKey ?? 'wallet'),
               size: 13,
               color: cs.onSurfaceVariant,
@@ -1244,7 +1244,7 @@ class _Meta extends StatelessWidget {
             ),
             if (payee != null) ...[
               const SizedBox(width: 6),
-              Icon(
+              AppIcon(
                 Icons.storefront_outlined,
                 size: 13,
                 color: cs.onSurfaceVariant,
@@ -1261,7 +1261,7 @@ class _Meta extends StatelessWidget {
             ],
             if (note != null) ...[
               const SizedBox(width: 6),
-              Icon(
+              AppIcon(
                 Icons.sticky_note_2_outlined,
                 size: 13,
                 color: cs.onSurfaceVariant,
@@ -1278,7 +1278,7 @@ class _Meta extends StatelessWidget {
             ],
             if (hasReceipt) ...[
               const SizedBox(width: 6),
-              Icon(
+              AppIcon(
                 Icons.receipt_long_outlined,
                 size: 13,
                 color: cs.onSurfaceVariant,
@@ -1459,7 +1459,7 @@ class _EmptyState extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: cs.secondary.withValues(alpha: 0.10),
               ),
-              child: Icon(icon, size: 28, color: cs.secondary),
+              child: AppIcon(icon, size: 28, color: cs.secondary),
             ),
             const SizedBox(height: 16),
             Text(
@@ -1539,7 +1539,7 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
                   decoration: InputDecoration(
                     isDense: true,
                     hintText: 'Search note, payee, category or account',
-                    prefixIcon: const Icon(Icons.search_rounded),
+                    prefixIcon: const AppIcon(Icons.search_rounded),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -1601,7 +1601,7 @@ class _FilterChips extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: ChoiceChip(
-              avatar: Icon(
+              avatar: AppIcon(
                 icon,
                 size: 16,
                 color: selected == value ? cs.secondary : cs.onSurfaceVariant,

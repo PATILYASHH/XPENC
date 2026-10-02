@@ -58,7 +58,7 @@ class PinTimeoutSheet extends ConsumerWidget {
             ListTile(
               title: Text(label(minutes)),
               trailing: minutes == selected
-                  ? Icon(Icons.check_rounded, color: cs.primary)
+                  ? AppIcon(Icons.check_rounded, color: cs.primary)
                   : null,
               selected: minutes == selected,
               onTap: () async {

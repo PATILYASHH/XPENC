@@ -299,7 +299,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
     final autoBackup = ref.watch(autoBackupSettingsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Backup & Restore')),
+      appBar: AppTopBar(title: const Text('Backup & Restore')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32).plusNavBar(context),
         children: [
@@ -317,13 +317,13 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
                             width: 18,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(Icons.backup_outlined),
+                        : const AppIcon(Icons.backup_outlined),
                     label: const Text('Back up now'),
                   ),
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
                     onPressed: _busy ? null : _importFromFile,
-                    icon: const Icon(Icons.file_open_outlined),
+                    icon: const AppIcon(Icons.file_open_outlined),
                     label: const Text('Import from file'),
                   ),
                   const SizedBox(height: 12),
@@ -356,7 +356,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
                 horizontal: 16,
                 vertical: 4,
               ),
-              leading: Icon(
+              leading: AppIcon(
                 autoBackup.enabled
                     ? Icons.schedule_outlined
                     : Icons.schedule_outlined,
@@ -369,7 +369,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
                   color: cs.onSurfaceVariant,
                 ),
               ),
-              trailing: const Icon(Icons.chevron_right_rounded),
+              trailing: const AppIcon(Icons.chevron_right_rounded),
               onTap: () => _openAutoBackupSheet(context, autoBackup),
             ),
           ),
@@ -397,14 +397,14 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
                       : () => _deleteSelected(
                           backupsAsync.valueOrNull ?? const [],
                         ),
-                  icon: const Icon(Icons.delete_outline, size: 18),
+                  icon: const AppIcon(Icons.delete_outline, size: 18),
                   label: const Text('Delete'),
                   style: TextButton.styleFrom(foregroundColor: cs.error),
                 ),
               ] else ...[
                 TextButton.icon(
                   onPressed: _busy ? null : _findExistingBackups,
-                  icon: const Icon(Icons.search_rounded, size: 18),
+                  icon: const AppIcon(Icons.search_rounded, size: 18),
                   label: const Text('Find existing'),
                 ),
               ],
@@ -586,7 +586,7 @@ class _BackupTile extends StatelessWidget {
               const SizedBox(width: 4),
               if (!selecting)
                 PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert),
+                  icon: const AppIcon(Icons.more_vert),
                   onSelected: (value) {
                     switch (value) {
                       case 'restore':

@@ -246,7 +246,7 @@ class PeriodStepper extends StatelessWidget {
     return Row(
       children: [
         IconButton(
-          icon: const Icon(Icons.chevron_left_rounded),
+          icon: const AppIcon(Icons.chevron_left_rounded),
           tooltip: showYear ? 'Previous year' : 'Previous month',
           onPressed: () => onShift(-1),
         ),
@@ -275,7 +275,7 @@ class PeriodStepper extends StatelessWidget {
           ),
         ),
         IconButton(
-          icon: const Icon(Icons.chevron_right_rounded),
+          icon: const AppIcon(Icons.chevron_right_rounded),
           tooltip: showYear ? 'Next year' : 'Next month',
           onPressed: () => onShift(1),
         ),
@@ -578,7 +578,7 @@ class StandingsControls extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         IconButton.filledTonal(
-          icon: Icon(
+          icon: AppIcon(
             ascending
                 ? Icons.arrow_upward_rounded
                 : Icons.arrow_downward_rounded,

@@ -25,7 +25,7 @@ class BudgetDetailScreen extends ConsumerWidget {
     final category = ref.watch(categoryMapProvider)[categoryId];
     if (category == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Budget')),
+        appBar: AppTopBar(title: const Text('Budget')),
         body: const Center(child: Text('Category not found')),
       );
     }
@@ -49,16 +49,16 @@ class BudgetDetailScreen extends ConsumerWidget {
     final accounts = ref.watch(accountMapProvider);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: AppTopBar(
         title: Text(category.name),
         actions: [
           IconButton(
-            icon: const Icon(Icons.picture_as_pdf_outlined),
+            icon: const AppIcon(Icons.picture_as_pdf_outlined),
             tooltip: 'Download statement',
             onPressed: () => _downloadStatement(context, ref, month),
           ),
           IconButton(
-            icon: const Icon(Icons.edit_outlined),
+            icon: const AppIcon(Icons.edit_outlined),
             tooltip: progress == null ? 'Set budget' : 'Edit budget',
             onPressed: () => showAppSheet<void>(
               context: context,
@@ -310,7 +310,7 @@ class _TxRow extends StatelessWidget {
       leading: CircleAvatar(
         backgroundColor: AppColors.expense.withValues(alpha: 0.14),
         foregroundColor: AppColors.expense,
-        child: const Icon(Icons.north_east_rounded, size: 20),
+        child: const AppIcon(Icons.north_east_rounded, size: 20),
       ),
       title: Text(
         title,

@@ -39,7 +39,7 @@ class ThemePickerSheet extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.palette_rounded, color: theme.colorScheme.secondary),
+                AppIcon(Icons.palette_rounded, color: theme.colorScheme.secondary),
                 const SizedBox(width: 10),
                 Text(
                   'Theme',
@@ -88,17 +88,17 @@ class ThemePickerSheet extends ConsumerWidget {
                         segments: const [
                           ButtonSegment(
                             value: ThemeMode.system,
-                            icon: Icon(Icons.brightness_auto_rounded),
+                            icon: AppIcon(Icons.brightness_auto_rounded),
                             label: Text('System'),
                           ),
                           ButtonSegment(
                             value: ThemeMode.light,
-                            icon: Icon(Icons.light_mode_rounded),
+                            icon: AppIcon(Icons.light_mode_rounded),
                             label: Text('Light'),
                           ),
                           ButtonSegment(
                             value: ThemeMode.dark,
-                            icon: Icon(Icons.dark_mode_rounded),
+                            icon: AppIcon(Icons.dark_mode_rounded),
                             label: Text('Dark'),
                           ),
                         ],
@@ -172,7 +172,7 @@ class _PresetTile extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Icon(style.icon, size: 16, color: cs.onSurface),
+                          AppIcon(style.icon, size: 16, color: cs.onSurface),
                           const SizedBox(width: 6),
                           Flexible(
                             child: Text(
@@ -203,7 +203,7 @@ class _PresetTile extends StatelessWidget {
                   scale: selected ? 1 : 0,
                   duration: const Duration(milliseconds: 180),
                   curve: Curves.easeOutBack,
-                  child: Icon(
+                  child: AppIcon(
                     Icons.check_circle_rounded,
                     color: cs.secondary,
                     size: 22,

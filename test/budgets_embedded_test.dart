@@ -44,7 +44,13 @@ void main() {
   ) async {
     await pump(tester, const BudgetsScreen());
     expect(tester.takeException(), isNull);
-    expect(find.widgetWithText(AppBar, 'Budgets'), findsOneWidget);
+    expect(
+      find.ancestor(
+        of: find.text('Budgets'),
+        matching: find.byWidgetPredicate((w) => w is AppBar),
+      ),
+      findsOneWidget,
+    );
 
     await unmount(tester);
   });
@@ -52,7 +58,7 @@ void main() {
   testWidgets('embedded: true renders no app bar of its own', (tester) async {
     await pump(tester, const BudgetsScreen(embedded: true));
     expect(tester.takeException(), isNull);
-    expect(find.byType(AppBar), findsNothing);
+    expect(find.byWidgetPredicate((w) => w is AppBar), findsNothing);
     // The body itself still renders.
     expect(find.text('Categories'), findsOneWidget);
 

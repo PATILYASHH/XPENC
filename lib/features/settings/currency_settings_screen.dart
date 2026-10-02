@@ -27,7 +27,7 @@ class CurrencySettingsScreen extends ConsumerWidget {
     final ratesAsync = ref.watch(currencyRatesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Currency')),
+      appBar: AppTopBar(title: const Text('Currency')),
       body: ListView(
         // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
         padding: EdgeInsets.fromLTRB(
@@ -41,7 +41,7 @@ class CurrencySettingsScreen extends ConsumerWidget {
           AppCard(
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              leading: const Icon(Icons.payments_outlined),
+              leading: const AppIcon(Icons.payments_outlined),
               title: Text('${parentCurrency.symbol} ${parentCurrency.code}'),
               subtitle: Text(
                 'Every total — Net Worth, Reports, Budgets — is shown in '
@@ -50,7 +50,7 @@ class CurrencySettingsScreen extends ConsumerWidget {
                   color: cs.onSurfaceVariant,
                 ),
               ),
-              trailing: const Icon(Icons.chevron_right_rounded),
+              trailing: const AppIcon(Icons.chevron_right_rounded),
               onTap: () => CurrencyPickerSheet.show(context, ref),
             ),
           ),
@@ -83,7 +83,7 @@ class CurrencySettingsScreen extends ConsumerWidget {
                   Divider(height: 1, indent: 60, color: cs.outline),
                   ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    leading: const Icon(Icons.add_circle_outline_rounded),
+                    leading: const AppIcon(Icons.add_circle_outline_rounded),
                     title: const Text('Add a currency'),
                     onTap: () => _addCurrency(context, ref),
                   ),
@@ -164,7 +164,7 @@ class _RateTile extends ConsumerWidget {
         'Updated ${_dateFormat.format(rate.effectiveAt)}',
         style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
       ),
-      trailing: const Icon(Icons.chevron_right_rounded),
+      trailing: const AppIcon(Icons.chevron_right_rounded),
       onTap: () => showAddRateDialog(context, ref, rate.currencyCode),
     );
   }
@@ -242,7 +242,7 @@ class _AddRateDialogState extends State<_AddRateDialog> {
             contentPadding: EdgeInsets.zero,
             title: const Text('Effective date'),
             subtitle: Text(_dateFormat.format(_effectiveAt)),
-            trailing: const Icon(Icons.calendar_today_outlined),
+            trailing: const AppIcon(Icons.calendar_today_outlined),
             onTap: _pickDate,
           ),
         ],

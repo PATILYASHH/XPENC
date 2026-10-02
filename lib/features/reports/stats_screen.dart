@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/budget_cycle.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import 'stats_modules.dart';
 import 'stats_sections.dart';
@@ -71,11 +72,11 @@ class StatsScreen extends ConsumerWidget {
     if (embedded) return body;
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: AppTopBar(
         title: const Text('Stats'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.picture_as_pdf_outlined),
+            icon: const AppIcon(Icons.picture_as_pdf_outlined),
             tooltip: 'Download report',
             onPressed: () => _downloadReport(context, ref, month, showYear),
           ),

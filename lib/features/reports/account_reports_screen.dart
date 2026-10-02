@@ -28,7 +28,7 @@ class AccountReportsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     const modules = AccountReportModule.values;
     return Scaffold(
-      appBar: AppBar(title: const Text('Account Reports')),
+      appBar: AppTopBar(title: const Text('Account Reports')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32).plusNavBar(context),
         children: [
@@ -326,7 +326,7 @@ class _AccountRow extends StatelessWidget {
             color: color.withValues(alpha: 0.14),
             shape: BoxShape.circle,
           ),
-          child: Icon(
+          child: AppIcon(
             AppIcons.resolve(account.iconKey),
             color: color,
             size: 22,

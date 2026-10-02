@@ -28,7 +28,7 @@ enum ThemeStyle {
   ),
   glass(
     label: 'Glass',
-    description: 'Frosted panes over a soft gradient — light only',
+    description: 'Liquid Glass, like iPhone — light only',
     icon: Icons.blur_on_rounded,
     lightPalette: AppPalettes.glass,
     darkPalette: AppPalettes.glass,

@@ -42,7 +42,7 @@ class PersonDetailScreen extends ConsumerWidget {
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (error, _) => Scaffold(
-        appBar: AppBar(title: const Text('Person')),
+        appBar: AppTopBar(title: const Text('Person')),
         body: const Center(child: Text('Something went wrong')),
       ),
       data: (persons) {
@@ -55,7 +55,7 @@ class PersonDetailScreen extends ConsumerWidget {
         }
         if (person == null) {
           return Scaffold(
-            appBar: AppBar(title: const Text('Person')),
+            appBar: AppTopBar(title: const Text('Person')),
             body: const Center(child: Text('Person not found')),
           );
         }
@@ -95,20 +95,20 @@ class PersonDetailScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            actions: [
+            actions: [GlassActionGroup(children: [
               IconButton(
                 tooltip: 'Share statement',
-                icon: const Icon(Icons.ios_share_rounded),
+                icon: const AppIcon(Icons.ios_share_rounded),
                 onPressed: () => _shareStatement(context, ref, person, balance),
               ),
               IconButton(
                 tooltip: 'Edit person',
-                icon: const Icon(Icons.edit_outlined),
+                icon: const AppIcon(Icons.edit_outlined),
                 onPressed: () => showEditPersonSheet(context, ref, person),
               ),
               IconButton(
                 tooltip: 'Delete person',
-                icon: const Icon(Icons.delete_outline_rounded),
+                icon: const AppIcon(Icons.delete_outline_rounded),
                 onPressed: () async {
                   if (await confirmDeletePerson(context, ref, person) &&
                       context.mounted) {
@@ -116,7 +116,7 @@ class PersonDetailScreen extends ConsumerWidget {
                   }
                 },
               ),
-            ],
+            ])],
           ),
           SliverToBoxAdapter(child: _BalanceHero(balance: balance)),
           SliverToBoxAdapter(
@@ -312,7 +312,7 @@ class _PayeeTxRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         child: Row(
           children: [
-            Icon(
+            AppIcon(
               isExpense ? Icons.north_east_rounded : Icons.south_west_rounded,
               size: 16,
               color: muted,
@@ -485,7 +485,7 @@ class _ActionButtons extends ConsumerWidget {
                   PersonDirection.iOwe,
                   isRepayment: true,
                 ),
-                icon: const Icon(Icons.paid_outlined, size: 18),
+                icon: const AppIcon(Icons.paid_outlined, size: 18),
                 label: const Text('Mark as repaid'),
               ),
             ),
@@ -761,7 +761,7 @@ class _EntryRow extends ConsumerWidget {
         leading: CircleAvatar(
           backgroundColor: color.withValues(alpha: 0.14),
           foregroundColor: color,
-          child: Icon(icon, size: 20),
+          child: AppIcon(icon, size: 20),
         ),
         title: Text(
           title,
@@ -1155,7 +1155,7 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () => _pickDate(due: false),
-                      icon: const Icon(Icons.event_outlined, size: 18),
+                      icon: const AppIcon(Icons.event_outlined, size: 18),
                       label: Text(DateFormat('d MMM yyyy').format(_date)),
                     ),
                   ),
@@ -1163,7 +1163,7 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () => _pickDate(due: true),
-                      icon: const Icon(
+                      icon: const AppIcon(
                         Icons.event_available_outlined,
                         size: 18,
                       ),
@@ -1176,7 +1176,7 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
                   ),
                   if (_dueDate != null)
                     IconButton(
-                      icon: const Icon(Icons.close),
+                      icon: const AppIcon(Icons.close),
                       tooltip: 'Clear due date',
                       onPressed: () => setState(() => _dueDate = null),
                     ),

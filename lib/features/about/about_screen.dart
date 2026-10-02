@@ -17,7 +17,7 @@ class AboutScreen extends StatelessWidget {
     final cs = theme.colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('About')),
+      appBar: AppTopBar(title: const Text('About')),
       // Not a `SafeArea` — on some 3-button-nav devices its reported inset
       // doesn't clear the nav bar (GitHub #53, the same class of bug as
       // #14). Adding the inset explicitly is the pattern that actually held
@@ -51,7 +51,7 @@ class AboutScreen extends StatelessWidget {
                 Expanded(
                   child: FilledButton.icon(
                     onPressed: () => _openPlayStore(context),
-                    icon: const Icon(Icons.shop_rounded, size: 20),
+                    icon: const AppIcon(Icons.shop_rounded, size: 20),
                     label: const Text('Google Play'),
                   ),
                 ),
@@ -61,7 +61,7 @@ class AboutScreen extends StatelessWidget {
                     // Its own context, so the share popover anchors here.
                     builder: (buttonContext) => OutlinedButton.icon(
                       onPressed: () => _shareApp(buttonContext),
-                      icon: const Icon(Icons.share_rounded, size: 20),
+                      icon: const AppIcon(Icons.share_rounded, size: 20),
                       label: const Text('Share XPENC'),
                     ),
                   ),
@@ -469,7 +469,7 @@ class _LinkTile extends StatelessWidget {
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-      leading: Icon(icon),
+      leading: AppIcon(icon),
       title: Text(
         label,
         style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
@@ -478,7 +478,7 @@ class _LinkTile extends StatelessWidget {
         value,
         style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
       ),
-      trailing: Icon(
+      trailing: AppIcon(
         url != null ? Icons.open_in_new_rounded : Icons.chevron_right_rounded,
         size: 18,
         color: cs.onSurfaceVariant,

@@ -315,7 +315,7 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
                                 color: theme.colorScheme.outlineVariant,
                               ),
                             ),
-                            child: Icon(
+                            child: AppIcon(
                               Icons.close,
                               size: 16,
                               color: theme.colorScheme.onSurfaceVariant,
@@ -342,7 +342,7 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
                   tooltip: widget.person == null
                       ? 'Pick from contacts'
                       : 'Link contact (phone & photo)',
-                  icon: const Icon(Icons.contacts_outlined),
+                  icon: const AppIcon(Icons.contacts_outlined),
                   onPressed: _pickFromContacts,
                 ),
               ),

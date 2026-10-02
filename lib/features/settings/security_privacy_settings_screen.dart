@@ -44,7 +44,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Security & Privacy')),
+      appBar: AppTopBar(title: const Text('Security & Privacy')),
       body: ListView(
         // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
         padding: EdgeInsets.fromLTRB(
@@ -76,7 +76,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                 ),
                 SwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  secondary: const Icon(Icons.pin_outlined),
+                  secondary: const AppIcon(Icons.pin_outlined),
                   title: const Text('PIN'),
                   subtitle: Text(
                     !hasPasscode
@@ -100,7 +100,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                 Divider(height: 1, indent: 60, color: cs.outline),
                 SwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  secondary: const Icon(Icons.key_outlined),
+                  secondary: const AppIcon(Icons.key_outlined),
                   title: const Text('Master password'),
                   subtitle: Text(
                     !hasMasterPhrase
@@ -124,7 +124,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                 Divider(height: 1, indent: 60, color: cs.outline),
                 SwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  secondary: const Icon(Icons.qr_code_2_rounded),
+                  secondary: const AppIcon(Icons.qr_code_2_rounded),
                   title: const Text('Authenticator app'),
                   subtitle: Text(
                     !hasTotp
@@ -150,7 +150,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                 // ── PIN management — visible whether or not PIN is active ──
                 ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  leading: const Icon(Icons.lock_outline_rounded),
+                  leading: const AppIcon(Icons.lock_outline_rounded),
                   title: Text(hasPasscode ? 'Change passcode' : 'Set passcode'),
                   subtitle: Text(
                     hasPasscode
@@ -160,7 +160,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                       color: cs.onSurfaceVariant,
                     ),
                   ),
-                  trailing: Icon(
+                  trailing: AppIcon(
                     Icons.chevron_right_rounded,
                     color: cs.onSurfaceVariant,
                   ),
@@ -170,7 +170,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                   Divider(height: 1, indent: 60, color: cs.outline),
                   SwitchListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    secondary: const Icon(Icons.fingerprint_rounded),
+                    secondary: const AppIcon(Icons.fingerprint_rounded),
                     title: const Text('Biometric unlock'),
                     subtitle: Text(
                       'Use your fingerprint or face instead of the PIN — the '
@@ -187,7 +187,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                   Divider(height: 1, indent: 60, color: cs.outline),
                   ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    leading: Icon(Icons.lock_open_outlined, color: cs.error),
+                    leading: AppIcon(Icons.lock_open_outlined, color: cs.error),
                     title: Text(
                       'Remove passcode',
                       style: TextStyle(color: cs.error),
@@ -203,7 +203,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                 if (hasMasterPhrase) ...[
                   ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    leading: const Icon(Icons.key_outlined),
+                    leading: const AppIcon(Icons.key_outlined),
                     title: const Text('Master recovery phrase'),
                     subtitle: Text(
                       'Set — also used as a fallback after too many wrong '
@@ -216,7 +216,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                   Divider(height: 1, indent: 60, color: cs.outline),
                   ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    leading: const Icon(Icons.pin_outlined),
+                    leading: const AppIcon(Icons.pin_outlined),
                     title: const Text('Require after'),
                     subtitle: Text(
                       'How many wrong attempts before the recovery phrase is '
@@ -235,7 +235,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                           style: trailingStyle,
                         ),
                         const SizedBox(width: 4),
-                        Icon(
+                        AppIcon(
                           Icons.chevron_right_rounded,
                           color: cs.onSurfaceVariant,
                         ),
@@ -246,7 +246,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                   Divider(height: 1, indent: 60, color: cs.outline),
                   ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    leading: Icon(Icons.key_off_outlined, color: cs.error),
+                    leading: AppIcon(Icons.key_off_outlined, color: cs.error),
                     title: Text(
                       'Turn off recovery phrase',
                       style: TextStyle(color: cs.error),
@@ -257,7 +257,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                 ] else
                   ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    leading: const Icon(Icons.key_outlined),
+                    leading: const AppIcon(Icons.key_outlined),
                     title: const Text('Set up master recovery phrase'),
                     subtitle: Text(
                       'A 10-word backup that can unlock XPENC if the active '
@@ -266,7 +266,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                         color: cs.onSurfaceVariant,
                       ),
                     ),
-                    trailing: Icon(
+                    trailing: AppIcon(
                       Icons.chevron_right_rounded,
                       color: cs.onSurfaceVariant,
                     ),
@@ -280,7 +280,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                 if (hasTotp) ...[
                   ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    leading: const Icon(Icons.qr_code_2_rounded),
+                    leading: const AppIcon(Icons.qr_code_2_rounded),
                     title: const Text('Authenticator app'),
                     subtitle: Text(
                       'Set up',
@@ -292,7 +292,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                   Divider(height: 1, indent: 60, color: cs.outline),
                   ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    leading: Icon(Icons.qr_code_2_rounded, color: cs.error),
+                    leading: AppIcon(Icons.qr_code_2_rounded, color: cs.error),
                     title: Text(
                       'Turn off authenticator app',
                       style: TextStyle(color: cs.error),
@@ -302,7 +302,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                 ] else
                   ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    leading: const Icon(Icons.qr_code_2_rounded),
+                    leading: const AppIcon(Icons.qr_code_2_rounded),
                     title: const Text('Set up authenticator app'),
                     subtitle: Text(
                       'Use Google Authenticator, Authy or similar to unlock '
@@ -311,7 +311,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                         color: cs.onSurfaceVariant,
                       ),
                     ),
-                    trailing: Icon(
+                    trailing: AppIcon(
                       Icons.chevron_right_rounded,
                       color: cs.onSurfaceVariant,
                     ),
@@ -325,7 +325,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                   Divider(height: 1, indent: 60, color: cs.outline),
                   ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    leading: const Icon(Icons.timer_outlined),
+                    leading: const AppIcon(Icons.timer_outlined),
                     title: const Text('Lock after'),
                     subtitle: Text(
                       'How long XPENC may sit in the background before it '
@@ -342,7 +342,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                           style: trailingStyle,
                         ),
                         const SizedBox(width: 4),
-                        Icon(
+                        AppIcon(
                           Icons.chevron_right_rounded,
                           color: cs.onSurfaceVariant,
                         ),
@@ -353,7 +353,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                   Divider(height: 1, indent: 60, color: cs.outline),
                   ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    leading: const Icon(Icons.dialpad_outlined),
+                    leading: const AppIcon(Icons.dialpad_outlined),
                     title: const Text('Lock screen style'),
                     subtitle: Text(
                       'How the PIN/code pad looks',
@@ -369,7 +369,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                           style: trailingStyle,
                         ),
                         const SizedBox(width: 4),
-                        Icon(
+                        AppIcon(
                           Icons.chevron_right_rounded,
                           color: cs.onSurfaceVariant,
                         ),
@@ -388,7 +388,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
               children: [
                 SwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  secondary: const Icon(Icons.screenshot_outlined),
+                  secondary: const AppIcon(Icons.screenshot_outlined),
                   title: const Text('Block screenshots'),
                   subtitle: Text(
                     'Hides XPENC from screenshots, screen recording and the '
@@ -404,7 +404,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                 Divider(height: 1, indent: 60, color: cs.outline),
                 SwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  secondary: const Icon(Icons.visibility_outlined),
+                  secondary: const AppIcon(Icons.visibility_outlined),
                   title: const Text('Remind when screenshots are allowed'),
                   subtitle: Text(
                     'A small tag in the corner whenever "Block screenshots" '

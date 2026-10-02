@@ -33,7 +33,7 @@ class GroupDetailScreen extends ConsumerWidget {
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (error, _) => Scaffold(
-        appBar: AppBar(title: const Text('Group')),
+        appBar: AppTopBar(title: const Text('Group')),
         body: const Center(child: Text('Something went wrong')),
       ),
       data: (groups) {
@@ -46,7 +46,7 @@ class GroupDetailScreen extends ConsumerWidget {
         }
         if (group == null) {
           return Scaffold(
-            appBar: AppBar(title: const Text('Group')),
+            appBar: AppTopBar(title: const Text('Group')),
             body: const Center(child: Text('Group not found')),
           );
         }
@@ -64,22 +64,22 @@ class GroupDetailScreen extends ConsumerWidget {
     final personMap = ref.watch(personMapProvider);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: AppTopBar(
         title: Text(group.name),
         actions: [
           IconButton(
             tooltip: 'Who owes whom',
-            icon: const Icon(Icons.open_in_full_rounded),
+            icon: const AppIcon(Icons.open_in_full_rounded),
             onPressed: () => context.push('/group/${group.id}/balances'),
           ),
           IconButton(
             tooltip: 'Share statement',
-            icon: const Icon(Icons.ios_share_rounded),
+            icon: const AppIcon(Icons.ios_share_rounded),
             onPressed: () => _shareGroupStatement(context, ref, group, balance),
           ),
           IconButton(
             tooltip: 'Edit group',
-            icon: const Icon(Icons.edit_outlined),
+            icon: const AppIcon(Icons.edit_outlined),
             onPressed: () => _showEditGroupDialog(context, ref, group),
           ),
           PopupMenuButton<_GroupMenuAction>(
@@ -99,7 +99,7 @@ class GroupDetailScreen extends ConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/group/${group.id}/add-expense'),
-        icon: const Icon(Icons.add_rounded),
+        icon: const AppIcon(Icons.add_rounded),
         label: const Text('Add expense'),
       ),
       body: CustomScrollView(
@@ -127,7 +127,7 @@ class GroupDetailScreen extends ConsumerWidget {
                   ),
                   TextButton.icon(
                     onPressed: () => _editMembers(context, ref, group),
-                    icon: const Icon(Icons.edit_outlined, size: 16),
+                    icon: const AppIcon(Icons.edit_outlined, size: 16),
                     label: const Text('Edit'),
                   ),
                 ],
@@ -432,7 +432,7 @@ class _GroupBalanceHero extends StatelessWidget {
               const SizedBox(height: 8),
               TextButton.icon(
                 onPressed: onSeeAll,
-                icon: const Icon(Icons.open_in_full_rounded, size: 16),
+                icon: const AppIcon(Icons.open_in_full_rounded, size: 16),
                 label: const Text('Who owes whom'),
               ),
             ],
@@ -518,7 +518,7 @@ class _ExpenseRow extends ConsumerWidget {
     return AppCard(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
-        leading: Icon(_splitIcon, color: cs.onSurfaceVariant),
+        leading: AppIcon(_splitIcon, color: cs.onSurfaceVariant),
         title: Text(
           expense.note?.isNotEmpty == true ? expense.note! : 'Group expense',
           maxLines: 1,

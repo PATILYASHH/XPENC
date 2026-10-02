@@ -5,6 +5,7 @@ import '../../core/group_split_math.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/amount_keypad_field.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
@@ -219,7 +220,7 @@ class _AddGroupExpenseScreenState
     final membersAsync = ref.watch(groupMembersProvider(widget.groupId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Add group expense')),
+      appBar: AppTopBar(title: const Text('Add group expense')),
       body: membersAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text("Couldn't load members.\n$e")),
@@ -357,7 +358,7 @@ class _AddGroupExpenseScreenState
           const SizedBox(height: 14),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.calendar_today_outlined),
+            leading: const AppIcon(Icons.calendar_today_outlined),
             title: Text(
               '${_date.day}/${_date.month}/${_date.year}',
             ),

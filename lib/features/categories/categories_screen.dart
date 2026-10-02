@@ -54,11 +54,11 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+      appBar: AppTopBar(
         title: const Text('Categories'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.dashboard_customize_outlined),
+            icon: const AppIcon(Icons.dashboard_customize_outlined),
             tooltip: 'Templates',
             onPressed: () => context.push('/more/categories/templates'),
           ),
@@ -86,7 +86,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen>
               : CategoryKind.income;
           _openCategoryEditor(context, kind: kind);
         },
-        child: const Icon(Icons.add),
+        child: const AppIcon(Icons.add),
       ),
     );
   }
@@ -213,7 +213,7 @@ class _CategoryTile extends ConsumerWidget {
           color: color.withValues(alpha: 0.15),
           shape: BoxShape.circle,
         ),
-        child: Icon(
+        child: AppIcon(
           AppIcons.resolve(category.iconKey),
           color: color,
           size: isChild ? 17 : 22,
@@ -230,7 +230,7 @@ class _CategoryTile extends ConsumerWidget {
         children: [
           if (!isChild)
             IconButton(
-              icon: const Icon(Icons.add),
+              icon: const AppIcon(Icons.add),
               tooltip: 'Add subcategory',
               visualDensity: VisualDensity.compact,
               onPressed: () => _openCategoryEditor(
@@ -240,7 +240,7 @@ class _CategoryTile extends ConsumerWidget {
               ),
             ),
           IconButton(
-            icon: const Icon(Icons.edit_outlined),
+            icon: const AppIcon(Icons.edit_outlined),
             tooltip: 'Edit',
             visualDensity: VisualDensity.compact,
             onPressed: () => _openCategoryEditor(
@@ -250,7 +250,7 @@ class _CategoryTile extends ConsumerWidget {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.archive_outlined),
+            icon: const AppIcon(Icons.archive_outlined),
             tooltip: 'Archive',
             visualDensity: VisualDensity.compact,
             onPressed: () => _confirmArchive(context, ref, category),
@@ -276,7 +276,7 @@ class _EmptyCategories extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
       child: Column(
         children: [
-          Icon(
+          AppIcon(
             Icons.category_outlined,
             size: 48,
             color: theme.colorScheme.onSurfaceVariant,
@@ -580,7 +580,7 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
               value: p.id,
               child: Row(
                 children: [
-                  Icon(
+                  AppIcon(
                     AppIcons.resolve(p.iconKey),
                     size: 18,
                     color: Color(p.colorValue),
@@ -625,7 +625,7 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
               : null,
         ),
         child: selected
-            ? const Icon(Icons.check_rounded, color: Colors.white, size: 20)
+            ? const AppIcon(Icons.check_rounded, color: Colors.white, size: 20)
             : null,
       ),
     );
@@ -660,7 +660,7 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
                 color: color.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
-              child: Icon(AppIcons.resolve(_iconKey), color: color),
+              child: AppIcon(AppIcons.resolve(_iconKey), color: color),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -671,7 +671,7 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
                 ),
               ),
             ),
-            Icon(
+            AppIcon(
               Icons.chevron_right_rounded,
               color: theme.colorScheme.onSurfaceVariant,
             ),

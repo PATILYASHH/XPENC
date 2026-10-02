@@ -26,7 +26,7 @@ class QuickActionsSettingsScreen extends ConsumerWidget {
     final holdMenuEnabled = ref.watch(holdMenuEnabledProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Quick Actions')),
+      appBar: AppTopBar(title: const Text('Quick Actions')),
       body: ListView(
         // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
         padding: EdgeInsets.fromLTRB(
@@ -42,7 +42,7 @@ class QuickActionsSettingsScreen extends ConsumerWidget {
               children: [
                 SwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  secondary: const Icon(Icons.radio_button_checked_rounded),
+                  secondary: const AppIcon(Icons.radio_button_checked_rounded),
                   title: const Text('Hold ➕ for quick actions'),
                   subtitle: Text(
                     'Press and hold ➕ — a ring of shortcuts opens. Slide '
@@ -85,7 +85,7 @@ class QuickActionsSettingsScreen extends ConsumerWidget {
           AppCard(
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              leading: const Icon(Icons.widgets_outlined),
+              leading: const AppIcon(Icons.widgets_outlined),
               title: const Text('Home screen widgets'),
               subtitle: Text(
                 'Balance, Budgets, Quick Add or This Month — pick what to '
@@ -94,7 +94,7 @@ class QuickActionsSettingsScreen extends ConsumerWidget {
                   color: cs.onSurfaceVariant,
                 ),
               ),
-              trailing: const Icon(Icons.chevron_right_rounded),
+              trailing: const AppIcon(Icons.chevron_right_rounded),
               onTap: () => context.push('/more/settings/widgets'),
             ),
           ),
@@ -102,7 +102,7 @@ class QuickActionsSettingsScreen extends ConsumerWidget {
           AppCard(
             child: SwitchListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              secondary: const Icon(Icons.screenshot_monitor_outlined),
+              secondary: const AppIcon(Icons.screenshot_monitor_outlined),
               title: const Text('Screenshot blocking'),
               subtitle: Text(
                 'Turn screenshot blocking on or off from the lock screen. '
@@ -237,7 +237,7 @@ class _Ball extends StatelessWidget {
             child: SizedBox(
               width: _HoldMenuEditor._ball,
               height: _HoldMenuEditor._ball,
-              child: Icon(
+              child: AppIcon(
                 empty ? Icons.add_rounded : icon,
                 color: fixed
                     ? cs.surface
@@ -293,12 +293,12 @@ class _QuickActionPickerSheet extends ConsumerWidget {
       final other = usedBy(id);
       final selected = id == current;
       return ListTile(
-        leading: Icon(icon),
+        leading: AppIcon(icon),
         title: Text(label),
         subtitle: other == null ? null : Text('Already on $other'),
         enabled: other == null,
         trailing: selected
-            ? Icon(Icons.check_rounded, color: cs.secondary)
+            ? AppIcon(Icons.check_rounded, color: cs.secondary)
             : null,
         onTap: () => Navigator.of(context).pop(id),
       );
@@ -344,7 +344,7 @@ class _QuickActionPickerSheet extends ConsumerWidget {
             ),
             if (current.isNotEmpty)
               ListTile(
-                leading: const Icon(Icons.remove_circle_outline_rounded),
+                leading: const AppIcon(Icons.remove_circle_outline_rounded),
                 title: const Text('Leave empty'),
                 onTap: () => Navigator.of(context).pop(''),
               ),

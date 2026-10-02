@@ -5,6 +5,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../core/security/paste_code_key.dart';
 import '../../core/security/pin_pad.dart';
 import '../../core/security/totp.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import 'lock_screen_keypad.dart';
 import '../../core/widgets/nav_bar_inset.dart';
@@ -94,7 +95,7 @@ class _TotpSetupScreenState extends ConsumerState<TotpSetupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+      appBar: AppTopBar(
         title: Text(
           _step == _Step.scan ? 'Authenticator app' : 'Enter the code',
         ),
@@ -158,7 +159,7 @@ class _TotpSetupScreenState extends ConsumerState<TotpSetupScreen> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.warning_amber_rounded, color: cs.onErrorContainer),
+              AppIcon(Icons.warning_amber_rounded, color: cs.onErrorContainer),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(

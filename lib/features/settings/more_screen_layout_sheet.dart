@@ -65,7 +65,7 @@ class MoreScreenLayoutSheet extends ConsumerWidget {
           ),
           for (final mode in MoreScreenViewMode.values)
             ListTile(
-              leading: Icon(_icon(mode)),
+              leading: AppIcon(_icon(mode)),
               title: Text(label(mode)),
               subtitle: Text(
                 _description(mode),
@@ -74,7 +74,7 @@ class MoreScreenLayoutSheet extends ConsumerWidget {
                 ),
               ),
               trailing: mode == selected
-                  ? Icon(Icons.check_rounded, color: cs.primary)
+                  ? AppIcon(Icons.check_rounded, color: cs.primary)
                   : null,
               selected: mode == selected,
               onTap: () async {

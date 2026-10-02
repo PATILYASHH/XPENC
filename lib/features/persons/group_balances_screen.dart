@@ -53,7 +53,7 @@ class GroupBalancesScreen extends ConsumerWidget {
     ];
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: AppTopBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -338,7 +338,7 @@ class _Note extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
+          AppIcon(
             Icons.info_outline_rounded,
             size: 18,
             color: cs.onSurfaceVariant,
@@ -516,7 +516,7 @@ class _DebtRow extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Icon(
+            child: AppIcon(
               Icons.arrow_forward_rounded,
               size: 16,
               color: cs.onSurfaceVariant,
@@ -543,7 +543,7 @@ class _DebtRow extends StatelessWidget {
           ),
           if (onTap != null) ...[
             const SizedBox(width: 4),
-            Icon(
+            AppIcon(
               Icons.chevron_right_rounded,
               size: 18,
               color: cs.onSurfaceVariant,

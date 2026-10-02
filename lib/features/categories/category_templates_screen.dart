@@ -20,7 +20,7 @@ class CategoryTemplatesScreen extends ConsumerWidget {
     final templatesAsync = ref.watch(categoryTemplatesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Category templates')),
+      appBar: AppTopBar(title: const Text('Category templates')),
       body: templatesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => const Center(
@@ -49,7 +49,7 @@ class CategoryTemplatesScreen extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(vertical: 32),
                 child: Column(
                   children: [
-                    Icon(
+                    AppIcon(
                       Icons.dashboard_customize_outlined,
                       size: 48,
                       color: theme.colorScheme.onSurfaceVariant,
@@ -84,7 +84,7 @@ class CategoryTemplatesScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton(
         tooltip: 'Save current as template',
         onPressed: () => _saveCurrentAsTemplate(context, ref),
-        child: const Icon(Icons.add),
+        child: const AppIcon(Icons.add),
       ),
     );
   }
@@ -110,7 +110,7 @@ class _TemplateTile extends ConsumerWidget {
       contentPadding: const EdgeInsets.only(left: 16, right: 4),
       leading: CircleAvatar(
         backgroundColor: theme.colorScheme.primaryContainer,
-        child: Icon(
+        child: AppIcon(
           Icons.dashboard_customize_outlined,
           color: theme.colorScheme.onPrimaryContainer,
         ),

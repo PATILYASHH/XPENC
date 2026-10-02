@@ -14,7 +14,7 @@ class WhatsNewScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("What's new in ${AppInfo.version}")),
+      appBar: AppTopBar(title: Text("What's new in ${AppInfo.version}")),
       // Not a SafeArea — see about_screen.dart's identical note (GitHub
       // #53/#14): its reported bottom inset doesn't clear the nav bar on
       // some 3-button-nav devices. Reading the inset explicitly instead.
@@ -59,7 +59,7 @@ class _WhatsNewCard extends StatelessWidget {
                     color: cs.secondary.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(entry.icon, color: cs.secondary, size: 20),
+                  child: AppIcon(entry.icon, color: cs.secondary, size: 20),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -76,7 +76,7 @@ class _WhatsNewCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
+                AppIcon(
                   Icons.place_outlined,
                   size: 15,
                   color: cs.onSurfaceVariant,

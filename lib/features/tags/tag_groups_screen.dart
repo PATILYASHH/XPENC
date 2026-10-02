@@ -33,7 +33,7 @@ class TagGroupsScreen extends ConsumerWidget {
     final tagsByGroup = ref.watch(tagGroupTagsByGroupProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Tag groups')),
+      appBar: AppTopBar(title: const Text('Tag groups')),
       body: groupsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => const Center(
@@ -85,7 +85,7 @@ class TagGroupsScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton(
         tooltip: 'New group',
         onPressed: () => _openGroupEditor(context),
-        child: const Icon(Icons.add),
+        child: const AppIcon(Icons.add),
       ),
     );
   }
@@ -102,7 +102,7 @@ class _EmptyGroups extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
       child: Column(
         children: [
-          Icon(
+          AppIcon(
             Icons.workspaces_outline,
             size: 48,
             color: theme.colorScheme.onSurfaceVariant,
@@ -145,7 +145,7 @@ class _GroupTile extends ConsumerWidget {
           color: color.withValues(alpha: 0.15),
           shape: BoxShape.circle,
         ),
-        child: Icon(Icons.workspaces_outline, color: color, size: 20),
+        child: AppIcon(Icons.workspaces_outline, color: color, size: 20),
       ),
       title: Text(
         group.name,
@@ -163,7 +163,7 @@ class _GroupTile extends ConsumerWidget {
       ),
       onTap: () => _openGroupEditor(context, existing: group),
       trailing: IconButton(
-        icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
+        icon: AppIcon(Icons.delete_outline, color: theme.colorScheme.error),
         tooltip: 'Delete',
         visualDensity: VisualDensity.compact,
         onPressed: () => _confirmDelete(context, ref, group),
@@ -452,7 +452,7 @@ class _GroupEditorSheetState extends ConsumerState<_GroupEditorSheet> {
               : null,
         ),
         child: selected
-            ? const Icon(Icons.check_rounded, color: Colors.white, size: 20)
+            ? const AppIcon(Icons.check_rounded, color: Colors.white, size: 20)
             : null,
       ),
     );

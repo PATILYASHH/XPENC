@@ -188,18 +188,18 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     if (widget.embedded) return body;
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: AppTopBar(
         title: const Text('Calendar'),
         actions: [
           if (!_onCurrentMonth)
             IconButton(
               tooltip: 'Today',
-              icon: const Icon(Icons.today_rounded),
+              icon: const AppIcon(Icons.today_rounded),
               onPressed: _goToToday,
             ),
           IconButton(
             tooltip: 'New reminder',
-            icon: const Icon(Icons.add_rounded),
+            icon: const AppIcon(Icons.add_rounded),
             onPressed: _openReminderSheet,
           ),
         ],
@@ -287,7 +287,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       children: [
         IconButton(
           tooltip: 'Previous month',
-          icon: const Icon(Icons.chevron_left_rounded),
+          icon: const AppIcon(Icons.chevron_left_rounded),
           onPressed: () => _stepMonth(-1),
         ),
         Expanded(
@@ -302,7 +302,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         ),
         IconButton(
           tooltip: 'Next month',
-          icon: const Icon(Icons.chevron_right_rounded),
+          icon: const AppIcon(Icons.chevron_right_rounded),
           onPressed: () => _stepMonth(1),
         ),
       ],
@@ -559,7 +559,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
-                Icon(icon, color: color, size: 20),
+                AppIcon(icon, color: color, size: 20),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -651,7 +651,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     color: accent.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
+                  child: AppIcon(
                     isPay
                         ? Icons.arrow_upward_rounded
                         : Icons.arrow_downward_rounded,
@@ -691,7 +691,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 ),
                 IconButton(
                   tooltip: 'Delete reminder',
-                  icon: Icon(
+                  icon: AppIcon(
                     Icons.delete_outline_rounded,
                     color: cs.onSurfaceVariant,
                   ),
@@ -728,7 +728,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         leading: CircleAvatar(
           backgroundColor: accent.withValues(alpha: 0.15),
           foregroundColor: accent,
-          child: Icon(
+          child: AppIcon(
             isExpense ? Icons.north_east_rounded : Icons.south_west_rounded,
           ),
         ),
@@ -978,12 +978,12 @@ class _ReminderSheetState extends ConsumerState<_ReminderSheet> {
               ButtonSegment(
                 value: ReminderDirection.pay,
                 label: Text('Pay'),
-                icon: Icon(Icons.arrow_upward_rounded),
+                icon: AppIcon(Icons.arrow_upward_rounded),
               ),
               ButtonSegment(
                 value: ReminderDirection.receive,
                 label: Text('Receive'),
-                icon: Icon(Icons.arrow_downward_rounded),
+                icon: AppIcon(Icons.arrow_downward_rounded),
               ),
             ],
             selected: {_direction},
@@ -997,7 +997,7 @@ class _ReminderSheetState extends ConsumerState<_ReminderSheet> {
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
               child: Row(
                 children: [
-                  Icon(Icons.event_rounded, color: cs.onSurfaceVariant),
+                  AppIcon(Icons.event_rounded, color: cs.onSurfaceVariant),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -1017,7 +1017,7 @@ class _ReminderSheetState extends ConsumerState<_ReminderSheet> {
                       ],
                     ),
                   ),
-                  Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
+                  AppIcon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
                 ],
               ),
             ),

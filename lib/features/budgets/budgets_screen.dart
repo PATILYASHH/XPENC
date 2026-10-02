@@ -98,11 +98,11 @@ class BudgetsScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: AppTopBar(
         title: const Text('Budgets'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.picture_as_pdf_outlined),
+            icon: const AppIcon(Icons.picture_as_pdf_outlined),
             tooltip: 'Download budget statement',
             onPressed: () => _downloadBudgetStatement(context, ref),
           ),
@@ -381,7 +381,7 @@ class _BudgetTile extends ConsumerWidget {
                   color: catColor.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
+                child: AppIcon(
                   AppIcons.resolve(category.iconKey),
                   color: catColor,
                   size: compact ? 16 : 22,
@@ -469,7 +469,7 @@ class _BudgetTile extends ConsumerWidget {
                   if (p.budget.note != null && p.budget.note!.isNotEmpty) ...[
                     Tooltip(
                       message: p.budget.note!,
-                      child: Icon(
+                      child: AppIcon(
                         Icons.notes_rounded,
                         size: compact ? 14 : 16,
                         color: cs.onSurfaceVariant,
@@ -832,7 +832,7 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
                   color: catColor.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
+                child: AppIcon(
                   AppIcons.resolve(widget.category.iconKey),
                   color: catColor,
                   size: 20,
@@ -1015,7 +1015,7 @@ class _OverflowTargetTile extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
-              Icon(Icons.call_split_rounded, color: cs.onSurfaceVariant),
+              AppIcon(Icons.call_split_rounded, color: cs.onSurfaceVariant),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -1038,7 +1038,7 @@ class _OverflowTargetTile extends ConsumerWidget {
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
+              AppIcon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
             ],
           ),
         ),
@@ -1140,7 +1140,7 @@ class _OverflowTargetSheet extends ConsumerWidget {
                     shrinkWrap: true,
                     children: [
                       ListTile(
-                        leading: const Icon(Icons.block_rounded),
+                        leading: const AppIcon(Icons.block_rounded),
                         title: const Text('Off'),
                         selected: currentTarget == null,
                         onTap: () => Navigator.of(
@@ -1149,7 +1149,7 @@ class _OverflowTargetSheet extends ConsumerWidget {
                       ),
                       for (final c in options)
                         ListTile(
-                          leading: Icon(
+                          leading: AppIcon(
                             AppIcons.resolve(c.iconKey),
                             color: Color(c.colorValue),
                           ),

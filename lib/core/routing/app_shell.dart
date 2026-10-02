@@ -138,21 +138,19 @@ class AppShell extends ConsumerWidget {
     final left = _catalog[leftId]!;
     final right = _catalog[rightId]!;
 
-    final items = [
-      _navItem(context, ref, _dashboard),
-      _navItem(context, ref, left),
-      _AddButton(
-        holdEnabled: ref.watch(holdMenuEnabledProvider),
-        actions: ref.watch(holdMenuActionsProvider),
-        hasTemplates: ref.watch(hasTransactionTemplatesProvider),
-      ),
-      _navItem(context, ref, right),
-      _navItem(context, ref, _more),
-    ];
+    final add = _AddButton(
+      holdEnabled: ref.watch(holdMenuEnabledProvider),
+      actions: ref.watch(holdMenuActionsProvider),
+      hasTemplates: ref.watch(hasTransactionTemplatesProvider),
+      glass: glass,
+    );
 
     return SettledPromptListener(
       child: Scaffold(
-        appBar: _TopBar(currentIndex: navigationShell.currentIndex),
+        appBar: _TopBar(
+          currentIndex: navigationShell.currentIndex,
+          glass: glass,
+        ),
         body: navigationShell,
         // Glass floats the bar as a capsule and lets every tab scroll *under*
         // it, so the blur has content to frost. The Scaffold then reports the
@@ -160,14 +158,31 @@ class AppShell extends ConsumerWidget {
         // (see `NavBarInset`).
         extendBody: glass,
         bottomNavigationBar: glass
-            ? _GlassNavBar(children: items)
+            ? _LiquidTabBar(
+                tabs: [_dashboard, left, right, _more],
+                currentBranch: navigationShell.currentIndex,
+                showLabels: ref.watch(showBottomNavLabelsProvider),
+                onSelect: (branch) => _goBranch(ref, branch),
+                add: add,
+              )
             : DecoratedBox(
                 decoration: BoxDecoration(
                   border: Border(top: BorderSide(color: border)),
                 ),
                 child: SafeArea(
                   top: false,
-                  child: SizedBox(height: 68, child: Row(children: items)),
+                  child: SizedBox(
+                    height: 68,
+                    child: Row(
+                      children: [
+                        _navItem(context, ref, _dashboard),
+                        _navItem(context, ref, left),
+                        add,
+                        _navItem(context, ref, right),
+                        _navItem(context, ref, _more),
+                      ],
+                    ),
+                  ),
                 ),
               ),
       ),
@@ -177,40 +192,19 @@ class AppShell extends ConsumerWidget {
   Widget _navItem(BuildContext context, WidgetRef ref, _TabSpec tab) {
     final theme = Theme.of(context);
     final selected = navigationShell.currentIndex == tab.branch;
-    final glass = AppSurface.of(context).isGlass;
-    // Glass wears iOS-style glyphs and an accent-blue selection.
     final color = selected
-        ? (glass ? theme.colorScheme.secondary : theme.colorScheme.onSurface)
+        ? theme.colorScheme.onSurface
         : theme.colorScheme.onSurfaceVariant;
     final showLabels = ref.watch(showBottomNavLabelsProvider);
-    final glyphs = glass ? _glassIcons[tab.branch] : null;
-    final icon = selected
-        ? (glyphs?.$2 ?? tab.activeIcon)
-        : (glyphs?.$1 ?? tab.icon);
-
-    Widget glyph = Icon(icon, size: glass ? 23 : 24, color: color);
-    if (glass) {
-      // The selected tab sits in a brighter lens of glass.
-      glyph = AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-        decoration: BoxDecoration(
-          color: selected ? const Color(0xA6FFFFFF) : const Color(0x00FFFFFF),
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: glyph,
-      );
-    }
 
     return Expanded(
       child: InkWell(
         onTap: () => _goBranch(ref, tab.branch),
-        borderRadius: BorderRadius.circular(glass ? 999 : 16),
+        borderRadius: BorderRadius.circular(16),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            glyph,
+            AppIcon(selected ? tab.activeIcon : tab.icon, size: 24, color: color),
             if (showLabels) ...[
               const SizedBox(height: 4),
               Text(
@@ -242,9 +236,14 @@ class _AddButton extends StatefulWidget {
     required this.holdEnabled,
     required this.actions,
     required this.hasTemplates,
+    this.glass = false,
   });
 
   final bool holdEnabled;
+
+  /// Glass draws a tinted Liquid Glass disc beside the tab capsule instead
+  /// of a slot inside the bar.
+  final bool glass;
 
   /// Index-aligned with `holdMenuSlotAngles`; `null` = empty slot.
   final List<QuickActionSpec?> actions;
@@ -322,43 +321,47 @@ class _AddButtonState extends State<_AddButton> {
     super.dispose();
   }
 
+  void _open() => widget.hasTemplates
+      ? openAddTransactionChoiceSheet(context)
+      : context.push('/add');
+
+  Widget _withHold(Widget button) => widget.holdEnabled
+      ? GestureDetector(
+          onLongPressStart: _onLongPressStart,
+          onLongPressMoveUpdate: _onLongPressMoveUpdate,
+          onLongPressEnd: (_) => _endGesture(commit: true),
+          onLongPressCancel: () => _endGesture(commit: false),
+          child: button,
+        )
+      : button;
+
   @override
   Widget build(BuildContext context) {
+    if (widget.glass) {
+      return _withHold(
+        GlassButton(
+          size: _LiquidTabBar.height,
+          tint: Theme.of(context).colorScheme.secondary,
+          tooltip: 'Add',
+          onPressed: _open,
+          child: const AppIcon(CupertinoIcons.add, color: Colors.white, size: 28),
+        ),
+      );
+    }
     final button = Material(
       color: Theme.of(context).colorScheme.secondary,
       shape: const CircleBorder(),
       child: InkWell(
         customBorder: const CircleBorder(),
-        onTap: () => widget.hasTemplates
-            ? openAddTransactionChoiceSheet(context)
-            : context.push('/add'),
-        child: SizedBox(
+        onTap: _open,
+        child: const SizedBox(
           width: 52,
           height: 52,
-          child: Icon(
-            AppSurface.of(context).isGlass
-                ? CupertinoIcons.add
-                : Icons.add_rounded,
-            color: Colors.white,
-            size: 28,
-          ),
+          child: AppIcon(Icons.add_rounded, color: Colors.white, size: 28),
         ),
       ),
     );
-
-    return Expanded(
-      child: Center(
-        child: widget.holdEnabled
-            ? GestureDetector(
-                onLongPressStart: _onLongPressStart,
-                onLongPressMoveUpdate: _onLongPressMoveUpdate,
-                onLongPressEnd: (_) => _endGesture(commit: true),
-                onLongPressCancel: () => _endGesture(commit: false),
-                child: button,
-              )
-            : button,
-      ),
-    );
+    return Expanded(child: Center(child: _withHold(button)));
   }
 }
 
@@ -467,7 +470,7 @@ class _HoldMenuOverlay extends StatelessWidget {
           shape: BoxShape.circle,
           color: isHovered ? cs.onSurface : cs.surfaceContainerHighest,
         ),
-        child: Icon(
+        child: AppIcon(
           Icons.close_rounded,
           color: isHovered ? cs.surface : cs.onSurface,
           size: isHovered ? 30 : 26,
@@ -514,7 +517,7 @@ class _HoldMenuOverlay extends StatelessWidget {
         ),
         child: action == null
             ? null
-            : Icon(
+            : AppIcon(
                 action.icon,
                 color: isHovered ? Colors.white : cs.onSurface,
                 size: isHovered ? 28 : 24,
@@ -557,26 +560,151 @@ const _glassIcons = <int, (IconData, IconData)>{
   8: (CupertinoIcons.bag, CupertinoIcons.bag_fill),
 };
 
-/// Glass's tab bar: a floating capsule of real, unshared blur (it frosts the
-/// tab content scrolling beneath it), inset from the screen edges like the
-/// iOS tab bar.
-class _GlassNavBar extends StatelessWidget {
-  const _GlassNavBar({required this.children});
+/// Glass's tab bar, after iOS: a floating capsule of Liquid Glass holding
+/// the tabs, with a lens-like droplet that slides to the selected tab (and
+/// overshoots a touch, like liquid settling), and the ➕ as its own tinted
+/// glass disc beside it.
+class _LiquidTabBar extends StatelessWidget {
+  const _LiquidTabBar({
+    required this.tabs,
+    required this.currentBranch,
+    required this.showLabels,
+    required this.onSelect,
+    required this.add,
+  });
 
-  final List<Widget> children;
+  static const double height = 64;
+
+  final List<_TabSpec> tabs;
+  final int currentBranch;
+  final bool showLabels;
+  final ValueChanged<int> onSelect;
+  final Widget add;
 
   @override
   Widget build(BuildContext context) {
+    final selected = tabs.indexWhere((t) => t.branch == currentBranch);
     return SafeArea(
       top: false,
-      minimum: const EdgeInsets.only(bottom: 10),
+      minimum: const EdgeInsets.only(bottom: 8),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        child: GlassPane(
-          borderRadius: BorderRadius.circular(32),
-          grouped: false,
-          frost: const Color(0x99FFFFFF),
-          child: SizedBox(height: 64, child: Row(children: children)),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+        child: Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: height,
+                child: LiquidGlass(
+                  child: LayoutBuilder(
+                    builder: (context, box) {
+                      final itemWidth = box.maxWidth / tabs.length;
+                      return Stack(
+                        children: [
+                          if (selected >= 0)
+                            AnimatedPositioned(
+                              duration: const Duration(milliseconds: 460),
+                              curve: Curves.easeOutBack,
+                              left: selected * itemWidth + 4,
+                              top: 4,
+                              bottom: 4,
+                              width: itemWidth - 8,
+                              child: const LiquidGlass(
+                                frost: Color(0x8CFFFFFF),
+                                blur: 0,
+                                refraction: 9,
+                                band: 16,
+                                shadow: false,
+                                child: SizedBox.expand(),
+                              ),
+                            ),
+                          Row(
+                            children: [
+                              for (var i = 0; i < tabs.length; i++)
+                                Expanded(
+                                  child: _LiquidTab(
+                                    tab: tabs[i],
+                                    selected: i == selected,
+                                    showLabel: showLabels,
+                                    onTap: () => onSelect(tabs[i].branch),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            add,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LiquidTab extends StatelessWidget {
+  const _LiquidTab({
+    required this.tab,
+    required this.selected,
+    required this.showLabel,
+    required this.onTap,
+  });
+
+  final _TabSpec tab;
+  final bool selected;
+  final bool showLabel;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = selected
+        ? theme.colorScheme.secondary
+        : theme.colorScheme.onSurface.withValues(alpha: 0.82);
+    final glyphs = _glassIcons[tab.branch];
+    final icon = selected
+        ? (glyphs?.$2 ?? tab.activeIcon)
+        : (glyphs?.$1 ?? tab.icon);
+    return Semantics(
+      selected: selected,
+      button: true,
+      label: tab.label,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedScale(
+              scale: selected ? 1.08 : 1,
+              duration: const Duration(milliseconds: 320),
+              curve: Curves.easeOutBack,
+              child: AppIcon(icon, size: 24, color: color),
+            ),
+            if (showLabel) ...[
+              const SizedBox(height: 3),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    tab.label,
+                    maxLines: 1,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: color,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.1,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
@@ -604,9 +732,15 @@ class _TabSpec {
 /// item sits at bar position 2/4 configurable, but the 9 branch indices
 /// themselves are permanent (see `AppShell`'s class doc).
 class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
-  const _TopBar({required this.currentIndex});
+  const _TopBar({required this.currentIndex, this.glass = false});
 
   final int currentIndex;
+
+  /// Glass lays the bar out the iOS way: buttons along the top, the tab's
+  /// large title on its own row beneath them.
+  final bool glass;
+
+  static const double _largeTitleRow = 50;
 
   static const _titles = [
     'Dashboard', // 0
@@ -621,13 +755,28 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
   ];
 
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+  Size get preferredSize =>
+      Size.fromHeight(kToolbarHeight + (glass ? _largeTitleRow : 0));
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
-    // Glass's top bar floats on the wallpaper with no rule under it, as on iOS.
-    final glass = AppSurface.of(context).isGlass;
+    final title = AnimatedSwitcher(
+      duration: const Duration(milliseconds: 220),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.3),
+            end: Offset.zero,
+          ).animate(animation),
+          child: child,
+        ),
+      ),
+      child: Text(_titles[currentIndex], key: ValueKey(currentIndex)),
+    );
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -635,22 +784,30 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
       ),
       child: AppBar(
         automaticallyImplyLeading: false,
-        title: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 220),
-          switchInCurve: Curves.easeOutCubic,
-          switchOutCurve: Curves.easeInCubic,
-          transitionBuilder: (child, animation) => FadeTransition(
-            opacity: animation,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 0.3),
-                end: Offset.zero,
-              ).animate(animation),
-              child: child,
-            ),
-          ),
-          child: Text(_titles[currentIndex], key: ValueKey(currentIndex)),
-        ),
+        centerTitle: false,
+        title: glass ? null : title,
+        bottom: glass
+            ? PreferredSize(
+                preferredSize: const Size.fromHeight(_largeTitleRow),
+                child: Align(
+                  alignment: Alignment.bottomLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+                    child: DefaultTextStyle.merge(
+                      style: Theme.of(context).textTheme.headlineLarge
+                          ?.copyWith(
+                            fontSize: 34,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -1.2,
+                            height: 1.15,
+                            color: cs.onSurface,
+                          ),
+                      child: title,
+                    ),
+                  ),
+                ),
+              )
+            : null,
         actions: [
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 220),
@@ -670,19 +827,20 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
                 if (currentIndex == 2)
                   _TonalIconButton(
                     tooltip: 'Settled',
-                    icon: const Icon(Icons.task_alt_rounded),
+                    icon: const AppIcon(Icons.task_alt_rounded),
                     onPressed: () => context.push('/persons/settled'),
                   )
                 else
                   _TonalIconButton(
                     tooltip: 'Review Inbox',
-                    icon: const Icon(Icons.inbox_outlined),
+                    icon: const AppIcon(Icons.inbox_outlined),
                     onPressed: () => context.push('/inbox'),
                   ),
               ],
             ),
           ),
-          const SizedBox(width: 4),
+          // iOS keeps toolbar buttons a full margin off the screen edge.
+          SizedBox(width: glass ? 14 : 4),
         ],
       ),
     );
@@ -710,13 +868,13 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
         return [
           _TonalIconButton(
             tooltip: 'Archived',
-            icon: const Icon(Icons.inventory_2_outlined),
+            icon: const AppIcon(Icons.inventory_2_outlined),
             onPressed: () => context.push('/persons/archived'),
           ),
           const SizedBox(width: 4),
           _TonalIconButton(
             tooltip: 'Add person',
-            icon: const Icon(Icons.person_add_alt_1_outlined),
+            icon: const AppIcon(Icons.person_add_alt_1_outlined),
             onPressed: () => showAddPersonDialog(context, ref),
           ),
           const SizedBox(width: 4),
@@ -725,14 +883,14 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
         return [
           _TonalIconButton(
             tooltip: 'Today',
-            icon: const Icon(Icons.today_rounded),
+            icon: const AppIcon(Icons.today_rounded),
             onPressed: () =>
                 ref.read(calendarGoToTodaySignalProvider.notifier).state++,
           ),
           const SizedBox(width: 4),
           _TonalIconButton(
             tooltip: 'New reminder',
-            icon: const Icon(Icons.add_rounded),
+            icon: const AppIcon(Icons.add_rounded),
             onPressed: () =>
                 ref.read(calendarNewReminderSignalProvider.notifier).state++,
           ),
@@ -768,6 +926,17 @@ class _TonalIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    if (AppSurface.of(context).isGlass) {
+      return GlassButton(
+        size: 42,
+        tooltip: tooltip,
+        onPressed: onPressed,
+        child: IconTheme.merge(
+          data: IconThemeData(size: 21, color: cs.onSurface),
+          child: icon,
+        ),
+      );
+    }
     return Material(
       color: cs.secondary.withValues(alpha: 0.08),
       shape: const CircleBorder(),
@@ -789,42 +958,58 @@ class _DashboardMonthButton extends ConsumerWidget {
     final cs = theme.colorScheme;
     final month = ref.watch(selectedMonthProvider);
     final startDay = ref.watch(budgetStartDayProvider);
+    final glass = AppSurface.of(context).isGlass;
 
+    Future<void> pick() async {
+      final picked = await showMonthPickerSheet(
+        context,
+        selected: month,
+        current: budgetPeriodAnchorFor(DateTime.now(), startDay),
+        startDay: startDay,
+      );
+      if (picked != null) {
+        ref.read(selectedMonthProvider.notifier).state = picked;
+      }
+    }
+
+    final label = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppIcon(
+            glass ? CupertinoIcons.calendar : Icons.calendar_month_rounded,
+            size: 18,
+            color: glass ? cs.secondary : cs.primary,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            DateFormat('MMM yyyy').format(month),
+            style: theme.textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (glass) {
+      return SizedBox(
+        height: 42,
+        child: GlassButton(
+          tooltip: 'Change month',
+          onPressed: pick,
+          child: Center(widthFactor: 1, child: label),
+        ),
+      );
+    }
     return Material(
       color: cs.secondary.withValues(alpha: 0.08),
       shape: const StadiumBorder(),
       child: InkWell(
         customBorder: const StadiumBorder(),
-        onTap: () async {
-          final picked = await showMonthPickerSheet(
-            context,
-            selected: month,
-            current: budgetPeriodAnchorFor(DateTime.now(), startDay),
-            startDay: startDay,
-          );
-          if (picked != null) {
-            ref.read(selectedMonthProvider.notifier).state = picked;
-          }
-        },
-        child: Tooltip(
-          message: 'Change month',
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.calendar_month_rounded, size: 18, color: cs.primary),
-                const SizedBox(width: 6),
-                Text(
-                  DateFormat('MMM yyyy').format(month),
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+        onTap: pick,
+        child: Tooltip(message: 'Change month', child: label),
       ),
     );
   }
@@ -856,7 +1041,7 @@ class _TransactionsBarActions extends ConsumerWidget {
               key: ValueKey(filters.count),
               isLabelVisible: filters.count > 0,
               label: Text('${filters.count}'),
-              child: const Icon(Icons.tune_rounded),
+              child: const AppIcon(Icons.tune_rounded),
             ),
           ),
           onPressed: () => _openFilters(context, ref, filters),
@@ -870,7 +1055,7 @@ class _TransactionsBarActions extends ConsumerWidget {
               scale: animation,
               child: FadeTransition(opacity: animation, child: child),
             ),
-            child: Icon(
+            child: AppIcon(
               searchActive ? Icons.close_rounded : Icons.search_rounded,
               key: ValueKey(searchActive),
             ),

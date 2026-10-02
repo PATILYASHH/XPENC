@@ -74,7 +74,7 @@ class _AddChoiceSheet extends ConsumerWidget {
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.add_circle_outline_rounded),
+              leading: const AppIcon(Icons.add_circle_outline_rounded),
               title: const Text('Start from scratch'),
               subtitle: const Text('A blank transaction.'),
               onTap: () =>
@@ -97,14 +97,14 @@ class _AddChoiceSheet extends ConsumerWidget {
               ),
               for (final t in templates)
                 ListTile(
-                  leading: Icon(
+                  leading: AppIcon(
                     iconForTxType(t.type),
                     color: colorForTxType(t.type),
                   ),
                   title: Text(t.name),
                   subtitle: Text(_subtitle(t, categoryMap)),
                   trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline_rounded),
+                    icon: const AppIcon(Icons.delete_outline_rounded),
                     tooltip: 'Delete template',
                     onPressed: () => _confirmDelete(context, ref, t),
                   ),

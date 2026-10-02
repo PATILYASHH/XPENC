@@ -28,7 +28,7 @@ class NotificationsSettingsScreen extends ConsumerWidget {
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Notifications')),
+      appBar: AppTopBar(title: const Text('Notifications')),
       body: ListView(
         // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
         padding: EdgeInsets.fromLTRB(
@@ -41,7 +41,7 @@ class NotificationsSettingsScreen extends ConsumerWidget {
           AppCard(
             child: SwitchListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              secondary: const Icon(Icons.notifications_outlined),
+              secondary: const AppIcon(Icons.notifications_outlined),
               title: const Text('Notifications'),
               subtitle: Text(
                 'Budget alerts and payment reminders.',
@@ -59,7 +59,7 @@ class NotificationsSettingsScreen extends ConsumerWidget {
               children: [
                 SwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  secondary: const Icon(Icons.edit_note_rounded),
+                  secondary: const AppIcon(Icons.edit_note_rounded),
                   title: const Text('Daily expense reminder'),
                   subtitle: Text(
                     expenseReminder.enabled
@@ -81,7 +81,7 @@ class NotificationsSettingsScreen extends ConsumerWidget {
                   Divider(height: 1, indent: 60, color: cs.outline),
                   ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    leading: const Icon(Icons.schedule_outlined),
+                    leading: const AppIcon(Icons.schedule_outlined),
                     title: const Text('Time'),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -94,7 +94,7 @@ class NotificationsSettingsScreen extends ConsumerWidget {
                           style: trailingStyle,
                         ),
                         const SizedBox(width: 4),
-                        Icon(
+                        AppIcon(
                           Icons.chevron_right_rounded,
                           color: cs.onSurfaceVariant,
                         ),
@@ -113,7 +113,7 @@ class NotificationsSettingsScreen extends ConsumerWidget {
               children: [
                 SwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  secondary: const Icon(Icons.flash_on_outlined),
+                  secondary: const AppIcon(Icons.flash_on_outlined),
                   title: const Text('Quick add from notification'),
                   subtitle: Text(
                     notificationsEnabled
@@ -211,14 +211,14 @@ class _QuickAddAccountTile extends ConsumerWidget {
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-      leading: const Icon(Icons.account_balance_wallet_outlined),
+      leading: const AppIcon(Icons.account_balance_wallet_outlined),
       title: const Text('Posts to'),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(chosen?.name ?? 'First account', style: trailingStyle),
           const SizedBox(width: 4),
-          Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
+          AppIcon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
         ],
       ),
       onTap: () => _pick(context, ref, accounts, chosenId),

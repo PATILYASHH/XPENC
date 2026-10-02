@@ -54,7 +54,7 @@ class MasterPhraseAttemptsSheet extends ConsumerWidget {
             ListTile(
               title: Text(label(attempts)),
               trailing: attempts == selected
-                  ? Icon(Icons.check_rounded, color: cs.primary)
+                  ? AppIcon(Icons.check_rounded, color: cs.primary)
                   : null,
               selected: attempts == selected,
               onTap: () async {

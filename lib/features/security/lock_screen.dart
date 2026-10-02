@@ -274,7 +274,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
             ),
             for (final method in otherMethods)
               ListTile(
-                leading: Icon(_methodIcon(method)),
+                leading: AppIcon(_methodIcon(method)),
                 title: Text(_methodLabel(method)),
                 onTap: () => Navigator.of(sheetContext).pop(method),
               ),
@@ -443,7 +443,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
             onBackspace: _onBackspace,
             extraKey: biometricEnabled
                 ? IconButton(
-                    icon: const Icon(Icons.fingerprint_rounded, size: 28),
+                    icon: const AppIcon(Icons.fingerprint_rounded, size: 28),
                     tooltip: 'Use biometric unlock',
                     onPressed: _tryBiometric,
                   )
@@ -476,7 +476,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.key_outlined, size: 32, color: cs.primary),
+          AppIcon(Icons.key_outlined, size: 32, color: cs.primary),
           const SizedBox(height: 12),
           if (isFallback) ...[
             Text(
@@ -579,7 +579,7 @@ class _ScreenshotShortcut extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: ActionChip(
-        avatar: Icon(icon, size: 18, color: blocked ? cs.primary : null),
+        avatar: AppIcon(icon, size: 18, color: blocked ? cs.primary : null),
         label: Text(label),
         onPressed: () => onPressed(blocked),
       ),

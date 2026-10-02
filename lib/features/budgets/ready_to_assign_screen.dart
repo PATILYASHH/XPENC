@@ -52,7 +52,7 @@ class ReadyToAssignCard extends ConsumerWidget {
               ),
             ),
             if (rta.isNegative)
-              Icon(Icons.warning_amber_rounded, color: AppColors.expense),
+              AppIcon(Icons.warning_amber_rounded, color: AppColors.expense),
           ],
         ),
       ),
@@ -72,7 +72,7 @@ class ReadyToAssignScreen extends ConsumerWidget {
     final poolAccounts = ref.watch(envelopeModeAccountsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Ready to Assign')),
+      appBar: AppTopBar(title: const Text('Ready to Assign')),
       body: poolAccounts.isEmpty
           ? const _EmptyState()
           : ListView(
@@ -177,7 +177,7 @@ class _CategoryEnvelopeRow extends ConsumerWidget {
           color: catColor.withValues(alpha: 0.15),
           shape: BoxShape.circle,
         ),
-        child: Icon(AppIcons.resolve(category.iconKey), color: catColor, size: 18),
+        child: AppIcon(AppIcons.resolve(category.iconKey), color: catColor, size: 18),
       ),
       title: Text(category.name),
       trailing: MoneyText(

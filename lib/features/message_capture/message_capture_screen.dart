@@ -25,7 +25,7 @@ class MessageCaptureScreen extends ConsumerWidget {
     final pendingCount = ref.watch(pendingCountProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Message Capture')),
+      appBar: AppTopBar(title: const Text('Message Capture')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 40).plusNavBar(context),
         children: [
@@ -42,7 +42,7 @@ class MessageCaptureScreen extends ConsumerWidget {
                       color: cs.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Icon(Icons.sms_outlined, color: cs.onSurface),
+                    child: AppIcon(Icons.sms_outlined, color: cs.onSurface),
                   ),
                   const SizedBox(height: 18),
                   Container(
@@ -104,7 +104,7 @@ class MessageCaptureScreen extends ConsumerWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.lock_outline, color: cs.onSurfaceVariant),
+                  AppIcon(Icons.lock_outline, color: cs.onSurfaceVariant),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Text(
@@ -123,7 +123,7 @@ class MessageCaptureScreen extends ConsumerWidget {
             AppCard(
               child: ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                leading: const Icon(Icons.inbox_outlined),
+                leading: const AppIcon(Icons.inbox_outlined),
                 title: const Text('Review Inbox'),
                 subtitle: Text(
                   '$pendingCount earlier detected '
@@ -133,7 +133,7 @@ class MessageCaptureScreen extends ConsumerWidget {
                     color: cs.onSurfaceVariant,
                   ),
                 ),
-                trailing: const Icon(Icons.chevron_right_rounded),
+                trailing: const AppIcon(Icons.chevron_right_rounded),
                 onTap: () => context.push('/inbox'),
               ),
             ),

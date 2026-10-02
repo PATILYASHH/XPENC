@@ -51,7 +51,7 @@ class LinkedAutoRulesCard extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.autorenew_rounded, size: 20, color: cs.primary),
+                AppIcon(Icons.autorenew_rounded, size: 20, color: cs.primary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -92,7 +92,7 @@ class LinkedAutoRulesCard extends ConsumerWidget {
               const SizedBox(height: 12),
               OutlinedButton.icon(
                 onPressed: () => _setUp(context),
-                icon: const Icon(Icons.add_rounded),
+                icon: const AppIcon(Icons.add_rounded),
                 label: Text(isLoan ? 'Set up auto-pay' : 'Set up auto-save'),
               ),
             ] else

@@ -33,11 +33,11 @@ class TagsScreen extends ConsumerWidget {
     final tagsAsync = ref.watch(tagsProvider);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: AppTopBar(
         title: const Text('Tags'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.workspaces_outline),
+            icon: const AppIcon(Icons.workspaces_outline),
             tooltip: 'Tag groups',
             onPressed: () => context.push('/more/tags/groups'),
           ),
@@ -90,7 +90,7 @@ class TagsScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton(
         tooltip: 'New tag',
         onPressed: () => _openTagEditor(context),
-        child: const Icon(Icons.add),
+        child: const AppIcon(Icons.add),
       ),
     );
   }
@@ -107,7 +107,7 @@ class _EmptyTags extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
       child: Column(
         children: [
-          Icon(
+          AppIcon(
             Icons.sell_outlined,
             size: 48,
             color: theme.colorScheme.onSurfaceVariant,
@@ -146,7 +146,7 @@ class _TagTile extends ConsumerWidget {
           color: color.withValues(alpha: 0.15),
           shape: BoxShape.circle,
         ),
-        child: Icon(Icons.sell_outlined, color: color, size: 20),
+        child: AppIcon(Icons.sell_outlined, color: color, size: 20),
       ),
       title: Text(
         tag.name,
@@ -158,13 +158,13 @@ class _TagTile extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
-            icon: const Icon(Icons.edit_outlined),
+            icon: const AppIcon(Icons.edit_outlined),
             tooltip: 'Edit',
             visualDensity: VisualDensity.compact,
             onPressed: () => _openTagEditor(context, existing: tag),
           ),
           IconButton(
-            icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
+            icon: AppIcon(Icons.delete_outline, color: theme.colorScheme.error),
             tooltip: 'Delete',
             visualDensity: VisualDensity.compact,
             onPressed: () => _confirmDelete(context, ref, tag),
@@ -373,7 +373,7 @@ class _TagEditorSheetState extends ConsumerState<_TagEditorSheet> {
               : null,
         ),
         child: selected
-            ? const Icon(Icons.check_rounded, color: Colors.white, size: 20)
+            ? const AppIcon(Icons.check_rounded, color: Colors.white, size: 20)
             : null,
       ),
     );

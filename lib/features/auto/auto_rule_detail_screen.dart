@@ -29,7 +29,7 @@ class AutoRuleDetailScreen extends ConsumerWidget {
 
     if (rule == null) {
       return Scaffold(
-        appBar: AppBar(),
+        appBar: AppTopBar(),
         body: const ErrorView(
           title: 'Rule not found',
           message: 'This auto rule may have been deleted.',
@@ -55,16 +55,16 @@ class AutoRuleDetailScreen extends ConsumerWidget {
     final sourceAccount = accountMap[rule.accountId];
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: AppTopBar(
         title: Text(rule.name),
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit_outlined),
+            icon: const AppIcon(Icons.edit_outlined),
             tooltip: 'Edit',
             onPressed: () => showRecurringRuleSheet(context, existing: rule),
           ),
           IconButton(
-            icon: const Icon(Icons.more_vert_rounded),
+            icon: const AppIcon(Icons.more_vert_rounded),
             tooltip: 'More',
             onPressed: () => _showActions(context, ref, rule),
           ),
@@ -101,7 +101,7 @@ class AutoRuleDetailScreen extends ConsumerWidget {
                             context,
                             DateFormat('d MMM yyyy').format(rule.nextDueDate),
                           )
-                        : Icon(
+                        : AppIcon(
                             Icons.pause_circle_outline,
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -131,7 +131,7 @@ class AutoRuleDetailScreen extends ConsumerWidget {
                             Flexible(
                               child: _plainValue(context, destination.name),
                             ),
-                            Icon(
+                            AppIcon(
                               Icons.chevron_right_rounded,
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
@@ -302,7 +302,7 @@ class AutoRuleDetailScreen extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.bolt_outlined),
+              leading: const AppIcon(Icons.bolt_outlined),
               title: const Text('Pay now'),
               subtitle: Text(
                 rule.nextDueDate.isAfter(DateTime.now())
@@ -315,7 +315,7 @@ class AutoRuleDetailScreen extends ConsumerWidget {
                   Navigator.of(sheetContext).pop(_RuleDetailAction.payNow),
             ),
             ListTile(
-              leading: Icon(
+              leading: AppIcon(
                 rule.isActive
                     ? Icons.pause_circle_outline
                     : Icons.play_circle_outline,
@@ -335,7 +335,7 @@ class AutoRuleDetailScreen extends ConsumerWidget {
               ),
             ),
             ListTile(
-              leading: Icon(
+              leading: AppIcon(
                 Icons.delete_outline,
                 color: theme.colorScheme.error,
               ),

@@ -33,7 +33,7 @@ class ShoppingListScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: AppTopBar(
         title: Text(list?.name ?? 'Shopping List'),
         actions: [
           if (list case final currentList?)
@@ -56,7 +56,7 @@ class ShoppingListScreen extends ConsumerWidget {
           itemsAsync.maybeWhen(
             data: (items) => items.any((i) => i.isChecked)
                 ? IconButton(
-                    icon: const Icon(Icons.delete_sweep_outlined),
+                    icon: const AppIcon(Icons.delete_sweep_outlined),
                     tooltip: 'Clear checked items',
                     onPressed: () =>
                         ref.read(dbProvider).clearCheckedShoppingItems(listId),
@@ -82,7 +82,7 @@ class ShoppingListScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(32, 48, 32, 24),
               child: Column(
                 children: [
-                  Icon(
+                  AppIcon(
                     Icons.checklist_outlined,
                     size: 48,
                     color: theme.colorScheme.onSurfaceVariant,
@@ -162,7 +162,7 @@ class ShoppingListScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton(
         tooltip: 'Add item',
         onPressed: () => _openItemEditor(context, listId),
-        child: const Icon(Icons.add),
+        child: const AppIcon(Icons.add),
       ),
     );
   }

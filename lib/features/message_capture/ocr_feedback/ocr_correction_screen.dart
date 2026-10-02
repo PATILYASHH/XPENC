@@ -23,10 +23,10 @@ class OcrCorrectionScreen extends ConsumerWidget {
     final sent = ref.watch(sentOcrCorrectionsProvider).valueOrNull ?? const [];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('OCR corrections')),
+      appBar: AppTopBar(title: const Text('OCR corrections')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/more/capture/ocr-feedback/new'),
-        icon: const Icon(Icons.add),
+        icon: const AppIcon(Icons.add),
         label: const Text('Test a screenshot'),
       ),
       body: ListView(
@@ -157,7 +157,7 @@ class _CorrectionTile extends StatelessWidget {
     final theme = Theme.of(context);
     return AppCard(
       child: ListTile(
-        leading: Icon(
+        leading: AppIcon(
           row.wasCorrect ? Icons.check_circle_outline : Icons.error_outline,
           color: row.wasCorrect
               ? theme.colorScheme.primary

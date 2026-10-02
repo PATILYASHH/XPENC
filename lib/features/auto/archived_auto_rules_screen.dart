@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
@@ -20,13 +21,13 @@ class ArchivedAutoRulesScreen extends ConsumerWidget {
     final rules = ref.watch(archivedRecurringRulesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Archived auto rules')),
+      appBar: AppTopBar(title: const Text('Archived auto rules')),
       body: rules.isEmpty
           ? Padding(
               padding: const EdgeInsets.fromLTRB(32, 48, 32, 24),
               child: Column(
                 children: [
-                  Icon(
+                  AppIcon(
                     Icons.inventory_2_outlined,
                     size: 48,
                     color: theme.colorScheme.onSurfaceVariant,
@@ -78,7 +79,7 @@ class _ArchivedRuleTile extends ConsumerWidget {
       leading: CircleAvatar(
         backgroundColor: theme.colorScheme.surfaceContainerHighest,
         foregroundColor: theme.colorScheme.onSurfaceVariant,
-        child: Icon(icon),
+        child: AppIcon(icon),
       ),
       title: Text(
         rule.name,
@@ -93,7 +94,7 @@ class _ArchivedRuleTile extends ConsumerWidget {
         ),
       ),
       trailing: TextButton.icon(
-        icon: const Icon(Icons.unarchive_outlined, size: 18),
+        icon: const AppIcon(Icons.unarchive_outlined, size: 18),
         label: const Text('Restore'),
         style: TextButton.styleFrom(foregroundColor: color),
         onPressed: () async {

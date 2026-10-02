@@ -723,7 +723,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.event_rounded, color: cs.onSurfaceVariant),
+                    AppIcon(Icons.event_rounded, color: cs.onSurfaceVariant),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -743,7 +743,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
                         ],
                       ),
                     ),
-                    Icon(
+                    AppIcon(
                       Icons.chevron_right_rounded,
                       color: cs.onSurfaceVariant,
                     ),
@@ -874,7 +874,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.sell_outlined, color: cs.onSurfaceVariant),
+            AppIcon(Icons.sell_outlined, color: cs.onSurfaceVariant),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -916,7 +916,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
+            AppIcon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
           ],
         ),
       ),

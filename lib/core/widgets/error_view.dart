@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_surfaces.dart';
 import 'nav_bar_inset.dart';
 
 /// Shown when something has genuinely failed.
@@ -30,7 +31,7 @@ class ErrorView extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(
+            AppIcon(
               Icons.error_outline_rounded,
               size: 44,
               color: theme.colorScheme.error,
@@ -73,7 +74,7 @@ class ErrorView extends StatelessWidget {
               const SizedBox(height: 22),
               FilledButton.icon(
                 onPressed: onRetry,
-                icon: const Icon(Icons.refresh_rounded),
+                icon: const AppIcon(Icons.refresh_rounded),
                 label: const Text('Try again'),
               ),
             ],
@@ -98,7 +99,7 @@ class InlineErrorView extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.error_outline_rounded,
+          AppIcon(Icons.error_outline_rounded,
               size: 16, color: theme.colorScheme.error),
           const SizedBox(width: 8),
           Text(

@@ -31,18 +31,18 @@ class AutoScreen extends ConsumerWidget {
           SliverAppBar(
             pinned: true,
             title: const Text('Auto'),
-            actions: [
+            actions: [GlassActionGroup(children: [
               IconButton(
                 tooltip: 'Archived auto rules',
-                icon: const Icon(Icons.inventory_2_outlined),
+                icon: const AppIcon(Icons.inventory_2_outlined),
                 onPressed: () => context.push('/more/auto/archived'),
               ),
               IconButton(
                 tooltip: 'New auto rule',
-                icon: const Icon(Icons.add_rounded),
+                icon: const AppIcon(Icons.add_rounded),
                 onPressed: () => showRecurringRuleSheet(context),
               ),
-            ],
+            ])],
           ),
           rulesAsync.when(
             loading: () => const SliverToBoxAdapter(
@@ -144,7 +144,7 @@ class AutoScreen extends ConsumerWidget {
                   horizontal: 16,
                   vertical: 4,
                 ),
-                leading: Icon(
+                leading: AppIcon(
                   Icons.pause_circle_outline,
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -154,7 +154,7 @@ class AutoScreen extends ConsumerWidget {
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
-                trailing: const Icon(Icons.chevron_right_rounded),
+                trailing: const AppIcon(Icons.chevron_right_rounded),
                 onTap: () => context.push('/more/auto/archived'),
               ),
             ],
@@ -175,7 +175,7 @@ class _EmptyAuto extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(32, 48, 32, 24),
       child: Column(
         children: [
-          Icon(
+          AppIcon(
             Icons.autorenew_rounded,
             size: 48,
             color: theme.colorScheme.onSurfaceVariant,
@@ -231,7 +231,7 @@ class _RuleTile extends ConsumerWidget {
       leading: CircleAvatar(
         backgroundColor: color.withValues(alpha: 0.14),
         foregroundColor: color,
-        child: Icon(icon),
+        child: AppIcon(icon),
       ),
       title: Text(
         rule.name,
@@ -324,7 +324,7 @@ class _RuleTile extends ConsumerWidget {
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.bolt_outlined),
+              leading: const AppIcon(Icons.bolt_outlined),
               title: const Text('Pay now'),
               subtitle: Text(
                 rule.nextDueDate.isAfter(DateTime.now())
@@ -336,7 +336,7 @@ class _RuleTile extends ConsumerWidget {
               onTap: () => Navigator.of(sheetContext).pop(_RuleAction.payNow),
             ),
             ListTile(
-              leading: const Icon(Icons.pause_circle_outline),
+              leading: const AppIcon(Icons.pause_circle_outline),
               title: const Text('Pause'),
               subtitle: const Text(
                 'Move it to Archived auto rules until you restore it. '
@@ -345,7 +345,7 @@ class _RuleTile extends ConsumerWidget {
               onTap: () => Navigator.of(sheetContext).pop(_RuleAction.pause),
             ),
             ListTile(
-              leading: Icon(
+              leading: AppIcon(
                 Icons.delete_outline,
                 color: theme.colorScheme.error,
               ),

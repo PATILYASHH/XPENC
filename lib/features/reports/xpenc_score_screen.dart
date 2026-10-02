@@ -214,7 +214,7 @@ class XpencScoreCard extends ConsumerWidget {
                             ),
                           ),
                         ),
-                        Icon(
+                        AppIcon(
                           Icons.chevron_right_rounded,
                           size: 18,
                           color: cs.primary,
@@ -246,7 +246,7 @@ class XpencScoreScreen extends ConsumerWidget {
     final grade = result.grade;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('XPENC Score')),
+      appBar: AppTopBar(title: const Text('XPENC Score')),
       body: ledger.isLoading
           ? const StatsSectionLoader(height: 240)
           : ListView(
@@ -419,7 +419,7 @@ class _PillarCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(_iconOf(p.id), size: 20, color: color),
+                AppIcon(_iconOf(p.id), size: 20, color: color),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(

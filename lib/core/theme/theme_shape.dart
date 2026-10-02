@@ -86,13 +86,15 @@ class ThemeShape {
     baseWeightDelta: 1,
   );
 
-  /// Glass: iOS-style continuous corners and tight, heavy titles over
-  /// frosted cards.
+  /// Glass: iOS's generous, concentric corners and tight, heavy titles,
+  /// set in Inter — the closest open face to SF Pro.
   static const glass = ThemeShape(
-    controlRadius: 16,
+    controlRadius: 14,
     cardRadius: 26,
     headlineWeight: FontWeight.w700,
     headlineLetterSpacing: -0.8,
+    displayFontFamily: 'Inter',
+    bodyFontFamily: 'Inter',
     surfaceStyle: SurfaceStyle.glass,
   );
 }

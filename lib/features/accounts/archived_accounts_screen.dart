@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_icons.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../core/widgets/nav_bar_inset.dart';
@@ -18,7 +19,7 @@ class ArchivedAccountsScreen extends ConsumerWidget {
     final archivedAsync = ref.watch(archivedAccountsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Archived accounts')),
+      appBar: AppTopBar(title: const Text('Archived accounts')),
       body: archivedAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => Center(
@@ -35,7 +36,7 @@ class ArchivedAccountsScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(32, 48, 32, 24),
               child: Column(
                 children: [
-                  Icon(
+                  AppIcon(
                     Icons.inventory_2_outlined,
                     size: 48,
                     color: theme.colorScheme.onSurfaceVariant,
@@ -85,7 +86,7 @@ class _ArchivedAccountTile extends ConsumerWidget {
           color: color.withValues(alpha: 0.14),
           shape: BoxShape.circle,
         ),
-        child: Icon(AppIcons.resolve(account.iconKey), color: color, size: 22),
+        child: AppIcon(AppIcons.resolve(account.iconKey), color: color, size: 22),
       ),
       title: Text(
         account.name,
@@ -98,7 +99,7 @@ class _ArchivedAccountTile extends ConsumerWidget {
         ),
       ),
       trailing: TextButton.icon(
-        icon: const Icon(Icons.unarchive_outlined, size: 18),
+        icon: const AppIcon(Icons.unarchive_outlined, size: 18),
         label: const Text('Restore'),
         onPressed: () async {
           final messenger = ScaffoldMessenger.of(context);

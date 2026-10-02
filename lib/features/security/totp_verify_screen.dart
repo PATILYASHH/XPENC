@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/security/paste_code_key.dart';
 import '../../core/security/pin_pad.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import 'lock_screen_keypad.dart';
 
@@ -79,7 +80,7 @@ class _TotpVerifyScreenState extends ConsumerState<TotpVerifyScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Turn off authenticator app')),
+      appBar: AppTopBar(title: const Text('Turn off authenticator app')),
       body: SafeArea(
         child: Column(
           children: [

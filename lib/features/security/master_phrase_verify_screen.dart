@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/security/master_phrase_field.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 
 /// Turning the master phrase off requires re-entering it — same reasoning
@@ -49,7 +50,7 @@ class _MasterPhraseVerifyScreenState
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Turn off recovery phrase')),
+      appBar: AppTopBar(title: const Text('Turn off recovery phrase')),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),

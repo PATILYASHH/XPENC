@@ -68,7 +68,7 @@ class _SavingsGoalsScreenState extends ConsumerState<SavingsGoalsScreen>
     final isGoalsTab = _tabController.index == 0;
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: AppTopBar(
         title: const Text('Goals & Loans'),
         bottom: TabBar(
           controller: _tabController,
@@ -87,7 +87,7 @@ class _SavingsGoalsScreenState extends ConsumerState<SavingsGoalsScreen>
         onPressed: isGoalsTab
             ? () => _openNewGoalChoice(context)
             : () => _openLoanEditor(context),
-        child: const Icon(Icons.add),
+        child: const AppIcon(Icons.add),
       ),
     );
   }
@@ -120,7 +120,7 @@ class _GoalsTab extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(32, 48, 32, 24),
             child: Column(
               children: [
-                Icon(
+                AppIcon(
                   Icons.savings_outlined,
                   size: 48,
                   color: theme.colorScheme.onSurfaceVariant,
@@ -182,7 +182,7 @@ class _GoalCard extends StatelessWidget {
                         color: color.withValues(alpha: 0.14),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(
+                      child: AppIcon(
                         AppIcons.resolve(account.iconKey),
                         color: color,
                       ),
@@ -199,7 +199,7 @@ class _GoalCard extends StatelessWidget {
                       ),
                     ),
                     if (progress.reached)
-                      Icon(
+                      AppIcon(
                         Icons.check_circle_rounded,
                         color: AppColors.income,
                         size: 20,
@@ -292,7 +292,7 @@ class _LoansTab extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(32, 48, 32, 24),
             child: Column(
               children: [
-                Icon(
+                AppIcon(
                   Icons.account_balance_outlined,
                   size: 48,
                   color: theme.colorScheme.onSurfaceVariant,
@@ -352,7 +352,7 @@ class _LoanCard extends StatelessWidget {
                         color: color.withValues(alpha: 0.14),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(
+                      child: AppIcon(
                         AppIcons.resolve(account.iconKey),
                         color: color,
                       ),
@@ -369,7 +369,7 @@ class _LoanCard extends StatelessWidget {
                       ),
                     ),
                     if (loan.outstanding.isZero)
-                      Icon(
+                      AppIcon(
                         Icons.check_circle_rounded,
                         color: AppColors.income,
                         size: 20,
@@ -464,13 +464,13 @@ Future<void> _openNewGoalChoice(BuildContext context) async {
             ),
           ),
           ListTile(
-            leading: const Icon(Icons.add_circle_outline_rounded),
+            leading: const AppIcon(Icons.add_circle_outline_rounded),
             title: const Text('Start fresh'),
             subtitle: const Text('A new goal, empty until you fund it.'),
             onTap: () => Navigator.of(sheetContext).pop(_NewGoalChoice.fresh),
           ),
           ListTile(
-            leading: const Icon(Icons.savings_outlined),
+            leading: const AppIcon(Icons.savings_outlined),
             title: const Text('Turn an account into a goal'),
             subtitle: const Text(
               'Move its balance in and set it aside for this.',
@@ -788,7 +788,7 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
             const SizedBox(height: 16),
             OutlinedButton.icon(
               onPressed: _pickTargetDate,
-              icon: const Icon(Icons.event_outlined, size: 18),
+              icon: const AppIcon(Icons.event_outlined, size: 18),
               label: Text(
                 _targetDate == null
                     ? 'Target date (optional)'
@@ -875,7 +875,7 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
               : null,
         ),
         child: selected
-            ? const Icon(Icons.check_rounded, color: Colors.white, size: 20)
+            ? const AppIcon(Icons.check_rounded, color: Colors.white, size: 20)
             : null,
       ),
     );
@@ -900,7 +900,7 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
             width: selected ? 2.5 : 1,
           ),
         ),
-        child: Icon(
+        child: AppIcon(
           AppIcons.resolve(key),
           color: selected ? color : theme.colorScheme.onSurfaceVariant,
         ),
@@ -1346,7 +1346,7 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
                 ),
                 child: Row(
                   children: [
-                    Icon(
+                    AppIcon(
                       Icons.event_rounded,
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -1369,7 +1369,7 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
                         ],
                       ),
                     ),
-                    Icon(
+                    AppIcon(
                       Icons.chevron_right_rounded,
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -1464,7 +1464,7 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Row(
                   children: [
-                    Icon(Icons.autorenew_rounded, color: cs.onSurfaceVariant),
+                    AppIcon(Icons.autorenew_rounded, color: cs.onSurfaceVariant),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -1484,7 +1484,7 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
                         ],
                       ),
                     ),
-                    Icon(
+                    AppIcon(
                       Icons.chevron_right_rounded,
                       color: cs.onSurfaceVariant,
                     ),
@@ -1534,7 +1534,7 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
               : null,
         ),
         child: selected
-            ? const Icon(Icons.check_rounded, color: Colors.white, size: 20)
+            ? const AppIcon(Icons.check_rounded, color: Colors.white, size: 20)
             : null,
       ),
     );
@@ -1559,7 +1559,7 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
             width: selected ? 2.5 : 1,
           ),
         ),
-        child: Icon(
+        child: AppIcon(
           AppIcons.resolve(key),
           color: selected ? color : theme.colorScheme.onSurfaceVariant,
         ),

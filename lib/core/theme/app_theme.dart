@@ -1,3 +1,5 @@
+import 'package:flutter/cupertino.dart'
+    show CupertinoIcons, CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -95,7 +97,7 @@ class AppTheme {
       weightDelta: weightDelta,
     );
 
-    return base.copyWith(
+    final theme = base.copyWith(
       extensions: [
         AppSurface(
           style: shape.surfaceStyle,
@@ -236,6 +238,186 @@ class AppTheme {
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+    );
+    return glass ? _liquidGlass(theme, p, shape) : theme;
+  }
+
+  /// Glass's controls, modelled on iOS: capsule buttons, the iOS switch,
+  /// plain filled fields, hairline separators, Cupertino page transitions
+  /// (with swipe-back), glass back buttons, no Material ripple, and SF-like
+  /// tracking on Inter.
+  static ThemeData _liquidGlass(ThemeData t, Palette p, ThemeShape shape) {
+    const stadium = StadiumBorder();
+    const separator = Color(0x243C3C43);
+    const iosGreen = Color(0xFF34C759);
+    const fill = Color(0x9EFFFFFF);
+    final text = t.textTheme;
+
+    TextStyle? track(TextStyle? s, double spacing) =>
+        s?.copyWith(letterSpacing: spacing);
+
+    return t.copyWith(
+      splashFactory: NoSplash.splashFactory,
+      highlightColor: const Color(0x14000000),
+      pageTransitionsTheme: PageTransitionsTheme(
+        builders: {
+          for (final platform in TargetPlatform.values)
+            platform: const _BackdropTransitionsBuilder(
+              CupertinoPageTransitionsBuilder(),
+            ),
+        },
+      ),
+      actionIconTheme: ActionIconThemeData(
+        backButtonIconBuilder: (_) =>
+            const GlassNavGlyph(CupertinoIcons.chevron_back),
+        closeButtonIconBuilder: (_) => const GlassNavGlyph(CupertinoIcons.xmark),
+      ),
+      appBarTheme: t.appBarTheme.copyWith(
+        centerTitle: true,
+        titleTextStyle: text.titleLarge?.copyWith(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.45,
+          color: p.text,
+        ),
+      ),
+      textTheme: text.copyWith(
+        displayLarge: track(text.displayLarge, -1.2),
+        displayMedium: track(text.displayMedium, -1.0),
+        displaySmall: track(text.displaySmall, -0.9),
+        headlineLarge: track(text.headlineLarge, -0.8),
+        headlineMedium: track(text.headlineMedium, -0.7),
+        headlineSmall: track(text.headlineSmall, -0.6),
+        titleLarge: track(text.titleLarge, -0.45),
+        titleMedium: track(text.titleMedium, -0.3),
+        titleSmall: track(text.titleSmall, -0.2),
+        bodyLarge: track(text.bodyLarge, -0.25),
+        bodyMedium: track(text.bodyMedium, -0.15),
+        bodySmall: track(text.bodySmall, -0.05),
+        labelLarge: track(text.labelLarge, -0.15),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size.fromHeight(54),
+          shape: stadium,
+          backgroundColor: p.accent,
+          foregroundColor: Colors.white,
+          // From the text theme, so the label stays in Inter.
+          textStyle: text.labelLarge?.copyWith(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.3,
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          shape: stadium,
+          backgroundColor: fill,
+          foregroundColor: p.text,
+          side: const BorderSide(color: Color(0xE6FFFFFF)),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(shape: stadium, foregroundColor: p.accent),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          shape: stadium,
+          backgroundColor: fill,
+          foregroundColor: p.accent,
+          elevation: 0,
+        ),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: p.accent,
+        foregroundColor: Colors.white,
+        shape: const CircleBorder(),
+        elevation: 6,
+        highlightElevation: 2,
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: const WidgetStatePropertyAll(Colors.white),
+        trackColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected)
+              ? iosGreen
+              : const Color(0x29787880),
+        ),
+        trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
+        thumbIcon: const WidgetStatePropertyAll(null),
+      ),
+      checkboxTheme: CheckboxThemeData(
+        shape: const CircleBorder(),
+        fillColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected) ? p.accent : null,
+        ),
+      ),
+      chipTheme: t.chipTheme.copyWith(
+        backgroundColor: fill,
+        selectedColor: p.accent.withValues(alpha: 0.16),
+        side: const BorderSide(color: Color(0xD9FFFFFF)),
+        shape: stadium,
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          shape: const WidgetStatePropertyAll(stadium),
+          side: const WidgetStatePropertyAll(BorderSide(color: separator)),
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (s) => s.contains(WidgetState.selected)
+                ? Colors.white
+                : const Color(0x33FFFFFF),
+          ),
+          foregroundColor: WidgetStatePropertyAll(p.text),
+        ),
+      ),
+      inputDecorationTheme: t.inputDecorationTheme.copyWith(
+        fillColor: fill,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(shape.controlRadius),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(shape.controlRadius),
+          borderSide: const BorderSide(color: Color(0xB3FFFFFF)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(shape.controlRadius),
+          borderSide: BorderSide(color: p.accent, width: 1.6),
+        ),
+      ),
+      listTileTheme: t.listTileTheme.copyWith(iconColor: p.accent),
+      dividerTheme: const DividerThemeData(
+        color: separator,
+        thickness: 0.6,
+        space: 1,
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: p.accent,
+        linearTrackColor: const Color(0x1F787880),
+        circularTrackColor: const Color(0x1F787880),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xF21C1C1E),
+        contentTextStyle: text.bodyMedium?.copyWith(color: Colors.white),
+        actionTextColor: const Color(0xFF64A8FF),
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      ),
+      dialogTheme: t.dialogTheme.copyWith(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+        titleTextStyle: text.titleLarge?.copyWith(
+          fontSize: 19,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.4,
+          color: p.text,
+        ),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: GlassStyle.solidFrost,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       ),
     );
   }

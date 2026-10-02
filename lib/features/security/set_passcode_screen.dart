@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/security/pin_pad.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import 'lock_screen_keypad.dart';
 
@@ -144,7 +145,7 @@ class _SetPasscodeScreenState extends ConsumerState<SetPasscodeScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Passcode')),
+      appBar: AppTopBar(title: const Text('Passcode')),
       body: SafeArea(
         child: Column(
           children: [

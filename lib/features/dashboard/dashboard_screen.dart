@@ -621,7 +621,7 @@ class _DeltaChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
+          AppIcon(
             up ? Icons.trending_up_rounded : Icons.trending_down_rounded,
             size: 15,
             color: color,
@@ -753,7 +753,7 @@ class _MetricTile extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, size: 15, color: color),
+              AppIcon(icon, size: 15, color: color),
               const SizedBox(width: 6),
               // "Expense" plus its icon is within a pixel of the tile's width
               // at the default text size. It has to be allowed to give.
@@ -938,7 +938,7 @@ class _AccountCard extends StatelessWidget {
                       shape: BoxShape.circle,
                       color: color.withValues(alpha: 0.14),
                     ),
-                    child: Icon(
+                    child: AppIcon(
                       AppIcons.resolve(account.iconKey),
                       size: 20,
                       color: color,
@@ -1149,7 +1149,7 @@ class _DuesOwesRow extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 13, color: color),
+            AppIcon(icon, size: 13, color: color),
             const SizedBox(width: 6),
             Flexible(
               child: Text(
@@ -1217,7 +1217,7 @@ class _PersonDuesTile extends StatelessWidget {
       ),
       subtitle: Row(
         children: [
-          Icon(statusIcon, size: 13, color: color),
+          AppIcon(statusIcon, size: 13, color: color),
           const SizedBox(width: 5),
           Flexible(
             child: Text(
@@ -1343,7 +1343,7 @@ class _UpcomingTile extends StatelessWidget {
       leading: CircleAvatar(
         backgroundColor: color.withValues(alpha: 0.14),
         foregroundColor: color,
-        child: Icon(icon, size: 18),
+        child: AppIcon(icon, size: 18),
       ),
       title: Text(
         item.title,
@@ -1479,7 +1479,7 @@ class _SetBudgetCard extends StatelessWidget {
                         alpha: 0.12,
                       ),
                     ),
-                    child: Icon(
+                    child: AppIcon(
                       Icons.pie_chart_outline_rounded,
                       size: 20,
                       color: theme.colorScheme.secondary,
@@ -1505,7 +1505,7 @@ class _SetBudgetCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Icon(
+                  AppIcon(
                     Icons.chevron_right,
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -1819,7 +1819,7 @@ class _EmptyState extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: theme.colorScheme.secondary.withValues(alpha: 0.10),
                 ),
-                child: Icon(
+                child: AppIcon(
                   Icons.receipt_long_outlined,
                   size: 28,
                   color: theme.colorScheme.secondary,
@@ -1843,7 +1843,7 @@ class _EmptyState extends StatelessWidget {
               const SizedBox(height: 20),
               FilledButton.icon(
                 onPressed: () => context.push('/add'),
-                icon: const Icon(Icons.add_rounded),
+                icon: const AppIcon(Icons.add_rounded),
                 label: const Text('Add transaction'),
               ),
             ],

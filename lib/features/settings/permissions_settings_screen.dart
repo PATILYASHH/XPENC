@@ -96,7 +96,7 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Permissions')),
+      appBar: AppTopBar(title: const Text('Permissions')),
       body: ListView(
         // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
         padding: EdgeInsets.fromLTRB(
@@ -176,7 +176,7 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
           const SizedBox(height: 16),
           OutlinedButton.icon(
             onPressed: () => AppPermissions.openSettings(),
-            icon: const Icon(Icons.open_in_new_rounded, size: 18),
+            icon: const AppIcon(Icons.open_in_new_rounded, size: 18),
             label: const Text('Open system app settings'),
           ),
         ],
@@ -210,7 +210,7 @@ class _PermissionTile extends StatelessWidget {
     final known = state != null && state != PermissionState.unavailable;
     return SwitchListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      secondary: Icon(_icon),
+      secondary: AppIcon(_icon),
       title: Text(
         permission.title,
         style: const TextStyle(fontWeight: FontWeight.w600),
@@ -243,7 +243,7 @@ class _InfoTile extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      leading: Icon(icon, color: cs.onSurfaceVariant),
+      leading: AppIcon(icon, color: cs.onSurfaceVariant),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
       subtitle: Text(
         subtitle,

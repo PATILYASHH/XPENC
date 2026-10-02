@@ -42,14 +42,20 @@ void main() {
   ) async {
     await pump(tester, const CalendarScreen());
     expect(tester.takeException(), isNull);
-    expect(find.widgetWithText(AppBar, 'Calendar'), findsOneWidget);
+    expect(
+      find.ancestor(
+        of: find.text('Calendar'),
+        matching: find.byWidgetPredicate((w) => w is AppBar),
+      ),
+      findsOneWidget,
+    );
     await unmount(tester);
   });
 
   testWidgets('embedded: true renders no app bar of its own', (tester) async {
     await pump(tester, const CalendarScreen(embedded: true));
     expect(tester.takeException(), isNull);
-    expect(find.byType(AppBar), findsNothing);
+    expect(find.byWidgetPredicate((w) => w is AppBar), findsNothing);
     await unmount(tester);
   });
 

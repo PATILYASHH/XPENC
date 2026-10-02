@@ -90,7 +90,7 @@ class _DownloadDataScreenState extends ConsumerState<DownloadDataScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Download Data')),
+      appBar: AppTopBar(title: const Text('Download Data')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32).plusNavBar(context),
         children: [
@@ -179,7 +179,7 @@ class _IntroCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.lock_outline, color: cs.onSurfaceVariant),
+            AppIcon(Icons.lock_outline, color: cs.onSurfaceVariant),
             const SizedBox(width: 14),
             Expanded(
               child: Text(
@@ -238,7 +238,7 @@ class _ActionCard extends StatelessWidget {
                     color: cs.surfaceContainerHighest,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(icon, color: cs.onSurface, size: 22),
+                  child: AppIcon(icon, color: cs.onSurface, size: 22),
                 ),
                 const SizedBox(width: 14),
                 Expanded(

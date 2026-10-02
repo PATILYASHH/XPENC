@@ -166,9 +166,9 @@ class StatsModuleTile extends ConsumerWidget {
             children: [
               Row(
                 children: [
-                  Icon(module.icon, size: 20, color: cs.onSurfaceVariant),
+                  AppIcon(module.icon, size: 20, color: cs.onSurfaceVariant),
                   const Spacer(),
-                  Icon(
+                  AppIcon(
                     Icons.chevron_right_rounded,
                     size: 18,
                     color: cs.onSurfaceVariant,
@@ -301,7 +301,7 @@ class StatsModuleScreen extends StatelessWidget {
       StatsModule.recurring => const _RecurringBody(),
     };
     return Scaffold(
-      appBar: AppBar(title: Text(module.title)),
+      appBar: AppTopBar(title: Text(module.title)),
       body: body,
     );
   }

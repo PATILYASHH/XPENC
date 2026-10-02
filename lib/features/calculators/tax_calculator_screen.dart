@@ -61,7 +61,7 @@ class _TaxCalculatorScreenState extends State<TaxCalculatorScreen> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.public_rounded, size: 18, color: cs.onSurfaceVariant),
+              AppIcon(Icons.public_rounded, size: 18, color: cs.onSurfaceVariant),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(

@@ -38,12 +38,12 @@ class TransactionDetailScreen extends ConsumerWidget {
         t != null && t.type.isIncomeOrExpense && t.recurringRuleId == null;
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: AppTopBar(
         title: const Text('Transaction'),
         actions: [
           if (canMakeRecurring)
             IconButton(
-              icon: const Icon(Icons.autorenew_rounded),
+              icon: const AppIcon(Icons.autorenew_rounded),
               tooltip: 'Make recurring',
               onPressed: () => showRecurringRuleSheet(context, prefillFrom: t),
             ),
@@ -52,18 +52,18 @@ class TransactionDetailScreen extends ConsumerWidget {
           // it; a new correction from the account fixes it.
           if (t == null || !t.type.isCorrection) ...[
             IconButton(
-              icon: const Icon(Icons.content_copy_outlined),
+              icon: const AppIcon(Icons.content_copy_outlined),
               tooltip: 'Duplicate',
               onPressed: () => context.push('/add?duplicate=$transactionId'),
             ),
             IconButton(
-              icon: const Icon(Icons.edit_outlined),
+              icon: const AppIcon(Icons.edit_outlined),
               tooltip: 'Edit',
               onPressed: () => context.push('/add?id=$transactionId'),
             ),
           ],
           IconButton(
-            icon: const Icon(Icons.delete_outline),
+            icon: const AppIcon(Icons.delete_outline),
             tooltip: 'Delete',
             onPressed: () => _confirmDelete(context, ref),
           ),
@@ -270,7 +270,7 @@ class _ReceiptCard extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: Row(
                 children: [
-                  Icon(
+                  AppIcon(
                     Icons.receipt_long_outlined,
                     size: 18,
                     color: theme.colorScheme.onSurfaceVariant,
@@ -315,7 +315,7 @@ class _ReceiptCard extends StatelessWidget {
         barrierColor: Colors.black,
         pageBuilder: (context, _, _) => Scaffold(
           backgroundColor: Colors.black,
-          appBar: AppBar(
+          appBar: AppTopBar(
             backgroundColor: Colors.black,
             iconTheme: const IconThemeData(color: Colors.white),
           ),
@@ -323,7 +323,7 @@ class _ReceiptCard extends StatelessWidget {
             child: InteractiveViewer(
               child: Image.file(
                 File(path),
-                errorBuilder: (_, _, _) => const Icon(
+                errorBuilder: (_, _, _) => const AppIcon(
                   Icons.broken_image_outlined,
                   color: Colors.white54,
                   size: 64,
@@ -408,7 +408,7 @@ class _Hero extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         Chip(
-          avatar: Icon(icon, size: 18, color: color),
+          avatar: AppIcon(icon, size: 18, color: color),
           label: Text(label),
           labelStyle: theme.textTheme.labelLarge?.copyWith(
             color: color,
@@ -478,7 +478,7 @@ class _PaymentGroupBanner extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    Icon(
+                    AppIcon(
                       isLoanGroup
                           ? Icons.account_balance_rounded
                           : isChangeGroup
@@ -533,7 +533,7 @@ class _PaymentGroupBanner extends ConsumerWidget {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        Icon(
+                        AppIcon(
                           Icons.chevron_right_rounded,
                           size: 18,
                           color: theme.colorScheme.onSecondaryContainer,
@@ -575,7 +575,7 @@ class _LinkedTransactionsCard extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Icon(
+                AppIcon(
                   Icons.link_rounded,
                   size: 18,
                   color: theme.colorScheme.onSurfaceVariant,
@@ -591,7 +591,7 @@ class _LinkedTransactionsCard extends ConsumerWidget {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.add_link_rounded),
+                  icon: const AppIcon(Icons.add_link_rounded),
                   tooltip: 'Link to another transaction',
                   visualDensity: VisualDensity.compact,
                   onPressed: () => _pickAndLink(
@@ -724,7 +724,7 @@ class _LinkedTxRow extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  Icon(
+                  AppIcon(
                     Icons.chevron_right_rounded,
                     size: 18,
                     color: theme.colorScheme.onSurfaceVariant,
@@ -735,7 +735,7 @@ class _LinkedTxRow extends StatelessWidget {
           ),
         ),
         IconButton(
-          icon: const Icon(Icons.link_off_rounded, size: 18),
+          icon: const AppIcon(Icons.link_off_rounded, size: 18),
           tooltip: 'Remove link',
           visualDensity: VisualDensity.compact,
           onPressed: onUnlink,
@@ -859,7 +859,7 @@ Widget _splitCategoryValue(
                   ),
                 ),
                 const SizedBox(width: 8),
-                Icon(
+                AppIcon(
                   AppIcons.resolve(category?.iconKey ?? 'other'),
                   size: 16,
                   color: color,
@@ -923,7 +923,7 @@ Widget _categoryValue(
     mainAxisSize: MainAxisSize.min,
     mainAxisAlignment: MainAxisAlignment.end,
     children: [
-      Icon(
+      AppIcon(
         AppIcons.resolve(category?.iconKey ?? 'other'),
         size: 18,
         color: color,

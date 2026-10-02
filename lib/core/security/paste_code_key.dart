@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../widgets/app_surfaces.dart';
+
 /// Reads the system clipboard and hands [onCode] every digit it contains,
 /// with anything else (spaces, "Your code is:", dashes an authenticator app
 /// sometimes group digits with, …) stripped out — GitHub #111. The point is
@@ -32,7 +34,7 @@ class PasteCodeKey extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      icon: const Icon(Icons.content_paste_rounded, size: 24),
+      icon: const AppIcon(Icons.content_paste_rounded, size: 24),
       tooltip: 'Paste code',
       onPressed: () => pasteDigitsFromClipboard(onCode),
     );

@@ -372,9 +372,8 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('a Glass sheet and dialog open over a blurred page', (
-      tester,
-    ) async {
+    testWidgets('a Glass sheet floats as Liquid Glass and a dialog opens over a '
+        'blurred page', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.of(
@@ -410,7 +409,8 @@ void main() {
       await tester.tap(find.text('open sheet'));
       await tester.pumpAndSettle();
       expect(find.text('sheet body'), findsOneWidget);
-      expect(find.byType(BackdropFilter), findsOneWidget);
+      // The sheet is a floating pane of Liquid Glass, drawing its own grabber.
+      expect(find.byType(LiquidGlass), findsOneWidget);
       Navigator.of(tester.element(find.text('sheet body'))).pop();
       await tester.pumpAndSettle();
 

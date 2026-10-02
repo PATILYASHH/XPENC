@@ -23,7 +23,7 @@ class ModeBudgetingSettingsScreen extends ConsumerWidget {
     final appMode = ref.watch(appModeProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Mode & Budgeting')),
+      appBar: AppTopBar(title: const Text('Mode & Budgeting')),
       body: ListView(
         // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
         padding: EdgeInsets.fromLTRB(
@@ -38,7 +38,7 @@ class ModeBudgetingSettingsScreen extends ConsumerWidget {
               children: [
                 ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  leading: const Icon(Icons.tune_outlined),
+                  leading: const AppIcon(Icons.tune_outlined),
                   title: const Text('App mode'),
                   subtitle: Text(
                     switch (appMode) {
@@ -52,7 +52,7 @@ class ModeBudgetingSettingsScreen extends ConsumerWidget {
                       color: cs.onSurfaceVariant,
                     ),
                   ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
+                  trailing: const AppIcon(Icons.chevron_right_rounded),
                   onTap: () => AppModeSheet.show(context),
                 ),
                 // Basic has no budgets at all.
@@ -60,7 +60,7 @@ class ModeBudgetingSettingsScreen extends ConsumerWidget {
                   Divider(height: 1, indent: 60, color: cs.outline),
                   ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    leading: const Icon(Icons.event_repeat_outlined),
+                    leading: const AppIcon(Icons.event_repeat_outlined),
                     title: const Text('Budget cycle start day'),
                     subtitle: Text(
                       budgetStartDay == 1
@@ -71,7 +71,7 @@ class ModeBudgetingSettingsScreen extends ConsumerWidget {
                         color: cs.onSurfaceVariant,
                       ),
                     ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
+                    trailing: const AppIcon(Icons.chevron_right_rounded),
                     onTap: () => BudgetStartDaySheet.show(context),
                   ),
                 ],
@@ -81,7 +81,7 @@ class ModeBudgetingSettingsScreen extends ConsumerWidget {
                   Divider(height: 1, indent: 60, color: cs.outline),
                   SwitchListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    secondary: const Icon(Icons.savings_outlined),
+                    secondary: const AppIcon(Icons.savings_outlined),
                     title: const Text('Ready to Assign'),
                     subtitle: Text(
                       'Budget (a spending ceiling per category) is always '

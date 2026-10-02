@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/database.dart';
+import 'app_surfaces.dart';
 
 /// Small pill naming the group a transaction or person entry came from.
 /// Tapping it opens that group.
@@ -26,7 +27,7 @@ class GroupTag extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.groups_2_outlined, size: 13, color: cs.onSurface),
+              AppIcon(Icons.groups_2_outlined, size: 13, color: cs.onSurface),
               const SizedBox(width: 4),
               Flexible(
                 child: Text(

@@ -48,11 +48,11 @@ class AccountDetailScreen extends ConsumerWidget {
 
     return accountAsync.when(
       loading: () => Scaffold(
-        appBar: AppBar(),
+        appBar: AppTopBar(),
         body: const Center(child: CircularProgressIndicator()),
       ),
       error: (error, _) => Scaffold(
-        appBar: AppBar(),
+        appBar: AppTopBar(),
         body: ErrorView(
           title: 'Account not found',
           message: "We couldn't open this account.",
@@ -63,7 +63,7 @@ class AccountDetailScreen extends ConsumerWidget {
       data: (account) {
         if (account == null) {
           return Scaffold(
-            appBar: AppBar(),
+            appBar: AppTopBar(),
             body: const ErrorView(
               title: 'Account not found',
               message: 'This account may have been archived or removed.',
@@ -100,11 +100,11 @@ class _AccountDetailView extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: AppTopBar(
         title: Text(account.name),
         actions: [
           IconButton(
-            icon: const Icon(Icons.picture_as_pdf_outlined),
+            icon: const AppIcon(Icons.picture_as_pdf_outlined),
             tooltip: 'Download statement',
             onPressed: () => _downloadStatement(context, ref, account),
           ),
@@ -301,7 +301,7 @@ class _HeaderCard extends ConsumerWidget {
                   const AmountVisibilityToggle(),
                   if (!_isDebitCard)
                     IconButton(
-                      icon: const Icon(Icons.edit_outlined, size: 20),
+                      icon: const AppIcon(Icons.edit_outlined, size: 20),
                       tooltip: 'Correct balance',
                       visualDensity: VisualDensity.compact,
                       onPressed: () => _correctBalance(context, ref),

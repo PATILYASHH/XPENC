@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/widgets/app_surfaces.dart';
 import '../../../data/providers.dart';
 import '../../../data/tables.dart';
 import '../ocr_service.dart';
@@ -146,7 +147,7 @@ class _OcrCorrectionCaptureScreenState
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Test a screenshot')),
+      appBar: AppTopBar(title: const Text('Test a screenshot')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
@@ -161,7 +162,7 @@ class _OcrCorrectionCaptureScreenState
                   const SizedBox(height: 16),
                   FilledButton.icon(
                     onPressed: _pickAndRecognize,
-                    icon: const Icon(Icons.image_outlined),
+                    icon: const AppIcon(Icons.image_outlined),
                     label: const Text('Choose screenshot'),
                   ),
                 ] else ...[

@@ -280,7 +280,7 @@ class _PayeePickerSheetState extends ConsumerState<PayeePickerSheet> {
                 },
                 decoration: InputDecoration(
                   hintText: 'Search or type a new payee',
-                  prefixIcon: const Icon(Icons.search_rounded),
+                  prefixIcon: const AppIcon(Icons.search_rounded),
                   filled: true,
                   fillColor: theme.colorScheme.surfaceContainerHighest,
                   border: OutlineInputBorder(
@@ -367,7 +367,7 @@ class _PayeePickerSheetState extends ConsumerState<PayeePickerSheet> {
                           backgroundColor:
                               theme.colorScheme.surfaceContainerHighest,
                           foregroundColor: theme.colorScheme.onSurfaceVariant,
-                          child: const Icon(
+                          child: const AppIcon(
                             Icons.storefront_outlined,
                             size: 20,
                           ),
@@ -424,7 +424,7 @@ class _OptionTile extends StatelessWidget {
       leading: CircleAvatar(
         backgroundColor: theme.colorScheme.primaryContainer,
         foregroundColor: theme.colorScheme.onPrimaryContainer,
-        child: Icon(icon, size: 20),
+        child: AppIcon(icon, size: 20),
       ),
       title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(subtitle),
@@ -469,7 +469,7 @@ class _ChoiceTile extends StatelessWidget {
               ),
             ),
       trailing: selected
-          ? Icon(Icons.check_circle_rounded, color: theme.colorScheme.primary)
+          ? AppIcon(Icons.check_circle_rounded, color: theme.colorScheme.primary)
           : null,
       onTap: onTap,
     );
@@ -491,7 +491,7 @@ class _ContactButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return OutlinedButton.icon(
       onPressed: onTap,
-      icon: Icon(icon, size: 20),
+      icon: AppIcon(icon, size: 20),
       label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
       style: OutlinedButton.styleFrom(
         minimumSize: const Size.fromHeight(52),

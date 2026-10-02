@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import 'contact_import.dart';
@@ -160,7 +161,7 @@ class _GroupMemberPickerSheetState
                         children: [
                           OutlinedButton.icon(
                             onPressed: () => _addFromContacts(everyone),
-                            icon: const Icon(Icons.contacts_outlined),
+                            icon: const AppIcon(Icons.contacts_outlined),
                             label: const Text('Add from contacts'),
                           ),
                           if (_notice != null) ...[

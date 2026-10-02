@@ -2,6 +2,8 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../widgets/app_surfaces.dart';
+
 /// Filled/empty circles showing how many of [length] digits have been typed.
 /// [shake] is set briefly after a wrong PIN to animate a horizontal shake.
 class PinDots extends StatelessWidget {
@@ -105,7 +107,7 @@ class PinKeypad extends StatelessWidget {
           height: 56,
           child: Center(
             child: isBackspace
-                ? Icon(
+                ? AppIcon(
                     Icons.backspace_outlined,
                     color: theme.colorScheme.onSurface,
                   )
@@ -228,7 +230,7 @@ class _BigPinKeypadState extends State<BigPinKeypad> {
           height: diameter,
           child: Center(
             child: isBackspace
-                ? Icon(
+                ? AppIcon(
                     Icons.backspace_outlined,
                     color: cs.onPrimaryContainer,
                     size: diameter * 0.34,

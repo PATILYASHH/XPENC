@@ -15,7 +15,7 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppTopBar(title: const Text('Settings')),
       body: ListView(
         // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
         padding: EdgeInsets.fromLTRB(
@@ -84,7 +84,7 @@ class SettingsScreen extends StatelessWidget {
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
-              trailing: const Icon(Icons.chevron_right_rounded),
+              trailing: const AppIcon(Icons.chevron_right_rounded),
               onTap: () => context.push('/more/about'),
             ),
           ),
@@ -114,7 +114,7 @@ class _ModuleTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        leading: Icon(icon),
+        leading: AppIcon(icon),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(
           subtitle,
@@ -122,7 +122,7 @@ class _ModuleTile extends StatelessWidget {
             context,
           ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
         ),
-        trailing: Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
+        trailing: AppIcon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
         onTap: onTap,
       ),
     );

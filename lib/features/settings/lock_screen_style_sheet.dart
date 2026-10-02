@@ -71,7 +71,7 @@ class LockScreenStyleSheet extends ConsumerWidget {
           ),
           for (final style in LockScreenStyle.values)
             ListTile(
-              leading: Icon(_icon(style)),
+              leading: AppIcon(_icon(style)),
               title: Text(label(style)),
               subtitle: Text(
                 _description(style),
@@ -81,7 +81,7 @@ class LockScreenStyleSheet extends ConsumerWidget {
               ),
               isThreeLine: true,
               trailing: style == selected
-                  ? Icon(Icons.check_rounded, color: cs.primary)
+                  ? AppIcon(Icons.check_rounded, color: cs.primary)
                   : null,
               selected: style == selected,
               onTap: () async {

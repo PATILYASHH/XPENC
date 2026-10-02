@@ -479,7 +479,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
               ),
             ),
             const SizedBox(width: 8),
-            Icon(
+            AppIcon(
               Icons.chevron_right_rounded,
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -525,7 +525,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
+          AppIcon(
             Icons.info_outline_rounded,
             size: 20,
             color: theme.colorScheme.onSurfaceVariant,
@@ -561,7 +561,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
               : null,
         ),
         child: selected
-            ? const Icon(Icons.check_rounded, color: Colors.white, size: 20)
+            ? const AppIcon(Icons.check_rounded, color: Colors.white, size: 20)
             : null,
       ),
     );
@@ -596,7 +596,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
                 color: color.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
-              child: Icon(AppIcons.resolve(_iconKey), color: color),
+              child: AppIcon(AppIcons.resolve(_iconKey), color: color),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -607,7 +607,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
                 ),
               ),
             ),
-            Icon(
+            AppIcon(
               Icons.chevron_right_rounded,
               color: theme.colorScheme.onSurfaceVariant,
             ),

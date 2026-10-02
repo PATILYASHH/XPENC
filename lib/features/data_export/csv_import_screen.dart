@@ -239,7 +239,7 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
     final summary = _summary;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Import CSV')),
+      appBar: AppTopBar(title: const Text('Import CSV')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32).plusNavBar(context),
         children: [
@@ -321,7 +321,7 @@ class _PickFileCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(
+            AppIcon(
               Icons.table_chart_outlined,
               size: 40,
               color: theme.colorScheme.onSurfaceVariant,
@@ -340,7 +340,7 @@ class _PickFileCard extends StatelessWidget {
             const SizedBox(height: 20),
             FilledButton.icon(
               onPressed: busy ? null : onPick,
-              icon: const Icon(Icons.file_open_outlined),
+              icon: const AppIcon(Icons.file_open_outlined),
               label: const Text('Choose CSV file'),
             ),
           ],
@@ -593,7 +593,7 @@ class _PreviewRow extends StatelessWidget {
     ].join(' · ');
     return ListTile(
       dense: true,
-      leading: Icon(
+      leading: AppIcon(
         ok ? Icons.check_circle_outline : Icons.error_outline,
         color: ok ? theme.colorScheme.primary : theme.colorScheme.error,
         size: 20,
@@ -634,7 +634,7 @@ class _SummaryCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(
+            AppIcon(
               Icons.check_circle_outline,
               size: 40,
               color: theme.colorScheme.primary,

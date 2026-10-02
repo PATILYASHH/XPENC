@@ -104,7 +104,7 @@ class _CurrencyPickerSheetState extends ConsumerState<CurrencyPickerSheet> {
                 controller: _controller,
                 autofocus: true,
                 decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.search),
+                  prefixIcon: const AppIcon(Icons.search),
                   hintText: 'Search name, code or symbol',
                   filled: true,
                   border: OutlineInputBorder(
@@ -150,7 +150,7 @@ class _CurrencyPickerSheetState extends ConsumerState<CurrencyPickerSheet> {
                           title: Text(c.name),
                           subtitle: Text(c.code),
                           trailing: isSelected
-                              ? Icon(
+                              ? AppIcon(
                                   Icons.check_rounded,
                                   color: theme.colorScheme.primary,
                                 )

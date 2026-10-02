@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/security/recovery_words.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 
@@ -86,7 +87,7 @@ class _MasterPhraseSetupScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+      appBar: AppTopBar(
         title: Text(
           _step == _Step.reveal ? 'Recovery phrase' : 'Confirm phrase',
         ),
@@ -119,7 +120,7 @@ class _MasterPhraseSetupScreenState
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.warning_amber_rounded, color: cs.onErrorContainer),
+              AppIcon(Icons.warning_amber_rounded, color: cs.onErrorContainer),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -176,7 +177,7 @@ class _MasterPhraseSetupScreenState
         const SizedBox(height: 20),
         TextButton.icon(
           onPressed: _regenerate,
-          icon: const Icon(Icons.refresh_rounded),
+          icon: const AppIcon(Icons.refresh_rounded),
           label: const Text('Generate different words'),
         ),
         const SizedBox(height: 12),

@@ -149,7 +149,7 @@ class _PayeeTile extends StatelessWidget {
                         width: 2,
                       ),
                     ),
-                    child: const Icon(
+                    child: const AppIcon(
                       Icons.person_rounded,
                       size: 11,
                       color: Colors.white,
@@ -206,7 +206,7 @@ class _EmptyPayees extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(32, 48, 32, 24),
       child: Column(
         children: [
-          Icon(
+          AppIcon(
             Icons.storefront_outlined,
             size: 48,
             color: theme.colorScheme.onSurfaceVariant,

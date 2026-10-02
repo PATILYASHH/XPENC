@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../currency.dart';
 import '../money.dart';
 import '../../features/add_transaction/amount_buffer.dart';
+import 'app_surfaces.dart';
 
 /// A [ChangeNotifier]-based, `TextEditingController`-shaped holder for an
 /// [AmountKeypadField]'s buffer text — a near drop-in replacement at call
@@ -539,7 +540,7 @@ class _BackspaceKeyState extends State<_BackspaceKey> {
             child: SizedBox(
               height: 56,
               child: Center(
-                child: Icon(
+                child: AppIcon(
                   Icons.backspace_outlined,
                   color: cs.onPrimaryContainer,
                 ),

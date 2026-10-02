@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/app_icons.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
@@ -70,7 +71,7 @@ class _TransactionLinkPickerSheetState
                 decoration: InputDecoration(
                   isDense: true,
                   hintText: 'Search note, payee, category or account',
-                  prefixIcon: const Icon(Icons.search_rounded),
+                  prefixIcon: const AppIcon(Icons.search_rounded),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),

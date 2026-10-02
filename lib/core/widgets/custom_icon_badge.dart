@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app_icons.dart';
+import 'app_surfaces.dart';
 
 /// Renders a `TransactionRow.customIcon` value — see the doc on
 /// `Transactions.customIcon` for the two encodings this parses: an XPENC
@@ -44,7 +45,7 @@ class CustomIconBadge extends StatelessWidget {
     final iconSize = scaled ? size * 0.55 : size;
     final emojiSize = scaled ? size * 0.6 : size;
     if (key != null) {
-      return Icon(AppIcons.resolve(key), size: iconSize, color: color);
+      return AppIcon(AppIcons.resolve(key), size: iconSize, color: color);
     }
     return Text(value, style: TextStyle(fontSize: emojiSize));
   }
@@ -59,7 +60,7 @@ Widget transactionRowIcon({
   required double size,
   required Color color,
 }) {
-  if (customIcon == null) return Icon(fallback, size: size, color: color);
+  if (customIcon == null) return AppIcon(fallback, size: size, color: color);
   return CustomIconBadge(
     value: customIcon,
     size: size,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import 'person_avatar.dart';
@@ -18,7 +19,7 @@ class ArchivedPersonsScreen extends StatelessWidget {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        appBar: AppBar(
+        appBar: AppTopBar(
           title: const Text('Archived'),
           bottom: const TabBar(
             tabs: [
@@ -98,7 +99,7 @@ class _Message extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(32, 48, 32, 24),
       child: Column(
         children: [
-          Icon(
+          AppIcon(
             Icons.inventory_2_outlined,
             size: 48,
             color: theme.colorScheme.onSurfaceVariant,
@@ -144,7 +145,7 @@ class _ArchivedGroupTile extends ConsumerWidget {
       leading: CircleAvatar(
         backgroundColor: theme.colorScheme.surfaceContainerHighest,
         foregroundColor: theme.colorScheme.onSurface,
-        child: const Icon(Icons.groups_outlined, size: 20),
+        child: const AppIcon(Icons.groups_outlined, size: 20),
       ),
       name: group.name,
       onRestore: () => ref.read(dbProvider).unarchiveGroup(group.id),
@@ -182,7 +183,7 @@ class _ArchivedTile extends StatelessWidget {
         ),
       ),
       trailing: TextButton.icon(
-        icon: const Icon(Icons.unarchive_outlined, size: 18),
+        icon: const AppIcon(Icons.unarchive_outlined, size: 18),
         label: const Text('Restore'),
         onPressed: () async {
           final messenger = ScaffoldMessenger.of(context);

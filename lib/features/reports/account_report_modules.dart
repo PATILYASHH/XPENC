@@ -228,9 +228,9 @@ class AccountReportTile extends ConsumerWidget {
             children: [
               Row(
                 children: [
-                  Icon(module.icon, size: 20, color: cs.onSurfaceVariant),
+                  AppIcon(module.icon, size: 20, color: cs.onSurfaceVariant),
                   const Spacer(),
-                  Icon(
+                  AppIcon(
                     Icons.chevron_right_rounded,
                     size: 18,
                     color: cs.onSurfaceVariant,
@@ -375,7 +375,7 @@ class AccountReportModuleScreen extends StatelessWidget {
       AccountReportModule.health => const _HealthBody(),
     };
     return Scaffold(
-      appBar: AppBar(title: Text(module.title)),
+      appBar: AppTopBar(title: Text(module.title)),
       body: body,
     );
   }
@@ -1250,7 +1250,7 @@ class _HealthRow extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, color: color),
+              AppIcon(icon, color: color),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -1273,7 +1273,7 @@ class _HealthRow extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
+              AppIcon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
             ],
           ),
         ),
@@ -1299,7 +1299,7 @@ class _AccountIcon extends StatelessWidget {
       color: color.withValues(alpha: 0.14),
       shape: BoxShape.circle,
     ),
-    child: Icon(AppIcons.resolve(account.iconKey), color: color, size: 20),
+    child: AppIcon(AppIcons.resolve(account.iconKey), color: color, size: 20),
   );
 }
 
@@ -1317,7 +1317,7 @@ class _EmptyModule extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 12),
       child: Column(
         children: [
-          Icon(
+          AppIcon(
             icon,
             size: 44,
             color: color ?? theme.colorScheme.onSurfaceVariant,

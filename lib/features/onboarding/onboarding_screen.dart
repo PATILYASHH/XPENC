@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/branding/brand_mark.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart' show AppMode;
 import '../data_export/backup_service.dart' show backupAppFolder;
@@ -274,7 +275,7 @@ class _FeatureRow extends StatelessWidget {
               color: color.withValues(alpha: 0.14),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: color, size: 22),
+            child: AppIcon(icon, color: color, size: 22),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -501,7 +502,7 @@ class _ChoiceCard extends StatelessWidget {
                   color: cs.primary.withValues(alpha: 0.14),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: cs.primary, size: 24),
+                child: AppIcon(icon, color: cs.primary, size: 24),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -525,7 +526,7 @@ class _ChoiceCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
+              AppIcon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
             ],
           ),
         ),
@@ -629,7 +630,7 @@ class _ModeCard extends StatelessWidget {
                   color: fg.withValues(alpha: 0.14),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: fg, size: 22),
+                child: AppIcon(icon, color: fg, size: 22),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -655,7 +656,7 @@ class _ModeCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(
+              AppIcon(
                 selected ? Icons.check_circle_rounded : Icons.circle_outlined,
                 color: selected ? cs.onPrimaryContainer : cs.outlineVariant,
               ),
@@ -894,7 +895,7 @@ class _RestoreStep extends StatelessWidget {
                   width: 18,
                   child: CircularProgressIndicator(strokeWidth: 2.4),
                 )
-              : const Icon(Icons.restore_rounded),
+              : const AppIcon(Icons.restore_rounded),
           label: Text(restoring ? 'Restoring…' : 'Restore my data'),
         ),
       ),

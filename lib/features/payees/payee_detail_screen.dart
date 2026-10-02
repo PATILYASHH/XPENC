@@ -48,10 +48,10 @@ class PayeeDetailScreen extends ConsumerWidget {
           SliverAppBar(
             pinned: true,
             title: Text(person?.name ?? payee),
-            actions: [
+            actions: [GlassActionGroup(children: [
               if (pid == null)
                 IconButton(
-                  icon: const Icon(Icons.edit_outlined),
+                  icon: const AppIcon(Icons.edit_outlined),
                   tooltip: 'Rename',
                   onPressed: () => _renameDialog(context, ref),
                 )
@@ -64,7 +64,7 @@ class PayeeDetailScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-            ],
+            ])],
           ),
           SliverToBoxAdapter(
             child: _TotalHero(net: net, count: txs.length),
@@ -75,7 +75,7 @@ class PayeeDetailScreen extends ConsumerWidget {
               child: pid == null
                   ? FilledButton.tonalIcon(
                       onPressed: () => _connect(context, ref),
-                      icon: const Icon(Icons.link_rounded),
+                      icon: const AppIcon(Icons.link_rounded),
                       label: const Text('Connect to person'),
                       style: FilledButton.styleFrom(
                         minimumSize: const Size.fromHeight(48),
@@ -84,7 +84,7 @@ class PayeeDetailScreen extends ConsumerWidget {
                   : FilledButton.tonalIcon(
                       onPressed: () => context.push('/person/$pid'),
                       icon: person == null
-                          ? const Icon(Icons.person_outline_rounded)
+                          ? const AppIcon(Icons.person_outline_rounded)
                           : PersonAvatar(
                               name: person.name,
                               photoPath: person.photoPath,
@@ -418,7 +418,7 @@ class _ConnectPersonSheetState extends ConsumerState<_ConnectPersonSheet> {
                 onChanged: (v) => setState(() => _query = v),
                 decoration: InputDecoration(
                   hintText: 'Search people',
-                  prefixIcon: const Icon(Icons.search_rounded),
+                  prefixIcon: const AppIcon(Icons.search_rounded),
                   filled: true,
                   fillColor: theme.colorScheme.surfaceContainerHighest,
                   border: OutlineInputBorder(
@@ -442,7 +442,7 @@ class _ConnectPersonSheetState extends ConsumerState<_ConnectPersonSheet> {
                       leading: CircleAvatar(
                         backgroundColor: theme.colorScheme.primaryContainer,
                         foregroundColor: theme.colorScheme.onPrimaryContainer,
-                        child: const Icon(Icons.person_add_alt_1_outlined),
+                        child: const AppIcon(Icons.person_add_alt_1_outlined),
                       ),
                       title: Text('New person: ${widget.payee}'),
                       onTap: _createFromPayee,

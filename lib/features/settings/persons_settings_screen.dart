@@ -32,7 +32,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
     final revolutEnabled = ref.watch(revolutEnabledProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Persons')),
+      appBar: AppTopBar(title: const Text('Persons')),
       body: ListView(
         // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
         padding: EdgeInsets.fromLTRB(
@@ -45,7 +45,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
           AppCard(
             child: SwitchListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              secondary: const Icon(Icons.handshake_outlined),
+              secondary: const AppIcon(Icons.handshake_outlined),
               title: const Text('Count repayments as income'),
               subtitle: Text(
                 'Offers "Mark as repaid" on a person\'s page — a repayment '
@@ -90,7 +90,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                   Divider(height: 1, indent: 16, color: cs.outline),
                   ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    leading: const Icon(Icons.qr_code_outlined),
+                    leading: const AppIcon(Icons.qr_code_outlined),
                     title: const Text('My UPI ID'),
                     subtitle: Text(
                       (myUpiId?.isNotEmpty ?? false)
@@ -101,7 +101,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                         color: cs.onSurfaceVariant,
                       ),
                     ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
+                    trailing: const AppIcon(Icons.chevron_right_rounded),
                     onTap: () => _showMyUpiDialog(
                       context,
                       ref,
@@ -143,7 +143,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                   Divider(height: 1, indent: 16, color: cs.outline),
                   ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    leading: const Icon(Icons.attach_money_rounded),
+                    leading: const AppIcon(Icons.attach_money_rounded),
                     title: const Text('My PayPal.me ID'),
                     subtitle: Text(
                       (myPaypal?.isNotEmpty ?? false)
@@ -154,7 +154,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                         color: cs.onSurfaceVariant,
                       ),
                     ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
+                    trailing: const AppIcon(Icons.chevron_right_rounded),
                     onTap: () => _showMyIdDialog(
                       context,
                       ref,
@@ -183,7 +183,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                   Divider(height: 1, indent: 16, color: cs.outline),
                   ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    leading: const Icon(Icons.attach_money_rounded),
+                    leading: const AppIcon(Icons.attach_money_rounded),
                     title: const Text('My Venmo username'),
                     subtitle: Text(
                       (myVenmo?.isNotEmpty ?? false)
@@ -194,7 +194,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                         color: cs.onSurfaceVariant,
                       ),
                     ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
+                    trailing: const AppIcon(Icons.chevron_right_rounded),
                     onTap: () => _showMyIdDialog(
                       context,
                       ref,
@@ -223,7 +223,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                   Divider(height: 1, indent: 16, color: cs.outline),
                   ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    leading: const Icon(Icons.attach_money_rounded),
+                    leading: const AppIcon(Icons.attach_money_rounded),
                     title: const Text('My Cash App cashtag'),
                     subtitle: Text(
                       (myCashapp?.isNotEmpty ?? false)
@@ -234,7 +234,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                         color: cs.onSurfaceVariant,
                       ),
                     ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
+                    trailing: const AppIcon(Icons.chevron_right_rounded),
                     onTap: () => _showMyIdDialog(
                       context,
                       ref,
@@ -263,7 +263,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                   Divider(height: 1, indent: 16, color: cs.outline),
                   ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    leading: const Icon(Icons.attach_money_rounded),
+                    leading: const AppIcon(Icons.attach_money_rounded),
                     title: const Text('My Revolut.me username'),
                     subtitle: Text(
                       (myRevolut?.isNotEmpty ?? false)
@@ -274,7 +274,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                         color: cs.onSurfaceVariant,
                       ),
                     ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
+                    trailing: const AppIcon(Icons.chevron_right_rounded),
                     onTap: () => _showMyIdDialog(
                       context,
                       ref,

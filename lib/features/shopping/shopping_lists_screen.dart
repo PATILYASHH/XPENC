@@ -33,7 +33,7 @@ class ShoppingListsScreen extends ConsumerWidget {
     final summaries = ref.watch(shoppingListSummaryProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Shopping Lists')),
+      appBar: AppTopBar(title: const Text('Shopping Lists')),
       body: listsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => Center(
@@ -50,7 +50,7 @@ class ShoppingListsScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(32, 48, 32, 24),
               child: Column(
                 children: [
-                  Icon(
+                  AppIcon(
                     Icons.checklist_outlined,
                     size: 48,
                     color: theme.colorScheme.onSurfaceVariant,
@@ -80,7 +80,7 @@ class ShoppingListsScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton(
         tooltip: 'New list',
         onPressed: () => _openListEditor(context),
-        child: const Icon(Icons.add),
+        child: const AppIcon(Icons.add),
       ),
     );
   }
@@ -116,7 +116,7 @@ class _ShoppingListTile extends ConsumerWidget {
                   color: color.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
+                child: AppIcon(
                   Icons.shopping_basket_outlined,
                   color: color,
                   size: 22,
@@ -144,13 +144,13 @@ class _ShoppingListTile extends ConsumerWidget {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.edit_outlined),
+                icon: const AppIcon(Icons.edit_outlined),
                 tooltip: 'Edit list',
                 visualDensity: VisualDensity.compact,
                 onPressed: () => _openListEditor(context, existing: list),
               ),
               IconButton(
-                icon: Icon(
+                icon: AppIcon(
                   Icons.delete_outline,
                   color: theme.colorScheme.error,
                 ),
@@ -364,7 +364,7 @@ class _ListEditorSheetState extends ConsumerState<_ListEditorSheet> {
               : null,
         ),
         child: selected
-            ? const Icon(Icons.check_rounded, color: Colors.white, size: 20)
+            ? const AppIcon(Icons.check_rounded, color: Colors.white, size: 20)
             : null,
       ),
     );

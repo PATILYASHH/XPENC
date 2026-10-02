@@ -46,7 +46,7 @@ class BottomNavSettingsScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Customize bottom nav')),
+      appBar: AppTopBar(title: const Text('Customize bottom nav')),
       body: ListView(
         // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
         padding: EdgeInsets.fromLTRB(
@@ -178,7 +178,7 @@ class _PinnedRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.push_pin_outlined, size: 18, color: cs.onSurfaceVariant),
+          AppIcon(Icons.push_pin_outlined, size: 18, color: cs.onSurfaceVariant),
           const SizedBox(width: 10),
           Text(label, style: TextStyle(color: cs.onSurfaceVariant)),
           const Spacer(),
@@ -206,7 +206,7 @@ class _AddButtonRow extends StatelessWidget {
         width: 40,
         height: 40,
         decoration: BoxDecoration(color: cs.secondary, shape: BoxShape.circle),
-        child: const Icon(Icons.add_rounded, color: Colors.white, size: 20),
+        child: const AppIcon(Icons.add_rounded, color: Colors.white, size: 20),
       ),
     );
   }
@@ -225,7 +225,7 @@ class _SlotTile extends StatelessWidget {
       margin: EdgeInsets.zero,
       child: ListTile(
         title: Text(label),
-        trailing: const Icon(Icons.chevron_right_rounded),
+        trailing: const AppIcon(Icons.chevron_right_rounded),
         onTap: onTap,
         subtitle: Text(
           'Tap to change',

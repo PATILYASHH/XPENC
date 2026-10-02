@@ -157,26 +157,26 @@ class AppPalettes {
     surfaceHigh: Color(0x73FFFFFF),
     track: Color(0x14000000),
     border: Color(0xCCFFFFFF),
-    text: Color(0xFF0B0B10),
-    textMuted: Color(0xFF5E6273),
+    // iOS's own label colours and system blue.
+    text: Color(0xFF0A0A0F),
+    textMuted: Color(0xFF65656D),
     accent: Color(0xFF007AFF),
     primary: Color(0xFF007AFF),
     onPrimary: Color(0xFFFFFFFF),
   );
 
-  /// What Glass paints behind every page: sky blue into lilac into peach,
-  /// the soft wash iOS wallpapers lean on. Fixed, so it costs one gradient
-  /// paint per route and nothing per frame.
+  /// Glass's wallpaper in miniature, for the theme picker's swatch — the
+  /// real one is `GlassStyle.paintWallpaper`.
   static const glassBackdrop = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [
-      Color(0xFFD6E4FF),
-      Color(0xFFEDE3FF),
-      Color(0xFFFFE6EE),
-      Color(0xFFFFEEDD),
+      Color(0xFFB9CCFF),
+      Color(0xFFEBD8FF),
+      Color(0xFFD5F1E9),
+      Color(0xFFFFDDC9),
     ],
-    stops: [0, 0.4, 0.75, 1],
+    stops: [0, 0.4, 0.7, 1],
   );
 }
 

@@ -32,12 +32,12 @@ class FontSettingsScreen extends ConsumerWidget {
         scale == 100 && weightDelta == 0 && family == AppFontFamily.system;
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: AppTopBar(
         title: const Text('Font'),
         actions: [
           IconButton(
             tooltip: 'Reset to default',
-            icon: const Icon(Icons.restart_alt_rounded),
+            icon: const AppIcon(Icons.restart_alt_rounded),
             onPressed: isDefault
                 ? null
                 : () async {
@@ -296,7 +296,7 @@ class _FontFamilyTile extends StatelessWidget {
         style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
       ),
       trailing: selected
-          ? Icon(Icons.check_circle_rounded, color: cs.secondary)
+          ? AppIcon(Icons.check_circle_rounded, color: cs.secondary)
           : null,
       onTap: onTap,
     );

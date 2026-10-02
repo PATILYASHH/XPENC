@@ -16,7 +16,7 @@ class GuideScreen extends StatelessWidget {
     final cs = theme.colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Guide')),
+      appBar: AppTopBar(title: const Text('Guide')),
       body: ListView(
         padding: EdgeInsets.fromLTRB(
           20,
@@ -53,7 +53,7 @@ class GuideScreen extends StatelessWidget {
                     ),
                     leading: CircleAvatar(
                       backgroundColor: cs.primaryContainer,
-                      child: Icon(
+                      child: AppIcon(
                         appModeGuide[i].icon,
                         color: cs.onPrimaryContainer,
                         size: 20,
@@ -125,7 +125,7 @@ class _GuideTile extends StatelessWidget {
     return Theme(
       data: theme.copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
-        leading: Icon(entry.icon, color: cs.onSurfaceVariant),
+        leading: AppIcon(entry.icon, color: cs.onSurfaceVariant),
         title: Text(
           entry.title,
           style: theme.textTheme.bodyLarge?.copyWith(
@@ -151,7 +151,7 @@ class _GuideTile extends StatelessWidget {
           const SizedBox(height: 14),
           Row(
             children: [
-              Icon(
+              AppIcon(
                 Icons.place_outlined,
                 size: 16,
                 color: cs.onSurfaceVariant,

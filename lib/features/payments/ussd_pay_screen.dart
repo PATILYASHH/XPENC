@@ -136,7 +136,7 @@ class _UssdPayScreenState extends State<UssdPayScreen> {
     final cs = theme.colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Pay without internet (Beta)')),
+      appBar: AppTopBar(title: const Text('Pay without internet (Beta)')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 24).plusNavBar(context),
@@ -227,7 +227,7 @@ class _UssdPayScreenState extends State<UssdPayScreen> {
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: _copyId,
-                      icon: const Icon(Icons.copy_rounded),
+                      icon: const AppIcon(Icons.copy_rounded),
                       label: const Text('Copy ID'),
                     ),
                   ),
@@ -235,7 +235,7 @@ class _UssdPayScreenState extends State<UssdPayScreen> {
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: _logPayment,
-                      icon: const Icon(Icons.check_circle_outline_rounded),
+                      icon: const AppIcon(Icons.check_circle_outline_rounded),
                       label: const Text('Log payment'),
                     ),
                   ),
@@ -245,7 +245,7 @@ class _UssdPayScreenState extends State<UssdPayScreen> {
 
               FilledButton.icon(
                 onPressed: _dial,
-                icon: const Icon(Icons.send_rounded),
+                icon: const AppIcon(Icons.send_rounded),
                 label: const Text('Dial *99#'),
               ),
             ],

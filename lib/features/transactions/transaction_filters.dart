@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/app_icons.dart';
 import '../../core/iso_week.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../../core/widgets/nav_bar_inset.dart';
@@ -190,7 +191,7 @@ class _TransactionFiltersSheetState
                     if (_dateMode == _DateFilterMode.custom) ...[
                       OutlinedButton.icon(
                         onPressed: _pickDateRange,
-                        icon: const Icon(Icons.event_outlined, size: 18),
+                        icon: const AppIcon(Icons.event_outlined, size: 18),
                         label: Text(
                           _dateRange == null
                               ? 'Any time'
@@ -204,7 +205,7 @@ class _TransactionFiltersSheetState
                           IconButton(
                             visualDensity: VisualDensity.compact,
                             onPressed: () => _stepWeek(-1),
-                            icon: const Icon(Icons.chevron_left_rounded),
+                            icon: const AppIcon(Icons.chevron_left_rounded),
                             tooltip: 'Previous week',
                           ),
                           Expanded(
@@ -219,7 +220,7 @@ class _TransactionFiltersSheetState
                           IconButton(
                             visualDensity: VisualDensity.compact,
                             onPressed: () => _stepWeek(1),
-                            icon: const Icon(Icons.chevron_right_rounded),
+                            icon: const AppIcon(Icons.chevron_right_rounded),
                             tooltip: 'Next week',
                           ),
                         ],
@@ -269,7 +270,7 @@ class _TransactionFiltersSheetState
                           for (final c in categories)
                             FilterChip(
                               label: Text(c.name),
-                              avatar: Icon(
+                              avatar: AppIcon(
                                 AppIcons.resolve(c.iconKey),
                                 size: 16,
                               ),

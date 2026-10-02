@@ -31,17 +31,17 @@ Future<DateTimeRange?> pickStatementRange(BuildContext context) async {
             ),
           ),
           ListTile(
-            leading: const Icon(Icons.calendar_today_outlined),
+            leading: const AppIcon(Icons.calendar_today_outlined),
             title: const Text('This month'),
             onTap: () => Navigator.of(sheetContext).pop('this'),
           ),
           ListTile(
-            leading: const Icon(Icons.calendar_view_month_outlined),
+            leading: const AppIcon(Icons.calendar_view_month_outlined),
             title: const Text('Last month'),
             onTap: () => Navigator.of(sheetContext).pop('last'),
           ),
           ListTile(
-            leading: const Icon(Icons.date_range_outlined),
+            leading: const AppIcon(Icons.date_range_outlined),
             title: const Text('Custom range'),
             onTap: () => Navigator.of(sheetContext).pop('custom'),
           ),

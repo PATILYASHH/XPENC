@@ -35,7 +35,7 @@ class LoanDetailScreen extends ConsumerWidget {
 
     if (loan == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Loan')),
+        appBar: AppTopBar(title: const Text('Loan')),
         body: const Center(child: Text('Loan not found')),
       );
     }
@@ -47,16 +47,16 @@ class LoanDetailScreen extends ConsumerWidget {
     final isPaidOff = loan.outstanding.isZero;
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: AppTopBar(
         title: Text(account.name),
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit_outlined),
+            icon: const AppIcon(Icons.edit_outlined),
             tooltip: 'Edit',
             onPressed: () => openLoanEditor(context, loan),
           ),
           IconButton(
-            icon: const Icon(Icons.more_vert_rounded),
+            icon: const AppIcon(Icons.more_vert_rounded),
             tooltip: 'More',
             onPressed: () => _showActions(context, ref, loan),
           ),
@@ -86,7 +86,7 @@ class LoanDetailScreen extends ConsumerWidget {
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
+                      AppIcon(
                         AppIcons.resolve(account.iconKey),
                         color: color,
                         size: 28,
@@ -118,7 +118,7 @@ class LoanDetailScreen extends ConsumerWidget {
                   onPressed: isPaidOff
                       ? null
                       : () => _openPaymentSheet(context, loan: loan),
-                  icon: const Icon(Icons.payments_outlined),
+                  icon: const AppIcon(Icons.payments_outlined),
                   label: const Text('Make a payment'),
                 ),
               ),
@@ -241,7 +241,7 @@ class LoanDetailScreen extends ConsumerWidget {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
+                          AppIcon(
                             Icons.check_circle_rounded,
                             color: AppColors.income,
                             size: 18,
@@ -354,7 +354,7 @@ class LoanDetailScreen extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.archive_outlined),
+              leading: const AppIcon(Icons.archive_outlined),
               title: const Text('Archive'),
               subtitle: const Text(
                 'Hides it from active loans. Its history stays.',
@@ -362,7 +362,7 @@ class LoanDetailScreen extends ConsumerWidget {
               onTap: () => Navigator.of(sheetContext).pop(_LoanAction.archive),
             ),
             ListTile(
-              leading: Icon(
+              leading: AppIcon(
                 Icons.delete_outline,
                 color: Theme.of(sheetContext).colorScheme.error,
               ),
@@ -764,7 +764,7 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
                 padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                 child: Row(
                   children: [
-                    Icon(
+                    AppIcon(
                       Icons.event_rounded,
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -789,7 +789,7 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
                     ),
                     IconButton(
                       tooltip: 'Change time',
-                      icon: Icon(
+                      icon: AppIcon(
                         Icons.access_time_rounded,
                         color: theme.colorScheme.onSurfaceVariant,
                       ),

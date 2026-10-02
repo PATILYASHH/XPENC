@@ -14,7 +14,7 @@ class DataSettingsScreen extends ConsumerWidget {
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Data')),
+      appBar: AppTopBar(title: const Text('Data')),
       body: ListView(
         // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
         padding: EdgeInsets.fromLTRB(
@@ -29,7 +29,7 @@ class DataSettingsScreen extends ConsumerWidget {
               children: [
                 ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  leading: const Icon(Icons.calculate_outlined),
+                  leading: const AppIcon(Icons.calculate_outlined),
                   title: const Text('Recalculate balances'),
                   subtitle: Text(
                     'Rebuild every balance from the ledger. Safe to run any time.',
@@ -37,7 +37,7 @@ class DataSettingsScreen extends ConsumerWidget {
                       context,
                     ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
+                  trailing: const AppIcon(Icons.chevron_right_rounded),
                   onTap: () async {
                     final messenger = ScaffoldMessenger.of(context);
                     await ref.read(dbProvider).recalculateBalances();
@@ -51,7 +51,7 @@ class DataSettingsScreen extends ConsumerWidget {
                 Divider(height: 1, indent: 60, color: cs.outline),
                 ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  leading: Icon(Icons.delete_forever_outlined, color: cs.error),
+                  leading: AppIcon(Icons.delete_forever_outlined, color: cs.error),
                   title: Text(
                     'Clear all data',
                     style: TextStyle(color: cs.error),
@@ -63,7 +63,7 @@ class DataSettingsScreen extends ConsumerWidget {
                       context,
                     ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
+                  trailing: const AppIcon(Icons.chevron_right_rounded),
                   onTap: () => _clearAllData(context, ref),
                 ),
               ],

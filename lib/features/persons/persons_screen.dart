@@ -104,22 +104,22 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
     return Scaffold(
       appBar: widget.embedded
           ? null
-          : AppBar(
+          : AppTopBar(
               title: const Text('Persons'),
               actions: [
                 IconButton(
                   tooltip: 'Archived',
-                  icon: const Icon(Icons.inventory_2_outlined),
+                  icon: const AppIcon(Icons.inventory_2_outlined),
                   onPressed: () => context.push('/persons/archived'),
                 ),
                 IconButton(
                   tooltip: 'Add person',
-                  icon: const Icon(Icons.person_add_alt_1_outlined),
+                  icon: const AppIcon(Icons.person_add_alt_1_outlined),
                   onPressed: () => showAddPersonDialog(context, ref),
                 ),
                 IconButton(
                   tooltip: 'Settled',
-                  icon: const Icon(Icons.task_alt_rounded),
+                  icon: const AppIcon(Icons.task_alt_rounded),
                   onPressed: () => context.push('/persons/settled'),
                 ),
               ],
@@ -145,13 +145,13 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
           ? FloatingActionButton(
               tooltip: 'New group',
               onPressed: () => _createGroup(context, ref),
-              child: const Icon(Icons.add_rounded),
+              child: const AppIcon(Icons.add_rounded),
             )
           : _tabController.index == 0 && ussdPayEnabled
           ? FloatingActionButton(
               tooltip: 'Pay without internet',
               onPressed: () => context.push('/persons/ussd-pay'),
-              child: const Icon(Icons.send_rounded),
+              child: const AppIcon(Icons.send_rounded),
             )
           : null,
     );
@@ -304,7 +304,7 @@ class _TotalsHeader extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 14, color: color),
+            AppIcon(icon, size: 14, color: color),
             const SizedBox(width: 6),
             Flexible(
               child: Text(
@@ -375,7 +375,7 @@ class _PersonTile extends ConsumerWidget {
       ),
       subtitle: Row(
         children: [
-          Icon(statusIcon, size: 13, color: color),
+          AppIcon(statusIcon, size: 13, color: color),
           const SizedBox(width: 5),
           Flexible(
             child: Text(
@@ -439,13 +439,13 @@ class _PersonTile extends ConsumerWidget {
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.edit_outlined),
+              leading: const AppIcon(Icons.edit_outlined),
               title: const Text('Edit'),
               subtitle: const Text('Name, UPI ID, phone and more.'),
               onTap: () => Navigator.of(sheetContext).pop(_PersonAction.edit),
             ),
             ListTile(
-              leading: const Icon(Icons.contacts_outlined),
+              leading: const AppIcon(Icons.contacts_outlined),
               title: const Text('Link contact'),
               subtitle: const Text('Import their photo and phone number.'),
               onTap: () =>
@@ -453,7 +453,7 @@ class _PersonTile extends ConsumerWidget {
             ),
             if (person.isSettled)
               ListTile(
-                leading: const Icon(Icons.undo_rounded),
+                leading: const AppIcon(Icons.undo_rounded),
                 title: const Text('Move out of Settled'),
                 subtitle: const Text('Back to the Individual list.'),
                 onTap: () =>
@@ -461,21 +461,21 @@ class _PersonTile extends ConsumerWidget {
               )
             else if (balance.isZero)
               ListTile(
-                leading: const Icon(Icons.check_circle_outline_rounded),
+                leading: const AppIcon(Icons.check_circle_outline_rounded),
                 title: const Text('Move to Settled'),
                 subtitle: const Text('Balance is zero. History stays intact.'),
                 onTap: () =>
                     Navigator.of(sheetContext).pop(_PersonAction.settle),
               ),
             ListTile(
-              leading: const Icon(Icons.archive_outlined),
+              leading: const AppIcon(Icons.archive_outlined),
               title: const Text('Archive'),
               subtitle: const Text('Hide them. History stays intact.'),
               onTap: () =>
                   Navigator.of(sheetContext).pop(_PersonAction.archive),
             ),
             ListTile(
-              leading: Icon(
+              leading: AppIcon(
                 Icons.delete_outline,
                 color: theme.colorScheme.error,
               ),
@@ -701,7 +701,7 @@ class _GroupTile extends ConsumerWidget {
       leading: CircleAvatar(
         backgroundColor: theme.colorScheme.surfaceContainerHighest,
         foregroundColor: theme.colorScheme.onSurface,
-        child: const Icon(Icons.groups_outlined, size: 20),
+        child: const AppIcon(Icons.groups_outlined, size: 20),
       ),
       title: Text(
         group.name,
@@ -769,7 +769,7 @@ class _GroupTile extends ConsumerWidget {
             ),
             if (group.isSettled)
               ListTile(
-                leading: const Icon(Icons.undo_rounded),
+                leading: const AppIcon(Icons.undo_rounded),
                 title: const Text('Move out of Settled'),
                 subtitle: const Text('Back to the Group list.'),
                 onTap: () =>
@@ -777,20 +777,20 @@ class _GroupTile extends ConsumerWidget {
               )
             else if (balance.isZero)
               ListTile(
-                leading: const Icon(Icons.check_circle_outline_rounded),
+                leading: const AppIcon(Icons.check_circle_outline_rounded),
                 title: const Text('Move to Settled'),
                 subtitle: const Text('Balance is zero. History stays intact.'),
                 onTap: () =>
                     Navigator.of(sheetContext).pop(_GroupAction.settle),
               ),
             ListTile(
-              leading: const Icon(Icons.archive_outlined),
+              leading: const AppIcon(Icons.archive_outlined),
               title: const Text('Archive'),
               subtitle: const Text('Hide it. Expense history stays intact.'),
               onTap: () => Navigator.of(sheetContext).pop(_GroupAction.archive),
             ),
             ListTile(
-              leading: Icon(
+              leading: AppIcon(
                 Icons.delete_outline,
                 color: theme.colorScheme.error,
               ),
@@ -893,7 +893,7 @@ class SettledScreen extends ConsumerWidget {
 
     if (people.isEmpty && groups.isEmpty) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Settled')),
+        appBar: AppTopBar(title: const Text('Settled')),
         body: const _EmptyNote(
           icon: Icons.check_circle_outline_rounded,
           text:
@@ -936,7 +936,7 @@ class SettledScreen extends ConsumerWidget {
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settled')),
+      appBar: AppTopBar(title: const Text('Settled')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 32).plusNavBar(context),
         children: [
@@ -969,7 +969,7 @@ class _EmptyNote extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(32, 48, 32, 24),
       child: Column(
         children: [
-          Icon(icon, size: 48, color: theme.colorScheme.onSurfaceVariant),
+          AppIcon(icon, size: 48, color: theme.colorScheme.onSurfaceVariant),
           const SizedBox(height: 16),
           Text(
             text,
@@ -994,7 +994,7 @@ class _EmptyGroups extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(32, 48, 32, 24),
       child: Column(
         children: [
-          Icon(
+          AppIcon(
             Icons.groups_outlined,
             size: 48,
             color: theme.colorScheme.onSurfaceVariant,
@@ -1024,7 +1024,7 @@ class _EmptyPersons extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(32, 48, 32, 24),
       child: Column(
         children: [
-          Icon(
+          AppIcon(
             Icons.people_outline_rounded,
             size: 48,
             color: theme.colorScheme.onSurfaceVariant,

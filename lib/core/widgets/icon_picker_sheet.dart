@@ -104,7 +104,7 @@ class _IconPickerSheetState extends ConsumerState<_IconPickerSheet> {
                 controller: _controller,
                 autofocus: false,
                 decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.search),
+                  prefixIcon: const AppIcon(Icons.search),
                   hintText: 'Search icons',
                   filled: true,
                   border: OutlineInputBorder(
@@ -195,7 +195,7 @@ class _IconPickerSheetState extends ConsumerState<_IconPickerSheet> {
             width: isSelected ? 2.5 : 1,
           ),
         ),
-        child: Icon(
+        child: AppIcon(
           AppIcons.resolve(key),
           color: isSelected ? accent : theme.colorScheme.onSurfaceVariant,
         ),

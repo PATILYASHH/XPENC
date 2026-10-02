@@ -19,7 +19,7 @@ class WidgetsScreen extends ConsumerWidget {
     final canPin = ref.watch(_canRequestPinProvider).valueOrNull ?? false;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Widgets')),
+      appBar: AppTopBar(title: const Text('Widgets')),
       body: ListView(
         // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
         padding: EdgeInsets.fromLTRB(
@@ -94,7 +94,7 @@ class _IntroCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.widgets_outlined, color: cs.onSurfaceVariant),
+            AppIcon(Icons.widgets_outlined, color: cs.onSurfaceVariant),
             const SizedBox(width: 14),
             Expanded(
               child: Text(
@@ -153,7 +153,7 @@ class _WidgetCard extends ConsumerWidget {
                     color: cs.surfaceContainerHighest,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(icon, color: cs.onSurface, size: 22),
+                  child: AppIcon(icon, color: cs.onSurface, size: 22),
                 ),
                 const SizedBox(width: 14),
                 Expanded(

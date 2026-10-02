@@ -36,7 +36,7 @@ class ReviewInboxScreen extends ConsumerWidget {
     final pendingAsync = ref.watch(allPendingProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Review Inbox')),
+      appBar: AppTopBar(title: const Text('Review Inbox')),
       body: pendingAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
@@ -133,7 +133,7 @@ class _EmptyInbox extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
+                AppIcon(
                   Icons.inbox_outlined,
                   size: 48,
                   color: theme.colorScheme.onSurfaceVariant,
@@ -324,7 +324,7 @@ class PendingCard extends ConsumerWidget {
           color: color.withValues(alpha: 0.14),
           shape: BoxShape.circle,
         ),
-        child: Icon(icon, color: color, size: 22),
+        child: AppIcon(icon, color: color, size: 22),
       );
 
   Widget _statusStrip(
@@ -401,7 +401,7 @@ class _Banner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: color),
+          AppIcon(icon, size: 18, color: color),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -703,8 +703,8 @@ class _ApproveSheetState extends ConsumerState<_ApproveSheet> {
           ? Text('Draws from ${linkedName ?? account.bankName ?? 'linked bank'}')
           : null,
       trailing: selected
-          ? Icon(Icons.check_circle_rounded, color: theme.colorScheme.primary)
-          : const Icon(Icons.circle_outlined),
+          ? AppIcon(Icons.check_circle_rounded, color: theme.colorScheme.primary)
+          : const AppIcon(Icons.circle_outlined),
       onTap: () => setState(() => _accountId = account.id),
     );
   }
@@ -816,7 +816,7 @@ Widget _iconCircle(String iconKey, int colorValue, {double size = 44}) {
       color: Color(colorValue),
       shape: BoxShape.circle,
     ),
-    child: Icon(
+    child: AppIcon(
       AppIcons.resolve(iconKey),
       color: Colors.white,
       size: size * 0.5,

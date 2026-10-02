@@ -313,6 +313,10 @@ class _XpencAppState extends ConsumerState<XpencApp>
         fontWeightDelta: fontWeightDelta,
       ),
       themeMode: choice.effectiveMode,
+      // Glass scrolls like iOS: rubber-band bounce, no Android stretch glow.
+      scrollBehavior: choice.style.shape.isGlass
+          ? const _GlassScrollBehavior()
+          : null,
       routerConfig: appRouter,
       // A failed database must never look like "still loading".
       builder: (context, child) {
@@ -446,7 +450,10 @@ class _LaunchSplash extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: BrandMark(size: 56)));
+    // Outside the router, so no route paints Glass's wallpaper behind it.
+    return const PageBackdrop(
+      child: Scaffold(body: Center(child: BrandMark(size: 56))),
+    );
   }
 }
 
@@ -458,17 +465,36 @@ class _FatalError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: ErrorView(
-          title: "Couldn't open your data",
-          message:
-              'The app could not open its database, so nothing can be shown. '
-              'Your saved data is not lost.',
-          detail: error.toString(),
-          onRetry: onRetry,
+    return PageBackdrop(
+      child: Scaffold(
+        body: SafeArea(
+          child: ErrorView(
+            title: "Couldn't open your data",
+            message:
+                'The app could not open its database, so nothing can be shown. '
+                'Your saved data is not lost.',
+            detail: error.toString(),
+            onRetry: onRetry,
+          ),
         ),
       ),
     );
   }
+}
+
+/// iOS scrolling for the Glass theme: bounce at the ends instead of
+/// Android's stretch, everywhere a scroll view doesn't pick its own physics.
+class _GlassScrollBehavior extends MaterialScrollBehavior {
+  const _GlassScrollBehavior();
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) =>
+      const BouncingScrollPhysics();
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) => child;
 }

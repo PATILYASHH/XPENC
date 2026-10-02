@@ -644,7 +644,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
+          AppIcon(
             Icons.warning_amber_rounded,
             size: 16,
             color: theme.colorScheme.error,
@@ -708,7 +708,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final value = _customIcon;
     return IconButton(
       icon: value == null
-          ? Icon(
+          ? AppIcon(
               Icons.emoji_emotions_outlined,
               color: theme.colorScheme.onSurfaceVariant,
             )
@@ -731,14 +731,14 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.grid_view_rounded),
+              leading: const AppIcon(Icons.grid_view_rounded),
               title: const Text('XPENC icon'),
               subtitle: const Text('Pick from the app\'s own icon library'),
               onTap: () =>
                   Navigator.of(sheetContext).pop(_CustomIconSource.library),
             ),
             ListTile(
-              leading: const Icon(Icons.emoji_emotions_outlined),
+              leading: const AppIcon(Icons.emoji_emotions_outlined),
               title: const Text('Emoji'),
               subtitle: const Text('Type one with your keyboard\'s emoji key'),
               onTap: () =>
@@ -858,7 +858,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                         Navigator.of(sheetContext).pop();
                         _pickCustomIcon();
                       },
-                      icon: const Icon(Icons.swap_horiz_rounded),
+                      icon: const AppIcon(Icons.swap_horiz_rounded),
                       label: const Text('Change'),
                     ),
                   ),
@@ -872,7 +872,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                         Navigator.of(sheetContext).pop();
                         setState(() => _customIcon = null);
                       },
-                      icon: const Icon(Icons.delete_outline),
+                      icon: const AppIcon(Icons.delete_outline),
                       label: const Text('Remove'),
                     ),
                   ),
@@ -902,13 +902,13 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.photo_camera_outlined),
+              leading: const AppIcon(Icons.photo_camera_outlined),
               title: const Text('Take photo'),
               onTap: () =>
                   Navigator.of(sheetContext).pop(_ReceiptSource.camera),
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
+              leading: const AppIcon(Icons.photo_library_outlined),
               title: const Text('Choose from gallery'),
               onTap: () =>
                   Navigator.of(sheetContext).pop(_ReceiptSource.gallery),
@@ -970,7 +970,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   Widget _receiptAction(ThemeData theme) {
     final attached = _imagePath != null;
     return IconButton(
-      icon: Icon(
+      icon: AppIcon(
         attached ? Icons.camera_alt_rounded : Icons.camera_alt_outlined,
         color: attached ? theme.colorScheme.primary : null,
       ),
@@ -1003,7 +1003,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                   errorBuilder: (_, _, _) => Container(
                     height: 220,
                     color: theme.colorScheme.surfaceContainerHighest,
-                    child: Icon(
+                    child: AppIcon(
                       Icons.broken_image_outlined,
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -1019,7 +1019,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                         Navigator.of(sheetContext).pop();
                         _showAttachReceiptSheet();
                       },
-                      icon: const Icon(Icons.swap_horiz_rounded),
+                      icon: const AppIcon(Icons.swap_horiz_rounded),
                       label: const Text('Replace'),
                     ),
                   ),
@@ -1033,7 +1033,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                         Navigator.of(sheetContext).pop();
                         _removeReceipt();
                       },
-                      icon: const Icon(Icons.delete_outline),
+                      icon: const AppIcon(Icons.delete_outline),
                       label: const Text('Remove'),
                     ),
                   ),
@@ -1081,7 +1081,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             _splitRows.add(_SplitEntry());
           }
         }),
-        secondary: Icon(
+        secondary: AppIcon(
           Icons.call_split_rounded,
           color: theme.colorScheme.onSurfaceVariant,
         ),
@@ -1263,7 +1263,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               child: TextButton.icon(
                 onPressed: () =>
                     setState(() => _hybridLegs.add(_PaymentLegEntry())),
-                icon: const Icon(Icons.add_rounded, size: 18),
+                icon: const AppIcon(Icons.add_rounded, size: 18),
                 label: const Text('Add account'),
               ),
             ),
@@ -1315,7 +1315,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
+                AppIcon(
                   AppIcons.resolve(account?.iconKey ?? 'cash'),
                   size: 18,
                   color: account != null
@@ -1347,7 +1347,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           ),
         ),
         IconButton(
-          icon: const Icon(Icons.close_rounded, size: 18),
+          icon: const AppIcon(Icons.close_rounded, size: 18),
           tooltip: 'Remove',
           onPressed: _hybridLegs.length <= 1
               ? null
@@ -1395,7 +1395,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             _hasForeignCurrency = false;
           }
         }),
-        secondary: Icon(
+        secondary: AppIcon(
           Icons.currency_exchange_rounded,
           color: theme.colorScheme.onSurfaceVariant,
         ),
@@ -1432,7 +1432,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             _hasChange = false;
           }
         }),
-        secondary: Icon(
+        secondary: AppIcon(
           Icons.public_rounded,
           color: theme.colorScheme.onSurfaceVariant,
         ),
@@ -1544,7 +1544,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
+                    AppIcon(
                       AppIcons.resolve(account?.iconKey ?? 'cash'),
                       size: 18,
                       color: account != null
@@ -1602,7 +1602,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
                 onPressed: () => setState(() => _splitRows.add(_SplitEntry())),
-                icon: const Icon(Icons.add_rounded, size: 18),
+                icon: const AppIcon(Icons.add_rounded, size: 18),
                 label: const Text('Add category'),
               ),
             ),
@@ -1654,7 +1654,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
+                AppIcon(
                   AppIcons.resolve(cat?.iconKey ?? 'other'),
                   size: 18,
                   color: cat != null
@@ -1686,7 +1686,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           ),
         ),
         IconButton(
-          icon: const Icon(Icons.close_rounded, size: 18),
+          icon: const AppIcon(Icons.close_rounded, size: 18),
           tooltip: 'Remove',
           onPressed: _splitRows.length <= 1
               ? null
@@ -2108,9 +2108,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: AppTopBar(
         leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
+          icon: const AppIcon(Icons.close_rounded),
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         title: Text(_isEditing ? 'Edit' : 'Add'),
@@ -2126,7 +2126,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                 _receiptAction(theme),
                 if (_isEditing)
                   IconButton(
-                    icon: const Icon(Icons.delete_outline),
+                    icon: const AppIcon(Icons.delete_outline),
                     tooltip: 'Delete',
                     onPressed: _confirmDelete,
                   ),
@@ -2377,7 +2377,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       clipBehavior: Clip.antiAlias,
       child: ListTile(
         onTap: _pickDate,
-        leading: Icon(
+        leading: AppIcon(
           Icons.event_outlined,
           color: theme.colorScheme.onSurfaceVariant,
         ),
@@ -2395,7 +2395,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         ),
         trailing: IconButton(
           tooltip: 'Change time',
-          icon: Icon(
+          icon: AppIcon(
             Icons.access_time_rounded,
             color: theme.colorScheme.onSurfaceVariant,
           ),
@@ -2418,7 +2418,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       clipBehavior: Clip.antiAlias,
       child: ListTile(
         onTap: onTap,
-        leading: Icon(icon, color: theme.colorScheme.onSurfaceVariant),
+        leading: AppIcon(icon, color: theme.colorScheme.onSurfaceVariant),
         title: Text(
           label,
           style: theme.textTheme.bodySmall?.copyWith(
@@ -2433,7 +2433,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                 : theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        trailing: const Icon(Icons.chevron_right_rounded),
+        trailing: const AppIcon(Icons.chevron_right_rounded),
       ),
     );
   }
@@ -2451,7 +2451,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           decoration: InputDecoration(
             hintText: 'Note (optional)',
             border: InputBorder.none,
-            icon: Icon(
+            icon: AppIcon(
               Icons.notes_outlined,
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -2487,7 +2487,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                   radius: 14,
                 )
               else
-                Icon(
+                AppIcon(
                   Icons.storefront_outlined,
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -2524,7 +2524,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               ),
               if (name.isNotEmpty)
                 IconButton(
-                  icon: const Icon(Icons.close_rounded),
+                  icon: const AppIcon(Icons.close_rounded),
                   tooltip: 'Clear payee',
                   visualDensity: VisualDensity.compact,
                   onPressed: () => setState(() {
@@ -2535,7 +2535,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               else
                 Padding(
                   padding: const EdgeInsets.only(right: 12),
-                  child: Icon(
+                  child: AppIcon(
                     Icons.chevron_right_rounded,
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -2577,7 +2577,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       icon: Badge(
         isLabelVisible: count > 0,
         label: Text('$count'),
-        child: Icon(count > 0 ? Icons.sell_rounded : Icons.sell_outlined),
+        child: AppIcon(count > 0 ? Icons.sell_rounded : Icons.sell_outlined),
       ),
       tooltip: 'Tags',
       onPressed: _pickTags,
@@ -2680,7 +2680,7 @@ class _SplitModeKnob extends StatelessWidget {
           width: 24,
           height: 24,
           decoration: BoxDecoration(color: knobColor, shape: BoxShape.circle),
-          child: Icon(knobIcon, size: 14, color: theme.colorScheme.surface),
+          child: AppIcon(knobIcon, size: 14, color: theme.colorScheme.surface),
         ),
       ),
     );
@@ -2693,7 +2693,7 @@ Widget _iconCircle(String iconKey, int colorValue, {double size = 40}) {
     width: size,
     height: size,
     decoration: BoxDecoration(color: Color(colorValue), shape: BoxShape.circle),
-    child: Icon(
+    child: AppIcon(
       AppIcons.resolve(iconKey),
       color: Colors.white,
       size: size * 0.5,
@@ -2927,7 +2927,7 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
         child: Row(
           children: [
             IconButton(
-              icon: const Icon(Icons.arrow_back),
+              icon: const AppIcon(Icons.arrow_back),
               tooltip: 'All categories',
               onPressed: () => setState(() => _drillParentId = null),
             ),
@@ -3020,7 +3020,7 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
                       color: theme.colorScheme.surface,
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(
+                    child: AppIcon(
                       Icons.more_horiz_rounded,
                       size: 16,
                       color: theme.colorScheme.onSurfaceVariant,

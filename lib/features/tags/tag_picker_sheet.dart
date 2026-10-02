@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../core/widgets/nav_bar_inset.dart';
@@ -165,7 +166,7 @@ class _GroupChip extends StatelessWidget {
     final color = Color(group.colorValue);
 
     return FilterChip(
-      avatar: Icon(Icons.workspaces_outline, size: 16, color: color),
+      avatar: AppIcon(Icons.workspaces_outline, size: 16, color: color),
       label: Text(group.name),
       selected: allSelected,
       selectedColor: color.withValues(alpha: 0.22),

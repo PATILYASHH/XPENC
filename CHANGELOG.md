@@ -11,11 +11,22 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 ## [1.6.4] — beta
 
 ### Added
-- **Glass theme** — every card is a real frosted pane that blurs a colourful
-  orb wallpaper behind it, with a light-catching edge and a soft shadow.
-  The tab bar is a floating glass capsule with iOS-style icons, and the
-  content scrolls under it. Sheets and dialogs open over a page that frosts
-  over as they rise. Light only.
+- **Glass theme — Liquid Glass, like iPhone.** Built the way iOS builds
+  it, in two layers. Content sits on frosted cards over a soft, airy
+  wallpaper. Controls float above it in clear, lensed glass that bends
+  what's beneath at its edges (real refraction on devices with the Impeller
+  renderer, blur elsewhere). That covers:
+  - a floating tab bar with a liquid droplet that slides to the selected
+    tab, and the ➕ as its own glass button;
+  - large titles under glass toolbar buttons, with actions grouped into one
+    glass capsule and glass back buttons;
+  - floating, inset sheets with a grabber, and dialogs over a frosted page;
+  - iOS controls: capsule buttons, the green switch, circular checkboxes,
+    grey disclosure chevrons and SF-Symbols-style icons throughout;
+  - iOS motion: slide-in pages with edge swipe-back, rubber-band scrolling,
+    no ripple, and buttons that dip and spring back under your finger;
+  - Inter, the closest open typeface to SF Pro, with iOS-style tracking.
+  Light only.
 - **Light / Dark / System is now its own choice** under Settings → General →
   Theme, separate from the theme itself. Classic and Noir come in both.
 
