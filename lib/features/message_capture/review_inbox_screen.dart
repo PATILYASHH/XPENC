@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../core/app_icons.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -126,7 +127,7 @@ class _EmptyInbox extends StatelessWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
-        child: Card(
+        child: AppCard(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(28, 32, 28, 32),
             child: Column(
@@ -201,7 +202,7 @@ class PendingCard extends ConsumerWidget {
   }
 
   void _openApproveSheet(BuildContext context) {
-    showModalBottomSheet<void>(
+    showAppSheet<void>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -237,7 +238,7 @@ class PendingCard extends ConsumerWidget {
     final mutedSmall =
         theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant);
 
-    return Card(
+    return AppCard(
       margin: const EdgeInsets.fromLTRB(20, 6, 20, 6),
       clipBehavior: Clip.antiAlias,
       child: Padding(
@@ -663,7 +664,7 @@ class _ApproveSheetState extends ConsumerState<_ApproveSheet> {
             ),
           );
         }
-        return Card(
+        return AppCard(
           margin: EdgeInsets.zero,
           clipBehavior: Clip.antiAlias,
           child: Column(
@@ -786,7 +787,7 @@ class _ApproveSheetState extends ConsumerState<_ApproveSheet> {
   }
 
   Widget _rememberTile(ThemeData theme) {
-    return Card(
+    return AppCard(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: CheckboxListTile(

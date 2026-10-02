@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/error_view.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/transaction_history.dart';
@@ -72,7 +73,7 @@ class AutoRuleDetailScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32).plusNavBar(context),
         children: [
-          Card(
+          AppCard(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
               child: Column(
@@ -175,7 +176,7 @@ class AutoRuleDetailScreen extends ConsumerWidget {
           ),
           if (rule.note != null && rule.note!.trim().isNotEmpty) ...[
             const SizedBox(height: 20),
-            Card(
+            AppCard(
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
@@ -289,7 +290,7 @@ class AutoRuleDetailScreen extends ConsumerWidget {
     RecurringRuleRow rule,
   ) async {
     final theme = Theme.of(context);
-    final action = await showModalBottomSheet<_RuleDetailAction>(
+    final action = await showAppSheet<_RuleDetailAction>(
       context: context,
       showDragHandle: true,
       shape: const RoundedRectangleBorder(
@@ -383,7 +384,7 @@ class AutoRuleDetailScreen extends ConsumerWidget {
         rule.promoAmount != null && (rule.promoOccurrencesLeft ?? 0) > 0;
     final amount = onPromo ? rule.promoAmount! : rule.amount;
     final accountName = ref.read(accountMapProvider)[rule.accountId]?.name;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Pay "${rule.name}" now?'),
@@ -420,7 +421,7 @@ class AutoRuleDetailScreen extends ConsumerWidget {
   ) async {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Delete "${rule.name}"?'),

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/widgets/amount_keypad_field.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 
 enum _IdKind { upiId, phone }
@@ -190,7 +191,7 @@ class _UssdPayScreenState extends State<UssdPayScreen> {
               ),
               const SizedBox(height: 24),
 
-              Card(
+              AppCard(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_icons.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -51,7 +52,7 @@ class DashboardSettingsScreen extends ConsumerWidget {
                 ),
               )
             else
-              Card(
+              AppCard(
                 child: Column(
                   children: [
                     for (var i = 0; i < accounts.length; i++) ...[

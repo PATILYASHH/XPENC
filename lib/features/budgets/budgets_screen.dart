@@ -5,6 +5,7 @@ import '../../core/money.dart';
 import '../../core/routing/app_router.dart' show appRouter;
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/amount_keypad_field.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -258,7 +259,7 @@ class _SummaryCard extends StatelessWidget {
     final remaining = budgeted - spent;
     final barColor = over ? AppColors.expense : cs.secondary;
 
-    return Card(
+    return AppCard(
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -364,7 +365,7 @@ class _BudgetTile extends ConsumerWidget {
         ? ref.watch(categoryFundingStateProvider(category.id))
         : null;
 
-    return Card(
+    return AppCard(
       margin: compact ? EdgeInsets.zero : const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: onTap,
@@ -1062,7 +1063,7 @@ Future<Object?> _pickOverflowTargetCategory({
   required int excludeCategoryId,
   required int? currentTarget,
 }) {
-  return showModalBottomSheet<Object>(
+  return showAppSheet<Object>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,

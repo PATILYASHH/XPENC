@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 
 /// How many consecutive wrong PINs force the lock screen into
@@ -12,7 +13,7 @@ class MasterPhraseAttemptsSheet extends ConsumerWidget {
 
   static String label(int attempts) => '$attempts attempts';
 
-  static Future<void> show(BuildContext context) => showModalBottomSheet<void>(
+  static Future<void> show(BuildContext context) => showAppSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

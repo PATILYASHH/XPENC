@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/app_icons.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/error_view.dart';
 import '../../core/widgets/icon_picker_sheet.dart';
 import '../../data/database.dart';
@@ -118,7 +119,7 @@ class _CategoryList extends ConsumerWidget {
             if (categories.isEmpty)
               _EmptyCategories(kind: kind)
             else
-              Card(
+              AppCard(
                 clipBehavior: Clip.antiAlias,
                 child: Column(
                   children: [
@@ -302,7 +303,7 @@ Future<void> _openCategoryEditor(
   CategoryRow? existing,
   int? initialParentId,
 }) {
-  return showModalBottomSheet<void>(
+  return showAppSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
@@ -343,7 +344,7 @@ Future<void> _confirmArchive(
             'will be archived too.'
       : '';
 
-  final confirmed = await showDialog<bool>(
+  final confirmed = await showAppDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
       title: Text('Archive "${category.name}"?'),

@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,6 +8,7 @@ import 'package:intl/intl.dart';
 
 import '../../data/providers.dart';
 import '../../data/tables.dart' show AppMode;
+import '../widgets/app_surfaces.dart';
 import 'hold_menu_geometry.dart';
 import 'quick_actions.dart';
 import '../../features/add_transaction/add_transaction_choice_sheet.dart';
@@ -18,6 +20,7 @@ import '../branding/app_info.dart';
 import '../branding/brand_mark.dart';
 import '../budget_cycle.dart';
 import '../theme/app_theme.dart';
+import '../theme/glass.dart';
 
 /// `Dashboard · slotLeft · ➕ · slotRight · More`
 ///
@@ -130,44 +133,43 @@ class AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final border = theme.colorScheme.outline;
-    // Glass docks the bar as a frosted pane — a brighter frost than the cards,
-    // with the white top edge iOS tab bars catch the light on.
     final glass = AppSurface.of(context).isGlass;
     final (leftId, rightId) = _slotIds(ref);
     final left = _catalog[leftId]!;
     final right = _catalog[rightId]!;
 
+    final items = [
+      _navItem(context, ref, _dashboard),
+      _navItem(context, ref, left),
+      _AddButton(
+        holdEnabled: ref.watch(holdMenuEnabledProvider),
+        actions: ref.watch(holdMenuActionsProvider),
+        hasTemplates: ref.watch(hasTransactionTemplatesProvider),
+      ),
+      _navItem(context, ref, right),
+      _navItem(context, ref, _more),
+    ];
+
     return SettledPromptListener(
       child: Scaffold(
         appBar: _TopBar(currentIndex: navigationShell.currentIndex),
         body: navigationShell,
-        bottomNavigationBar: DecoratedBox(
-          decoration: BoxDecoration(
-            color: glass ? const Color(0xB8FFFFFF) : null,
-            border: Border(
-              top: BorderSide(color: glass ? const Color(0xE6FFFFFF) : border),
-            ),
-          ),
-          child: SafeArea(
-            top: false,
-            child: SizedBox(
-              height: 68,
-              child: Row(
-                children: [
-                  _navItem(context, ref, _dashboard),
-                  _navItem(context, ref, left),
-                  _AddButton(
-                    holdEnabled: ref.watch(holdMenuEnabledProvider),
-                    actions: ref.watch(holdMenuActionsProvider),
-                    hasTemplates: ref.watch(hasTransactionTemplatesProvider),
-                  ),
-                  _navItem(context, ref, right),
-                  _navItem(context, ref, _more),
-                ],
+        // Glass floats the bar as a capsule and lets every tab scroll *under*
+        // it, so the blur has content to frost. The Scaffold then reports the
+        // bar's height as bottom padding, which every tab already honours
+        // (see `NavBarInset`).
+        extendBody: glass,
+        bottomNavigationBar: glass
+            ? _GlassNavBar(children: items)
+            : DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border(top: BorderSide(color: border)),
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: SizedBox(height: 68, child: Row(children: items)),
+                ),
               ),
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -175,19 +177,40 @@ class AppShell extends ConsumerWidget {
   Widget _navItem(BuildContext context, WidgetRef ref, _TabSpec tab) {
     final theme = Theme.of(context);
     final selected = navigationShell.currentIndex == tab.branch;
+    final glass = AppSurface.of(context).isGlass;
+    // Glass wears iOS-style glyphs and an accent-blue selection.
     final color = selected
-        ? theme.colorScheme.onSurface
+        ? (glass ? theme.colorScheme.secondary : theme.colorScheme.onSurface)
         : theme.colorScheme.onSurfaceVariant;
     final showLabels = ref.watch(showBottomNavLabelsProvider);
+    final glyphs = glass ? _glassIcons[tab.branch] : null;
+    final icon = selected
+        ? (glyphs?.$2 ?? tab.activeIcon)
+        : (glyphs?.$1 ?? tab.icon);
+
+    Widget glyph = Icon(icon, size: glass ? 23 : 24, color: color);
+    if (glass) {
+      // The selected tab sits in a brighter lens of glass.
+      glyph = AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xA6FFFFFF) : const Color(0x00FFFFFF),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: glyph,
+      );
+    }
 
     return Expanded(
       child: InkWell(
         onTap: () => _goBranch(ref, tab.branch),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(glass ? 999 : 16),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(selected ? tab.activeIcon : tab.icon, size: 24, color: color),
+            glyph,
             if (showLabels) ...[
               const SizedBox(height: 4),
               Text(
@@ -309,10 +332,16 @@ class _AddButtonState extends State<_AddButton> {
         onTap: () => widget.hasTemplates
             ? openAddTransactionChoiceSheet(context)
             : context.push('/add'),
-        child: const SizedBox(
+        child: SizedBox(
           width: 52,
           height: 52,
-          child: Icon(Icons.add_rounded, color: Colors.white, size: 28),
+          child: Icon(
+            AppSurface.of(context).isGlass
+                ? CupertinoIcons.add
+                : Icons.add_rounded,
+            color: Colors.white,
+            size: 28,
+          ),
         ),
       ),
     );
@@ -514,6 +543,46 @@ const bottomNavCatalogLabels = <String, String>{
 /// from the "Customize bottom nav" picker while Basic is active.
 const basicModeHiddenCatalogIds = {'budgets', 'accounts'};
 
+/// Glass's SF-Symbols-style glyphs per branch (outline, filled), keyed by
+/// the same branch numbers as `_catalog`.
+const _glassIcons = <int, (IconData, IconData)>{
+  0: (CupertinoIcons.chart_pie, CupertinoIcons.chart_pie_fill),
+  1: (CupertinoIcons.doc_text, CupertinoIcons.doc_text_fill),
+  2: (CupertinoIcons.person_2, CupertinoIcons.person_2_fill),
+  3: (CupertinoIcons.square_grid_2x2, CupertinoIcons.square_grid_2x2_fill),
+  4: (CupertinoIcons.calendar, CupertinoIcons.calendar_circle_fill),
+  5: (CupertinoIcons.chart_bar_circle, CupertinoIcons.chart_bar_circle_fill),
+  6: (CupertinoIcons.creditcard, CupertinoIcons.creditcard_fill),
+  7: (CupertinoIcons.graph_square, CupertinoIcons.graph_square_fill),
+  8: (CupertinoIcons.bag, CupertinoIcons.bag_fill),
+};
+
+/// Glass's tab bar: a floating capsule of real, unshared blur (it frosts the
+/// tab content scrolling beneath it), inset from the screen edges like the
+/// iOS tab bar.
+class _GlassNavBar extends StatelessWidget {
+  const _GlassNavBar({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.only(bottom: 10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: GlassPane(
+          borderRadius: BorderRadius.circular(32),
+          grouped: false,
+          frost: const Color(0x99FFFFFF),
+          child: SizedBox(height: 64, child: Row(children: children)),
+        ),
+      ),
+    );
+  }
+}
+
 class _TabSpec {
   const _TabSpec(this.branch, this.icon, this.activeIcon, this.label);
   final int branch;
@@ -557,10 +626,12 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
+    // Glass's top bar floats on the wallpaper with no rule under it, as on iOS.
+    final glass = AppSurface.of(context).isGlass;
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: cs.outline)),
+        border: glass ? null : Border(bottom: BorderSide(color: cs.outline)),
       ),
       child: AppBar(
         automaticallyImplyLeading: false,
@@ -819,7 +890,7 @@ class _TransactionsBarActions extends ConsumerWidget {
     WidgetRef ref,
     TransactionFilters current,
   ) async {
-    final result = await showModalBottomSheet<TransactionFilters>(
+    final result = await showAppSheet<TransactionFilters>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,

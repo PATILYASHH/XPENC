@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/error_view.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -117,7 +118,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
 
   Future<void> _restore(BackupRecordRow b) async {
     if (_busy) return;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Restore this backup?'),
@@ -180,7 +181,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
   }
 
   Future<void> _delete(BackupRecordRow b) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Delete this backup?'),
@@ -222,7 +223,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
     final targets = all.where((b) => _selected.contains(b.fileName)).toList();
     if (targets.isEmpty) return;
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text('Delete ${targets.length} backups?'),
@@ -302,7 +303,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32).plusNavBar(context),
         children: [
-          Card(
+          AppCard(
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -349,7 +350,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          Card(
+          AppCard(
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
@@ -496,7 +497,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
   }
 
   void _openAutoBackupSheet(BuildContext context, AutoBackupSettings current) {
-    showModalBottomSheet<void>(
+    showAppSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -540,7 +541,7 @@ class _BackupTile extends StatelessWidget {
         '${_sizeLabel(backup.sizeBytes)} · '
         '${DateFormat('d MMM yyyy').format(backup.createdAt)}';
 
-    return Card(
+    return AppCard(
       margin: const EdgeInsets.only(bottom: 12),
       color: selected ? cs.primaryContainer.withValues(alpha: 0.4) : null,
       child: InkWell(

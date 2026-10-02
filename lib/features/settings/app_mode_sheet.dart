@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart' show AppMode;
 
@@ -13,7 +14,7 @@ import '../../data/tables.dart' show AppMode;
 class AppModeSheet extends ConsumerStatefulWidget {
   const AppModeSheet({super.key});
 
-  static Future<void> show(BuildContext context) => showModalBottomSheet<void>(
+  static Future<void> show(BuildContext context) => showAppSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
@@ -44,7 +45,7 @@ class _AppModeSheetState extends ConsumerState<AppModeSheet> {
     } catch (_) {
       if (!mounted) return;
       setState(() => _switching = false);
-      final proceed = await showDialog<bool>(
+      final proceed = await showAppDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
           title: const Text("Couldn't back up your data"),

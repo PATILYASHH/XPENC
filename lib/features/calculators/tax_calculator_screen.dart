@@ -4,6 +4,7 @@ import '../../core/calculators.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import 'calculator_screen.dart' show formatInr;
+import '../../core/widgets/app_surfaces.dart';
 import 'calculator_widgets.dart';
 import 'world_tax_bodies.dart';
 
@@ -271,7 +272,7 @@ class _RegimeTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    return Card(
+    return AppCard(
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),

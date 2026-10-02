@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/app_icons.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/error_view.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
@@ -82,7 +83,7 @@ class _HeroCard extends ConsumerWidget {
         ? null
         : trend.last.value - trend.first.value;
 
-    return Card(
+    return AppCard(
       margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(22),
@@ -311,7 +312,7 @@ class _AccountRow extends StatelessWidget {
       );
     }
 
-    return Card(
+    return AppCard(
       margin: const EdgeInsets.only(bottom: 12),
       clipBehavior: Clip.antiAlias,
       child: ListTile(

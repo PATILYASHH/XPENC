@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import 'import_from_file.dart';
 import '../../core/widgets/nav_bar_inset.dart';
@@ -172,7 +173,7 @@ class _IntroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    return Card(
+    return AppCard(
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Row(
@@ -222,7 +223,7 @@ class _ActionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    return Card(
+    return AppCard(
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(

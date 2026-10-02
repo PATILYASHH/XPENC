@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/permissions/app_permissions.dart';
+import '../../core/widgets/app_surfaces.dart';
 import 'settings_common.dart';
 
 /// Every permission XPENC holds or could ask for, and every one it never
@@ -65,7 +66,7 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
   }
 
   Future<bool> _confirm({required String title, required String body}) async {
-    final ok = await showDialog<bool>(
+    final ok = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(title),
@@ -112,7 +113,7 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
             style: muted?.copyWith(height: 1.5),
           ),
           settingsSectionLabel(context, 'You choose'),
-          Card(
+          AppCard(
             child: Column(
               children: [
                 for (final (i, p) in AppPermission.values.indexed) ...[
@@ -127,7 +128,7 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
             ),
           ),
           settingsSectionLabel(context, 'Granted at install'),
-          Card(
+          AppCard(
             child: Column(
               children: [
                 const _InfoTile(
@@ -147,7 +148,7 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
             ),
           ),
           settingsSectionLabel(context, 'Never requested'),
-          Card(
+          AppCard(
             child: Column(
               children: [
                 const _InfoTile(

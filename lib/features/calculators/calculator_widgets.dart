@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/money.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/beta_badge.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 
@@ -187,7 +188,7 @@ class CalcResultCard extends StatelessWidget {
     final cs = theme.colorScheme;
     final total = parts.fold<int>(0, (s, p) => s + p.value.paise.abs());
 
-    return Card(
+    return AppCard(
       margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -286,7 +287,7 @@ class CalcBreakdownCard extends StatelessWidget {
   final List<CalcRow> rows;
 
   @override
-  Widget build(BuildContext context) => Card(
+  Widget build(BuildContext context) => AppCard(
     margin: EdgeInsets.zero,
     child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),

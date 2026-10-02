@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/branding/app_info.dart';
+import '../../core/widgets/app_surfaces.dart';
 import 'whats_new_data.dart';
 
 /// What's new in the current version, one card per feature — what it is,
@@ -42,7 +43,7 @@ class _WhatsNewCard extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    return Card(
+    return AppCard(
       child: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(

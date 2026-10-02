@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -50,7 +51,7 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
 
   Future<void> _createGroup(BuildContext context, WidgetRef ref) async {
     final controller = TextEditingController();
-    final name = await showDialog<String>(
+    final name = await showAppDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('New group'),
@@ -87,7 +88,7 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
     final groupId = await ref.read(dbProvider).addGroup(name);
     if (!context.mounted) return;
 
-    final members = await showModalBottomSheet<Set<int>>(
+    final members = await showAppSheet<Set<int>>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -219,7 +220,7 @@ class _IndividualTab extends ConsumerWidget {
             return SliverPadding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
               sliver: SliverToBoxAdapter(
-                child: Card(
+                child: AppCard(
                   clipBehavior: Clip.antiAlias,
                   child: Column(
                     children: [
@@ -260,7 +261,7 @@ class _TotalsHeader extends StatelessWidget {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-      child: Card(
+      child: AppCard(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 12),
           child: Row(
@@ -415,7 +416,7 @@ class _PersonTile extends ConsumerWidget {
   /// (permanent, takes their whole history with them).
   Future<void> _showActions(BuildContext context, WidgetRef ref) async {
     final theme = Theme.of(context);
-    final action = await showModalBottomSheet<_PersonAction>(
+    final action = await showAppSheet<_PersonAction>(
       context: context,
       showDragHandle: true,
       shape: const RoundedRectangleBorder(
@@ -559,7 +560,7 @@ class _PersonTile extends ConsumerWidget {
   }
 
   Future<void> _confirmArchive(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Archive person?'),
@@ -642,7 +643,7 @@ class _GroupTab extends ConsumerWidget {
         return ListView(
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 96).plusNavBar(context),
           children: [
-            Card(
+            AppCard(
               clipBehavior: Clip.antiAlias,
               child: Column(
                 children: [
@@ -744,7 +745,7 @@ class _GroupTile extends ConsumerWidget {
   Future<void> _showActions(BuildContext context, WidgetRef ref) async {
     final theme = Theme.of(context);
     final balance = ref.read(groupBalanceProvider(group.id));
-    final action = await showModalBottomSheet<_GroupAction>(
+    final action = await showAppSheet<_GroupAction>(
       context: context,
       showDragHandle: true,
       shape: const RoundedRectangleBorder(
@@ -831,7 +832,7 @@ class _GroupTile extends ConsumerWidget {
   }
 
   Future<void> _confirmArchive(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Archive group?'),
@@ -915,7 +916,7 @@ class SettledScreen extends ConsumerWidget {
             ),
           ),
         ),
-        Card(
+        AppCard(
           clipBehavior: Clip.antiAlias,
           child: Column(
             children: [
@@ -1068,7 +1069,7 @@ class _FooterCaption extends StatelessWidget {
 /// mode, so payment IDs can be filled in up front instead of only after
 /// the fact.
 Future<void> showAddPersonDialog(BuildContext context, WidgetRef ref) {
-  return showModalBottomSheet<void>(
+  return showAppSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

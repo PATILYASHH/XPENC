@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import 'more_screen_layout_sheet.dart';
 import 'settings_common.dart';
@@ -35,7 +36,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
           32 + MediaQuery.of(context).padding.bottom,
         ),
         children: [
-          Card(
+          AppCard(
             child: Column(
               children: [
                 ListTile(
@@ -137,7 +138,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
           ),
 
           settingsSectionLabel(context, 'Dashboard'),
-          Card(
+          AppCard(
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               leading: const Icon(Icons.dashboard_customize_outlined),
@@ -154,7 +155,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
           ),
 
           settingsSectionLabel(context, 'Calendar'),
-          Card(
+          AppCard(
             child: SwitchListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               secondary: const Icon(Icons.calendar_month_outlined),
@@ -173,7 +174,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
           ),
 
           settingsSectionLabel(context, 'Layout'),
-          Card(
+          AppCard(
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               leading: const Icon(Icons.dashboard_customize_outlined),
@@ -190,7 +191,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
           ),
 
           settingsSectionLabel(context, 'Message Capture'),
-          Card(
+          AppCard(
             child: Column(
               children: [
                 ListTile(

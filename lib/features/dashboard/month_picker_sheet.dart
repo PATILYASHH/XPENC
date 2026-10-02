@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/budget_cycle.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 
 /// Opens the month picker and returns the chosen period anchor (day 1 of its
@@ -14,7 +15,7 @@ Future<DateTime?> showMonthPickerSheet(
   required DateTime current,
   required int startDay,
 }) {
-  return showModalBottomSheet<DateTime>(
+  return showAppSheet<DateTime>(
     context: context,
     showDragHandle: true,
     useSafeArea: true,

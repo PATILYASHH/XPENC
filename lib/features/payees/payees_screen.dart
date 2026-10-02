@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/providers.dart';
 import '../persons/person_avatar.dart';
@@ -41,7 +42,7 @@ class PayeesScreen extends ConsumerWidget {
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
               sliver: SliverToBoxAdapter(
-                child: Card(
+                child: AppCard(
                   clipBehavior: Clip.antiAlias,
                   child: Column(
                     children: [
@@ -78,7 +79,7 @@ class _TotalsHeader extends StatelessWidget {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-      child: Card(
+      child: AppCard(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 12),
           child: Column(

@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../core/app_icons.dart';
 import '../../core/currency.dart';
 import '../../core/money.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/error_view.dart';
 import '../../core/widgets/money_text.dart';
@@ -95,7 +96,7 @@ class TransactionDetailScreen extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Delete this transaction?'),
@@ -172,7 +173,7 @@ class _TransactionView extends ConsumerWidget {
         const SizedBox(height: 16),
         _LinkedTransactionsCard(transaction: t),
         const SizedBox(height: 24),
-        Card(
+        AppCard(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
             child: Column(
@@ -258,7 +259,7 @@ class _ReceiptCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
+    return AppCard(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => _openFullScreen(context),
@@ -467,7 +468,7 @@ class _PaymentGroupBanner extends ConsumerWidget {
             ? 'Change also went elsewhere'
             : 'Split payment · total ${MoneyFormat.symbol(total)}';
 
-        return Card(
+        return AppCard(
           color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.4),
           margin: EdgeInsets.zero,
           child: Padding(
@@ -565,7 +566,7 @@ class _LinkedTransactionsCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final linksAsync = ref.watch(linkedTransactionsProvider(transaction.id));
 
-    return Card(
+    return AppCard(
       margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
@@ -639,7 +640,7 @@ class _LinkedTransactionsCard extends ConsumerWidget {
     List<TransactionRow> existing,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
-    final picked = await showModalBottomSheet<int>(
+    final picked = await showAppSheet<int>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -769,7 +770,7 @@ class _TagsRow extends ConsumerWidget {
   }
 
   Future<void> _pickTags(BuildContext context, WidgetRef ref) async {
-    final result = await showModalBottomSheet<Set<int>>(
+    final result = await showAppSheet<Set<int>>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,

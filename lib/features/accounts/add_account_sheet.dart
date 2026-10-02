@@ -6,6 +6,7 @@ import '../../core/app_icons.dart';
 import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/widgets/amount_keypad_field.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/icon_picker_sheet.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -27,7 +28,7 @@ const _presetColors = <int>[
 
 /// Opens the "add account" bottom sheet.
 Future<void> showAddAccountSheet(BuildContext context) {
-  return showModalBottomSheet<void>(
+  return showAppSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/currency.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/currency_conversion.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -37,7 +38,7 @@ class CurrencySettingsScreen extends ConsumerWidget {
         ),
         children: [
           _sectionLabel(theme, 'Parent currency'),
-          Card(
+          AppCard(
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               leading: const Icon(Icons.payments_outlined),
@@ -56,7 +57,7 @@ class CurrencySettingsScreen extends ConsumerWidget {
           const SizedBox(height: 20),
           _sectionLabel(theme, 'Exchange rates'),
           ratesAsync.when(
-            data: (rates) => Card(
+            data: (rates) => AppCard(
               child: Column(
                 children: [
                   if (rates.isEmpty)
@@ -179,7 +180,7 @@ Future<void> showAddRateDialog(
   String currencyCode,
 ) async {
   final result =
-      await showDialog<({int rateToBaseMicros, DateTime effectiveAt})>(
+      await showAppDialog<({int rateToBaseMicros, DateTime effectiveAt})>(
         context: context,
         builder: (_) => _AddRateDialog(currencyCode: currencyCode),
       );

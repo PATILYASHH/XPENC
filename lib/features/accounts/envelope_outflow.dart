@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
@@ -43,7 +44,7 @@ Future<int?> pickEnvelopeShortfallCategory({
   required int accountId,
   required Money shortfall,
 }) {
-  return showModalBottomSheet<int>(
+  return showAppSheet<int>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,

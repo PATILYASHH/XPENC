@@ -5,6 +5,7 @@ import '../../core/app_icons.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/amount_keypad_field.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -24,7 +25,7 @@ class ReadyToAssignCard extends ConsumerWidget {
     final cs = theme.colorScheme;
     final rta = ref.watch(readyToAssignProvider);
 
-    return Card(
+    return AppCard(
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Row(
@@ -131,7 +132,7 @@ class _CategoryEnvelopeList extends ConsumerWidget {
         child: Center(child: CircularProgressIndicator()),
       ),
       error: (_, _) => const SizedBox.shrink(),
-      data: (categories) => Card(
+      data: (categories) => AppCard(
         child: Column(
           children: [
             for (var i = 0; i < categories.length; i++) ...[
@@ -186,7 +187,7 @@ class _CategoryEnvelopeRow extends ConsumerWidget {
           color: balanceColor,
         ),
       ),
-      onTap: () => showModalBottomSheet<void>(
+      onTap: () => showAppSheet<void>(
         context: context,
         isScrollControlled: true,
         builder: (_) =>

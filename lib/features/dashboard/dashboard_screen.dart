@@ -8,6 +8,7 @@ import '../../core/budget_cycle.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/theme_preset.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/motion.dart';
@@ -378,7 +379,7 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
 
     return Padding(
       padding: _sectionPad,
-      child: Card(
+      child: AppCard(
         clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(_cardRadius),
@@ -661,7 +662,7 @@ class _ThisMonthCard extends ConsumerWidget {
 
     return Padding(
       padding: _sectionPad,
-      child: Card(
+      child: AppCard(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(18, 18, 10, 18),
           child: Column(
@@ -912,7 +913,7 @@ class _AccountCard extends StatelessWidget {
     return SizedBox(
       width: 168,
       child: PressScale(
-        child: Card(
+        child: AppCard(
           margin: EdgeInsets.zero,
           // The account's own colour carries into its edge, so a row of cards
           // reads as a row of *different* accounts at a glance.
@@ -1064,7 +1065,7 @@ class _PersonsSection extends ConsumerWidget {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Card(
+            child: AppCard(
               margin: EdgeInsets.zero,
               clipBehavior: Clip.antiAlias,
               child: Column(
@@ -1291,7 +1292,7 @@ class _UpcomingSection extends ConsumerWidget {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Card(
+            child: AppCard(
               margin: EdgeInsets.zero,
               clipBehavior: Clip.antiAlias,
               child: Column(
@@ -1412,7 +1413,7 @@ class _BudgetsSection extends ConsumerWidget {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Card(
+            child: AppCard(
               margin: EdgeInsets.zero,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
@@ -1459,7 +1460,7 @@ class _SetBudgetCard extends StatelessWidget {
     return Padding(
       padding: _sectionPad,
       child: PressScale(
-        child: Card(
+        child: AppCard(
           margin: EdgeInsets.zero,
           child: InkWell(
             borderRadius: BorderRadius.circular(_cardRadius),
@@ -1561,7 +1562,7 @@ class _SpendByCategorySection extends ConsumerWidget {
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Card(
+                child: AppCard(
                   margin: EdgeInsets.zero,
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
@@ -1626,7 +1627,7 @@ class _RecentSection extends ConsumerWidget {
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Card(
+                child: AppCard(
                   margin: EdgeInsets.zero,
                   clipBehavior: Clip.antiAlias,
                   child: Column(
@@ -1805,7 +1806,7 @@ class _EmptyState extends StatelessWidget {
     final theme = Theme.of(context);
     return Padding(
       padding: _sectionPad,
-      child: Card(
+      child: AppCard(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
           child: Column(

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/routing/app_router.dart' show appRouter;
 import '../../core/routing/app_shell.dart'
     show basicModeHiddenCatalogIds, bottomNavCatalogLabels;
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart' show AppMode;
 
@@ -27,7 +28,7 @@ class BottomNavSettingsScreen extends ConsumerWidget {
 
     Future<void> pick(bool isLeft) async {
       final excluded = {isLeft ? rightId : leftId};
-      final chosen = await showModalBottomSheet<String>(
+      final chosen = await showAppSheet<String>(
         context: context,
         showDragHandle: true,
         builder: (_) => _CatalogPickerSheet(excluded: excluded),
@@ -79,7 +80,7 @@ class BottomNavSettingsScreen extends ConsumerWidget {
           const SizedBox(height: 8),
           _PinnedRow(label: 'More'),
           const SizedBox(height: 20),
-          Card(
+          AppCard(
             margin: EdgeInsets.zero,
             child: SwitchListTile(
               title: const Text('Show labels'),
@@ -92,7 +93,7 @@ class BottomNavSettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 20),
           _sectionLabel(context, 'Bottom spacing'),
-          Card(
+          AppCard(
             margin: EdgeInsets.zero,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
@@ -220,7 +221,7 @@ class _SlotTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
+    return AppCard(
       margin: EdgeInsets.zero,
       child: ListTile(
         title: Text(label),

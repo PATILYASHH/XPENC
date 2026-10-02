@@ -73,6 +73,7 @@ import '../../features/tags/tag_groups_screen.dart';
 import '../../features/tags/tags_screen.dart';
 import '../../features/transactions/transaction_detail_screen.dart';
 import '../../features/transactions/transactions_screen.dart';
+import '../widgets/app_surfaces.dart';
 import 'app_shell.dart';
 
 final _rootKey = GlobalKey<NavigatorState>();
@@ -98,7 +99,7 @@ void showAppSnackBar(String message, {SnackBarAction? action}) {
 void showRecognizedTextDialog(String text) {
   final context = _rootKey.currentContext;
   if (context == null) return;
-  showDialog<void>(
+  showAppDialog<void>(
     context: context,
     builder: (context) => AlertDialog(
       title: const Text('Recognised text'),

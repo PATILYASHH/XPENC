@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../core/widgets/nav_bar_inset.dart';
@@ -98,7 +99,7 @@ class _ShoppingListTile extends ConsumerWidget {
     final total = summary?.total ?? 0;
     final checked = summary?.checked ?? 0;
 
-    return Card(
+    return AppCard(
       margin: const EdgeInsets.only(bottom: 12),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -171,7 +172,7 @@ Future<void> _confirmDeleteList(
   ShoppingListRow list,
 ) async {
   final messenger = ScaffoldMessenger.of(context);
-  final confirmed = await showDialog<bool>(
+  final confirmed = await showAppDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
       title: Text('Delete "${list.name}"?'),
@@ -203,7 +204,7 @@ Future<void> _openListEditor(
   BuildContext context, {
   ShoppingListRow? existing,
 }) {
-  return showModalBottomSheet<void>(
+  return showAppSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

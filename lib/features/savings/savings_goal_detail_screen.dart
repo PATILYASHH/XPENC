@@ -6,6 +6,7 @@ import '../../core/app_icons.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/amount_keypad_field.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/transaction_history.dart';
 import '../../data/providers.dart';
@@ -129,7 +130,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 20),
-          Card(
+          AppCard(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
               child: Column(
@@ -194,7 +195,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
           ],
           if (detail.notes != null && detail.notes!.trim().isNotEmpty) ...[
             const SizedBox(height: 20),
-            Card(
+            AppCard(
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
@@ -275,7 +276,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
     WidgetRef ref,
     GoalProgress progress,
   ) async {
-    final action = await showModalBottomSheet<_GoalAction>(
+    final action = await showAppSheet<_GoalAction>(
       context: context,
       showDragHandle: true,
       shape: const RoundedRectangleBorder(
@@ -343,7 +344,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
   ) async {
     final controller = AmountKeypadController()..setAmount(progress.saved);
     final messenger = ScaffoldMessenger.of(context);
-    final newAmount = await showDialog<Money>(
+    final newAmount = await showAppDialog<Money>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Fix starting amount'),
@@ -421,7 +422,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
   ) async {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Archive "${progress.account.name}"?'),
@@ -457,7 +458,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
   ) async {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text('Delete "${progress.account.name}"?'),
@@ -520,7 +521,7 @@ void _openFundsSheet(
   required bool isAdd,
   int? defaultCategoryId,
 }) {
-  showModalBottomSheet<void>(
+  showAppSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

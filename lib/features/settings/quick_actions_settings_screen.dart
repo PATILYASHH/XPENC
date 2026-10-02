@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/routing/hold_menu_geometry.dart';
 import '../../core/routing/quick_actions.dart';
 import '../../core/widgets/money_text.dart' show iconForTxType;
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart' show AppMode;
 import 'settings_common.dart';
@@ -36,7 +37,7 @@ class QuickActionsSettingsScreen extends ConsumerWidget {
         ),
         children: [
           settingsSectionLabel(context, 'Hold ➕ button'),
-          Card(
+          AppCard(
             child: Column(
               children: [
                 SwitchListTile(
@@ -81,7 +82,7 @@ class QuickActionsSettingsScreen extends ConsumerWidget {
             ),
           ),
           settingsSectionLabel(context, 'Home screen'),
-          Card(
+          AppCard(
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               leading: const Icon(Icons.widgets_outlined),
@@ -98,7 +99,7 @@ class QuickActionsSettingsScreen extends ConsumerWidget {
             ),
           ),
           settingsSectionLabel(context, 'Lock screen shortcuts'),
-          Card(
+          AppCard(
             child: SwitchListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               secondary: const Icon(Icons.screenshot_monitor_outlined),
@@ -184,7 +185,7 @@ class _HoldMenuEditor extends ConsumerWidget {
     List<String> slots,
     int index,
   ) async {
-    final chosen = await showModalBottomSheet<String>(
+    final chosen = await showAppSheet<String>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,

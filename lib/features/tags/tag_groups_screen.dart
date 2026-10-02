@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/error_view.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -48,7 +49,7 @@ class TagGroupsScreen extends ConsumerWidget {
               if (groups.isEmpty)
                 _EmptyGroups(theme: theme)
               else
-                Card(
+                AppCard(
                   clipBehavior: Clip.antiAlias,
                   child: Column(
                     children: [
@@ -177,7 +178,7 @@ Future<void> _confirmDelete(
   TagGroupRow group,
 ) async {
   final messenger = ScaffoldMessenger.of(context);
-  final confirmed = await showDialog<bool>(
+  final confirmed = await showAppDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
       title: Text('Delete "${group.name}"?'),
@@ -209,7 +210,7 @@ Future<void> _confirmDelete(
 }
 
 Future<void> _openGroupEditor(BuildContext context, {TagGroupRow? existing}) {
-  return showModalBottomSheet<void>(
+  return showAppSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

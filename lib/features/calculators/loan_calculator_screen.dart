@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/loan_amortization.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_surfaces.dart';
 import 'calculator_widgets.dart';
 
 /// Reducing-balance EMI calculator. Reuses [LoanAmortization] — the same
@@ -144,7 +145,7 @@ class _LoanCalculatorScreenState extends State<LoanCalculatorScreen>
             ),
           ),
           const SizedBox(height: 8),
-          Card(
+          AppCard(
             margin: EdgeInsets.zero,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 
@@ -37,7 +38,7 @@ class NotificationsSettingsScreen extends ConsumerWidget {
           32 + MediaQuery.of(context).padding.bottom,
         ),
         children: [
-          Card(
+          AppCard(
             child: SwitchListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               secondary: const Icon(Icons.notifications_outlined),
@@ -53,7 +54,7 @@ class NotificationsSettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Card(
+          AppCard(
             child: Column(
               children: [
                 SwitchListTile(
@@ -107,7 +108,7 @@ class NotificationsSettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Card(
+          AppCard(
             child: Column(
               children: [
                 SwitchListTile(
@@ -235,7 +236,7 @@ class _QuickAddAccountTile extends ConsumerWidget {
     // sheet being dismissed with no pick at all (also null) — that
     // ambiguity would silently reset an explicit choice back to "First
     // account" on every accidental dismiss.
-    final result = await showModalBottomSheet<({int? accountId})>(
+    final result = await showAppSheet<({int? accountId})>(
       context: context,
       showDragHandle: true,
       builder: (sheetContext) => SafeArea(

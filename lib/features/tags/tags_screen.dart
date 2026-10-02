@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/error_view.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -57,7 +58,7 @@ class TagsScreen extends ConsumerWidget {
               if (tags.isEmpty)
                 _EmptyTags(theme: theme)
               else
-                Card(
+                AppCard(
                   clipBehavior: Clip.antiAlias,
                   child: Column(
                     children: [
@@ -180,7 +181,7 @@ Future<void> _confirmDelete(
   TagRow tag,
 ) async {
   final messenger = ScaffoldMessenger.of(context);
-  final confirmed = await showDialog<bool>(
+  final confirmed = await showAppDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
       title: Text('Delete "${tag.name}"?'),
@@ -212,7 +213,7 @@ Future<void> _confirmDelete(
 }
 
 Future<void> _openTagEditor(BuildContext context, {TagRow? existing}) {
-  return showModalBottomSheet<void>(
+  return showAppSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

@@ -7,6 +7,7 @@ import '../../core/app_icons.dart';
 import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/error_view.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
@@ -215,7 +216,7 @@ class AccountReportTile extends ConsumerWidget {
     final cs = theme.colorScheme;
     final (value, sub, color) = _headline(ref);
 
-    return Card(
+    return AppCard(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -429,7 +430,7 @@ class _BalancesBody extends ConsumerWidget {
             ),
             _gap,
             const SectionCaption('Where your money sits'),
-            Card(
+            AppCard(
               margin: EdgeInsets.zero,
               child: Padding(
                 padding: const EdgeInsets.all(20),
@@ -659,7 +660,7 @@ class _HistoryBodyState extends ConsumerState<_HistoryBody> {
             ),
             _gap,
             const SectionCaption('Month-end balance'),
-            Card(
+            AppCard(
               margin: EdgeInsets.zero,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(12, 20, 20, 12),
@@ -843,7 +844,7 @@ class _PaymentMethodsBody extends ConsumerWidget {
             ),
             _gap,
             const SectionCaption('How you paid'),
-            Card(
+            AppCard(
               margin: EdgeInsets.zero,
               child: Padding(
                 padding: const EdgeInsets.all(20),
@@ -1040,7 +1041,7 @@ class _CardRow extends ConsumerWidget {
       ),
     );
 
-    return Card(
+    return AppCard(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -1239,7 +1240,7 @@ class _HealthRow extends StatelessWidget {
       ),
     };
 
-    return Card(
+    return AppCard(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: InkWell(

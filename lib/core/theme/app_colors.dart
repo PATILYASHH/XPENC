@@ -146,16 +146,15 @@ class AppPalettes {
   );
 
   // ── Glass: frosted white over a soft gradient. Light only. ──────────────
-  /// [bg] is only the gradient's base tone — the page itself is
-  /// [glassBackdrop]. [surfaceHigh] is translucent: a card is a pane of
-  /// frosted glass over that gradient. [surface] stays near-opaque because
-  /// Material paints menus, pickers and sheets with it *over content*, where
-  /// see-through would be unreadable.
+  /// [bg] is only the wallpaper's base tone — the page itself is
+  /// `GlassWallpaper`. [surface] and [surfaceHigh] are translucent frosts;
+  /// menus and pickers that float over content without a blur get
+  /// `GlassStyle.solidFrost` from the theme instead.
   static const glass = Palette(
     brightness: Brightness.light,
     bg: Color(0xFFE9EEFB),
-    surface: Color(0xFFF4F6FC),
-    surfaceHigh: Color(0x9EFFFFFF),
+    surface: Color(0x66FFFFFF),
+    surfaceHigh: Color(0x73FFFFFF),
     track: Color(0x14000000),
     border: Color(0xCCFFFFFF),
     text: Color(0xFF0B0B10),

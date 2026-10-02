@@ -7,6 +7,7 @@ import '../../core/loan_amortization.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/amount_keypad_field.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/transaction_history.dart';
 import '../../data/providers.dart';
@@ -124,7 +125,7 @@ class LoanDetailScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 20),
-          Card(
+          AppCard(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
               child: Column(
@@ -341,7 +342,7 @@ class LoanDetailScreen extends ConsumerWidget {
     WidgetRef ref,
     LoanProgress loan,
   ) async {
-    final action = await showModalBottomSheet<_LoanAction>(
+    final action = await showAppSheet<_LoanAction>(
       context: context,
       showDragHandle: true,
       shape: const RoundedRectangleBorder(
@@ -396,7 +397,7 @@ class LoanDetailScreen extends ConsumerWidget {
   ) async {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Archive "${loan.account.name}"?'),
@@ -432,7 +433,7 @@ class LoanDetailScreen extends ConsumerWidget {
   ) async {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text('Delete "${loan.account.name}"?'),
@@ -497,7 +498,7 @@ String _formatRate(double rate) {
 }
 
 void _openPaymentSheet(BuildContext context, {required LoanProgress loan}) {
-  showModalBottomSheet<void>(
+  showAppSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

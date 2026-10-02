@@ -6,6 +6,7 @@ import '../../core/app_icons.dart';
 import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/widgets/amount_keypad_field.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/statement_range_picker.dart';
 import '../../data/database.dart';
@@ -178,7 +179,7 @@ class AccountsScreen extends ConsumerWidget {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Card(
+        child: AppCard(
           child: Column(
             children: [
               for (var i = 0; i < rows.length; i++) ...[
@@ -211,7 +212,7 @@ class _TotalMoneyCard extends ConsumerWidget {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-      child: Card(
+      child: AppCard(
         child: Padding(
           padding: const EdgeInsets.all(22),
           child: Column(
@@ -374,7 +375,7 @@ class _AccountTile extends ConsumerWidget {
   /// Remove (permanent, only works when nothing points at it).
   Future<void> _showActions(BuildContext context, WidgetRef ref) async {
     final theme = Theme.of(context);
-    final action = await showModalBottomSheet<_AccountAction>(
+    final action = await showAppSheet<_AccountAction>(
       context: context,
       showDragHandle: true,
       shape: const RoundedRectangleBorder(
@@ -460,7 +461,7 @@ class _AccountTile extends ConsumerWidget {
   /// reopening the full Add Account sheet, which sets up type/colour/icon
   /// fields that don't apply once an account already exists.
   Future<void> _confirmRename(BuildContext context, WidgetRef ref) async {
-    final newName = await showDialog<String>(
+    final newName = await showAppDialog<String>(
       context: context,
       builder: (ctx) => _RenameAccountDialog(currentName: account.name),
     );
@@ -478,7 +479,7 @@ class _AccountTile extends ConsumerWidget {
   /// `null` from the dialog clears it, same "empty means remove" convention
   /// as every other optional-field editor in this app.
   Future<void> _confirmMinimumBalance(BuildContext context, WidgetRef ref) async {
-    final result = await showDialog<_MinimumBalanceResult>(
+    final result = await showAppDialog<_MinimumBalanceResult>(
       context: context,
       builder: (ctx) =>
           _MinimumBalanceDialog(currentValue: account.minimumBalance),
@@ -503,7 +504,7 @@ class _AccountTile extends ConsumerWidget {
   }
 
   Future<void> _confirmArchive(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Archive account?'),
@@ -539,7 +540,7 @@ class _AccountTile extends ConsumerWidget {
   /// refuses (with a clear reason) whenever anything still points at the
   /// account, so this only ever succeeds on one with no history.
   Future<void> _confirmRemove(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Remove "${account.name}"?'),

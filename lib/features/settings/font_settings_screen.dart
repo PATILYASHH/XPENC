@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/font_options.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 
 /// Text size, boldness and font family — three global reading-comfort knobs,
@@ -59,7 +60,7 @@ class FontSettingsScreen extends ConsumerWidget {
           _PreviewCard(family: family),
           const SizedBox(height: 20),
           _sectionLabel(context, 'Text size'),
-          Card(
+          AppCard(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
               child: Column(
@@ -116,7 +117,7 @@ class FontSettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 20),
           _sectionLabel(context, 'Boldness'),
-          Card(
+          AppCard(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
               child: Column(
@@ -175,7 +176,7 @@ class FontSettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 20),
           _sectionLabel(context, 'Font family'),
-          Card(
+          AppCard(
             child: Column(
               children: [
                 for (var i = 0; i < AppFontFamily.values.length; i++) ...[
@@ -236,7 +237,7 @@ class _PreviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    return Card(
+    return AppCard(
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(

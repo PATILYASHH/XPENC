@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/money.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 
@@ -123,7 +124,7 @@ class _SettledPromptListenerState extends ConsumerState<SettledPromptListener> {
     ];
     if (people.isEmpty && groups.isEmpty) return;
 
-    final choice = await showDialog<_SettledChoice>(
+    final choice = await showAppDialog<_SettledChoice>(
       context: context,
       builder: (ctx) => _SettledDialog(people: people, groups: groups),
     );

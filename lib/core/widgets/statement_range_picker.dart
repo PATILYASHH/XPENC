@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 
+import 'app_surfaces.dart';
+
 /// This month / Last month / a custom range picked via the platform's
 /// built-in range picker — the same choice sheet every statement download
 /// (per-account, per-budget-category, and the combined all-accounts one)
 /// offers, so picking a period always feels the same.
 Future<DateTimeRange?> pickStatementRange(BuildContext context) async {
   final now = DateTime.now();
-  final choice = await showModalBottomSheet<String>(
+  final choice = await showAppSheet<String>(
     context: context,
     showDragHandle: true,
     shape: const RoundedRectangleBorder(

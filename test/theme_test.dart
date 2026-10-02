@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:xpenc/core/money.dart';
 import 'package:xpenc/core/theme/app_theme.dart';
+import 'package:xpenc/core/theme/glass.dart';
 import 'package:xpenc/core/theme/theme_preset.dart';
+import 'package:xpenc/core/widgets/app_surfaces.dart';
 import 'package:xpenc/data/database.dart';
 import 'package:xpenc/data/providers.dart';
 import 'package:xpenc/data/tables.dart';
@@ -116,8 +118,13 @@ void main() {
       expect(glass.scaffoldBackgroundColor, Colors.transparent);
       expect(glass.extension<AppSurface>()!.backdrop, isNotNull);
       expect(glass.cardTheme.color!.a, lessThan(1));
-      // Sheets float over content: frosted, never see-through.
-      expect(glass.bottomSheetTheme.backgroundColor!.a, greaterThan(0.9));
+      // Sheets and dialogs open over a blurred page, so they stay translucent…
+      expect(glass.bottomSheetTheme.backgroundColor!.a, lessThan(1));
+      // …but menus and pickers float over content with no blur behind them,
+      // so they must stay near-opaque or text lands on text.
+      expect(glass.canvasColor.a, greaterThan(0.9));
+      expect(glass.colorScheme.surfaceContainerHigh.a, greaterThan(0.9));
+      expect(glass.datePickerTheme.backgroundColor!.a, greaterThan(0.9));
 
       for (final s in [ThemeStyle.classic, ThemeStyle.noir]) {
         final t = AppTheme.of(s.lightPalette, s.shape);
@@ -341,6 +348,77 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(find.text('Entertainment'), findsWidgets);
       await unmount(tester);
+    });
+
+    testWidgets('AppCard is a plain Card outside Glass and a blurred pane '
+        'inside it', (tester) async {
+      Future<void> render(ThemeStyle style) => tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.of(style.lightPalette, style.shape),
+          home: const Scaffold(body: AppCard(child: Text('pane'))),
+        ),
+      );
+
+      await render(ThemeStyle.classic);
+      expect(find.byType(Card), findsOneWidget);
+      expect(find.byType(BackdropFilter), findsNothing);
+
+      await render(ThemeStyle.glass);
+      await tester.pumpAndSettle();
+      expect(find.byType(Card), findsNothing);
+      expect(find.byType(GlassPane), findsOneWidget);
+      expect(find.byType(BackdropFilter), findsOneWidget);
+      expect(find.byType(BackdropGroup), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a Glass sheet and dialog open over a blurred page', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.of(
+            ThemeStyle.glass.lightPalette,
+            ThemeStyle.glass.shape,
+          ),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => Column(
+                children: [
+                  TextButton(
+                    onPressed: () => showAppSheet<void>(
+                      context: context,
+                      showDragHandle: true,
+                      builder: (_) => const Text('sheet body'),
+                    ),
+                    child: const Text('open sheet'),
+                  ),
+                  TextButton(
+                    onPressed: () => showAppDialog<void>(
+                      context: context,
+                      builder: (_) => const AlertDialog(content: Text('hi')),
+                    ),
+                    child: const Text('open dialog'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('open sheet'));
+      await tester.pumpAndSettle();
+      expect(find.text('sheet body'), findsOneWidget);
+      expect(find.byType(BackdropFilter), findsOneWidget);
+      Navigator.of(tester.element(find.text('sheet body'))).pop();
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('open dialog'));
+      await tester.pumpAndSettle();
+      expect(find.text('hi'), findsOneWidget);
+      expect(find.byType(BackdropFilter), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('a Glass page renders its gradient backdrop', (tester) async {

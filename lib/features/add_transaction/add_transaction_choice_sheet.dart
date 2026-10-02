@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/money.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -13,7 +14,7 @@ import '../../core/widgets/nav_bar_inset.dart';
 /// [hasTransactionTemplatesProvider] is true — a user with no templates yet
 /// still gets the old one-tap-straight-to-`/add` behaviour, unchanged.
 Future<void> openAddTransactionChoiceSheet(BuildContext context) async {
-  final result = await showModalBottomSheet<_AddChoiceResult>(
+  final result = await showAppSheet<_AddChoiceResult>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
@@ -130,7 +131,7 @@ class _AddChoiceSheet extends ConsumerWidget {
     WidgetRef ref,
     TransactionTemplateRow t,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text('Delete "${t.name}"?'),

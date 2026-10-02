@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 
 /// Data — the two irreversible-adjacent actions: recalculating balances
@@ -23,7 +24,7 @@ class DataSettingsScreen extends ConsumerWidget {
           32 + MediaQuery.of(context).padding.bottom,
         ),
         children: [
-          Card(
+          AppCard(
             child: Column(
               children: [
                 ListTile(
@@ -77,7 +78,7 @@ class DataSettingsScreen extends ConsumerWidget {
   /// importing a backup elsewhere in this screen's family — so a mistaken
   /// tap is recoverable from Backup & Restore afterward.
   Future<void> _clearAllData(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Clear all data?'),

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -129,7 +130,7 @@ class AutoScreen extends ConsumerWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Card(
+      child: AppCard(
         child: Column(
           children: [
             for (var i = 0; i < active.length; i++) ...[
@@ -300,7 +301,7 @@ class _RuleTile extends ConsumerWidget {
 
   Future<void> _showActions(BuildContext context, WidgetRef ref) async {
     final theme = Theme.of(context);
-    final action = await showModalBottomSheet<_RuleAction>(
+    final action = await showAppSheet<_RuleAction>(
       context: context,
       showDragHandle: true,
       shape: const RoundedRectangleBorder(
@@ -378,7 +379,7 @@ class _RuleTile extends ConsumerWidget {
   Future<void> _confirmPayNow(BuildContext context, WidgetRef ref) async {
     final amount = _onPromo ? rule.promoAmount! : rule.amount;
     final accountName = ref.read(accountMapProvider)[rule.accountId]?.name;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Pay "${rule.name}" now?'),
@@ -409,7 +410,7 @@ class _RuleTile extends ConsumerWidget {
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Delete "${rule.name}"?'),

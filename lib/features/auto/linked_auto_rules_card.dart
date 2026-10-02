@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/money.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import 'recurring_rule_sheet.dart';
 
@@ -42,7 +43,7 @@ class LinkedAutoRulesCard extends ConsumerWidget {
     final accountMap = ref.watch(accountMapProvider);
     final title = isLoan ? 'Auto-pay' : 'Auto-save';
 
-    return Card(
+    return AppCard(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
         child: Column(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart' show AppMode;
@@ -32,7 +33,7 @@ class EnvelopeSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Card(
+        AppCard(
           margin: const EdgeInsets.fromLTRB(20, 8, 20, 4),
           child: SwitchListTile(
             title: const Text('On-budget'),
@@ -53,7 +54,7 @@ class EnvelopeSection extends ConsumerWidget {
         if (account.envelopeMode)
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
-            child: Card(
+            child: AppCard(
               child: ListTile(
                 leading: const Icon(Icons.account_balance_wallet_outlined),
                 title: Text(
@@ -79,7 +80,7 @@ class EnvelopeSection extends ConsumerWidget {
     bool enabled,
   ) async {
     if (enabled) {
-      final confirmed = await showDialog<bool>(
+      final confirmed = await showAppDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
           title: const Text('Mark this account on-budget?'),

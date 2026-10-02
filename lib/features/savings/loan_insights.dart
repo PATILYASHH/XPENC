@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../core/loan_amortization.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 
 // fl_chart speaks in doubles — `paise / 100` is fine here only, same rule as
@@ -91,7 +92,7 @@ class _LoanInsightsSectionState extends State<LoanInsightsSection> {
     );
   }
 
-  Widget _card(ThemeData theme, {required Widget child}) => Card(
+  Widget _card(ThemeData theme, {required Widget child}) => AppCard(
     child: Padding(padding: const EdgeInsets.all(20), child: child),
   );
 

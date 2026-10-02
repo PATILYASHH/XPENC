@@ -8,6 +8,7 @@ import '../../core/loan_amortization.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/amount_keypad_field.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
@@ -162,7 +163,7 @@ class _GoalCard extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Card(
+      child: AppCard(
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () => context.push('/more/goals/goal/${account.id}'),
@@ -332,7 +333,7 @@ class _LoanCard extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Card(
+      child: AppCard(
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () => context.push('/more/goals/loan/${account.id}'),
@@ -439,7 +440,7 @@ enum _NewGoalChoice { fresh, fromAccount }
 
 Future<void> _openNewGoalChoice(BuildContext context) async {
   final theme = Theme.of(context);
-  final choice = await showModalBottomSheet<_NewGoalChoice>(
+  final choice = await showAppSheet<_NewGoalChoice>(
     context: context,
     showDragHandle: true,
     shape: const RoundedRectangleBorder(
@@ -494,7 +495,7 @@ Future<void> _openGoalEditor(
   GoalProgress? existing,
   bool fromExistingAccount = false,
 }) {
-  return showModalBottomSheet<void>(
+  return showAppSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
@@ -654,7 +655,7 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
     final source = ref.read(accountMapProvider)[sourceId];
     if (source == null || !source.currentBalance.isPositive) return;
 
-    final move = await showDialog<bool>(
+    final move = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Move the balance in?'),
@@ -685,7 +686,7 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
     }
     if (!mounted) return;
 
-    final archive = await showDialog<bool>(
+    final archive = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Archive "${source.name}"?'),
@@ -911,7 +912,7 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
 // ── Loan editor ──────────────────────────────────────────────────────────────
 
 Future<void> _openLoanEditor(BuildContext context, {LoanProgress? existing}) {
-  return showModalBottomSheet<void>(
+  return showAppSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

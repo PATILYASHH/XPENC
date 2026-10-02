@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/currency.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 
@@ -18,7 +19,7 @@ class CurrencyPickerSheet extends ConsumerStatefulWidget {
   final ValueChanged<Currency>? onSelected;
 
   static Future<void> show(BuildContext context, WidgetRef ref) {
-    return showModalBottomSheet<void>(
+    return showAppSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -34,7 +35,7 @@ class CurrencyPickerSheet extends ConsumerStatefulWidget {
   /// a transaction or auto rule's own foreign-currency annotation (GitHub
   /// #85). Returns `null` if the sheet is dismissed without a pick.
   static Future<Currency?> pick(BuildContext context, {String? initialCode}) {
-    return showModalBottomSheet<Currency>(
+    return showAppSheet<Currency>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../core/group_split_math.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -152,7 +153,7 @@ void _showPersonSheet(
     for (final d in debts)
       if (d.from == id || d.to == id) d,
   ];
-  showModalBottomSheet<void>(
+  showAppSheet<void>(
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
@@ -208,7 +209,7 @@ void _showPairSheet(
   required GroupDebt debt,
   required String Function(int?) nameOf,
 }) {
-  showModalBottomSheet<void>(
+  showAppSheet<void>(
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
@@ -403,7 +404,7 @@ class _CardList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final outline = Theme.of(context).colorScheme.outline;
-    return Card(
+    return AppCard(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: Column(

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../core/budget_cycle.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/providers.dart';
 import 'budgets_screen.dart' show BudgetEditSheet;
@@ -59,7 +60,7 @@ class BudgetDetailScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.edit_outlined),
             tooltip: progress == null ? 'Set budget' : 'Edit budget',
-            onPressed: () => showModalBottomSheet<void>(
+            onPressed: () => showAppSheet<void>(
               context: context,
               isScrollControlled: true,
               builder: (_) =>
@@ -168,7 +169,7 @@ class _SummaryCard extends StatelessWidget {
     final cs = theme.colorScheme;
     final p = progress;
 
-    return Card(
+    return AppCard(
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import 'settings_common.dart';
 
@@ -41,7 +42,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
           32 + MediaQuery.of(context).padding.bottom,
         ),
         children: [
-          Card(
+          AppCard(
             child: SwitchListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               secondary: const Icon(Icons.handshake_outlined),
@@ -61,7 +62,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
           ),
 
           settingsSectionLabel(context, 'Payment methods'),
-          Card(
+          AppCard(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: Text(
@@ -75,7 +76,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Card(
+          AppCard(
             child: Column(
               children: [
                 SwitchListTile(
@@ -128,7 +129,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Card(
+          AppCard(
             child: Column(
               children: [
                 SwitchListTile(
@@ -168,7 +169,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Card(
+          AppCard(
             child: Column(
               children: [
                 SwitchListTile(
@@ -208,7 +209,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Card(
+          AppCard(
             child: Column(
               children: [
                 SwitchListTile(
@@ -248,7 +249,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Card(
+          AppCard(
             child: Column(
               children: [
                 SwitchListTile(
@@ -295,7 +296,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
   /// Explains *99# before anyone turns the beta on: what it is, what XPENC
   /// can and can't automate, and what actually happens when they use it.
   Future<void> _showUssdPayInfoSheet(BuildContext context) {
-    return showModalBottomSheet<void>(
+    return showAppSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -365,7 +366,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
     required String? currentId,
     required String? currentName,
   }) async {
-    final result = await showDialog<({String id, String name})>(
+    final result = await showAppDialog<({String id, String name})>(
       context: context,
       builder: (_) =>
           _MyUpiDialog(currentId: currentId, currentName: currentName),
@@ -389,7 +390,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
     required String? currentId,
     required Future<void> Function(String? id) onSave,
   }) async {
-    final result = await showDialog<String>(
+    final result = await showAppDialog<String>(
       context: context,
       builder: (_) =>
           _MyIdDialog(title: title, hintText: hintText, currentId: currentId),

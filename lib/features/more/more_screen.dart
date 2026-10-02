@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/branding/app_info.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/beta_badge.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart' show AppMode, MoreScreenViewMode;
@@ -240,7 +241,7 @@ class MoreScreen extends ConsumerWidget {
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Card(
+                  child: AppCard(
                     child: Column(
                       children: [
                         for (var i = 0; i < group.items.length; i++) ...[
@@ -303,7 +304,7 @@ class _MoreCard extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    return Card(
+    return AppCard(
       margin: EdgeInsets.zero,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),

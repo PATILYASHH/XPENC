@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/error_view.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -66,7 +67,7 @@ class CategoryTemplatesScreen extends ConsumerWidget {
                 ),
               )
             else
-              Card(
+              AppCard(
                 clipBehavior: Clip.antiAlias,
                 child: Column(
                   children: [
@@ -182,7 +183,7 @@ Future<String?> _promptForName(
   String initialValue = '',
 }) {
   final controller = TextEditingController(text: initialValue);
-  return showDialog<String>(
+  return showAppDialog<String>(
     context: context,
     builder: (dialogContext) => AlertDialog(
       title: Text(title),
@@ -218,7 +219,7 @@ Future<void> _applyTemplate(
   WidgetRef ref,
   CategoryTemplateRow template,
 ) async {
-  final confirmed = await showDialog<bool>(
+  final confirmed = await showAppDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
       title: Text('Switch to "${template.name}"?'),
@@ -262,7 +263,7 @@ Future<void> _deleteTemplate(
   WidgetRef ref,
   CategoryTemplateRow template,
 ) async {
-  final confirmed = await showDialog<bool>(
+  final confirmed = await showAppDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
       title: Text('Delete "${template.name}"?'),

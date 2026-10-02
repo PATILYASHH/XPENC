@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 
 /// How long XPENC may sit backgrounded before the next resume asks for the
@@ -16,7 +17,7 @@ class PinTimeoutSheet extends ConsumerWidget {
     _ => 'After $minutes minutes',
   };
 
-  static Future<void> show(BuildContext context) => showModalBottomSheet<void>(
+  static Future<void> show(BuildContext context) => showAppSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

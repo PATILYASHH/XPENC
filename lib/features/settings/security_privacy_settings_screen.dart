@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart' show UnlockMethod;
 import 'lock_screen_style_sheet.dart';
@@ -54,7 +55,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
         ),
         children: [
           settingsSectionLabel(context, 'Security'),
-          Card(
+          AppCard(
             child: Column(
               children: [
                 // ── Unlock methods — independent on/off toggles. Turn on
@@ -382,7 +383,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
           ),
 
           settingsSectionLabel(context, 'Privacy'),
-          Card(
+          AppCard(
             child: Column(
               children: [
                 SwitchListTile(

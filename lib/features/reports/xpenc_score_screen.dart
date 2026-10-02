@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import 'chart_widgets.dart';
 import 'stats_sections.dart';
@@ -152,7 +153,7 @@ class XpencScoreCard extends ConsumerWidget {
     final grade = result.grade;
     final next = result.improvements.firstOrNull;
 
-    return Card(
+    return AppCard(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -298,7 +299,7 @@ class XpencScoreScreen extends ConsumerWidget {
                 const SizedBox(height: 28),
                 if (result.hasScore && result.improvements.isNotEmpty) ...[
                   const SectionCaption('What to improve'),
-                  Card(
+                  AppCard(
                     margin: EdgeInsets.zero,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -336,7 +337,7 @@ class XpencScoreScreen extends ConsumerWidget {
                 ],
                 const SizedBox(height: 18),
                 const SectionCaption('How it\'s calculated'),
-                Card(
+                AppCard(
                   margin: EdgeInsets.zero,
                   child: Padding(
                     padding: const EdgeInsets.all(16),
@@ -409,7 +410,7 @@ class _PillarCard extends StatelessWidget {
     final p = pillar;
     final color = p.applicable ? scoreColor(p.fraction) : cs.onSurfaceVariant;
 
-    return Card(
+    return AppCard(
       margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),

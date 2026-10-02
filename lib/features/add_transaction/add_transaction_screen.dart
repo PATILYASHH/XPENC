@@ -9,6 +9,7 @@ import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/amount_keypad_field.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/icon_picker_sheet.dart';
 import '../../core/widgets/money_text.dart';
@@ -500,7 +501,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
   Future<void> _pickAccount({required bool isFrom}) async {
     final forTo = _type == TxType.transfer && !isFrom;
-    final selected = await showModalBottomSheet<int>(
+    final selected = await showAppSheet<int>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -529,7 +530,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final kind = _type == TxType.income
         ? CategoryKind.income
         : CategoryKind.expense;
-    final selected = await showModalBottomSheet<int>(
+    final selected = await showAppSheet<int>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -718,7 +719,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   }
 
   Future<void> _pickCustomIcon() async {
-    final choice = await showModalBottomSheet<_CustomIconSource>(
+    final choice = await showAppSheet<_CustomIconSource>(
       context: context,
       showDragHandle: true,
       shape: const RoundedRectangleBorder(
@@ -775,7 +776,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           ? current
           : '',
     );
-    final result = await showModalBottomSheet<String>(
+    final result = await showAppSheet<String>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -837,7 +838,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   Future<void> _openCustomIconSheet() async {
     final value = _customIcon;
     if (value == null) return;
-    await showModalBottomSheet<void>(
+    await showAppSheet<void>(
       context: context,
       showDragHandle: true,
       builder: (sheetContext) => SafeArea(
@@ -889,7 +890,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   /// Two ways onto [_pickReceipt]: the camera (needs the `CAMERA` permission,
   /// see PRIVACY.md) or the existing permission-free gallery/file picker.
   Future<void> _showAttachReceiptSheet() async {
-    final source = await showModalBottomSheet<_ReceiptSource>(
+    final source = await showAppSheet<_ReceiptSource>(
       context: context,
       showDragHandle: true,
       shape: const RoundedRectangleBorder(
@@ -982,7 +983,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final path = _imagePath;
     if (path == null) return;
     final theme = Theme.of(context);
-    await showModalBottomSheet<void>(
+    await showAppSheet<void>(
       context: context,
       showDragHandle: true,
       builder: (sheetContext) => SafeArea(
@@ -1048,7 +1049,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   // ── Split expenses ────────────────────────────────────────────────────────
 
   Future<void> _pickSplitCategory(int index) async {
-    final selected = await showModalBottomSheet<int>(
+    final selected = await showAppSheet<int>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -1063,7 +1064,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
   Widget _splitToggleTile() {
     final theme = Theme.of(context);
-    return Card(
+    return AppCard(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: SwitchListTile(
@@ -1100,7 +1101,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         if (i != index && _hybridLegs[i].accountId != null)
           _hybridLegs[i].accountId!,
     };
-    final selected = await showModalBottomSheet<int>(
+    final selected = await showAppSheet<int>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -1129,7 +1130,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         ? _SplitMode.categories
         : (_isHybridPayment ? _SplitMode.accounts : null);
 
-    return Card(
+    return AppCard(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: Padding(
@@ -1245,7 +1246,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final sum = _hybridLegs.fold(const Money.zero(), (s, r) => s + r.amount);
     final remaining = _amount - sum;
 
-    return Card(
+    return AppCard(
       margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
@@ -1365,7 +1366,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   // ── Change ────────────────────────────────────────────────────────────────
 
   Future<void> _pickChangeAccount() async {
-    final selected = await showModalBottomSheet<int>(
+    final selected = await showAppSheet<int>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -1381,7 +1382,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
   Widget _changeToggleTile() {
     final theme = Theme.of(context);
-    return Card(
+    return AppCard(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: SwitchListTile(
@@ -1419,7 +1420,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
   Widget _foreignToggleTile() {
     final theme = Theme.of(context);
-    return Card(
+    return AppCard(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: SwitchListTile(
@@ -1452,7 +1453,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               '${MoneyFormat.symbol(Money.fromRupees(_amount.rupees / foreignAmount.rupees))}'
         : null;
 
-    return Card(
+    return AppCard(
       margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
@@ -1521,7 +1522,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final theme = Theme.of(context);
     final account = accountMap[_changeAccountId];
 
-    return Card(
+    return AppCard(
       margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
@@ -1585,7 +1586,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final sum = _splitRows.fold(const Money.zero(), (s, r) => s + r.amount);
     final remaining = _amount - sum;
 
-    return Card(
+    return AppCard(
       margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
@@ -2028,7 +2029,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Delete this transaction?'),
@@ -2371,7 +2372,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   /// so adjusting one never has to go through the other (GitHub #124).
   Widget _dateTile() {
     final theme = Theme.of(context);
-    return Card(
+    return AppCard(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: ListTile(
@@ -2412,7 +2413,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     required VoidCallback onTap,
   }) {
     final theme = Theme.of(context);
-    return Card(
+    return AppCard(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: ListTile(
@@ -2439,7 +2440,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
   Widget _noteCard() {
     final theme = Theme.of(context);
-    return Card(
+    return AppCard(
       margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -2470,7 +2471,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final person = _payeePersonId == null
         ? null
         : ref.watch(allPersonsByIdProvider)[_payeePersonId];
-    return Card(
+    return AppCard(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -2620,7 +2621,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   }
 
   Future<void> _pickTags() async {
-    final result = await showModalBottomSheet<Set<int>>(
+    final result = await showAppSheet<Set<int>>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,

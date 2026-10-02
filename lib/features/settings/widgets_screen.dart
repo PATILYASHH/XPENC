@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/home_widget/home_widget_service.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 
 /// Home-screen widgets — three presets, not a from-scratch designer (Android's
@@ -87,7 +88,7 @@ class _IntroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    return Card(
+    return AppCard(
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Row(
@@ -137,7 +138,7 @@ class _WidgetCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    return Card(
+    return AppCard(
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(

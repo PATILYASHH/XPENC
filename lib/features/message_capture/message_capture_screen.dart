@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 
@@ -28,7 +29,7 @@ class MessageCaptureScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 40).plusNavBar(context),
         children: [
-          Card(
+          AppCard(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
               child: Column(
@@ -97,7 +98,7 @@ class MessageCaptureScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 14),
-          Card(
+          AppCard(
             child: Padding(
               padding: const EdgeInsets.all(18),
               child: Row(
@@ -119,7 +120,7 @@ class MessageCaptureScreen extends ConsumerWidget {
           ),
           if (pendingCount > 0) ...[
             const SizedBox(height: 14),
-            Card(
+            AppCard(
               child: ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                 leading: const Icon(Icons.inbox_outlined),

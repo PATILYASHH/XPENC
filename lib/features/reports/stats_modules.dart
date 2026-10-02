@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/error_view.dart';
 import '../../data/currency_conversion.dart';
 import '../../data/database.dart';
@@ -153,7 +154,7 @@ class StatsModuleTile extends ConsumerWidget {
     final cs = theme.colorScheme;
     final (value, sub, color) = _headline(ref);
 
-    return Card(
+    return AppCard(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: InkWell(

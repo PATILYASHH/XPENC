@@ -4,6 +4,7 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/branding/app_info.dart';
+import '../../../core/widgets/app_surfaces.dart';
 import '../../../data/database.dart';
 import '../../../data/providers.dart';
 import 'ocr_correction_export.dart';
@@ -31,7 +32,7 @@ class OcrCorrectionScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 100).plusNavBar(context),
         children: [
-          Card(
+          AppCard(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
@@ -154,7 +155,7 @@ class _CorrectionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
+    return AppCard(
       child: ListTile(
         leading: Icon(
           row.wasCorrect ? Icons.check_circle_outline : Icons.error_outline,

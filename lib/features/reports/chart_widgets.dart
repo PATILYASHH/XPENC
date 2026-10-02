@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_surfaces.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The single charting layer. Stats and Account Reports both build on these —
@@ -825,7 +826,7 @@ class StatTile extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    return Card(
+    return AppCard(
       margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(16),

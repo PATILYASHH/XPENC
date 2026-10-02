@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_icons.dart';
 import '../../core/money.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'csv_import.dart';
@@ -314,7 +315,7 @@ class _PickFileCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
+    return AppCard(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -518,7 +519,7 @@ class _MappingForm extends StatelessWidget {
               const SizedBox(height: 20),
               Text('Preview', style: theme.textTheme.labelLarge),
               const SizedBox(height: 8),
-              Card(
+              AppCard(
                 child: Column(
                   children: [
                     for (var i = 0; i < previewRows.length; i++) ...[
@@ -627,7 +628,7 @@ class _SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
+    return AppCard(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(

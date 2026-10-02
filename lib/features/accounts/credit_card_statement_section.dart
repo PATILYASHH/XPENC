@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -25,7 +26,7 @@ class CreditCardStatementSection extends ConsumerWidget {
     final cs = theme.colorScheme;
     final detail = ref.watch(creditCardDetailsProvider(account.id)).valueOrNull;
 
-    return Card(
+    return AppCard(
       margin: const EdgeInsets.fromLTRB(20, 8, 20, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -72,7 +73,7 @@ class CreditCardStatementSection extends ConsumerWidget {
     WidgetRef ref, {
     required CreditCardDetailRow? existing,
   }) async {
-    final result = await showDialog<_CycleResult>(
+    final result = await showAppDialog<_CycleResult>(
       context: context,
       builder: (_) => _CreditCardCycleDialog(existing: existing),
     );
@@ -89,7 +90,7 @@ class CreditCardStatementSection extends ConsumerWidget {
   }
 
   Future<void> _turnOff(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Stop tracking this card\'s cycle?'),

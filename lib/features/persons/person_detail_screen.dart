@@ -13,6 +13,7 @@ import '../../core/payments/upi_launcher.dart';
 import '../../core/payments/venmo_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/amount_keypad_field.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/group_tag.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/statement_range_picker.dart';
@@ -375,7 +376,7 @@ class _BalanceHero extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-      child: Card(
+      child: AppCard(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
           child: Column(
@@ -813,7 +814,7 @@ void _showEntrySheet(
   bool isRepayment = false,
   PersonEntryRow? existing,
 }) {
-  showModalBottomSheet<void>(
+  showAppSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

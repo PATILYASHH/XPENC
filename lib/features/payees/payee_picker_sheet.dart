@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../persons/contact_import.dart';
@@ -22,7 +23,7 @@ Future<PayeeChoice?> showPayeePickerSheet(
   String? selectedName,
   int? selectedPersonId,
 }) {
-  return showModalBottomSheet<PayeeChoice>(
+  return showAppSheet<PayeeChoice>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

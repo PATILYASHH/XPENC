@@ -8,6 +8,7 @@ import '../../core/app_icons.dart';
 import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/group_tag.dart';
 import '../../core/widgets/money_text.dart';
@@ -54,7 +55,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
   /// Deleting a ledger row is not undoable, so it is not done on a swipe alone.
   Future<void> _confirmDelete(TransactionRow tx, String title) async {
-    final ok = await showDialog<bool>(
+    final ok = await showAppDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         icon: const Icon(Icons.delete_outline_rounded),
@@ -93,7 +94,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   /// bail out of the way `_loadForDuplicate`/`_loadForTemplate` do.
   Future<void> _createTemplateFrom(TransactionRow tx, String title) async {
     final controller = TextEditingController(text: title);
-    final name = await showDialog<String>(
+    final name = await showAppDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Save as template'),
@@ -147,7 +148,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   /// shared top bar (`AppShell._TransactionsBarActions`) opens the same sheet
   /// when this screen is a bottom-nav tab instead.
   Future<void> _openFilters(TransactionFilters current) async {
-    final result = await showModalBottomSheet<TransactionFilters>(
+    final result = await showAppSheet<TransactionFilters>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -629,7 +630,7 @@ class _SummaryStrip extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
-      child: Card(
+      child: AppCard(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
@@ -891,7 +892,7 @@ Future<void> _openQuickActions(
   Future<void> Function(TransactionRow tx, String title) onCreateTemplate,
 ) async {
   final theme = Theme.of(context);
-  await showModalBottomSheet<void>(
+  await showAppSheet<void>(
     context: context,
     showDragHandle: true,
     builder: (sheetContext) => SafeArea(
@@ -1054,7 +1055,7 @@ class _TxCard extends StatelessWidget {
           ],
         ),
         child: PressScale(
-          child: Card(
+          child: AppCard(
             clipBehavior: Clip.antiAlias,
             child: InkWell(
               onTap: () => context.push('/transaction/${tx.id}'),

@@ -5,6 +5,7 @@ import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/amount_keypad_field.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/error_view.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/statement_range_picker.dart';
@@ -280,7 +281,7 @@ class _HeaderCard extends ConsumerWidget {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-      child: Card(
+      child: AppCard(
         margin: EdgeInsets.zero,
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -376,7 +377,7 @@ class _HeaderCard extends ConsumerWidget {
       return _entersAsOwed ? -parsed.abs : parsed;
     }
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) {
         final theme = Theme.of(dialogContext);

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/widgets/amount_keypad_field.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
@@ -25,7 +26,7 @@ Future<void> showRecurringRuleSheet(
   Money? presetAmount,
   String? presetName,
 }) {
-  return showModalBottomSheet<void>(
+  return showAppSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
@@ -923,7 +924,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
   }
 
   Future<void> _pickTags() async {
-    final result = await showModalBottomSheet<Set<int>>(
+    final result = await showAppSheet<Set<int>>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,

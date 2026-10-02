@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/branding/app_info.dart';
 import '../../core/branding/brand_mark.dart';
+import '../../core/widgets/app_surfaces.dart';
 
 /// Who made this, which build you are looking at, and where the source lives.
 class AboutScreen extends StatelessWidget {
@@ -69,7 +70,7 @@ class AboutScreen extends StatelessWidget {
             ),
             const SizedBox(height: 28),
 
-            Card(
+            AppCard(
               child: Padding(
                 padding: const EdgeInsets.all(18),
                 child: Text(
@@ -83,7 +84,7 @@ class AboutScreen extends StatelessWidget {
             ),
 
             _sectionLabel(context, 'Developer'),
-            Card(
+            AppCard(
               child: Column(
                 children: [
                   ListTile(
@@ -154,7 +155,7 @@ class AboutScreen extends StatelessWidget {
             ),
 
             _sectionLabel(context, 'Community'),
-            Card(
+            AppCard(
               child: Column(
                 children: [
                   _LinkTile(
@@ -196,7 +197,7 @@ class AboutScreen extends StatelessWidget {
             ),
 
             _sectionLabel(context, 'Project'),
-            Card(
+            AppCard(
               child: Column(
                 children: [
                   _LinkTile(
@@ -378,7 +379,7 @@ Future<void> _shareApp(BuildContext context) async {
 class _GetUpdateSheet extends StatelessWidget {
   const _GetUpdateSheet();
 
-  static Future<void> show(BuildContext context) => showModalBottomSheet<void>(
+  static Future<void> show(BuildContext context) => showAppSheet<void>(
     context: context,
     showDragHandle: true,
     builder: (_) => const _GetUpdateSheet(),
@@ -412,7 +413,7 @@ class _GetUpdateSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            Card(
+            AppCard(
               child: Column(
                 children: [
                   _LinkTile(

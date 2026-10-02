@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/widgets/app_surfaces.dart';
 import 'guide_data.dart';
 
 /// Explains every module and feature in the app — what it does, how to use
@@ -40,7 +41,7 @@ class GuideScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Card(
+          AppCard(
             child: Column(
               children: [
                 for (var i = 0; i < appModeGuide.length; i++) ...[
@@ -90,7 +91,7 @@ class GuideScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
-            Card(
+            AppCard(
               clipBehavior: Clip.antiAlias,
               child: Column(
                 children: [

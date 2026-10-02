@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/statement_range_picker.dart';
 import '../../data/database.dart';
@@ -156,7 +157,7 @@ class GroupDetailScreen extends ConsumerWidget {
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
               sliver: SliverToBoxAdapter(
-                child: Card(
+                child: AppCard(
                   clipBehavior: Clip.antiAlias,
                   child: Column(
                     children: [
@@ -236,7 +237,7 @@ class GroupDetailScreen extends ConsumerWidget {
     GroupRow group,
   ) async {
     final current = ref.read(groupMembersProvider(group.id)).valueOrNull ?? [];
-    final result = await showModalBottomSheet<Set<int>>(
+    final result = await showAppSheet<Set<int>>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -255,7 +256,7 @@ class GroupDetailScreen extends ConsumerWidget {
   ) async {
     final nameController = TextEditingController(text: group.name);
     final noteController = TextEditingController(text: group.note ?? '');
-    final saved = await showDialog<bool>(
+    final saved = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Edit group'),
@@ -409,7 +410,7 @@ class _GroupBalanceHero extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-      child: Card(
+      child: AppCard(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
           child: Column(
@@ -514,7 +515,7 @@ class _ExpenseRow extends ConsumerWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    return Card(
+    return AppCard(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         leading: Icon(_splitIcon, color: cs.onSurfaceVariant),
@@ -538,7 +539,7 @@ class _ExpenseRow extends ConsumerWidget {
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete this expense?'),

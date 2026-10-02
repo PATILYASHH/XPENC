@@ -7,6 +7,7 @@ import '../../core/app_icons.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/amount_keypad_field.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
@@ -77,7 +78,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   // ── Actions ─────────────────────────────────────────────────────────────────
 
   Future<void> _confirmMarkPaid(int id) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Mark as paid'),
@@ -131,7 +132,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
   void _openReminderSheet() {
     final initial = _selectedDay ?? _dateOnly(DateTime.now());
-    showModalBottomSheet<void>(
+    showAppSheet<void>(
       context: context,
       isScrollControlled: true,
       builder: (_) => _ReminderSheet(initialDate: initial),
@@ -552,7 +553,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
     Widget totalTile(String label, Money amount, Color color, IconData icon) {
       return Expanded(
-        child: Card(
+        child: AppCard(
           color: color.withValues(alpha: 0.08),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -615,7 +616,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     ),
   );
 
-  Widget _emptyCard(ThemeData theme, String text) => Card(
+  Widget _emptyCard(ThemeData theme, String text) => AppCard(
     child: Padding(
       padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
       child: Center(
@@ -634,7 +635,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final isPay = r.direction == ReminderDirection.pay;
     final accent = isPay ? AppColors.expense : AppColors.income;
 
-    return Card(
+    return AppCard(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 8, 8),
@@ -721,7 +722,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final accent = isExpense ? AppColors.expense : AppColors.income;
     final onPromo = r.promoAmount != null && (r.promoOccurrencesLeft ?? 0) > 0;
 
-    return Card(
+    return AppCard(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         leading: CircleAvatar(
@@ -804,7 +805,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
     final displayAmount = tx.type.takesFromAccount ? -tx.amount : tx.amount;
 
-    return Card(
+    return AppCard(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         leading: CircleAvatar(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 
 /// Picks which day of the month Dashboard/Budgets/Stats treat as the start
@@ -11,7 +12,7 @@ import '../../data/providers.dart';
 class BudgetStartDaySheet extends ConsumerWidget {
   const BudgetStartDaySheet({super.key});
 
-  static Future<void> show(BuildContext context) => showModalBottomSheet<void>(
+  static Future<void> show(BuildContext context) => showAppSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

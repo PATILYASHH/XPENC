@@ -11,9 +11,11 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 ## [1.6.4] — beta
 
 ### Added
-- **Glass theme** — frosted, see-through cards over a soft blue → lilac →
-  peach gradient, a frosted bottom bar and iOS-style corners and titles.
-  Light only.
+- **Glass theme** — every card is a real frosted pane that blurs a colourful
+  orb wallpaper behind it, with a light-catching edge and a soft shadow.
+  The tab bar is a floating glass capsule with iOS-style icons, and the
+  content scrolls under it. Sheets and dialogs open over a page that frosts
+  over as they rise. Light only.
 - **Light / Dark / System is now its own choice** under Settings → General →
   Theme, separate from the theme itself. Classic and Noir come in both.
 

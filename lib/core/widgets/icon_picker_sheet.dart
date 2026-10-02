@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/providers.dart';
 import '../app_icons.dart';
+import 'app_surfaces.dart';
 import 'nav_bar_inset.dart';
 
 /// Opens the icon picker and resolves to the chosen key, or `null` if the
@@ -15,7 +16,7 @@ Future<String?> showIconPickerSheet(
   required String? selected,
   Color? accentColor,
 }) {
-  return showModalBottomSheet<String>(
+  return showAppSheet<String>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

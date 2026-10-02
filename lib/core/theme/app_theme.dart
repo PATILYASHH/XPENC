@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'app_colors.dart';
 import 'font_options.dart';
+import 'glass.dart';
 import 'theme_shape.dart';
 
 export 'theme_shape.dart' show SurfaceStyle;
@@ -29,9 +30,9 @@ class AppTheme {
     final glass = shape.isGlass;
     final weightDelta = shape.baseWeightDelta + fontWeightDelta;
     final borderSide = BorderSide(color: p.border, width: shape.borderWidth);
-    // Sheets and dialogs float over content, so even Glass keeps them nearly
-    // opaque — frosted, not see-through.
-    final floatingColor = glass ? const Color(0xF2F7F8FC) : null;
+    // Glass sheets and dialogs open over a blurred page (see
+    // `showAppSheet`/`showAppDialog`), so they can stay translucent.
+    final floatingColor = glass ? GlassStyle.floating : null;
     // What separators and incidental outlines draw with. Noir's ink outline
     // would turn every divider into a heavy rule and Glass's white edge would
     // vanish as one, so both separate with a softer tone; their full
@@ -56,6 +57,12 @@ class AppTheme {
       // progress bars, chips and wells fill themselves with, so it has to be a
       // *recessed* tone — otherwise an empty bar on a card is invisible.
       surfaceContainerHighest: p.track,
+      // Material paints menus, date pickers and dropdowns with these, over
+      // content and with no blur behind — Glass keeps them near-opaque.
+      surfaceContainerLowest: glass ? GlassStyle.solidFrost : null,
+      surfaceContainerLow: glass ? GlassStyle.solidFrost : null,
+      surfaceContainer: glass ? GlassStyle.solidFrost : null,
+      surfaceContainerHigh: glass ? GlassStyle.solidFrost : null,
       onSurfaceVariant: p.textMuted,
       outline: hairline,
       outlineVariant: hairline,
@@ -69,6 +76,8 @@ class AppTheme {
       // gradient behind each route instead, so a page in mid-transition never
       // shows the one beneath it through.
       scaffoldBackgroundColor: glass ? Colors.transparent : p.bg,
+      // Dropdown menus and plain `Material`s: see `surfaceContainer` above.
+      canvasColor: glass ? GlassStyle.solidFrost : null,
       splashFactory: InkSparkle.splashFactory,
     );
 
@@ -103,9 +112,22 @@ class AppTheme {
               },
             )
           : null,
+      popupMenuTheme: glass
+          ? const PopupMenuThemeData(color: GlassStyle.solidFrost)
+          : null,
+      datePickerTheme: glass
+          ? const DatePickerThemeData(
+              backgroundColor: GlassStyle.solidFrost,
+              surfaceTintColor: Colors.transparent,
+            )
+          : null,
+      timePickerTheme: glass
+          ? const TimePickerThemeData(backgroundColor: GlassStyle.solidFrost)
+          : null,
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: floatingColor,
         modalBackgroundColor: floatingColor,
+        modalBarrierColor: glass ? GlassStyle.barrier : null,
         surfaceTintColor: Colors.transparent,
         shape: glass
             ? RoundedRectangleBorder(
@@ -117,6 +139,7 @@ class AppTheme {
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: floatingColor,
+        barrierColor: glass ? GlassStyle.barrier : null,
         surfaceTintColor: Colors.transparent,
         shape: glass
             ? RoundedRectangleBorder(
@@ -188,7 +211,7 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         // A Glass input is a lighter frost on its card, not an opaque slab.
-        fillColor: glass ? const Color(0x80FFFFFF) : p.surface,
+        fillColor: glass ? const Color(0x66FFFFFF) : p.surface,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 18,
           vertical: 18,
@@ -296,8 +319,8 @@ class AppSurface extends ThemeExtension<AppSurface> {
       t < 0.5 ? this : (other ?? this);
 }
 
-/// Paints the theme's [AppSurface.backdrop] behind a page — the full-screen
-/// stand-in for `scaffoldBackgroundColor` when the page is a gradient. Use it
+/// Paints the Glass wallpaper behind a page — the full-screen stand-in for
+/// `scaffoldBackgroundColor` when the page is a [GlassWallpaper]. Use it
 /// on any route that builds its own transitions (and so skips
 /// [_BackdropTransitionsBuilder]).
 class PageBackdrop extends StatelessWidget {
@@ -307,11 +330,12 @@ class PageBackdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final backdrop = AppSurface.of(context).backdrop;
-    if (backdrop == null) return child;
-    return DecoratedBox(
-      decoration: BoxDecoration(gradient: backdrop),
-      child: child,
+    if (AppSurface.of(context).backdrop == null) return child;
+    // One BackdropGroup per page: every card on it shares a single read of
+    // the wallpaper instead of each re-reading it. The RepaintBoundary keeps
+    // content changes from repainting the wallpaper.
+    return BackdropGroup(
+      child: GlassWallpaper(child: RepaintBoundary(child: child)),
     );
   }
 }

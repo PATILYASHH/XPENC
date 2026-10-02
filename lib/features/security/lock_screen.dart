@@ -7,6 +7,7 @@ import '../../core/branding/brand_mark.dart';
 import '../../core/security/master_phrase_field.dart';
 import '../../core/security/paste_code_key.dart';
 import '../../core/security/pin_pad.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart' show UnlockMethod;
 import 'lock_screen_keypad.dart';
@@ -255,7 +256,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     BuildContext context,
     List<UnlockMethod> otherMethods,
   ) async {
-    final chosen = await showModalBottomSheet<UnlockMethod>(
+    final chosen = await showAppSheet<UnlockMethod>(
       context: context,
       builder: (sheetContext) => SafeArea(
         child: Column(

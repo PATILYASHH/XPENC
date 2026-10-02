@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/branding/app_info.dart';
 import '../../core/branding/brand_mark.dart';
+import '../../core/widgets/app_surfaces.dart';
 
 /// Settings' front door — a menu of modules, each its own page. Splitting it
 /// this way (instead of one long scrolling list of every toggle) keeps each
@@ -72,7 +73,7 @@ class SettingsScreen extends StatelessWidget {
             subtitle: 'Recalculate balances, clear all data',
             onTap: () => context.push('/more/settings/data'),
           ),
-          Card(
+          AppCard(
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               leading: const BrandMark(size: 34),
@@ -109,7 +110,7 @@ class _ModuleTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Card(
+    return AppCard(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),

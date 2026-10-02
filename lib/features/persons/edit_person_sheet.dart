@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import 'contact_import.dart';
@@ -13,7 +14,7 @@ Future<void> showEditPersonSheet(
   WidgetRef ref,
   PersonRow person,
 ) {
-  return showModalBottomSheet<void>(
+  return showAppSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
@@ -184,7 +185,7 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
         detailsAllowed: true,
       ), everyone);
       if (existing != null) {
-        final addAnyway = await showDialog<bool>(
+        final addAnyway = await showAppDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
             title: const Text('Already in your people'),

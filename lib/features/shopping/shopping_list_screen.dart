@@ -5,6 +5,7 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/amount_keypad_field.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../core/widgets/nav_bar_inset.dart';
@@ -111,7 +112,7 @@ class ShoppingListScreen extends ConsumerWidget {
               if (unchecked.isNotEmpty && !estimatedTotal.isZero)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: Card(
+                  child: AppCard(
                     margin: EdgeInsets.zero,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
@@ -138,7 +139,7 @@ class ShoppingListScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
-              Card(
+              AppCard(
                 clipBehavior: Clip.antiAlias,
                 child: Column(
                   children: [
@@ -172,7 +173,7 @@ class ShoppingListScreen extends ConsumerWidget {
     ShoppingListRow list,
   ) async {
     final controller = TextEditingController(text: list.name);
-    final newName = await showDialog<String>(
+    final newName = await showAppDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Rename list'),
@@ -216,7 +217,7 @@ class ShoppingListScreen extends ConsumerWidget {
     ShoppingListRow list,
   ) async {
     final navigator = Navigator.of(context);
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text('Delete "${list.name}"?'),
@@ -306,7 +307,7 @@ Future<void> _openItemEditor(
   int listId, {
   ShoppingItemRow? existing,
 }) {
-  return showModalBottomSheet<void>(
+  return showAppSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
@@ -136,7 +137,7 @@ class PayeeDetailScreen extends ConsumerWidget {
   Future<void> _connect(BuildContext context, WidgetRef ref) async {
     final router = GoRouter.of(context);
     final messenger = ScaffoldMessenger.of(context);
-    final picked = await showModalBottomSheet<PersonRow>(
+    final picked = await showAppSheet<PersonRow>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -161,7 +162,7 @@ class PayeeDetailScreen extends ConsumerWidget {
 
   Future<void> _disconnect(BuildContext context, WidgetRef ref, int pid) async {
     final router = GoRouter.of(context);
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Disconnect from person?'),
@@ -192,7 +193,7 @@ class PayeeDetailScreen extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
 
-    final newName = await showDialog<String>(
+    final newName = await showAppDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Rename payee'),
@@ -251,7 +252,7 @@ class _TotalHero extends StatelessWidget {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-      child: Card(
+      child: AppCard(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
           child: Column(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 
@@ -31,7 +32,7 @@ class LockScreenStyleSheet extends ConsumerWidget {
     LockScreenStyle.scrambled => Icons.shuffle_rounded,
   };
 
-  static Future<void> show(BuildContext context) => showModalBottomSheet<void>(
+  static Future<void> show(BuildContext context) => showAppSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
