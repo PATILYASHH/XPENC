@@ -1,5 +1,7 @@
-import 'package:flutter/cupertino.dart'
-    show CupertinoIcons, CupertinoPageTransitionsBuilder;
+// Unfiltered on purpose: CupertinoPageTransitionsBuilder comes from
+// material.dart on CI's Flutter 3.38 but from cupertino.dart on newer SDKs,
+// so a `show` list would break one of the two.
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
