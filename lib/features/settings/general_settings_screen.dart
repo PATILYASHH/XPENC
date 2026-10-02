@@ -18,7 +18,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
     final cs = theme.colorScheme;
     final trailingStyle = settingsTrailingStyle(context);
 
-    final preset = ref.watch(themePresetProvider);
+    final themeChoice = ref.watch(themeChoiceProvider);
     final currency = ref.watch(currencyProvider);
     final showSymbol = ref.watch(showCurrencySymbolProvider);
     final moreScreenViewMode = ref.watch(moreScreenViewModeProvider);
@@ -79,12 +79,12 @@ class GeneralSettingsScreen extends ConsumerWidget {
                 Divider(height: 1, indent: 60, color: cs.outline),
                 ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  leading: Icon(preset.icon),
+                  leading: Icon(themeChoice.style.icon),
                   title: const Text('Theme'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(preset.label, style: trailingStyle),
+                      Text(themeChoice.style.label, style: trailingStyle),
                       const SizedBox(width: 4),
                       Icon(
                         Icons.chevron_right_rounded,

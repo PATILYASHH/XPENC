@@ -5,6 +5,8 @@ import 'app_colors.dart';
 import 'font_options.dart';
 import 'theme_shape.dart';
 
+export 'theme_shape.dart' show SurfaceStyle;
+
 /// One UI–inspired: large rounded cards, generous spacing, big titles.
 /// The chrome is whatever [Palette]/[ThemeShape] it is handed; money colours
 /// never change.
@@ -24,6 +26,21 @@ class AppTheme {
     final isDark = p.brightness == Brightness.dark;
     final radius = shape.controlRadius;
     final cardRadius = shape.cardRadius;
+    final glass = shape.isGlass;
+    final weightDelta = shape.baseWeightDelta + fontWeightDelta;
+    final borderSide = BorderSide(color: p.border, width: shape.borderWidth);
+    // Sheets and dialogs float over content, so even Glass keeps them nearly
+    // opaque — frosted, not see-through.
+    final floatingColor = glass ? const Color(0xF2F7F8FC) : null;
+    // What separators and incidental outlines draw with. Noir's ink outline
+    // would turn every divider into a heavy rule and Glass's white edge would
+    // vanish as one, so both separate with a softer tone; their full
+    // [borderSide] is kept for cards, chips and inputs.
+    final hairline = glass
+        ? const Color(0x1A000000)
+        : shape.borderWidth > 1
+        ? Color.alphaBlend(p.border.withValues(alpha: 0.22), p.surfaceHigh)
+        : p.border;
 
     final scheme = ColorScheme(
       brightness: p.brightness,
@@ -40,15 +57,18 @@ class AppTheme {
       // *recessed* tone — otherwise an empty bar on a card is invisible.
       surfaceContainerHighest: p.track,
       onSurfaceVariant: p.textMuted,
-      outline: p.border,
-      outlineVariant: p.border,
+      outline: hairline,
+      outlineVariant: hairline,
     );
 
     final base = ThemeData(
       useMaterial3: true,
       brightness: p.brightness,
       colorScheme: scheme,
-      scaffoldBackgroundColor: p.bg,
+      // Glass pages are transparent; [_BackdropTransitionsBuilder] paints the
+      // gradient behind each route instead, so a page in mid-transition never
+      // shows the one beneath it through.
+      scaffoldBackgroundColor: glass ? Colors.transparent : p.bg,
       splashFactory: InkSparkle.splashFactory,
     );
 
@@ -63,12 +83,49 @@ class AppTheme {
       base.textTheme.apply(bodyColor: p.text, displayColor: p.text),
       displayFamily: displayFamily,
       bodyFamily: bodyFamily,
-      weightDelta: fontWeightDelta,
+      weightDelta: weightDelta,
     );
 
     return base.copyWith(
+      extensions: [
+        AppSurface(
+          style: shape.surfaceStyle,
+          backdrop: glass ? AppPalettes.glassBackdrop : null,
+        ),
+      ],
+      // Each platform keeps the SDK's own default transition — Glass only
+      // slips its backdrop underneath.
+      pageTransitionsTheme: glass
+          ? PageTransitionsTheme(
+              builders: {
+                for (final e in base.pageTransitionsTheme.builders.entries)
+                  e.key: _BackdropTransitionsBuilder(e.value),
+              },
+            )
+          : null,
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: floatingColor,
+        modalBackgroundColor: floatingColor,
+        surfaceTintColor: Colors.transparent,
+        shape: glass
+            ? RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(cardRadius + 6),
+                ),
+              )
+            : null,
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: floatingColor,
+        surfaceTintColor: Colors.transparent,
+        shape: glass
+            ? RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(cardRadius),
+              )
+            : null,
+      ),
       appBarTheme: AppBarTheme(
-        backgroundColor: p.bg,
+        backgroundColor: glass ? Colors.transparent : p.bg,
         foregroundColor: p.text,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
@@ -79,7 +136,7 @@ class AppTheme {
             : SystemUiOverlayStyle.dark,
         titleTextStyle: base.textTheme.headlineSmall?.copyWith(
           color: p.text,
-          fontWeight: _shiftWeight(shape.headlineWeight, fontWeightDelta),
+          fontWeight: _shiftWeight(shape.headlineWeight, weightDelta),
           letterSpacing: shape.headlineLetterSpacing,
           fontFamily: displayFamily,
         ),
@@ -91,10 +148,10 @@ class AppTheme {
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(cardRadius),
-          side: BorderSide(color: p.border),
+          side: borderSide,
         ),
       ),
-      dividerTheme: DividerThemeData(color: p.border, thickness: 1, space: 1),
+      dividerTheme: DividerThemeData(color: hairline, thickness: 1, space: 1),
       listTileTheme: ListTileThemeData(
         iconColor: p.textMuted,
         textColor: p.text,
@@ -106,7 +163,7 @@ class AppTheme {
         backgroundColor: p.surfaceHigh,
         selectedColor: p.accent.withValues(alpha: 0.14),
         checkmarkColor: p.accent,
-        side: BorderSide(color: p.border),
+        side: borderSide,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
         labelStyle: base.textTheme.labelLarge?.copyWith(color: p.text),
         secondaryLabelStyle: base.textTheme.labelLarge?.copyWith(
@@ -130,22 +187,26 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: p.surface,
+        // A Glass input is a lighter frost on its card, not an opaque slab.
+        fillColor: glass ? const Color(0x80FFFFFF) : p.surface,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 18,
           vertical: 18,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radius),
-          borderSide: BorderSide(color: p.border),
+          borderSide: borderSide,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radius),
-          borderSide: BorderSide(color: p.border),
+          borderSide: borderSide,
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radius),
-          borderSide: BorderSide(color: p.accent, width: 1.6),
+          borderSide: BorderSide(
+            color: p.accent,
+            width: shape.borderWidth + 0.6,
+          ),
         ),
       ),
       textTheme: textTheme,
@@ -203,4 +264,84 @@ class AppTheme {
     final index = FontWeight.values.indexOf(weight ?? FontWeight.w400) + delta;
     return FontWeight.values[index.clamp(0, FontWeight.values.length - 1)];
   }
+}
+
+/// Surface facts a widget can't read off [ColorScheme]: whether cards are
+/// frosted, and what the page behind them is painted with.
+@immutable
+class AppSurface extends ThemeExtension<AppSurface> {
+  const AppSurface({required this.style, this.backdrop});
+
+  static const solid = AppSurface(style: SurfaceStyle.solid);
+
+  final SurfaceStyle style;
+
+  /// Painted behind every page when set (Glass). `null` means the page is
+  /// the plain `scaffoldBackgroundColor`.
+  final Gradient? backdrop;
+
+  bool get isGlass => style == SurfaceStyle.glass;
+
+  static AppSurface of(BuildContext context) =>
+      Theme.of(context).extension<AppSurface>() ?? solid;
+
+  @override
+  AppSurface copyWith({SurfaceStyle? style, Gradient? backdrop}) => AppSurface(
+    style: style ?? this.style,
+    backdrop: backdrop ?? this.backdrop,
+  );
+
+  @override
+  AppSurface lerp(AppSurface? other, double t) =>
+      t < 0.5 ? this : (other ?? this);
+}
+
+/// Paints the theme's [AppSurface.backdrop] behind a page — the full-screen
+/// stand-in for `scaffoldBackgroundColor` when the page is a gradient. Use it
+/// on any route that builds its own transitions (and so skips
+/// [_BackdropTransitionsBuilder]).
+class PageBackdrop extends StatelessWidget {
+  const PageBackdrop({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final backdrop = AppSurface.of(context).backdrop;
+    if (backdrop == null) return child;
+    return DecoratedBox(
+      decoration: BoxDecoration(gradient: backdrop),
+      child: child,
+    );
+  }
+}
+
+/// [inner]'s transition, around a page that carries its own backdrop — so
+/// transparent Glass scaffolds stay opaque as whole routes.
+class _BackdropTransitionsBuilder extends PageTransitionsBuilder {
+  const _BackdropTransitionsBuilder(this.inner);
+
+  final PageTransitionsBuilder inner;
+
+  @override
+  DelegatedTransitionBuilder? get delegatedTransition =>
+      inner.delegatedTransition;
+
+  @override
+  Duration get transitionDuration => inner.transitionDuration;
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) => inner.buildTransitions(
+    route,
+    context,
+    animation,
+    secondaryAnimation,
+    PageBackdrop(child: child),
+  );
 }

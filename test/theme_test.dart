@@ -13,82 +13,135 @@ import 'package:xpenc/features/settings/theme_picker_sheet.dart';
 import 'package:xpenc/features/transactions/transactions_screen.dart';
 
 void main() {
-  group('ThemePreset', () {
-    test('round-trips through its name', () {
-      for (final preset in ThemePreset.values) {
-        expect(ThemePreset.fromName(preset.name), preset);
+  group('ThemeChoice', () {
+    test('round-trips through its storage name, every style and mode', () {
+      for (final style in ThemeStyle.values) {
+        for (final mode in ThemeMode.values) {
+          final choice = ThemeChoice(style, mode);
+          expect(ThemeChoice.parse(choice.storageName), choice);
+        }
       }
     });
 
     test('an unknown or missing name falls back instead of throwing', () {
-      expect(ThemePreset.fromName(null), ThemePreset.fallback);
-      expect(ThemePreset.fromName(''), ThemePreset.fallback);
-      expect(ThemePreset.fromName('neon_disco'), ThemePreset.fallback);
-    });
-
-    test('a preset that forces a brightness ignores the platform', () {
+      for (final raw in [null, '', 'neon_disco', 'classic:dark:x', ':dark']) {
+        expect(ThemeChoice.parse(raw), ThemeChoice.fallback, reason: '$raw');
+      }
+      // An unknown mode keeps the style rather than discarding both.
       expect(
-        ThemePreset.dark.resolve(Brightness.light),
-        ThemePreset.dark.resolve(Brightness.dark),
-      );
-      expect(
-        ThemePreset.midnight.resolve(Brightness.light).brightness,
-        Brightness.dark,
+        ThemeChoice.parse('noir:sepia'),
+        const ThemeChoice(ThemeStyle.noir),
       );
     });
 
-    test('system and colourful follow the platform', () {
-      for (final preset in [ThemePreset.system, ThemePreset.colourful]) {
-        expect(preset.resolve(Brightness.light).brightness, Brightness.light);
-        expect(preset.resolve(Brightness.dark).brightness, Brightness.dark);
+    test('the default is Classic following the device', () {
+      expect(ThemeChoice.fallback.style, ThemeStyle.classic);
+      expect(ThemeChoice.fallback.mode, ThemeMode.system);
+    });
+
+    test('presets from before styles map onto Classic, keeping a forced '
+        'brightness, and Bold becomes Noir', () {
+      const expected = {
+        'system': ThemeChoice(ThemeStyle.classic),
+        'mono': ThemeChoice(ThemeStyle.classic),
+        'light': ThemeChoice(ThemeStyle.classic, ThemeMode.light),
+        'dark': ThemeChoice(ThemeStyle.classic, ThemeMode.dark),
+        'colourful': ThemeChoice(ThemeStyle.classic),
+        'cove': ThemeChoice(ThemeStyle.classic),
+        'midnight': ThemeChoice(ThemeStyle.classic, ThemeMode.dark),
+        'bold': ThemeChoice(ThemeStyle.noir, ThemeMode.dark),
+      };
+      expected.forEach((raw, choice) {
+        expect(ThemeChoice.parse(raw), choice, reason: raw);
+      });
+    });
+
+    test('Glass is light only and ignores the stored mode', () {
+      const glass = ThemeChoice(ThemeStyle.glass, ThemeMode.dark);
+      expect(ThemeStyle.glass.supportsModes, isFalse);
+      expect(glass.effectiveMode, ThemeMode.light);
+      expect(glass.resolve(Brightness.dark).brightness, Brightness.light);
+      // …but the preference survives a trip through Glass.
+      expect(glass.withStyle(ThemeStyle.classic).effectiveMode, ThemeMode.dark);
+    });
+
+    test('Classic and Noir offer both brightnesses', () {
+      for (final style in [ThemeStyle.classic, ThemeStyle.noir]) {
+        final c = ThemeChoice(style);
+        expect(c.resolve(Brightness.light).brightness, Brightness.light);
+        expect(c.resolve(Brightness.dark).brightness, Brightness.dark);
+        expect(
+          ThemeChoice(style, ThemeMode.dark).resolve(Brightness.light),
+          style.darkPalette,
+        );
       }
     });
 
     test('every palette keeps cards distinct from the page and the track '
         'distinct from cards', () {
-      for (final preset in ThemePreset.values) {
-        for (final p in [preset.lightPalette, preset.darkPalette]) {
+      for (final style in ThemeStyle.values) {
+        for (final p in [style.lightPalette, style.darkPalette]) {
           expect(
             p.surfaceHigh,
             isNot(p.bg),
-            reason: '${preset.name}: card == page',
+            reason: '${style.name}: card == page',
           );
           expect(
             p.track,
             isNot(p.surfaceHigh),
-            reason: '${preset.name}: track == card',
+            reason: '${style.name}: track == card',
           );
         }
       }
     });
 
     test('money colours are identical in every theme', () {
-      final schemes = ThemePreset.values.map(
-        (p) => AppTheme.of(p.lightPalette, p.shape).colorScheme,
-      );
+      final schemes = [
+        for (final s in ThemeStyle.values) ...[
+          AppTheme.of(s.lightPalette, s.shape).colorScheme,
+          AppTheme.of(s.darkPalette, s.shape).colorScheme,
+        ],
+      ];
       // `error` is the one money colour the ColorScheme carries. If a palette
       // ever repainted it, red would stop meaning "expense".
       expect(schemes.map((s) => s.error).toSet(), hasLength(1));
     });
 
-    test('Cove renders with its own bigger, softer shape — not the shared '
-        'classic radius every other preset before it used', () {
-      final classicCard =
-          AppTheme.of(
-                ThemePreset.system.lightPalette,
-                ThemePreset.system.shape,
-              ).cardTheme.shape
-              as RoundedRectangleBorder;
-      final coveCard =
-          AppTheme.of(
-                ThemePreset.cove.lightPalette,
-                ThemePreset.cove.shape,
-              ).cardTheme.shape
-              as RoundedRectangleBorder;
+    test('Glass pages are transparent over a gradient backdrop; solid '
+        'styles keep an opaque page and no backdrop', () {
+      final glass = AppTheme.of(
+        ThemeStyle.glass.lightPalette,
+        ThemeStyle.glass.shape,
+      );
+      expect(glass.scaffoldBackgroundColor, Colors.transparent);
+      expect(glass.extension<AppSurface>()!.backdrop, isNotNull);
+      expect(glass.cardTheme.color!.a, lessThan(1));
+      // Sheets float over content: frosted, never see-through.
+      expect(glass.bottomSheetTheme.backgroundColor!.a, greaterThan(0.9));
 
+      for (final s in [ThemeStyle.classic, ThemeStyle.noir]) {
+        final t = AppTheme.of(s.lightPalette, s.shape);
+        expect(t.scaffoldBackgroundColor.a, 1, reason: s.name);
+        expect(t.extension<AppSurface>()!.backdrop, isNull, reason: s.name);
+      }
+    });
+
+    test('Noir draws heavier outlines and heavier text than Classic', () {
+      final classic = AppTheme.of(
+        ThemeStyle.classic.lightPalette,
+        ThemeStyle.classic.shape,
+      );
+      final noir = AppTheme.of(
+        ThemeStyle.noir.lightPalette,
+        ThemeStyle.noir.shape,
+      );
+      final classicSide =
+          (classic.cardTheme.shape as RoundedRectangleBorder).side;
+      final noirSide = (noir.cardTheme.shape as RoundedRectangleBorder).side;
+      expect(noirSide.width, greaterThan(classicSide.width));
       expect(
-        (coveCard.borderRadius as BorderRadius).topLeft.x,
-        greaterThan((classicCard.borderRadius as BorderRadius).topLeft.x),
+        noir.textTheme.bodyMedium!.fontWeight!.value,
+        greaterThan(classic.textTheme.bodyMedium!.fontWeight!.value),
       );
     });
   });
@@ -99,15 +152,16 @@ void main() {
     setUp(() => db = AppDatabase(NativeDatabase.memory()));
     tearDown(() => db.close());
 
-    test('defaults to system, and survives a write', () async {
-      expect((await db.getSettings()).themeName, 'system');
-
-      await db.setThemeName(ThemePreset.colourful.name);
-      expect((await db.getSettings()).themeName, 'colourful');
+    test('defaults to Classic, and survives a write', () async {
       expect(
-        ThemePreset.fromName((await db.getSettings()).themeName),
-        ThemePreset.colourful,
+        ThemeChoice.parse((await db.getSettings()).themeName),
+        ThemeChoice.fallback,
       );
+
+      const noirDark = ThemeChoice(ThemeStyle.noir, ThemeMode.dark);
+      await db.setThemeName(noirDark.storageName);
+      expect((await db.getSettings()).themeName, 'noir:dark');
+      expect(ThemeChoice.parse((await db.getSettings()).themeName), noirDark);
     });
 
     test('a pre-v4 backup, whose settings row predates the column, restores '
@@ -126,16 +180,16 @@ void main() {
 
     test('restoring a backup keeps this device\'s theme, not the one baked '
         'into the file', () async {
-      // The backup is taken on a "Midnight" phone…
-      await db.setThemeName(ThemePreset.midnight.name);
+      // The backup is taken on a Glass phone…
+      await db.setThemeName(ThemeStyle.glass.name);
       final dump = await db.exportAll();
 
-      // …and restored onto a "Light" one. The ledger crosses over; the look
-      // does not.
-      await db.setThemeName(ThemePreset.light.name);
+      // …and restored onto a light Classic one. The ledger crosses over; the
+      // look does not.
+      await db.setThemeName('classic:light');
       await db.importAll(dump);
 
-      expect((await db.getSettings()).themeName, ThemePreset.light.name);
+      expect((await db.getSettings()).themeName, 'classic:light');
     });
 
     test(
@@ -149,8 +203,8 @@ void main() {
       },
     );
 
-    test('themePresetProvider reflects the stored row', () async {
-      await db.setThemeName(ThemePreset.midnight.name);
+    test('themeChoiceProvider reflects the stored row', () async {
+      await db.setThemeName('noir:light');
 
       final container = ProviderContainer(
         overrides: [dbProvider.overrideWithValue(db)],
@@ -159,10 +213,13 @@ void main() {
 
       // Before the stream emits, the provider must still hand back a usable
       // theme rather than null.
-      expect(container.read(themePresetProvider), ThemePreset.fallback);
+      expect(container.read(themeChoiceProvider), ThemeChoice.fallback);
 
       await container.read(settingsProvider.future);
-      expect(container.read(themePresetProvider), ThemePreset.midnight);
+      expect(
+        container.read(themeChoiceProvider),
+        const ThemeChoice(ThemeStyle.noir, ThemeMode.light),
+      );
     });
   });
 
@@ -196,46 +253,66 @@ void main() {
       await tester.pump(Duration.zero);
     }
 
-    testWidgets('the picker lists every preset and does not overflow', (
-      tester,
-    ) async {
-      await pump(tester, const Scaffold(body: ThemePickerSheet()));
-      expect(tester.takeException(), isNull);
-
-      for (final preset in ThemePreset.values) {
-        expect(find.text(preset.label), findsOneWidget);
-      }
-      await unmount(tester);
-    });
-
-    testWidgets('picking a theme writes it to the database', (tester) async {
-      await pump(tester, const Scaffold(body: ThemePickerSheet()));
-
-      await tester.tap(find.text(ThemePreset.colourful.label));
+    Future<String> stored(WidgetTester tester) async {
       await tester.pump();
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 200)),
       );
-
-      late String stored;
+      late String name;
       await tester.runAsync(() async {
-        stored = (await db.getSettings()).themeName;
+        name = (await db.getSettings()).themeName;
       });
-      expect(stored, ThemePreset.colourful.name);
-
       await tester.pump();
+      return name;
+    }
+
+    testWidgets('the picker lists every style and the mode choice, and does '
+        'not overflow', (tester) async {
+      await pump(tester, const Scaffold(body: ThemePickerSheet()));
+      expect(tester.takeException(), isNull);
+
+      for (final style in ThemeStyle.values) {
+        expect(find.text(style.label), findsOneWidget);
+      }
+      expect(find.text('Dark'), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets('picking a style writes it to the database', (tester) async {
+      await pump(tester, const Scaffold(body: ThemePickerSheet()));
+
+      await tester.tap(find.text(ThemeStyle.glass.label));
+      expect(await stored(tester), 'glass');
+      await unmount(tester);
+    });
+
+    testWidgets('picking a mode keeps the style', (tester) async {
+      await tester.runAsync(() => db.setThemeName('noir'));
+      await pump(tester, const Scaffold(body: ThemePickerSheet()));
+
+      await tester.tap(find.text('Dark'));
+      expect(await stored(tester), 'noir:dark');
+      await unmount(tester);
+    });
+
+    testWidgets('Glass hides the mode choice', (tester) async {
+      await tester.runAsync(() => db.setThemeName('glass'));
+      await pump(tester, const Scaffold(body: ThemePickerSheet()));
+
+      expect(find.text('Dark'), findsNothing);
+      expect(find.textContaining('light only'), findsWidgets);
       await unmount(tester);
     });
 
     testWidgets('settings shows the stored theme, not a hardcoded label', (
       tester,
     ) async {
-      await tester.runAsync(() => db.setThemeName(ThemePreset.midnight.name));
+      await tester.runAsync(() => db.setThemeName('noir:dark'));
 
       await pump(tester, const GeneralSettingsScreen());
       expect(tester.takeException(), isNull);
-      expect(find.text('Midnight'), findsOneWidget);
-      expect(find.text('System'), findsNothing);
+      expect(find.text('Noir'), findsOneWidget);
+      expect(find.text('Classic'), findsNothing);
       await unmount(tester);
     });
 
@@ -264,6 +341,21 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(find.text('Entertainment'), findsWidgets);
       await unmount(tester);
+    });
+
+    testWidgets('a Glass page renders its gradient backdrop', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.of(
+            ThemeStyle.glass.lightPalette,
+            ThemeStyle.glass.shape,
+          ),
+          home: const Scaffold(body: Card(child: Text('pane'))),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(PageBackdrop), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
   });
 }

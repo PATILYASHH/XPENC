@@ -17,6 +17,7 @@ import '../../features/transactions/transaction_filters.dart';
 import '../branding/app_info.dart';
 import '../branding/brand_mark.dart';
 import '../budget_cycle.dart';
+import '../theme/app_theme.dart';
 
 /// `Dashboard · slotLeft · ➕ · slotRight · More`
 ///
@@ -129,6 +130,9 @@ class AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final border = theme.colorScheme.outline;
+    // Glass docks the bar as a frosted pane — a brighter frost than the cards,
+    // with the white top edge iOS tab bars catch the light on.
+    final glass = AppSurface.of(context).isGlass;
     final (leftId, rightId) = _slotIds(ref);
     final left = _catalog[leftId]!;
     final right = _catalog[rightId]!;
@@ -139,7 +143,10 @@ class AppShell extends ConsumerWidget {
         body: navigationShell,
         bottomNavigationBar: DecoratedBox(
           decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: border)),
+            color: glass ? const Color(0xB8FFFFFF) : null,
+            border: Border(
+              top: BorderSide(color: glass ? const Color(0xE6FFFFFF) : border),
+            ),
           ),
           child: SafeArea(
             top: false,
@@ -674,8 +681,8 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
 /// The soft, tappable pill behind a top-bar icon — the same accent-tint idiom
 /// [ThemePickerSheet]'s selected tile already uses, so a tonal icon reads as
 /// *this app's* accent rather than a generic Material default. Its shape
-/// isn't hardcoded — a `CircleBorder` already matches every preset, Cove's
-/// bigger radius included, since a circle has no corner to disagree about.
+/// isn't hardcoded — a `CircleBorder` already matches every style's
+/// radius, since a circle has no corner to disagree about.
 class _TonalIconButton extends StatelessWidget {
   const _TonalIconButton({
     required this.icon,

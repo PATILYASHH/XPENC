@@ -268,7 +268,7 @@ class _XpencAppState extends ConsumerState<XpencApp>
     });
 
     final ready = ref.watch(databaseReadyProvider);
-    final preset = ref.watch(themePresetProvider);
+    final choice = ref.watch(themeChoiceProvider);
     final fontFamily = ref.watch(fontFamilyProvider);
     final fontWeightDelta = ref.watch(fontWeightDeltaProvider);
     final fontScalePercent = ref.watch(fontScalePercentProvider);
@@ -298,21 +298,21 @@ class _XpencAppState extends ConsumerState<XpencApp>
     return MaterialApp.router(
       title: AppInfo.name,
       debugShowCheckedModeBanner: false,
-      // A preset that forces one brightness stores the same palette in both
-      // slots, so `themeMode` alone decides which of these two is used.
+      // A style that only exists in one brightness (Glass) stores the same
+      // palette in both slots, so `themeMode` alone decides.
       theme: AppTheme.of(
-        preset.lightPalette,
-        preset.shape,
+        choice.style.lightPalette,
+        choice.style.shape,
         fontFamily: fontFamily,
         fontWeightDelta: fontWeightDelta,
       ),
       darkTheme: AppTheme.of(
-        preset.darkPalette,
-        preset.shape,
+        choice.style.darkPalette,
+        choice.style.shape,
         fontFamily: fontFamily,
         fontWeightDelta: fontWeightDelta,
       ),
-      themeMode: preset.mode,
+      themeMode: choice.effectiveMode,
       routerConfig: appRouter,
       // A failed database must never look like "still loading".
       builder: (context, child) {

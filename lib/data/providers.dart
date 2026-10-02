@@ -916,12 +916,12 @@ final settingsProvider = StreamProvider<SettingRow>(
   (ref) => ref.watch(dbProvider).watchSettings(),
 );
 
-/// The theme the user picked. Falls back to [ThemePreset.fallback] while the
+/// The theme the user picked. Falls back to [ThemeChoice.fallback] while the
 /// settings row is loading, and if the database never opens — the app must
 /// still be able to paint its own error screen.
-final themePresetProvider = Provider<ThemePreset>((ref) {
+final themeChoiceProvider = Provider<ThemeChoice>((ref) {
   final name = ref.watch(settingsProvider).valueOrNull?.themeName;
-  return ThemePreset.fromName(name);
+  return ThemeChoice.parse(name);
 });
 
 /// Text-size multiplier, as a percentage — 100 is normal. See

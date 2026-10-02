@@ -24,7 +24,7 @@ enum AppFontFamily {
   final String description;
 
   /// Unknown or missing names fall back to [system], so a bad write can
-  /// never brick the app — same convention as `ThemePreset.fromName`.
+  /// never brick the app — same convention as `ThemeChoice.parse`.
   static AppFontFamily fromName(String? name) {
     if (name == null) return AppFontFamily.system;
     return AppFontFamily.values.firstWhere(

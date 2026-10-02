@@ -7,8 +7,9 @@ import '../../core/theme/theme_shape.dart';
 import '../../core/widgets/motion.dart';
 import '../../data/providers.dart';
 
-/// Pick a theme. Each row previews the palette it will apply, so the choice is
-/// made by looking rather than by reading.
+/// Pick a theme: a style, then — for styles that come in both — light, dark
+/// or follow the device. Each style row previews the palette it will apply,
+/// so the choice is made by looking rather than by reading.
 class ThemePickerSheet extends ConsumerWidget {
   const ThemePickerSheet({super.key});
 
@@ -22,11 +23,14 @@ class ThemePickerSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final current = ref.watch(themePresetProvider);
+    final current = ref.watch(themeChoiceProvider);
     final platform = MediaQuery.platformBrightnessOf(context);
 
+    void save(ThemeChoice choice) =>
+        ref.read(dbProvider).setThemeName(choice.storageName);
+
     return SafeArea(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -52,20 +56,65 @@ class ThemePickerSheet extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 16),
-            for (var i = 0; i < ThemePreset.values.length; i++) ...[
+            for (var i = 0; i < ThemeStyle.values.length; i++) ...[
               if (i > 0) const SizedBox(height: 10),
               Reveal(
                 index: i,
                 child: _PresetTile(
-                  preset: ThemePreset.values[i],
-                  selected: ThemePreset.values[i] == current,
+                  choice: current.withStyle(ThemeStyle.values[i]),
+                  selected: ThemeStyle.values[i] == current.style,
                   platformBrightness: platform,
-                  onTap: () => ref
-                      .read(dbProvider)
-                      .setThemeName(ThemePreset.values[i].name),
+                  onTap: () => save(current.withStyle(ThemeStyle.values[i])),
                 ),
               ),
             ],
+            const SizedBox(height: 20),
+            Text(
+              'Appearance',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 10),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              child: current.style.supportsModes
+                  ? SizedBox(
+                      key: const ValueKey('modes'),
+                      width: double.infinity,
+                      child: SegmentedButton<ThemeMode>(
+                        showSelectedIcon: false,
+                        segments: const [
+                          ButtonSegment(
+                            value: ThemeMode.system,
+                            icon: Icon(Icons.brightness_auto_rounded),
+                            label: Text('System'),
+                          ),
+                          ButtonSegment(
+                            value: ThemeMode.light,
+                            icon: Icon(Icons.light_mode_rounded),
+                            label: Text('Light'),
+                          ),
+                          ButtonSegment(
+                            value: ThemeMode.dark,
+                            icon: Icon(Icons.dark_mode_rounded),
+                            label: Text('Dark'),
+                          ),
+                        ],
+                        selected: {current.mode},
+                        onSelectionChanged: (s) =>
+                            save(current.withMode(s.first)),
+                      ),
+                    )
+                  : Text(
+                      key: const ValueKey('fixed'),
+                      '${current.style.label} comes in light only. Your '
+                      'light/dark choice is kept for the other themes.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+            ),
           ],
         ),
       ),
@@ -75,13 +124,13 @@ class ThemePickerSheet extends ConsumerWidget {
 
 class _PresetTile extends StatelessWidget {
   const _PresetTile({
-    required this.preset,
+    required this.choice,
     required this.selected,
     required this.platformBrightness,
     required this.onTap,
   });
 
-  final ThemePreset preset;
+  final ThemeChoice choice;
   final bool selected;
   final Brightness platformBrightness;
   final VoidCallback onTap;
@@ -90,7 +139,8 @@ class _PresetTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final palette = preset.resolve(platformBrightness);
+    final style = choice.style;
+    final palette = choice.resolve(platformBrightness);
 
     return PressScale(
       child: Material(
@@ -113,7 +163,7 @@ class _PresetTile extends StatelessWidget {
             ),
             child: Row(
               children: [
-                _Swatch(palette: palette, shape: preset.shape),
+                _Swatch(palette: palette, shape: style.shape),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -121,11 +171,11 @@ class _PresetTile extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Icon(preset.icon, size: 16, color: cs.onSurface),
+                          Icon(style.icon, size: 16, color: cs.onSurface),
                           const SizedBox(width: 6),
                           Flexible(
                             child: Text(
-                              preset.label,
+                              style.label,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.bodyLarge?.copyWith(
@@ -137,7 +187,7 @@ class _PresetTile extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        preset.description,
+                        style.description,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodySmall?.copyWith(
@@ -168,8 +218,8 @@ class _PresetTile extends StatelessWidget {
 }
 
 /// A miniature of the theme: its page, a card on it, and the accent. The
-/// card's own corner scales with [shape] — Cove's swatch shows its bigger
-/// squircle at a glance, the same way its colour shows in the fill.
+/// card's own corner scales with [shape], and Glass's page is its gradient —
+/// each style shows at a glance, the same way its colour shows in the fill.
 class _Swatch extends StatelessWidget {
   const _Swatch({required this.palette, required this.shape});
 
@@ -182,7 +232,9 @@ class _Swatch extends StatelessWidget {
       width: 52,
       height: 52,
       decoration: BoxDecoration(
-        color: palette.bg,
+        // Glass's page is its gradient, not a flat tone.
+        color: shape.isGlass ? null : palette.bg,
+        gradient: shape.isGlass ? AppPalettes.glassBackdrop : null,
         borderRadius: BorderRadius.circular(shape.controlRadius * 0.7),
         border: Border.all(color: palette.border),
       ),

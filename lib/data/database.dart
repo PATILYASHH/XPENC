@@ -5539,7 +5539,7 @@ class AppDatabase extends _$AppDatabase {
   Future<void> setLastMessageScanAt(DateTime at) =>
       update(settings).write(SettingsCompanion(lastMessageScanAt: Value(at)));
 
-  /// [name] must be a `ThemePreset.name`. Unknown values are tolerated on read,
+  /// [name] must be a `ThemeChoice.storageName`. Unknown values are tolerated on read,
   /// so a bad write degrades to the default rather than bricking the app.
   Future<void> setThemeName(String name) =>
       update(settings).write(SettingsCompanion(themeName: Value(name)));

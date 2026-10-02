@@ -23,12 +23,16 @@ void main() {
 
   Future<void> seedCash(int rupees) async {
     final salary = (await db.watchCategories(CategoryKind.income).first).first;
+    // A few days back, but never across a month boundary — the month-totals
+    // test below reads this month only, and failed on the 1st–3rd otherwise.
+    final now = DateTime.now();
+    final back = now.subtract(const Duration(days: 3));
     await db.addTransaction(
       type: TxType.income,
       amount: Money.fromRupees(rupees),
       accountId: cash,
       categoryId: salary.id,
-      date: DateTime.now().subtract(const Duration(days: 3)),
+      date: back.month == now.month ? back : DateTime(now.year, now.month),
     );
   }
 

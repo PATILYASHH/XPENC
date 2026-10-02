@@ -872,7 +872,7 @@ class Settings extends Table {
   BoolColumn get notificationsEnabled =>
       boolean().withDefault(const Constant(true))();
 
-  /// A `ThemePreset.name`. Stored as text rather than an enum index, so
+  /// A `ThemeChoice.storageName` (`classic`, `noir:dark`, …). Stored as text rather than an enum index, so
   /// reordering the enum can never silently repaint someone's app.
   TextColumn get themeName => text()
       .withLength(min: 1, max: 30)

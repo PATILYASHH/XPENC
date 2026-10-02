@@ -124,7 +124,7 @@ void main() {
     test('an explicit font family overrides the theme shape entirely', () {
       final theme = AppTheme.of(
         AppPalettes.monoLight,
-        ThemeShape.bold,
+        ThemeShape.noir,
         fontFamily: AppFontFamily.serif,
       );
 
@@ -133,10 +133,10 @@ void main() {
     });
 
     test('AppFontFamily.system leaves the theme shape untouched', () {
-      final withShapeOnly = AppTheme.of(AppPalettes.monoLight, ThemeShape.bold);
+      final withShapeOnly = AppTheme.of(AppPalettes.monoLight, ThemeShape.noir);
       final explicitSystem = AppTheme.of(
         AppPalettes.monoLight,
-        ThemeShape.bold,
+        ThemeShape.noir,
         fontFamily: AppFontFamily.system,
       );
 

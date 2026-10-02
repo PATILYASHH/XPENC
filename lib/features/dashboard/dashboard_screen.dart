@@ -51,7 +51,8 @@ class DashboardScreen extends ConsumerWidget {
               const SizedBox(height: 32),
             ],
           ),
-        const NavBarInsetSliver(),],
+          const NavBarInsetSliver(),
+        ],
       ),
     );
   }
@@ -271,7 +272,10 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
     // Every metric is rebuilt from the full ledger. Until that stream lands
     // it would report a flat line at the opening balance, which is a lie.
     final trendReady = ref.watch(allTransactionsProvider).hasValue;
-    final isBold = ref.watch(themePresetProvider) == ThemePreset.bold;
+    // Noir's moody wash is a dark-page look; light Noir keeps the tint wash.
+    final isBold =
+        ref.watch(themeChoiceProvider).style == ThemeStyle.noir &&
+        theme.brightness == Brightness.dark;
 
     final metric = _metric;
     final label = switch (metric) {

@@ -114,72 +114,30 @@ class AppPalettes {
     onPrimary: Color(0xFF0A0A0B),
   );
 
-  // ── Vivid: violet chrome ─────────────────────────────────────────────────
-  static const vividLight = Palette(
+  // ── Noir: warm ink, coral & gold accent ─────────────────────────────────
+  /// Cream paper, near-black ink. The coral is deepened from [noirDark]'s so
+  /// it still holds contrast on a light page.
+  static const noirLight = Palette(
     brightness: Brightness.light,
-    bg: Color(0xFFF6F4FF),
-    surface: Color(0xFFF6F4FF),
-    surfaceHigh: Color(0xFFFFFFFF),
-    track: Color(0xFFE9E3FB),
-    border: Color(0xFFDCD3F7),
-    text: Color(0xFF1A1330),
-    textMuted: Color(0xFF6C6484),
-    accent: Color(0xFF7C3AED),
-    primary: Color(0xFF7C3AED),
-    onPrimary: Color(0xFFFFFFFF),
+    bg: Color(0xFFF6F1EA),
+    surface: Color(0xFFF6F1EA),
+    surfaceHigh: Color(0xFFFFFDFA),
+    track: Color(0xFFE9E0D5),
+    border: Color(0xFF1B1118),
+    text: Color(0xFF140D12),
+    textMuted: Color(0xFF6E6268),
+    accent: Color(0xFFE2541B),
+    primary: Color(0xFF140D12),
+    onPrimary: Color(0xFFFFF7EE),
   );
 
-  static const vividDark = Palette(
-    brightness: Brightness.dark,
-    bg: Color(0xFF0F0B1E),
-    surface: Color(0xFF15102A),
-    surfaceHigh: Color(0xFF1C1636),
-    track: Color(0xFF2A2148),
-    border: Color(0xFF352B57),
-    text: Color(0xFFF3F0FF),
-    textMuted: Color(0xFFA69FC4),
-    accent: Color(0xFFA78BFA),
-    primary: Color(0xFFA78BFA),
-    onPrimary: Color(0xFF1A1030),
-  );
-
-  // ── Cove: ocean blue, soft chrome (see ThemeShape.soft) ──────────────────
-  static const coveLight = Palette(
-    brightness: Brightness.light,
-    bg: Color(0xFFF5F6F8),
-    surface: Color(0xFFF5F6F8),
-    surfaceHigh: Color(0xFFFFFFFF),
-    track: Color(0xFFE8EBF0),
-    border: Color(0xFFDEE2E8),
-    text: Color(0xFF0B0D12),
-    textMuted: Color(0xFF6C7480),
-    accent: Color(0xFF1C6EDB),
-    primary: Color(0xFF1C6EDB),
-    onPrimary: Color(0xFFFFFFFF),
-  );
-
-  static const coveDark = Palette(
-    brightness: Brightness.dark,
-    bg: Color(0xFF0A0E14),
-    surface: Color(0xFF10151D),
-    surfaceHigh: Color(0xFF171D27),
-    track: Color(0xFF212836),
-    border: Color(0xFF2A3140),
-    text: Color(0xFFEEF1F6),
-    textMuted: Color(0xFF8B94A3),
-    accent: Color(0xFF4C8DF5),
-    primary: Color(0xFF4C8DF5),
-    onPrimary: Color(0xFF071019),
-  );
-
-  // ── Bold: near-black, coral & gold accent. Dark only. ───────────────────
-  static const bold = Palette(
+  static const noirDark = Palette(
     brightness: Brightness.dark,
     bg: Color(0xFF0B0A0E),
     surface: Color(0xFF0B0A0E),
     surfaceHigh: Color(0xFF18151B),
     track: Color(0xFF241E28),
-    border: Color(0xFF2E2630),
+    border: Color(0xFF3A3040),
     text: Color(0xFFF6F1EC),
     textMuted: Color(0xFF948C97),
     accent: Color(0xFFFF9645),
@@ -187,19 +145,39 @@ class AppPalettes {
     onPrimary: Color(0xFF1B1118),
   );
 
-  // ── Midnight: deep navy, cyan accent. Dark only. ─────────────────────────
-  static const midnight = Palette(
-    brightness: Brightness.dark,
-    bg: Color(0xFF060B18),
-    surface: Color(0xFF0B1224),
-    surfaceHigh: Color(0xFF111A31),
-    track: Color(0xFF1B2745),
-    border: Color(0xFF24324F),
-    text: Color(0xFFE8EEF9),
-    textMuted: Color(0xFF92A2BF),
-    accent: Color(0xFF38BDF8),
-    primary: Color(0xFF38BDF8),
-    onPrimary: Color(0xFF04121F),
+  // ── Glass: frosted white over a soft gradient. Light only. ──────────────
+  /// [bg] is only the gradient's base tone — the page itself is
+  /// [glassBackdrop]. [surfaceHigh] is translucent: a card is a pane of
+  /// frosted glass over that gradient. [surface] stays near-opaque because
+  /// Material paints menus, pickers and sheets with it *over content*, where
+  /// see-through would be unreadable.
+  static const glass = Palette(
+    brightness: Brightness.light,
+    bg: Color(0xFFE9EEFB),
+    surface: Color(0xFFF4F6FC),
+    surfaceHigh: Color(0x9EFFFFFF),
+    track: Color(0x14000000),
+    border: Color(0xCCFFFFFF),
+    text: Color(0xFF0B0B10),
+    textMuted: Color(0xFF5E6273),
+    accent: Color(0xFF007AFF),
+    primary: Color(0xFF007AFF),
+    onPrimary: Color(0xFFFFFFFF),
+  );
+
+  /// What Glass paints behind every page: sky blue into lilac into peach,
+  /// the soft wash iOS wallpapers lean on. Fixed, so it costs one gradient
+  /// paint per route and nothing per frame.
+  static const glassBackdrop = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Color(0xFFD6E4FF),
+      Color(0xFFEDE3FF),
+      Color(0xFFFFE6EE),
+      Color(0xFFFFEEDD),
+    ],
+    stops: [0, 0.4, 0.75, 1],
   );
 }
 
