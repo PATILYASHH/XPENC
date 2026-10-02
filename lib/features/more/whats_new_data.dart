@@ -23,6 +23,17 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.blur_on_rounded,
+    title: 'New themes: Classic, Noir and Glass',
+    location: 'Settings → General → Theme',
+    description:
+        'Glass gives XPENC frosted, see-through cards over a soft gradient, '
+        'like an iPhone. Noir (was Bold) is heavier and bolder and now has a '
+        'light version too. Light, Dark or System is now its own choice. '
+        'Colourful, Midnight and Cove are retired; if you used one, you are '
+        'on Classic, with your light or dark choice kept.',
+  ),
+  WhatsNewEntry(
     icon: Icons.storefront_outlined,
     title: 'People as payees',
     location: 'Add expense/income → Payee',

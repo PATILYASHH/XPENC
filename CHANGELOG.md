@@ -8,6 +8,22 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
+## [1.6.4] — beta
+
+### Added
+- **Glass theme** — frosted, see-through cards over a soft blue → lilac →
+  peach gradient, a frosted bottom bar and iOS-style corners and titles.
+  Light only.
+- **Light / Dark / System is now its own choice** under Settings → General →
+  Theme, separate from the theme itself. Classic and Noir come in both.
+
+### Changed
+- **Themes are now Classic, Noir and Glass.** Classic (monochrome) is the
+  default. Bold is renamed **Noir**, gains a light version, and is bolder
+  throughout: heavier text everywhere and thicker card, chip and input
+  outlines. Colourful, Midnight and Cove are retired. Anyone using them moves
+  to Classic, and a forced light or dark choice is kept. No data migration.
+
 ## [1.6.3] — 2026-09-30
 
 ### Added
