@@ -6,6 +6,7 @@ import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/amount_keypad_field.dart';
 import '../../core/widgets/app_surfaces.dart';
+import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -168,7 +169,7 @@ class _CategoryEnvelopeRow extends ConsumerWidget {
       null => balance.isNegative ? AppColors.expense : null,
     };
 
-    return ListTile(
+    return AppListTile(
       leading: Container(
         width: 40,
         height: 40,
@@ -177,7 +178,7 @@ class _CategoryEnvelopeRow extends ConsumerWidget {
           color: catColor.withValues(alpha: 0.15),
           shape: BoxShape.circle,
         ),
-        child: AppIcon(AppIcons.resolve(category.iconKey), color: catColor, size: 18),
+        child: IconWell(AppIcons.resolve(category.iconKey), color: catColor, size: 18),
       ),
       title: Text(category.name),
       trailing: MoneyText(

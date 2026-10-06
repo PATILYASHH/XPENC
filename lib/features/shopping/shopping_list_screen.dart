@@ -269,7 +269,7 @@ class _ShoppingItemTile extends ConsumerWidget {
           ),
         ],
       ),
-      child: ListTile(
+      child: AppListTile(
         contentPadding: const EdgeInsets.only(left: 4, right: 16),
         onTap: () => _openItemEditor(context, item.listId!, existing: item),
         leading: Checkbox(

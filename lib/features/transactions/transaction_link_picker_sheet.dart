@@ -190,7 +190,7 @@ class _TxTile extends StatelessWidget {
 
     final displayAmount = tx.type.takesFromAccount ? -tx.amount : tx.amount;
 
-    return ListTile(
+    return AppListTile(
       leading: CircleAvatar(
         backgroundColor: accent.withValues(alpha: 0.15),
         child: transactionRowIcon(

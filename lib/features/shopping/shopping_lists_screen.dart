@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/widgets/app_surfaces.dart';
+import '../../core/widgets/custom_icon_badge.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../core/widgets/nav_bar_inset.dart';
@@ -116,7 +117,7 @@ class _ShoppingListTile extends ConsumerWidget {
                   color: color.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
-                child: AppIcon(
+                child: IconWell(
                   Icons.shopping_basket_outlined,
                   color: color,
                   size: 22,

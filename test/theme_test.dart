@@ -16,13 +16,34 @@ import 'package:xpenc/features/transactions/transactions_screen.dart';
 
 void main() {
   group('ThemeChoice', () {
-    test('round-trips through its storage name, every style and mode', () {
+    test('round-trips through its storage name, every style, mode and '
+        'background', () {
       for (final style in ThemeStyle.values) {
         for (final mode in ThemeMode.values) {
-          final choice = ThemeChoice(style, mode);
-          expect(ThemeChoice.parse(choice.storageName), choice);
+          for (final backdrop in GlassBackdrop.values) {
+            final choice = ThemeChoice(style, mode, backdrop);
+            expect(ThemeChoice.parse(choice.storageName), choice);
+          }
         }
       }
+      // The default background adds nothing, so older values still read.
+      expect(const ThemeChoice(ThemeStyle.glass).storageName, 'glass');
+      expect(
+        const ThemeChoice(
+          ThemeStyle.glass,
+          ThemeMode.system,
+          GlassBackdrop.ocean,
+        ).storageName,
+        'glass/ocean',
+      );
+    });
+
+    test('an unknown background keeps the style and falls back to Aurora', () {
+      expect(
+        ThemeChoice.parse('glass/lava'),
+        const ThemeChoice(ThemeStyle.glass),
+      );
+      expect(ThemeChoice.parse('glass/a/b'), ThemeChoice.fallback);
     });
 
     test('an unknown or missing name falls back instead of throwing', () {
@@ -58,13 +79,36 @@ void main() {
       });
     });
 
-    test('Glass is light only and ignores the stored mode', () {
+    test('Glass is as light or dark as its background, ignoring the stored '
+        'mode', () {
       const glass = ThemeChoice(ThemeStyle.glass, ThemeMode.dark);
       expect(ThemeStyle.glass.supportsModes, isFalse);
       expect(glass.effectiveMode, ThemeMode.light);
       expect(glass.resolve(Brightness.dark).brightness, Brightness.light);
-      // …but the preference survives a trip through Glass.
+      for (final b in GlassBackdrop.values) {
+        final c = glass.withBackdrop(b);
+        expect(
+          c.effectiveMode,
+          b.isDark ? ThemeMode.dark : ThemeMode.light,
+          reason: b.name,
+        );
+        expect(c.resolve(Brightness.light).brightness, b.tone.brightness);
+      }
+      // …but the mode survives a trip through Glass.
       expect(glass.withStyle(ThemeStyle.classic).effectiveMode, ThemeMode.dark);
+    });
+
+    test('a dark background builds a dark Glass theme that paints that '
+        'background', () {
+      final t = AppTheme.of(
+        GlassBackdrop.ocean.palette,
+        ThemeStyle.glass.shape,
+        backdrop: GlassBackdrop.ocean,
+      );
+      expect(t.brightness, Brightness.dark);
+      expect(t.extension<AppSurface>()!.backdrop, GlassBackdrop.ocean);
+      expect(t.extension<AppSurface>()!.tone.isDark, isTrue);
+      expect(t.colorScheme.onSurface.computeLuminance(), greaterThan(0.8));
     });
 
     test('Classic and Noir offer both brightnesses', () {
@@ -302,12 +346,21 @@ void main() {
       await unmount(tester);
     });
 
-    testWidgets('Glass hides the mode choice', (tester) async {
+    testWidgets('Glass swaps the mode choice for its backgrounds', (
+      tester,
+    ) async {
       await tester.runAsync(() => db.setThemeName('glass'));
       await pump(tester, const Scaffold(body: ThemePickerSheet()));
+      expect(tester.takeException(), isNull);
 
       expect(find.text('Dark'), findsNothing);
-      expect(find.textContaining('light only'), findsWidgets);
+      expect(find.text('Background'), findsOneWidget);
+      for (final b in GlassBackdrop.values) {
+        expect(find.text(b.label), findsOneWidget);
+      }
+
+      await tester.tap(find.text('Ocean'));
+      expect(await stored(tester), 'glass/ocean');
       await unmount(tester);
     });
 
@@ -350,8 +403,8 @@ void main() {
       await unmount(tester);
     });
 
-    testWidgets('AppCard is a plain Card outside Glass and a blurred pane '
-        'inside it', (tester) async {
+    testWidgets('AppCard is a plain Card outside Glass and a squircle glass '
+        'pane inside it', (tester) async {
       Future<void> render(ThemeStyle style) => tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.of(style.lightPalette, style.shape),
@@ -367,8 +420,48 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(Card), findsNothing);
       expect(find.byType(GlassPane), findsOneWidget);
-      expect(find.byType(BackdropFilter), findsOneWidget);
-      expect(find.byType(BackdropGroup), findsOneWidget);
+      expect(find.byType(ClipRSuperellipse), findsOneWidget);
+      // Cards frost the wallpaper without a blur pass — the wallpaper is
+      // already soft, and a blur per card would cost frames on scroll.
+      expect(find.byType(BackdropFilter), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('under Glass a leading row icon sits on a glossy tile, in '
+        'its own colour or a palette colour for a muted one', (tester) async {
+      Future<void> render(ThemeStyle style) => tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.of(style.lightPalette, style.shape),
+          home: const Scaffold(
+            body: Column(
+              children: [
+                AppListTile(
+                  leading: AppIcon(Icons.delete_outline, color: Colors.red),
+                  title: Text('Delete'),
+                ),
+                AppListTile(
+                  leading: AppIcon(Icons.tune_rounded, color: Colors.grey),
+                  title: Text('General'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      await render(ThemeStyle.classic);
+      expect(find.byType(GlassIconTile), findsNothing);
+      expect(find.byType(ListTile), findsNWidgets(2));
+
+      await render(ThemeStyle.glass);
+      await tester.pumpAndSettle();
+      final tiles = tester
+          .widgetList<GlassIconTile>(find.byType(GlassIconTile))
+          .toList();
+      expect(tiles, hasLength(2));
+      expect(tiles.first.color, Colors.red);
+      expect(tiles.last.color, isNot(Colors.grey));
+      expect(GlassIconTile.palette, contains(tiles.last.color));
       expect(tester.takeException(), isNull);
     });
 

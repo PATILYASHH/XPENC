@@ -8,6 +8,7 @@ import '../../core/app_icons.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_surfaces.dart';
+import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -324,7 +325,7 @@ class PendingCard extends ConsumerWidget {
           color: color.withValues(alpha: 0.14),
           shape: BoxShape.circle,
         ),
-        child: AppIcon(icon, color: color, size: 22),
+        child: IconWell(icon, color: color, size: 22),
       );
 
   Widget _statusStrip(
@@ -696,7 +697,7 @@ class _ApproveSheetState extends ConsumerState<_ApproveSheet> {
         ? null
         : accountMap[account.linkedAccountId]?.name;
 
-    return ListTile(
+    return AppListTile(
       leading: _iconCircle(account.iconKey, account.colorValue),
       title: Text(account.name),
       subtitle: isDebitCard

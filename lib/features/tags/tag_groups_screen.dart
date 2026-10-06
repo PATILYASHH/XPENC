@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/widgets/app_surfaces.dart';
+import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/error_view.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -135,7 +136,7 @@ class _GroupTile extends ConsumerWidget {
         ? 'No tags yet'
         : tags.map((t) => t.name).join(', ');
 
-    return ListTile(
+    return AppListTile(
       contentPadding: const EdgeInsets.only(left: 16, right: 4),
       leading: Container(
         width: 40,
@@ -145,7 +146,7 @@ class _GroupTile extends ConsumerWidget {
           color: color.withValues(alpha: 0.15),
           shape: BoxShape.circle,
         ),
-        child: AppIcon(Icons.workspaces_outline, color: color, size: 20),
+        child: IconWell(Icons.workspaces_outline, color: color, size: 20),
       ),
       title: Text(
         group.name,

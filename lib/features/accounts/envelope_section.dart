@@ -35,7 +35,7 @@ class EnvelopeSection extends ConsumerWidget {
       children: [
         AppCard(
           margin: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-          child: SwitchListTile(
+          child: AppSwitchListTile(
             title: const Text('On-budget'),
             subtitle: Text(
               account.envelopeMode
@@ -55,7 +55,7 @@ class EnvelopeSection extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
             child: AppCard(
-              child: ListTile(
+              child: AppListTile(
                 leading: const AppIcon(Icons.account_balance_wallet_outlined),
                 title: Text(
                   poolSize > 1

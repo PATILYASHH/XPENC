@@ -87,7 +87,7 @@ class AboutScreen extends StatelessWidget {
             AppCard(
               child: Column(
                 children: [
-                  ListTile(
+                  AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: CircleAvatar(
                       backgroundColor: cs.onSurface,
@@ -467,7 +467,7 @@ class _LinkTile extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    return ListTile(
+    return AppListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
       leading: AppIcon(icon),
       title: Text(

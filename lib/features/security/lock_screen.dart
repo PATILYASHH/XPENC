@@ -273,7 +273,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
               ),
             ),
             for (final method in otherMethods)
-              ListTile(
+              AppListTile(
                 leading: AppIcon(_methodIcon(method)),
                 title: Text(_methodLabel(method)),
                 onTap: () => Navigator.of(sheetContext).pop(method),

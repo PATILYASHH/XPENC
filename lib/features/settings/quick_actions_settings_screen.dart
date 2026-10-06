@@ -40,7 +40,7 @@ class QuickActionsSettingsScreen extends ConsumerWidget {
           AppCard(
             child: Column(
               children: [
-                SwitchListTile(
+                AppSwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   secondary: const AppIcon(Icons.radio_button_checked_rounded),
                   title: const Text('Hold ➕ for quick actions'),
@@ -83,7 +83,7 @@ class QuickActionsSettingsScreen extends ConsumerWidget {
           ),
           settingsSectionLabel(context, 'Home screen'),
           AppCard(
-            child: ListTile(
+            child: AppListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               leading: const AppIcon(Icons.widgets_outlined),
               title: const Text('Home screen widgets'),
@@ -100,7 +100,7 @@ class QuickActionsSettingsScreen extends ConsumerWidget {
           ),
           settingsSectionLabel(context, 'Lock screen shortcuts'),
           AppCard(
-            child: SwitchListTile(
+            child: AppSwitchListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               secondary: const AppIcon(Icons.screenshot_monitor_outlined),
               title: const Text('Screenshot blocking'),
@@ -292,7 +292,7 @@ class _QuickActionPickerSheet extends ConsumerWidget {
     Widget tile(String id, IconData icon, String label) {
       final other = usedBy(id);
       final selected = id == current;
-      return ListTile(
+      return AppListTile(
         leading: AppIcon(icon),
         title: Text(label),
         subtitle: other == null ? null : Text('Already on $other'),
@@ -343,7 +343,7 @@ class _QuickActionPickerSheet extends ConsumerWidget {
               ),
             ),
             if (current.isNotEmpty)
-              ListTile(
+              AppListTile(
                 leading: const AppIcon(Icons.remove_circle_outline_rounded),
                 title: const Text('Leave empty'),
                 onTap: () => Navigator.of(context).pop(''),

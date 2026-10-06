@@ -269,6 +269,7 @@ class _XpencAppState extends ConsumerState<XpencApp>
 
     final ready = ref.watch(databaseReadyProvider);
     final choice = ref.watch(themeChoiceProvider);
+    final glassBackdrop = choice.style.shape.isGlass ? choice.backdrop : null;
     final fontFamily = ref.watch(fontFamilyProvider);
     final fontWeightDelta = ref.watch(fontWeightDeltaProvider);
     final fontScalePercent = ref.watch(fontScalePercentProvider);
@@ -300,17 +301,21 @@ class _XpencAppState extends ConsumerState<XpencApp>
       debugShowCheckedModeBanner: false,
       // A style that only exists in one brightness (Glass) stores the same
       // palette in both slots, so `themeMode` alone decides.
+      // Glass's palette comes from its background, in both slots;
+      // `themeMode` (light or dark, by that background) picks the slot.
       theme: AppTheme.of(
-        choice.style.lightPalette,
+        glassBackdrop?.palette ?? choice.style.lightPalette,
         choice.style.shape,
         fontFamily: fontFamily,
         fontWeightDelta: fontWeightDelta,
+        backdrop: glassBackdrop,
       ),
       darkTheme: AppTheme.of(
-        choice.style.darkPalette,
+        glassBackdrop?.palette ?? choice.style.darkPalette,
         choice.style.shape,
         fontFamily: fontFamily,
         fontWeightDelta: fontWeightDelta,
+        backdrop: glassBackdrop,
       ),
       themeMode: choice.effectiveMode,
       // Glass scrolls like iOS: rubber-band bounce, no Android stretch glow.

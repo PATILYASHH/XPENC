@@ -121,7 +121,7 @@ class MessageCaptureScreen extends ConsumerWidget {
           if (pendingCount > 0) ...[
             const SizedBox(height: 14),
             AppCard(
-              child: ListTile(
+              child: AppListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                 leading: const AppIcon(Icons.inbox_outlined),
                 title: const Text('Review Inbox'),

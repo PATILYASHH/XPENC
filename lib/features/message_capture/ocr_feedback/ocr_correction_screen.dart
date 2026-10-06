@@ -156,7 +156,7 @@ class _CorrectionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return AppCard(
-      child: ListTile(
+      child: AppListTile(
         leading: AppIcon(
           row.wasCorrect ? Icons.check_circle_outline : Icons.error_outline,
           color: row.wasCorrect

@@ -26,7 +26,11 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   - iOS motion: slide-in pages with edge swipe-back, rubber-band scrolling,
     no ripple, and buttons that dip and spring back under your finger;
   - Inter, the closest open typeface to SF Pro, with iOS-style tracking.
-  Light only.
+- **Glass backgrounds** — under Settings → General → Theme, Glass gets a
+  Background row: Aurora, White, Black, Ocean, Sunset or Nebula. Controls
+  are near-clear glass, so what's behind stays vivid; dark backgrounds
+  (Black, Ocean, Nebula) switch the whole theme to dark glass, smoky over
+  colour so text and amounts stay readable.
 - **Light / Dark / System is now its own choice** under Settings → General →
   Theme, separate from the theme itself. Classic and Noir come in both.
 

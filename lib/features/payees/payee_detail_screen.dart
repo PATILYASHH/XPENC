@@ -296,7 +296,7 @@ class _TxRow extends StatelessWidget {
     final color = colorForTxType(tx.type);
     final displayAmount = tx.type == TxType.expense ? -tx.amount : tx.amount;
 
-    return ListTile(
+    return AppListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       leading: CircleAvatar(
         backgroundColor: color.withValues(alpha: 0.14),
@@ -435,7 +435,7 @@ class _ConnectPersonSheetState extends ConsumerState<_ConnectPersonSheet> {
                 padding: EdgeInsets.only(bottom: 24 + media.viewPadding.bottom),
                 children: [
                   if (!sameName)
-                    ListTile(
+                    AppListTile(
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 24,
                       ),
@@ -448,7 +448,7 @@ class _ConnectPersonSheetState extends ConsumerState<_ConnectPersonSheet> {
                       onTap: _createFromPayee,
                     ),
                   for (final p in matched)
-                    ListTile(
+                    AppListTile(
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 24,
                       ),

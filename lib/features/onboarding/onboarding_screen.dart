@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/branding/brand_mark.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_surfaces.dart';
+import '../../core/widgets/custom_icon_badge.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart' show AppMode;
 import '../data_export/backup_service.dart' show backupAppFolder;
@@ -275,7 +276,7 @@ class _FeatureRow extends StatelessWidget {
               color: color.withValues(alpha: 0.14),
               shape: BoxShape.circle,
             ),
-            child: AppIcon(icon, color: color, size: 22),
+            child: IconWell(icon, color: color, size: 22),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -502,7 +503,7 @@ class _ChoiceCard extends StatelessWidget {
                   color: cs.primary.withValues(alpha: 0.14),
                   shape: BoxShape.circle,
                 ),
-                child: AppIcon(icon, color: cs.primary, size: 24),
+                child: IconWell(icon, color: cs.primary, size: 24),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -630,7 +631,7 @@ class _ModeCard extends StatelessWidget {
                   color: fg.withValues(alpha: 0.14),
                   shape: BoxShape.circle,
                 ),
-                child: AppIcon(icon, color: fg, size: 22),
+                child: IconWell(icon, color: fg, size: 22),
               ),
               const SizedBox(width: 14),
               Expanded(

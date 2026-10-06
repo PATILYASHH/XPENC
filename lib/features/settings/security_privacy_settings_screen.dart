@@ -74,7 +74,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
-                SwitchListTile(
+                AppSwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   secondary: const AppIcon(Icons.pin_outlined),
                   title: const Text('PIN'),
@@ -98,7 +98,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                   ),
                 ),
                 Divider(height: 1, indent: 60, color: cs.outline),
-                SwitchListTile(
+                AppSwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   secondary: const AppIcon(Icons.key_outlined),
                   title: const Text('Master password'),
@@ -122,7 +122,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                   ),
                 ),
                 Divider(height: 1, indent: 60, color: cs.outline),
-                SwitchListTile(
+                AppSwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   secondary: const AppIcon(Icons.qr_code_2_rounded),
                   title: const Text('Authenticator app'),
@@ -148,7 +148,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                 Divider(height: 1, indent: 60, color: cs.outline),
 
                 // ── PIN management — visible whether or not PIN is active ──
-                ListTile(
+                AppListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   leading: const AppIcon(Icons.lock_outline_rounded),
                   title: Text(hasPasscode ? 'Change passcode' : 'Set passcode'),
@@ -168,7 +168,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                 ),
                 if (hasPasscode) ...[
                   Divider(height: 1, indent: 60, color: cs.outline),
-                  SwitchListTile(
+                  AppSwitchListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     secondary: const AppIcon(Icons.fingerprint_rounded),
                     title: const Text('Biometric unlock'),
@@ -185,7 +185,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                         ref.read(dbProvider).setBiometricEnabled(v),
                   ),
                   Divider(height: 1, indent: 60, color: cs.outline),
-                  ListTile(
+                  AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: AppIcon(Icons.lock_open_outlined, color: cs.error),
                     title: Text(
@@ -201,7 +201,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                 // ── Master recovery phrase management — visible whether or
                 // not it's active ──────────────────────────────────────────
                 if (hasMasterPhrase) ...[
-                  ListTile(
+                  AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.key_outlined),
                     title: const Text('Master recovery phrase'),
@@ -214,7 +214,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                     ),
                   ),
                   Divider(height: 1, indent: 60, color: cs.outline),
-                  ListTile(
+                  AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.pin_outlined),
                     title: const Text('Require after'),
@@ -244,7 +244,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                     onTap: () => MasterPhraseAttemptsSheet.show(context),
                   ),
                   Divider(height: 1, indent: 60, color: cs.outline),
-                  ListTile(
+                  AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: AppIcon(Icons.key_off_outlined, color: cs.error),
                     title: Text(
@@ -255,7 +255,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                         context.push('/more/settings/master-phrase/disable'),
                   ),
                 ] else
-                  ListTile(
+                  AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.key_outlined),
                     title: const Text('Set up master recovery phrase'),
@@ -278,7 +278,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                 // ── Authenticator app (TOTP) management — visible whether
                 // or not it's active ──────────────────────────────────────
                 if (hasTotp) ...[
-                  ListTile(
+                  AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.qr_code_2_rounded),
                     title: const Text('Authenticator app'),
@@ -290,7 +290,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                     ),
                   ),
                   Divider(height: 1, indent: 60, color: cs.outline),
-                  ListTile(
+                  AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: AppIcon(Icons.qr_code_2_rounded, color: cs.error),
                     title: Text(
@@ -300,7 +300,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                     onTap: () => context.push('/more/settings/totp/disable'),
                   ),
                 ] else
-                  ListTile(
+                  AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.qr_code_2_rounded),
                     title: const Text('Set up authenticator app'),
@@ -323,7 +323,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                 // at all, not on PIN specifically ────────────────────────
                 if (hasUnlockCredential) ...[
                   Divider(height: 1, indent: 60, color: cs.outline),
-                  ListTile(
+                  AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.timer_outlined),
                     title: const Text('Lock after'),
@@ -351,7 +351,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                     onTap: () => PinTimeoutSheet.show(context),
                   ),
                   Divider(height: 1, indent: 60, color: cs.outline),
-                  ListTile(
+                  AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.dialpad_outlined),
                     title: const Text('Lock screen style'),
@@ -386,7 +386,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
           AppCard(
             child: Column(
               children: [
-                SwitchListTile(
+                AppSwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   secondary: const AppIcon(Icons.screenshot_outlined),
                   title: const Text('Block screenshots'),
@@ -402,7 +402,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                       ref.read(dbProvider).setPreventScreenshots(v),
                 ),
                 Divider(height: 1, indent: 60, color: cs.outline),
-                SwitchListTile(
+                AppSwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   secondary: const AppIcon(Icons.visibility_outlined),
                   title: const Text('Remind when screenshots are allowed'),

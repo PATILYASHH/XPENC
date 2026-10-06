@@ -364,7 +364,7 @@ class _PersonTile extends ConsumerWidget {
       statusIcon = Icons.check_circle_outline_rounded;
     }
 
-    return ListTile(
+    return AppListTile(
       contentPadding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
       leading: PersonAvatar(name: person.name, photoPath: person.photoPath),
       title: Text(
@@ -438,13 +438,13 @@ class _PersonTile extends ConsumerWidget {
                 ),
               ),
             ),
-            ListTile(
+            AppListTile(
               leading: const AppIcon(Icons.edit_outlined),
               title: const Text('Edit'),
               subtitle: const Text('Name, UPI ID, phone and more.'),
               onTap: () => Navigator.of(sheetContext).pop(_PersonAction.edit),
             ),
-            ListTile(
+            AppListTile(
               leading: const AppIcon(Icons.contacts_outlined),
               title: const Text('Link contact'),
               subtitle: const Text('Import their photo and phone number.'),
@@ -452,7 +452,7 @@ class _PersonTile extends ConsumerWidget {
                   Navigator.of(sheetContext).pop(_PersonAction.linkContact),
             ),
             if (person.isSettled)
-              ListTile(
+              AppListTile(
                 leading: const AppIcon(Icons.undo_rounded),
                 title: const Text('Move out of Settled'),
                 subtitle: const Text('Back to the Individual list.'),
@@ -460,21 +460,21 @@ class _PersonTile extends ConsumerWidget {
                     Navigator.of(sheetContext).pop(_PersonAction.unsettle),
               )
             else if (balance.isZero)
-              ListTile(
+              AppListTile(
                 leading: const AppIcon(Icons.check_circle_outline_rounded),
                 title: const Text('Move to Settled'),
                 subtitle: const Text('Balance is zero. History stays intact.'),
                 onTap: () =>
                     Navigator.of(sheetContext).pop(_PersonAction.settle),
               ),
-            ListTile(
+            AppListTile(
               leading: const AppIcon(Icons.archive_outlined),
               title: const Text('Archive'),
               subtitle: const Text('Hide them. History stays intact.'),
               onTap: () =>
                   Navigator.of(sheetContext).pop(_PersonAction.archive),
             ),
-            ListTile(
+            AppListTile(
               leading: AppIcon(
                 Icons.delete_outline,
                 color: theme.colorScheme.error,
@@ -696,7 +696,7 @@ class _GroupTile extends ConsumerWidget {
       status = 'Settled';
     }
 
-    return ListTile(
+    return AppListTile(
       contentPadding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
       leading: CircleAvatar(
         backgroundColor: theme.colorScheme.surfaceContainerHighest,
@@ -768,7 +768,7 @@ class _GroupTile extends ConsumerWidget {
               ),
             ),
             if (group.isSettled)
-              ListTile(
+              AppListTile(
                 leading: const AppIcon(Icons.undo_rounded),
                 title: const Text('Move out of Settled'),
                 subtitle: const Text('Back to the Group list.'),
@@ -776,20 +776,20 @@ class _GroupTile extends ConsumerWidget {
                     Navigator.of(sheetContext).pop(_GroupAction.unsettle),
               )
             else if (balance.isZero)
-              ListTile(
+              AppListTile(
                 leading: const AppIcon(Icons.check_circle_outline_rounded),
                 title: const Text('Move to Settled'),
                 subtitle: const Text('Balance is zero. History stays intact.'),
                 onTap: () =>
                     Navigator.of(sheetContext).pop(_GroupAction.settle),
               ),
-            ListTile(
+            AppListTile(
               leading: const AppIcon(Icons.archive_outlined),
               title: const Text('Archive'),
               subtitle: const Text('Hide it. Expense history stays intact.'),
               onTap: () => Navigator.of(sheetContext).pop(_GroupAction.archive),
             ),
-            ListTile(
+            AppListTile(
               leading: AppIcon(
                 Icons.delete_outline,
                 color: theme.colorScheme.error,

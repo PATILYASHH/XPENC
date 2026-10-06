@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_icons.dart';
 import '../../core/widgets/app_surfaces.dart';
+import '../../core/widgets/custom_icon_badge.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../core/widgets/nav_bar_inset.dart';
@@ -76,7 +77,7 @@ class _ArchivedAccountTile extends ConsumerWidget {
     final theme = Theme.of(context);
     final color = Color(account.colorValue);
 
-    return ListTile(
+    return AppListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: Container(
         width: 44,
@@ -86,7 +87,7 @@ class _ArchivedAccountTile extends ConsumerWidget {
           color: color.withValues(alpha: 0.14),
           shape: BoxShape.circle,
         ),
-        child: AppIcon(AppIcons.resolve(account.iconKey), color: color, size: 22),
+        child: IconWell(AppIcons.resolve(account.iconKey), color: color, size: 22),
       ),
       title: Text(
         account.name,

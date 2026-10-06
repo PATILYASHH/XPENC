@@ -39,7 +39,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
           AppCard(
             child: Column(
               children: [
-                ListTile(
+                AppListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   leading: const AppIcon(Icons.payments_outlined),
                   title: const Text('Currency'),
@@ -60,7 +60,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
                   onTap: () => context.push('/more/settings/currency'),
                 ),
                 Divider(height: 1, indent: 60, color: cs.outline),
-                SwitchListTile(
+                AppSwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   secondary: const AppIcon(Icons.attach_money_rounded),
                   title: const Text('Show currency symbol'),
@@ -78,7 +78,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
                       ref.read(dbProvider).setShowCurrencySymbol(v),
                 ),
                 Divider(height: 1, indent: 60, color: cs.outline),
-                ListTile(
+                AppListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   leading: AppIcon(themeChoice.style.icon),
                   title: const Text('Theme'),
@@ -96,7 +96,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
                   onTap: () => ThemePickerSheet.show(context),
                 ),
                 Divider(height: 1, indent: 60, color: cs.outline),
-                ListTile(
+                AppListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   leading: const AppIcon(Icons.text_fields_rounded),
                   title: const Text('Font'),
@@ -113,7 +113,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
                   onTap: () => context.push('/more/settings/font'),
                 ),
                 Divider(height: 1, indent: 60, color: cs.outline),
-                ListTile(
+                AppListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   leading: const AppIcon(Icons.dashboard_outlined),
                   title: const Text('More screen layout'),
@@ -139,7 +139,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
 
           settingsSectionLabel(context, 'Dashboard'),
           AppCard(
-            child: ListTile(
+            child: AppListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               leading: const AppIcon(Icons.dashboard_customize_outlined),
               title: const Text('Customize dashboard'),
@@ -156,7 +156,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
 
           settingsSectionLabel(context, 'Calendar'),
           AppCard(
-            child: SwitchListTile(
+            child: AppSwitchListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               secondary: const AppIcon(Icons.calendar_month_outlined),
               title: const Text('Show day totals'),
@@ -175,7 +175,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
 
           settingsSectionLabel(context, 'Layout'),
           AppCard(
-            child: ListTile(
+            child: AppListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               leading: const AppIcon(Icons.dashboard_customize_outlined),
               title: const Text('Customize bottom nav'),
@@ -194,7 +194,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
           AppCard(
             child: Column(
               children: [
-                ListTile(
+                AppListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   leading: const AppIcon(Icons.sms_outlined),
                   title: const Text('Bank-SMS auto-capture'),
@@ -209,7 +209,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
                   onTap: () => context.push('/more/capture'),
                 ),
                 Divider(height: 1, indent: 60, color: cs.outline),
-                ListTile(
+                AppListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   leading: const AppIcon(Icons.rate_review_outlined),
                   title: const Text('OCR corrections'),

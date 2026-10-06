@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_icons.dart';
 import '../../core/widgets/app_surfaces.dart';
+import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -87,7 +88,7 @@ class _AccountToggleTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final color = Color(account.colorValue);
-    return SwitchListTile(
+    return AppSwitchListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
       secondary: Container(
         width: 40,
@@ -97,7 +98,7 @@ class _AccountToggleTile extends ConsumerWidget {
           color: color.withValues(alpha: 0.14),
           shape: BoxShape.circle,
         ),
-        child: AppIcon(AppIcons.resolve(account.iconKey), color: color, size: 20),
+        child: IconWell(AppIcons.resolve(account.iconKey), color: color, size: 20),
       ),
       title: Text(account.name),
       subtitle: BalanceText(

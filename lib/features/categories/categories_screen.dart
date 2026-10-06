@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/app_icons.dart';
 import '../../core/widgets/app_surfaces.dart';
+import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/error_view.dart';
 import '../../core/widgets/icon_picker_sheet.dart';
 import '../../data/database.dart';
@@ -203,7 +204,7 @@ class _CategoryTile extends ConsumerWidget {
     final color = Color(category.colorValue);
     final badge = isChild ? 30.0 : 40.0;
 
-    return ListTile(
+    return AppListTile(
       contentPadding: EdgeInsets.only(left: isChild ? 32 : 16, right: 4),
       leading: Container(
         width: badge,
@@ -213,7 +214,7 @@ class _CategoryTile extends ConsumerWidget {
           color: color.withValues(alpha: 0.15),
           shape: BoxShape.circle,
         ),
-        child: AppIcon(
+        child: IconWell(
           AppIcons.resolve(category.iconKey),
           color: color,
           size: isChild ? 17 : 22,

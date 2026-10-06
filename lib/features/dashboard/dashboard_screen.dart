@@ -938,7 +938,7 @@ class _AccountCard extends StatelessWidget {
                       shape: BoxShape.circle,
                       color: color.withValues(alpha: 0.14),
                     ),
-                    child: AppIcon(
+                    child: IconWell(
                       AppIcons.resolve(account.iconKey),
                       size: 20,
                       color: color,
@@ -1197,7 +1197,7 @@ class _PersonDuesTile extends StatelessWidget {
         ? Icons.south_west_rounded
         : Icons.north_east_rounded;
 
-    return ListTile(
+    return AppListTile(
       onTap: () => context.push('/person/${person.id}'),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       leading: CircleAvatar(
@@ -1336,7 +1336,7 @@ class _UpcomingTile extends StatelessWidget {
         ? Icons.notifications_outlined
         : Icons.autorenew_rounded;
 
-    return ListTile(
+    return AppListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       onTap: () =>
           context.push(item.isReminder ? '/more/calendar' : '/more/auto'),
@@ -1713,7 +1713,7 @@ class _TxRow extends StatelessWidget {
     final subtitle =
         '${account?.name ?? 'Account'} · ${DateFormat('d MMM').format(tx.date)}';
 
-    return ListTile(
+    return AppListTile(
       onTap: () => context.push('/transaction/${tx.id}'),
       shape: const RoundedRectangleBorder(),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -1819,7 +1819,7 @@ class _EmptyState extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: theme.colorScheme.secondary.withValues(alpha: 0.10),
                 ),
-                child: AppIcon(
+                child: IconWell(
                   Icons.receipt_long_outlined,
                   size: 28,
                   color: theme.colorScheme.secondary,

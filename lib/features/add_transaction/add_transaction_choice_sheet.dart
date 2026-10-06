@@ -73,7 +73,7 @@ class _AddChoiceSheet extends ConsumerWidget {
                 ),
               ),
             ),
-            ListTile(
+            AppListTile(
               leading: const AppIcon(Icons.add_circle_outline_rounded),
               title: const Text('Start from scratch'),
               subtitle: const Text('A blank transaction.'),
@@ -96,7 +96,7 @@ class _AddChoiceSheet extends ConsumerWidget {
                 ),
               ),
               for (final t in templates)
-                ListTile(
+                AppListTile(
                   leading: AppIcon(
                     iconForTxType(t.type),
                     color: colorForTxType(t.type),

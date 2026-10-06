@@ -119,7 +119,7 @@ class _PayeeTile extends StatelessWidget {
     final s = summary;
 
     final person = s.person;
-    return ListTile(
+    return AppListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       leading: person == null
           ? CircleAvatar(

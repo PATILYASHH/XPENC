@@ -353,7 +353,7 @@ class LoanDetailScreen extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
+            AppListTile(
               leading: const AppIcon(Icons.archive_outlined),
               title: const Text('Archive'),
               subtitle: const Text(
@@ -361,7 +361,7 @@ class LoanDetailScreen extends ConsumerWidget {
               ),
               onTap: () => Navigator.of(sheetContext).pop(_LoanAction.archive),
             ),
-            ListTile(
+            AppListTile(
               leading: AppIcon(
                 Icons.delete_outline,
                 color: Theme.of(sheetContext).colorScheme.error,

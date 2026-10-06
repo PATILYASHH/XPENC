@@ -27,7 +27,7 @@ class DataSettingsScreen extends ConsumerWidget {
           AppCard(
             child: Column(
               children: [
-                ListTile(
+                AppListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   leading: const AppIcon(Icons.calculate_outlined),
                   title: const Text('Recalculate balances'),
@@ -49,7 +49,7 @@ class DataSettingsScreen extends ConsumerWidget {
                   },
                 ),
                 Divider(height: 1, indent: 60, color: cs.outline),
-                ListTile(
+                AppListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   leading: AppIcon(Icons.delete_forever_outlined, color: cs.error),
                   title: Text(

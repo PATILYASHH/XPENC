@@ -19,7 +19,6 @@ import '../../features/transactions/transaction_filters.dart';
 import '../branding/app_info.dart';
 import '../branding/brand_mark.dart';
 import '../budget_cycle.dart';
-import '../theme/app_theme.dart';
 import '../theme/glass.dart';
 
 /// `Dashboard · slotLeft · ➕ · slotRight · More`
@@ -151,7 +150,12 @@ class AppShell extends ConsumerWidget {
           currentIndex: navigationShell.currentIndex,
           glass: glass,
         ),
-        body: navigationShell,
+        body: glass
+            ? _TabSwitchFade(
+                index: navigationShell.currentIndex,
+                child: navigationShell,
+              )
+            : navigationShell,
         // Glass floats the bar as a capsule and lets every tab scroll *under*
         // it, so the blur has content to frost. The Scaffold then reports the
         // bar's height as bottom padding, which every tab already honours
@@ -546,6 +550,58 @@ const bottomNavCatalogLabels = <String, String>{
 /// from the "Customize bottom nav" picker while Basic is active.
 const basicModeHiddenCatalogIds = {'budgets', 'accounts'};
 
+/// Glass's tab change: the new tab fades up out of a slight depth instead
+/// of cutting in. Animates the one, never-remounted [child] (the
+/// navigation shell), so every tab keeps its state and scroll position.
+class _TabSwitchFade extends StatefulWidget {
+  const _TabSwitchFade({required this.index, required this.child});
+
+  final int index;
+  final Widget child;
+
+  @override
+  State<_TabSwitchFade> createState() => _TabSwitchFadeState();
+}
+
+class _TabSwitchFadeState extends State<_TabSwitchFade>
+    with SingleTickerProviderStateMixin {
+  late final _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 280),
+    value: 1,
+  );
+  late final _curve = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeOutCubic,
+  );
+
+  @override
+  void didUpdateWidget(_TabSwitchFade old) {
+    super.didUpdateWidget(old);
+    if (old.index != widget.index) _controller.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _curve.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _curve,
+    child: widget.child,
+    builder: (context, child) {
+      final t = _curve.value;
+      return Opacity(
+        opacity: 0.35 + 0.65 * t,
+        child: Transform.scale(scale: 0.985 + 0.015 * t, child: child),
+      );
+    },
+  );
+}
+
 /// Glass's SF-Symbols-style glyphs per branch (outline, filled), keyed by
 /// the same branch numbers as `_catalog`.
 const _glassIcons = <int, (IconData, IconData)>{
@@ -608,13 +664,13 @@ class _LiquidTabBar extends StatelessWidget {
                               top: 4,
                               bottom: 4,
                               width: itemWidth - 8,
-                              child: const LiquidGlass(
-                                frost: Color(0x8CFFFFFF),
+                              child: LiquidGlass(
+                                frost: AppSurface.of(context).tone.selected,
                                 blur: 0,
                                 refraction: 9,
                                 band: 16,
                                 shadow: false,
-                                child: SizedBox.expand(),
+                                child: const SizedBox.expand(),
                               ),
                             ),
                           Row(
@@ -662,8 +718,13 @@ class _LiquidTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // On dark glass the system blue is lifted a step, or it sinks into
+    // the droplet behind it.
+    final accent = theme.brightness == Brightness.dark
+        ? const Color(0xFF8CCBFF)
+        : theme.colorScheme.secondary;
     final color = selected
-        ? theme.colorScheme.secondary
+        ? accent
         : theme.colorScheme.onSurface.withValues(alpha: 0.82);
     final glyphs = _glassIcons[tab.branch];
     final icon = selected

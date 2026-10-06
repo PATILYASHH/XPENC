@@ -273,7 +273,7 @@ class _MoreTile extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    return ListTile(
+    return AppListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
       leading: AppIcon(item.icon),
       title: Text(

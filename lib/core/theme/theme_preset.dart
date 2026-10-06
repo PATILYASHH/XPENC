@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
+import 'glass.dart';
 import 'theme_shape.dart';
 
 /// The looks a user can pick — "Classic, Noir, Glass" is what a person expects
@@ -28,12 +29,11 @@ enum ThemeStyle {
   ),
   glass(
     label: 'Glass',
-    description: 'Liquid Glass, like iPhone — light only',
+    description: 'Liquid Glass, like iPhone — on a background you pick',
     icon: Icons.blur_on_rounded,
     lightPalette: AppPalettes.glass,
-    darkPalette: AppPalettes.glass,
+    darkPalette: AppPalettes.glassDark,
     shape: ThemeShape.glass,
-    fixedMode: ThemeMode.light,
   );
 
   const ThemeStyle({
@@ -43,7 +43,6 @@ enum ThemeStyle {
     required this.lightPalette,
     required this.darkPalette,
     required this.shape,
-    this.fixedMode,
   });
 
   final String label;
@@ -55,11 +54,8 @@ enum ThemeStyle {
   /// Card/control radius, weights and surface treatment — see [ThemeShape].
   final ThemeShape shape;
 
-  /// Set when the style only exists in one brightness: the user's mode
-  /// choice is ignored (and hidden in the picker) while it is active.
-  final ThemeMode? fixedMode;
-
-  bool get supportsModes => fixedMode == null;
+  /// Glass takes its brightness from its background instead of a mode.
+  bool get supportsModes => this != ThemeStyle.glass;
 
   static ThemeStyle? _byName(String name) {
     for (final style in values) {
@@ -69,29 +65,42 @@ enum ThemeStyle {
   }
 }
 
-/// What the user picked: a [style] and, for styles that offer it, a [mode].
+/// What the user picked: a [style]; for styles that offer it, a [mode];
+/// and Glass's [backdrop].
 ///
-/// Stored in `Settings.themeName` as `style` (follow the device) or
-/// `style:light` / `style:dark` — so the split needs no new column, and an
+/// Stored in `Settings.themeName` as `style[:mode][/backdrop]` — `classic`,
+/// `noir:dark`, `glass/ocean` — so none of it needs a new column, and an
 /// older build reading a newer value degrades to its own default rather than
 /// failing.
 @immutable
 class ThemeChoice {
-  const ThemeChoice(this.style, [this.mode = ThemeMode.system]);
+  const ThemeChoice(
+    this.style, [
+    this.mode = ThemeMode.system,
+    this.backdrop = GlassBackdrop.fallback,
+  ]);
 
   final ThemeStyle style;
 
-  /// The user's own preference, kept even while a fixed-mode style is active
-  /// so switching back to Classic restores it.
+  /// The user's own preference, kept even while Glass (which ignores it) is
+  /// active, so switching back to Classic restores it.
   final ThemeMode mode;
+
+  /// Glass's background — kept across style switches the same way.
+  final GlassBackdrop backdrop;
 
   static const fallback = ThemeChoice(ThemeStyle.classic);
 
-  /// The mode actually applied.
-  ThemeMode get effectiveMode => style.fixedMode ?? mode;
+  bool get _glass => style == ThemeStyle.glass;
+
+  /// The mode actually applied: Glass is as light or dark as its background.
+  ThemeMode get effectiveMode => _glass
+      ? (backdrop.isDark ? ThemeMode.dark : ThemeMode.light)
+      : mode;
 
   /// The palette actually shown, for previews and swatches.
   Palette resolve(Brightness platformBrightness) {
+    if (_glass) return backdrop.palette;
     final dark = switch (effectiveMode) {
       ThemeMode.light => false,
       ThemeMode.dark => true,
@@ -100,14 +109,20 @@ class ThemeChoice {
     return dark ? style.darkPalette : style.lightPalette;
   }
 
-  ThemeChoice withStyle(ThemeStyle s) => ThemeChoice(s, mode);
-  ThemeChoice withMode(ThemeMode m) => ThemeChoice(style, m);
+  ThemeChoice withStyle(ThemeStyle s) => ThemeChoice(s, mode, backdrop);
+  ThemeChoice withMode(ThemeMode m) => ThemeChoice(style, m, backdrop);
+  ThemeChoice withBackdrop(GlassBackdrop b) => ThemeChoice(style, mode, b);
 
-  String get storageName => switch (mode) {
-    ThemeMode.system => style.name,
-    ThemeMode.light => '${style.name}:light',
-    ThemeMode.dark => '${style.name}:dark',
-  };
+  String get storageName {
+    final base = switch (mode) {
+      ThemeMode.system => style.name,
+      ThemeMode.light => '${style.name}:light',
+      ThemeMode.dark => '${style.name}:dark',
+    };
+    return backdrop == GlassBackdrop.fallback
+        ? base
+        : '$base/${backdrop.name}';
+  }
 
   /// Parse a value previously written by [storageName] — or by an older
   /// build, whose flat presets map onto the nearest style here. An unknown
@@ -118,7 +133,13 @@ class ThemeChoice {
     final legacy = _legacy[raw];
     if (legacy != null) return legacy;
 
-    final parts = raw.split(':');
+    final slash = raw.split('/');
+    if (slash.length > 2) return fallback;
+    final backdrop = slash.length == 2
+        ? GlassBackdrop.byName(slash[1]) ?? GlassBackdrop.fallback
+        : GlassBackdrop.fallback;
+
+    final parts = slash.first.split(':');
     final style = ThemeStyle._byName(parts.first);
     if (style == null || parts.length > 2) return fallback;
     final mode = parts.length == 1
@@ -128,7 +149,7 @@ class ThemeChoice {
             'dark' => ThemeMode.dark,
             _ => ThemeMode.system,
           };
-    return ThemeChoice(style, mode);
+    return ThemeChoice(style, mode, backdrop);
   }
 
   /// The presets before styles existed (≤ 1.6.x). Colourful, Midnight and
@@ -148,10 +169,13 @@ class ThemeChoice {
 
   @override
   bool operator ==(Object other) =>
-      other is ThemeChoice && other.style == style && other.mode == mode;
+      other is ThemeChoice &&
+      other.style == style &&
+      other.mode == mode &&
+      other.backdrop == backdrop;
 
   @override
-  int get hashCode => Object.hash(style, mode);
+  int get hashCode => Object.hash(style, mode, backdrop);
 
   @override
   String toString() => 'ThemeChoice($storageName)';

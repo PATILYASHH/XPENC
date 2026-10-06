@@ -139,7 +139,7 @@ class AutoScreen extends ConsumerWidget {
             ],
             if (pausedCount > 0) ...[
               if (active.isNotEmpty) const Divider(height: 1, indent: 20),
-              ListTile(
+              AppListTile(
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 4,
@@ -226,7 +226,7 @@ class _RuleTile extends ConsumerWidget {
               : Icons.savings_rounded)
         : (_isExpense ? Icons.north_east_rounded : Icons.south_west_rounded);
 
-    return ListTile(
+    return AppListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: CircleAvatar(
         backgroundColor: color.withValues(alpha: 0.14),
@@ -323,7 +323,7 @@ class _RuleTile extends ConsumerWidget {
                 ),
               ),
             ),
-            ListTile(
+            AppListTile(
               leading: const AppIcon(Icons.bolt_outlined),
               title: const Text('Pay now'),
               subtitle: Text(
@@ -335,7 +335,7 @@ class _RuleTile extends ConsumerWidget {
               ),
               onTap: () => Navigator.of(sheetContext).pop(_RuleAction.payNow),
             ),
-            ListTile(
+            AppListTile(
               leading: const AppIcon(Icons.pause_circle_outline),
               title: const Text('Pause'),
               subtitle: const Text(
@@ -344,7 +344,7 @@ class _RuleTile extends ConsumerWidget {
               ),
               onTap: () => Navigator.of(sheetContext).pop(_RuleAction.pause),
             ),
-            ListTile(
+            AppListTile(
               leading: AppIcon(
                 Icons.delete_outline,
                 color: theme.colorScheme.error,

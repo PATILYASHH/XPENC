@@ -74,7 +74,7 @@ class SettingsScreen extends StatelessWidget {
             onTap: () => context.push('/more/settings/data'),
           ),
           AppCard(
-            child: ListTile(
+            child: AppListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               leading: const BrandMark(size: 34),
               title: const Text('${AppInfo.name} · ${AppInfo.version}'),
@@ -112,7 +112,7 @@ class _ModuleTile extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return AppCard(
       margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
+      child: AppListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         leading: AppIcon(icon),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),

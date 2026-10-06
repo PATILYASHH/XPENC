@@ -10,6 +10,7 @@ import 'font_options.dart';
 import 'glass.dart';
 import 'theme_shape.dart';
 
+export 'glass.dart' show AppSurface, GlassBackdrop, GlassTone;
 export 'theme_shape.dart' show SurfaceStyle;
 
 /// One UI–inspired: large rounded cards, generous spacing, big titles.
@@ -27,22 +28,26 @@ class AppTheme {
     ThemeShape shape, {
     AppFontFamily fontFamily = AppFontFamily.system,
     int fontWeightDelta = 0,
+    GlassBackdrop? backdrop,
   }) {
     final isDark = p.brightness == Brightness.dark;
     final radius = shape.controlRadius;
     final cardRadius = shape.cardRadius;
     final glass = shape.isGlass;
+    // Glass's background and the tone it tints every surface with.
+    final wallpaper = glass ? (backdrop ?? GlassBackdrop.fallback) : null;
+    final tone = (wallpaper ?? GlassBackdrop.fallback).tone;
     final weightDelta = shape.baseWeightDelta + fontWeightDelta;
     final borderSide = BorderSide(color: p.border, width: shape.borderWidth);
     // Glass sheets and dialogs open over a blurred page (see
     // `showAppSheet`/`showAppDialog`), so they can stay translucent.
-    final floatingColor = glass ? GlassStyle.floating : null;
+    final floatingColor = glass ? tone.floating : null;
     // What separators and incidental outlines draw with. Noir's ink outline
     // would turn every divider into a heavy rule and Glass's white edge would
     // vanish as one, so both separate with a softer tone; their full
     // [borderSide] is kept for cards, chips and inputs.
     final hairline = glass
-        ? const Color(0x1A000000)
+        ? tone.separator
         : shape.borderWidth > 1
         ? Color.alphaBlend(p.border.withValues(alpha: 0.22), p.surfaceHigh)
         : p.border;
@@ -63,10 +68,10 @@ class AppTheme {
       surfaceContainerHighest: p.track,
       // Material paints menus, date pickers and dropdowns with these, over
       // content and with no blur behind — Glass keeps them near-opaque.
-      surfaceContainerLowest: glass ? GlassStyle.solidFrost : null,
-      surfaceContainerLow: glass ? GlassStyle.solidFrost : null,
-      surfaceContainer: glass ? GlassStyle.solidFrost : null,
-      surfaceContainerHigh: glass ? GlassStyle.solidFrost : null,
+      surfaceContainerLowest: glass ? tone.solidFrost : null,
+      surfaceContainerLow: glass ? tone.solidFrost : null,
+      surfaceContainer: glass ? tone.solidFrost : null,
+      surfaceContainerHigh: glass ? tone.solidFrost : null,
       onSurfaceVariant: p.textMuted,
       outline: hairline,
       outlineVariant: hairline,
@@ -81,7 +86,7 @@ class AppTheme {
       // shows the one beneath it through.
       scaffoldBackgroundColor: glass ? Colors.transparent : p.bg,
       // Dropdown menus and plain `Material`s: see `surfaceContainer` above.
-      canvasColor: glass ? GlassStyle.solidFrost : null,
+      canvasColor: glass ? tone.solidFrost : null,
       splashFactory: InkSparkle.splashFactory,
     );
 
@@ -101,10 +106,7 @@ class AppTheme {
 
     final theme = base.copyWith(
       extensions: [
-        AppSurface(
-          style: shape.surfaceStyle,
-          backdrop: glass ? AppPalettes.glassBackdrop : null,
-        ),
+        AppSurface(style: shape.surfaceStyle, backdrop: wallpaper),
       ],
       // Each platform keeps the SDK's own default transition — Glass only
       // slips its backdrop underneath.
@@ -117,21 +119,21 @@ class AppTheme {
             )
           : null,
       popupMenuTheme: glass
-          ? const PopupMenuThemeData(color: GlassStyle.solidFrost)
+          ? PopupMenuThemeData(color: tone.solidFrost)
           : null,
       datePickerTheme: glass
-          ? const DatePickerThemeData(
-              backgroundColor: GlassStyle.solidFrost,
+          ? DatePickerThemeData(
+              backgroundColor: tone.solidFrost,
               surfaceTintColor: Colors.transparent,
             )
           : null,
       timePickerTheme: glass
-          ? const TimePickerThemeData(backgroundColor: GlassStyle.solidFrost)
+          ? TimePickerThemeData(backgroundColor: tone.solidFrost)
           : null,
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: floatingColor,
         modalBackgroundColor: floatingColor,
-        modalBarrierColor: glass ? GlassStyle.barrier : null,
+        modalBarrierColor: glass ? tone.barrier : null,
         surfaceTintColor: Colors.transparent,
         shape: glass
             ? RoundedRectangleBorder(
@@ -143,7 +145,7 @@ class AppTheme {
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: floatingColor,
-        barrierColor: glass ? GlassStyle.barrier : null,
+        barrierColor: glass ? tone.barrier : null,
         surfaceTintColor: Colors.transparent,
         shape: glass
             ? RoundedRectangleBorder(
@@ -215,7 +217,7 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         // A Glass input is a lighter frost on its card, not an opaque slab.
-        fillColor: glass ? const Color(0x66FFFFFF) : p.surface,
+        fillColor: glass ? tone.fill : p.surface,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 18,
           vertical: 18,
@@ -242,18 +244,25 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     );
-    return glass ? _liquidGlass(theme, p, shape) : theme;
+    return glass ? _liquidGlass(theme, p, shape, tone) : theme;
   }
 
   /// Glass's controls, modelled on iOS: capsule buttons, the iOS switch,
   /// plain filled fields, hairline separators, Cupertino page transitions
   /// (with swipe-back), glass back buttons, no Material ripple, and SF-like
   /// tracking on Inter.
-  static ThemeData _liquidGlass(ThemeData t, Palette p, ThemeShape shape) {
+  static ThemeData _liquidGlass(
+    ThemeData t,
+    Palette p,
+    ThemeShape shape,
+    GlassTone tone,
+  ) {
     const stadium = StadiumBorder();
-    const separator = Color(0x243C3C43);
-    const iosGreen = Color(0xFF34C759);
-    const fill = Color(0x9EFFFFFF);
+    final separator = tone.separator;
+    final iosGreen = tone.isDark
+        ? const Color(0xFF30D158)
+        : const Color(0xFF34C759);
+    final fill = tone.fill;
     final text = t.textTheme;
 
     TextStyle? track(TextStyle? s, double spacing) =>
@@ -261,7 +270,9 @@ class AppTheme {
 
     return t.copyWith(
       splashFactory: NoSplash.splashFactory,
-      highlightColor: const Color(0x14000000),
+      highlightColor: tone.isDark
+          ? const Color(0x1FFFFFFF)
+          : const Color(0x14000000),
       pageTransitionsTheme: PageTransitionsTheme(
         builders: {
           for (final platform in TargetPlatform.values)
@@ -318,7 +329,7 @@ class AppTheme {
           shape: stadium,
           backgroundColor: fill,
           foregroundColor: p.text,
-          side: const BorderSide(color: Color(0xE6FFFFFF)),
+          side: BorderSide(color: tone.edge),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -344,7 +355,7 @@ class AppTheme {
         trackColor: WidgetStateProperty.resolveWith(
           (s) => s.contains(WidgetState.selected)
               ? iosGreen
-              : const Color(0x29787880),
+              : tone.switchOff,
         ),
         trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
         thumbIcon: const WidgetStatePropertyAll(null),
@@ -358,17 +369,17 @@ class AppTheme {
       chipTheme: t.chipTheme.copyWith(
         backgroundColor: fill,
         selectedColor: p.accent.withValues(alpha: 0.16),
-        side: const BorderSide(color: Color(0xD9FFFFFF)),
+        side: BorderSide(color: tone.edge),
         shape: stadium,
       ),
       segmentedButtonTheme: SegmentedButtonThemeData(
         style: ButtonStyle(
           shape: const WidgetStatePropertyAll(stadium),
-          side: const WidgetStatePropertyAll(BorderSide(color: separator)),
+          side: WidgetStatePropertyAll(BorderSide(color: separator)),
           backgroundColor: WidgetStateProperty.resolveWith(
             (s) => s.contains(WidgetState.selected)
-                ? Colors.white
-                : const Color(0x33FFFFFF),
+                ? tone.thumb
+                : tone.fill.withValues(alpha: tone.fill.a * 0.4),
           ),
           foregroundColor: WidgetStatePropertyAll(p.text),
         ),
@@ -381,7 +392,7 @@ class AppTheme {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(shape.controlRadius),
-          borderSide: const BorderSide(color: Color(0xB3FFFFFF)),
+          borderSide: BorderSide(color: tone.edge),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(shape.controlRadius),
@@ -389,21 +400,27 @@ class AppTheme {
         ),
       ),
       listTileTheme: t.listTileTheme.copyWith(iconColor: p.accent),
-      dividerTheme: const DividerThemeData(
+      dividerTheme: DividerThemeData(
         color: separator,
         thickness: 0.6,
         space: 1,
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(
         color: p.accent,
-        linearTrackColor: const Color(0x1F787880),
-        circularTrackColor: const Color(0x1F787880),
+        linearTrackColor: tone.track,
+        circularTrackColor: tone.track,
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xF21C1C1E),
-        contentTextStyle: text.bodyMedium?.copyWith(color: Colors.white),
-        actionTextColor: const Color(0xFF64A8FF),
+        backgroundColor: tone.isDark
+            ? const Color(0xF2F2F2F7)
+            : const Color(0xF21C1C1E),
+        contentTextStyle: text.bodyMedium?.copyWith(
+          color: tone.isDark ? Colors.black : Colors.white,
+        ),
+        actionTextColor: tone.isDark
+            ? const Color(0xFF007AFF)
+            : const Color(0xFF64A8FF),
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       ),
@@ -417,7 +434,7 @@ class AppTheme {
         ),
       ),
       popupMenuTheme: PopupMenuThemeData(
-        color: GlassStyle.solidFrost,
+        color: tone.solidFrost,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       ),
@@ -473,36 +490,6 @@ class AppTheme {
   }
 }
 
-/// Surface facts a widget can't read off [ColorScheme]: whether cards are
-/// frosted, and what the page behind them is painted with.
-@immutable
-class AppSurface extends ThemeExtension<AppSurface> {
-  const AppSurface({required this.style, this.backdrop});
-
-  static const solid = AppSurface(style: SurfaceStyle.solid);
-
-  final SurfaceStyle style;
-
-  /// Painted behind every page when set (Glass). `null` means the page is
-  /// the plain `scaffoldBackgroundColor`.
-  final Gradient? backdrop;
-
-  bool get isGlass => style == SurfaceStyle.glass;
-
-  static AppSurface of(BuildContext context) =>
-      Theme.of(context).extension<AppSurface>() ?? solid;
-
-  @override
-  AppSurface copyWith({SurfaceStyle? style, Gradient? backdrop}) => AppSurface(
-    style: style ?? this.style,
-    backdrop: backdrop ?? this.backdrop,
-  );
-
-  @override
-  AppSurface lerp(AppSurface? other, double t) =>
-      t < 0.5 ? this : (other ?? this);
-}
-
 /// Paints the Glass wallpaper behind a page — the full-screen stand-in for
 /// `scaffoldBackgroundColor` when the page is a [GlassWallpaper]. Use it
 /// on any route that builds its own transitions (and so skips
@@ -514,12 +501,16 @@ class PageBackdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (AppSurface.of(context).backdrop == null) return child;
+    final backdrop = AppSurface.of(context).backdrop;
+    if (backdrop == null) return child;
     // One BackdropGroup per page: every card on it shares a single read of
     // the wallpaper instead of each re-reading it. The RepaintBoundary keeps
     // content changes from repainting the wallpaper.
     return BackdropGroup(
-      child: GlassWallpaper(child: RepaintBoundary(child: child)),
+      child: GlassWallpaper(
+        backdrop: backdrop,
+        child: RepaintBoundary(child: child),
+      ),
     );
   }
 }

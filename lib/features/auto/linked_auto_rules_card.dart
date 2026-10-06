@@ -97,7 +97,7 @@ class LinkedAutoRulesCard extends ConsumerWidget {
               ),
             ] else
               for (final r in rules)
-                ListTile(
+                AppListTile(
                   contentPadding: EdgeInsets.zero,
                   onTap: () => context.push('/more/auto/rule/${r.id}'),
                   title: Text(r.name),

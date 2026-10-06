@@ -301,7 +301,7 @@ class AutoRuleDetailScreen extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
+            AppListTile(
               leading: const AppIcon(Icons.bolt_outlined),
               title: const Text('Pay now'),
               subtitle: Text(
@@ -314,7 +314,7 @@ class AutoRuleDetailScreen extends ConsumerWidget {
               onTap: () =>
                   Navigator.of(sheetContext).pop(_RuleDetailAction.payNow),
             ),
-            ListTile(
+            AppListTile(
               leading: AppIcon(
                 rule.isActive
                     ? Icons.pause_circle_outline
@@ -334,7 +334,7 @@ class AutoRuleDetailScreen extends ConsumerWidget {
                     : _RuleDetailAction.resume,
               ),
             ),
-            ListTile(
+            AppListTile(
               leading: AppIcon(
                 Icons.delete_outline,
                 color: theme.colorScheme.error,

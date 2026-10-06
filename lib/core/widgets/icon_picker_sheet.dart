@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/providers.dart';
 import '../app_icons.dart';
 import 'app_surfaces.dart';
+import 'custom_icon_badge.dart';
 import 'nav_bar_inset.dart';
 
 /// Opens the icon picker and resolves to the chosen key, or `null` if the
@@ -195,7 +196,7 @@ class _IconPickerSheetState extends ConsumerState<_IconPickerSheet> {
             width: isSelected ? 2.5 : 1,
           ),
         ),
-        child: AppIcon(
+        child: IconWell(
           AppIcons.resolve(key),
           color: isSelected ? accent : theme.colorScheme.onSurfaceVariant,
         ),

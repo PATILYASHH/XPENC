@@ -146,10 +146,10 @@ class AppPalettes {
   );
 
   // ── Glass: frosted white over a soft gradient. Light only. ──────────────
-  /// [bg] is only the wallpaper's base tone — the page itself is
-  /// `GlassWallpaper`. [surface] and [surfaceHigh] are translucent frosts;
-  /// menus and pickers that float over content without a blur get
-  /// `GlassStyle.solidFrost` from the theme instead.
+  /// Glass on a light background. [bg] is only nominal — the page itself
+  /// is the user's `GlassBackdrop`. [surface] and [surfaceHigh] are
+  /// translucent; menus and pickers that float over content without a blur
+  /// get `GlassTone.solidFrost` from the theme instead.
   static const glass = Palette(
     brightness: Brightness.light,
     bg: Color(0xFFE9EEFB),
@@ -165,18 +165,20 @@ class AppPalettes {
     onPrimary: Color(0xFFFFFFFF),
   );
 
-  /// Glass's wallpaper in miniature, for the theme picker's swatch — the
-  /// real one is `GlassStyle.paintWallpaper`.
-  static const glassBackdrop = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [
-      Color(0xFFB9CCFF),
-      Color(0xFFEBD8FF),
-      Color(0xFFD5F1E9),
-      Color(0xFFFFDDC9),
-    ],
-    stops: [0, 0.4, 0.7, 1],
+  /// Glass on a dark background (Black, Ocean, Nebula): iOS's dark-mode
+  /// label colours and system blue, over clear dark glass.
+  static const glassDark = Palette(
+    brightness: Brightness.dark,
+    bg: Color(0xFF000000),
+    surface: Color(0x33FFFFFF),
+    surfaceHigh: Color(0x1FFFFFFF),
+    track: Color(0x33FFFFFF),
+    border: Color(0x40FFFFFF),
+    text: Color(0xFFF5F5F7),
+    textMuted: Color(0xFF9C9CA3),
+    accent: Color(0xFF0A84FF),
+    primary: Color(0xFF0A84FF),
+    onPrimary: Color(0xFFFFFFFF),
   );
 }
 

@@ -55,7 +55,7 @@ class PinTimeoutSheet extends ConsumerWidget {
             ),
           ),
           for (final minutes in _options)
-            ListTile(
+            AppListTile(
               title: Text(label(minutes)),
               trailing: minutes == selected
                   ? AppIcon(Icons.check_rounded, color: cs.primary)

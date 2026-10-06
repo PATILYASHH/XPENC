@@ -512,7 +512,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
                 ),
               ),
             ],
-            SwitchListTile(
+            AppSwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Amount varies each time'),
               subtitle: const Text(
@@ -521,7 +521,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               value: _isEstimate,
               onChanged: (v) => setState(() => _isEstimate = v),
             ),
-            SwitchListTile(
+            AppSwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Add a promotion'),
               subtitle: const Text(
@@ -561,7 +561,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               ),
             ],
             if (!isGoalOrLoan) ...[
-              SwitchListTile(
+              AppSwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Foreign currency'),
                 subtitle: const Text(

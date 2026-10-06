@@ -9,6 +9,7 @@ import '../app_icons.dart';
 import '../currency.dart';
 import '../money.dart';
 import '../theme/app_colors.dart';
+import 'app_surfaces.dart';
 import 'custom_icon_badge.dart';
 import 'error_view.dart';
 import 'money_text.dart';
@@ -216,7 +217,7 @@ class HistoryRow extends StatelessWidget {
 
     final String? subtitle = _subtitle(isTransfer);
 
-    return ListTile(
+    return AppListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       onTap: () => context.push('/transaction/${tx.id}'),
       leading: CircleAvatar(

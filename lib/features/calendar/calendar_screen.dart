@@ -651,7 +651,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     color: accent.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
-                  child: AppIcon(
+                  child: IconWell(
                     isPay
                         ? Icons.arrow_upward_rounded
                         : Icons.arrow_downward_rounded,
@@ -724,7 +724,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
     return AppCard(
       margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
+      child: AppListTile(
         leading: CircleAvatar(
           backgroundColor: accent.withValues(alpha: 0.15),
           foregroundColor: accent,
@@ -807,7 +807,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
     return AppCard(
       margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
+      child: AppListTile(
         leading: CircleAvatar(
           backgroundColor: accent.withValues(alpha: 0.15),
           child: transactionRowIcon(

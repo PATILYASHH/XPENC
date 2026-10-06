@@ -6,6 +6,7 @@ import '../../core/routing/app_router.dart' show appRouter;
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/amount_keypad_field.dart';
 import '../../core/widgets/app_surfaces.dart';
+import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -381,7 +382,7 @@ class _BudgetTile extends ConsumerWidget {
                   color: catColor.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
-                child: AppIcon(
+                child: IconWell(
                   AppIcons.resolve(category.iconKey),
                   color: catColor,
                   size: compact ? 16 : 22,
@@ -832,7 +833,7 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
                   color: catColor.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
-                child: AppIcon(
+                child: IconWell(
                   AppIcons.resolve(widget.category.iconKey),
                   color: catColor,
                   size: 20,
@@ -929,7 +930,7 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    SwitchListTile(
+                    AppSwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Rollover'),
                       subtitle: Text(
@@ -1139,7 +1140,7 @@ class _OverflowTargetSheet extends ConsumerWidget {
                   return ListView(
                     shrinkWrap: true,
                     children: [
-                      ListTile(
+                      AppListTile(
                         leading: const AppIcon(Icons.block_rounded),
                         title: const Text('Off'),
                         selected: currentTarget == null,
@@ -1148,7 +1149,7 @@ class _OverflowTargetSheet extends ConsumerWidget {
                         ).pop(_clearOverflowTarget),
                       ),
                       for (final c in options)
-                        ListTile(
+                        AppListTile(
                           leading: AppIcon(
                             AppIcons.resolve(c.iconKey),
                             color: Color(c.colorValue),

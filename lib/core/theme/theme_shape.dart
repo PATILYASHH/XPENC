@@ -90,7 +90,9 @@ class ThemeShape {
   /// set in Inter — the closest open face to SF Pro.
   static const glass = ThemeShape(
     controlRadius: 14,
-    cardRadius: 26,
+    // Continuous (squircle) corners — reads squarer than the same circular
+    // radius, the proportions of an iOS widget.
+    cardRadius: 22,
     headlineWeight: FontWeight.w700,
     headlineLetterSpacing: -0.8,
     displayFontFamily: 'Inter',

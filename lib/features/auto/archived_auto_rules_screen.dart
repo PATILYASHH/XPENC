@@ -73,7 +73,7 @@ class _ArchivedRuleTile extends ConsumerWidget {
               : Icons.savings_rounded)
         : (isExpense ? Icons.north_east_rounded : Icons.south_west_rounded);
 
-    return ListTile(
+    return AppListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       onTap: () => context.push('/more/auto/rule/${rule.id}'),
       leading: CircleAvatar(

@@ -307,7 +307,7 @@ class XpencScoreScreen extends ConsumerWidget {
                         children: [
                           for (final (i, p)
                               in result.improvements.take(3).indexed)
-                            ListTile(
+                            AppListTile(
                               leading: CircleAvatar(
                                 radius: 14,
                                 backgroundColor: cs.surfaceContainerHighest,

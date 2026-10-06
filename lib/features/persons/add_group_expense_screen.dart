@@ -356,7 +356,7 @@ class _AddGroupExpenseScreenState
             ),
           ),
           const SizedBox(height: 14),
-          ListTile(
+          AppListTile(
             contentPadding: EdgeInsets.zero,
             leading: const AppIcon(Icons.calendar_today_outlined),
             title: Text(

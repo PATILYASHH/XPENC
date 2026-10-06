@@ -39,7 +39,7 @@ class NotificationsSettingsScreen extends ConsumerWidget {
         ),
         children: [
           AppCard(
-            child: SwitchListTile(
+            child: AppSwitchListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               secondary: const AppIcon(Icons.notifications_outlined),
               title: const Text('Notifications'),
@@ -57,7 +57,7 @@ class NotificationsSettingsScreen extends ConsumerWidget {
           AppCard(
             child: Column(
               children: [
-                SwitchListTile(
+                AppSwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   secondary: const AppIcon(Icons.edit_note_rounded),
                   title: const Text('Daily expense reminder'),
@@ -79,7 +79,7 @@ class NotificationsSettingsScreen extends ConsumerWidget {
                 ),
                 if (expenseReminder.enabled) ...[
                   Divider(height: 1, indent: 60, color: cs.outline),
-                  ListTile(
+                  AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.schedule_outlined),
                     title: const Text('Time'),
@@ -111,7 +111,7 @@ class NotificationsSettingsScreen extends ConsumerWidget {
           AppCard(
             child: Column(
               children: [
-                SwitchListTile(
+                AppSwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   secondary: const AppIcon(Icons.flash_on_outlined),
                   title: const Text('Quick add from notification'),
@@ -209,7 +209,7 @@ class _QuickAddAccountTile extends ConsumerWidget {
     final chosenId = ref.watch(quickAddAccountIdProvider);
     final chosen = accounts.where((a) => a.id == chosenId).firstOrNull;
 
-    return ListTile(
+    return AppListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
       leading: const AppIcon(Icons.account_balance_wallet_outlined),
       title: const Text('Posts to'),

@@ -419,7 +419,7 @@ class _OptionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return ListTile(
+    return AppListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 2),
       leading: CircleAvatar(
         backgroundColor: theme.colorScheme.primaryContainer,
@@ -451,7 +451,7 @@ class _ChoiceTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return ListTile(
+    return AppListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 2),
       leading: leading,
       title: Text(

@@ -39,7 +39,7 @@ class CurrencySettingsScreen extends ConsumerWidget {
         children: [
           _sectionLabel(theme, 'Parent currency'),
           AppCard(
-            child: ListTile(
+            child: AppListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               leading: const AppIcon(Icons.payments_outlined),
               title: Text('${parentCurrency.symbol} ${parentCurrency.code}'),
@@ -81,7 +81,7 @@ class CurrencySettingsScreen extends ConsumerWidget {
                       _RateTile(rate: rates[i], parentCurrency: parentCurrency),
                     ],
                   Divider(height: 1, indent: 60, color: cs.outline),
-                  ListTile(
+                  AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.add_circle_outline_rounded),
                     title: const Text('Add a currency'),
@@ -143,7 +143,7 @@ class _RateTile extends ConsumerWidget {
     final currency = currencyForCode(rate.currencyCode);
     final rateValue = rate.rateToBaseMicros / currencyRateScale;
 
-    return ListTile(
+    return AppListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
       leading: SizedBox(
         width: 32,
@@ -238,7 +238,7 @@ class _AddRateDialogState extends State<_AddRateDialog> {
             ),
           ),
           const SizedBox(height: 4),
-          ListTile(
+          AppListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Effective date'),
             subtitle: Text(_dateFormat.format(_effectiveAt)),

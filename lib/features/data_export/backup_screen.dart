@@ -351,7 +351,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
           ),
           const SizedBox(height: 12),
           AppCard(
-            child: ListTile(
+            child: AppListTile(
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 4,
@@ -770,7 +770,7 @@ class _AutoBackupSettingsSheetState
               ),
             ),
             const SizedBox(height: 8),
-            SwitchListTile(
+            AppSwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Back up automatically'),
               value: _enabled,

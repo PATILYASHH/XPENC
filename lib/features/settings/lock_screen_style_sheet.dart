@@ -70,7 +70,7 @@ class LockScreenStyleSheet extends ConsumerWidget {
             ),
           ),
           for (final style in LockScreenStyle.values)
-            ListTile(
+            AppListTile(
               leading: AppIcon(_icon(style)),
               title: Text(label(style)),
               subtitle: Text(

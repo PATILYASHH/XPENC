@@ -51,7 +51,7 @@ class MasterPhraseAttemptsSheet extends ConsumerWidget {
             ),
           ),
           for (final attempts in _options)
-            ListTile(
+            AppListTile(
               title: Text(label(attempts)),
               trailing: attempts == selected
                   ? AppIcon(Icons.check_rounded, color: cs.primary)

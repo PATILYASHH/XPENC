@@ -82,7 +82,7 @@ class BottomNavSettingsScreen extends ConsumerWidget {
           const SizedBox(height: 20),
           AppCard(
             margin: EdgeInsets.zero,
-            child: SwitchListTile(
+            child: AppSwitchListTile(
               title: const Text('Show labels'),
               subtitle: const Text(
                 'Show each item\'s text under its icon. Off keeps icons only.',
@@ -223,7 +223,7 @@ class _SlotTile extends StatelessWidget {
     final theme = Theme.of(context);
     return AppCard(
       margin: EdgeInsets.zero,
-      child: ListTile(
+      child: AppListTile(
         title: Text(label),
         trailing: const AppIcon(Icons.chevron_right_rounded),
         onTap: onTap,
@@ -260,7 +260,7 @@ class _CatalogPickerSheet extends ConsumerWidget {
             for (final entry in bottomNavCatalogLabels.entries)
               if (!excluded.contains(entry.key) &&
                   !(basic && basicModeHiddenCatalogIds.contains(entry.key)))
-                ListTile(
+                AppListTile(
                   title: Text(entry.value),
                   onTap: () => Navigator.of(context).pop(entry.key),
                 ),

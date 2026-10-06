@@ -749,7 +749,7 @@ class _EntryRow extends ConsumerWidget {
           ),
         ],
       ),
-      child: ListTile(
+      child: AppListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
         onTap: () => _showEntrySheet(
           context,

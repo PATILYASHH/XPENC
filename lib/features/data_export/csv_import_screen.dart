@@ -591,7 +591,7 @@ class _PreviewRow extends StatelessWidget {
       if (row.note != null) row.note!,
       if (row.category != null) '#${row.category}',
     ].join(' · ');
-    return ListTile(
+    return AppListTile(
       dense: true,
       leading: AppIcon(
         ok ? Icons.check_circle_outline : Icons.error_outline,

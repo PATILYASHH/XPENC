@@ -106,7 +106,7 @@ class _TemplateTile extends ConsumerWidget {
         ? 'Loading…'
         : '$itemCount ${itemCount == 1 ? 'category' : 'categories'}';
 
-    return ListTile(
+    return AppListTile(
       contentPadding: const EdgeInsets.only(left: 16, right: 4),
       leading: CircleAvatar(
         backgroundColor: theme.colorScheme.primaryContainer,

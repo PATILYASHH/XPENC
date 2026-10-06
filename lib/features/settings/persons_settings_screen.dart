@@ -43,7 +43,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
         ),
         children: [
           AppCard(
-            child: SwitchListTile(
+            child: AppSwitchListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               secondary: const AppIcon(Icons.handshake_outlined),
               title: const Text('Count repayments as income'),
@@ -79,7 +79,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
           AppCard(
             child: Column(
               children: [
-                SwitchListTile(
+                AppSwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   title: const Text('UPI'),
                   subtitle: const Text('India'),
@@ -88,7 +88,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                 ),
                 if (upiEnabled) ...[
                   Divider(height: 1, indent: 16, color: cs.outline),
-                  ListTile(
+                  AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.qr_code_outlined),
                     title: const Text('My UPI ID'),
@@ -110,7 +110,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                     ),
                   ),
                   Divider(height: 1, indent: 16, color: cs.outline),
-                  ListTile(
+                  AppListTile(
                     contentPadding: const EdgeInsets.only(left: 16, right: 8),
                     title: const Text('Pay without internet (Beta)'),
                     subtitle: const Text(
@@ -132,7 +132,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
           AppCard(
             child: Column(
               children: [
-                SwitchListTile(
+                AppSwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   title: const Text('PayPal'),
                   subtitle: const Text('Worldwide'),
@@ -141,7 +141,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                 ),
                 if (paypalEnabled) ...[
                   Divider(height: 1, indent: 16, color: cs.outline),
-                  ListTile(
+                  AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.attach_money_rounded),
                     title: const Text('My PayPal.me ID'),
@@ -172,7 +172,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
           AppCard(
             child: Column(
               children: [
-                SwitchListTile(
+                AppSwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   title: const Text('Venmo'),
                   subtitle: const Text('US'),
@@ -181,7 +181,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                 ),
                 if (venmoEnabled) ...[
                   Divider(height: 1, indent: 16, color: cs.outline),
-                  ListTile(
+                  AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.attach_money_rounded),
                     title: const Text('My Venmo username'),
@@ -212,7 +212,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
           AppCard(
             child: Column(
               children: [
-                SwitchListTile(
+                AppSwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   title: const Text('Cash App'),
                   subtitle: const Text('US'),
@@ -221,7 +221,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                 ),
                 if (cashappEnabled) ...[
                   Divider(height: 1, indent: 16, color: cs.outline),
-                  ListTile(
+                  AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.attach_money_rounded),
                     title: const Text('My Cash App cashtag'),
@@ -252,7 +252,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
           AppCard(
             child: Column(
               children: [
-                SwitchListTile(
+                AppSwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   title: const Text('Revolut'),
                   subtitle: const Text('Europe'),
@@ -261,7 +261,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                 ),
                 if (revolutEnabled) ...[
                   Divider(height: 1, indent: 16, color: cs.outline),
-                  ListTile(
+                  AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.attach_money_rounded),
                     title: const Text('My Revolut.me username'),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app_icons.dart';
+import '../theme/glass.dart';
 import 'app_surfaces.dart';
 
 /// Renders a `TransactionRow.customIcon` value — see the doc on
@@ -54,12 +55,47 @@ class CustomIconBadge extends StatelessWidget {
 /// Drop-in replacement for a row's `Icon(fallback, size: size, color: color)`
 /// — [customIcon] (a `TransactionRow.customIcon`) takes over when set,
 /// rendered at the same [size] the fallback icon would have used.
+///
+/// Under Glass the glyph sits on a glossy [GlassIconTile] of [color] that
+/// fills the row's own icon well, white on colour — the premium treatment.
 Widget transactionRowIcon({
   required String? customIcon,
   required IconData fallback,
   required double size,
   required Color color,
-}) {
+}) => Builder(
+  builder: (context) {
+    if (!AppSurface.of(context).isGlass) {
+      return _plainRowIcon(customIcon, fallback, size, color);
+    }
+    return LayoutBuilder(
+      builder: (context, box) {
+        final extent = box.hasBoundedWidth && box.hasBoundedHeight
+            ? (box.maxWidth < box.maxHeight ? box.maxWidth : box.maxHeight)
+            : size * 2;
+        return GlassIconTile(
+          color: color,
+          extent: extent,
+          child: customIcon == null
+              ? AppIcon(fallback, size: extent * 0.5, color: Colors.white)
+              : CustomIconBadge(
+                  value: customIcon,
+                  size: extent * 0.5,
+                  color: Colors.white,
+                  scaled: false,
+                ),
+        );
+      },
+    );
+  },
+);
+
+Widget _plainRowIcon(
+  String? customIcon,
+  IconData fallback,
+  double size,
+  Color color,
+) {
   if (customIcon == null) return AppIcon(fallback, size: size, color: color);
   return CustomIconBadge(
     value: customIcon,
@@ -67,4 +103,35 @@ Widget transactionRowIcon({
     color: color,
     scaled: false,
   );
+}
+
+/// The icon inside a tinted icon well (a fixed-size circle or rounded square
+/// washed with the icon's colour). Outside Glass it is exactly
+/// `AppIcon(icon, size: size, color: color)`; under Glass it fills the well
+/// with a glossy [GlassIconTile] of [color] and a white glyph.
+class IconWell extends StatelessWidget {
+  const IconWell(this.icon, {this.size, this.color, super.key});
+
+  final IconData? icon;
+  final double? size;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final surface = AppSurface.of(context);
+    if (!surface.isGlass) return AppIcon(icon, size: size, color: color);
+    final glyph = size ?? 24;
+    return LayoutBuilder(
+      builder: (context, box) {
+        final extent = box.hasBoundedWidth && box.hasBoundedHeight
+            ? (box.maxWidth < box.maxHeight ? box.maxWidth : box.maxHeight)
+            : glyph * 2;
+        return GlassIconTile(
+          color: color ?? Theme.of(context).colorScheme.secondary,
+          extent: extent,
+          child: AppIcon(icon, size: extent * 0.5, color: Colors.white),
+        );
+      },
+    );
+  }
 }

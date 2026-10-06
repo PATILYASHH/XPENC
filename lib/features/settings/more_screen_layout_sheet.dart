@@ -64,7 +64,7 @@ class MoreScreenLayoutSheet extends ConsumerWidget {
             ),
           ),
           for (final mode in MoreScreenViewMode.values)
-            ListTile(
+            AppListTile(
               leading: AppIcon(_icon(mode)),
               title: Text(label(mode)),
               subtitle: Text(

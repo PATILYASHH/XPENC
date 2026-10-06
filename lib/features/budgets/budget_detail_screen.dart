@@ -305,7 +305,7 @@ class _TxRow extends StatelessWidget {
       if (entry.isSplit) 'split',
     ].join(' · ');
 
-    return ListTile(
+    return AppListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       leading: CircleAvatar(
         backgroundColor: AppColors.expense.withValues(alpha: 0.14),

@@ -30,7 +30,8 @@ const whatsNewEntries = <WhatsNewEntry>[
         'Glass is Liquid Glass, like iPhone: frosted cards, a floating tab '
         'bar with a sliding glass droplet, large titles under glass '
         'buttons, floating sheets, iOS icons and switches, swipe-back '
-        'pages and bouncy scrolling. Noir (was Bold) is heavier and bolder and now has a '
+        'pages and bouncy scrolling — on a background you pick: Aurora, '
+        'White, Black, Ocean, Sunset or Nebula. Noir (was Bold) is heavier and bolder and now has a '
         'light version too. Light, Dark or System is now its own choice. '
         'Colourful, Midnight and Cove are retired; if you used one, you are '
         'on Classic, with your light or dark choice kept.',

@@ -730,14 +730,14 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
+            AppListTile(
               leading: const AppIcon(Icons.grid_view_rounded),
               title: const Text('XPENC icon'),
               subtitle: const Text('Pick from the app\'s own icon library'),
               onTap: () =>
                   Navigator.of(sheetContext).pop(_CustomIconSource.library),
             ),
-            ListTile(
+            AppListTile(
               leading: const AppIcon(Icons.emoji_emotions_outlined),
               title: const Text('Emoji'),
               subtitle: const Text('Type one with your keyboard\'s emoji key'),
@@ -901,13 +901,13 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
+            AppListTile(
               leading: const AppIcon(Icons.photo_camera_outlined),
               title: const Text('Take photo'),
               onTap: () =>
                   Navigator.of(sheetContext).pop(_ReceiptSource.camera),
             ),
-            ListTile(
+            AppListTile(
               leading: const AppIcon(Icons.photo_library_outlined),
               title: const Text('Choose from gallery'),
               onTap: () =>
@@ -1067,7 +1067,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     return AppCard(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
-      child: SwitchListTile(
+      child: AppSwitchListTile(
         value: _isSplit,
         onChanged: (v) => setState(() {
           _isSplit = v;
@@ -1385,7 +1385,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     return AppCard(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
-      child: SwitchListTile(
+      child: AppSwitchListTile(
         value: _hasChange,
         onChanged: (v) => setState(() {
           _hasChange = v;
@@ -1423,7 +1423,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     return AppCard(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
-      child: SwitchListTile(
+      child: AppSwitchListTile(
         value: _hasForeignCurrency,
         onChanged: (v) => setState(() {
           _hasForeignCurrency = v;
@@ -2375,7 +2375,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     return AppCard(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
-      child: ListTile(
+      child: AppListTile(
         onTap: _pickDate,
         leading: AppIcon(
           Icons.event_outlined,
@@ -2416,7 +2416,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     return AppCard(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
-      child: ListTile(
+      child: AppListTile(
         onTap: onTap,
         leading: AppIcon(icon, color: theme.colorScheme.onSurfaceVariant),
         title: Text(
@@ -2790,7 +2790,7 @@ class _AccountPickerSheet extends ConsumerWidget {
                       final linkedName = a.linkedAccountId == null
                           ? null
                           : accountMap[a.linkedAccountId]?.name;
-                      return ListTile(
+                      return AppListTile(
                         leading: _iconCircle(a.iconKey, a.colorValue),
                         title: Text(a.name),
                         subtitle: isDebitCard

@@ -9,6 +9,7 @@ import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/amount_keypad_field.dart';
 import '../../core/widgets/app_surfaces.dart';
+import '../../core/widgets/custom_icon_badge.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
@@ -182,7 +183,7 @@ class _GoalCard extends StatelessWidget {
                         color: color.withValues(alpha: 0.14),
                         shape: BoxShape.circle,
                       ),
-                      child: AppIcon(
+                      child: IconWell(
                         AppIcons.resolve(account.iconKey),
                         color: color,
                       ),
@@ -352,7 +353,7 @@ class _LoanCard extends StatelessWidget {
                         color: color.withValues(alpha: 0.14),
                         shape: BoxShape.circle,
                       ),
-                      child: AppIcon(
+                      child: IconWell(
                         AppIcons.resolve(account.iconKey),
                         color: color,
                       ),
@@ -463,13 +464,13 @@ Future<void> _openNewGoalChoice(BuildContext context) async {
               ),
             ),
           ),
-          ListTile(
+          AppListTile(
             leading: const AppIcon(Icons.add_circle_outline_rounded),
             title: const Text('Start fresh'),
             subtitle: const Text('A new goal, empty until you fund it.'),
             onTap: () => Navigator.of(sheetContext).pop(_NewGoalChoice.fresh),
           ),
-          ListTile(
+          AppListTile(
             leading: const AppIcon(Icons.savings_outlined),
             title: const Text('Turn an account into a goal'),
             subtitle: const Text(
@@ -900,7 +901,7 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
             width: selected ? 2.5 : 1,
           ),
         ),
-        child: AppIcon(
+        child: IconWell(
           AppIcons.resolve(key),
           color: selected ? color : theme.colorScheme.onSurfaceVariant,
         ),
@@ -1440,7 +1441,7 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SwitchListTile(
+          AppSwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Auto-pay EMI'),
             subtitle: Text(
@@ -1559,7 +1560,7 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
             width: selected ? 2.5 : 1,
           ),
         ),
-        child: AppIcon(
+        child: IconWell(
           AppIcons.resolve(key),
           color: selected ? color : theme.colorScheme.onSurfaceVariant,
         ),

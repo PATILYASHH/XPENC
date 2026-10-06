@@ -292,7 +292,7 @@ class _PairSheet extends ConsumerWidget {
               _CardList(
                 children: [
                   for (final l in lines)
-                    ListTile(
+                    AppListTile(
                       dense: true,
                       title: Text(
                         l.expense.note?.isNotEmpty == true
@@ -456,7 +456,7 @@ class _NetRow extends StatelessWidget {
         : amount.isNegative
         ? AppColors.expense
         : theme.colorScheme.onSurfaceVariant;
-    return ListTile(
+    return AppListTile(
       dense: true,
       onTap: onTap,
       leading: _Initial(name),
@@ -501,7 +501,7 @@ class _DebtRow extends StatelessWidget {
     final nameStyle = theme.textTheme.bodyMedium?.copyWith(
       fontWeight: FontWeight.w600,
     );
-    return ListTile(
+    return AppListTile(
       dense: true,
       onTap: onTap,
       title: Row(

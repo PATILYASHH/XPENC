@@ -287,7 +287,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
+            AppListTile(
               leading: const AppIcon(Icons.tune_rounded),
               title: const Text('Fix starting amount'),
               subtitle: const Text(
@@ -298,7 +298,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
               onTap: () =>
                   Navigator.of(sheetContext).pop(_GoalAction.fixStartingAmount),
             ),
-            ListTile(
+            AppListTile(
               leading: const AppIcon(Icons.archive_outlined),
               title: const Text('Archive'),
               subtitle: const Text(
@@ -306,7 +306,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
               ),
               onTap: () => Navigator.of(sheetContext).pop(_GoalAction.archive),
             ),
-            ListTile(
+            AppListTile(
               leading: AppIcon(
                 Icons.delete_outline,
                 color: Theme.of(sheetContext).colorScheme.error,

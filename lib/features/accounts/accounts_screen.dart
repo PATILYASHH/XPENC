@@ -7,6 +7,7 @@ import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/widgets/amount_keypad_field.dart';
 import '../../core/widgets/app_surfaces.dart';
+import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/statement_range_picker.dart';
 import '../../data/database.dart';
@@ -334,7 +335,7 @@ class _AccountTile extends ConsumerWidget {
       );
     }
 
-    return ListTile(
+    return AppListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: _leading(),
       title: Text(
@@ -358,7 +359,7 @@ class _AccountTile extends ConsumerWidget {
         color: color.withValues(alpha: 0.14),
         shape: BoxShape.circle,
       ),
-      child: AppIcon(AppIcons.resolve(account.iconKey), color: color, size: 22),
+      child: IconWell(AppIcons.resolve(account.iconKey), color: color, size: 22),
     );
   }
 
@@ -397,7 +398,7 @@ class _AccountTile extends ConsumerWidget {
                 ),
               ),
             ),
-            ListTile(
+            AppListTile(
               leading: const AppIcon(Icons.edit_outlined),
               title: const Text('Rename'),
               onTap: () =>
@@ -406,7 +407,7 @@ class _AccountTile extends ConsumerWidget {
             // A debit card/UPI instrument holds no balance of its own (see
             // Accounts.linkedAccountId) — there's nothing to warn about.
             if (account.linkedAccountId == null)
-              ListTile(
+              AppListTile(
                 leading: const AppIcon(Icons.savings_outlined),
                 title: const Text('Minimum balance'),
                 subtitle: Text(
@@ -418,14 +419,14 @@ class _AccountTile extends ConsumerWidget {
                   sheetContext,
                 ).pop(_AccountAction.minimumBalance),
               ),
-            ListTile(
+            AppListTile(
               leading: const AppIcon(Icons.archive_outlined),
               title: const Text('Archive'),
               subtitle: const Text('Hide it. History stays intact.'),
               onTap: () =>
                   Navigator.of(sheetContext).pop(_AccountAction.archive),
             ),
-            ListTile(
+            AppListTile(
               leading: AppIcon(
                 Icons.delete_outline,
                 color: theme.colorScheme.error,

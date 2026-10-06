@@ -208,7 +208,7 @@ class _PermissionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final known = state != null && state != PermissionState.unavailable;
-    return SwitchListTile(
+    return AppSwitchListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       secondary: AppIcon(_icon),
       title: Text(
@@ -241,7 +241,7 @@ class _InfoTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return ListTile(
+    return AppListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: AppIcon(icon, color: cs.onSurfaceVariant),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),

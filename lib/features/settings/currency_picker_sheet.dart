@@ -135,7 +135,7 @@ class _CurrencyPickerSheetState extends ConsumerState<CurrencyPickerSheet> {
                       itemBuilder: (context, i) {
                         final c = results[i];
                         final isSelected = c.code == selected;
-                        return ListTile(
+                        return AppListTile(
                           leading: SizedBox(
                             width: 40,
                             child: Center(

@@ -8,6 +8,7 @@ import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_surfaces.dart';
+import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/error_view.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
@@ -1299,7 +1300,7 @@ class _AccountIcon extends StatelessWidget {
       color: color.withValues(alpha: 0.14),
       shape: BoxShape.circle,
     ),
-    child: AppIcon(AppIcons.resolve(account.iconKey), color: color, size: 20),
+    child: IconWell(AppIcons.resolve(account.iconKey), color: color, size: 20),
   );
 }
 

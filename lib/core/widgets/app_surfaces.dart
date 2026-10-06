@@ -4,7 +4,6 @@ import 'dart:ui' as ui;
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
-import '../theme/app_theme.dart';
 import '../theme/glass.dart';
 
 /// The app's card. Outside Glass it *is* a [Card] — same arguments, same
@@ -87,9 +86,104 @@ class AppIcon extends StatelessWidget {
     return Icon(
       data,
       size: base * scale,
-      color: quiet ? const Color(0xFFB4B4BA) : color,
+      color: quiet ? AppSurface.of(context).tone.quiet : color,
     );
   }
+}
+
+/// [ListTile], with the same arguments. Under Glass a leading [AppIcon]
+/// sits on a glossy [GlassIconTile], iOS Settings–style; everything else
+/// (and every other theme) is a plain ListTile.
+class AppListTile extends StatelessWidget {
+  const AppListTile({
+    super.key,
+    this.leading,
+    this.title,
+    this.subtitle,
+    this.trailing,
+    this.onTap,
+    this.onLongPress,
+    this.contentPadding,
+    this.selected = false,
+    this.shape,
+    this.dense,
+    this.isThreeLine = false,
+    this.enabled = true,
+  });
+
+  final Widget? leading;
+  final Widget? title;
+  final Widget? subtitle;
+  final Widget? trailing;
+  final GestureTapCallback? onTap;
+  final GestureLongPressCallback? onLongPress;
+  final EdgeInsetsGeometry? contentPadding;
+  final bool selected;
+  final ShapeBorder? shape;
+  final bool? dense;
+  final bool isThreeLine;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    leading: glassLeadingTile(context, leading),
+    title: title,
+    subtitle: subtitle,
+    trailing: trailing,
+    onTap: onTap,
+    onLongPress: onLongPress,
+    contentPadding: contentPadding,
+    selected: selected,
+    shape: shape,
+    dense: dense,
+    isThreeLine: isThreeLine,
+    enabled: enabled,
+  );
+}
+
+/// [SwitchListTile], with the same arguments; its [secondary] gets the same
+/// Glass tile as [AppListTile]'s leading icon.
+class AppSwitchListTile extends StatelessWidget {
+  const AppSwitchListTile({
+    required this.value,
+    required this.onChanged,
+    super.key,
+    this.title,
+    this.subtitle,
+    this.secondary,
+    this.contentPadding,
+  });
+
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+  final Widget? title;
+  final Widget? subtitle;
+  final Widget? secondary;
+  final EdgeInsetsGeometry? contentPadding;
+
+  @override
+  Widget build(BuildContext context) => SwitchListTile(
+    value: value,
+    onChanged: onChanged,
+    title: title,
+    subtitle: subtitle,
+    secondary: glassLeadingTile(context, secondary),
+    contentPadding: contentPadding,
+  );
+}
+
+/// Under Glass, a row's leading [AppIcon] on a glossy tile: its own colour
+/// when it has a real one, else a stable colour from iOS's system palette
+/// (a grey "muted" icon colour would make a column of grey tiles).
+Widget? glassLeadingTile(BuildContext context, Widget? leading) {
+  if (leading is! AppIcon || !AppSurface.of(context).isGlass) return leading;
+  final own = leading.color;
+  final vivid = own != null && HSLColor.fromColor(own).saturation > 0.25;
+  return GlassIconTile(
+    color: vivid ? own : GlassIconTile.forIcon(leading.icon),
+    extent: 30,
+    child: AppIcon(leading.icon, size: 17, color: Colors.white),
+  );
 }
 
 /// [AppBar], with the same arguments. Under Glass the actions are gathered
@@ -193,7 +287,7 @@ Future<T?> showAppSheet<T>({
       elevation: 0,
       clipBehavior: Clip.none,
       shape: const RoundedRectangleBorder(),
-      modalBarrierColor: GlassStyle.barrier,
+      modalBarrierColor: AppSurface.of(context).tone.barrier,
       // The pane draws its own handle inside the glass.
       showDragHandle: false,
       useSafeArea: useSafeArea,
@@ -213,11 +307,12 @@ class _FloatingSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
     final bottom = math.max(8.0, mq.viewPadding.bottom);
+    final tone = AppSurface.of(context).tone;
     return Padding(
       padding: EdgeInsets.fromLTRB(8, 0, 8, bottom),
       child: LiquidGlass(
         borderRadius: BorderRadius.circular(34),
-        frost: GlassStyle.sheetFrost,
+        frost: tone.sheetFrost,
         blur: 24,
         refraction: 10,
         band: 26,
@@ -239,7 +334,7 @@ class _FloatingSheet extends StatelessWidget {
                         width: 38,
                         height: 5,
                         decoration: BoxDecoration(
-                          color: const Color(0x4D3C3C43),
+                          color: tone.grabber,
                           borderRadius: BorderRadius.circular(3),
                         ),
                       ),
@@ -277,7 +372,8 @@ Future<T?> showAppDialog<T>({
       context: context,
       builder: builder,
       barrierColor:
-          Theme.of(context).dialogTheme.barrierColor ?? GlassStyle.barrier,
+          Theme.of(context).dialogTheme.barrierColor ??
+          AppSurface.of(context).tone.barrier,
       barrierDismissible: barrierDismissible,
       barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
       themes: InheritedTheme.capture(from: context, to: navigator.context),

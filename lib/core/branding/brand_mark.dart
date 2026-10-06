@@ -61,12 +61,17 @@ class BrandMark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    // Glass's surface is see-through; an X knocked out in it would vanish
+    // into the tile, so it takes the solid opposite of the tile instead.
+    final surfaceInk = cs.surface.a < 1
+        ? (cs.brightness == Brightness.dark ? Colors.black : Colors.white)
+        : cs.surface;
     return SizedBox.square(
       dimension: size,
       child: CustomPaint(
         painter: _MarkPainter(
           tile: tile ?? cs.onSurface,
-          ink: ink ?? cs.surface,
+          ink: ink ?? surfaceInk,
           rim: radiusRim,
         ),
         isComplex: false,

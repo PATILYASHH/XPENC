@@ -461,7 +461,7 @@ class _MemberRow extends ConsumerWidget {
         ? AppColors.expense
         : theme.colorScheme.onSurfaceVariant;
 
-    return ListTile(
+    return AppListTile(
       dense: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
       leading: CircleAvatar(
@@ -517,7 +517,7 @@ class _ExpenseRow extends ConsumerWidget {
 
     return AppCard(
       margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
+      child: AppListTile(
         leading: AppIcon(_splitIcon, color: cs.onSurfaceVariant),
         title: Text(
           expense.note?.isNotEmpty == true ? expense.note! : 'Group expense',

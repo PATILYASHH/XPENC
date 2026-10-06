@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
@@ -8,6 +10,7 @@ import '../../core/app_icons.dart';
 import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/glass.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/group_tag.dart';
@@ -902,7 +905,7 @@ Future<void> _openQuickActions(
         children: [
           // A correction is only ever deleted — see the detail screen.
           if (!tx.type.isCorrection) ...[
-            ListTile(
+            AppListTile(
               leading: const AppIcon(Icons.content_copy_outlined),
               title: const Text('Duplicate'),
               subtitle: const Text('Add a new transaction with these details'),
@@ -911,7 +914,7 @@ Future<void> _openQuickActions(
                 context.push('/add?duplicate=${tx.id}');
               },
             ),
-            ListTile(
+            AppListTile(
               leading: const AppIcon(Icons.bookmark_add_outlined),
               title: const Text('Save as template'),
               subtitle: const Text('Reuse these details from the ➕ button'),
@@ -920,7 +923,7 @@ Future<void> _openQuickActions(
                 onCreateTemplate(tx, title);
               },
             ),
-            ListTile(
+            AppListTile(
               leading: const AppIcon(Icons.edit_outlined),
               title: const Text('Edit'),
               onTap: () {
@@ -929,7 +932,7 @@ Future<void> _openQuickActions(
               },
             ),
           ],
-          ListTile(
+          AppListTile(
             leading: AppIcon(
               Icons.delete_outline_rounded,
               color: theme.colorScheme.error,
@@ -1459,7 +1462,7 @@ class _EmptyState extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: cs.secondary.withValues(alpha: 0.10),
               ),
-              child: AppIcon(icon, size: 28, color: cs.secondary),
+              child: IconWell(icon, size: 28, color: cs.secondary),
             ),
             const SizedBox(height: 16),
             Text(
@@ -1521,9 +1524,7 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    return Container(
-      color: background,
-      child: Column(
+    final content = Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (searchActive)
@@ -1555,8 +1556,22 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
             ),
           ),
         ],
-      ),
-    );
+      );
+    // Glass: rows slide under a frosted band, as under an iOS toolbar.
+    final surface = AppSurface.of(context);
+    if (surface.isGlass) {
+      final frost = surface.tone.sheetFrost;
+      return ClipRect(
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: ColoredBox(
+            color: frost.withValues(alpha: frost.a * 0.7),
+            child: content,
+          ),
+        ),
+      );
+    }
+    return Container(color: background, child: content);
   }
 
   @override

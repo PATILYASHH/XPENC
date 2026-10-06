@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/branding/app_info.dart';
 import '../../core/widgets/app_surfaces.dart';
+import '../../core/widgets/custom_icon_badge.dart';
 import 'whats_new_data.dart';
 
 /// What's new in the current version, one card per feature — what it is,
@@ -59,7 +60,7 @@ class _WhatsNewCard extends StatelessWidget {
                     color: cs.secondary.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: AppIcon(entry.icon, color: cs.secondary, size: 20),
+                  child: IconWell(entry.icon, color: cs.secondary, size: 20),
                 ),
                 const SizedBox(width: 14),
                 Expanded(

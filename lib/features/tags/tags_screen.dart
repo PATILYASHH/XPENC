@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/widgets/app_surfaces.dart';
+import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/error_view.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -136,7 +137,7 @@ class _TagTile extends ConsumerWidget {
     final theme = Theme.of(context);
     final color = Color(tag.colorValue);
 
-    return ListTile(
+    return AppListTile(
       contentPadding: const EdgeInsets.only(left: 16, right: 4),
       leading: Container(
         width: 40,
@@ -146,7 +147,7 @@ class _TagTile extends ConsumerWidget {
           color: color.withValues(alpha: 0.15),
           shape: BoxShape.circle,
         ),
-        child: AppIcon(Icons.sell_outlined, color: color, size: 20),
+        child: IconWell(Icons.sell_outlined, color: color, size: 20),
       ),
       title: Text(
         tag.name,

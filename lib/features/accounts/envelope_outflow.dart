@@ -107,7 +107,7 @@ class _EnvelopeSourceSheet extends ConsumerWidget {
                   itemBuilder: (context, i) {
                     final c = categories[i];
                     final balance = ref.watch(categoryBalanceProvider(c.id));
-                    return ListTile(
+                    return AppListTile(
                       title: Text(c.name),
                       trailing: MoneyText(
                         balance,

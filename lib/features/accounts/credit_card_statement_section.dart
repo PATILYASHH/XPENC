@@ -31,7 +31,7 @@ class CreditCardStatementSection extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SwitchListTile(
+          AppSwitchListTile(
             title: const Text('Track statement & due date'),
             subtitle: Text(
               detail != null
@@ -274,14 +274,14 @@ class _CreditCardCycleDialogState extends State<_CreditCardCycleDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ListTile(
+            AppListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Statement closes'),
               subtitle: Text('The ${_ordinal(_statementDay)} of each month'),
               trailing: const AppIcon(Icons.calendar_month_outlined),
               onTap: () => _pickDay(forStatement: true),
             ),
-            ListTile(
+            AppListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Payment due'),
               subtitle: Text('The ${_ordinal(_dueDay)} of each month'),
