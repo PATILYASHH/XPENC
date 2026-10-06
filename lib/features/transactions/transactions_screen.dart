@@ -353,6 +353,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       body: CustomScrollView(
         controller: _scrollController,
         slivers: [
+          if (widget.embedded) const TopBarInsetSliver(),
           if (!widget.embedded)
             SliverAppBar(
               pinned: true,

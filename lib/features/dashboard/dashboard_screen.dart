@@ -44,6 +44,7 @@ class DashboardScreen extends ConsumerWidget {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
+          const TopBarInsetSliver(),
           const SliverToBoxAdapter(child: SizedBox(height: 8)),
           SliverList.list(
             children: [

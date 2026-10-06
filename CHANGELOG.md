@@ -36,6 +36,15 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   onto one (it lifts, magnifies and names itself) and let go to open it;
   the page grows out of that bubble. Slide back onto the ➕, now an ✕, to
   cancel.
+- **Glass top bar** — the tabs' top bar is a floating Liquid Glass capsule
+  like the tab bar, and every tab scrolls under it all the way to the top
+  of the screen. The large title rides up with the content and hands over
+  to a small title in the bar, the capsule stretching across to take it;
+  pull down at the top and the large title swells a little, as on iPhone.
+- **Sheets grow out of the tab bar** — under Glass, a sheet (the ➕'s
+  template choice, the month picker, filters…) rises as the tab bar
+  transforming: it starts at the bar's exact width and round ends and
+  widens into the floating sheet, and folds back the same way.
 - **Smoother Glass, up to your screen's full refresh rate** — XPENC now
   asks Android for the display's fastest mode (90/120 Hz where the phone
   has it; battery saver can still cap it). Glass does far less GPU work per

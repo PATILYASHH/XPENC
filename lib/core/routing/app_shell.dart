@@ -23,6 +23,7 @@ import '../branding/app_info.dart';
 import '../branding/brand_mark.dart';
 import '../budget_cycle.dart';
 import '../theme/glass.dart';
+import '../widgets/nav_bar_inset.dart';
 
 /// `Dashboard · slotLeft · ➕ · slotRight · More`
 ///
@@ -147,16 +148,41 @@ class AppShell extends ConsumerWidget {
       glass: glass,
     );
 
+    final index = navigationShell.currentIndex;
+    if (glass && _glassBranch != index) {
+      // A tab keeps its own scroll — and so its own title state — when you
+      // come back to it.
+      _glassBranch = index;
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _glassScroll.value = _glassBranchScroll[index] ?? 0,
+      );
+    }
+
     return SettledPromptListener(
       child: Scaffold(
-        appBar: _TopBar(
-          currentIndex: navigationShell.currentIndex,
-          glass: glass,
-        ),
+        appBar: glass
+            ? _GlassTopBar(currentIndex: index)
+            : _TopBar(currentIndex: index),
+        // Glass: tabs scroll under the floating top bar, all the way up.
+        extendBodyBehindAppBar: glass,
         body: glass
-            ? _TabSwitchFade(
-                index: navigationShell.currentIndex,
-                child: navigationShell,
+            ? NotificationListener<Notification>(
+                // Scrolls, and metric changes too (a list shrinking under a
+                // filter moves the offset without a scroll), so the title
+                // always matches what's on screen.
+                onNotification: (n) {
+                  final (depth, metrics) = switch (n) {
+                    ScrollNotification() => (n.depth, n.metrics),
+                    ScrollMetricsNotification() => (n.depth, n.metrics),
+                    _ => (-1, null),
+                  };
+                  if (depth == 0 && metrics?.axis == Axis.vertical) {
+                    _glassBranchScroll[index] = metrics!.pixels;
+                    _glassScroll.value = metrics.pixels;
+                  }
+                  return false;
+                },
+                child: _TabSwitchFade(index: index, child: navigationShell),
               )
             : navigationShell,
         // Glass floats the bar as a capsule and lets every tab scroll *under*
@@ -612,11 +638,7 @@ class _GlassQuickActionsState extends State<_GlassQuickActions>
               tint: hovered || picked ? cs.secondary : null,
               pressed: hovered,
               child: Center(
-                child: AppIcon(
-                  widget.actions[i].icon,
-                  size: 24,
-                  color: glyph,
-                ),
+                child: AppIcon(widget.actions[i].icon, size: 24, color: glyph),
               ),
             ),
           ),
@@ -1188,6 +1210,209 @@ class _TabSpec {
   final String label;
 }
 
+/// The visible tab's scroll offset, for Glass's collapsing title. One shell,
+/// one notifier; per-tab offsets are kept so switching tabs restores each
+/// tab's own title state.
+final _glassScroll = ValueNotifier<double>(0);
+final _glassBranchScroll = <int, double>{};
+int? _glassBranch;
+
+/// Marks the actions inside Glass's top capsule, which draw flat — the
+/// capsule is the glass; a disc per button inside it would be glass on glass.
+class _GlassCapsuleScope extends InheritedWidget {
+  const _GlassCapsuleScope({required super.child});
+
+  static bool of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_GlassCapsuleScope>() != null;
+
+  @override
+  bool updateShouldNotify(_GlassCapsuleScope old) => false;
+}
+
+/// Glass's top bar, after iOS: the tab's actions in a floating Liquid Glass
+/// capsule, its large title beneath, and content scrolling under both all
+/// the way to the top of the screen. As the tab scrolls, the large title
+/// rides up with the content and fades under the capsule, while the capsule
+/// stretches across and takes the title in small — one bar absorbing the
+/// other. Pulling down past the top swells the large title a little.
+class _GlassTopBar extends ConsumerWidget implements PreferredSizeWidget {
+  const _GlassTopBar({required this.currentIndex});
+
+  final int currentIndex;
+
+  static const double _bar = 64;
+  static const double _capsule = 52;
+
+  @override
+  Size get preferredSize => const Size.fromHeight(_bar + glassLargeTitleExtent);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final tone = AppSurface.of(context).tone;
+    final top = MediaQuery.paddingOf(context).top;
+    final title = _TopBar._titles[currentIndex];
+    final classic = _TopBar(currentIndex: currentIndex);
+    final actions = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ...classic._tabActions(context, ref, currentIndex),
+        if (currentIndex == 2)
+          _TonalIconButton(
+            tooltip: 'Settled',
+            icon: const AppIcon(Icons.task_alt_rounded),
+            onPressed: () => context.push('/persons/settled'),
+          )
+        else
+          _TonalIconButton(
+            tooltip: 'Review Inbox',
+            icon: const AppIcon(Icons.inbox_outlined),
+            onPressed: () => context.push('/inbox'),
+          ),
+      ],
+    );
+    final veil = tone.isDark
+        ? const Color(0xFF000000)
+        : const Color(0xFFF4F5FA);
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: tone.isDark
+          ? SystemUiOverlayStyle.light
+          : SystemUiOverlayStyle.dark,
+      child: ValueListenableBuilder<double>(
+        valueListenable: _glassScroll,
+        builder: (context, offset, _) {
+          final collapse = Curves.easeInOut.transform(
+            (offset / (glassLargeTitleExtent * 0.85)).clamp(0.0, 1.0),
+          );
+          final pull = offset < 0 ? -offset : 0.0;
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // The scroll edge: content softens into the top of the screen
+              // once there's content under the bar to soften.
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: top + _bar + 18,
+                child: IgnorePointer(
+                  child: Opacity(
+                    opacity: collapse,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            veil.withValues(alpha: 0.82),
+                            veil.withValues(alpha: 0.45),
+                            veil.withValues(alpha: 0),
+                          ],
+                          stops: const [0, 0.55, 1],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              // The large title, riding the content.
+              Positioned(
+                left: 20,
+                right: 20,
+                top: top + _bar - offset.clamp(0.0, 90.0) + pull,
+                height: glassLargeTitleExtent,
+                child: IgnorePointer(
+                  child: Opacity(
+                    opacity: 1 - collapse,
+                    child: Transform.scale(
+                      scale: 1 + (pull / 600).clamp(0.0, 0.08),
+                      alignment: Alignment.centerLeft,
+                      child: Align(
+                        alignment: Alignment.bottomLeft,
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 220),
+                          child: Text(
+                            title,
+                            key: ValueKey(currentIndex),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.headlineLarge?.copyWith(
+                              fontSize: 34,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -1.2,
+                              height: 1.15,
+                              color: cs.onSurface,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              // The capsule: just the actions at rest, the whole bar (with
+              // the title in small) once the large title has gone under.
+              Positioned(
+                top: top + (_bar - _capsule) / 2,
+                left: 12,
+                right: 12,
+                height: _capsule,
+                child: LayoutBuilder(
+                  builder: (context, box) => Align(
+                    alignment: Alignment.centerRight,
+                    child: LiquidGlass(
+                      child: _GlassCapsuleScope(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 5),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(
+                                child: SizedBox(
+                                  width: box.maxWidth * collapse,
+                                  child: Opacity(
+                                    opacity: collapse,
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(
+                                        left: 12,
+                                        right: 4,
+                                      ),
+                                      child: Text(
+                                        title,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        softWrap: false,
+                                        style: theme.textTheme.titleMedium
+                                            ?.copyWith(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.w700,
+                                              letterSpacing: -0.4,
+                                              color: cs.onSurface,
+                                            ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              actions,
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
 /// The app's persistent top bar — fixed on screen across every tab, sibling
 /// to the bottom nav bar (a pushed detail route, e.g. a screen reached from
 /// the More hub, covers both the same way, since both live outside the
@@ -1201,15 +1426,9 @@ class _TabSpec {
 /// item sits at bar position 2/4 configurable, but the 9 branch indices
 /// themselves are permanent (see `AppShell`'s class doc).
 class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
-  const _TopBar({required this.currentIndex, this.glass = false});
+  const _TopBar({required this.currentIndex});
 
   final int currentIndex;
-
-  /// Glass lays the bar out the iOS way: buttons along the top, the tab's
-  /// large title on its own row beneath them.
-  final bool glass;
-
-  static const double _largeTitleRow = 50;
 
   static const _titles = [
     'Dashboard', // 0
@@ -1224,8 +1443,7 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
   ];
 
   @override
-  Size get preferredSize =>
-      Size.fromHeight(kToolbarHeight + (glass ? _largeTitleRow : 0));
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1249,34 +1467,12 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        border: glass ? null : Border(bottom: BorderSide(color: cs.outline)),
+        border: Border(bottom: BorderSide(color: cs.outline)),
       ),
       child: AppBar(
         automaticallyImplyLeading: false,
         centerTitle: false,
-        title: glass ? null : title,
-        bottom: glass
-            ? PreferredSize(
-                preferredSize: const Size.fromHeight(_largeTitleRow),
-                child: Align(
-                  alignment: Alignment.bottomLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
-                    child: DefaultTextStyle.merge(
-                      style: Theme.of(context).textTheme.headlineLarge
-                          ?.copyWith(
-                            fontSize: 34,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -1.2,
-                            height: 1.15,
-                            color: cs.onSurface,
-                          ),
-                      child: title,
-                    ),
-                  ),
-                ),
-              )
-            : null,
+        title: title,
         actions: [
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 220),
@@ -1308,8 +1504,7 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
               ],
             ),
           ),
-          // iOS keeps toolbar buttons a full margin off the screen edge.
-          SizedBox(width: glass ? 14 : 4),
+          const SizedBox(width: 4),
         ],
       ),
     );
@@ -1395,6 +1590,19 @@ class _TonalIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    if (_GlassCapsuleScope.of(context)) {
+      return IconButton(
+        tooltip: tooltip,
+        onPressed: onPressed,
+        style: IconButton.styleFrom(
+          minimumSize: const Size(42, 42),
+          padding: const EdgeInsets.all(9),
+          iconSize: 22,
+          foregroundColor: cs.onSurface,
+        ),
+        icon: icon,
+      );
+    }
     if (AppSurface.of(context).isGlass) {
       return GlassButton(
         size: 42,
@@ -1463,6 +1671,16 @@ class _DashboardMonthButton extends ConsumerWidget {
       ),
     );
 
+    if (_GlassCapsuleScope.of(context)) {
+      return Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          customBorder: const StadiumBorder(),
+          onTap: pick,
+          child: Tooltip(message: 'Change month', child: label),
+        ),
+      );
+    }
     if (glass) {
       return SizedBox(
         height: 42,

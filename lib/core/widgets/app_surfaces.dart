@@ -305,6 +305,12 @@ Future<T?> showAppSheet<T>({
 
 /// A sheet's glass body: inset from the sides and the home indicator, with
 /// iOS's grabber at the top when asked for.
+///
+/// It opens as the tab bar transforming: the sheet rises with exactly the
+/// tab capsule's width and round ends, then widens into the full sheet as
+/// the frost thickens and the content fades in — and folds back the same way
+/// on close. The content is laid out once at full width and only its visible
+/// window animates, so nothing reflows mid-flight.
 class _FloatingSheet extends StatelessWidget {
   const _FloatingSheet({required this.showHandle, required this.child});
 
@@ -316,49 +322,104 @@ class _FloatingSheet extends StatelessWidget {
     final mq = MediaQuery.of(context);
     final bottom = math.max(8.0, mq.viewPadding.bottom);
     final tone = AppSurface.of(context).tone;
+    final animation =
+        ModalRoute.of(context)?.animation ?? kAlwaysCompleteAnimation;
     return Padding(
       padding: EdgeInsets.fromLTRB(8, 0, 8, bottom),
-      child: LiquidGlass(
-        borderRadius: BorderRadius.circular(34),
-        frost: tone.sheetFrost,
-        blur: 24,
-        // Blur only: on a pane this large the lens is barely seen but its
-        // pass is paid on every frame of the sheet's rise.
-        refraction: 0,
-        child: Material(
-          type: MaterialType.transparency,
-          // The inset already clears the home indicator.
-          child: MediaQuery.removePadding(
-            context: context,
-            removeBottom: true,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (showHandle)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8, bottom: 14),
-                    child: Center(
-                      child: Container(
-                        width: 38,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: tone.grabber,
-                          borderRadius: BorderRadius.circular(3),
-                        ),
+      child: AnimatedBuilder(
+        animation: animation,
+        builder: (context, pane) {
+          final t = Curves.easeOutCubic.transform(
+            animation.value.clamp(0.0, 1.0),
+          );
+          // The tab capsule spans 16 pt from the left edge to 90 pt from
+          // the right (the ➕ and its gap beyond it); the sheet, 8 to 8.
+          return ClipRRect(
+            clipper: _MorphClipper(
+              left: 8 * (1 - t),
+              right: 82 * (1 - t),
+              radius: 32 + 2 * t,
+            ),
+            child: Opacity(
+              opacity: Curves.easeIn.transform(
+                ((animation.value - 0.15) / 0.6).clamp(0.0, 1.0),
+              ),
+              child: pane,
+            ),
+          );
+        },
+        child: _sheetPane(context, tone),
+      ),
+    );
+  }
+
+  Widget _sheetPane(BuildContext context, GlassTone tone) {
+    return LiquidGlass(
+      borderRadius: BorderRadius.circular(34),
+      frost: tone.sheetFrost,
+      blur: 24,
+      // Blur only: on a pane this large the lens is barely seen but its
+      // pass is paid on every frame of the sheet's rise.
+      refraction: 0,
+      child: Material(
+        type: MaterialType.transparency,
+        // The inset already clears the home indicator.
+        child: MediaQuery.removePadding(
+          context: context,
+          removeBottom: true,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (showHandle)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8, bottom: 14),
+                  child: Center(
+                    child: Container(
+                      width: 38,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: tone.grabber,
+                        borderRadius: BorderRadius.circular(3),
                       ),
                     ),
-                  )
-                else
-                  const SizedBox(height: 10),
-                Flexible(child: child),
-              ],
-            ),
+                  ),
+                )
+              else
+                const SizedBox(height: 10),
+              Flexible(child: child),
+            ],
           ),
         ),
       ),
     );
   }
+}
+
+/// The sheet's visible window while it morphs out of the tab bar.
+class _MorphClipper extends CustomClipper<RRect> {
+  _MorphClipper({
+    required this.left,
+    required this.right,
+    required this.radius,
+  });
+
+  final double left;
+  final double right;
+  final double radius;
+
+  @override
+  RRect getClip(Size size) => RRect.fromLTRBR(
+    left,
+    0,
+    size.width - right,
+    size.height,
+    Radius.circular(radius),
+  );
+
+  @override
+  bool shouldReclip(_MorphClipper old) =>
+      old.left != left || old.right != right || old.radius != radius;
 }
 
 /// [showDialog], with the same arguments. Under Glass the page behind

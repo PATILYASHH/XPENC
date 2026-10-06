@@ -245,7 +245,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     };
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32).plusNavBar(context),
+      padding: const EdgeInsets.fromLTRB(
+        20,
+        8,
+        20,
+        32,
+      ).plusNavBar(context).plusTopBar(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

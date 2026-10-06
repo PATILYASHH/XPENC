@@ -665,7 +665,11 @@ class _RenderAmbientLight extends RenderProxyBox {
       // Plain rounded rects, not the pane's squircle, and no clip: a blurred
       // rrect is drawn analytically (nearly free) where a blurred squircle
       // or a clip path costs a full blur or stencil pass per card per frame
-      // — and inside a soft glow the two shapes look the same.
+      // — and inside a soft glow the two shapes look the same. A *normal*
+      // blur, not an outer-only one: outer renders wrongly on Skia (a hard
+      // block in the middle), and seen through the frost a normal glow just
+      // reads as the pane lit by its surroundings. No dark contact shadow:
+      // under see-through glass it would grey the pane.
       final shape = _radius.toRRect(rect);
       final tone = _backdrop.tone;
       final glow = _backdrop.ambientAt(
@@ -673,27 +677,15 @@ class _RenderAmbientLight extends RenderProxyBox {
         _screen,
       );
       final side = size.shortestSide;
-      context.canvas
-        // Ambient light: wide, unshifted, the wallpaper's own colour.
-        ..drawRRect(
-          shape,
-          Paint()
-            ..color = glow.withValues(alpha: tone.ambient)
-            ..maskFilter = MaskFilter.blur(
-              BlurStyle.outer,
-              (side * 0.16).clamp(8.0, 22.0),
-            ),
-        )
-        // Contact shadow: tighter, a touch below — the pane's weight.
-        ..drawRRect(
-          shape.shift(Offset(0, (side * 0.05).clamp(1.5, 5.0))),
-          Paint()
-            ..color = Color.fromRGBO(20, 22, 40, tone.shadowOpacity * 0.6)
-            ..maskFilter = MaskFilter.blur(
-              BlurStyle.outer,
-              (side * 0.07).clamp(3.0, 10.0),
-            ),
-        );
+      context.canvas.drawRRect(
+        shape.inflate((side * 0.03).clamp(1.0, 4.0)),
+        Paint()
+          ..color = glow.withValues(alpha: tone.ambient * 0.7)
+          ..maskFilter = MaskFilter.blur(
+            BlurStyle.normal,
+            (side * 0.14).clamp(7.0, 18.0),
+          ),
+      );
     }
     super.paint(context, offset);
   }

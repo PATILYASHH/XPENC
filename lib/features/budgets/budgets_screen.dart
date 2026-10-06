@@ -143,7 +143,12 @@ class BudgetsScreen extends ConsumerWidget {
     Money totalBudgeted,
     Money totalSpent,
   ) => ListView(
-    padding: const EdgeInsets.fromLTRB(20, 12, 20, 32).plusNavBar(context),
+    padding: const EdgeInsets.fromLTRB(
+      20,
+      12,
+      20,
+      32,
+    ).plusNavBar(context).plusTopBar(context),
     children: [
       _SummaryCard(budgeted: totalBudgeted, spent: totalSpent),
       const SizedBox(height: 24),

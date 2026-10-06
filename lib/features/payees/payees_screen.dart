@@ -31,6 +31,7 @@ class PayeesScreen extends ConsumerWidget {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
+          if (embedded) const TopBarInsetSliver(),
           if (!embedded)
             SliverAppBar(pinned: true, title: const Text('Payees')),
           SliverToBoxAdapter(

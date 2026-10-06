@@ -34,6 +34,7 @@ class AccountsScreen extends ConsumerWidget {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
+          if (embedded) const TopBarInsetSliver(),
           if (!embedded)
             SliverAppBar(
               pinned: true,

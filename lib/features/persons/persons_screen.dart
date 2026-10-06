@@ -124,7 +124,8 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
                 ),
               ],
             ),
-      body: Column(
+      body: TopBarInset(
+        child: Column(
         children: [
           TabBar(
             controller: _tabController,
@@ -140,6 +141,7 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
             ),
           ),
         ],
+      ),
       ),
       floatingActionButton: _tabController.index == 1
           ? FloatingActionButton(

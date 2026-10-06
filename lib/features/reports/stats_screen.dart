@@ -32,7 +32,12 @@ class StatsScreen extends ConsumerWidget {
 
     const modules = StatsModule.values;
     final body = ListView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 32).plusNavBar(context),
+      padding: const EdgeInsets.fromLTRB(
+        20,
+        12,
+        20,
+        32,
+      ).plusNavBar(context).plusTopBar(context),
       children: [
         const XpencScoreCard(),
         const SizedBox(height: 28),

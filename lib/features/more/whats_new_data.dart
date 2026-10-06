@@ -31,7 +31,10 @@ const whatsNewEntries = <WhatsNewEntry>[
         'corner — slide your thumb to one and let go, and its page grows '
         'out of the bubble. XPENC also runs at your screen’s full refresh '
         'rate now (90/120 Hz where the phone supports it), with calmer, '
-        'smoother motion throughout Glass.',
+        'smoother motion throughout Glass. The top bar is now a floating '
+        'glass capsule too: tabs scroll under it to the top of the screen, '
+        'the big title folds into it as you scroll, and sheets grow out of '
+        'the tab bar.',
   ),
   WhatsNewEntry(
     icon: Icons.blur_on_rounded,
