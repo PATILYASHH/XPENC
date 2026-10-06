@@ -722,3 +722,105 @@ final Map<IconData, (IconData, double)> _glassGlyphs = {
   Icons.wifi_off_rounded: (CupertinoIcons.wifi_slash, 1),
   Icons.gavel_rounded: (CupertinoIcons.hammer, 1),
 };
+
+/// Glass's segmented switch for a [TabController]: the labels in a floating
+/// Liquid Glass capsule, with a glass droplet that follows the controller's
+/// *live* position — so it tracks a swipe between pages continuously — and
+/// stretches mid-way like liquid, as the tab bar's droplet does. Tapping a
+/// label glides there.
+class GlassTabSwitch extends StatelessWidget {
+  const GlassTabSwitch({
+    required this.controller,
+    required this.labels,
+    super.key,
+  });
+
+  final TabController controller;
+  final List<String> labels;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final tone = AppSurface.of(context).tone;
+    final animation = controller.animation!;
+    return SizedBox(
+      height: 46,
+      child: LiquidGlass(
+        backdrop: false,
+        child: LayoutBuilder(
+          builder: (context, box) {
+            final itemWidth = (box.maxWidth - 8) / labels.length;
+            return AnimatedBuilder(
+              animation: animation,
+              builder: (context, _) {
+                final v = animation.value;
+                final frac = v - v.floorToDouble();
+                final stretch = 1 + 0.22 * math.sin(math.pi * frac);
+                final width = (itemWidth - 4) * stretch;
+                final centre = 4 + v * itemWidth + itemWidth / 2;
+                return Stack(
+                  children: [
+                    Positioned(
+                      left: centre - width / 2,
+                      width: width,
+                      top: 4,
+                      bottom: 4,
+                      child: LiquidGlass(
+                        frost: tone.selected,
+                        backdrop: false,
+                        shadow: false,
+                        child: const SizedBox.expand(),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Row(
+                        children: [
+                          for (var i = 0; i < labels.length; i++)
+                            Expanded(
+                              child: Semantics(
+                                button: true,
+                                selected: controller.index == i,
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: () => controller.animateTo(
+                                    i,
+                                    duration: const Duration(
+                                      milliseconds: 340,
+                                    ),
+                                    curve: Curves.easeOutCubic,
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      labels[i],
+                                      style: theme.textTheme.labelLarge
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                            color: Color.lerp(
+                                              cs.onSurfaceVariant,
+                                              cs.onSurface,
+                                              (1 - (v - i).abs()).clamp(
+                                                0.0,
+                                                1.0,
+                                              ),
+                                            ),
+                                          ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        ),
+      ),
+    );
+  }
+}

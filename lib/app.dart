@@ -10,6 +10,7 @@ import 'core/routing/app_router.dart';
 import 'core/security/screen_security.dart';
 import 'core/security/unlock_method.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/theme_preset.dart';
 import 'core/widgets/error_view.dart';
 import 'core/widgets/money_text.dart';
 import 'data/providers.dart';
@@ -269,7 +270,9 @@ class _XpencAppState extends ConsumerState<XpencApp>
 
     final ready = ref.watch(databaseReadyProvider);
     final choice = ref.watch(themeChoiceProvider);
-    final glassBackdrop = choice.style.shape.isGlass ? choice.backdrop : null;
+    final glassBackdrop = choice.style.shape.isGlass
+        ? ThemeChoice.glassBackdrop
+        : null;
     final fontFamily = ref.watch(fontFamilyProvider);
     final fontWeightDelta = ref.watch(fontWeightDeltaProvider);
     final fontScalePercent = ref.watch(fontScalePercentProvider);

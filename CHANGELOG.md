@@ -41,6 +41,16 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   of the screen. The large title rides up with the content and hands over
   to a small title in the bar, the capsule stretching across to take it;
   pull down at the top and the large title swells a little, as on iPhone.
+- **Glass, refined** — the big title now *flies into* the top bar as you
+  scroll: one title, shrinking as it rides up and landing inside the glass
+  capsule, which follows on a spring like liquid. Dashboard's month button
+  turns the tab bar itself into the month picker ("‹ year ›" and the
+  months grow out of it, then fold back). Persons' Individual / Group is a
+  glass switch with a sliding droplet; Transactions' filters float as glass
+  chips with no band behind them. Glass is now black only, and choosing it
+  switches the tab bar to icons only.
+- **Person photos** — people's contact photos (or initials) now show on
+  their transactions and in Dashboard's People section.
 - **Sheets grow out of the tab bar** — under Glass, a sheet (the ➕'s
   template choice, the month picker, filters…) rises as the tab bar
   transforming: it starts at the bar's exact width and round ends and

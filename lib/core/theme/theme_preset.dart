@@ -29,7 +29,7 @@ enum ThemeStyle {
   ),
   glass(
     label: 'Glass',
-    description: 'Liquid Glass, like iPhone — on a background you pick',
+    description: 'Liquid Glass, like iPhone — on black',
     icon: Icons.blur_on_rounded,
     lightPalette: AppPalettes.glass,
     darkPalette: AppPalettes.glassDark,
@@ -89,17 +89,21 @@ class ThemeChoice {
   /// Glass's background — kept across style switches the same way.
   final GlassBackdrop backdrop;
 
+  /// What Glass actually sits on. Glass is black-only now: [backdrop] is
+  /// still read and written (an older build's `glass/ocean` keeps parsing)
+  /// but no longer chosen.
+  static const glassBackdrop = GlassBackdrop.black;
+
   static const fallback = ThemeChoice(ThemeStyle.classic);
 
   bool get _glass => style == ThemeStyle.glass;
 
   /// The mode actually applied: Glass is as light or dark as its background.
-  ThemeMode get effectiveMode =>
-      _glass ? (backdrop.isDark ? ThemeMode.dark : ThemeMode.light) : mode;
+  ThemeMode get effectiveMode => _glass ? ThemeMode.dark : mode;
 
   /// The palette actually shown, for previews and swatches.
   Palette resolve(Brightness platformBrightness) {
-    if (_glass) return backdrop.palette;
+    if (_glass) return glassBackdrop.palette;
     final dark = switch (effectiveMode) {
       ThemeMode.light => false,
       ThemeMode.dark => true,

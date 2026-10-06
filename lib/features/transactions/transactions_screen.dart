@@ -1,5 +1,3 @@
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
@@ -22,6 +20,7 @@ import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'transaction_filters.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../persons/person_avatar.dart';
 
 /// All transactions, grouped day-wise (newest first) with a per-day net total.
 /// Searchable by note / category / account and filterable by [TxType].
@@ -1074,21 +1073,33 @@ class _TxCard extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
                 child: Row(
                   children: [
-                    Container(
-                      width: 42,
-                      height: 42,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: iconColor.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(14),
+                    // A person's money shows the person: their photo, or
+                    // their initials.
+                    if (person != null)
+                      SizedBox.square(
+                        dimension: 42,
+                        child: PersonAvatar(
+                          name: person!.name,
+                          photoPath: person!.photoPath,
+                          radius: 21,
+                        ),
+                      )
+                    else
+                      Container(
+                        width: 42,
+                        height: 42,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: iconColor.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: transactionRowIcon(
+                          customIcon: tx.customIcon,
+                          fallback: icon,
+                          size: 21,
+                          color: iconColor,
+                        ),
                       ),
-                      child: transactionRowIcon(
-                        customIcon: tx.customIcon,
-                        fallback: icon,
-                        size: 21,
-                        color: iconColor,
-                      ),
-                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -1558,20 +1569,9 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
           ),
         ],
       );
-    // Glass: rows slide under a frosted band, as under an iOS toolbar.
-    final surface = AppSurface.of(context);
-    if (surface.isGlass) {
-      final frost = surface.tone.sheetFrost;
-      return ClipRect(
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: ColoredBox(
-            color: frost.withValues(alpha: frost.a * 0.7),
-            child: content,
-          ),
-        ),
-      );
-    }
+    // Glass: no band — the chips float as glass themselves (see
+    // [_FilterChips]), the rows passing behind them.
+    if (AppSurface.of(context).isGlass) return content;
     return Container(color: background, child: content);
   }
 
@@ -1608,6 +1608,7 @@ class _FilterChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    if (AppSurface.of(context).isGlass) return _glass(context);
 
     return ListView(
       scrollDirection: Axis.horizontal,
@@ -1629,6 +1630,66 @@ class _FilterChips extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+
+  /// Glass chips: each its own floating pane of blurred glass over the
+  /// rows — one shared backdrop read for the row ([BackdropGroup]) — the
+  /// chosen one tinted with the accent.
+  Widget _glass(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return BackdropGroup(
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+        children: [
+          for (final (label, icon, value) in _options)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => onChanged(value),
+                child: AnimatedScale(
+                  scale: selected == value ? 1 : 0.96,
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  child: LiquidGlass(
+                    grouped: true,
+                    blur: 10,
+                    refraction: 0,
+                    tint: selected == value ? cs.secondary : null,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          AppIcon(
+                            icon,
+                            size: 16,
+                            color: selected == value
+                                ? Colors.white
+                                : cs.onSurface,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            label,
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: selected == value
+                                  ? Colors.white
+                                  : cs.onSurface,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

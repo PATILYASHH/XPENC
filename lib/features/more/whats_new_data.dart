@@ -33,8 +33,9 @@ const whatsNewEntries = <WhatsNewEntry>[
         'rate now (90/120 Hz where the phone supports it), with calmer, '
         'smoother motion throughout Glass. The top bar is now a floating '
         'glass capsule too: tabs scroll under it to the top of the screen, '
-        'the big title folds into it as you scroll, and sheets grow out of '
-        'the tab bar.',
+        'the big title flies into it as you scroll, and the tab bar grows '
+        'into the month picker. Person photos now show on their '
+        'transactions too.',
   ),
   WhatsNewEntry(
     icon: Icons.blur_on_rounded,

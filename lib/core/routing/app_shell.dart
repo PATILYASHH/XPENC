@@ -4,6 +4,8 @@ import 'dart:ui' as ui;
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -24,6 +26,8 @@ import '../branding/brand_mark.dart';
 import '../budget_cycle.dart';
 import '../theme/glass.dart';
 import '../widgets/nav_bar_inset.dart';
+
+part 'glass_chrome.dart';
 
 /// `Dashboard · slotLeft · ➕ · slotRight · More`
 ///
@@ -182,7 +186,14 @@ class AppShell extends ConsumerWidget {
                   }
                   return false;
                 },
-                child: _TabSwitchFade(index: index, child: navigationShell),
+                child: Stack(
+                  children: [
+                    _TabSwitchFade(index: index, child: navigationShell),
+                    // Under the bars: dims the page while the tab bar is the
+                    // month picker, and folds it back on a tap.
+                    const Positioned.fill(child: _GlassMonthScrim()),
+                  ],
+                ),
               )
             : navigationShell,
         // Glass floats the bar as a capsule and lets every tab scroll *under*
@@ -977,83 +988,6 @@ const _glassIcons = <int, (IconData, IconData)>{
   8: (CupertinoIcons.bag, CupertinoIcons.bag_fill),
 };
 
-/// Glass's tab bar, after iOS: a floating capsule of Liquid Glass holding
-/// the tabs, with a lens-like droplet that slides to the selected tab (and
-/// overshoots a touch, like liquid settling), and the ➕ as its own tinted
-/// glass disc beside it.
-class _LiquidTabBar extends StatelessWidget {
-  const _LiquidTabBar({
-    required this.tabs,
-    required this.currentBranch,
-    required this.showLabels,
-    required this.onSelect,
-    required this.add,
-  });
-
-  static const double height = 64;
-
-  final List<_TabSpec> tabs;
-  final int currentBranch;
-  final bool showLabels;
-  final ValueChanged<int> onSelect;
-  final Widget add;
-
-  @override
-  Widget build(BuildContext context) {
-    final selected = tabs.indexWhere((t) => t.branch == currentBranch);
-    return RepaintBoundary(
-      child: SafeArea(
-        top: false,
-        minimum: const EdgeInsets.only(bottom: 8),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-          child: Row(
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: height,
-                  child: LiquidGlass(
-                    child: LayoutBuilder(
-                      builder: (context, box) {
-                        final itemWidth = box.maxWidth / tabs.length;
-                        return Stack(
-                          children: [
-                            if (selected >= 0)
-                              _LiquidDroplet(
-                                index: selected,
-                                itemWidth: itemWidth,
-                                color: AppSurface.of(context).tone.selected,
-                              ),
-                            Row(
-                              children: [
-                                for (var i = 0; i < tabs.length; i++)
-                                  Expanded(
-                                    child: _LiquidTab(
-                                      tab: tabs[i],
-                                      selected: i == selected,
-                                      showLabel: showLabels,
-                                      onTap: () => onSelect(tabs[i].branch),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              add,
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 /// The selected-tab droplet. It glides to the new tab on a smooth ease —
 /// no overshoot to chase with the eye — and stretches a little in flight,
 /// the way a drop of liquid elongates as it moves, then settles round.
@@ -1208,209 +1142,6 @@ class _TabSpec {
   final IconData icon;
   final IconData activeIcon;
   final String label;
-}
-
-/// The visible tab's scroll offset, for Glass's collapsing title. One shell,
-/// one notifier; per-tab offsets are kept so switching tabs restores each
-/// tab's own title state.
-final _glassScroll = ValueNotifier<double>(0);
-final _glassBranchScroll = <int, double>{};
-int? _glassBranch;
-
-/// Marks the actions inside Glass's top capsule, which draw flat — the
-/// capsule is the glass; a disc per button inside it would be glass on glass.
-class _GlassCapsuleScope extends InheritedWidget {
-  const _GlassCapsuleScope({required super.child});
-
-  static bool of(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<_GlassCapsuleScope>() != null;
-
-  @override
-  bool updateShouldNotify(_GlassCapsuleScope old) => false;
-}
-
-/// Glass's top bar, after iOS: the tab's actions in a floating Liquid Glass
-/// capsule, its large title beneath, and content scrolling under both all
-/// the way to the top of the screen. As the tab scrolls, the large title
-/// rides up with the content and fades under the capsule, while the capsule
-/// stretches across and takes the title in small — one bar absorbing the
-/// other. Pulling down past the top swells the large title a little.
-class _GlassTopBar extends ConsumerWidget implements PreferredSizeWidget {
-  const _GlassTopBar({required this.currentIndex});
-
-  final int currentIndex;
-
-  static const double _bar = 64;
-  static const double _capsule = 52;
-
-  @override
-  Size get preferredSize => const Size.fromHeight(_bar + glassLargeTitleExtent);
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    final tone = AppSurface.of(context).tone;
-    final top = MediaQuery.paddingOf(context).top;
-    final title = _TopBar._titles[currentIndex];
-    final classic = _TopBar(currentIndex: currentIndex);
-    final actions = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        ...classic._tabActions(context, ref, currentIndex),
-        if (currentIndex == 2)
-          _TonalIconButton(
-            tooltip: 'Settled',
-            icon: const AppIcon(Icons.task_alt_rounded),
-            onPressed: () => context.push('/persons/settled'),
-          )
-        else
-          _TonalIconButton(
-            tooltip: 'Review Inbox',
-            icon: const AppIcon(Icons.inbox_outlined),
-            onPressed: () => context.push('/inbox'),
-          ),
-      ],
-    );
-    final veil = tone.isDark
-        ? const Color(0xFF000000)
-        : const Color(0xFFF4F5FA);
-
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: tone.isDark
-          ? SystemUiOverlayStyle.light
-          : SystemUiOverlayStyle.dark,
-      child: ValueListenableBuilder<double>(
-        valueListenable: _glassScroll,
-        builder: (context, offset, _) {
-          final collapse = Curves.easeInOut.transform(
-            (offset / (glassLargeTitleExtent * 0.85)).clamp(0.0, 1.0),
-          );
-          final pull = offset < 0 ? -offset : 0.0;
-          return Stack(
-            clipBehavior: Clip.none,
-            children: [
-              // The scroll edge: content softens into the top of the screen
-              // once there's content under the bar to soften.
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                height: top + _bar + 18,
-                child: IgnorePointer(
-                  child: Opacity(
-                    opacity: collapse,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            veil.withValues(alpha: 0.82),
-                            veil.withValues(alpha: 0.45),
-                            veil.withValues(alpha: 0),
-                          ],
-                          stops: const [0, 0.55, 1],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              // The large title, riding the content.
-              Positioned(
-                left: 20,
-                right: 20,
-                top: top + _bar - offset.clamp(0.0, 90.0) + pull,
-                height: glassLargeTitleExtent,
-                child: IgnorePointer(
-                  child: Opacity(
-                    opacity: 1 - collapse,
-                    child: Transform.scale(
-                      scale: 1 + (pull / 600).clamp(0.0, 0.08),
-                      alignment: Alignment.centerLeft,
-                      child: Align(
-                        alignment: Alignment.bottomLeft,
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 220),
-                          child: Text(
-                            title,
-                            key: ValueKey(currentIndex),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.headlineLarge?.copyWith(
-                              fontSize: 34,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -1.2,
-                              height: 1.15,
-                              color: cs.onSurface,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              // The capsule: just the actions at rest, the whole bar (with
-              // the title in small) once the large title has gone under.
-              Positioned(
-                top: top + (_bar - _capsule) / 2,
-                left: 12,
-                right: 12,
-                height: _capsule,
-                child: LayoutBuilder(
-                  builder: (context, box) => Align(
-                    alignment: Alignment.centerRight,
-                    child: LiquidGlass(
-                      child: _GlassCapsuleScope(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 5),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Flexible(
-                                child: SizedBox(
-                                  width: box.maxWidth * collapse,
-                                  child: Opacity(
-                                    opacity: collapse,
-                                    child: Padding(
-                                      padding: const EdgeInsets.only(
-                                        left: 12,
-                                        right: 4,
-                                      ),
-                                      child: Text(
-                                        title,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        softWrap: false,
-                                        style: theme.textTheme.titleMedium
-                                            ?.copyWith(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w700,
-                                              letterSpacing: -0.4,
-                                              color: cs.onSurface,
-                                            ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              actions,
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
 }
 
 /// The app's persistent top bar — fixed on screen across every tab, sibling
@@ -1676,7 +1407,11 @@ class _DashboardMonthButton extends ConsumerWidget {
         type: MaterialType.transparency,
         child: InkWell(
           customBorder: const StadiumBorder(),
-          onTap: pick,
+          // Under Glass the tab bar itself grows into the month picker.
+          onTap: () {
+            HapticFeedback.selectionClick();
+            _glassMonthPicker.value = !_glassMonthPicker.value;
+          },
           child: Tooltip(message: 'Change month', child: label),
         ),
       );

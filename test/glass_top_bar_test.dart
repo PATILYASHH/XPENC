@@ -1,10 +1,13 @@
 import 'package:drift/native.dart';
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/intl.dart';
 import 'package:xpenc/core/money.dart';
 import 'package:xpenc/core/routing/app_router.dart';
 import 'package:xpenc/core/theme/app_theme.dart';
+import 'package:xpenc/core/theme/glass.dart';
 import 'package:xpenc/core/theme/theme_preset.dart';
 import 'package:xpenc/core/widgets/nav_bar_inset.dart';
 import 'package:xpenc/data/database.dart';
@@ -23,6 +26,8 @@ void main() {
       final cash = (await db.watchAccounts().first)
           .firstWhere((a) => a.type == AccountType.cash)
           .id;
+      // As picking Glass does: the tab bar shows icons only.
+      await db.setShowBottomNavLabels(false);
       final cat = (await db.watchCategories(CategoryKind.expense).first).first;
       for (var i = 0; i < 20; i++) {
         await db.addTransaction(
@@ -44,9 +49,9 @@ void main() {
         overrides: [dbProvider.overrideWithValue(db)],
         child: MaterialApp.router(
           theme: AppTheme.of(
-            GlassBackdrop.aurora.palette,
+            GlassBackdrop.black.palette,
             ThemeStyle.glass.shape,
-            backdrop: GlassBackdrop.aurora,
+            backdrop: GlassBackdrop.black,
           ),
           routerConfig: appRouter,
         ),
@@ -64,20 +69,21 @@ void main() {
 
     await settle();
 
-    // Both titles exist: the large one under the bar, the small one in it.
-    double opacityOf(Finder text) => tester
-        .widget<Opacity>(
-          find.ancestor(of: text, matching: find.byType(Opacity)).first,
+    // One title, which travels: under the bar at rest, inside the capsule
+    // once the tab has scrolled. (Glass's tab bar is icons only, so the
+    // bar's title is the only 'Transactions'.)
+    final title = find.text('Transactions');
+    expect(title, findsOneWidget);
+    // The top capsule: the glass around the bar's search button.
+    final capsule = find
+        .ancestor(
+          of: find.byIcon(CupertinoIcons.search),
+          matching: find.byType(LiquidGlass),
         )
-        .opacity;
-    final titles = find.text('Transactions');
-    // The tab bar's label is a third 'Transactions'; the bar's two come
-    // first in paint order (large, then small).
-    expect(titles, findsAtLeastNWidgets(2));
-    final large = titles.at(0);
-    final small = titles.at(1);
-    expect(opacityOf(large), closeTo(1, 0.01));
-    expect(opacityOf(small), closeTo(0, 0.01));
+        .first;
+    final restTitle = tester.getRect(title);
+    final restCapsule = tester.getRect(capsule);
+    expect(restTitle.top, greaterThan(restCapsule.bottom));
 
     // The tab reaches the top of the screen under the bar.
     expect(find.byType(TopBarInsetSliver), findsOneWidget);
@@ -88,8 +94,78 @@ void main() {
       const Offset(0, -400),
     );
     await settle();
-    expect(opacityOf(large), closeTo(0, 0.01));
-    expect(opacityOf(small), closeTo(1, 0.01));
+    final landed = tester.getRect(title);
+    final wideCapsule = tester.getRect(capsule);
+    expect(landed.center.dy, closeTo(wideCapsule.center.dy, 4));
+    expect(landed.left, greaterThan(wideCapsule.left));
+    expect(landed.height, lessThan(restTitle.height * 0.6));
+    // The capsule stretched across to take it.
+    expect(wideCapsule.width, greaterThan(restCapsule.width + 80));
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(seconds: 1));
+  });
+
+  testWidgets('the month button turns the tab bar into the month picker, '
+      'and picking a month folds it back', (tester) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await tester.runAsync(() => db.setShowBottomNavLabels(false));
+    tester.view.physicalSize = const Size(1080, 2340);
+    tester.view.devicePixelRatio = 3.0;
+    tester.view.padding = const FakeViewPadding(top: 120);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [dbProvider.overrideWithValue(db)],
+        child: MaterialApp.router(
+          theme: AppTheme.of(
+            GlassBackdrop.black.palette,
+            ThemeStyle.glass.shape,
+            backdrop: GlassBackdrop.black,
+          ),
+          routerConfig: appRouter,
+        ),
+      ),
+    );
+    appRouter.go('/dashboard');
+    Future<void> settle() async {
+      for (var i = 0; i < 6; i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 60)),
+        );
+        await tester.pump(const Duration(milliseconds: 120));
+      }
+    }
+
+    await settle();
+    final now = DateTime.now();
+    await tester.tap(find.text(DateFormat('MMM yyyy').format(now)).first);
+    await settle();
+    // The tab bar is now the picker: the year, and the months.
+    expect(find.text('${now.year}'), findsOneWidget);
+    expect(find.text('Jan'), findsOneWidget);
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.text('Jan')),
+    );
+    final pick = DateTime(now.year, 1);
+    await tester.tap(find.text('Jan'));
+    await settle();
+    // January may be after the budget cycle's current month only in a
+    // pathological clock; otherwise it is selected and the bar folds back.
+    if (!pick.isAfter(now)) {
+      expect(container.read(selectedMonthProvider), pick);
+    }
+    expect(find.text('Jan'), findsNothing);
+
+    // Open again, then switch tab: the bar comes back without error.
+    await tester.tap(find.text(DateFormat('MMM yyyy').format(pick)).first);
+    await settle();
+    appRouter.go('/transactions');
+    await settle();
+    expect(find.text('Jan'), findsNothing);
     expect(tester.takeException(), isNull);
 
     await tester.pumpWidget(const SizedBox.shrink());

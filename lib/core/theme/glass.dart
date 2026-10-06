@@ -818,12 +818,18 @@ class LiquidGlass extends StatelessWidget {
     this.shadow = true,
     this.pressed = false,
     this.backdrop = true,
+    this.grouped = false,
     super.key,
   });
 
   final Widget child;
   final BorderRadius? borderRadius;
   final Color? tint;
+
+  /// Shares one backdrop read with the other grouped panes under the same
+  /// [BackdropGroup] — a row of glass chips blurring the same list pays for
+  /// one read, not one each.
+  final bool grouped;
 
   /// Whether to read (blur, bend) what's behind. Off for glass that only
   /// ever sits on the still wallpaper — top-bar buttons, the tinted ➕, the
@@ -892,6 +898,9 @@ class LiquidGlass extends StatelessWidget {
             band: band,
             dpr: MediaQuery.devicePixelRatioOf(context),
             screen: MediaQuery.sizeOf(context),
+            backdropKey: grouped
+                ? BackdropGroup.of(context)?.backdropKey
+                : null,
             child: glass,
           );
     glass = continuous
@@ -932,8 +941,11 @@ class _LensFilter extends SingleChildRenderObjectWidget {
     required this.band,
     required this.dpr,
     required this.screen,
+    this.backdropKey,
     super.child,
   });
+
+  final BackdropKey? backdropKey;
 
   /// `null` = a capsule, resolved from the laid-out size.
   final double? radius;
@@ -950,7 +962,8 @@ class _LensFilter extends SingleChildRenderObjectWidget {
     ..refraction = refraction
     ..band = band
     ..dpr = dpr
-    ..screen = screen;
+    ..screen = screen
+    ..backdropKey = backdropKey;
 
   @override
   void updateRenderObject(BuildContext context, _RenderLensFilter r) => r
@@ -959,7 +972,8 @@ class _LensFilter extends SingleChildRenderObjectWidget {
     ..refraction = refraction
     ..band = band
     ..dpr = dpr
-    ..screen = screen;
+    ..screen = screen
+    ..backdropKey = backdropKey;
 }
 
 class _RenderLensFilter extends RenderProxyBox {
@@ -981,6 +995,13 @@ class _RenderLensFilter extends RenderProxyBox {
   set screen(Size v) {
     if (_screen == v) return;
     _screen = v;
+    markNeedsPaint();
+  }
+
+  BackdropKey? _backdropKey;
+  set backdropKey(BackdropKey? v) {
+    if (_backdropKey == v) return;
+    _backdropKey = v;
     markNeedsPaint();
   }
 
@@ -1014,11 +1035,13 @@ class _RenderLensFilter extends RenderProxyBox {
     final lens = program != null && _refraction > 0;
     if (_blur > 0) {
       _blurLayer.layer ??= BackdropFilterLayer();
-      _blurLayer.layer!.filter = ui.ImageFilter.blur(
-        sigmaX: _blur,
-        sigmaY: _blur,
-        tileMode: TileMode.mirror,
-      );
+      _blurLayer.layer!
+        ..filter = ui.ImageFilter.blur(
+          sigmaX: _blur,
+          sigmaY: _blur,
+          tileMode: TileMode.mirror,
+        )
+        ..backdropKey = _backdropKey;
     } else {
       _blurLayer.layer = null;
     }

@@ -79,23 +79,21 @@ void main() {
       });
     });
 
-    test('Glass is as light or dark as its background, ignoring the stored '
-        'mode', () {
-      const glass = ThemeChoice(ThemeStyle.glass, ThemeMode.dark);
+    test('Glass is black-only: always dark whatever background or mode is '
+        'stored', () {
+      const glass = ThemeChoice(ThemeStyle.glass, ThemeMode.light);
       expect(ThemeStyle.glass.supportsModes, isFalse);
-      expect(glass.effectiveMode, ThemeMode.light);
-      expect(glass.resolve(Brightness.dark).brightness, Brightness.light);
+      expect(ThemeChoice.glassBackdrop, GlassBackdrop.black);
       for (final b in GlassBackdrop.values) {
         final c = glass.withBackdrop(b);
-        expect(
-          c.effectiveMode,
-          b.isDark ? ThemeMode.dark : ThemeMode.light,
-          reason: b.name,
-        );
-        expect(c.resolve(Brightness.light).brightness, b.tone.brightness);
+        expect(c.effectiveMode, ThemeMode.dark, reason: b.name);
+        expect(c.resolve(Brightness.light).brightness, Brightness.dark);
       }
       // …but the mode survives a trip through Glass.
-      expect(glass.withStyle(ThemeStyle.classic).effectiveMode, ThemeMode.dark);
+      expect(
+        glass.withStyle(ThemeStyle.classic).effectiveMode,
+        ThemeMode.light,
+      );
     });
 
     test('a dark background builds a dark Glass theme that paints that '
@@ -346,21 +344,24 @@ void main() {
       await unmount(tester);
     });
 
-    testWidgets('Glass swaps the mode choice for its backgrounds', (
-      tester,
-    ) async {
-      await tester.runAsync(() => db.setThemeName('glass'));
+    testWidgets('Glass has no mode or background choice, and picking it turns '
+        'tab-bar labels off', (tester) async {
+      await tester.runAsync(() => db.setShowBottomNavLabels(true));
       await pump(tester, const Scaffold(body: ThemePickerSheet()));
       expect(tester.takeException(), isNull);
 
-      expect(find.text('Dark'), findsNothing);
-      expect(find.text('Background'), findsOneWidget);
-      for (final b in GlassBackdrop.values) {
-        expect(find.text(b.label), findsOneWidget);
-      }
+      await tester.tap(find.text(ThemeStyle.glass.label));
+      expect(await stored(tester), 'glass');
+      late bool labels;
+      await tester.runAsync(() async {
+        labels = (await db.getSettings()).showBottomNavLabels;
+      });
+      expect(labels, isFalse);
 
-      await tester.tap(find.text('Ocean'));
-      expect(await stored(tester), 'glass/ocean');
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('Dark'), findsNothing);
+      expect(find.text('Ocean'), findsNothing);
+      expect(find.textContaining('Glass sits on black'), findsOneWidget);
       await unmount(tester);
     });
 

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/glass.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
@@ -127,13 +128,24 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
       body: TopBarInset(
         child: Column(
         children: [
-          TabBar(
-            controller: _tabController,
-            tabs: const [
-              Tab(text: 'Individual'),
-              Tab(text: 'Group'),
-            ],
-          ),
+          // Glass: a floating glass switch with a liquid droplet, not a
+          // tab strip.
+          if (AppSurface.of(context).isGlass)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 2, 16, 10),
+              child: GlassTabSwitch(
+                controller: _tabController,
+                labels: const ['Individual', 'Group'],
+              ),
+            )
+          else
+            TabBar(
+              controller: _tabController,
+              tabs: const [
+                Tab(text: 'Individual'),
+                Tab(text: 'Group'),
+              ],
+            ),
           Expanded(
             child: TabBarView(
               controller: _tabController,

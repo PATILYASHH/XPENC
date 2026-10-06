@@ -17,6 +17,7 @@ import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../budgets/ready_to_assign_screen.dart';
 import '../message_capture/review_inbox_screen.dart';
+import '../persons/person_avatar.dart';
 import '../reports/chart_widgets.dart';
 import 'sparkline.dart';
 import '../../core/widgets/nav_bar_inset.dart';
@@ -1201,14 +1202,11 @@ class _PersonDuesTile extends StatelessWidget {
     return AppListTile(
       onTap: () => context.push('/person/${person.id}'),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-      leading: CircleAvatar(
+      // Their contact photo when they have one, else their initials.
+      leading: PersonAvatar(
+        name: person.name,
+        photoPath: person.photoPath,
         radius: 18,
-        backgroundColor: theme.colorScheme.surfaceContainerHighest,
-        foregroundColor: theme.colorScheme.onSurface,
-        child: Text(
-          _initials(person.name),
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-        ),
       ),
       title: Text(
         person.name,
@@ -1249,18 +1247,6 @@ class _PersonDuesTile extends StatelessWidget {
   }
 }
 
-/// Two-letter initials from a name, e.g. "Rahul Kumar" -> "RK".
-String _initials(String name) {
-  final parts = name
-      .trim()
-      .split(RegExp(r'\s+'))
-      .where((p) => p.isNotEmpty)
-      .toList();
-  if (parts.isEmpty) return '?';
-  if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
-  return (parts.first.substring(0, 1) + parts.last.substring(0, 1))
-      .toUpperCase();
-}
 
 // ── 3.5 Upcoming ─────────────────────────────────────────────────────────
 
