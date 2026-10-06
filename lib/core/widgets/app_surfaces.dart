@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 import '../theme/glass.dart';
+import 'nav_bar_inset.dart';
 
 /// The app's card. Outside Glass it *is* a [Card] — same arguments, same
 /// result. Under Glass it becomes a frosted [GlassPane] that blurs the
@@ -745,9 +746,9 @@ class GlassTabSwitch extends StatelessWidget {
     final tone = AppSurface.of(context).tone;
     final animation = controller.animation!;
     return SizedBox(
-      height: 46,
+      height: GlassTabbedBody.switchHeight,
+      // The pages scroll under it, so it frosts them like the top bar.
       child: LiquidGlass(
-        backdrop: false,
         child: LayoutBuilder(
           builder: (context, box) {
             final itemWidth = (box.maxWidth - 8) / labels.length;
@@ -786,9 +787,7 @@ class GlassTabSwitch extends StatelessWidget {
                                   behavior: HitTestBehavior.opaque,
                                   onTap: () => controller.animateTo(
                                     i,
-                                    duration: const Duration(
-                                      milliseconds: 340,
-                                    ),
+                                    duration: const Duration(milliseconds: 340),
                                     curve: Curves.easeOutCubic,
                                   ),
                                   child: Center(
@@ -821,6 +820,129 @@ class GlassTabSwitch extends StatelessWidget {
           },
         ),
       ),
+    );
+  }
+}
+
+/// Glass's paged tab body (Persons' Individual / Group): the
+/// [GlassTabSwitch] floats right under the top bar and the pages scroll all
+/// the way up, under both. With a switch to hold, the page keeps its title
+/// small in the bar — no large-title row to leave a gap — and the bar
+/// follows the page on screen (blended between pages mid-swipe).
+///
+/// Each page gets the room above it as `MediaQuery.paddingOf(context).top`.
+class GlassTabbedBody extends StatefulWidget {
+  const GlassTabbedBody({
+    required this.controller,
+    required this.labels,
+    required this.children,
+    this.underShellBar = true,
+    super.key,
+  });
+
+  static const double switchHeight = 46;
+
+  final TabController controller;
+  final List<String> labels;
+  final List<Widget> children;
+
+  /// Under the shell's Glass top bar (a tab), rather than a pushed screen's
+  /// own app bar.
+  final bool underShellBar;
+
+  @override
+  State<GlassTabbedBody> createState() => _GlassTabbedBodyState();
+}
+
+class _GlassTabbedBodyState extends State<GlassTabbedBody> {
+  final _offsets = <int, double>{};
+  double? _reported;
+
+  Animation<double> get _page => widget.controller.animation!;
+
+  @override
+  void initState() {
+    super.initState();
+    _page.addListener(_report);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _report());
+  }
+
+  @override
+  void didUpdateWidget(GlassTabbedBody old) {
+    super.didUpdateWidget(old);
+    if (old.controller != widget.controller) {
+      old.controller.animation!.removeListener(_report);
+      _page.addListener(_report);
+    }
+  }
+
+  @override
+  void dispose() {
+    _page.removeListener(_report);
+    super.dispose();
+  }
+
+  void _report() {
+    if (!mounted || !widget.underShellBar || inHiddenTab(context)) return;
+    final last = widget.children.length - 1;
+    final v = _page.value.clamp(0.0, last.toDouble());
+    final i = v.floor();
+    final a = _offsets[i] ?? 0;
+    final b = _offsets[math.min(i + 1, last)] ?? 0;
+    final pixels = glassLargeTitleExtent + math.max(0.0, a + (b - a) * (v - i));
+    if (pixels == _reported) return;
+    _reported = pixels;
+    TopBarScrollNotification(pixels).dispatch(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    // The bar's bottom edge: the large-title row is given back.
+    final barBottom = widget.underShellBar
+        ? math.max(0.0, mq.padding.top - glassLargeTitleExtent)
+        : mq.padding.top;
+    final switchTop = barBottom + 2;
+    return Stack(
+      children: [
+        MediaQuery(
+          data: mq.copyWith(
+            padding: mq.padding.copyWith(
+              top: switchTop + GlassTabbedBody.switchHeight + 10,
+            ),
+          ),
+          child: TabBarView(
+            controller: widget.controller,
+            children: [
+              for (var i = 0; i < widget.children.length; i++)
+                NotificationListener<Notification>(
+                  onNotification: (n) {
+                    final (depth, metrics) = switch (n) {
+                      ScrollNotification() => (n.depth, n.metrics),
+                      ScrollMetricsNotification() => (n.depth, n.metrics),
+                      _ => (-1, null),
+                    };
+                    if (depth == 0 && metrics?.axis == Axis.vertical) {
+                      _offsets[i] = metrics!.pixels;
+                      _report();
+                    }
+                    return false;
+                  },
+                  child: widget.children[i],
+                ),
+            ],
+          ),
+        ),
+        Positioned(
+          top: switchTop,
+          left: 16,
+          right: 16,
+          child: GlassTabSwitch(
+            controller: widget.controller,
+            labels: widget.labels,
+          ),
+        ),
+      ],
     );
   }
 }

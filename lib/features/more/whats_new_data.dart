@@ -35,7 +35,8 @@ const whatsNewEntries = <WhatsNewEntry>[
         'glass capsule too: tabs scroll under it to the top of the screen, '
         'the big title flies into it as you scroll, and the tab bar grows '
         'into the month picker. Person photos now show on their '
-        'transactions too.',
+        'transactions too, Persons scrolls under the bar and its switch, '
+        'and hidden amounts turn to frosted glass.',
   ),
   WhatsNewEntry(
     icon: Icons.blur_on_rounded,

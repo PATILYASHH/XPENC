@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -6,6 +8,7 @@ import '../../data/tables.dart';
 import '../currency.dart';
 import '../money.dart';
 import '../theme/app_colors.dart';
+import '../theme/glass.dart';
 import 'app_surfaces.dart';
 
 /// Broadcasts the active currency down the tree so every [MoneyText] rebuilds
@@ -154,6 +157,11 @@ class MoneyText extends StatelessWidget {
   /// figure would otherwise be visibly distinguishable even hidden).
   static const _maskGlyph = '••••••';
 
+  /// Glass's mask: a figure frosted past reading. A fixed decoy, for the
+  /// same reason as [_maskGlyph] — and because a blur of the *real* digits
+  /// in a known font can be matched back to them.
+  static const _decoy = '88,888';
+
   @override
   Widget build(BuildContext context) {
     // Rebuild whenever the currency setting changes — [MoneyFormat] is already
@@ -163,6 +171,27 @@ class MoneyText extends StatelessWidget {
     CurrencyScope.depend(context);
     final hidden = AmountVisibilityScope.of(context);
     final displayCurrency = currency ?? MoneyFormat.currency;
+    final textStyle = (style ?? Theme.of(context).textTheme.bodyLarge)
+        ?.copyWith(color: color, fontFeatures: kTabularFigures);
+    if (hidden && AppSurface.of(context).isGlass) {
+      // The digits turn to frosted glass: their colour and place stay,
+      // the figure doesn't.
+      final sigma = (textStyle?.fontSize ?? 16) * 0.32;
+      return Semantics(
+        label: 'Amount hidden',
+        child: ExcludeSemantics(
+          child: ImageFiltered(
+            imageFilter: ui.ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+            child: Text(
+              MoneyFormat.showSymbol
+                  ? '${displayCurrency.symbol}$_decoy'
+                  : _decoy,
+              style: textStyle,
+            ),
+          ),
+        ),
+      );
+    }
     final text = hidden
         ? (MoneyFormat.showSymbol
             ? '${displayCurrency.symbol} $_maskGlyph'
@@ -175,13 +204,7 @@ class MoneyText extends StatelessWidget {
                     ? MoneyFormat.symbol(amount)
                     : MoneyFormat.symbolIn(amount, currency!);
 
-    return Text(
-      text,
-      style: (style ?? Theme.of(context).textTheme.bodyLarge)?.copyWith(
-        color: color,
-        fontFeatures: kTabularFigures,
-      ),
-    );
+    return Text(text, style: textStyle);
   }
 
   static String _signedIn(Money m, Currency? currency) {

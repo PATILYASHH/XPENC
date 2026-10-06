@@ -9,6 +9,7 @@ import 'package:xpenc/core/routing/app_router.dart';
 import 'package:xpenc/core/theme/app_theme.dart';
 import 'package:xpenc/core/theme/glass.dart';
 import 'package:xpenc/core/theme/theme_preset.dart';
+import 'package:xpenc/core/widgets/app_surfaces.dart';
 import 'package:xpenc/core/widgets/nav_bar_inset.dart';
 import 'package:xpenc/data/database.dart';
 import 'package:xpenc/data/providers.dart';
@@ -166,6 +167,117 @@ void main() {
     appRouter.go('/transactions');
     await settle();
     expect(find.text('Jan'), findsNothing);
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(seconds: 1));
+  });
+
+  testWidgets('Persons: the title stays small in the bar with the switch '
+      'right under it, the pages scroll up under both, and New group sits '
+      'above the tab bar', (tester) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    late int cash;
+    await tester.runAsync(() async {
+      await db.setShowBottomNavLabels(false);
+      cash = (await db.watchAccounts().first)
+          .firstWhere((a) => a.type == AccountType.cash)
+          .id;
+      for (var i = 0; i < 10; i++) {
+        final id = await db.addPerson('Person $i');
+        await db.addPersonEntry(
+          personId: id,
+          accountId: cash,
+          direction: i.isEven ? PersonDirection.theyOwe : PersonDirection.iOwe,
+          amount: Money.fromRupees(300 + i * 275),
+          date: DateTime.now().subtract(Duration(hours: i + 1)),
+        );
+      }
+    });
+    tester.view.physicalSize = const Size(1080, 2340);
+    tester.view.devicePixelRatio = 3.0;
+    tester.view.padding = const FakeViewPadding(top: 120, bottom: 60);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [dbProvider.overrideWithValue(db)],
+        child: MaterialApp.router(
+          theme: AppTheme.of(
+            GlassBackdrop.black.palette,
+            ThemeStyle.glass.shape,
+            backdrop: GlassBackdrop.black,
+          ),
+          routerConfig: appRouter,
+        ),
+      ),
+    );
+    Future<void> settle() async {
+      for (var i = 0; i < 6; i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 60)),
+        );
+        await tester.pump(const Duration(milliseconds: 120));
+      }
+    }
+
+    appRouter.go('/dashboard');
+    await settle();
+    appRouter.go('/persons');
+    await settle();
+    // Dashboard, kept built offstage, reflows as its data changes; that
+    // must not pull Persons' title back out of the bar.
+    final cat = await tester.runAsync(
+      () async => (await db.watchCategories(CategoryKind.expense).first).first,
+    );
+    await tester.runAsync(
+      () => db.addTransaction(
+        type: TxType.expense,
+        amount: Money.fromRupees(99),
+        accountId: cash,
+        categoryId: cat!.id,
+        date: DateTime.now(),
+      ),
+    );
+    await settle();
+
+    final capsule = tester.getRect(
+      find
+          .ancestor(
+            of: find.byTooltip('Settled'),
+            matching: find.byType(LiquidGlass),
+          )
+          .first,
+    );
+    final title = tester.getRect(find.text('Persons'));
+    expect(title.center.dy, closeTo(capsule.center.dy, 4));
+    final tabSwitch = tester.getRect(find.byType(GlassTabSwitch));
+    expect(tabSwitch.top - capsule.bottom, inInclusiveRange(0, 14));
+    // The pages start at the top of the screen, under the bar and switch.
+    expect(tester.getTopLeft(find.byType(TabBarView)).dy, 0);
+    // Largest balance first.
+    final firstCard = find.text('Person 9');
+    expect(tester.getRect(firstCard).top, greaterThan(tabSwitch.bottom));
+    await tester.drag(
+      find.byType(CustomScrollView).first,
+      const Offset(0, -300),
+    );
+    await settle();
+    expect(tester.getRect(firstCard).top, lessThan(tabSwitch.bottom));
+    expect(
+      tester.getRect(find.text('Persons')).center.dy,
+      closeTo(capsule.center.dy, 4),
+    );
+
+    await tester.tap(find.text('Group'));
+    await settle();
+    final add = find.byWidgetPredicate(
+      (w) => w is GlassButton && w.semanticLabel == 'Add',
+    );
+    expect(
+      tester.getRect(find.byTooltip('New group')).bottom,
+      lessThan(tester.getRect(add).top),
+    );
     expect(tester.takeException(), isNull);
 
     await tester.pumpWidget(const SizedBox.shrink());

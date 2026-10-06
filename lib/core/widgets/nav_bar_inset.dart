@@ -58,10 +58,7 @@ class TopBarInsetSliver extends StatelessWidget {
     final collapsed = top - glassLargeTitleExtent;
     return SliverPersistentHeader(
       pinned: true,
-      delegate: _TopInsetDelegate(
-        max: top,
-        min: collapsed < 0 ? 0 : collapsed,
-      ),
+      delegate: _TopInsetDelegate(max: top, min: collapsed < 0 ? 0 : collapsed),
     );
   }
 }
@@ -83,28 +80,29 @@ class _TopInsetDelegate extends SliverPersistentHeaderDelegate {
       const SizedBox.expand();
 
   @override
-  bool shouldRebuild(_TopInsetDelegate old) =>
-      old.max != max || old.min != min;
+  bool shouldRebuild(_TopInsetDelegate old) => old.max != max || old.min != min;
 }
 
-/// For a tab whose top isn't one scroll view (Persons' tab strip): pads the
-/// whole body below the Glass top bar instead.
-class TopBarInset extends StatelessWidget {
-  const TopBarInset({required this.child, super.key});
+/// For a tab whose scroll view isn't the shell's own child (Persons' pages
+/// sit inside a horizontal pager, so their scrolls never reach the shell as
+/// its own): tells the Glass top bar how far the tab has scrolled, in the
+/// same terms as a scroll offset — `glassLargeTitleExtent` and up keeps the
+/// title small in the bar.
+class TopBarScrollNotification extends Notification {
+  const TopBarScrollNotification(this.pixels);
 
-  final Widget child;
+  final double pixels;
+}
 
-  @override
-  Widget build(BuildContext context) {
-    final top = MediaQuery.paddingOf(context).top;
-    if (top == 0) return child;
-    return Padding(
-      padding: EdgeInsets.only(top: top),
-      child: MediaQuery.removePadding(
-        context: context,
-        removeTop: true,
-        child: child,
-      ),
-    );
-  }
+/// Whether [context] is in a shell tab that isn't showing — go_router keeps
+/// those built, offstage, and a list there reflowing as its data loads must
+/// not move the showing tab's title.
+bool inHiddenTab(BuildContext? context) {
+  var hidden = false;
+  context?.visitAncestorElements((e) {
+    final w = e.widget;
+    if (w is Offstage && w.offstage) hidden = true;
+    return !hidden;
+  });
+  return hidden;
 }

@@ -175,12 +175,23 @@ class AppShell extends ConsumerWidget {
                 // filter moves the offset without a scroll), so the title
                 // always matches what's on screen.
                 onNotification: (n) {
-                  final (depth, metrics) = switch (n) {
-                    ScrollNotification() => (n.depth, n.metrics),
-                    ScrollMetricsNotification() => (n.depth, n.metrics),
-                    _ => (-1, null),
+                  if (n is TopBarScrollNotification) {
+                    _glassBranchScroll[index] = n.pixels;
+                    _glassScroll.value = n.pixels;
+                    return true;
+                  }
+                  final (depth, metrics, origin) = switch (n) {
+                    ScrollNotification() => (n.depth, n.metrics, n.context),
+                    ScrollMetricsNotification() => (
+                      n.depth,
+                      n.metrics,
+                      n.context,
+                    ),
+                    _ => (-1, null, null),
                   };
-                  if (depth == 0 && metrics?.axis == Axis.vertical) {
+                  if (depth == 0 &&
+                      metrics?.axis == Axis.vertical &&
+                      !inHiddenTab(origin)) {
                     _glassBranchScroll[index] = metrics!.pixels;
                     _glassScroll.value = metrics.pixels;
                   }

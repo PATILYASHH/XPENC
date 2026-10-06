@@ -51,6 +51,15 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   switches the tab bar to icons only.
 - **Person photos** — people's contact photos (or initials) now show on
   their transactions and in Dashboard's People section.
+- **Persons under Glass** — the Individual / Group switch sits right under
+  the top bar (the title stays small in the bar, no gap), and both lists
+  scroll up behind the bar and the switch, frosted. New group now rides
+  above the tab bar — it was hidden under the ➕, which took the tap.
+- **Hidden amounts, frosted** — under Glass, the eye button turns every
+  amount into frosted glass, blurred past reading. What's frosted is a
+  fixed stand-in, never the real digits, so nothing can be read back.
+- **Fixed:** a tab kept in the background reflowing (say Dashboard, as its
+  data loaded) could pull the showing tab's title back out of the bar.
 - **Sheets grow out of the tab bar** — under Glass, a sheet (the ➕'s
   template choice, the month picker, filters…) rises as the tab bar
   transforming: it starts at the bar's exact width and round ends and

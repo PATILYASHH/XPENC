@@ -102,6 +102,13 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
   @override
   Widget build(BuildContext context) {
     final ussdPayEnabled = ref.watch(ussdPayEnabledProvider);
+    // Glass: the shell's floating tab bar covers the foot of the screen —
+    // its ➕ right where a FAB goes — so the FAB rides above it.
+    final fabLift = AppSurface.of(context).isGlass
+        ? (MediaQuery.paddingOf(context).bottom -
+                  MediaQuery.viewPaddingOf(context).bottom)
+              .clamp(0.0, double.infinity)
+        : 0.0;
     return Scaffold(
       appBar: widget.embedded
           ? null
@@ -125,51 +132,63 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
                 ),
               ],
             ),
-      body: TopBarInset(
-        child: Column(
-        children: [
-          // Glass: a floating glass switch with a liquid droplet, not a
-          // tab strip.
-          if (AppSurface.of(context).isGlass)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 2, 16, 10),
-              child: GlassTabSwitch(
-                controller: _tabController,
-                labels: const ['Individual', 'Group'],
-              ),
-            )
-          else
-            TabBar(
+      // Glass: the pages scroll all the way up, under the top bar and a
+      // floating glass switch right beneath it. Elsewhere: a tab strip.
+      body: AppSurface.of(context).isGlass
+          ? GlassTabbedBody(
               controller: _tabController,
-              tabs: const [
-                Tab(text: 'Individual'),
-                Tab(text: 'Group'),
+              labels: const ['Individual', 'Group'],
+              underShellBar: widget.embedded,
+              children: const [_IndividualTab(), _GroupTab()],
+            )
+          : Column(
+              children: [
+                TabBar(
+                  controller: _tabController,
+                  tabs: const [
+                    Tab(text: 'Individual'),
+                    Tab(text: 'Group'),
+                  ],
+                ),
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: const [_IndividualTab(), _GroupTab()],
+                  ),
+                ),
               ],
             ),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: const [_IndividualTab(), _GroupTab()],
-            ),
-          ),
-        ],
+      floatingActionButton: _liftedFab(
+        fabLift,
+        _tabController.index == 1
+            ? FloatingActionButton(
+                tooltip: 'New group',
+                onPressed: () => _createGroup(context, ref),
+                // Glass: not a second ➕ stacked on the shell's own.
+                child: AppIcon(
+                  AppSurface.of(context).isGlass
+                      ? Icons.group_add_rounded
+                      : Icons.add_rounded,
+                ),
+              )
+            : _tabController.index == 0 && ussdPayEnabled
+            ? FloatingActionButton(
+                tooltip: 'Pay without internet',
+                onPressed: () => context.push('/persons/ussd-pay'),
+                child: const AppIcon(Icons.send_rounded),
+              )
+            : null,
       ),
-      ),
-      floatingActionButton: _tabController.index == 1
-          ? FloatingActionButton(
-              tooltip: 'New group',
-              onPressed: () => _createGroup(context, ref),
-              child: const AppIcon(Icons.add_rounded),
-            )
-          : _tabController.index == 0 && ussdPayEnabled
-          ? FloatingActionButton(
-              tooltip: 'Pay without internet',
-              onPressed: () => context.push('/persons/ussd-pay'),
-              child: const AppIcon(Icons.send_rounded),
-            )
-          : null,
     );
   }
+
+  static Widget? _liftedFab(double lift, Widget? fab) =>
+      fab == null || lift == 0
+      ? fab
+      : Padding(
+          padding: EdgeInsets.only(bottom: lift),
+          child: fab,
+        );
 }
 
 /// The pre-existing Persons list, unchanged in substance — just no longer
@@ -187,6 +206,10 @@ class _IndividualTab extends ConsumerWidget {
 
     return CustomScrollView(
       slivers: [
+        // Room for the Glass top bar and switch (nothing elsewhere).
+        SliverToBoxAdapter(
+          child: SizedBox(height: MediaQuery.paddingOf(context).top),
+        ),
         SliverToBoxAdapter(child: _TotalsHeader(totals: totals)),
         personsAsync.when(
           loading: () => const SliverToBoxAdapter(
@@ -634,15 +657,25 @@ class _GroupTab extends ConsumerWidget {
         ),
       ),
       data: (all) {
-        if (all.isEmpty) return const _EmptyGroups();
+        // Under Glass the page starts at the top of the screen.
+        final top = MediaQuery.paddingOf(context).top;
+        if (all.isEmpty) {
+          return Padding(
+            padding: EdgeInsets.only(top: top),
+            child: const _EmptyGroups(),
+          );
+        }
         final groups = [
           for (final g in all)
             if (!g.isSettled) g,
         ];
         if (groups.isEmpty) {
-          return const _EmptyNote(
-            icon: Icons.check_circle_outline_rounded,
-            text: 'Every group is settled — see Settled in the top bar.',
+          return Padding(
+            padding: EdgeInsets.only(top: top),
+            child: const _EmptyNote(
+              icon: Icons.check_circle_outline_rounded,
+              text: 'Every group is settled — see Settled in the top bar.',
+            ),
           );
         }
         // Same "dues on top" ordering as the Individual tab, reusing
@@ -655,7 +688,12 @@ class _GroupTab extends ConsumerWidget {
             (a, b) => balanceById[b.id]!.abs.compareTo(balanceById[a.id]!.abs),
           );
         return ListView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 96).plusNavBar(context),
+          padding: const EdgeInsets.fromLTRB(
+            20,
+            4,
+            20,
+            96,
+          ).plusNavBar(context).plusTopBar(context),
           children: [
             AppCard(
               clipBehavior: Clip.antiAlias,
