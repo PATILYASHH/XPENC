@@ -83,7 +83,9 @@ class _GlassTopBar extends ConsumerStatefulWidget
 
 class _GlassTopBarState extends ConsumerState<_GlassTopBar>
     with SingleTickerProviderStateMixin {
-  late final Ticker _ticker = createTicker(_tick);
+  // Made in initState, not lazily: a lazy ticker first touched in
+  // dispose() looks up TickerMode on a deactivated element.
+  late final Ticker _ticker;
   Duration _last = Duration.zero;
   late final _Spring _liquid = _Spring(_targetFor(_glassScroll.value));
 
@@ -93,6 +95,7 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
   @override
   void initState() {
     super.initState();
+    _ticker = createTicker(_tick);
     _glassScroll.addListener(_onScroll);
   }
 
