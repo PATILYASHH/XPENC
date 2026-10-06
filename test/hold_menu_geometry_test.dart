@@ -152,4 +152,69 @@ void main() {
       expect(hovered, isNot(2));
     });
   });
+
+  group('Glass corner fan', () {
+    const anchor = Offset(400, 900);
+
+    test('lays up to eight bubbles on two arcs, inner first, all up and to '
+        'the left of the ➕', () {
+      for (var n = 1; n <= 8; n++) {
+        final c = glassFanCenters(anchor, n);
+        expect(c, hasLength(n));
+        for (final p in c) {
+          expect(p.dx, lessThanOrEqualTo(anchor.dx + 0.01));
+          expect(p.dy, lessThanOrEqualTo(anchor.dy + 0.01));
+        }
+      }
+      final eight = glassFanCenters(anchor, 8);
+      final inner = eight.take(3).map((p) => (p - anchor).distance);
+      final outer = eight.skip(3).map((p) => (p - anchor).distance);
+      expect(inner.every((d) => (d - 118).abs() < 0.01), isTrue);
+      expect(outer.every((d) => (d - 204).abs() < 0.01), isTrue);
+    });
+
+    test('bubbles never overlap (56-pt bubbles need 56 pt between centres)',
+        () {
+      for (var n = 2; n <= 8; n++) {
+        final c = glassFanCenters(anchor, n);
+        for (var i = 0; i < c.length; i++) {
+          for (var j = i + 1; j < c.length; j++) {
+            expect(
+              (c[i] - c[j]).distance,
+              greaterThanOrEqualTo(56),
+              reason: 'n=$n, $i vs $j',
+            );
+          }
+        }
+      }
+    });
+
+    test('the thumb picks the nearest bubble, and resting on the ➕ cancels',
+        () {
+      final c = glassFanCenters(anchor, 8);
+      for (var i = 0; i < c.length; i++) {
+        expect(
+          glassFanHoveredIndex(
+            anchor: anchor,
+            pointer: c[i] + const Offset(6, -5),
+            centres: c,
+          ),
+          i,
+        );
+      }
+      expect(
+        glassFanHoveredIndex(anchor: anchor, pointer: anchor, centres: c),
+        -1,
+      );
+      // Out in empty space: nothing.
+      expect(
+        glassFanHoveredIndex(
+          anchor: anchor,
+          pointer: const Offset(10, 10),
+          centres: c,
+        ),
+        -1,
+      );
+    });
+  });
 }

@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -478,13 +479,57 @@ class RenderGlassWallpaper extends RenderProxyBox {
   void paint(PaintingContext context, Offset offset) {
     final canvas = context.canvas;
     final origin = localToGlobal(Offset.zero);
-    canvas
-      ..save()
-      ..clipRect(offset & size)
-      ..translate(offset.dx - origin.dx, offset.dy - origin.dy);
-    _backdrop.paint(canvas, _screen);
-    canvas.restore();
+    final rect = offset & size;
+    if (_backdrop.pools.isEmpty) {
+      // A plain page: one flat fill, nothing worth caching.
+      canvas.drawRect(rect, Paint()..color = _backdrop.base);
+    } else {
+      final image = _WallpaperCache.imageFor(_backdrop, _screen);
+      // The slice of the screen-sized wallpaper this box covers.
+      final src = Rect.fromLTWH(
+        origin.dx * image.width / _screen.width,
+        origin.dy * image.height / _screen.height,
+        size.width * image.width / _screen.width,
+        size.height * image.height / _screen.height,
+      );
+      canvas.drawImageRect(
+        image,
+        src,
+        rect,
+        Paint()..filterQuality = FilterQuality.low,
+      );
+    }
     super.paint(context, offset);
+  }
+}
+
+/// The wallpaper, rasterised once per background and screen size. Painting
+/// its gradient pools live cost several full-screen fills on every frame —
+/// twice over, since the shell and the page each paint their slice. Soft
+/// gradients scale up invisibly, so the image is kept at logical (not
+/// physical) resolution: a fraction of the memory, the same look.
+class _WallpaperCache {
+  static GlassBackdrop? _backdrop;
+  static Size? _screen;
+  static ui.Image? _image;
+
+  static ui.Image imageFor(GlassBackdrop backdrop, Size screen) {
+    final cached = _image;
+    if (cached != null && _backdrop == backdrop && _screen == screen) {
+      return cached;
+    }
+    final recorder = ui.PictureRecorder();
+    backdrop.paint(Canvas(recorder), screen);
+    final picture = recorder.endRecording();
+    final image = picture.toImageSync(
+      screen.width.ceil().clamp(1, 4096),
+      screen.height.ceil().clamp(1, 4096),
+    );
+    picture.dispose();
+    cached?.dispose();
+    _backdrop = backdrop;
+    _screen = screen;
+    return _image = image;
   }
 }
 
@@ -617,43 +662,38 @@ class _RenderAmbientLight extends RenderProxyBox {
   void paint(PaintingContext context, Offset offset) {
     final rect = offset & size;
     if (!rect.isEmpty) {
-      final shape = _radius.toRSuperellipse(rect);
+      // Plain rounded rects, not the pane's squircle, and no clip: a blurred
+      // rrect is drawn analytically (nearly free) where a blurred squircle
+      // or a clip path costs a full blur or stencil pass per card per frame
+      // — and inside a soft glow the two shapes look the same.
+      final shape = _radius.toRRect(rect);
       final tone = _backdrop.tone;
       final glow = _backdrop.ambientAt(
         localToGlobal(size.center(Offset.zero)),
         _screen,
       );
-      final outside = Path.combine(
-        PathOperation.difference,
-        Path()..addRect(rect.inflate(64)),
-        Path()..addRSuperellipse(shape),
-      );
       final side = size.shortestSide;
-      final canvas = context.canvas
-        ..save()
-        ..clipPath(outside);
-      // Ambient light: wide, unshifted, the wallpaper's own colour.
-      canvas.drawRSuperellipse(
-        shape,
-        Paint()
-          ..color = glow.withValues(alpha: tone.ambient)
-          ..maskFilter = MaskFilter.blur(
-            BlurStyle.normal,
-            (side * 0.16).clamp(8.0, 22.0),
-          ),
-      );
-      // Contact shadow: tighter, a touch below — the pane's weight.
-      canvas
-        ..drawRSuperellipse(
+      context.canvas
+        // Ambient light: wide, unshifted, the wallpaper's own colour.
+        ..drawRRect(
+          shape,
+          Paint()
+            ..color = glow.withValues(alpha: tone.ambient)
+            ..maskFilter = MaskFilter.blur(
+              BlurStyle.outer,
+              (side * 0.16).clamp(8.0, 22.0),
+            ),
+        )
+        // Contact shadow: tighter, a touch below — the pane's weight.
+        ..drawRRect(
           shape.shift(Offset(0, (side * 0.05).clamp(1.5, 5.0))),
           Paint()
             ..color = Color.fromRGBO(20, 22, 40, tone.shadowOpacity * 0.6)
             ..maskFilter = MaskFilter.blur(
-              BlurStyle.normal,
+              BlurStyle.outer,
               (side * 0.07).clamp(3.0, 10.0),
             ),
-        )
-        ..restore();
+        );
     }
     super.paint(context, offset);
   }
@@ -688,9 +728,14 @@ class GlassIconTile extends StatelessWidget {
     Color(0xFF8E8E93),
   ];
 
-  /// A stable colour for an icon that came without one.
-  static Color forIcon(IconData? icon) =>
-      palette[(icon?.codePoint ?? 0) % palette.length];
+  /// A stable colour for an icon that came without one. The code point is
+  /// scrambled first: neighbouring glyphs in a font sit at neighbouring code
+  /// points, and a bare modulo gave whole lists the same colour.
+  static Color forIcon(IconData? icon) {
+    var h = (icon?.codePoint ?? 0) * 0x9E3779B1;
+    h ^= h >> 15;
+    return palette[(h & 0x7FFFFFFF) % palette.length];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -780,12 +825,19 @@ class LiquidGlass extends StatelessWidget {
     this.band = 22,
     this.shadow = true,
     this.pressed = false,
+    this.backdrop = true,
     super.key,
   });
 
   final Widget child;
   final BorderRadius? borderRadius;
   final Color? tint;
+
+  /// Whether to read (blur, bend) what's behind. Off for glass that only
+  /// ever sits on the still wallpaper — top-bar buttons, the tinted ➕, the
+  /// tab droplet — where a backdrop pass shows nothing new but costs GPU
+  /// time on every frame.
+  final bool backdrop;
 
   /// Defaults to the [GlassTone]'s near-clear control frost.
   final Color? frost;
@@ -839,15 +891,17 @@ class LiquidGlass extends StatelessWidget {
       ),
       child: body,
     );
-    final lens = _LensFilter(
-      radius: borderRadius?.topLeft.x,
-      blur: blur,
-      refraction: refraction,
-      band: band,
-      dpr: MediaQuery.devicePixelRatioOf(context),
-      screen: MediaQuery.sizeOf(context),
-      child: glass,
-    );
+    final lens = !backdrop || (blur <= 0 && refraction <= 0)
+        ? glass
+        : _LensFilter(
+            radius: borderRadius?.topLeft.x,
+            blur: blur,
+            refraction: refraction,
+            band: band,
+            dpr: MediaQuery.devicePixelRatioOf(context),
+            screen: MediaQuery.sizeOf(context),
+            child: glass,
+          );
     glass = continuous
         ? ClipRSuperellipse(borderRadius: borderRadius!, child: lens)
         : ClipRRect(clipper: _GlassClipper(borderRadius), child: lens);
@@ -964,16 +1018,25 @@ class _RenderLensFilter extends RenderProxyBox {
     // the shader's input by the blur radius, and the lens then can't tell
     // where the pane sits in it. Blur first, then the lens bends the
     // blurred backdrop.
-    _blurLayer.layer ??= BackdropFilterLayer();
-    _blurLayer.layer!.filter = ui.ImageFilter.blur(
-      sigmaX: _blur,
-      sigmaY: _blur,
-      tileMode: TileMode.mirror,
-    );
     final program = LiquidGlassShader.program;
-    if (program == null || _refraction <= 0) {
+    final lens = program != null && _refraction > 0;
+    if (_blur > 0) {
+      _blurLayer.layer ??= BackdropFilterLayer();
+      _blurLayer.layer!.filter = ui.ImageFilter.blur(
+        sigmaX: _blur,
+        sigmaY: _blur,
+        tileMode: TileMode.mirror,
+      );
+    } else {
+      _blurLayer.layer = null;
+    }
+    if (!lens) {
       _lensLayer.layer = null;
-      context.pushLayer(_blurLayer.layer!, super.paint, offset);
+      if (_blurLayer.layer == null) {
+        super.paint(context, offset);
+      } else {
+        context.pushLayer(_blurLayer.layer!, super.paint, offset);
+      }
       return;
     }
     final origin = localToGlobal(Offset.zero) * _dpr;
@@ -993,12 +1056,13 @@ class _RenderLensFilter extends RenderProxyBox {
       ..setFloat(12, screen.height * _dpr);
     _lensLayer.layer ??= BackdropFilterLayer();
     _lensLayer.layer!.filter = ui.ImageFilter.shader(shader);
-    context.pushLayer(
-      _blurLayer.layer!,
-      (context, offset) =>
-          context.pushLayer(_lensLayer.layer!, super.paint, offset),
-      offset,
-    );
+    void lensPass(PaintingContext context, Offset offset) =>
+        context.pushLayer(_lensLayer.layer!, super.paint, offset);
+    if (_blurLayer.layer == null) {
+      lensPass(context, offset);
+    } else {
+      context.pushLayer(_blurLayer.layer!, lensPass, offset);
+    }
   }
 }
 
@@ -1013,8 +1077,16 @@ class GlassButton extends StatefulWidget {
     this.size,
     this.borderRadius,
     this.tooltip,
+    this.semanticLabel,
+    this.backdrop = true,
     super.key,
   });
+
+  /// Read by screen readers; defaults to [tooltip].
+  final String? semanticLabel;
+
+  /// See [LiquidGlass.backdrop].
+  final bool backdrop;
 
   final Widget child;
   final VoidCallback? onPressed;
@@ -1043,6 +1115,7 @@ class _GlassButtonState extends State<GlassButton> {
       tint: widget.tint,
       borderRadius: widget.borderRadius,
       pressed: _down,
+      backdrop: widget.backdrop,
       child: widget.size == null
           ? widget.child
           : SizedBox.square(
@@ -1050,16 +1123,18 @@ class _GlassButtonState extends State<GlassButton> {
               child: Center(child: widget.child),
             ),
     );
+    // A gentle dip and one soft settle — no rubbery wobble to track.
     glass = AnimatedScale(
-      scale: _down ? 0.9 : 1,
-      duration: Duration(milliseconds: _down ? 90 : 420),
-      curve: _down ? Curves.easeOut : Curves.elasticOut,
+      scale: _down ? 0.94 : 1,
+      duration: Duration(milliseconds: _down ? 110 : 320),
+      curve: _down ? Curves.easeOutCubic : const Cubic(0.2, 1.25, 0.4, 1),
       child: glass,
     );
     final enabled = widget.onPressed != null || widget.onLongPress != null;
     Widget result = Semantics(
       button: true,
       enabled: enabled,
+      label: widget.semanticLabel ?? widget.tooltip,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTapDown: enabled ? (_) => _setDown(true) : null,
@@ -1090,6 +1165,7 @@ class GlassNavGlyph extends StatelessWidget {
     return SizedBox.square(
       dimension: 40,
       child: LiquidGlass(
+        backdrop: false,
         child: Center(
           child: Icon(
             icon,
@@ -1184,4 +1260,91 @@ class GlassShadowPainter extends CustomPainter {
   @override
   bool shouldRepaint(GlassShadowPainter old) =>
       old.radius != radius || old.opacity != opacity;
+}
+
+/// Opens the next pushed page as a circle growing from a point on screen —
+/// the quick-action bubble the user released on — instead of the usual
+/// slide; the page shrinks back into that point when popped. Set it with
+/// [from] just before the push; Glass's page transitions pick it up.
+class GlassReveal {
+  const GlassReveal._();
+
+  static Offset? _pending;
+  static DateTime? _setAt;
+  static final _origins = Expando<Offset>('GlassReveal');
+
+  static void from(Offset globalCentre) {
+    _pending = globalCentre;
+    _setAt = DateTime.now();
+  }
+
+  /// The reveal origin for [route], claiming the pending one for the route
+  /// now being pushed (the one whose animation hasn't completed yet). A
+  /// pending origin no route claims within a second is dropped.
+  static Offset? originFor(Route<dynamic> route, Animation<double> animation) {
+    final known = _origins[route];
+    if (known != null) return known;
+    final pending = _pending;
+    if (pending == null || animation.value >= 1) return null;
+    _pending = null;
+    if (DateTime.now().difference(_setAt!) > const Duration(seconds: 1)) {
+      return null;
+    }
+    _origins[route] = pending;
+    return pending;
+  }
+}
+
+/// The circular reveal itself: [child] clipped to a circle around [origin]
+/// that grows from bubble size to cover the screen, with a slight settle in
+/// scale. The clip switches off once the page is fully open, so a settled
+/// page costs nothing extra.
+class GlassRevealTransition extends AnimatedWidget {
+  const GlassRevealTransition({
+    required Animation<double> animation,
+    required this.origin,
+    required this.child,
+    super.key,
+  }) : super(listenable: animation);
+
+  final Offset origin;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final value = (listenable as Animation<double>).value;
+    final t = Curves.easeOutCubic.transform(value.clamp(0.0, 1.0));
+    final size = MediaQuery.sizeOf(context);
+    final farthest = [
+      Offset.zero,
+      Offset(size.width, 0),
+      Offset(0, size.height),
+      Offset(size.width, size.height),
+    ].map((c) => (c - origin).distance).reduce(math.max);
+    final radius = 28 + (farthest - 28) * t;
+    return ClipPath(
+      clipper: _CircleClipper(origin, radius),
+      clipBehavior: value >= 1 ? Clip.none : Clip.antiAlias,
+      child: Transform.scale(
+        scale: 0.94 + 0.06 * t,
+        origin: origin - size.center(Offset.zero),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _CircleClipper extends CustomClipper<Path> {
+  _CircleClipper(this.centre, this.radius);
+
+  final Offset centre;
+  final double radius;
+
+  @override
+  Path getClip(Size size) =>
+      Path()..addOval(Rect.fromCircle(center: centre, radius: radius));
+
+  @override
+  bool shouldReclip(_CircleClipper old) =>
+      old.centre != centre || old.radius != radius;
 }

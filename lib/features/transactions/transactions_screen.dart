@@ -1563,7 +1563,7 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
       final frost = surface.tone.sheetFrost;
       return ClipRect(
         child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: ColoredBox(
             color: frost.withValues(alpha: frost.a * 0.7),
             child: content,

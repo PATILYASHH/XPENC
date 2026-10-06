@@ -23,6 +23,17 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.bolt_rounded,
+    title: 'Glass quick actions, and smoother everything',
+    location: 'Glass theme · hold ➕ (turn on in Settings → Quick Actions)',
+    description:
+        'Hold the ➕ and your quick actions spring out onto two arcs in the '
+        'corner — slide your thumb to one and let go, and its page grows '
+        'out of the bubble. XPENC also runs at your screen’s full refresh '
+        'rate now (90/120 Hz where the phone supports it), with calmer, '
+        'smoother motion throughout Glass.',
+  ),
+  WhatsNewEntry(
     icon: Icons.blur_on_rounded,
     title: 'New themes: Classic, Noir and Glass',
     location: 'Settings → General → Theme',

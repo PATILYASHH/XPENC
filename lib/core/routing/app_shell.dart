@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+import 'dart:ui' as ui;
+
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -208,7 +211,11 @@ class AppShell extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            AppIcon(selected ? tab.activeIcon : tab.icon, size: 24, color: color),
+            AppIcon(
+              selected ? tab.activeIcon : tab.icon,
+              size: 24,
+              color: color,
+            ),
             if (showLabels) ...[
               const SizedBox(height: 4),
               Text(
@@ -272,11 +279,37 @@ class _AddButtonState extends State<_AddButton> {
   final _hoveredIndex = ValueNotifier<int>(-1);
   Offset _origin = Offset.zero;
 
+  // Glass's corner fan: the shown actions (empty slots dropped, order kept),
+  // where each bubble sits, and the overlay that draws them.
+  List<QuickActionSpec> _fanActions = const [];
+  List<Offset> _fanCentres = const [];
+  final _fanKey = GlobalKey<_GlassQuickActionsState>();
+
   void _onLongPressStart(LongPressStartDetails details) {
     if (widget.actions.every((a) => a == null)) return;
     _origin = details.globalPosition;
     _hoveredIndex.value = -1;
     HapticFeedback.mediumImpact();
+    if (widget.glass) {
+      final box = context.findRenderObject() as RenderBox;
+      final anchor = box.localToGlobal(box.size.center(Offset.zero));
+      _origin = anchor;
+      _fanActions = widget.actions.whereType<QuickActionSpec>().toList();
+      _fanCentres = glassFanCenters(anchor, _fanActions.length);
+      _overlayEntry = OverlayEntry(
+        builder: (_) => Positioned.fill(
+          child: _GlassQuickActions(
+            key: _fanKey,
+            anchor: anchor,
+            centres: _fanCentres,
+            actions: _fanActions,
+            hovered: _hoveredIndex,
+          ),
+        ),
+      );
+      Overlay.of(context).insert(_overlayEntry!);
+      return;
+    }
     _overlayEntry = OverlayEntry(
       builder: (_) => Positioned.fill(
         child: _HoldMenuOverlay(
@@ -290,6 +323,18 @@ class _AddButtonState extends State<_AddButton> {
 
   void _onLongPressMoveUpdate(LongPressMoveUpdateDetails details) {
     if (_overlayEntry == null) return;
+    if (widget.glass) {
+      final nearest = glassFanHoveredIndex(
+        anchor: _origin,
+        pointer: details.globalPosition,
+        centres: _fanCentres,
+      );
+      if (nearest != _hoveredIndex.value) {
+        _hoveredIndex.value = nearest;
+        HapticFeedback.selectionClick();
+      }
+      return;
+    }
     var nearest = holdMenuHoveredIndex(
       origin: _origin,
       pointer: details.globalPosition,
@@ -307,6 +352,10 @@ class _AddButtonState extends State<_AddButton> {
   }
 
   void _endGesture({required bool commit}) {
+    if (widget.glass) {
+      _endFan(commit: commit);
+      return;
+    }
     final index = _hoveredIndex.value;
     _overlayEntry?.remove();
     _overlayEntry = null;
@@ -316,6 +365,23 @@ class _AddButtonState extends State<_AddButton> {
     if (action == null) return;
     HapticFeedback.mediumImpact();
     context.push(action.route);
+  }
+
+  /// Plays the fan out — the chosen bubble swelling, the rest retracting
+  /// into the ➕ — then opens the chosen page growing out of that bubble.
+  Future<void> _endFan({required bool commit}) async {
+    final entry = _overlayEntry;
+    if (entry == null) return;
+    _overlayEntry = null;
+    final index = _hoveredIndex.value;
+    final chosen = commit && index >= 0 && index < _fanActions.length;
+    if (chosen) HapticFeedback.mediumImpact();
+    await _fanKey.currentState?.close(selected: chosen ? index : null);
+    entry.remove();
+    _hoveredIndex.value = -1;
+    if (!chosen || !mounted) return;
+    GlassReveal.from(_fanCentres[index]);
+    context.push(_fanActions[index].route);
   }
 
   @override
@@ -345,10 +411,18 @@ class _AddButtonState extends State<_AddButton> {
       return _withHold(
         GlassButton(
           size: _LiquidTabBar.height,
+          // Tinted near-opaque: a backdrop pass would show almost nothing.
+          backdrop: false,
           tint: Theme.of(context).colorScheme.secondary,
-          tooltip: 'Add',
+          // A tooltip would claim the long press the hold menu needs.
+          tooltip: widget.holdEnabled ? null : 'Add',
+          semanticLabel: 'Add',
           onPressed: _open,
-          child: const AppIcon(CupertinoIcons.add, color: Colors.white, size: 28),
+          child: const AppIcon(
+            CupertinoIcons.add,
+            color: Colors.white,
+            size: 28,
+          ),
         ),
       );
     }
@@ -366,6 +440,274 @@ class _AddButtonState extends State<_AddButton> {
       ),
     );
     return Expanded(child: Center(child: _withHold(button)));
+  }
+}
+
+/// Glass's quick actions: bubbles springing out of the ➕ onto two arcs in
+/// the bottom-right corner — within reach of the thumb that's holding it —
+/// over a page that dims and frosts. The bubble under the thumb lifts,
+/// magnifies and fills with the accent, its name in a glass label above it;
+/// the ➕ turns into ✕, so sliding back onto it and letting go cancels.
+/// Purely visual ([IgnorePointer]): the hold gesture on the ➕ drives
+/// [hovered] (see `_AddButtonState`).
+class _GlassQuickActions extends StatefulWidget {
+  const _GlassQuickActions({
+    required this.anchor,
+    required this.centres,
+    required this.actions,
+    required this.hovered,
+    super.key,
+  });
+
+  final Offset anchor;
+  final List<Offset> centres;
+  final List<QuickActionSpec> actions;
+  final ValueListenable<int> hovered;
+
+  @override
+  State<_GlassQuickActions> createState() => _GlassQuickActionsState();
+}
+
+class _GlassQuickActionsState extends State<_GlassQuickActions>
+    with TickerProviderStateMixin {
+  static const _bubble = 56.0;
+
+  late final _open = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 520),
+  )..forward();
+
+  // Drives the chosen bubble's swell as the fan closes on a pick.
+  late final _pick = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 170),
+  );
+  int? _selected;
+
+  /// Animates the fan away: on a pick the chosen bubble swells while the
+  /// rest retract; on a cancel everything folds back into the ➕.
+  Future<void> close({int? selected}) async {
+    if (!mounted) return;
+    setState(() => _selected = selected);
+    if (selected != null) {
+      // Quick: the page should start opening almost at once.
+      await Future.wait([
+        _pick.forward(),
+        _open.animateBack(
+          0.35,
+          duration: const Duration(milliseconds: 170),
+          curve: Curves.easeInCubic,
+        ),
+      ]);
+    } else {
+      await _open.animateBack(
+        0,
+        duration: const Duration(milliseconds: 230),
+        curve: Curves.easeInCubic,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _open.dispose();
+    _pick.dispose();
+    super.dispose();
+  }
+
+  /// Bubble [i]'s own 0–1 progress: each one leaves a beat after the last,
+  /// with a soft overshoot as it lands — a stagger, not a block.
+  double _progress(int i) {
+    final n = widget.centres.length;
+    final start = n <= 1 ? 0.0 : 0.32 * i / (n - 1);
+    final t = ((_open.value - start) / (1 - 0.32)).clamp(0.0, 1.0);
+    return const Cubic(0.18, 1.32, 0.4, 1).transform(t);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final tone = AppSurface.of(context).tone;
+    final size = MediaQuery.sizeOf(context);
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: Listenable.merge([_open, _pick, widget.hovered]),
+        builder: (context, _) {
+          final open = Curves.easeOut.transform(_open.value);
+          final hovered = widget.hovered.value;
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // The page dims and frosts, and the corner glows with accent.
+              Positioned.fill(
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(
+                    sigmaX: 8 * open,
+                    sigmaY: 8 * open,
+                  ),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(
+                        alpha: (tone.isDark ? 0.38 : 0.2) * open,
+                      ),
+                      gradient: RadialGradient(
+                        center: Alignment(
+                          widget.anchor.dx / size.width * 2 - 1,
+                          widget.anchor.dy / size.height * 2 - 1,
+                        ),
+                        radius: 0.9,
+                        colors: [
+                          cs.secondary.withValues(alpha: 0.28 * open),
+                          cs.secondary.withValues(alpha: 0),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              for (var i = 0; i < widget.centres.length; i++)
+                _bubbleAt(context, i, hovered == i),
+              _labelFor(context, hovered),
+              _cancelDisc(context, open, hovered == -1),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _bubbleAt(BuildContext context, int i, bool hovered) {
+    final cs = Theme.of(context).colorScheme;
+    final tone = AppSurface.of(context).tone;
+    final p = _progress(i);
+    final picked = _selected == i;
+    // The picked bubble rides the fan's close on its own swell instead.
+    final travel = picked ? 1.0 : p;
+    final centre = Offset.lerp(widget.anchor, widget.centres[i], travel)!;
+    // Flight scale follows the fan's progress exactly; only the hover swell
+    // eases on its own — an implicit animation chasing a moving target
+    // would trail behind the bubble and smear its pop-out.
+    final scale = picked ? 1.22 + 0.28 * _pick.value : 0.35 + 0.65 * p;
+    final opacity = picked ? (1 - _pick.value * 0.6) : p.clamp(0.0, 1.0);
+    final glyph = hovered || picked ? Colors.white : cs.secondary;
+    return Positioned(
+      left: centre.dx - _bubble / 2,
+      top: centre.dy - _bubble / 2,
+      width: _bubble,
+      height: _bubble,
+      child: Opacity(
+        opacity: opacity,
+        child: Transform.scale(
+          scale: scale,
+          child: AnimatedScale(
+            scale: hovered && !picked ? 1.22 : 1,
+            duration: const Duration(milliseconds: 150),
+            curve: Curves.easeOutCubic,
+            child: LiquidGlass(
+              backdrop: false,
+              frost: tone.isDark
+                  ? const Color(0x47FFFFFF)
+                  : const Color(0xB3FFFFFF),
+              tint: hovered || picked ? cs.secondary : null,
+              pressed: hovered,
+              child: Center(
+                child: AppIcon(
+                  widget.actions[i].icon,
+                  size: 24,
+                  color: glyph,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// The hovered action's name in a glass label just above its bubble —
+  /// or, with nothing under the thumb, how to back out.
+  Widget _labelFor(BuildContext context, int hovered) {
+    final theme = Theme.of(context);
+    final size = MediaQuery.sizeOf(context);
+    final open = _open.value.clamp(0.0, 1.0);
+    final text = hovered >= 0
+        ? widget.actions[hovered].label
+        : 'Slide to an action · release on × to cancel';
+    final at = hovered >= 0
+        ? widget.centres[hovered] - const Offset(0, _bubble * 0.95)
+        : widget.anchor - const Offset(140, 270);
+    const width = 220.0;
+    final left = (at.dx - width / 2).clamp(12.0, size.width - width - 12);
+    return Positioned(
+      left: left,
+      top: at.dy - 22,
+      width: width,
+      child: Opacity(
+        opacity: open,
+        child: Center(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 140),
+            transitionBuilder: (child, a) => FadeTransition(
+              opacity: a,
+              child: ScaleTransition(
+                scale: Tween<double>(begin: 0.92, end: 1).animate(a),
+                child: child,
+              ),
+            ),
+            child: LiquidGlass(
+              key: ValueKey(text),
+              backdrop: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                child: Text(
+                  text,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: hovered >= 0 ? 15 : 12.5,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// The ➕ turning into ✕ under the thumb.
+  Widget _cancelDisc(BuildContext context, double open, bool active) {
+    final cs = Theme.of(context).colorScheme;
+    const d = _LiquidTabBar.height;
+    return Positioned(
+      left: widget.anchor.dx - d / 2,
+      top: widget.anchor.dy - d / 2,
+      width: d,
+      height: d,
+      child: AnimatedScale(
+        scale: active ? 1.08 : 0.92,
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOutCubic,
+        child: LiquidGlass(
+          backdrop: false,
+          tint: active ? cs.secondary : cs.secondary.withValues(alpha: 0.55),
+          child: Center(
+            child: Transform.rotate(
+              angle: math.pi / 4 * open,
+              child: const Icon(
+                CupertinoIcons.add,
+                color: Colors.white,
+                size: 28,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -567,13 +909,15 @@ class _TabSwitchFadeState extends State<_TabSwitchFade>
     with SingleTickerProviderStateMixin {
   late final _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 280),
+    duration: const Duration(milliseconds: 240),
     value: 1,
   );
   late final _curve = CurvedAnimation(
     parent: _controller,
     curve: Curves.easeOutCubic,
   );
+  late final _opacity = Tween<double>(begin: 0.55, end: 1).animate(_curve);
+  late final _scale = Tween<double>(begin: 0.992, end: 1).animate(_curve);
 
   @override
   void didUpdateWidget(_TabSwitchFade old) {
@@ -588,17 +932,12 @@ class _TabSwitchFadeState extends State<_TabSwitchFade>
     super.dispose();
   }
 
+  // Transitions, not a builder: the fade and scale run on the compositor
+  // without rebuilding the tab underneath on every frame.
   @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: _curve,
-    child: widget.child,
-    builder: (context, child) {
-      final t = _curve.value;
-      return Opacity(
-        opacity: 0.35 + 0.65 * t,
-        child: Transform.scale(scale: 0.985 + 0.015 * t, child: child),
-      );
-    },
+  Widget build(BuildContext context) => FadeTransition(
+    opacity: _opacity,
+    child: ScaleTransition(scale: _scale, child: widget.child),
   );
 }
 
@@ -640,63 +979,132 @@ class _LiquidTabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selected = tabs.indexWhere((t) => t.branch == currentBranch);
-    return SafeArea(
-      top: false,
-      minimum: const EdgeInsets.only(bottom: 8),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-        child: Row(
-          children: [
-            Expanded(
-              child: SizedBox(
-                height: height,
-                child: LiquidGlass(
-                  child: LayoutBuilder(
-                    builder: (context, box) {
-                      final itemWidth = box.maxWidth / tabs.length;
-                      return Stack(
-                        children: [
-                          if (selected >= 0)
-                            AnimatedPositioned(
-                              duration: const Duration(milliseconds: 460),
-                              curve: Curves.easeOutBack,
-                              left: selected * itemWidth + 4,
-                              top: 4,
-                              bottom: 4,
-                              width: itemWidth - 8,
-                              child: LiquidGlass(
-                                frost: AppSurface.of(context).tone.selected,
-                                blur: 0,
-                                refraction: 9,
-                                band: 16,
-                                shadow: false,
-                                child: const SizedBox.expand(),
+    return RepaintBoundary(
+      child: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.only(bottom: 8),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+          child: Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: height,
+                  child: LiquidGlass(
+                    child: LayoutBuilder(
+                      builder: (context, box) {
+                        final itemWidth = box.maxWidth / tabs.length;
+                        return Stack(
+                          children: [
+                            if (selected >= 0)
+                              _LiquidDroplet(
+                                index: selected,
+                                itemWidth: itemWidth,
+                                color: AppSurface.of(context).tone.selected,
                               ),
-                            ),
-                          Row(
-                            children: [
-                              for (var i = 0; i < tabs.length; i++)
-                                Expanded(
-                                  child: _LiquidTab(
-                                    tab: tabs[i],
-                                    selected: i == selected,
-                                    showLabel: showLabels,
-                                    onTap: () => onSelect(tabs[i].branch),
+                            Row(
+                              children: [
+                                for (var i = 0; i < tabs.length; i++)
+                                  Expanded(
+                                    child: _LiquidTab(
+                                      tab: tabs[i],
+                                      selected: i == selected,
+                                      showLabel: showLabels,
+                                      onTap: () => onSelect(tabs[i].branch),
+                                    ),
                                   ),
-                                ),
-                            ],
-                          ),
-                        ],
-                      );
-                    },
+                              ],
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 10),
-            add,
-          ],
+              const SizedBox(width: 10),
+              add,
+            ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+/// The selected-tab droplet. It glides to the new tab on a smooth ease —
+/// no overshoot to chase with the eye — and stretches a little in flight,
+/// the way a drop of liquid elongates as it moves, then settles round.
+class _LiquidDroplet extends StatefulWidget {
+  const _LiquidDroplet({
+    required this.index,
+    required this.itemWidth,
+    required this.color,
+  });
+
+  final int index;
+  final double itemWidth;
+  final Color color;
+
+  @override
+  State<_LiquidDroplet> createState() => _LiquidDropletState();
+}
+
+class _LiquidDropletState extends State<_LiquidDroplet>
+    with SingleTickerProviderStateMixin {
+  late final _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 380),
+    value: 1,
+  );
+  late double _from = widget.index.toDouble();
+  late double _to = widget.index.toDouble();
+
+  @override
+  void didUpdateWidget(_LiquidDroplet old) {
+    super.didUpdateWidget(old);
+    if (old.index != widget.index) {
+      // Start from wherever the droplet is now, even mid-flight.
+      _from = _position;
+      _to = widget.index.toDouble();
+      _controller.forward(from: 0);
+    }
+  }
+
+  double get _t => Curves.easeInOutCubic.transform(_controller.value);
+  double get _position => _from + (_to - _from) * _t;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final w = widget.itemWidth;
+        // Stretch peaks mid-flight and scales with how far it travels.
+        final distance = (_to - _from).abs().clamp(0.0, 1.5);
+        final stretch =
+            1 + 0.22 * distance * math.sin(math.pi * _controller.value);
+        final width = (w - 8) * stretch;
+        final centre = _position * w + w / 2;
+        return Positioned(
+          left: centre - width / 2,
+          top: 4,
+          bottom: 4,
+          width: width,
+          child: child!,
+        );
+      },
+      child: LiquidGlass(
+        frost: widget.color,
+        backdrop: false,
+        shadow: false,
+        child: const SizedBox.expand(),
       ),
     );
   }
@@ -741,9 +1149,9 @@ class _LiquidTab extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             AnimatedScale(
-              scale: selected ? 1.08 : 1,
-              duration: const Duration(milliseconds: 320),
-              curve: Curves.easeOutBack,
+              scale: selected ? 1.06 : 1,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
               child: AppIcon(icon, size: 24, color: color),
             ),
             if (showLabel) ...[
@@ -990,6 +1398,7 @@ class _TonalIconButton extends StatelessWidget {
     if (AppSurface.of(context).isGlass) {
       return GlassButton(
         size: 42,
+        backdrop: false,
         tooltip: tooltip,
         onPressed: onPressed,
         child: IconTheme.merge(
@@ -1059,6 +1468,7 @@ class _DashboardMonthButton extends ConsumerWidget {
         height: 42,
         child: GlassButton(
           tooltip: 'Change month',
+          backdrop: false,
           onPressed: pick,
           child: Center(widthFactor: 1, child: label),
         ),

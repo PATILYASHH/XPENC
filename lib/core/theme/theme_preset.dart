@@ -94,9 +94,8 @@ class ThemeChoice {
   bool get _glass => style == ThemeStyle.glass;
 
   /// The mode actually applied: Glass is as light or dark as its background.
-  ThemeMode get effectiveMode => _glass
-      ? (backdrop.isDark ? ThemeMode.dark : ThemeMode.light)
-      : mode;
+  ThemeMode get effectiveMode =>
+      _glass ? (backdrop.isDark ? ThemeMode.dark : ThemeMode.light) : mode;
 
   /// The palette actually shown, for previews and swatches.
   Palette resolve(Brightness platformBrightness) {
@@ -119,9 +118,7 @@ class ThemeChoice {
       ThemeMode.light => '${style.name}:light',
       ThemeMode.dark => '${style.name}:dark',
     };
-    return backdrop == GlassBackdrop.fallback
-        ? base
-        : '$base/${backdrop.name}';
+    return backdrop == GlassBackdrop.fallback ? base : '$base/${backdrop.name}';
   }
 
   /// Parse a value previously written by [storageName] — or by an older

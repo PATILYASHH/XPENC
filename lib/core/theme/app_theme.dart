@@ -105,9 +105,7 @@ class AppTheme {
     );
 
     final theme = base.copyWith(
-      extensions: [
-        AppSurface(style: shape.surfaceStyle, backdrop: wallpaper),
-      ],
+      extensions: [AppSurface(style: shape.surfaceStyle, backdrop: wallpaper)],
       // Each platform keeps the SDK's own default transition — Glass only
       // slips its backdrop underneath.
       pageTransitionsTheme: glass
@@ -118,9 +116,7 @@ class AppTheme {
               },
             )
           : null,
-      popupMenuTheme: glass
-          ? PopupMenuThemeData(color: tone.solidFrost)
-          : null,
+      popupMenuTheme: glass ? PopupMenuThemeData(color: tone.solidFrost) : null,
       datePickerTheme: glass
           ? DatePickerThemeData(
               backgroundColor: tone.solidFrost,
@@ -284,7 +280,8 @@ class AppTheme {
       actionIconTheme: ActionIconThemeData(
         backButtonIconBuilder: (_) =>
             const GlassNavGlyph(CupertinoIcons.chevron_back),
-        closeButtonIconBuilder: (_) => const GlassNavGlyph(CupertinoIcons.xmark),
+        closeButtonIconBuilder: (_) =>
+            const GlassNavGlyph(CupertinoIcons.xmark),
       ),
       appBarTheme: t.appBarTheme.copyWith(
         centerTitle: true,
@@ -353,9 +350,7 @@ class AppTheme {
       switchTheme: SwitchThemeData(
         thumbColor: const WidgetStatePropertyAll(Colors.white),
         trackColor: WidgetStateProperty.resolveWith(
-          (s) => s.contains(WidgetState.selected)
-              ? iosGreen
-              : tone.switchOff,
+          (s) => s.contains(WidgetState.selected) ? iosGreen : tone.switchOff,
         ),
         trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
         thumbIcon: const WidgetStatePropertyAll(null),
@@ -503,14 +498,11 @@ class PageBackdrop extends StatelessWidget {
   Widget build(BuildContext context) {
     final backdrop = AppSurface.of(context).backdrop;
     if (backdrop == null) return child;
-    // One BackdropGroup per page: every card on it shares a single read of
-    // the wallpaper instead of each re-reading it. The RepaintBoundary keeps
-    // content changes from repainting the wallpaper.
-    return BackdropGroup(
-      child: GlassWallpaper(
-        backdrop: backdrop,
-        child: RepaintBoundary(child: child),
-      ),
+    // The RepaintBoundary keeps content changes from repainting the
+    // wallpaper.
+    return GlassWallpaper(
+      backdrop: backdrop,
+      child: RepaintBoundary(child: child),
     );
   }
 }
@@ -536,11 +528,22 @@ class _BackdropTransitionsBuilder extends PageTransitionsBuilder {
     Animation<double> animation,
     Animation<double> secondaryAnimation,
     Widget child,
-  ) => inner.buildTransitions(
-    route,
-    context,
-    animation,
-    secondaryAnimation,
-    PageBackdrop(child: child),
-  );
+  ) {
+    // A page opened from a quick-action bubble grows out of it instead.
+    final origin = GlassReveal.originFor(route, animation);
+    if (origin != null) {
+      return GlassRevealTransition(
+        animation: animation,
+        origin: origin,
+        child: PageBackdrop(child: child),
+      );
+    }
+    return inner.buildTransitions(
+      route,
+      context,
+      animation,
+      secondaryAnimation,
+      PageBackdrop(child: child),
+    );
+  }
 }

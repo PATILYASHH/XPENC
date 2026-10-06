@@ -31,6 +31,19 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   are near-clear glass, so what's behind stays vivid; dark backgrounds
   (Black, Ocean, Nebula) switch the whole theme to dark glass, smoky over
   colour so text and amounts stay readable.
+- **Glass quick actions** — hold the ➕ and up to eight actions spring out
+  of it onto two arcs in the corner, within reach of the same thumb. Slide
+  onto one (it lifts, magnifies and names itself) and let go to open it;
+  the page grows out of that bubble. Slide back onto the ➕, now an ✕, to
+  cancel.
+- **Smoother Glass, up to your screen's full refresh rate** — XPENC now
+  asks Android for the display's fastest mode (90/120 Hz where the phone
+  has it; battery saver can still cap it). Glass does far less GPU work per
+  frame: the wallpaper is drawn once and reused, only the tab bar and
+  headers read what's behind them, and card glows are cheap analytic
+  blurs. Motion is calmer, with no rubbery overshoot: the tab droplet
+  glides and stretches like liquid, tab switches fade softly, dialogs pop
+  in like iOS alerts, and sheets rise on a longer, gentler curve.
 - **Light / Dark / System is now its own choice** under Settings → General →
   Theme, separate from the theme itself. Classic and Noir come in both.
 

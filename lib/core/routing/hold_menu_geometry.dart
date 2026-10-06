@@ -60,3 +60,58 @@ double _angleDifference(double a, double b) {
   if (diff < -180) diff += 360;
   return diff.abs();
 }
+
+// ── Glass: the corner fan ────────────────────────────────────────────────
+
+/// Glass's quick-action fan: [count] bubbles on two arcs opening up and to
+/// the left of [anchor] (the ➕ in the bottom-right corner) — an inner arc
+/// of up to three, an outer arc of the rest. Screen convention, as above:
+/// the arcs run from just short of straight up (-92°) to straight left
+/// (-178°), so nothing falls off the right or bottom edge.
+List<Offset> glassFanCenters(
+  Offset anchor,
+  int count, {
+  double innerRadius = 118,
+  double outerRadius = 204,
+}) {
+  if (count <= 0) return const [];
+  final inner = count <= 3 ? count : (count <= 4 ? 2 : 3);
+  final outer = count - inner;
+  final centres = <Offset>[];
+  void arc(int k, double radius) {
+    for (var i = 0; i < k; i++) {
+      final t = k == 1 ? 0.5 : i / (k - 1);
+      final degrees = -92 - 86 * t;
+      final rad = degrees * math.pi / 180;
+      centres.add(anchor + Offset(math.cos(rad), math.sin(rad)) * radius);
+    }
+  }
+
+  arc(inner, innerRadius);
+  arc(outer, outerRadius);
+  return centres;
+}
+
+/// The bubble the thumb is over: the nearest of [centres] within
+/// [hitRadius] of [pointer], or `-1` — which also covers the thumb resting
+/// back on the ➕ (within [cancelRadius] of [anchor]), a release there being
+/// a cancel.
+int glassFanHoveredIndex({
+  required Offset anchor,
+  required Offset pointer,
+  required List<Offset> centres,
+  double hitRadius = 52,
+  double cancelRadius = 40,
+}) {
+  if ((pointer - anchor).distance < cancelRadius) return -1;
+  var best = -1;
+  var bestDistance = hitRadius;
+  for (var i = 0; i < centres.length; i++) {
+    final d = (pointer - centres[i]).distance;
+    if (d < bestDistance) {
+      bestDistance = d;
+      best = i;
+    }
+  }
+  return best;
+}

@@ -223,6 +223,8 @@ class GlassActionGroup extends StatelessWidget {
         child: SizedBox(
           height: 42,
           child: LiquidGlass(
+            // Top bars sit on the still wallpaper; no backdrop pass needed.
+            backdrop: false,
             child: IconButtonTheme(
               data: IconButtonThemeData(
                 style: IconButton.styleFrom(
@@ -291,6 +293,12 @@ Future<T?> showAppSheet<T>({
       // The pane draws its own handle inside the glass.
       showDragHandle: false,
       useSafeArea: useSafeArea,
+      // A longer, softer rise than Material's — easier on the eye — and a
+      // quicker drop away.
+      sheetAnimationStyle: const AnimationStyle(
+        duration: Duration(milliseconds: 380),
+        reverseDuration: Duration(milliseconds: 240),
+      ),
     ),
   );
 }
@@ -314,8 +322,9 @@ class _FloatingSheet extends StatelessWidget {
         borderRadius: BorderRadius.circular(34),
         frost: tone.sheetFrost,
         blur: 24,
-        refraction: 10,
-        band: 26,
+        // Blur only: on a pane this large the lens is barely seen but its
+        // pass is paid on every frame of the sheet's rise.
+        refraction: 0,
         child: Material(
           type: MaterialType.transparency,
           // The inset already clears the home indicator.
@@ -394,6 +403,34 @@ class _GlassDialogRoute<T> extends DialogRoute<T> {
   @override
   Widget buildModalBarrier() =>
       _BlurIn(animation: animation!, child: super.buildModalBarrier());
+
+  @override
+  Duration get transitionDuration => const Duration(milliseconds: 320);
+
+  @override
+  Duration get reverseTransitionDuration => const Duration(milliseconds: 180);
+
+  // iOS's alert: swells in from a touch smaller and settles, fades out.
+  @override
+  Widget buildTransitions(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final scale = CurvedAnimation(
+      parent: animation,
+      curve: const Cubic(0.2, 1.2, 0.4, 1),
+      reverseCurve: Curves.easeInCubic,
+    );
+    return FadeTransition(
+      opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+      child: ScaleTransition(
+        scale: Tween<double>(begin: 0.9, end: 1).animate(scale),
+        child: child,
+      ),
+    );
+  }
 }
 
 /// The page frosting over as a route opens (and clearing as it closes),

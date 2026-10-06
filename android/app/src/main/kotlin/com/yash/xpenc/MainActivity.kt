@@ -1,5 +1,7 @@
 package com.yash.xpenc
 
+import android.os.Build
+import android.os.Bundle
 import android.view.WindowManager
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -36,6 +38,15 @@ private const val SCREEN_SECURITY_CHANNEL = "xpenc/screen_security"
  * `lib/core/security/screen_security.dart`, driven by
  * `Settings.preventScreenshots` (GitHub #15).
  *
+ * High refresh rate
+ * -----------------
+ * Many Android phones hold an app at 60 Hz unless it asks for more, even on
+ * a 90/120 Hz panel. [requestHighRefreshRate] picks the display's fastest
+ * mode at the current resolution, so scrolling and the Glass theme's motion
+ * run at the panel's full rate. The system still overrides it where it
+ * should (battery saver, thermal limits), and LTPO panels still idle down
+ * when nothing moves — Flutter only draws frames while something changes.
+ *
  * Permissions
  * -----------
  * `xpenc/permissions` lives in [PermissionsChannel] — created here as a field
@@ -43,6 +54,39 @@ private const val SCREEN_SECURITY_CHANNEL = "xpenc/screen_security"
  */
 class MainActivity : FlutterFragmentActivity() {
     private val permissions = PermissionsChannel(this)
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        requestHighRefreshRate()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // A display mode can change while away (resolution switch, external
+        // display); re-pick on return.
+        if (hasFocus) requestHighRefreshRate()
+    }
+
+    private fun requestHighRefreshRate() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+        @Suppress("DEPRECATION")
+        val display = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            display
+        } else {
+            windowManager.defaultDisplay
+        }) ?: return
+        val current = display.mode
+        val best = display.supportedModes
+            .filter {
+                it.physicalWidth == current.physicalWidth &&
+                    it.physicalHeight == current.physicalHeight
+            }
+            .maxByOrNull { it.refreshRate } ?: return
+        val attrs = window.attributes
+        if (attrs.preferredDisplayModeId == best.modeId) return
+        attrs.preferredDisplayModeId = best.modeId
+        window.attributes = attrs
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
