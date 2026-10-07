@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 
 import 'app_colors.dart';
 import 'theme_shape.dart';
@@ -815,6 +816,7 @@ class LiquidGlass extends StatelessWidget {
     this.blur = GlassStyle.controlBlur,
     this.refraction = 18,
     this.band = 22,
+    this.light = 1,
     this.shadow = true,
     this.pressed = false,
     this.backdrop = true,
@@ -825,6 +827,12 @@ class LiquidGlass extends StatelessWidget {
   final Widget child;
   final BorderRadius? borderRadius;
   final Color? tint;
+
+  /// How strongly the glass takes the light of what's behind it — the rim
+  /// glowing with the colour of the content passing under it, a faint wash
+  /// of what's beneath, a specular sheen (see `shaders/liquid_glass.frag`).
+  /// Needs the lens shader; 0 turns it off.
+  final double light;
 
   /// Shares one backdrop read with the other grouped panes under the same
   /// [BackdropGroup] — a row of glass chips blurring the same list pays for
@@ -889,13 +897,15 @@ class LiquidGlass extends StatelessWidget {
       ),
       child: body,
     );
-    final lens = !backdrop || (blur <= 0 && refraction <= 0)
+    final lens = !backdrop || (blur <= 0 && refraction <= 0 && light <= 0)
         ? glass
         : _LensFilter(
             radius: borderRadius?.topLeft.x,
             blur: blur,
             refraction: refraction,
             band: band,
+            light: light,
+            dark: tone.isDark,
             dpr: MediaQuery.devicePixelRatioOf(context),
             screen: MediaQuery.sizeOf(context),
             backdropKey: grouped
@@ -939,6 +949,8 @@ class _LensFilter extends SingleChildRenderObjectWidget {
     required this.blur,
     required this.refraction,
     required this.band,
+    required this.light,
+    required this.dark,
     required this.dpr,
     required this.screen,
     this.backdropKey,
@@ -946,6 +958,8 @@ class _LensFilter extends SingleChildRenderObjectWidget {
   });
 
   final BackdropKey? backdropKey;
+  final double light;
+  final bool dark;
 
   /// `null` = a capsule, resolved from the laid-out size.
   final double? radius;
@@ -961,6 +975,8 @@ class _LensFilter extends SingleChildRenderObjectWidget {
     ..blur = blur
     ..refraction = refraction
     ..band = band
+    ..light = light
+    ..dark = dark
     ..dpr = dpr
     ..screen = screen
     ..backdropKey = backdropKey;
@@ -971,6 +987,8 @@ class _LensFilter extends SingleChildRenderObjectWidget {
     ..blur = blur
     ..refraction = refraction
     ..band = band
+    ..light = light
+    ..dark = dark
     ..dpr = dpr
     ..screen = screen
     ..backdropKey = backdropKey;
@@ -990,6 +1008,16 @@ class _RenderLensFilter extends RenderProxyBox {
   set refraction(double v) => _set(_refraction, v, (x) => _refraction = x);
   set band(double v) => _set(_band, v, (x) => _band = x);
   set dpr(double v) => _set(_dpr, v, (x) => _dpr = x);
+
+  double _light = 0;
+  set light(double v) => _set(_light, v, (x) => _light = x);
+
+  bool _dark = true;
+  set dark(bool v) {
+    if (_dark == v) return;
+    _dark = v;
+    markNeedsPaint();
+  }
 
   Size _screen = Size.zero;
   set screen(Size v) {
@@ -1032,7 +1060,7 @@ class _RenderLensFilter extends RenderProxyBox {
     // where the pane sits in it. Blur first, then the lens bends the
     // blurred backdrop.
     final program = LiquidGlassShader.program;
-    final lens = program != null && _refraction > 0;
+    final lens = program != null && (_refraction > 0 || _light > 0);
     if (_blur > 0) {
       _blurLayer.layer ??= BackdropFilterLayer();
       _blurLayer.layer!
@@ -1068,7 +1096,9 @@ class _RenderLensFilter extends RenderProxyBox {
       ..setFloat(9, 0.18)
       ..setFloat(10, 1.04)
       ..setFloat(11, screen.width * _dpr)
-      ..setFloat(12, screen.height * _dpr);
+      ..setFloat(12, screen.height * _dpr)
+      ..setFloat(13, _light)
+      ..setFloat(14, _dark ? 1 : 0);
     _lensLayer.layer ??= BackdropFilterLayer();
     _lensLayer.layer!.filter = ui.ImageFilter.shader(shader);
     void lensPass(PaintingContext context, Offset offset) =>
@@ -1277,73 +1307,184 @@ class GlassShadowPainter extends CustomPainter {
       old.radius != radius || old.opacity != opacity;
 }
 
-/// Opens the next pushed page as a circle growing from a point on screen —
-/// the quick-action bubble the user released on — instead of the usual
-/// slide; the page shrinks back into that point when popped. Set it with
-/// [from] just before the push; Glass's page transitions pick it up.
+/// Where a revealed page grows from, and what it starts as: a disc of
+/// [color] with [icon] on it — the ➕ the user held, about to become the
+/// page they picked.
+@immutable
+class GlassRevealSpec {
+  const GlassRevealSpec(this.centre, {this.radius = 28, this.color, this.icon});
+
+  /// Global centre of the disc.
+  final Offset centre;
+  final double radius;
+
+  /// The disc's colour; the page shows through it as it grows. `null` = a
+  /// plain circular reveal.
+  final Color? color;
+  final IconData? icon;
+}
+
+/// Opens the next pushed page as a circle growing out of a disc on screen —
+/// the ➕ the quick action was picked from — instead of the usual slide; the
+/// page shrinks back into that disc when popped. Set it with [from] just
+/// before the push; Glass's page transitions pick it up.
 class GlassReveal {
   const GlassReveal._();
 
-  static Offset? _pending;
-  static DateTime? _setAt;
-  static final _origins = Expando<Offset>('GlassReveal');
+  static GlassRevealSpec? _pending;
+  static final _specs = Expando<GlassRevealSpec>('GlassReveal');
+  static final _animations = Expando<bool>('GlassRevealAnimation');
 
-  static void from(Offset globalCentre) {
-    _pending = globalCentre;
-    _setAt = DateTime.now();
+  static void from(
+    Offset globalCentre, {
+    double radius = 28,
+    Color? color,
+    IconData? icon,
+  }) {
+    final spec = _pending = GlassRevealSpec(
+      globalCentre,
+      radius: radius,
+      color: color,
+      icon: icon,
+    );
+    // Unclaimed for a few frames — the push it was meant for never built a
+    // route — it's dropped, so it can't hijack some later push. Counted in
+    // frames rather than wall time, which a slow first build can outrun.
+    var frames = 0;
+    void expire(Duration _) {
+      if (!identical(_pending, spec)) return;
+      if (++frames >= 6) {
+        _pending = null;
+        return;
+      }
+      SchedulerBinding.instance
+        ..addPostFrameCallback(expire)
+        ..scheduleFrame();
+    }
+
+    SchedulerBinding.instance
+      ..addPostFrameCallback(expire)
+      ..scheduleFrame();
   }
 
-  /// The reveal origin for [route], claiming the pending one for the route
-  /// now being pushed (the one whose animation hasn't completed yet). A
-  /// pending origin no route claims within a second is dropped.
-  static Offset? originFor(Route<dynamic> route, Animation<double> animation) {
-    final known = _origins[route];
+  /// The reveal for [route], claiming the pending one for the route now
+  /// being pushed (the one whose animation hasn't completed yet).
+  static GlassRevealSpec? specFor(
+    Route<dynamic> route,
+    Animation<double> animation,
+  ) {
+    final known = _specs[route];
     if (known != null) return known;
     final pending = _pending;
     if (pending == null || animation.value >= 1) return null;
     _pending = null;
-    if (DateTime.now().difference(_setAt!) > const Duration(seconds: 1)) {
-      return null;
-    }
-    _origins[route] = pending;
+    _specs[route] = pending;
+    _animations[_innermost(animation)] = true;
     return pending;
+  }
+
+  /// Whether [secondaryAnimation] — what a page receives while another
+  /// opens over it — belongs to a revealed page. That page grows over this
+  /// one in place, so this one shouldn't slide aside as it would for a push.
+  ///
+  /// A reveal still pending counts too: the page underneath can rebuild in
+  /// the same frame as, but before, the revealed page claims its spec.
+  static bool isRevealing(Animation<double> secondaryAnimation) =>
+      (_animations[_innermost(secondaryAnimation)] ?? false) ||
+      _pending != null;
+
+  static Animation<double> _innermost(Animation<double> a) {
+    var current = a;
+    for (var i = 0; i < 8 && current is ProxyAnimation; i++) {
+      final parent = current.parent;
+      if (parent == null) break;
+      current = parent;
+    }
+    return current;
   }
 }
 
-/// The circular reveal itself: [child] clipped to a circle around [origin]
-/// that grows from bubble size to cover the screen, with a slight settle in
-/// scale. The clip switches off once the page is fully open, so a settled
-/// page costs nothing extra.
+/// The reveal itself: [child] clipped to a circle around the spec's centre
+/// that grows from the disc's size to cover the screen, with a slight settle
+/// in scale. While it's small it *is* the disc — its colour and glyph over
+/// the page, clearing as it grows — so the ➕ looks to swell into the page,
+/// and to shrink back into a ➕ as the page closes. The clip switches off
+/// once the page is fully open, so a settled page costs nothing extra.
 class GlassRevealTransition extends AnimatedWidget {
   const GlassRevealTransition({
     required Animation<double> animation,
-    required this.origin,
+    required this.spec,
     required this.child,
     super.key,
   }) : super(listenable: animation);
 
-  final Offset origin;
+  final GlassRevealSpec spec;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    final value = (listenable as Animation<double>).value;
-    final t = Curves.easeOutCubic.transform(value.clamp(0.0, 1.0));
+    final animation = listenable as Animation<double>;
+    final value = animation.value;
+    final forward = animation.status != AnimationStatus.reverse;
+    // Opening swells out of the disc and settles; closing draws in evenly
+    // and lands softly on the ➕.
+    final t =
+        (forward ? const Cubic(0.3, 0.0, 0.1, 1.0) : Curves.easeInOutCubic)
+            .transform(value.clamp(0.0, 1.0));
     final size = MediaQuery.sizeOf(context);
+    final origin = spec.centre;
     final farthest = [
       Offset.zero,
       Offset(size.width, 0),
       Offset(0, size.height),
       Offset(size.width, size.height),
     ].map((c) => (c - origin).distance).reduce(math.max);
-    final radius = 28 + (farthest - 28) * t;
+    final radius = spec.radius + (farthest - spec.radius) * t;
+    // By size, not time: the disc's colour holds while the circle is still
+    // about ➕-sized and clears as it grows past that — early on the way
+    // out, only at the very end on the way back.
+    final grown = (radius - spec.radius) / (spec.radius * 5);
+    final cover = spec.color == null
+        ? 0.0
+        : 1 - Curves.easeOut.transform(grown.clamp(0.0, 1.0));
+    final glyph = 1 - Curves.easeOut.transform((grown * 2.2).clamp(0.0, 1.0));
+    final page = Transform.scale(
+      scale: 0.94 + 0.06 * t,
+      origin: origin - size.center(Offset.zero),
+      child: child,
+    );
+    // One shape for every frame — the page first in the same Stack — so the
+    // page isn't rebuilt from scratch when the disc's colour clears.
     return ClipPath(
       clipper: _CircleClipper(origin, radius),
       clipBehavior: value >= 1 ? Clip.none : Clip.antiAlias,
-      child: Transform.scale(
-        scale: 0.94 + 0.06 * t,
-        origin: origin - size.center(Offset.zero),
-        child: child,
+      child: Stack(
+        fit: StackFit.passthrough,
+        children: [
+          page,
+          if (cover > 0)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: ColoredBox(color: spec.color!.withValues(alpha: cover)),
+              ),
+            ),
+          if (spec.icon != null && glyph > 0 && cover > 0)
+            Positioned(
+              left: origin.dx - 40,
+              top: origin.dy - 40,
+              width: 80,
+              height: 80,
+              child: IgnorePointer(
+                child: Opacity(
+                  opacity: glyph,
+                  child: Transform.scale(
+                    scale: 1 + 0.8 * (1 - glyph),
+                    child: Icon(spec.icon, color: Colors.white, size: 28),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

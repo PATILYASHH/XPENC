@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'app_colors.dart';
+import 'bar_page_transition.dart';
 import 'font_options.dart';
 import 'glass.dart';
 import 'theme_shape.dart';
@@ -107,15 +108,18 @@ class AppTheme {
     final theme = base.copyWith(
       extensions: [AppSurface(style: shape.surfaceStyle, backdrop: wallpaper)],
       // Each platform keeps the SDK's own default transition — Glass only
-      // slips its backdrop underneath.
-      pageTransitionsTheme: glass
-          ? PageTransitionsTheme(
-              builders: {
-                for (final e in base.pageTransitionsTheme.builders.entries)
-                  e.key: _BackdropTransitionsBuilder(e.value),
-              },
-            )
-          : null,
+      // slips its backdrop underneath — plus the tab bar transforming into
+      // pages opened from it (see [PageFromBar]).
+      pageTransitionsTheme: PageTransitionsTheme(
+        builders: {
+          for (final e in base.pageTransitionsTheme.builders.entries)
+            e.key: glass
+                ? _BackdropTransitionsBuilder(
+                    BarMorphTransitionsBuilder(e.value),
+                  )
+                : BarMorphTransitionsBuilder(e.value),
+        },
+      ),
       popupMenuTheme: glass ? PopupMenuThemeData(color: tone.solidFrost) : null,
       datePickerTheme: glass
           ? DatePickerThemeData(
@@ -273,7 +277,7 @@ class AppTheme {
         builders: {
           for (final platform in TargetPlatform.values)
             platform: const _BackdropTransitionsBuilder(
-              CupertinoPageTransitionsBuilder(),
+              BarMorphTransitionsBuilder(CupertinoPageTransitionsBuilder()),
             ),
         },
       ),
@@ -522,6 +526,9 @@ class _BackdropTransitionsBuilder extends PageTransitionsBuilder {
   Duration get transitionDuration => inner.transitionDuration;
 
   @override
+  Duration get reverseTransitionDuration => inner.reverseTransitionDuration;
+
+  @override
   Widget buildTransitions<T>(
     PageRoute<T> route,
     BuildContext context,
@@ -529,12 +536,12 @@ class _BackdropTransitionsBuilder extends PageTransitionsBuilder {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    // A page opened from a quick-action bubble grows out of it instead.
-    final origin = GlassReveal.originFor(route, animation);
-    if (origin != null) {
+    // A page opened from the ➕'s quick actions grows out of the ➕ instead.
+    final spec = GlassReveal.specFor(route, animation);
+    if (spec != null) {
       return GlassRevealTransition(
         animation: animation,
-        origin: origin,
+        spec: spec,
         child: PageBackdrop(child: child),
       );
     }
@@ -542,7 +549,10 @@ class _BackdropTransitionsBuilder extends PageTransitionsBuilder {
       route,
       context,
       animation,
-      secondaryAnimation,
+      // A page growing over this one in place doesn't push it aside.
+      GlassReveal.isRevealing(secondaryAnimation)
+          ? kAlwaysDismissedAnimation
+          : secondaryAnimation,
       PageBackdrop(child: child),
     );
   }

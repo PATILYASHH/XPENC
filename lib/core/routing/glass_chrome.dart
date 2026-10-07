@@ -62,6 +62,10 @@ class _Spring {
 /// with it, and squashing a touch with its own speed — so it moves like
 /// liquid rather than a panel on rails. Pulling down past the top swells
 /// the large title a little.
+///
+/// Searching Transactions turns the capsule into the search field: the
+/// capsule stretches to the full bar on the same spring and the field takes
+/// the title's place inside it.
 class _GlassTopBar extends ConsumerStatefulWidget
     implements PreferredSizeWidget {
   const _GlassTopBar({required this.currentIndex});
@@ -92,6 +96,12 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
   static double _targetFor(double offset) =>
       (offset / glassLargeTitleExtent).clamp(0.0, 1.0);
 
+  /// Whether the capsule is the search field (Transactions, searching).
+  bool _searching = false;
+
+  /// Where the capsule's width is heading: the full bar while searching.
+  double get _target => _searching ? 1 : _targetFor(_glassScroll.value);
+
   @override
   void initState() {
     super.initState();
@@ -111,7 +121,7 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
   void _tick(Duration elapsed) {
     final dt = ((elapsed - _last).inMicroseconds / 1e6).clamp(0.0, 1 / 30);
     _last = elapsed;
-    final settled = _liquid.step(_targetFor(_glassScroll.value), dt);
+    final settled = _liquid.step(_target, dt);
     setState(() {});
     if (settled) _ticker.stop();
   }
@@ -132,6 +142,12 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
     final index = widget.currentIndex;
     final title = _TopBar._titles[index];
     final classic = _TopBar(currentIndex: index);
+    final searching = index == 1 && ref.watch(txSearchActiveProvider);
+    if (searching != _searching) {
+      _searching = searching;
+      // The capsule's spring heads for its new width from the next frame.
+      WidgetsBinding.instance.addPostFrameCallback((_) => _onScroll());
+    }
     final actions = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -142,7 +158,8 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
             icon: const AppIcon(Icons.task_alt_rounded),
             onPressed: () => context.push('/persons/settled'),
           )
-        else
+        // The search field gets the inbox's room while it's up.
+        else if (!searching)
           _TonalIconButton(
             tooltip: 'Review Inbox',
             icon: const AppIcon(Icons.inbox_outlined),
@@ -238,6 +255,19 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
                             Flexible(
                               child: SizedBox(
                                 width: box.maxWidth * liquid.clamp(0.0, 1.0),
+                                // Laid out at full width and uncovered as
+                                // the capsule stretches, so it never
+                                // reflows mid-spring.
+                                child: searching
+                                    ? ClipRect(
+                                        child: OverflowBox(
+                                          alignment: Alignment.centerLeft,
+                                          minWidth: 0,
+                                          maxWidth: box.maxWidth,
+                                          child: const _GlassTxSearch(),
+                                        ),
+                                      )
+                                    : null,
                               ),
                             ),
                             actions,
@@ -256,22 +286,27 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
             left: titleLeft,
             top: titleTop,
             child: IgnorePointer(
-              child: Transform.scale(
-                scale: titleScale,
-                alignment: Alignment.topLeft,
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 220),
-                  child: Text(
-                    title,
-                    key: ValueKey(index),
-                    maxLines: 1,
-                    softWrap: false,
-                    style: theme.textTheme.headlineLarge?.copyWith(
-                      fontSize: _GlassTopBar._largeSize,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -1.2 + 0.8 * c,
-                      height: _GlassTopBar._lineHeight,
-                      color: cs.onSurface,
+              child: AnimatedOpacity(
+                // The search field takes the title's place.
+                opacity: searching ? 0 : 1,
+                duration: const Duration(milliseconds: 180),
+                child: Transform.scale(
+                  scale: titleScale,
+                  alignment: Alignment.topLeft,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    child: Text(
+                      title,
+                      key: ValueKey(index),
+                      maxLines: 1,
+                      softWrap: false,
+                      style: theme.textTheme.headlineLarge?.copyWith(
+                        fontSize: _GlassTopBar._largeSize,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -1.2 + 0.8 * c,
+                        height: _GlassTopBar._lineHeight,
+                        color: cs.onSurface,
+                      ),
                     ),
                   ),
                 ),
@@ -284,13 +319,66 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
   }
 }
 
+/// The Transactions search, inside the top capsule: its own controller,
+/// seeded from (and writing to) the shared query, so leaving the tab and
+/// coming back finds the search as it was.
+class _GlassTxSearch extends ConsumerStatefulWidget {
+  const _GlassTxSearch();
+
+  @override
+  ConsumerState<_GlassTxSearch> createState() => _GlassTxSearchState();
+}
+
+class _GlassTxSearchState extends ConsumerState<_GlassTxSearch> {
+  late final _controller = TextEditingController(
+    text: ref.read(txSearchQueryProvider),
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Fades in as the capsule stretches to take it.
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+      builder: (context, v, child) => Opacity(
+        opacity: v,
+        child: Transform.translate(
+          offset: Offset(12 * (1 - v), 0),
+          child: child,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(left: 6),
+        child: GlassSearchField(
+          controller: _controller,
+          hint: 'Search transactions',
+          onChanged: (v) => ref.read(txSearchQueryProvider.notifier).state = v,
+        ),
+      ),
+    );
+  }
+}
+
 /// Glass's tab bar, after iOS: a floating Liquid Glass capsule of tabs with
 /// a droplet that slides to the selected one, and the ➕ as its own disc.
 ///
 /// The bar can also *become* the month picker: on a spring it grows up
 /// into a card — the tab icons dissolving as "‹ year ›" and the month grid
 /// form in their place, the ➕ sliding away — and folds back into the bar
-/// when a month is picked.
+/// when a month is picked. Every sheet opened from the shell grows out of it
+/// the same way ([GlassSheetRoute]): while one is up the bar hands its glass
+/// over to the sheet ([GlassBarMorph]), dissolving its tabs and sliding the
+/// ➕ away in step with the sheet's spring.
+///
+/// The ➕'s blue lights the near end of the capsule, the way a bright object
+/// beside glass colours it.
 class _LiquidTabBar extends StatefulWidget {
   const _LiquidTabBar({
     required this.tabs,
@@ -300,7 +388,7 @@ class _LiquidTabBar extends StatefulWidget {
     required this.add,
   });
 
-  static const double height = 64;
+  static const double height = kGlassBarHeight;
   static const double _panel = 286;
 
   final List<_TabSpec> tabs;
@@ -368,84 +456,124 @@ class _LiquidTabBarState extends State<_LiquidTabBar>
     final selected = widget.tabs.indexWhere(
       (t) => t.branch == widget.currentBranch,
     );
+    final accent = Theme.of(context).colorScheme.secondary;
     return RepaintBoundary(
       child: SafeArea(
         top: false,
         minimum: const EdgeInsets.only(bottom: 8),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+          padding: const EdgeInsets.symmetric(horizontal: kGlassBarSide),
           child: AnimatedBuilder(
-            animation: _morph,
+            animation: Listenable.merge([_morph, GlassBarMorph.progress]),
             builder: (context, _) {
               final t = _morph.value;
               final open = t.clamp(0.0, 1.0);
+              // A sheet grown out of the bar: the bar's glass hands over to
+              // the sheet's (fading out as that fades in), and the tabs and
+              // the ➕ clear away.
+              final sheet = GlassBarMorph.progress.value;
+              final handedOver = sheet != null;
+              final sheetOpen = (sheet ?? 0).clamp(0.0, 1.0);
+              final away = math.max(open, sheetOpen);
+              final ownGlass = handedOver
+                  ? 1 - Curves.easeIn.transform((sheetOpen / 0.3).clamp(0, 1))
+                  : 1.0;
               final height =
                   _LiquidTabBar.height +
                   (_LiquidTabBar._panel - _LiquidTabBar.height) * t;
               final tabsOut = Curves.easeOut.transform(
-                (open * 1.8).clamp(0.0, 1.0),
+                (away * 1.8).clamp(0.0, 1.0),
               );
               final panelIn = Curves.easeOut.transform(
                 ((open - 0.3) / 0.7).clamp(0.0, 1.0),
               );
+              final body = Stack(
+                children: [
+                  // The ➕'s light on the capsule's near end.
+                  if (away < 1)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: RadialGradient(
+                              center: const Alignment(1.05, 0.15),
+                              radius: 2.2,
+                              colors: [
+                                accent.withValues(alpha: 0.3 * (1 - away)),
+                                accent.withValues(alpha: 0),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (tabsOut < 1)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      height: _LiquidTabBar.height,
+                      child: Opacity(
+                        opacity: 1 - tabsOut,
+                        child: Transform.scale(
+                          scale: 1 - 0.18 * tabsOut,
+                          child: _tabs(context, selected),
+                        ),
+                      ),
+                    ),
+                  if (panelIn > 0)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      top: 0,
+                      height: _LiquidTabBar._panel,
+                      child: Opacity(
+                        opacity: panelIn,
+                        child: Transform.translate(
+                          offset: Offset(0, 14 * (1 - panelIn)),
+                          child: const _GlassMonthPanel(),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+              const addExtent = _LiquidTabBar.height + kGlassAddGap;
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Expanded(
                     child: SizedBox(
                       height: height,
-                      child: LiquidGlass(
-                        borderRadius: BorderRadius.circular(32 - 4 * open),
-                        child: Stack(
-                          children: [
-                            if (tabsOut < 1)
-                              Positioned(
-                                left: 0,
-                                right: 0,
-                                bottom: 0,
-                                height: _LiquidTabBar.height,
-                                child: Opacity(
-                                  opacity: 1 - tabsOut,
-                                  child: Transform.scale(
-                                    scale: 1 - 0.18 * tabsOut,
-                                    child: _tabs(context, selected),
-                                  ),
+                      child: ownGlass <= 0
+                          ? body
+                          : Opacity(
+                              opacity: ownGlass,
+                              child: LiquidGlass(
+                                borderRadius: BorderRadius.circular(
+                                  32 - 4 * open,
                                 ),
+                                child: body,
                               ),
-                            if (panelIn > 0)
-                              Positioned(
-                                left: 0,
-                                right: 0,
-                                top: 0,
-                                height: _LiquidTabBar._panel,
-                                child: Opacity(
-                                  opacity: panelIn,
-                                  child: Transform.translate(
-                                    offset: Offset(0, 14 * (1 - panelIn)),
-                                    child: const _GlassMonthPanel(),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
+                            ),
                     ),
                   ),
-                  // The ➕ slides away while the bar is the picker.
+                  // The ➕ slides away while the bar is the picker or a sheet.
                   ClipRect(
                     child: SizedBox(
-                      width: (_LiquidTabBar.height + 10) * (1 - open),
+                      width: addExtent * (1 - away),
                       height: _LiquidTabBar.height,
-                      child: open >= 1
+                      child: away >= 1
                           ? null
                           : OverflowBox(
                               alignment: Alignment.centerRight,
-                              minWidth: _LiquidTabBar.height + 10,
-                              maxWidth: _LiquidTabBar.height + 10,
+                              minWidth: addExtent,
+                              maxWidth: addExtent,
                               child: Opacity(
-                                opacity: 1 - open,
+                                opacity: 1 - away,
                                 child: Padding(
-                                  padding: const EdgeInsets.only(left: 10),
+                                  padding: const EdgeInsets.only(
+                                    left: kGlassAddGap,
+                                  ),
                                   child: widget.add,
                                 ),
                               ),

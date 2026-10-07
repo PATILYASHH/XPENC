@@ -14,7 +14,8 @@ import 'package:xpenc/data/providers.dart';
 import 'package:xpenc/features/add_transaction/add_transaction_screen.dart';
 
 /// Glass's hold-➕ quick actions: bubbles fan out of the ➕ onto two arcs, the
-/// thumb picks one by sliding onto it, and the page opens out of the bubble.
+/// thumb picks one by sliding onto it, and the bubble flies back into the ➕,
+/// which swells into the page.
 void main() {
   late AppDatabase db;
 
@@ -72,7 +73,7 @@ void main() {
   }
 
   testWidgets('holding ➕ fans the actions out; sliding onto one names it, '
-      'and letting go opens it out of the bubble', (tester) async {
+      'and letting go opens it out of the ➕', (tester) async {
     final anchor = await pumpShell(tester);
     final gesture = await tester.startGesture(anchor);
     await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
@@ -88,15 +89,30 @@ void main() {
     expect(find.text('Add expense'), findsOneWidget);
 
     await gesture.up();
-    // The fan plays out, then the page grows out of the bubble.
+    // The fan plays out, then the page grows out of the ➕: a disc of the
+    // ➕'s colour, the size of the ➕, carrying the picked action's glyph.
     var revealed = false;
     for (var f = 0; f < 50 && !revealed; f++) {
       await tester.pump(const Duration(milliseconds: 16));
       revealed = find.byType(GlassRevealTransition).evaluate().isNotEmpty;
     }
     expect(revealed, isTrue, reason: 'page should open with the reveal');
+    final spec = tester
+        .widget<GlassRevealTransition>(find.byType(GlassRevealTransition))
+        .spec;
+    expect(spec.centre.dx, closeTo(anchor.dx, 1));
+    expect(spec.centre.dy, closeTo(anchor.dy, 1));
+    expect(spec.radius, 32);
+    expect(spec.color, isNotNull);
+    expect(spec.icon, isNotNull);
+    final page = tester.state(find.byType(AddTransactionScreen));
     await settle(tester);
     expect(find.byType(AddTransactionScreen), findsOneWidget);
+    // The same page all the way through — not rebuilt as the disc clears.
+    expect(
+      identical(tester.state(find.byType(AddTransactionScreen)), page),
+      isTrue,
+    );
     expect(tester.takeException(), isNull);
     await unmount(tester);
   });

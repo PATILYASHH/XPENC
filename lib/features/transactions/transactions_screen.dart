@@ -194,6 +194,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
     final searchActive = ref.watch(txSearchActiveProvider);
     final query = ref.watch(txSearchQueryProvider);
+    // Under Glass the search field is in the top bar, in the title's place.
+    final glass = AppSurface.of(context).isGlass;
     final quickFilter = ref.watch(txQuickFilterProvider);
     final linkedOnly = ref.watch(txLinkedOnlyProvider);
     final clusters = ref.watch(txLinkClusterProvider);
@@ -207,7 +209,22 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     // screen owns the actual TextField, so it's on the hook for clearing the
     // stale text left sitting in its controller.
     ref.listen<bool>(txSearchActiveProvider, (_, next) {
-      if (!next) _searchController.clear();
+      if (!next) {
+        _searchController.clear();
+        return;
+      }
+      // Glass, in the shell: the large title gives way to the search field
+      // in the bar, so carry the list up into the room it leaves.
+      if (glass &&
+          widget.embedded &&
+          _scrollController.hasClients &&
+          _scrollController.offset < glassLargeTitleExtent) {
+        _scrollController.animateTo(
+          glassLargeTitleExtent,
+          duration: const Duration(milliseconds: 380),
+          curve: Curves.easeOutCubic,
+        );
+      }
     });
     // Re-tapping the already-active Transactions tab (AppShell._goBranch)
     // bumps this instead of navigating anywhere — see GitHub #66.
@@ -356,36 +373,51 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           if (!widget.embedded)
             SliverAppBar(
               pinned: true,
-              title: const Text('Transactions'),
-              actions: [GlassActionGroup(children: [
-                IconButton(
-                  tooltip: 'Filters',
-                  icon: Badge(
-                    isLabelVisible: advanced.count > 0,
-                    label: Text('${advanced.count}'),
-                    child: const AppIcon(Icons.tune_rounded),
-                  ),
-                  onPressed: () => _openFilters(advanced),
+              title: glass && searchActive
+                  ? GlassSearchField(
+                      controller: _searchController,
+                      hint: 'Search transactions',
+                      onChanged: (value) =>
+                          ref.read(txSearchQueryProvider.notifier).state =
+                              value,
+                    )
+                  : const Text('Transactions'),
+              actions: [
+                GlassActionGroup(
+                  children: [
+                    IconButton(
+                      tooltip: 'Filters',
+                      icon: Badge(
+                        isLabelVisible: advanced.count > 0,
+                        label: Text('${advanced.count}'),
+                        child: const AppIcon(Icons.tune_rounded),
+                      ),
+                      onPressed: () => _openFilters(advanced),
+                    ),
+                    IconButton(
+                      tooltip: searchActive ? 'Close search' : 'Search',
+                      icon: AppIcon(
+                        searchActive
+                            ? Icons.close_rounded
+                            : Icons.search_rounded,
+                      ),
+                      onPressed: () {
+                        final active = !searchActive;
+                        ref.read(txSearchActiveProvider.notifier).state =
+                            active;
+                        if (!active) {
+                          ref.read(txSearchQueryProvider.notifier).state = '';
+                        }
+                      },
+                    ),
+                  ],
                 ),
-                IconButton(
-                  tooltip: searchActive ? 'Close search' : 'Search',
-                  icon: AppIcon(
-                    searchActive ? Icons.close_rounded : Icons.search_rounded,
-                  ),
-                  onPressed: () {
-                    final active = !searchActive;
-                    ref.read(txSearchActiveProvider.notifier).state = active;
-                    if (!active) {
-                      ref.read(txSearchQueryProvider.notifier).state = '';
-                    }
-                  },
-                ),
-              ])],
+              ],
             ),
           SliverPersistentHeader(
             pinned: true,
             delegate: _StickyHeaderDelegate(
-              searchActive: searchActive,
+              searchActive: searchActive && !glass,
               controller: _searchController,
               quickFilter: linkedOnly
                   ? _QuickFilter.linked
@@ -416,7 +448,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           SliverToBoxAdapter(child: _SummaryStrip(txns: matched)),
           body,
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
-        const NavBarInsetSliver(),],
+          const NavBarInsetSliver(),
+        ],
       ),
     );
   }
@@ -1537,38 +1570,38 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
     bool overlapsContent,
   ) {
     final content = Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (searchActive)
-            SizedBox(
-              height: _searchRowHeight,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-                child: TextField(
-                  controller: controller,
-                  autofocus: true,
-                  onChanged: onQueryChanged,
-                  textInputAction: TextInputAction.search,
-                  decoration: InputDecoration(
-                    isDense: true,
-                    hintText: 'Search note, payee, category or account',
-                    prefixIcon: const AppIcon(Icons.search_rounded),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (searchActive)
+          SizedBox(
+            height: _searchRowHeight,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+              child: TextField(
+                controller: controller,
+                autofocus: true,
+                onChanged: onQueryChanged,
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  isDense: true,
+                  hintText: 'Search note, payee, category or account',
+                  prefixIcon: const AppIcon(Icons.search_rounded),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
                 ),
               ),
             ),
-          SizedBox(
-            height: _chipRowHeight,
-            child: _FilterChips(
-              selected: quickFilter,
-              onChanged: onQuickFilterChanged,
-            ),
           ),
-        ],
-      );
+        SizedBox(
+          height: _chipRowHeight,
+          child: _FilterChips(
+            selected: quickFilter,
+            onChanged: onQuickFilterChanged,
+          ),
+        ),
+      ],
+    );
     // Glass: no band — the chips float as glass themselves (see
     // [_FilterChips]), the rows passing behind them.
     if (AppSurface.of(context).isGlass) return content;

@@ -14,6 +14,7 @@ import 'package:intl/intl.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart' show AppMode;
 import '../widgets/app_surfaces.dart';
+import '../widgets/glass_sheet.dart';
 import 'hold_menu_geometry.dart';
 import 'quick_actions.dart';
 import '../../features/add_transaction/add_transaction_choice_sheet.dart';
@@ -163,83 +164,87 @@ class AppShell extends ConsumerWidget {
     }
 
     return SettledPromptListener(
-      child: Scaffold(
-        appBar: glass
-            ? _GlassTopBar(currentIndex: index)
-            : _TopBar(currentIndex: index),
-        // Glass: tabs scroll under the floating top bar, all the way up.
-        extendBodyBehindAppBar: glass,
-        body: glass
-            ? NotificationListener<Notification>(
-                // Scrolls, and metric changes too (a list shrinking under a
-                // filter moves the offset without a scroll), so the title
-                // always matches what's on screen.
-                onNotification: (n) {
-                  if (n is TopBarScrollNotification) {
-                    _glassBranchScroll[index] = n.pixels;
-                    _glassScroll.value = n.pixels;
-                    return true;
-                  }
-                  final (depth, metrics, origin) = switch (n) {
-                    ScrollNotification() => (n.depth, n.metrics, n.context),
-                    ScrollMetricsNotification() => (
-                      n.depth,
-                      n.metrics,
-                      n.context,
-                    ),
-                    _ => (-1, null, null),
-                  };
-                  if (depth == 0 &&
-                      metrics?.axis == Axis.vertical &&
-                      !inHiddenTab(origin)) {
-                    _glassBranchScroll[index] = metrics!.pixels;
-                    _glassScroll.value = metrics.pixels;
-                  }
-                  return false;
-                },
-                child: Stack(
-                  children: [
-                    _TabSwitchFade(index: index, child: navigationShell),
-                    // Under the bars: dims the page while the tab bar is the
-                    // month picker, and folds it back on a tap.
-                    const Positioned.fill(child: _GlassMonthScrim()),
-                  ],
-                ),
-              )
-            : navigationShell,
-        // Glass floats the bar as a capsule and lets every tab scroll *under*
-        // it, so the blur has content to frost. The Scaffold then reports the
-        // bar's height as bottom padding, which every tab already honours
-        // (see `NavBarInset`).
-        extendBody: glass,
-        bottomNavigationBar: glass
-            ? _LiquidTabBar(
-                tabs: [_dashboard, left, right, _more],
-                currentBranch: navigationShell.currentIndex,
-                showLabels: ref.watch(showBottomNavLabelsProvider),
-                onSelect: (branch) => _goBranch(ref, branch),
-                add: add,
-              )
-            : DecoratedBox(
-                decoration: BoxDecoration(
-                  border: Border(top: BorderSide(color: border)),
-                ),
-                child: SafeArea(
-                  top: false,
-                  child: SizedBox(
-                    height: 68,
-                    child: Row(
-                      children: [
-                        _navItem(context, ref, _dashboard),
-                        _navItem(context, ref, left),
-                        add,
-                        _navItem(context, ref, right),
-                        _navItem(context, ref, _more),
-                      ],
+      // A sheet opened from anywhere in here grows out of the Glass tab bar.
+      child: GlassBarScope(
+        active: glass,
+        child: Scaffold(
+          appBar: glass
+              ? _GlassTopBar(currentIndex: index)
+              : _TopBar(currentIndex: index),
+          // Glass: tabs scroll under the floating top bar, all the way up.
+          extendBodyBehindAppBar: glass,
+          body: glass
+              ? NotificationListener<Notification>(
+                  // Scrolls, and metric changes too (a list shrinking under a
+                  // filter moves the offset without a scroll), so the title
+                  // always matches what's on screen.
+                  onNotification: (n) {
+                    if (n is TopBarScrollNotification) {
+                      _glassBranchScroll[index] = n.pixels;
+                      _glassScroll.value = n.pixels;
+                      return true;
+                    }
+                    final (depth, metrics, origin) = switch (n) {
+                      ScrollNotification() => (n.depth, n.metrics, n.context),
+                      ScrollMetricsNotification() => (
+                        n.depth,
+                        n.metrics,
+                        n.context,
+                      ),
+                      _ => (-1, null, null),
+                    };
+                    if (depth == 0 &&
+                        metrics?.axis == Axis.vertical &&
+                        !inHiddenTab(origin)) {
+                      _glassBranchScroll[index] = metrics!.pixels;
+                      _glassScroll.value = metrics.pixels;
+                    }
+                    return false;
+                  },
+                  child: Stack(
+                    children: [
+                      _TabSwitchFade(index: index, child: navigationShell),
+                      // Under the bars: dims the page while the tab bar is the
+                      // month picker, and folds it back on a tap.
+                      const Positioned.fill(child: _GlassMonthScrim()),
+                    ],
+                  ),
+                )
+              : navigationShell,
+          // Glass floats the bar as a capsule and lets every tab scroll *under*
+          // it, so the blur has content to frost. The Scaffold then reports the
+          // bar's height as bottom padding, which every tab already honours
+          // (see `NavBarInset`).
+          extendBody: glass,
+          bottomNavigationBar: glass
+              ? _LiquidTabBar(
+                  tabs: [_dashboard, left, right, _more],
+                  currentBranch: navigationShell.currentIndex,
+                  showLabels: ref.watch(showBottomNavLabelsProvider),
+                  onSelect: (branch) => _goBranch(ref, branch),
+                  add: add,
+                )
+              : DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: Border(top: BorderSide(color: border)),
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: SizedBox(
+                      height: 68,
+                      child: Row(
+                        children: [
+                          _navItem(context, ref, _dashboard),
+                          _navItem(context, ref, left),
+                          add,
+                          _navItem(context, ref, right),
+                          _navItem(context, ref, _more),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
+        ),
       ),
     );
   }
@@ -415,8 +420,8 @@ class _AddButtonState extends State<_AddButton> {
     context.push(action.route);
   }
 
-  /// Plays the fan out — the chosen bubble swelling, the rest retracting
-  /// into the ➕ — then opens the chosen page growing out of that bubble.
+  /// Plays the fan out — the chosen bubble flying back into the ➕, the rest
+  /// retracting into it — then the ➕ itself swells into the chosen page.
   Future<void> _endFan({required bool commit}) async {
     final entry = _overlayEntry;
     if (entry == null) return;
@@ -428,8 +433,14 @@ class _AddButtonState extends State<_AddButton> {
     entry.remove();
     _hoveredIndex.value = -1;
     if (!chosen || !mounted) return;
-    GlassReveal.from(_fanCentres[index]);
-    context.push(_fanActions[index].route);
+    final action = _fanActions[index];
+    GlassReveal.from(
+      _origin,
+      radius: _LiquidTabBar.height / 2,
+      color: Theme.of(context).colorScheme.secondary,
+      icon: action.icon,
+    );
+    context.push(action.route);
   }
 
   @override
@@ -525,15 +536,17 @@ class _GlassQuickActionsState extends State<_GlassQuickActions>
     duration: const Duration(milliseconds: 520),
   )..forward();
 
-  // Drives the chosen bubble's swell as the fan closes on a pick.
+  // Carries the chosen bubble back into the ➕ as the fan closes on a pick.
   late final _pick = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 170),
+    duration: const Duration(milliseconds: 230),
   );
   int? _selected;
 
-  /// Animates the fan away: on a pick the chosen bubble swells while the
-  /// rest retract; on a cancel everything folds back into the ➕.
+  /// Animates the fan away: on a pick the chosen bubble flies back into the
+  /// ➕ and merges with it (the ➕ then swells into the page — see
+  /// [GlassRevealTransition]) while the rest retract; on a cancel everything
+  /// folds back into the ➕.
   Future<void> close({int? selected}) async {
     if (!mounted) return;
     setState(() => _selected = selected);
@@ -542,8 +555,8 @@ class _GlassQuickActionsState extends State<_GlassQuickActions>
       await Future.wait([
         _pick.forward(),
         _open.animateBack(
-          0.35,
-          duration: const Duration(milliseconds: 170),
+          0.2,
+          duration: const Duration(milliseconds: 200),
           curve: Curves.easeInCubic,
         ),
       ]);
@@ -630,14 +643,17 @@ class _GlassQuickActionsState extends State<_GlassQuickActions>
     final tone = AppSurface.of(context).tone;
     final p = _progress(i);
     final picked = _selected == i;
-    // The picked bubble rides the fan's close on its own swell instead.
-    final travel = picked ? 1.0 : p;
+    // The picked bubble rides its own flight home instead: back down into
+    // the ➕, growing to the ➕'s size as it lands so the two become one.
+    final home = Curves.easeInOutCubic.transform(_pick.value);
+    final travel = picked ? 1 - home : p;
     final centre = Offset.lerp(widget.anchor, widget.centres[i], travel)!;
     // Flight scale follows the fan's progress exactly; only the hover swell
     // eases on its own — an implicit animation chasing a moving target
     // would trail behind the bubble and smear its pop-out.
-    final scale = picked ? 1.22 + 0.28 * _pick.value : 0.35 + 0.65 * p;
-    final opacity = picked ? (1 - _pick.value * 0.6) : p.clamp(0.0, 1.0);
+    const landed = _LiquidTabBar.height / _bubble;
+    final scale = picked ? 1.22 + (landed - 1.22) * home : 0.35 + 0.65 * p;
+    final opacity = picked ? 1.0 : p.clamp(0.0, 1.0);
     final glyph = hovered || picked ? Colors.white : cs.secondary;
     return Positioned(
       left: centre.dx - _bubble / 2,
@@ -650,21 +666,34 @@ class _GlassQuickActionsState extends State<_GlassQuickActions>
           scale: scale,
           child: AnimatedScale(
             scale: hovered && !picked ? 1.22 : 1,
-            duration: const Duration(milliseconds: 150),
+            // The picked bubble's scale is all in its flight above.
+            duration: picked
+                ? Duration.zero
+                : const Duration(milliseconds: 150),
             curve: Curves.easeOutCubic,
-            child: LiquidGlass(
-              backdrop: false,
-              frost: tone.isDark
-                  ? const Color(0x47FFFFFF)
-                  : const Color(0xB3FFFFFF),
-              tint: hovered || picked ? cs.secondary : null,
-              pressed: hovered,
-              child: Center(
-                child: AppIcon(widget.actions[i].icon, size: 24, color: glyph),
-              ),
-            ),
+            child: _bubbleGlass(context, i, hovered, picked, glyph, tone),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _bubbleGlass(
+    BuildContext context,
+    int i,
+    bool hovered,
+    bool picked,
+    Color glyph,
+    GlassTone tone,
+  ) {
+    final cs = Theme.of(context).colorScheme;
+    return LiquidGlass(
+      backdrop: false,
+      frost: tone.isDark ? const Color(0x47FFFFFF) : const Color(0xB3FFFFFF),
+      tint: hovered || picked ? cs.secondary : null,
+      pressed: hovered,
+      child: Center(
+        child: AppIcon(widget.actions[i].icon, size: 24, color: glyph),
       ),
     );
   }

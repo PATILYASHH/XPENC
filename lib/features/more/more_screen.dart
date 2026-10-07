@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../core/branding/app_info.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/bar_page_transition.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/beta_badge.dart';
 import '../../data/providers.dart';
@@ -257,7 +257,8 @@ class MoreScreen extends ConsumerWidget {
               ),
           ],
           const SliverToBoxAdapter(child: SizedBox(height: 32)),
-        const NavBarInsetSliver(),],
+          const NavBarInsetSliver(),
+        ],
       ),
     );
   }
@@ -288,7 +289,8 @@ class _MoreTile extends StatelessWidget {
         ),
       ),
       trailing: const AppIcon(Icons.chevron_right_rounded),
-      onTap: () => context.push(item.route),
+      // The tab bar transforms into the page.
+      onTap: () => pushFromBar(context, item.route),
     );
   }
 }
@@ -309,7 +311,8 @@ class _MoreCard extends StatelessWidget {
       margin: EdgeInsets.zero,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () => context.push(item.route),
+        // The tab bar transforms into the page.
+        onTap: () => pushFromBar(context, item.route),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(

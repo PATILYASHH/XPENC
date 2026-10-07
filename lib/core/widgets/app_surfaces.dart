@@ -5,7 +5,10 @@ import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 import '../theme/glass.dart';
+import 'glass_sheet.dart';
 import 'nav_bar_inset.dart';
+
+export 'glass_sheet.dart' show GlassBarScope, GlassSheetRoute;
 
 /// The app's card. Outside Glass it *is* a [Card] — same arguments, same
 /// result. Under Glass it becomes a frosted [GlassPane] that blurs the
@@ -207,6 +210,90 @@ class AppTopBar extends AppBar {
        );
 }
 
+/// A search field that lives *in* a Glass top bar, taking the title's place:
+/// no box of its own — the bar's glass is its surface — just a search glyph,
+/// the text, and a hint.
+///
+/// It takes focus itself once it's on screen rather than through
+/// `TextField.autofocus`, which does nothing when the page already has a
+/// focused node — and then the keyboard never comes up.
+class GlassSearchField extends StatefulWidget {
+  const GlassSearchField({
+    required this.controller,
+    required this.onChanged,
+    this.hint = 'Search',
+    this.autofocus = true,
+    super.key,
+  });
+
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+  final String hint;
+  final bool autofocus;
+
+  @override
+  State<GlassSearchField> createState() => _GlassSearchFieldState();
+}
+
+class _GlassSearchFieldState extends State<GlassSearchField> {
+  final _focus = FocusNode(debugLabel: 'GlassSearchField');
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.autofocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _focus.requestFocus();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    const none = OutlineInputBorder(borderSide: BorderSide.none);
+    return TextField(
+      controller: widget.controller,
+      focusNode: _focus,
+      onChanged: widget.onChanged,
+      textInputAction: TextInputAction.search,
+      cursorColor: cs.secondary,
+      style: theme.textTheme.bodyLarge?.copyWith(
+        fontSize: 17,
+        fontWeight: FontWeight.w500,
+        letterSpacing: -0.3,
+      ),
+      decoration: InputDecoration(
+        isDense: true,
+        filled: false,
+        hintText: widget.hint,
+        hintStyle: theme.textTheme.bodyLarge?.copyWith(
+          fontSize: 17,
+          color: cs.onSurfaceVariant.withValues(alpha: 0.75),
+          letterSpacing: -0.3,
+        ),
+        prefixIcon: AppIcon(
+          CupertinoIcons.search,
+          size: 19,
+          color: cs.onSurfaceVariant,
+        ),
+        prefixIconConstraints: const BoxConstraints(minWidth: 40),
+        contentPadding: const EdgeInsets.symmetric(vertical: 12),
+        border: none,
+        enabledBorder: none,
+        focusedBorder: none,
+      ),
+    );
+  }
+}
+
 /// A row of top-bar actions — one glass capsule under Glass, a plain row
 /// otherwise.
 class GlassActionGroup extends StatelessWidget {
@@ -248,7 +335,10 @@ class GlassActionGroup extends StatelessWidget {
 }
 
 /// [showModalBottomSheet], with the same arguments. Under Glass the sheet is
-/// a floating pane of Liquid Glass inset from the screen edges, as on iOS.
+/// a floating pane of Liquid Glass inset from the screen edges, as on iOS,
+/// that grows out of the tab bar (see [GlassSheetRoute]) — always on the root
+/// navigator, so it sits above that bar; [useRootNavigator] and [shape] only
+/// apply outside Glass.
 Future<T?> showAppSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,
@@ -269,158 +359,13 @@ Future<T?> showAppSheet<T>({
       useSafeArea: useSafeArea,
     );
   }
-  final navigator = Navigator.of(context, rootNavigator: useRootNavigator);
-  final localizations = MaterialLocalizations.of(context);
-  return navigator.push(
-    ModalBottomSheetRoute<T>(
-      builder: (context) => _FloatingSheet(
-        showHandle: showDragHandle ?? false,
-        child: builder(context),
-      ),
-      capturedThemes: InheritedTheme.capture(
-        from: context,
-        to: navigator.context,
-      ),
-      isScrollControlled: isScrollControlled,
-      barrierLabel: localizations.scrimLabel,
-      barrierOnTapHint: localizations.scrimOnTapHint(
-        localizations.bottomSheetLabel,
-      ),
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      clipBehavior: Clip.none,
-      shape: const RoundedRectangleBorder(),
-      modalBarrierColor: AppSurface.of(context).tone.barrier,
-      // The pane draws its own handle inside the glass.
-      showDragHandle: false,
-      useSafeArea: useSafeArea,
-      // A longer, softer rise than Material's — easier on the eye — and a
-      // quicker drop away.
-      sheetAnimationStyle: const AnimationStyle(
-        duration: Duration(milliseconds: 380),
-        reverseDuration: Duration(milliseconds: 240),
-      ),
-    ),
+  return pushGlassSheet<T>(
+    context: context,
+    builder: builder,
+    isScrollControlled: isScrollControlled,
+    showHandle: showDragHandle ?? false,
+    useSafeArea: useSafeArea,
   );
-}
-
-/// A sheet's glass body: inset from the sides and the home indicator, with
-/// iOS's grabber at the top when asked for.
-///
-/// It opens as the tab bar transforming: the sheet rises with exactly the
-/// tab capsule's width and round ends, then widens into the full sheet as
-/// the frost thickens and the content fades in — and folds back the same way
-/// on close. The content is laid out once at full width and only its visible
-/// window animates, so nothing reflows mid-flight.
-class _FloatingSheet extends StatelessWidget {
-  const _FloatingSheet({required this.showHandle, required this.child});
-
-  final bool showHandle;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
-    final bottom = math.max(8.0, mq.viewPadding.bottom);
-    final tone = AppSurface.of(context).tone;
-    final animation =
-        ModalRoute.of(context)?.animation ?? kAlwaysCompleteAnimation;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(8, 0, 8, bottom),
-      child: AnimatedBuilder(
-        animation: animation,
-        builder: (context, pane) {
-          final t = Curves.easeOutCubic.transform(
-            animation.value.clamp(0.0, 1.0),
-          );
-          // The tab capsule spans 16 pt from the left edge to 90 pt from
-          // the right (the ➕ and its gap beyond it); the sheet, 8 to 8.
-          return ClipRRect(
-            clipper: _MorphClipper(
-              left: 8 * (1 - t),
-              right: 82 * (1 - t),
-              radius: 32 + 2 * t,
-            ),
-            child: Opacity(
-              opacity: Curves.easeIn.transform(
-                ((animation.value - 0.15) / 0.6).clamp(0.0, 1.0),
-              ),
-              child: pane,
-            ),
-          );
-        },
-        child: _sheetPane(context, tone),
-      ),
-    );
-  }
-
-  Widget _sheetPane(BuildContext context, GlassTone tone) {
-    return LiquidGlass(
-      borderRadius: BorderRadius.circular(34),
-      frost: tone.sheetFrost,
-      blur: 24,
-      // Blur only: on a pane this large the lens is barely seen but its
-      // pass is paid on every frame of the sheet's rise.
-      refraction: 0,
-      child: Material(
-        type: MaterialType.transparency,
-        // The inset already clears the home indicator.
-        child: MediaQuery.removePadding(
-          context: context,
-          removeBottom: true,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (showHandle)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8, bottom: 14),
-                  child: Center(
-                    child: Container(
-                      width: 38,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: tone.grabber,
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    ),
-                  ),
-                )
-              else
-                const SizedBox(height: 10),
-              Flexible(child: child),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The sheet's visible window while it morphs out of the tab bar.
-class _MorphClipper extends CustomClipper<RRect> {
-  _MorphClipper({
-    required this.left,
-    required this.right,
-    required this.radius,
-  });
-
-  final double left;
-  final double right;
-  final double radius;
-
-  @override
-  RRect getClip(Size size) => RRect.fromLTRBR(
-    left,
-    0,
-    size.width - right,
-    size.height,
-    Radius.circular(radius),
-  );
-
-  @override
-  bool shouldReclip(_MorphClipper old) =>
-      old.left != left || old.right != right || old.radius != radius;
 }
 
 /// [showDialog], with the same arguments. Under Glass the page behind
