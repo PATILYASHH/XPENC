@@ -23,13 +23,26 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.water_drop_outlined,
+    title: 'Glass that moves like liquid',
+    location: 'Glass theme',
+    description:
+        'The tab bar now transforms into whatever you open from it: every '
+        'sheet and every page in More grows up out of the bar on a spring '
+        'and folds back into it when you close it. A quick action makes '
+        'the ➕ itself swell into the page. Search on Transactions turns '
+        'the top bar into the search field. And the glass takes the light '
+        'of what\'s behind it — scroll something colourful under the tab '
+        'bar and its edge glows with that colour.',
+  ),
+  WhatsNewEntry(
     icon: Icons.bolt_rounded,
     title: 'Glass quick actions, and smoother everything',
     location: 'Glass theme · hold ➕ (turn on in Settings → Quick Actions)',
     description:
         'Hold the ➕ and your quick actions spring out onto two arcs in the '
-        'corner — slide your thumb to one and let go, and its page grows '
-        'out of the bubble. XPENC also runs at your screen’s full refresh '
+        'corner — slide your thumb to one and let go, and the ➕ swells '
+        'into its page. XPENC also runs at your screen’s full refresh '
         'rate now (90/120 Hz where the phone supports it), with calmer, '
         'smoother motion throughout Glass. The top bar is now a floating '
         'glass capsule too: tabs scroll under it to the top of the screen, '

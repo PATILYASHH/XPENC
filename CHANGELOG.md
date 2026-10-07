@@ -33,8 +33,9 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   colour so text and amounts stay readable.
 - **Glass quick actions** — hold the ➕ and up to eight actions spring out
   of it onto two arcs in the corner, within reach of the same thumb. Slide
-  onto one (it lifts, magnifies and names itself) and let go to open it;
-  the page grows out of that bubble. Slide back onto the ➕, now an ✕, to
+  onto one (it lifts, magnifies and names itself) and let go: the bubble
+  flies back into the ➕, and the ➕ swells into the page — then shrinks
+  back into the ➕ when you go back. Slide back onto the ➕, now an ✕, to
   cancel.
 - **Glass top bar** — the tabs' top bar is a floating Liquid Glass capsule
   like the tab bar, and every tab scrolls under it all the way to the top
@@ -60,10 +61,27 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   fixed stand-in, never the real digits, so nothing can be read back.
 - **Fixed:** a tab kept in the background reflowing (say Dashboard, as its
   data loaded) could pull the showing tab's title back out of the bar.
-- **Sheets grow out of the tab bar** — under Glass, a sheet (the ➕'s
-  template choice, the month picker, filters…) rises as the tab bar
-  transforming: it starts at the bar's exact width and round ends and
-  widens into the floating sheet, and folds back the same way.
+- **Sheets grow out of the tab bar** — under Glass, every sheet (filters,
+  the ➕'s template choice, pickers…) is the tab bar transforming, the same
+  way the month picker is: the bar's capsule grows up into the sheet on a
+  spring, its clear glass thickening into frost, the tabs dissolving and
+  the ➕ sliding away, and it folds back into the bar when you close it.
+  Drag a sheet down to close it. Sheets now always sit above the tab bar —
+  some used to slide up underneath it.
+- **More's pages open from the tab bar** — tap anything in More and the tab
+  bar transforms into that page the same way: it grows up and out to the
+  whole screen, the page forming inside it, and folds back into the bar
+  when you go back. (In Classic and Noir the page rises out of the bottom
+  bar.)
+- **Search in the top bar** — under Glass, Search on Transactions turns
+  the top bar itself into the search field, in the title's place, and the
+  keyboard comes straight up.
+- **Glass takes the light** — the tab bar, the top bar and the filter
+  chips now take their light from what's behind them, the way real glass
+  does: scroll something colourful under the bar and its edge glows with
+  that colour, with a faint cast through the glass and a soft highlight
+  where the curve meets the light. Over plain black it stays clear; the ➕
+  lights the near end of the tab bar blue.
 - **Smoother Glass, up to your screen's full refresh rate** — XPENC now
   asks Android for the display's fastest mode (90/120 Hz where the phone
   has it; battery saver can still cap it). Glass does far less GPU work per
