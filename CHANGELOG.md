@@ -90,6 +90,29 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   blurs. Motion is calmer, with no rubbery overshoot: the tab droplet
   glides and stretches like liquid, tab switches fade softly, dialogs pop
   in like iOS alerts, and sheets rise on a longer, gentler curve.
+- **The top bar follows the tab** — under Glass, switching tabs resizes the
+  top bar's capsule on a spring to the new tab's buttons (the old ones
+  dissolving, the new ones swelling in) instead of jumping, and the title
+  glides to its new place.
+- **Pages grow out of the top bar** — under Glass, Settled, Archived,
+  Review Inbox and About open as the top bar's capsule growing down into
+  the page, and fold back into it on Back.
+- **New group grows out of its button** — under Glass, the New group
+  button swells into the dialog and shrinks back into it when it closes.
+- **Calmer page transitions** — More's pages now open and close on a
+  softer, slower spring, so you can see the bar become the page.
+- **Filter chips on frosted glass** — under Glass, the Transactions filter
+  chips sit on a frosted band, so the rows passing behind blur instead of
+  reading through, and the chosen chip lights the band with its colour.
+- **Contact photos light their card** — under Glass, a person's photo
+  casts a soft glow of its own colour onto the card around it.
+- **Total money opens Customize dashboard** — tap the figure or its graph
+  on the Dashboard to choose which accounts count toward it.
+- **Shortcuts to related pages** — every module has a row of shortcuts to
+  the pages that go with it: Accounts → Currency, Account reports, Goals &
+  Loans; Budgets → Categories, Auto, Stats, Budget cycle; Transactions →
+  Categories, Tags, Payees, Import CSV, Download data; plus Payees, Stats,
+  Auto, Account Reports, Tags, Categories, Calendar and Goals & Loans.
 - **Light / Dark / System is now its own choice** under Settings → General →
   Theme, separate from the theme itself. Classic and Noir come in both.
 

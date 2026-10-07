@@ -23,6 +23,27 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.shortcut_rounded,
+    title: 'Shortcuts to related pages',
+    location: 'Accounts, Budgets, Transactions and more',
+    description:
+        'Every module now has a row of shortcuts to the pages that go '
+        'with it — Currency from Accounts, Categories from Budgets, Tags '
+        'and Payees from Transactions, and more. On the Dashboard, tap '
+        'Total money to pick which accounts count toward it.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.open_in_full_rounded,
+    title: 'Glass grows out of what you tap',
+    location: 'Glass theme',
+    description:
+        'Switch tabs and the top bar resizes to the new tab’s buttons. '
+        'Settled, Archived and Inbox grow down out of the top bar; New '
+        'group grows out of its button; pages from More open on a calmer '
+        'spring. The Transactions filters sit on frosted glass, and a '
+        'person’s photo lights their card with its own colour.',
+  ),
+  WhatsNewEntry(
     icon: Icons.water_drop_outlined,
     title: 'Glass that moves like liquid',
     location: 'Glass theme',
