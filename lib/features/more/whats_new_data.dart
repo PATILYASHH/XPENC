@@ -35,7 +35,7 @@ const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
     icon: Icons.open_in_full_rounded,
     title: 'Glass grows out of what you tap',
-    location: 'Glass theme',
+    location: 'Glass theme · top bar, Persons, Transactions',
     description:
         'Switch tabs and the top bar resizes to the new tab’s buttons. '
         'Settled, Archived and Inbox grow down out of the top bar; New '
