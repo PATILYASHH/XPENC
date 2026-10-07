@@ -82,27 +82,30 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
       ),
     ];
     final theme = Theme.of(context);
-    final name = button != null && AppSurface.of(context).isGlass
-        ? await showMorphDialog<String>(
-            from: button,
-            color:
-                theme.floatingActionButtonTheme.backgroundColor ??
-                theme.colorScheme.secondary,
-            icon: const AppIcon(Icons.group_add_rounded),
-            builder: (dialogContext) => MorphDialogBody(
-              title: const Text('New group'),
-              content: field(dialogContext),
-              actions: actions(dialogContext),
-            ),
-          )
-        : await showAppDialog<String>(
-            context: context,
-            builder: (dialogContext) => AlertDialog(
-              title: const Text('New group'),
-              content: field(dialogContext),
-              actions: actions(dialogContext),
-            ),
-          );
+    final String? name;
+    if (button != null && AppSurface.of(context).isGlass) {
+      name = await showMorphDialog<String>(
+        from: button,
+        color:
+            theme.floatingActionButtonTheme.backgroundColor ??
+            theme.colorScheme.secondary,
+        icon: const AppIcon(Icons.group_add_rounded),
+        builder: (dialogContext) => MorphDialogBody(
+          title: const Text('New group'),
+          content: field(dialogContext),
+          actions: actions(dialogContext),
+        ),
+      );
+    } else {
+      name = await showAppDialog<String>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('New group'),
+          content: field(dialogContext),
+          actions: actions(dialogContext),
+        ),
+      );
+    }
     // Deliberately not disposed: `showDialog`'s Future resolves as soon as
     // Navigator.pop runs, before the dialog's exit transition finishes —
     // disposing here can crash a still-animating TextField with "A
