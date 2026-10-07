@@ -6,6 +6,7 @@ import '../../core/app_icons.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_surfaces.dart';
+import '../../core/widgets/module_shortcuts.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/error_view.dart';
 import '../../core/widgets/money_text.dart';
@@ -34,7 +35,21 @@ class AccountReportsScreen extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32).plusNavBar(context),
         children: [
           const _HeroCard(),
-          const SizedBox(height: 28),
+          const SizedBox(height: 12),
+          const ModuleShortcuts([
+            ModuleShortcut(
+              Icons.account_balance_wallet_outlined,
+              'Accounts',
+              '/more/accounts',
+            ),
+            ModuleShortcut(Icons.insights_outlined, 'Stats', '/more/stats'),
+            ModuleShortcut(
+              Icons.currency_exchange_rounded,
+              'Currency',
+              '/more/settings/currency',
+            ),
+          ], padding: EdgeInsets.zero),
+          const SizedBox(height: 16),
           const SectionCaption('This period'),
           const AccountPeriodControls(),
           const SizedBox(height: 12),

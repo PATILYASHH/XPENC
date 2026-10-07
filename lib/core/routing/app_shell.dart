@@ -25,6 +25,7 @@ import '../../features/transactions/transaction_filters.dart';
 import '../branding/app_info.dart';
 import '../branding/brand_mark.dart';
 import '../budget_cycle.dart';
+import '../theme/bar_page_transition.dart';
 import '../theme/glass.dart';
 import '../widgets/nav_bar_inset.dart';
 
@@ -1293,7 +1294,7 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
           _TonalIconButton(
             tooltip: 'About ${AppInfo.name}',
             icon: const BrandMark(size: 22),
-            onPressed: () => context.push('/more/about'),
+            onPressed: () => _pushFromTop(context, '/more/about'),
           ),
           const SizedBox(width: 4),
         ];
@@ -1304,7 +1305,7 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
           _TonalIconButton(
             tooltip: 'Archived',
             icon: const AppIcon(Icons.inventory_2_outlined),
-            onPressed: () => context.push('/persons/archived'),
+            onPressed: () => _pushFromTop(context, '/persons/archived'),
           ),
           const SizedBox(width: 4),
           _TonalIconButton(
@@ -1352,6 +1353,7 @@ class _TonalIconButton extends StatelessWidget {
     required this.icon,
     required this.tooltip,
     required this.onPressed,
+    super.key,
   });
 
   final Widget icon;

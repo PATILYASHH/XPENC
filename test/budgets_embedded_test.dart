@@ -59,8 +59,9 @@ void main() {
     await pump(tester, const BudgetsScreen(embedded: true));
     expect(tester.takeException(), isNull);
     expect(find.byWidgetPredicate((w) => w is AppBar), findsNothing);
-    // The body itself still renders.
-    expect(find.text('Categories'), findsOneWidget);
+    // The body itself still renders: the section caption, and the shortcut
+    // to the Categories page.
+    expect(find.text('Categories'), findsNWidgets(2));
 
     await unmount(tester);
   });

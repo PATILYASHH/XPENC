@@ -8,6 +8,7 @@ import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/amount_keypad_field.dart';
 import '../../core/widgets/app_surfaces.dart';
+import '../../core/widgets/module_shortcuts.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
@@ -259,6 +260,20 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           _weekdayHeader(theme),
           const SizedBox(height: 8),
           _grid(theme, incomeByDay, expenseByDay, transferDays, dueDays),
+          const SizedBox(height: 16),
+          const ModuleShortcuts([
+            ModuleShortcut(Icons.autorenew_rounded, 'Auto', '/more/auto'),
+            ModuleShortcut(
+              Icons.notifications_outlined,
+              'Notifications',
+              '/more/settings/notifications',
+            ),
+            ModuleShortcut(
+              Icons.receipt_long_outlined,
+              'Transactions',
+              '/more/transactions',
+            ),
+          ], padding: EdgeInsets.zero),
           const SizedBox(height: 24),
           if (_selectedDay != null)
             ..._daySections(

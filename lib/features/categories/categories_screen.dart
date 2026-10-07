@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/app_icons.dart';
 import '../../core/widgets/app_surfaces.dart';
+import '../../core/widgets/module_shortcuts.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/error_view.dart';
 import '../../core/widgets/icon_picker_sheet.dart';
@@ -117,6 +118,21 @@ class _CategoryList extends ConsumerWidget {
         return ListView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 96).plusNavBar(context),
           children: [
+            ModuleShortcuts([
+              // Basic mode has no budgets.
+              if (ref.watch(appModeProvider) != AppMode.basic)
+                const ModuleShortcut(
+                  Icons.donut_large_outlined,
+                  'Budgets',
+                  '/more/budgets',
+                ),
+              const ModuleShortcut(Icons.sell_outlined, 'Tags', '/more/tags'),
+              const ModuleShortcut(
+                Icons.receipt_long_outlined,
+                'Transactions',
+                '/more/transactions',
+              ),
+            ], padding: const EdgeInsets.fromLTRB(0, 0, 0, 12)),
             if (categories.isEmpty)
               _EmptyCategories(kind: kind)
             else

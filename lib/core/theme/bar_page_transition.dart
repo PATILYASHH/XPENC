@@ -17,6 +17,9 @@ import 'glass.dart';
 /// Open a page this way with [pushFromBar] (or call [PageFromBar.record]
 /// just before any push). Every theme's page transitions pick it up
 /// ([BarMorphTransitionsBuilder]); other pushes keep their usual transition.
+///
+/// [pushFromTopBar] is the same motion from the Glass top bar: its capsule
+/// grows *down* into the page, the page's own top bar at its leading edge.
 class PageFromBar {
   const PageFromBar._();
 
@@ -24,20 +27,22 @@ class PageFromBar {
   static final _specs = Expando<BarPageSpec>('PageFromBar');
   static final _animations = Expando<bool>('PageFromBarAnimation');
 
-  /// The bar's own spring, over the same time a sheet takes.
-  static const duration = Duration(milliseconds: 560);
-  static const reverseDuration = Duration(milliseconds: 440);
+  /// [GlassPageSpring]'s time to rest; the fold back is a touch quicker.
+  static const duration = Duration(milliseconds: 720);
+  static const reverseDuration = Duration(milliseconds: 560);
 
   /// Whether the next pushed page will grow out of the bar.
   static bool get pending => _pending != null;
 
   /// Records that the next pushed page grows out of the tab bar under
   /// [context] — the Glass capsule when [context] is in the shell, otherwise
-  /// a bar along the foot of the screen.
-  static void record(BuildContext context) {
+  /// a bar along the foot of the screen — or, given [from], out of the top
+  /// bar's capsule at that rect (global coordinates).
+  static void record(BuildContext context, {Rect? from}) {
     final spec = _pending = BarPageSpec._(
-      fromBar: GlassBarScope.of(context),
+      fromBar: from == null && GlassBarScope.of(context),
       glass: AppSurface.of(context).isGlass,
+      origin: from,
     );
     // Unclaimed for a few frames — the push it was meant for never built a
     // route — it's dropped, so it can't hijack some later push.
@@ -95,15 +100,24 @@ class PageFromBar {
 }
 
 /// How a page grows out of the bar: from the shell's Glass capsule (handing
-/// the bar over as it goes), or from a bar along the foot of the screen.
+/// the bar over as it goes), from a bar along the foot of the screen, or —
+/// with an [origin] — down out of the top bar's capsule.
 class BarPageSpec {
-  const BarPageSpec._({required this.fromBar, required this.glass});
+  const BarPageSpec._({
+    required this.fromBar,
+    required this.glass,
+    this.origin,
+  });
 
   /// Whether this page grows out of (and hands over) the shell's tab bar.
   final bool fromBar;
 
   /// Whether the morphing window is Liquid Glass (else the page's surface).
   final bool glass;
+
+  /// The top capsule this page grows down out of (handing it over as it
+  /// goes), in global coordinates; `null` for a bar at the foot.
+  final Rect? origin;
 }
 
 /// Opens [location] as the tab bar transforming into it.
@@ -113,6 +127,43 @@ Future<T?> pushFromBar<T extends Object?>(
 ) {
   PageFromBar.record(context);
   return context.push<T>(location);
+}
+
+/// Opens [location] from a button in a Glass top bar: the bar's capsule
+/// grows down into the page. Elsewhere — no capsule to grow out of — it's a
+/// plain push.
+Future<T?> pushFromTopBar<T extends Object?>(
+  BuildContext context,
+  String location,
+) {
+  final capsule = AppSurface.of(context).isGlass
+      ? _capsuleAround(context)
+      : null;
+  if (capsule != null) PageFromBar.record(context, from: capsule);
+  return context.push<T>(location);
+}
+
+/// The glass capsule [context] is (or sits in), in global coordinates.
+Rect? _capsuleAround(BuildContext context) {
+  RenderBox? box;
+  if (context.widget is LiquidGlass) {
+    final own = context.findRenderObject();
+    if (own is RenderBox) box = own;
+  } else {
+    context.visitAncestorElements((element) {
+      if (element.widget is! LiquidGlass) return true;
+      final found = element.findRenderObject();
+      if (found is RenderBox) box = found;
+      return false;
+    });
+  }
+  final b = box;
+  if (b == null || !b.attached || !b.hasSize) return null;
+  // Where it shows on screen, squash and all.
+  return MatrixUtils.transformRect(
+    b.getTransformTo(null),
+    Offset.zero & b.size,
+  );
 }
 
 /// [inner]'s transitions, plus the bar morph: a page opened from the bar
@@ -196,8 +247,8 @@ class _BarPageTransitionState extends State<BarPageTransition> {
   void _listen(Animation<double> animation) {
     _morph = CurvedAnimation(
       parent: animation,
-      curve: const GlassBarSpring(),
-      reverseCurve: const GlassBarSpring().flipped,
+      curve: const GlassPageSpring(),
+      reverseCurve: const GlassPageSpring().flipped,
     );
     animation
       ..addListener(_tick)
@@ -224,13 +275,16 @@ class _BarPageTransitionState extends State<BarPageTransition> {
   // being built, when the bar can't rebuild.
   void _tick() {
     if (widget.spec.fromBar) GlassBarMorph.claim(this, _morph.value);
+    if (widget.spec.origin != null) {
+      GlassBarMorph.top.claim(this, _morph.value);
+    }
     setState(() {});
   }
 
   void _status(AnimationStatus status) {
-    if (widget.spec.fromBar && status == AnimationStatus.dismissed) {
-      GlassBarMorph.release(this);
-    }
+    if (status != AnimationStatus.dismissed) return;
+    if (widget.spec.fromBar) GlassBarMorph.release(this);
+    if (widget.spec.origin != null) GlassBarMorph.top.release(this);
   }
 
   @override
@@ -238,9 +292,10 @@ class _BarPageTransitionState extends State<BarPageTransition> {
     // Normally already given back when the fold finished; if the page went
     // without one, give it back once this frame is done.
     final owner = this;
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => GlassBarMorph.release(owner),
-    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      GlassBarMorph.release(owner);
+      GlassBarMorph.top.release(owner);
+    });
     _unlisten(widget.animation);
     super.dispose();
   }
@@ -254,27 +309,33 @@ class _BarPageTransitionState extends State<BarPageTransition> {
     final media = MediaQuery.of(context);
     final size = media.size;
 
-    // Where the window starts: the Glass tab capsule (the ➕ and its gap lie
-    // beyond its right end), or a bar-shaped capsule across the foot.
+    // Where the window starts: the top capsule it was opened from, the Glass
+    // tab capsule (the ➕ and its gap lie beyond its right end), or a
+    // bar-shaped capsule across the foot.
     final barBottom = size.height - glassBarBottom(media);
-    final from = Rect.fromLTRB(
-      kGlassBarSide,
-      barBottom - kGlassBarHeight,
-      size.width -
-          kGlassBarSide -
-          (spec.fromBar ? kGlassBarHeight + kGlassAddGap : 0),
-      barBottom,
-    );
-    // Up on the spring (a hair past at its peak); out to the sides and down
-    // to the screen's foot along with it.
+    final top = spec.origin;
+    final from =
+        top ??
+        Rect.fromLTRB(
+          kGlassBarSide,
+          barBottom - kGlassBarHeight,
+          size.width -
+              kGlassBarSide -
+              (spec.fromBar ? kGlassBarHeight + kGlassAddGap : 0),
+          barBottom,
+        );
+    // The leading edge travels on the spring (a hair past at its peak) — up
+    // out of a bar at the foot, down out of the top capsule — and the window
+    // stretches out to the sides and its other edge along with it.
     final rect = Rect.fromLTRB(
       from.left * (1 - open),
-      from.top * (1 - t),
+      from.top * (1 - (top == null ? t : open)),
       from.right + (size.width - from.right) * open,
-      from.bottom + (size.height - from.bottom) * open,
+      from.bottom + (size.height - from.bottom) * (top == null ? open : t),
     );
     // Capsule round, soft corners while it travels, square at the screen.
-    final round = 32 - 4 * open;
+    final capsule = from.height / 2;
+    final round = capsule - 4 * open;
     final corner = open > 0.88 ? round * (1 - open) / 0.12 : round;
     // The page forms inside as the glass grows, the way the month grid does.
     final reveal = Curves.easeOut.transform(((open - 0.28) / 0.6).clamp(0, 1));
@@ -286,7 +347,10 @@ class _BarPageTransitionState extends State<BarPageTransition> {
           rect: rect,
           child: settled
               ? const SizedBox.shrink()
-              : Opacity(opacity: appear, child: _window(context, open)),
+              : Opacity(
+                  opacity: appear,
+                  child: _window(context, open, capsule),
+                ),
         ),
         Positioned.fill(
           child: ClipRRect(
@@ -295,8 +359,11 @@ class _BarPageTransitionState extends State<BarPageTransition> {
             child: Opacity(
               opacity: settled ? 1 : reveal,
               child: Transform.translate(
-                // The page rides the window's rising top edge.
-                offset: Offset(0, settled ? 0 : rect.top),
+                // The page rides the window's rising top edge. Out of the
+                // top capsule it stays put instead — its own top bar is
+                // where the capsule was, and the glass grows down over the
+                // rest of it.
+                offset: Offset(0, settled || top != null ? 0 : rect.top),
                 child: widget.child,
               ),
             ),
@@ -308,8 +375,9 @@ class _BarPageTransitionState extends State<BarPageTransition> {
 
   /// The morphing window itself: the bar's clear, lensed glass thickening
   /// into a frosted pane under Glass; the page's own surface otherwise.
-  Widget _window(BuildContext context, double open) {
-    final corner = 32 - 4 * open;
+  /// [capsule] is the bar's own corner radius.
+  Widget _window(BuildContext context, double open, double capsule) {
+    final corner = capsule - 4 * open;
     if (!widget.spec.glass) {
       return DecoratedBox(
         decoration: BoxDecoration(

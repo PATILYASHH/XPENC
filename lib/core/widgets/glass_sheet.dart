@@ -24,22 +24,20 @@ const double kGlassSheetSide = 8;
 double glassBarBottom(MediaQueryData media) =>
     math.max(8.0, media.padding.bottom);
 
-/// Lets the shell's Glass tab bar hand itself over to a sheet or page growing
-/// out of it: while one opened from the shell is up, [progress] carries its
-/// morph (spring-eased, so it can overshoot 0…1 a hair) and the bar fades its
-/// own glass out — the sheet or page *is* the bar now — dissolves its tabs
-/// and slides the ➕ away, exactly as it does when it grows into the month
-/// picker. `null` when nothing has the bar.
+/// One bar's hand-over to whatever grows out of it: while it's handed over,
+/// [progress] carries the morph (spring-eased, so it can overshoot 0…1 a
+/// hair) and the bar fades its own glass out — the sheet or page *is* the bar
+/// now. `null` when nothing has the bar.
 ///
 /// One owner at a time: whoever [claim]s it drives it until it [release]s.
-class GlassBarMorph {
-  const GlassBarMorph._();
+class BarHandover {
+  BarHandover._();
 
-  static final ValueNotifier<double?> progress = ValueNotifier<double?>(null);
-  static Object? _owner;
+  final ValueNotifier<double?> progress = ValueNotifier<double?>(null);
+  Object? _owner;
 
   /// Takes the bar for [owner] (at progress [value]); false if another has it.
-  static bool claim(Object owner, double value) {
+  bool claim(Object owner, double value) {
     if (_owner != null && !identical(_owner, owner)) return false;
     _owner = owner;
     progress.value = value;
@@ -47,16 +45,44 @@ class GlassBarMorph {
   }
 
   /// Moves the bar's hand-over along, if [owner] has it.
-  static void update(Object owner, double value) {
+  void update(Object owner, double value) {
     if (identical(_owner, owner)) progress.value = value;
   }
 
   /// Gives the bar back, if [owner] has it.
-  static void release(Object owner) {
+  void release(Object owner) {
     if (!identical(_owner, owner)) return;
     _owner = null;
     progress.value = null;
   }
+}
+
+/// Lets the shell's Glass tab bar hand itself over to a sheet or page growing
+/// out of it: while one opened from the shell is up, the bar dissolves its
+/// tabs and slides the ➕ away, exactly as it does when it grows into the
+/// month picker. See [BarHandover].
+///
+/// [top] is the same for the top bar's capsule, which a page opened from
+/// one of its buttons grows out of (see `pushFromTopBar`).
+class GlassBarMorph {
+  const GlassBarMorph._();
+
+  static final _tab = BarHandover._();
+
+  /// The top bar's capsule.
+  static final top = BarHandover._();
+
+  static ValueNotifier<double?> get progress => _tab.progress;
+
+  /// Takes the tab bar for [owner] (at progress [value]); false if another
+  /// has it.
+  static bool claim(Object owner, double value) => _tab.claim(owner, value);
+
+  /// Moves the tab bar's hand-over along, if [owner] has it.
+  static void update(Object owner, double value) => _tab.update(owner, value);
+
+  /// Gives the tab bar back, if [owner] has it.
+  static void release(Object owner) => _tab.release(owner);
 }
 
 /// Marks the subtree the Glass tab bar sits over (the shell). A sheet opened
@@ -93,6 +119,28 @@ class GlassBarSpring extends Curve {
 
   /// Long enough for the spring to come to rest (it's within 0.3% by then).
   static const double seconds = 0.56;
+
+  @override
+  double transformInternal(double t) =>
+      SpringSimulation(_spring, 0, 1, 0).x(t * seconds);
+}
+
+/// The spring a whole *page* grows out of a bar on ([pushFromBar],
+/// `pushFromTopBar`): softer than [GlassBarSpring] and near-critically
+/// damped. A page covers the screen, so the motion needs room to be read —
+/// on the sheets' spring it was most of the way there in a fifth of a
+/// second, which looked like a snap rather than a transformation.
+class GlassPageSpring extends Curve {
+  const GlassPageSpring();
+
+  static final _spring = SpringDescription.withDampingRatio(
+    mass: 1,
+    stiffness: 110,
+    ratio: 0.9,
+  );
+
+  /// Long enough for the spring to come to rest (it's within 0.2% by then).
+  static const double seconds = 0.72;
 
   @override
   double transformInternal(double t) =>

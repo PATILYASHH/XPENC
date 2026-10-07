@@ -8,6 +8,7 @@ import '../../core/money.dart';
 import '../../core/widgets/amount_keypad_field.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
+import '../../core/widgets/module_shortcuts.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/statement_range_picker.dart';
 import '../../data/database.dart';
@@ -58,6 +59,37 @@ class AccountsScreen extends ConsumerWidget {
               ])],
             ),
           const SliverToBoxAdapter(child: _TotalMoneyCard()),
+          SliverToBoxAdapter(
+            child: ModuleShortcuts([
+              const ModuleShortcut(
+                Icons.currency_exchange_rounded,
+                'Currency',
+                '/more/settings/currency',
+              ),
+              // The tab has no top-bar button for it; the page does.
+              if (embedded)
+                const ModuleShortcut(
+                  Icons.inventory_2_outlined,
+                  'Archived',
+                  '/more/accounts/archived',
+                ),
+              const ModuleShortcut(
+                Icons.account_balance_outlined,
+                'Account reports',
+                '/more/account-reports',
+              ),
+              const ModuleShortcut(
+                Icons.savings_outlined,
+                'Goals & Loans',
+                '/more/goals',
+              ),
+              const ModuleShortcut(
+                Icons.tune_rounded,
+                'Counted in total',
+                '/more/settings/dashboard',
+              ),
+            ]),
+          ),
           ...accountsAsync.when(
             data: (accounts) => _sections(context, ref, accounts, accountMap),
             loading: () => const [

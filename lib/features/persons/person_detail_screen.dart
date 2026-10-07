@@ -84,6 +84,7 @@ class PersonDetailScreen extends ConsumerWidget {
                   name: person.name,
                   photoPath: person.photoPath,
                   radius: 15,
+                  glow: false,
                 ),
                 const SizedBox(width: 10),
                 Flexible(

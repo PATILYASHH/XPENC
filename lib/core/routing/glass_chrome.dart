@@ -16,6 +16,20 @@ int? _glassBranch;
 /// button opens it; a pick, a tap outside, or Back closes it).
 final _glassMonthPicker = ValueNotifier<bool>(false);
 
+/// The top bar's capsule, which the pages its buttons open grow out of.
+final _glassTopCapsule = GlobalKey(debugLabel: 'glassTopCapsule');
+
+/// Opens [location] from a top-bar button: under Glass the capsule grows
+/// down into the page ([pushFromTopBar]); elsewhere a plain push.
+void _pushFromTop(BuildContext context, String location) {
+  final capsule = _glassTopCapsule.currentContext;
+  if (capsule != null && capsule.mounted) {
+    pushFromTopBar<void>(capsule, location);
+  } else {
+    context.push(location);
+  }
+}
+
 /// Marks the actions inside the top capsule, which draw flat — the capsule
 /// is the glass; a disc per button inside it would be glass on glass.
 class _GlassCapsuleScope extends InheritedWidget {
@@ -102,16 +116,48 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
   /// Where the capsule's width is heading: the full bar while searching.
   double get _target => _searching ? 1 : _targetFor(_glassScroll.value);
 
+  /// The title's progress into the capsule. It tracks the finger exactly —
+  /// except across a tab switch, when it glides on a spring from where the
+  /// old tab had it to where the new tab has it, instead of jumping.
+  late final _Spring _title = _Spring(_targetFor(_glassScroll.value));
+  bool _switching = false;
+
+  double get _titleProgress =>
+      _switching ? _title.value : _targetFor(_glassScroll.value);
+
   @override
   void initState() {
     super.initState();
     _ticker = createTicker(_tick);
     _glassScroll.addListener(_onScroll);
+    GlassBarMorph.top.progress.addListener(_onHandover);
+  }
+
+  @override
+  void didUpdateWidget(_GlassTopBar old) {
+    super.didUpdateWidget(old);
+    if (old.currentIndex != widget.currentIndex) {
+      // The new tab's offset lands just after this frame (see AppShell);
+      // the title starts from where it is now.
+      _title
+        ..value = _titleProgress
+        ..velocity = 0;
+      _switching = true;
+      _wake();
+    }
   }
 
   void _onScroll() {
     if (!mounted) return;
     setState(() {});
+    _wake();
+  }
+
+  void _onHandover() {
+    if (mounted) setState(() {});
+  }
+
+  void _wake() {
     if (!_ticker.isActive) {
       _last = Duration.zero;
       _ticker.start();
@@ -121,7 +167,14 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
   void _tick(Duration elapsed) {
     final dt = ((elapsed - _last).inMicroseconds / 1e6).clamp(0.0, 1 / 30);
     _last = elapsed;
-    final settled = _liquid.step(_target, dt);
+    var settled = _liquid.step(_target, dt);
+    if (_switching) {
+      if (_title.step(_targetFor(_glassScroll.value), dt)) {
+        _switching = false;
+      } else {
+        settled = false;
+      }
+    }
     setState(() {});
     if (settled) _ticker.stop();
   }
@@ -129,6 +182,7 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
   @override
   void dispose() {
     _glassScroll.removeListener(_onScroll);
+    GlassBarMorph.top.progress.removeListener(_onHandover);
     _ticker.dispose();
     super.dispose();
   }
@@ -148,23 +202,69 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
       // The capsule's spring heads for its new width from the next frame.
       WidgetsBinding.instance.addPostFrameCallback((_) => _onScroll());
     }
+    // A tab switch resizes the capsule to the new tab's buttons on the bar's
+    // spring, the old buttons dissolving inside it as it goes and the new
+    // ones swelling in — rather than the capsule jumping to its new width.
+    Widget swap(Widget child) => AnimatedSize(
+      duration: const Duration(milliseconds: 560),
+      curve: const GlassBarSpring(),
+      alignment: Alignment.centerRight,
+      clipBehavior: Clip.none,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) => FadeTransition(
+          opacity: animation,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.6, end: 1).animate(animation),
+            child: child,
+          ),
+        ),
+        // Only the new buttons size the capsule; the old ones fade out over
+        // it, pinned to its right end.
+        layoutBuilder: (current, previous) => Stack(
+          alignment: Alignment.centerRight,
+          clipBehavior: Clip.none,
+          children: [
+            for (final old in previous)
+              Positioned(top: 0, bottom: 0, right: 0, child: old),
+            ?current,
+          ],
+        ),
+        child: child,
+      ),
+    );
+    // The button at the capsule's end — the Inbox most tabs share, Settled
+    // on Persons — stays put across a switch to a tab that has it too; only
+    // what changes dissolves. The search field gets the inbox's room while
+    // it's up.
+    final trailing = index == 2
+        ? _TonalIconButton(
+            key: const ValueKey('settled'),
+            tooltip: 'Settled',
+            icon: const AppIcon(Icons.task_alt_rounded),
+            onPressed: () => _pushFromTop(context, '/persons/settled'),
+          )
+        : searching
+        ? const SizedBox.shrink(key: ValueKey('none'))
+        : _TonalIconButton(
+            key: const ValueKey('inbox'),
+            tooltip: 'Review Inbox',
+            icon: const AppIcon(Icons.inbox_outlined),
+            onPressed: () => _pushFromTop(context, '/inbox'),
+          );
     final actions = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        ...classic._tabActions(context, ref, index),
-        if (index == 2)
-          _TonalIconButton(
-            tooltip: 'Settled',
-            icon: const AppIcon(Icons.task_alt_rounded),
-            onPressed: () => context.push('/persons/settled'),
-          )
-        // The search field gets the inbox's room while it's up.
-        else if (!searching)
-          _TonalIconButton(
-            tooltip: 'Review Inbox',
-            icon: const AppIcon(Icons.inbox_outlined),
-            onPressed: () => context.push('/inbox'),
+        swap(
+          Row(
+            key: ValueKey(index),
+            mainAxisSize: MainAxisSize.min,
+            children: classic._tabActions(context, ref, index),
           ),
+        ),
+        swap(trailing),
       ],
     );
 
@@ -174,9 +274,17 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
     final pull = offset < 0 ? -offset : 0.0;
     // The title's own progress tracks the finger exactly; the capsule's
     // ([_liquid]) chases it on a spring.
-    final c = Curves.easeInOutCubic.transform(_targetFor(offset));
+    final c = Curves.easeInOutCubic.transform(_titleProgress.clamp(0.0, 1.0));
     final liquid = _liquid.value;
     final squash = (_liquid.velocity.abs() * 0.03).clamp(0.0, 0.06);
+    // A page growing out of the capsule takes its glass over.
+    final handover = GlassBarMorph.top.progress.value;
+    final ownGlass = handover == null
+        ? 1.0
+        : 1 -
+              Curves.easeIn.transform(
+                (handover.clamp(0.0, 1.0) / 0.3).clamp(0.0, 1.0),
+              );
 
     // Where the one title sits: under the bar at rest, inside the capsule
     // when collapsed.
@@ -238,40 +346,44 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
             child: LayoutBuilder(
               builder: (context, box) => Align(
                 alignment: Alignment.centerRight,
-                child: Transform(
-                  alignment: Alignment.centerRight,
-                  transform: Matrix4.diagonal3Values(
-                    1 + squash * 0.35,
-                    1 - squash,
-                    1,
-                  ),
-                  child: LiquidGlass(
-                    child: _GlassCapsuleScope(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 5),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Flexible(
-                              child: SizedBox(
-                                width: box.maxWidth * liquid.clamp(0.0, 1.0),
-                                // Laid out at full width and uncovered as
-                                // the capsule stretches, so it never
-                                // reflows mid-spring.
-                                child: searching
-                                    ? ClipRect(
-                                        child: OverflowBox(
-                                          alignment: Alignment.centerLeft,
-                                          minWidth: 0,
-                                          maxWidth: box.maxWidth,
-                                          child: const _GlassTxSearch(),
-                                        ),
-                                      )
-                                    : null,
+                child: Opacity(
+                  opacity: ownGlass,
+                  child: Transform(
+                    alignment: Alignment.centerRight,
+                    transform: Matrix4.diagonal3Values(
+                      1 + squash * 0.35,
+                      1 - squash,
+                      1,
+                    ),
+                    child: LiquidGlass(
+                      key: _glassTopCapsule,
+                      child: _GlassCapsuleScope(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 5),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(
+                                child: SizedBox(
+                                  width: box.maxWidth * liquid.clamp(0.0, 1.0),
+                                  // Laid out at full width and uncovered as
+                                  // the capsule stretches, so it never
+                                  // reflows mid-spring.
+                                  child: searching
+                                      ? ClipRect(
+                                          child: OverflowBox(
+                                            alignment: Alignment.centerLeft,
+                                            minWidth: 0,
+                                            maxWidth: box.maxWidth,
+                                            child: const _GlassTxSearch(),
+                                          ),
+                                        )
+                                      : null,
+                                ),
                               ),
-                            ),
-                            actions,
-                          ],
+                              actions,
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -294,7 +406,27 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
                   scale: titleScale,
                   alignment: Alignment.topLeft,
                   child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 220),
+                    duration: const Duration(milliseconds: 280),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    transitionBuilder: (child, animation) => FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0, 0.18),
+                          end: Offset.zero,
+                        ).animate(animation),
+                        child: child,
+                      ),
+                    ),
+                    // Both titles from the same left edge: the default
+                    // centres the shorter one on the longer while they
+                    // cross-fade, then it jumps left.
+                    layoutBuilder: (current, previous) => Stack(
+                      alignment: Alignment.topLeft,
+                      clipBehavior: Clip.none,
+                      children: [...previous, ?current],
+                    ),
                     child: Text(
                       title,
                       key: ValueKey(index),

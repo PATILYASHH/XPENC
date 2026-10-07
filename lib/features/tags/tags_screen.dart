@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/widgets/app_surfaces.dart';
+import '../../core/widgets/module_shortcuts.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/error_view.dart';
 import '../../data/database.dart';
@@ -56,6 +57,18 @@ class TagsScreen extends ConsumerWidget {
           return ListView(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 96).plusNavBar(context),
             children: [
+              const ModuleShortcuts([
+                ModuleShortcut(
+                  Icons.category_outlined,
+                  'Categories',
+                  '/more/categories',
+                ),
+                ModuleShortcut(
+                  Icons.receipt_long_outlined,
+                  'Transactions',
+                  '/more/transactions',
+                ),
+              ], padding: EdgeInsets.fromLTRB(0, 0, 0, 12)),
               if (tags.isEmpty)
                 _EmptyTags(theme: theme)
               else

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_surfaces.dart';
+import '../../core/widgets/module_shortcuts.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -43,6 +44,25 @@ class AutoScreen extends ConsumerWidget {
                 onPressed: () => showRecurringRuleSheet(context),
               ),
             ])],
+          ),
+          const SliverToBoxAdapter(
+            child: ModuleShortcuts([
+              ModuleShortcut(
+                Icons.calendar_month_outlined,
+                'Calendar',
+                '/more/calendar',
+              ),
+              ModuleShortcut(
+                Icons.savings_outlined,
+                'Goals & Loans',
+                '/more/goals',
+              ),
+              ModuleShortcut(
+                Icons.notifications_outlined,
+                'Notifications',
+                '/more/settings/notifications',
+              ),
+            ]),
           ),
           rulesAsync.when(
             loading: () => const SliverToBoxAdapter(

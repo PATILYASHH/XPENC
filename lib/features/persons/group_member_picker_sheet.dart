@@ -185,6 +185,7 @@ class _GroupMemberPickerSheetState
                                       name: c.name!,
                                       photoPath: c.photoPath,
                                       radius: 12,
+                                      glow: false,
                                     ),
                                     label: Text(c.name!),
                                     selected: true,

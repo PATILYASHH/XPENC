@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
@@ -12,6 +14,7 @@ import '../../core/theme/glass.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/group_tag.dart';
+import '../../core/widgets/module_shortcuts.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/motion.dart';
 import '../../data/currency_conversion.dart';
@@ -446,6 +449,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             ),
           ),
           SliverToBoxAdapter(child: _SummaryStrip(txns: matched)),
+          const SliverToBoxAdapter(child: ModuleShortcuts(_shortcuts)),
           body,
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
           const NavBarInsetSliver(),
@@ -1602,9 +1606,24 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
         ),
       ],
     );
-    // Glass: no band — the chips float as glass themselves (see
-    // [_FilterChips]), the rows passing behind them.
-    if (AppSurface.of(context).isGlass) return content;
+    // Glass: the chips float as glass themselves (see [_FilterChips]) over a
+    // frosted band, so the rows passing under them soften instead of
+    // reading through; the band fades out just below the chips.
+    if (AppSurface.of(context).isGlass) {
+      return Stack(
+        clipBehavior: Clip.none,
+        children: [
+          const Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: -_FrostBand.lip,
+            child: _FrostBand(),
+          ),
+          content,
+        ],
+      );
+    }
     return Container(color: background, child: content);
   }
 
@@ -1615,6 +1634,67 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
         oldDelegate.background != background;
   }
 }
+
+/// Glass: the frost behind the filter chips — the rows under it blurred and
+/// veiled — easing off over a [lip] below them (a lighter blur, the veil
+/// fading out) rather than ending on a hard edge. Draws nothing over the
+/// still wallpaper, which has nothing to blur.
+class _FrostBand extends StatelessWidget {
+  const _FrostBand();
+
+  static const double lip = 14;
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = AppSurface.of(context).tone;
+    final veil = tone.isDark
+        ? const Color(0xFF000000)
+        : const Color(0xFFF4F5FA);
+    Widget frost(double sigma, List<Color> colors) => ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: colors,
+            ),
+          ),
+        ),
+      ),
+    );
+    return IgnorePointer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: frost(9, [
+              veil.withValues(alpha: 0.5),
+              veil.withValues(alpha: 0.34),
+            ]),
+          ),
+          SizedBox(
+            height: lip,
+            child: frost(3.5, [
+              veil.withValues(alpha: 0.34),
+              veil.withValues(alpha: 0),
+            ]),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Where a transaction's labels and the ledger's ways in and out are managed.
+const _shortcuts = [
+  ModuleShortcut(Icons.category_outlined, 'Categories', '/more/categories'),
+  ModuleShortcut(Icons.sell_outlined, 'Tags', '/more/tags'),
+  ModuleShortcut(Icons.storefront_outlined, 'Payees', '/more/payees'),
+  ModuleShortcut(Icons.upload_file_outlined, 'Import CSV', '/import-csv'),
+  ModuleShortcut(Icons.download_outlined, 'Download data', '/more/export'),
+];
 
 /// The chip row's own selection model — a superset of [TxType] with an extra
 /// `linked` case (see the "Linked" chip, GitHub #68). Kept separate from
@@ -1667,14 +1747,19 @@ class _FilterChips extends StatelessWidget {
   }
 
   /// Glass chips: each its own floating pane of blurred glass over the
-  /// rows — one shared backdrop read for the row ([BackdropGroup]) — the
-  /// chosen one tinted with the accent.
+  /// frosted band — one shared backdrop read for the row ([BackdropGroup]) —
+  /// the chosen one tinted with the accent. Each is lit from beneath: the
+  /// chosen one casts its accent onto the band around it, the rest a faint
+  /// ambient glow.
   Widget _glass(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    final tone = AppSurface.of(context).tone;
     return BackdropGroup(
       child: ListView(
         scrollDirection: Axis.horizontal,
+        // The glow spills past the row's own box onto the band.
+        clipBehavior: Clip.none,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
         children: [
           for (final (label, icon, value) in _options)
@@ -1687,34 +1772,51 @@ class _FilterChips extends StatelessWidget {
                   scale: selected == value ? 1 : 0.96,
                   duration: const Duration(milliseconds: 220),
                   curve: Curves.easeOutCubic,
-                  child: LiquidGlass(
-                    grouped: true,
-                    blur: 10,
-                    refraction: 0,
-                    tint: selected == value ? cs.secondary : null,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          AppIcon(
-                            icon,
-                            size: 16,
-                            color: selected == value
-                                ? Colors.white
-                                : cs.onSurface,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            label,
-                            style: theme.textTheme.labelLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 260),
+                    curve: Curves.easeOutCubic,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(999),
+                      boxShadow: [
+                        BoxShadow(
+                          color: selected == value
+                              ? cs.secondary.withValues(alpha: 0.55)
+                              : (tone.isDark ? Colors.white : cs.secondary)
+                                    .withValues(alpha: 0.08),
+                          blurRadius: selected == value ? 20 : 12,
+                          spreadRadius: -2,
+                        ),
+                      ],
+                    ),
+                    child: LiquidGlass(
+                      grouped: true,
+                      blur: 12,
+                      refraction: 0,
+                      tint: selected == value ? cs.secondary : null,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            AppIcon(
+                              icon,
+                              size: 16,
                               color: selected == value
                                   ? Colors.white
                                   : cs.onSurface,
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 6),
+                            Text(
+                              label,
+                              style: theme.textTheme.labelLarge?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: selected == value
+                                    ? Colors.white
+                                    : cs.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

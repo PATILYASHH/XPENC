@@ -7,6 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/amount_keypad_field.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
+import '../../core/widgets/module_shortcuts.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -58,6 +59,27 @@ class BudgetsScreen extends ConsumerWidget {
     final categoriesAsync = ref.watch(categoriesProvider(CategoryKind.expense));
     final progress = ref.watch(budgetProgressProvider);
     final progressById = {for (final p in progress) p.category.id: p};
+    final shortcuts = [
+      const ModuleShortcut(
+        Icons.category_outlined,
+        'Categories',
+        '/more/categories',
+      ),
+      if (ref.watch(appModeProvider) == AppMode.pro &&
+          ref.watch(rtaEnabledProvider))
+        const ModuleShortcut(
+          Icons.savings_outlined,
+          'Ready to Assign',
+          '/more/ready-to-assign',
+        ),
+      const ModuleShortcut(Icons.autorenew_rounded, 'Auto', '/more/auto'),
+      const ModuleShortcut(Icons.insights_outlined, 'Stats', '/more/stats'),
+      const ModuleShortcut(
+        Icons.tune_rounded,
+        'Budget cycle',
+        '/more/settings/mode-budgeting',
+      ),
+    ];
 
     var totalBudgeted = const Money.zero();
     var totalSpent = const Money.zero();
@@ -94,6 +116,7 @@ class BudgetsScreen extends ConsumerWidget {
           progressById,
           totalBudgeted,
           totalSpent,
+          shortcuts,
         ),
       );
     }
@@ -129,6 +152,7 @@ class BudgetsScreen extends ConsumerWidget {
           progressById,
           totalBudgeted,
           totalSpent,
+          shortcuts,
         ),
       ),
     );
@@ -142,6 +166,7 @@ class BudgetsScreen extends ConsumerWidget {
     Map<int, BudgetProgress> progressById,
     Money totalBudgeted,
     Money totalSpent,
+    List<ModuleShortcut> shortcuts,
   ) => ListView(
     padding: const EdgeInsets.fromLTRB(
       20,
@@ -151,7 +176,9 @@ class BudgetsScreen extends ConsumerWidget {
     ).plusNavBar(context).plusTopBar(context),
     children: [
       _SummaryCard(budgeted: totalBudgeted, spent: totalSpent),
-      const SizedBox(height: 24),
+      const SizedBox(height: 12),
+      ModuleShortcuts(shortcuts, padding: EdgeInsets.zero),
+      const SizedBox(height: 16),
       Text(
         'Categories',
         style: theme.textTheme.titleSmall?.copyWith(color: cs.onSurfaceVariant),

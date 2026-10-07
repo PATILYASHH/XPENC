@@ -7,6 +7,7 @@ import '../../core/app_icons.dart';
 import '../../core/budget_cycle.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/bar_page_transition.dart';
 import '../../core/theme/theme_preset.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
@@ -416,71 +417,89 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 22, 24, 0),
+              // The figure and its graph open Customize dashboard — which
+              // accounts count toward this number. The metric tabs below
+              // keep their own taps.
+              InkWell(
+                onTap: () =>
+                    pushFromBar<void>(context, '/more/settings/dashboard'),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        _CardLabel(label),
-                        const Spacer(),
-                        const AmountVisibilityToggle(),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    if (metric == null)
-                      netWorth!.when(
-                        data: (money) => _BoldGradientText(
-                          active: isBold,
-                          child: AnimatedBalanceText(
-                            money,
-                            style: theme.textTheme.displaySmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -1,
-                            ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 22, 24, 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              _CardLabel(label),
+                              const SizedBox(width: 2),
+                              AppIcon(
+                                Icons.chevron_right_rounded,
+                                size: 18,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                              const Spacer(),
+                              const AmountVisibilityToggle(),
+                            ],
                           ),
-                        ),
-                        loading: () => const _InlineLoader(height: 44),
-                        error: (_, _) => const _InlineError(),
+                          const SizedBox(height: 8),
+                          if (metric == null)
+                            netWorth!.when(
+                              data: (money) => _BoldGradientText(
+                                active: isBold,
+                                child: AnimatedBalanceText(
+                                  money,
+                                  style: theme.textTheme.displaySmall?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: -1,
+                                  ),
+                                ),
+                              ),
+                              loading: () => const _InlineLoader(height: 44),
+                              error: (_, _) => const _InlineError(),
+                            )
+                          else if (headline == null)
+                            const _InlineLoader(height: 44)
+                          else
+                            AnimatedBalanceText(
+                              headline,
+                              style: theme.textTheme.displaySmall?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -1,
+                              ),
+                            ),
+                          if (breakdown != null && breakdown.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              breakdown,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                          // Below the figure, not beside it: `+₹12.34Cr this month`
+                          // beside a label has nowhere to go on a 360dp screen.
+                          if (trendReady && !delta.isZero) ...[
+                            const SizedBox(height: 10),
+                            _DeltaChip(delta: delta, color: tint),
+                          ],
+                        ],
+                      ),
+                    ),
+                    if (trendReady && trendValues.length >= 2)
+                      Sparkline(
+                        values: trendValues,
+                        color: tint,
+                        background:
+                            theme.cardTheme.color ?? theme.colorScheme.surface,
                       )
-                    else if (headline == null)
-                      const _InlineLoader(height: 44)
                     else
-                      AnimatedBalanceText(
-                        headline,
-                        style: theme.textTheme.displaySmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -1,
-                        ),
-                      ),
-                    if (breakdown != null && breakdown.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        breakdown,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                    // Below the figure, not beside it: `+₹12.34Cr this month`
-                    // beside a label has nowhere to go on a 360dp screen.
-                    if (trendReady && !delta.isZero) ...[
-                      const SizedBox(height: 10),
-                      _DeltaChip(delta: delta, color: tint),
-                    ],
+                      const SizedBox(height: 22),
                   ],
                 ),
               ),
-              if (trendReady && trendValues.length >= 2)
-                Sparkline(
-                  values: trendValues,
-                  color: tint,
-                  background:
-                      theme.cardTheme.color ?? theme.colorScheme.surface,
-                )
-              else
-                const SizedBox(height: 22),
               _MoneyMetricTabs(
                 selected: _metric,
                 onSelect: (m) =>
@@ -1246,7 +1265,6 @@ class _PersonDuesTile extends StatelessWidget {
     );
   }
 }
-
 
 // ── 3.5 Upcoming ─────────────────────────────────────────────────────────
 

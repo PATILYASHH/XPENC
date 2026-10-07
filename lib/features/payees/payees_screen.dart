@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_surfaces.dart';
+import '../../core/widgets/module_shortcuts.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/providers.dart';
 import '../persons/person_avatar.dart';
@@ -36,6 +37,25 @@ class PayeesScreen extends ConsumerWidget {
             SliverAppBar(pinned: true, title: const Text('Payees')),
           SliverToBoxAdapter(
             child: _TotalsHeader(net: net, count: summaries.length),
+          ),
+          const SliverToBoxAdapter(
+            child: ModuleShortcuts([
+              ModuleShortcut(
+                Icons.people_alt_outlined,
+                'Persons',
+                '/more/persons',
+              ),
+              ModuleShortcut(
+                Icons.receipt_long_outlined,
+                'Transactions',
+                '/more/transactions',
+              ),
+              ModuleShortcut(
+                Icons.category_outlined,
+                'Categories',
+                '/more/categories',
+              ),
+            ]),
           ),
           if (summaries.isEmpty)
             const SliverToBoxAdapter(child: _EmptyPayees())

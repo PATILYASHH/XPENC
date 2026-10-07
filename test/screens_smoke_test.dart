@@ -395,7 +395,12 @@ void main() {
     expect(find.text('XPENC SCORE'), findsOneWidget);
     // One seeded income + two expenses is under the 5-entry minimum.
     expect(find.text('Not enough data yet'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Recurring'), 200);
+    await tester.scrollUntilVisible(
+      find.text('Recurring'),
+      200,
+      // The hub itself, not its sideways row of shortcuts.
+      scrollable: find.byType(Scrollable).first,
+    );
     for (final m in StatsModule.values) {
       expect(find.text(m.title), findsWidgets, reason: m.title);
     }

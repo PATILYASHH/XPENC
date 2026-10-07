@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/budget_cycle.dart';
 import '../../core/widgets/app_surfaces.dart';
+import '../../core/widgets/module_shortcuts.dart';
 import '../../data/providers.dart';
 import 'stats_modules.dart';
 import 'stats_sections.dart';
@@ -40,7 +41,30 @@ class StatsScreen extends ConsumerWidget {
       ).plusNavBar(context).plusTopBar(context),
       children: [
         const XpencScoreCard(),
-        const SizedBox(height: 28),
+        const SizedBox(height: 12),
+        const ModuleShortcuts([
+          ModuleShortcut(
+            Icons.account_balance_outlined,
+            'Account reports',
+            '/more/account-reports',
+          ),
+          ModuleShortcut(
+            Icons.calendar_month_outlined,
+            'Calendar',
+            '/more/calendar',
+          ),
+          ModuleShortcut(
+            Icons.category_outlined,
+            'Categories',
+            '/more/categories',
+          ),
+          ModuleShortcut(
+            Icons.download_outlined,
+            'Download data',
+            '/more/export',
+          ),
+        ], padding: EdgeInsets.zero),
+        const SizedBox(height: 16),
         const SectionCaption('This month'),
         const ThisMonthSection(),
         const SizedBox(height: 28),

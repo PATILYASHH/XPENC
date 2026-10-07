@@ -9,6 +9,7 @@ import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/amount_keypad_field.dart';
 import '../../core/widgets/app_surfaces.dart';
+import '../../core/widgets/module_shortcuts.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -79,9 +80,33 @@ class _SavingsGoalsScreenState extends ConsumerState<SavingsGoalsScreen>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: const [_GoalsTab(), _LoansTab()],
+      body: Column(
+        children: [
+          const ModuleShortcuts([
+            ModuleShortcut(
+              Icons.account_balance_wallet_outlined,
+              'Accounts',
+              '/more/accounts',
+            ),
+            ModuleShortcut(Icons.autorenew_rounded, 'Auto', '/more/auto'),
+            ModuleShortcut(
+              Icons.request_quote_outlined,
+              'Loan EMI',
+              '/more/calculators/loan',
+            ),
+            ModuleShortcut(
+              Icons.trending_up_rounded,
+              'SIP & Lumpsum',
+              '/more/calculators/sip',
+            ),
+          ], padding: EdgeInsets.fromLTRB(20, 10, 20, 0)),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: const [_GoalsTab(), _LoansTab()],
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         tooltip: isGoalsTab ? 'New goal' : 'New loan',

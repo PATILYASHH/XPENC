@@ -5,9 +5,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/bar_page_transition.dart';
 import '../../core/theme/glass.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
+import '../../core/widgets/morph_dialog.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import 'contact_import.dart';
@@ -50,35 +52,57 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
     super.dispose();
   }
 
-  Future<void> _createGroup(BuildContext context, WidgetRef ref) async {
+  /// [button] is the New group button: under Glass the dialog grows out of
+  /// it.
+  Future<void> _createGroup(
+    BuildContext context,
+    WidgetRef ref, {
+    BuildContext? button,
+  }) async {
     final controller = TextEditingController();
-    final name = await showAppDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('New group'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(
-            labelText: 'Name',
-            hintText: 'e.g. Goa Trip, Flatmates',
-          ),
-          onSubmitted: (value) => Navigator.of(dialogContext).pop(value.trim()),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () =>
-                Navigator.of(dialogContext).pop(controller.text.trim()),
-            child: const Text('Next'),
-          ),
-        ],
+    Widget field(BuildContext dialogContext) => TextField(
+      controller: controller,
+      autofocus: true,
+      textCapitalization: TextCapitalization.words,
+      decoration: const InputDecoration(
+        labelText: 'Name',
+        hintText: 'e.g. Goa Trip, Flatmates',
       ),
+      onSubmitted: (value) => Navigator.of(dialogContext).pop(value.trim()),
     );
+    List<Widget> actions(BuildContext dialogContext) => [
+      TextButton(
+        onPressed: () => Navigator.of(dialogContext).pop(),
+        child: const Text('Cancel'),
+      ),
+      FilledButton(
+        onPressed: () =>
+            Navigator.of(dialogContext).pop(controller.text.trim()),
+        child: const Text('Next'),
+      ),
+    ];
+    final theme = Theme.of(context);
+    final name = button != null && AppSurface.of(context).isGlass
+        ? await showMorphDialog<String>(
+            from: button,
+            color:
+                theme.floatingActionButtonTheme.backgroundColor ??
+                theme.colorScheme.secondary,
+            icon: const AppIcon(Icons.group_add_rounded),
+            builder: (dialogContext) => MorphDialogBody(
+              title: const Text('New group'),
+              content: field(dialogContext),
+              actions: actions(dialogContext),
+            ),
+          )
+        : await showAppDialog<String>(
+            context: context,
+            builder: (dialogContext) => AlertDialog(
+              title: const Text('New group'),
+              content: field(dialogContext),
+              actions: actions(dialogContext),
+            ),
+          );
     // Deliberately not disposed: `showDialog`'s Future resolves as soon as
     // Navigator.pop runs, before the dialog's exit transition finishes —
     // disposing here can crash a still-animating TextField with "A
@@ -114,21 +138,29 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
           ? null
           : AppTopBar(
               title: const Text('Persons'),
+              // Under Glass, Archived and Settled grow out of the bar's
+              // capsule (the button's own context finds it).
               actions: [
-                IconButton(
-                  tooltip: 'Archived',
-                  icon: const AppIcon(Icons.inventory_2_outlined),
-                  onPressed: () => context.push('/persons/archived'),
+                Builder(
+                  builder: (button) => IconButton(
+                    tooltip: 'Archived',
+                    icon: const AppIcon(Icons.inventory_2_outlined),
+                    onPressed: () =>
+                        pushFromTopBar<void>(button, '/persons/archived'),
+                  ),
                 ),
                 IconButton(
                   tooltip: 'Add person',
                   icon: const AppIcon(Icons.person_add_alt_1_outlined),
                   onPressed: () => showAddPersonDialog(context, ref),
                 ),
-                IconButton(
-                  tooltip: 'Settled',
-                  icon: const AppIcon(Icons.task_alt_rounded),
-                  onPressed: () => context.push('/persons/settled'),
+                Builder(
+                  builder: (button) => IconButton(
+                    tooltip: 'Settled',
+                    icon: const AppIcon(Icons.task_alt_rounded),
+                    onPressed: () =>
+                        pushFromTopBar<void>(button, '/persons/settled'),
+                  ),
                 ),
               ],
             ),
@@ -161,14 +193,18 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
       floatingActionButton: _liftedFab(
         fabLift,
         _tabController.index == 1
-            ? FloatingActionButton(
-                tooltip: 'New group',
-                onPressed: () => _createGroup(context, ref),
-                // Glass: not a second ➕ stacked on the shell's own.
-                child: AppIcon(
-                  AppSurface.of(context).isGlass
-                      ? Icons.group_add_rounded
-                      : Icons.add_rounded,
+            ? MorphDialogSource(
+                child: Builder(
+                  builder: (button) => FloatingActionButton(
+                    tooltip: 'New group',
+                    onPressed: () => _createGroup(context, ref, button: button),
+                    // Glass: not a second ➕ stacked on the shell's own.
+                    child: AppIcon(
+                      AppSurface.of(context).isGlass
+                          ? Icons.group_add_rounded
+                          : Icons.add_rounded,
+                    ),
+                  ),
                 ),
               )
             : _tabController.index == 0 && ussdPayEnabled

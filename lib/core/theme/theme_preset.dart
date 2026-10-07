@@ -29,7 +29,7 @@ enum ThemeStyle {
   ),
   glass(
     label: 'Glass',
-    description: 'Liquid Glass, like iPhone — on black',
+    description: 'Liquid Glass Theme',
     icon: Icons.blur_on_rounded,
     lightPalette: AppPalettes.glass,
     darkPalette: AppPalettes.glassDark,
