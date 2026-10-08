@@ -7,6 +7,7 @@ import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/bar_page_transition.dart';
 import '../../core/theme/glass.dart';
+import '../../core/widgets/action_sheet.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/morph_dialog.dart';
@@ -492,80 +493,57 @@ class _PersonTile extends ConsumerWidget {
   /// (permanent, takes their whole history with them).
   Future<void> _showActions(BuildContext context, WidgetRef ref) async {
     final theme = Theme.of(context);
-    final action = await showAppSheet<_PersonAction>(
+    final action = await showActionSheet<_PersonAction>(
       context: context,
-      showDragHandle: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  person.name,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-            AppListTile(
-              leading: const AppIcon(Icons.edit_outlined),
-              title: const Text('Edit'),
-              subtitle: const Text('Name, UPI ID, phone and more.'),
-              onTap: () => Navigator.of(sheetContext).pop(_PersonAction.edit),
-            ),
-            AppListTile(
-              leading: const AppIcon(Icons.contacts_outlined),
-              title: const Text('Link contact'),
-              subtitle: const Text('Import their photo and phone number.'),
-              onTap: () =>
-                  Navigator.of(sheetContext).pop(_PersonAction.linkContact),
-            ),
-            if (person.isSettled)
-              AppListTile(
-                leading: const AppIcon(Icons.undo_rounded),
-                title: const Text('Move out of Settled'),
-                subtitle: const Text('Back to the Individual list.'),
-                onTap: () =>
-                    Navigator.of(sheetContext).pop(_PersonAction.unsettle),
-              )
-            else if (balance.isZero)
-              AppListTile(
-                leading: const AppIcon(Icons.check_circle_outline_rounded),
-                title: const Text('Move to Settled'),
-                subtitle: const Text('Balance is zero. History stays intact.'),
-                onTap: () =>
-                    Navigator.of(sheetContext).pop(_PersonAction.settle),
-              ),
-            AppListTile(
-              leading: const AppIcon(Icons.archive_outlined),
-              title: const Text('Archive'),
-              subtitle: const Text('Hide them. History stays intact.'),
-              onTap: () =>
-                  Navigator.of(sheetContext).pop(_PersonAction.archive),
-            ),
-            AppListTile(
-              leading: AppIcon(
-                Icons.delete_outline,
-                color: theme.colorScheme.error,
-              ),
-              title: Text(
-                'Delete',
-                style: TextStyle(color: theme.colorScheme.error),
-              ),
-              subtitle: const Text('Permanently, with all their history.'),
-              onTap: () => Navigator.of(sheetContext).pop(_PersonAction.remove),
-            ),
-            const SizedBox(height: 8),
-          ],
+      title: person.name,
+      optionCount: person.isSettled || balance.isZero ? 5 : 4,
+      options: (sheetContext) => [
+        AppListTile(
+          leading: const AppIcon(Icons.edit_outlined),
+          title: const Text('Edit'),
+          subtitle: const Text('Name, UPI ID, phone and more.'),
+          onTap: () => Navigator.of(sheetContext).pop(_PersonAction.edit),
         ),
-      ),
+        AppListTile(
+          leading: const AppIcon(Icons.contacts_outlined),
+          title: const Text('Link contact'),
+          subtitle: const Text('Import their photo and phone number.'),
+          onTap: () =>
+              Navigator.of(sheetContext).pop(_PersonAction.linkContact),
+        ),
+        if (person.isSettled)
+          AppListTile(
+            leading: const AppIcon(Icons.undo_rounded),
+            title: const Text('Move out of Settled'),
+            subtitle: const Text('Back to the Individual list.'),
+            onTap: () => Navigator.of(sheetContext).pop(_PersonAction.unsettle),
+          )
+        else if (balance.isZero)
+          AppListTile(
+            leading: const AppIcon(Icons.check_circle_outline_rounded),
+            title: const Text('Move to Settled'),
+            subtitle: const Text('Balance is zero. History stays intact.'),
+            onTap: () => Navigator.of(sheetContext).pop(_PersonAction.settle),
+          ),
+        AppListTile(
+          leading: const AppIcon(Icons.archive_outlined),
+          title: const Text('Archive'),
+          subtitle: const Text('Hide them. History stays intact.'),
+          onTap: () => Navigator.of(sheetContext).pop(_PersonAction.archive),
+        ),
+        AppListTile(
+          leading: AppIcon(
+            Icons.delete_outline,
+            color: theme.colorScheme.error,
+          ),
+          title: Text(
+            'Delete',
+            style: TextStyle(color: theme.colorScheme.error),
+          ),
+          subtitle: const Text('Permanently, with all their history.'),
+          onTap: () => Navigator.of(sheetContext).pop(_PersonAction.remove),
+        ),
+      ],
     );
     if (action == null || !context.mounted) return;
     if (action == _PersonAction.edit) {
@@ -836,66 +814,44 @@ class _GroupTile extends ConsumerWidget {
   Future<void> _showActions(BuildContext context, WidgetRef ref) async {
     final theme = Theme.of(context);
     final balance = ref.read(groupBalanceProvider(group.id));
-    final action = await showAppSheet<_GroupAction>(
+    final action = await showActionSheet<_GroupAction>(
       context: context,
-      showDragHandle: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  group.name,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-            if (group.isSettled)
-              AppListTile(
-                leading: const AppIcon(Icons.undo_rounded),
-                title: const Text('Move out of Settled'),
-                subtitle: const Text('Back to the Group list.'),
-                onTap: () =>
-                    Navigator.of(sheetContext).pop(_GroupAction.unsettle),
-              )
-            else if (balance.isZero)
-              AppListTile(
-                leading: const AppIcon(Icons.check_circle_outline_rounded),
-                title: const Text('Move to Settled'),
-                subtitle: const Text('Balance is zero. History stays intact.'),
-                onTap: () =>
-                    Navigator.of(sheetContext).pop(_GroupAction.settle),
-              ),
-            AppListTile(
-              leading: const AppIcon(Icons.archive_outlined),
-              title: const Text('Archive'),
-              subtitle: const Text('Hide it. Expense history stays intact.'),
-              onTap: () => Navigator.of(sheetContext).pop(_GroupAction.archive),
-            ),
-            AppListTile(
-              leading: AppIcon(
-                Icons.delete_outline,
-                color: theme.colorScheme.error,
-              ),
-              title: Text(
-                'Delete',
-                style: TextStyle(color: theme.colorScheme.error),
-              ),
-              subtitle: const Text('Permanently, with all its expenses.'),
-              onTap: () => Navigator.of(sheetContext).pop(_GroupAction.remove),
-            ),
-            const SizedBox(height: 8),
-          ],
+      title: group.name,
+      optionCount: group.isSettled || balance.isZero ? 3 : 2,
+      options: (sheetContext) => [
+        if (group.isSettled)
+          AppListTile(
+            leading: const AppIcon(Icons.undo_rounded),
+            title: const Text('Move out of Settled'),
+            subtitle: const Text('Back to the Group list.'),
+            onTap: () => Navigator.of(sheetContext).pop(_GroupAction.unsettle),
+          )
+        else if (balance.isZero)
+          AppListTile(
+            leading: const AppIcon(Icons.check_circle_outline_rounded),
+            title: const Text('Move to Settled'),
+            subtitle: const Text('Balance is zero. History stays intact.'),
+            onTap: () => Navigator.of(sheetContext).pop(_GroupAction.settle),
+          ),
+        AppListTile(
+          leading: const AppIcon(Icons.archive_outlined),
+          title: const Text('Archive'),
+          subtitle: const Text('Hide it. Expense history stays intact.'),
+          onTap: () => Navigator.of(sheetContext).pop(_GroupAction.archive),
         ),
-      ),
+        AppListTile(
+          leading: AppIcon(
+            Icons.delete_outline,
+            color: theme.colorScheme.error,
+          ),
+          title: Text(
+            'Delete',
+            style: TextStyle(color: theme.colorScheme.error),
+          ),
+          subtitle: const Text('Permanently, with all its expenses.'),
+          onTap: () => Navigator.of(sheetContext).pop(_GroupAction.remove),
+        ),
+      ],
     );
     if (action == null || !context.mounted) return;
     if (action == _GroupAction.settle || action == _GroupAction.unsettle) {
