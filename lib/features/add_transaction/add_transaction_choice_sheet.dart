@@ -14,6 +14,11 @@ import '../../core/widgets/nav_bar_inset.dart';
 /// [hasTransactionTemplatesProvider] is true — a user with no templates yet
 /// still gets the old one-tap-straight-to-`/add` behaviour, unchanged.
 Future<void> openAddTransactionChoiceSheet(BuildContext context) async {
+  // Taken before the sheet opens: under Glass the sheet grows out of the tab
+  // bar and the ➕ that opened it leaves the tree, so [context] is gone by
+  // the time a choice comes back — and checking it dropped every choice.
+  // The router outlives both.
+  final router = GoRouter.of(context);
   final result = await showAppSheet<_AddChoiceResult>(
     context: context,
     isScrollControlled: true,
@@ -23,8 +28,8 @@ Future<void> openAddTransactionChoiceSheet(BuildContext context) async {
     ),
     builder: (_) => const _AddChoiceSheet(),
   );
-  if (result == null || !context.mounted) return;
-  context.push(
+  if (result == null) return;
+  router.push(
     result.templateId == null ? '/add' : '/add?template=${result.templateId}',
   );
 }
