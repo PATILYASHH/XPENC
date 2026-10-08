@@ -174,6 +174,15 @@ void main() {
       await tester.pump(const Duration(milliseconds: 60));
     }
     expect(tester.takeException(), isNull);
+    // The test locale is en_US, so the region pre-selects a country and
+    // Next is live straight away.
+    expect(find.text('Where do you live?'), findsOneWidget);
+
+    await tester.tap(find.text('Next'));
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 60));
+    }
+    expect(tester.takeException(), isNull);
     expect(find.text('How do you want to track money?'), findsOneWidget);
     expect(find.text('Skip'), findsOneWidget);
 
@@ -188,7 +197,7 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('Onboarding returning-user path offers restore then Continue', (
+  testWidgets('Onboarding returning-user path offers restore, the country, then Continue', (
     tester,
   ) async {
     await pump(tester, const OnboardingScreen());
@@ -207,7 +216,15 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Restore your data?'), findsOneWidget);
 
+    // Skipping the restore still lands on the country pick.
     await tester.tap(find.text('Skip'));
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 60));
+    }
+    expect(tester.takeException(), isNull);
+    expect(find.text('Where do you live?'), findsOneWidget);
+
+    await tester.tap(find.text('Next'));
     for (var i = 0; i < 6; i++) {
       await tester.pump(const Duration(milliseconds: 60));
     }

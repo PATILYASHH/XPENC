@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/branding/brand_mark.dart';
+import '../../core/countries.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
@@ -10,19 +11,20 @@ import '../../data/providers.dart';
 import '../../data/tables.dart' show AppMode;
 import '../data_export/backup_service.dart' show backupAppFolder;
 import '../../core/widgets/nav_bar_inset.dart';
+import 'country_step.dart';
 
 const _pageDuration = Duration(milliseconds: 280);
 
 enum _UserPath { newUser, oldUser }
 
-/// First-run wizard. Welcome, then a fork: new users get a short guided tour
-/// (NU1–NU6), returning users get a restore-or-skip screen (OU1–OU2).
-/// Purely explanatory — no data is written until the final "Get Started" /
-/// "Continue" tap (just [AppDatabase.markOnboarded]), or the explicit
-/// restore action on OU1. Currency, opening balances and accounts are all
-/// left to their normal in-app flows after onboarding; the app already
-/// seeds a ₹0 Cash account and a default currency on a fresh install, so
-/// nothing here is required for the app to be usable.
+/// First-run wizard. Welcome, then a fork: new users pick their country and
+/// get a short guided tour (NU0–NU6), returning users get a restore-or-skip
+/// screen, then the country pick if they skipped (OU1–OU3). No data is
+/// written until the final "Get Started" / "Continue" tap (the parent
+/// currency, the mode, [AppDatabase.markOnboarded]), or the explicit
+/// restore action on OU1 — which brings its own currency, so a restore
+/// never reaches the country step. Opening balances and accounts are left
+/// to their normal in-app flows; the app already seeds a 0 Cash account.
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -44,6 +46,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   /// `Settings.appMode`'s schema default.
   AppMode _chosenMode = AppMode.medium;
 
+  /// The country the phone's region points at, if we list it — pre-selected
+  /// on [CountryStep], and still only a suggestion.
+  final Country? _detectedCountry = countryForLocales(
+    WidgetsBinding.instance.platformDispatcher.locales,
+  );
+
+  /// Set on [CountryStep]; written as the parent currency on finish. Null
+  /// only when the region gave no suggestion and nothing's been tapped yet,
+  /// and then Next stays disabled on that step.
+  late CurrencyChoice? _currencyChoice = _detectedCountry == null
+      ? null
+      : CurrencyChoice.ofCountry(_detectedCountry);
+
   /// Only [_Welcome] and [_PathChoice] exist until a path is chosen — after
   /// that the branch's pages are appended. Index 2 is always the first page
   /// of whichever branch is active, and the last index is always that
@@ -54,6 +69,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     ...switch (_path) {
       null => const <Widget>[],
       _UserPath.newUser => [
+        _countryStep(),
         _EnvelopeModeStep(
           selected: _chosenMode,
           onChoose: _chooseMode,
@@ -67,14 +83,26 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       ],
       _UserPath.oldUser => [
         _RestoreStep(
-          onSkip: _skipToEnd,
+          // Not [_skipToEnd]: skipping the restore still needs a currency.
+          onSkip: _next,
           onRestore: _restoreFromDevice,
           restoring: _restoring,
         ),
+        _countryStep(),
         const _WelcomeBackStep(),
       ],
     },
   ];
+
+  Widget _countryStep() => CountryStep(
+    selection: _currencyChoice,
+    detected: _detectedCountry,
+    onSelect: (choice) => setState(() => _currencyChoice = choice),
+  );
+
+  /// Next waits on a currency while the country step is showing.
+  bool get _onCountryStep =>
+      _pages[_page.clamp(0, _pages.length - 1)] is CountryStep;
 
   @override
   void dispose() {
@@ -139,6 +167,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     setState(() => _submitting = true);
     try {
       final db = ref.read(dbProvider);
+      // Every path that reaches here passed the country step, whose Next
+      // needs a choice — the null check is only belt and braces.
+      final choice = _currencyChoice;
+      if (choice != null) await db.setCurrencyCode(choice.currency.code);
       await db.markOnboarded();
       // Old-user path already got its tier from the `from < 72` migration
       // backfill (Pro if any account was already in Envelope Mode, else
@@ -239,6 +271,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               page: page,
               lastPage: pages.length - 1,
               showNext: page != 1,
+              nextEnabled: !_onCountryStep || _currencyChoice != null,
               finishLabel: _path == _UserPath.oldUser ? 'Continue' : 'Get Started',
               submitting: _submitting,
               onNext: _next,
@@ -949,6 +982,7 @@ class _BottomBar extends StatelessWidget {
     required this.page,
     required this.lastPage,
     required this.showNext,
+    required this.nextEnabled,
     required this.finishLabel,
     required this.submitting,
     required this.onNext,
@@ -958,6 +992,7 @@ class _BottomBar extends StatelessWidget {
   final int page;
   final int lastPage;
   final bool showNext;
+  final bool nextEnabled;
   final String finishLabel;
   final bool submitting;
   final VoidCallback onNext;
@@ -984,7 +1019,7 @@ class _BottomBar extends StatelessWidget {
               const Spacer(),
               if (showNext)
                 FilledButton(
-                  onPressed: submitting ? null : onNext,
+                  onPressed: submitting || !nextEnabled ? null : onNext,
                   style: FilledButton.styleFrom(
                     // The app theme sets `minimumSize: Size.fromHeight(56)` — an
                     // INFINITE minimum width. A Row hands its non-flex children
