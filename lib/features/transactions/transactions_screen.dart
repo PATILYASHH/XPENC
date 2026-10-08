@@ -412,7 +412,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           SliverToBoxAdapter(child: _SummaryStrip(txns: matched)),
           body,
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
-        const NavBarInsetSliver(),],
+          const NavBarInsetSliver(),
+        ],
       ),
     );
   }
@@ -739,49 +740,60 @@ class _DayHeader extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Icon(_icon, size: 15, color: cs.onSurfaceVariant),
-          const SizedBox(width: 8),
+          // Left-side grouping: Takes only necessary space, allows text truncation if needed.
           Flexible(
-            child: Text(
-              _label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(_icon, size: 15, color: cs.onSurfaceVariant),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    _label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: cs.onSurface,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                      fontFeatures: kTabularFigures,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Right-side element: Pinned strictly to the right edge.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerRight,
+            child: MoneyText(
+              net,
+              signed: true,
+              color: netColor,
               style: theme.textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.w700,
-                color: cs.onSurface,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              '$count',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: cs.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-                fontFeatures: kTabularFigures,
-              ),
-            ),
-          ),
-          const Spacer(),
-          const SizedBox(width: 8),
-          Flexible(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerRight,
-              child: MoneyText(
-                net,
-                signed: true,
-                color: netColor,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
               ),
             ),
           ),
