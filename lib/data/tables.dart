@@ -394,6 +394,11 @@ class Transactions extends Table {
   BoolColumn get needsAmountReview =>
       boolean().withDefault(const Constant(false))();
 
+  /// NCT — "non-capturable transaction" (GitHub #143): frosted wherever it's
+  /// listed until held, and a capture taken while it's showing is blocked.
+  /// See `lib/core/security/nct.dart`. Off by default.
+  BoolColumn get isNct => boolean().withDefault(const Constant(false))();
+
   /// Ties together the legs of one hybrid/split payment — one purchase paid
   /// from several accounts at once (see GitHub #43). Every leg in a group
   /// points at the *first* leg inserted, including that leg itself, so

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/budget_cycle.dart';
 import '../../core/money.dart';
+import '../../core/security/nct.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
@@ -305,34 +306,39 @@ class _TxRow extends StatelessWidget {
       if (entry.isSplit) 'split',
     ].join(' · ');
 
-    return AppListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      leading: CircleAvatar(
-        backgroundColor: AppColors.expense.withValues(alpha: 0.14),
-        foregroundColor: AppColors.expense,
-        child: const AppIcon(Icons.north_east_rounded, size: 20),
-      ),
-      title: Text(
-        title,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
+    return NctVeil(
+      active: tx.isNct,
+      child: AppListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        leading: CircleAvatar(
+          backgroundColor: AppColors.expense.withValues(alpha: 0.14),
+          foregroundColor: AppColors.expense,
+          child: const AppIcon(Icons.north_east_rounded, size: 20),
         ),
-      ),
-      trailing: MoneyText(
-        -entry.amount,
-        signed: true,
-        color: AppColors.expense,
-        style: theme.textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.w600,
+        title: Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodyLarge?.copyWith(
+            fontWeight: FontWeight.w500,
+          ),
         ),
+        subtitle: Text(
+          subtitle,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        trailing: MoneyText(
+          -entry.amount,
+          signed: true,
+          color: AppColors.expense,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        onTap: () => context.push('/transaction/${tx.id}'),
       ),
-      onTap: () => context.push('/transaction/${tx.id}'),
     );
   }
 }

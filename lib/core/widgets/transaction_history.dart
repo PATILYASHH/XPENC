@@ -8,6 +8,7 @@ import '../../data/tables.dart';
 import '../app_icons.dart';
 import '../currency.dart';
 import '../money.dart';
+import '../security/nct.dart';
 import '../theme/app_colors.dart';
 import 'app_surfaces.dart';
 import 'custom_icon_badge.dart';
@@ -217,29 +218,32 @@ class HistoryRow extends StatelessWidget {
 
     final String? subtitle = _subtitle(isTransfer);
 
-    return AppListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      onTap: () => context.push('/transaction/${tx.id}'),
-      leading: CircleAvatar(
-        backgroundColor: accent.withValues(alpha: 0.15),
-        child: transactionRowIcon(
-          customIcon: tx.customIcon,
-          fallback: icon,
-          size: 22,
-          color: accent,
+    return NctVeil(
+      active: tx.isNct,
+      child: AppListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        onTap: () => context.push('/transaction/${tx.id}'),
+        leading: CircleAvatar(
+          backgroundColor: accent.withValues(alpha: 0.15),
+          child: transactionRowIcon(
+            customIcon: tx.customIcon,
+            fallback: icon,
+            size: 22,
+            color: accent,
+          ),
         ),
-      ),
-      title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: subtitle == null
-          ? null
-          : Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
-      trailing: MoneyText(
-        movement,
-        signed: true,
-        color: colorForTxType(tx.type),
-        currency: currency,
-        style: theme.textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.w700,
+        title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+        subtitle: subtitle == null
+            ? null
+            : Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+        trailing: MoneyText(
+          movement,
+          signed: true,
+          color: colorForTxType(tx.type),
+          currency: currency,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
     );

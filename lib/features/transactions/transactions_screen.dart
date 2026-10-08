@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import '../../core/app_icons.dart';
 import '../../core/currency.dart';
 import '../../core/money.dart';
+import '../../core/security/nct.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/glass.dart';
 import '../../core/widgets/app_surfaces.dart';
@@ -1097,138 +1098,145 @@ class _TxCard extends StatelessWidget {
         child: PressScale(
           child: AppCard(
             clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: () => context.push('/transaction/${tx.id}'),
-              onLongPress: () => _openQuickActions(
-                context,
-                tx,
-                title,
-                onDelete,
-                onCreateTemplate,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-                child: Row(
-                  children: [
-                    // A person's money shows the person: their photo, or
-                    // their initials.
-                    if (person != null)
-                      SizedBox.square(
-                        dimension: 42,
-                        child: PersonAvatar(
-                          name: person!.name,
-                          photoPath: person!.photoPath,
-                          radius: 21,
-                        ),
-                      )
-                    else
-                      Container(
-                        width: 42,
-                        height: 42,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: iconColor.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: transactionRowIcon(
-                          customIcon: tx.customIcon,
-                          fallback: icon,
-                          size: 21,
-                          color: iconColor,
-                        ),
+            child: NctVeil(
+              active: tx.isNct,
+              child: InkWell(
+                onTap: () => context.push('/transaction/${tx.id}'),
+                // An NCT row's hold is its peek (see NctVeil); its quick
+                // actions are on its detail page.
+                onLongPress: tx.isNct
+                    ? null
+                    : () => _openQuickActions(
+                        context,
+                        tx,
+                        title,
+                        onDelete,
+                        onCreateTemplate,
                       ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
-                            children: [
-                              if (tx.recurringRuleId != null) ...[
-                                AppIcon(
-                                  Icons.autorenew_rounded,
-                                  size: 13,
-                                  color: cs.onSurfaceVariant,
-                                ),
-                                const SizedBox(width: 4),
-                              ],
-                              if (tx.needsAmountReview) ...[
-                                Tooltip(
-                                  message:
-                                      'Posted from an estimate — tap to '
-                                      'confirm the exact amount.',
-                                  child: AppIcon(
-                                    Icons.error_outline_rounded,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                  child: Row(
+                    children: [
+                      // A person's money shows the person: their photo, or
+                      // their initials.
+                      if (person != null)
+                        SizedBox.square(
+                          dimension: 42,
+                          child: PersonAvatar(
+                            name: person!.name,
+                            photoPath: person!.photoPath,
+                            radius: 21,
+                          ),
+                        )
+                      else
+                        Container(
+                          width: 42,
+                          height: 42,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: iconColor.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: transactionRowIcon(
+                            customIcon: tx.customIcon,
+                            fallback: icon,
+                            size: 21,
+                            color: iconColor,
+                          ),
+                        ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              children: [
+                                if (tx.recurringRuleId != null) ...[
+                                  AppIcon(
+                                    Icons.autorenew_rounded,
                                     size: 13,
-                                    color: AppColors.expense,
+                                    color: cs.onSurfaceVariant,
+                                  ),
+                                  const SizedBox(width: 4),
+                                ],
+                                if (tx.needsAmountReview) ...[
+                                  Tooltip(
+                                    message:
+                                        'Posted from an estimate — tap to '
+                                        'confirm the exact amount.',
+                                    child: AppIcon(
+                                      Icons.error_outline_rounded,
+                                      size: 13,
+                                      color: AppColors.expense,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                ],
+                                Flexible(
+                                  child: Text(
+                                    title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.bodyLarge?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                 ),
-                                const SizedBox(width: 4),
                               ],
-                              Flexible(
-                                child: Text(
-                                  title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.bodyLarge?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                            ),
+                            const SizedBox(height: 3),
+                            _Meta(
+                              isTransfer: isTransfer,
+                              account: account,
+                              toAccount: toAccount,
+                              payee: showPayee ? payee : null,
+                              note: showNote ? note : null,
+                              tags: tags,
+                              splitCategories: splitCategories,
+                              hasReceipt: hasReceipt,
+                              group: group,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      // A crore-sized amount would otherwise size this column to
+                      // its natural width and shove the card off the screen. Cap
+                      // it, and let anything longer scale down instead.
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 132),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerRight,
+                              child: MoneyText(
+                                displayAmount,
+                                signed: !isTransfer,
+                                color: colorForTxType(tx.type),
+                                currency: displayCurrency,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 3),
-                          _Meta(
-                            isTransfer: isTransfer,
-                            account: account,
-                            toAccount: toAccount,
-                            payee: showPayee ? payee : null,
-                            note: showNote ? note : null,
-                            tags: tags,
-                            splitCategories: splitCategories,
-                            hasReceipt: hasReceipt,
-                            group: group,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    // A crore-sized amount would otherwise size this column to
-                    // its natural width and shove the card off the screen. Cap
-                    // it, and let anything longer scale down instead.
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 132),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerRight,
-                            child: MoneyText(
-                              displayAmount,
-                              signed: !isTransfer,
-                              color: colorForTxType(tx.type),
-                              currency: displayCurrency,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              DateFormat('h:mm a').format(tx.date),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: cs.onSurfaceVariant,
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            DateFormat('h:mm a').format(tx.date),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: cs.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/app_icons.dart';
 import '../../core/money.dart';
+import '../../core/security/nct.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/amount_keypad_field.dart';
 import '../../core/widgets/app_surfaces.dart';
@@ -827,29 +828,32 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
     return AppCard(
       margin: const EdgeInsets.only(bottom: 12),
-      child: AppListTile(
-        leading: CircleAvatar(
-          backgroundColor: accent.withValues(alpha: 0.15),
-          child: transactionRowIcon(
-            customIcon: tx.customIcon,
-            fallback: icon,
-            size: 22,
-            color: accent,
+      child: NctVeil(
+        active: tx.isNct,
+        child: AppListTile(
+          leading: CircleAvatar(
+            backgroundColor: accent.withValues(alpha: 0.15),
+            child: transactionRowIcon(
+              customIcon: tx.customIcon,
+              fallback: icon,
+              size: 22,
+              color: accent,
+            ),
           ),
-        ),
-        title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
-        trailing: MoneyText(
-          displayAmount,
-          signed: !isTransfer,
-          color: colorForTxType(tx.type),
-          style: theme.textTheme.bodyLarge?.copyWith(
-            fontWeight: FontWeight.w600,
+          title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+          subtitle: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+          trailing: MoneyText(
+            displayAmount,
+            signed: !isTransfer,
+            color: colorForTxType(tx.type),
+            style: theme.textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
           ),
+          // Same destination a tap in the Transactions tab opens (GitHub #56)
+          // — the calendar's day list gave no way in before this.
+          onTap: () => context.push('/transaction/${tx.id}'),
         ),
-        // Same destination a tap in the Transactions tab opens (GitHub #56)
-        // — the calendar's day list gave no way in before this.
-        onTap: () => context.push('/transaction/${tx.id}'),
       ),
     );
   }

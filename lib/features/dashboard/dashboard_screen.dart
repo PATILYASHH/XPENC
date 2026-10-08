@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../core/app_icons.dart';
 import '../../core/budget_cycle.dart';
 import '../../core/money.dart';
+import '../../core/security/nct.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/bar_page_transition.dart';
 import '../../core/theme/theme_preset.dart';
@@ -1933,40 +1934,45 @@ class _TxRow extends StatelessWidget {
     final subtitle =
         '${account?.name ?? 'Account'} · ${DateFormat('d MMM').format(tx.date)}';
 
-    return AppListTile(
-      onTap: () => context.push('/transaction/${tx.id}'),
-      shape: const RoundedRectangleBorder(),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      leading: Container(
-        width: 40,
-        height: 40,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: iconColor.withValues(alpha: 0.14),
+    return NctVeil(
+      active: tx.isNct,
+      child: AppListTile(
+        onTap: () => context.push('/transaction/${tx.id}'),
+        shape: const RoundedRectangleBorder(),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        leading: Container(
+          width: 40,
+          height: 40,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: iconColor.withValues(alpha: 0.14),
+          ),
+          child: transactionRowIcon(
+            customIcon: tx.customIcon,
+            fallback: icon,
+            size: 20,
+            color: iconColor,
+          ),
         ),
-        child: transactionRowIcon(
-          customIcon: tx.customIcon,
-          fallback: icon,
-          size: 20,
-          color: iconColor,
+        title: Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodyLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
         ),
-      ),
-      title: Text(
-        title,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
-      ),
-      subtitle: Text(
-        subtitle,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
+        subtitle: Text(
+          subtitle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
         ),
+        trailing: _amount(theme),
       ),
-      trailing: _amount(theme),
     );
   }
 

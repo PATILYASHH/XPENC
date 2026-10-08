@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../core/app_icons.dart';
 import '../../core/currency.dart';
 import '../../core/money.dart';
+import '../../core/security/nct.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/error_view.dart';
@@ -84,7 +85,12 @@ class TransactionDetailScreen extends ConsumerWidget {
               message: 'It may have been deleted.',
             );
           }
-          return _TransactionView(transaction: t);
+          // Shown in full here, so an NCT transaction keeps captures
+          // blocked while it's open (GitHub #143).
+          return SecureWhile(
+            active: t.isNct,
+            child: _TransactionView(transaction: t),
+          );
         },
       ),
     );
@@ -234,6 +240,8 @@ class _TransactionView extends ConsumerWidget {
                 _TagsRow(transaction: t, tags: tags),
                 _divider(theme),
                 _detailRow(context, 'Note', _valueText(context, noteText)),
+                _divider(theme),
+                _NctRow(transaction: t),
               ],
             ),
           ),
@@ -700,36 +708,39 @@ class _LinkedTxRow extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: InkWell(
-            onTap: () => context.push('/transaction/${linked.id}'),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium,
+          child: NctVeil(
+            active: linked.isNct,
+            child: InkWell(
+              onTap: () => context.push('/transaction/${linked.id}'),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  MoneyText(
-                    displayAmount,
-                    signed: !isTransfer,
-                    color: colorForTxType(linked.type),
-                    currency: currency,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
+                    const SizedBox(width: 8),
+                    MoneyText(
+                      displayAmount,
+                      signed: !isTransfer,
+                      color: colorForTxType(linked.type),
+                      currency: currency,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                  AppIcon(
-                    Icons.chevron_right_rounded,
-                    size: 18,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ],
+                    AppIcon(
+                      Icons.chevron_right_rounded,
+                      size: 18,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -741,6 +752,37 @@ class _LinkedTxRow extends StatelessWidget {
           onPressed: onUnlink,
         ),
       ],
+    );
+  }
+}
+
+/// The NCT switch (GitHub #143), saved the moment it's flipped — the same
+/// "act straight from detail" shape as [_TagsRow].
+class _NctRow extends ConsumerWidget {
+  const _NctRow({required this.transaction});
+
+  final TransactionRow transaction;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    return AppSwitchListTile(
+      contentPadding: EdgeInsets.zero,
+      value: transaction.isNct,
+      onChanged: (v) =>
+          ref.read(dbProvider).setTransactionNct(transaction.id, v),
+      title: Text(
+        'Hide from screenshots',
+        style: theme.textTheme.bodyMedium,
+      ),
+      subtitle: Text(
+        transaction.isNct
+            ? 'NCT · hidden in lists until held. Captures are blocked here.'
+            : 'NCT · keep it out of screenshots and recordings',
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
     );
   }
 }

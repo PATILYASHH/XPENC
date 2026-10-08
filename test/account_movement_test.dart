@@ -18,6 +18,7 @@ TransactionRow _transfer({
   createdAt: DateTime(2026, 1, 1),
   updatedAt: DateTime(2026, 1, 1),
   needsAmountReview: false,
+  isNct: false,
   toAmount: toAmount,
 );
 

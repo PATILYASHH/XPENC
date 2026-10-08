@@ -3906,6 +3906,19 @@ class $TransactionsTable extends Transactions
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _isNctMeta = const VerificationMeta('isNct');
+  @override
+  late final GeneratedColumn<bool> isNct = GeneratedColumn<bool>(
+    'is_nct',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_nct" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _paymentGroupIdMeta = const VerificationMeta(
     'paymentGroupId',
   );
@@ -4027,6 +4040,7 @@ class $TransactionsTable extends Transactions
     createdAt,
     updatedAt,
     needsAmountReview,
+    isNct,
     paymentGroupId,
     foreignCurrencyCode,
     foreignAmount,
@@ -4135,6 +4149,12 @@ class $TransactionsTable extends Transactions
           data['needs_amount_review']!,
           _needsAmountReviewMeta,
         ),
+      );
+    }
+    if (data.containsKey('is_nct')) {
+      context.handle(
+        _isNctMeta,
+        isNct.isAcceptableOrUnknown(data['is_nct']!, _isNctMeta),
       );
     }
     if (data.containsKey('payment_group_id')) {
@@ -4270,6 +4290,10 @@ class $TransactionsTable extends Transactions
         DriftSqlType.bool,
         data['${effectivePrefix}needs_amount_review'],
       )!,
+      isNct: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_nct'],
+      )!,
       paymentGroupId: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}payment_group_id'],
@@ -4375,6 +4399,11 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   /// point they've either confirmed or corrected the real figure.
   final bool needsAmountReview;
 
+  /// NCT — "non-capturable transaction" (GitHub #143): frosted wherever it's
+  /// listed until held, and a capture taken while it's showing is blocked.
+  /// See `lib/core/security/nct.dart`. Off by default.
+  final bool isNct;
+
   /// Ties together the legs of one hybrid/split payment — one purchase paid
   /// from several accounts at once (see GitHub #43). Every leg in a group
   /// points at the *first* leg inserted, including that leg itself, so
@@ -4450,6 +4479,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     required this.createdAt,
     required this.updatedAt,
     required this.needsAmountReview,
+    required this.isNct,
     this.paymentGroupId,
     this.foreignCurrencyCode,
     this.foreignAmount,
@@ -4500,6 +4530,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     map['needs_amount_review'] = Variable<bool>(needsAmountReview);
+    map['is_nct'] = Variable<bool>(isNct);
     if (!nullToAbsent || paymentGroupId != null) {
       map['payment_group_id'] = Variable<int>(paymentGroupId);
     }
@@ -4563,6 +4594,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       needsAmountReview: Value(needsAmountReview),
+      isNct: Value(isNct),
       paymentGroupId: paymentGroupId == null && nullToAbsent
           ? const Value.absent()
           : Value(paymentGroupId),
@@ -4616,6 +4648,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       needsAmountReview: serializer.fromJson<bool>(json['needsAmountReview']),
+      isNct: serializer.fromJson<bool>(json['isNct']),
       paymentGroupId: serializer.fromJson<int?>(json['paymentGroupId']),
       foreignCurrencyCode: serializer.fromJson<String?>(
         json['foreignCurrencyCode'],
@@ -4652,6 +4685,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'needsAmountReview': serializer.toJson<bool>(needsAmountReview),
+      'isNct': serializer.toJson<bool>(isNct),
       'paymentGroupId': serializer.toJson<int?>(paymentGroupId),
       'foreignCurrencyCode': serializer.toJson<String?>(foreignCurrencyCode),
       'foreignAmount': serializer.toJson<Money?>(foreignAmount),
@@ -4680,6 +4714,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? needsAmountReview,
+    bool? isNct,
     Value<int?> paymentGroupId = const Value.absent(),
     Value<String?> foreignCurrencyCode = const Value.absent(),
     Value<Money?> foreignAmount = const Value.absent(),
@@ -4707,6 +4742,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     needsAmountReview: needsAmountReview ?? this.needsAmountReview,
+    isNct: isNct ?? this.isNct,
     paymentGroupId: paymentGroupId.present
         ? paymentGroupId.value
         : this.paymentGroupId,
@@ -4754,6 +4790,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       needsAmountReview: data.needsAmountReview.present
           ? data.needsAmountReview.value
           : this.needsAmountReview,
+      isNct: data.isNct.present ? data.isNct.value : this.isNct,
       paymentGroupId: data.paymentGroupId.present
           ? data.paymentGroupId.value
           : this.paymentGroupId,
@@ -4800,6 +4837,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('needsAmountReview: $needsAmountReview, ')
+          ..write('isNct: $isNct, ')
           ..write('paymentGroupId: $paymentGroupId, ')
           ..write('foreignCurrencyCode: $foreignCurrencyCode, ')
           ..write('foreignAmount: $foreignAmount, ')
@@ -4830,6 +4868,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     createdAt,
     updatedAt,
     needsAmountReview,
+    isNct,
     paymentGroupId,
     foreignCurrencyCode,
     foreignAmount,
@@ -4859,6 +4898,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.needsAmountReview == this.needsAmountReview &&
+          other.isNct == this.isNct &&
           other.paymentGroupId == this.paymentGroupId &&
           other.foreignCurrencyCode == this.foreignCurrencyCode &&
           other.foreignAmount == this.foreignAmount &&
@@ -4886,6 +4926,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<bool> needsAmountReview;
+  final Value<bool> isNct;
   final Value<int?> paymentGroupId;
   final Value<String?> foreignCurrencyCode;
   final Value<Money?> foreignAmount;
@@ -4911,6 +4952,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.needsAmountReview = const Value.absent(),
+    this.isNct = const Value.absent(),
     this.paymentGroupId = const Value.absent(),
     this.foreignCurrencyCode = const Value.absent(),
     this.foreignAmount = const Value.absent(),
@@ -4937,6 +4979,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.needsAmountReview = const Value.absent(),
+    this.isNct = const Value.absent(),
     this.paymentGroupId = const Value.absent(),
     this.foreignCurrencyCode = const Value.absent(),
     this.foreignAmount = const Value.absent(),
@@ -4966,6 +5009,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<bool>? needsAmountReview,
+    Expression<bool>? isNct,
     Expression<int>? paymentGroupId,
     Expression<String>? foreignCurrencyCode,
     Expression<int>? foreignAmount,
@@ -4992,6 +5036,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (needsAmountReview != null) 'needs_amount_review': needsAmountReview,
+      if (isNct != null) 'is_nct': isNct,
       if (paymentGroupId != null) 'payment_group_id': paymentGroupId,
       if (foreignCurrencyCode != null)
         'foreign_currency_code': foreignCurrencyCode,
@@ -5023,6 +5068,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<bool>? needsAmountReview,
+    Value<bool>? isNct,
     Value<int?>? paymentGroupId,
     Value<String?>? foreignCurrencyCode,
     Value<Money?>? foreignAmount,
@@ -5049,6 +5095,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       needsAmountReview: needsAmountReview ?? this.needsAmountReview,
+      isNct: isNct ?? this.isNct,
       paymentGroupId: paymentGroupId ?? this.paymentGroupId,
       foreignCurrencyCode: foreignCurrencyCode ?? this.foreignCurrencyCode,
       foreignAmount: foreignAmount ?? this.foreignAmount,
@@ -5113,6 +5160,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     if (needsAmountReview.present) {
       map['needs_amount_review'] = Variable<bool>(needsAmountReview.value);
     }
+    if (isNct.present) {
+      map['is_nct'] = Variable<bool>(isNct.value);
+    }
     if (paymentGroupId.present) {
       map['payment_group_id'] = Variable<int>(paymentGroupId.value);
     }
@@ -5169,6 +5219,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('needsAmountReview: $needsAmountReview, ')
+          ..write('isNct: $isNct, ')
           ..write('paymentGroupId: $paymentGroupId, ')
           ..write('foreignCurrencyCode: $foreignCurrencyCode, ')
           ..write('foreignAmount: $foreignAmount, ')
@@ -28375,6 +28426,7 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<bool> needsAmountReview,
+      Value<bool> isNct,
       Value<int?> paymentGroupId,
       Value<String?> foreignCurrencyCode,
       Value<Money?> foreignAmount,
@@ -28402,6 +28454,7 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<bool> needsAmountReview,
+      Value<bool> isNct,
       Value<int?> paymentGroupId,
       Value<String?> foreignCurrencyCode,
       Value<Money?> foreignAmount,
@@ -28733,6 +28786,11 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<bool> get needsAmountReview => $composableBuilder(
     column: $table.needsAmountReview,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isNct => $composableBuilder(
+    column: $table.isNct,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -29126,6 +29184,11 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isNct => $composableBuilder(
+    column: $table.isNct,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get foreignCurrencyCode => $composableBuilder(
     column: $table.foreignCurrencyCode,
     builder: (column) => ColumnOrderings(column),
@@ -29345,6 +29408,9 @@ class $$TransactionsTableAnnotationComposer
     column: $table.needsAmountReview,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get isNct =>
+      $composableBuilder(column: $table.isNct, builder: (column) => column);
 
   GeneratedColumn<String> get foreignCurrencyCode => $composableBuilder(
     column: $table.foreignCurrencyCode,
@@ -29732,6 +29798,7 @@ class $$TransactionsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> needsAmountReview = const Value.absent(),
+                Value<bool> isNct = const Value.absent(),
                 Value<int?> paymentGroupId = const Value.absent(),
                 Value<String?> foreignCurrencyCode = const Value.absent(),
                 Value<Money?> foreignAmount = const Value.absent(),
@@ -29757,6 +29824,7 @@ class $$TransactionsTableTableManager
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 needsAmountReview: needsAmountReview,
+                isNct: isNct,
                 paymentGroupId: paymentGroupId,
                 foreignCurrencyCode: foreignCurrencyCode,
                 foreignAmount: foreignAmount,
@@ -29784,6 +29852,7 @@ class $$TransactionsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> needsAmountReview = const Value.absent(),
+                Value<bool> isNct = const Value.absent(),
                 Value<int?> paymentGroupId = const Value.absent(),
                 Value<String?> foreignCurrencyCode = const Value.absent(),
                 Value<Money?> foreignAmount = const Value.absent(),
@@ -29809,6 +29878,7 @@ class $$TransactionsTableTableManager
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 needsAmountReview: needsAmountReview,
+                isNct: isNct,
                 paymentGroupId: paymentGroupId,
                 foreignCurrencyCode: foreignCurrencyCode,
                 foreignAmount: foreignAmount,

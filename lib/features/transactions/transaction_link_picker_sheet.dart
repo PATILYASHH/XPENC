@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/app_icons.dart';
+import '../../core/security/nct.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/money_text.dart';
@@ -190,27 +191,30 @@ class _TxTile extends StatelessWidget {
 
     final displayAmount = tx.type.takesFromAccount ? -tx.amount : tx.amount;
 
-    return AppListTile(
-      leading: CircleAvatar(
-        backgroundColor: accent.withValues(alpha: 0.15),
-        child: transactionRowIcon(
-          customIcon: tx.customIcon,
-          fallback: icon,
-          size: 20,
-          color: accent,
+    return NctVeil(
+      active: tx.isNct,
+      child: AppListTile(
+        leading: CircleAvatar(
+          backgroundColor: accent.withValues(alpha: 0.15),
+          child: transactionRowIcon(
+            customIcon: tx.customIcon,
+            fallback: icon,
+            size: 20,
+            color: accent,
+          ),
         ),
-      ),
-      title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
-      trailing: MoneyText(
-        displayAmount,
-        signed: !isTransfer,
-        color: colorForTxType(tx.type),
-        style: theme.textTheme.bodyMedium?.copyWith(
-          fontWeight: FontWeight.w600,
+        title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+        subtitle: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+        trailing: MoneyText(
+          displayAmount,
+          signed: !isTransfer,
+          color: colorForTxType(tx.type),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
         ),
+        onTap: onTap,
       ),
-      onTap: onTap,
     );
   }
 }

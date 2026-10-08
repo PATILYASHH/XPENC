@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/app_icons.dart';
+import '../../core/security/nct.dart';
 import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
@@ -198,6 +199,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   /// category/account/type, same as [_tagIds]; null means none picked.
   String? _customIcon;
 
+  /// NCT — non-capturable (GitHub #143): frosted wherever it's listed,
+  /// captures blocked while it's open. See `lib/core/security/nct.dart`.
+  bool _isNct = false;
+
   /// True while an existing transaction is being fetched for editing.
   bool _loading = false;
 
@@ -365,6 +370,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       _tagIds = tagIds.toSet();
       _imagePath = row.imagePath;
       _customIcon = row.customIcon;
+      _isNct = row.isNct;
       _isSplit = splits.isNotEmpty;
       for (final s in splits) {
         _splitRows.add(_SplitEntry(categoryId: s.categoryId, amount: s.amount));
@@ -429,6 +435,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       _payeePersonId = row.type.isIncomeOrExpense ? row.personId : null;
       _tagIds = tagIds.toSet();
       _customIcon = row.customIcon;
+      _isNct = row.isNct;
       _isSplit = splits.isNotEmpty;
       for (final s in splits) {
         _splitRows.add(_SplitEntry(categoryId: s.categoryId, amount: s.amount));
@@ -1769,6 +1776,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           personId: payeeText.isEmpty ? null : _payeePersonId,
           imagePath: _imagePath,
           customIcon: _customIcon,
+          isNct: _isNct,
         );
         // The receipt (if any) is now referenced by a saved row — no longer
         // an orphan `dispose()` needs to clean up. Tags apply to the anchor
@@ -1963,6 +1971,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           foreignCurrencyCode: foreignCurrencyCode,
           foreignAmount: foreignAmount,
           customIcon: _customIcon,
+          isNct: _isNct,
         );
       } else {
         id = await db.addTransaction(
@@ -1979,6 +1988,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           foreignCurrencyCode: foreignCurrencyCode,
           foreignAmount: foreignAmount,
           customIcon: _customIcon,
+          isNct: _isNct,
         );
       }
       // The receipt (if any) is now referenced by a saved row — no longer an
@@ -2107,126 +2117,132 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       _activeAmountCtrl = _mainAmountCtrl;
     }
 
-    return Scaffold(
-      appBar: AppTopBar(
-        leading: IconButton(
-          icon: const AppIcon(Icons.close_rounded),
-          onPressed: () => Navigator.of(context).maybePop(),
+    // An NCT transaction's details are on screen in full here — no frosting
+    // a form — so captures stay blocked while the switch is on.
+    return SecureWhile(
+      active: _isNct,
+      holdBack: false,
+      child: Scaffold(
+        appBar: AppTopBar(
+          leading: IconButton(
+            icon: const AppIcon(Icons.close_rounded),
+            onPressed: () => Navigator.of(context).maybePop(),
+          ),
+          title: Text(_isEditing ? 'Edit' : 'Add'),
+          // Tags and receipt live here, not buried at the bottom of the
+          // scrollable field list, so they stay reachable in one tap no matter
+          // how far the user has scrolled or whether the keypad is covering
+          // the rest of the screen.
+          actions: _loading
+              ? null
+              : [
+                  _customIconAction(theme),
+                  _tagsAction(theme),
+                  _receiptAction(theme),
+                  if (_isEditing)
+                    IconButton(
+                      icon: const AppIcon(Icons.delete_outline),
+                      tooltip: 'Delete',
+                      onPressed: _confirmDelete,
+                    ),
+                  TextButton(onPressed: _save, child: const Text('Save')),
+                ],
         ),
-        title: Text(_isEditing ? 'Edit' : 'Add'),
-        // Tags and receipt live here, not buried at the bottom of the
-        // scrollable field list, so they stay reachable in one tap no matter
-        // how far the user has scrolled or whether the keypad is covering
-        // the rest of the screen.
-        actions: _loading
-            ? null
-            : [
-                _customIconAction(theme),
-                _tagsAction(theme),
-                _receiptAction(theme),
-                if (_isEditing)
-                  IconButton(
-                    icon: const AppIcon(Icons.delete_outline),
-                    tooltip: 'Delete',
-                    onPressed: _confirmDelete,
-                  ),
-                TextButton(onPressed: _save, child: const Text('Save')),
-              ],
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : SafeArea(
-              child: GestureDetector(
-                // Tapping anywhere that isn't Note/Payee drops their focus, so
-                // the system keyboard closes and the amount keypad returns —
-                // the two must never be on screen at once (see _textFieldFocused).
-                behavior: HitTestBehavior.opaque,
-                onTap: () => FocusScope.of(context).unfocus(),
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: SegmentedButton<TxType>(
-                          segments: const [
-                            ButtonSegment(
-                              value: TxType.expense,
-                              label: Text('Expense'),
-                            ),
-                            ButtonSegment(
-                              value: TxType.income,
-                              label: Text('Income'),
-                            ),
-                            ButtonSegment(
-                              value: TxType.transfer,
-                              label: Text('Transfer'),
-                            ),
-                          ],
-                          selected: {_type},
-                          showSelectedIcon: false,
-                          onSelectionChanged: (s) => setState(() {
-                            _type = s.first;
-                            // category is meaningless on type change
-                            _categoryId = null;
-                            if (_type != TxType.transfer) _toAccountId = null;
-                            // Split is expense-only.
-                            if (_type != TxType.expense) {
-                              _isSplit = false;
-                            }
-                          }),
+        body: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : SafeArea(
+                child: GestureDetector(
+                  // Tapping anywhere that isn't Note/Payee drops their focus, so
+                  // the system keyboard closes and the amount keypad returns —
+                  // the two must never be on screen at once (see _textFieldFocused).
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => FocusScope.of(context).unfocus(),
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: SegmentedButton<TxType>(
+                            segments: const [
+                              ButtonSegment(
+                                value: TxType.expense,
+                                label: Text('Expense'),
+                              ),
+                              ButtonSegment(
+                                value: TxType.income,
+                                label: Text('Income'),
+                              ),
+                              ButtonSegment(
+                                value: TxType.transfer,
+                                label: Text('Transfer'),
+                              ),
+                            ],
+                            selected: {_type},
+                            showSelectedIcon: false,
+                            onSelectionChanged: (s) => setState(() {
+                              _type = s.first;
+                              // category is meaningless on type change
+                              _categoryId = null;
+                              if (_type != TxType.transfer) _toAccountId = null;
+                              // Split is expense-only.
+                              if (_type != TxType.expense) {
+                                _isSplit = false;
+                              }
+                            }),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: GestureDetector(
-                        onTap: () => _activateAmountCtrl(_mainAmountCtrl),
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            key: const Key('amountDisplay'),
-                            txCurrency == null
-                                ? MoneyFormat.symbol(amount)
-                                : MoneyFormat.symbolIn(amount, txCurrency),
-                            style: theme.textTheme.displayMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: colorForTxType(_type),
-                              fontFeatures: kTabularFigures,
+                      const SizedBox(height: 24),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: GestureDetector(
+                          onTap: () => _activateAmountCtrl(_mainAmountCtrl),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              key: const Key('amountDisplay'),
+                              txCurrency == null
+                                  ? MoneyFormat.symbol(amount)
+                                  : MoneyFormat.symbolIn(amount, txCurrency),
+                              style: theme.textTheme.displayMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: colorForTxType(_type),
+                                fontFeatures: kTabularFigures,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    _selectedTagsChips(),
-                    const SizedBox(height: 20),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(
-                          20,
-                          0,
-                          20,
-                          8,
-                        ).plusNavBar(context),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: _buildPickers(accountMap, categoryMap),
+                      _selectedTagsChips(),
+                      const SizedBox(height: 20),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(
+                            20,
+                            0,
+                            20,
+                            8,
+                          ).plusNavBar(context),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: _buildPickers(accountMap, categoryMap),
+                          ),
                         ),
                       ),
-                    ),
-                    if (!_textFieldFocused)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-                        child: AmountKeypadGrid(
-                          onDigit: _onKey,
-                          onBackspace: _onBackspace,
+                      if (!_textFieldFocused)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                          child: AmountKeypadGrid(
+                            onDigit: _onKey,
+                            onBackspace: _onBackspace,
+                          ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
+      ),
     );
   }
 
@@ -2363,7 +2379,31 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     }
     tiles.add(const SizedBox(height: 12));
     tiles.add(_noteCard());
+    tiles.add(const SizedBox(height: 12));
+    tiles.add(_nctToggleTile());
     return tiles;
+  }
+
+  Widget _nctToggleTile() {
+    final theme = Theme.of(context);
+    return AppCard(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: AppSwitchListTile(
+        value: _isNct,
+        onChanged: (v) => setState(() => _isNct = v),
+        secondary: AppIcon(
+          _isNct ? Icons.visibility_off_rounded : Icons.visibility_off_outlined,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+        title: const Text('Hide from screenshots'),
+        subtitle: Text(
+          _isNct
+              ? 'NCT · hidden in lists until held, captures blocked when open'
+              : 'NCT · keep it out of screenshots and recordings',
+        ),
+      ),
+    );
   }
 
   /// Like [_pickerTile], but with a second, independent tap target: the

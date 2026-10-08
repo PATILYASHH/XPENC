@@ -31,6 +31,7 @@ void main() {
         createdAt: DateTime(2026, 1, 1),
         updatedAt: DateTime(2026, 1, 1),
         needsAmountReview: false,
+        isNct: false,
       );
       expect(row.baseAmount, const Money(50000));
     });
@@ -45,6 +46,7 @@ void main() {
         createdAt: DateTime(2026, 1, 1),
         updatedAt: DateTime(2026, 1, 1),
         needsAmountReview: false,
+        isNct: false,
         currencyCode: 'USD',
         fxRateToBaseMicros: 83120000,
       );

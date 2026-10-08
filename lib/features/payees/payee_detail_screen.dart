@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/money.dart';
+import '../../core/security/nct.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
@@ -296,39 +297,42 @@ class _TxRow extends StatelessWidget {
     final color = colorForTxType(tx.type);
     final displayAmount = tx.type == TxType.expense ? -tx.amount : tx.amount;
 
-    return AppListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      leading: CircleAvatar(
-        backgroundColor: color.withValues(alpha: 0.14),
-        foregroundColor: color,
-        child: transactionRowIcon(
-          customIcon: tx.customIcon,
-          fallback: iconForTxType(tx.type),
-          size: 20,
+    return NctVeil(
+      active: tx.isNct,
+      child: AppListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        leading: CircleAvatar(
+          backgroundColor: color.withValues(alpha: 0.14),
+          foregroundColor: color,
+          child: transactionRowIcon(
+            customIcon: tx.customIcon,
+            fallback: iconForTxType(tx.type),
+            size: 20,
+            color: color,
+          ),
+        ),
+        title: Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+        ),
+        subtitle: Text(
+          dateStr,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        trailing: MoneyText(
+          displayAmount,
+          signed: true,
           color: color,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
         ),
+        onTap: () => context.push('/transaction/${tx.id}'),
       ),
-      title: Text(
-        title,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
-      ),
-      subtitle: Text(
-        dateStr,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-      ),
-      trailing: MoneyText(
-        displayAmount,
-        signed: true,
-        color: color,
-        style: theme.textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      onTap: () => context.push('/transaction/${tx.id}'),
     );
   }
 }

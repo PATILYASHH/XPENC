@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/money.dart';
+import '../../core/security/nct.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/error_view.dart';
@@ -582,15 +583,18 @@ class _IncomeBody extends ConsumerWidget {
             _ListCard(
               children: [
                 for (final (i, t) in biggest.take(kStandingsLimit).indexed)
-                  StandingRow(
-                    rank: i + 1,
-                    title: (t.payee?.isNotEmpty ?? false)
-                        ? t.payee!
-                        : categories[t.categoryId]?.name ?? 'Uncategorised',
-                    subtitle: DateFormat('d MMM yyyy').format(t.date),
-                    value: MoneyFormat.signed(t.baseAmount),
-                    valueColor: AppColors.income,
-                    onTap: () => context.push('/transaction/${t.id}'),
+                  NctVeil(
+                    active: t.isNct,
+                    child: StandingRow(
+                      rank: i + 1,
+                      title: (t.payee?.isNotEmpty ?? false)
+                          ? t.payee!
+                          : categories[t.categoryId]?.name ?? 'Uncategorised',
+                      subtitle: DateFormat('d MMM yyyy').format(t.date),
+                      value: MoneyFormat.signed(t.baseAmount),
+                      valueColor: AppColors.income,
+                      onTap: () => context.push('/transaction/${t.id}'),
+                    ),
                   ),
               ],
             ),

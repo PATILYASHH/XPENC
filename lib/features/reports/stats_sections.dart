@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/budget_cycle.dart';
 import '../../core/money.dart';
+import '../../core/security/nct.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/error_view.dart';
@@ -459,7 +460,13 @@ class HighlightsSection extends ConsumerWidget {
 
         return HighlightsCard(
           children: [
-            HighlightRow(label: 'Biggest expense', value: biggestValue),
+            NctVeil(
+              active: biggest?.isNct ?? false,
+              child: HighlightRow(
+                label: 'Biggest expense',
+                value: biggestValue,
+              ),
+            ),
             HighlightRow(
               label: 'Average daily spend',
               value: MoneyFormat.symbol(avgDaily),
@@ -679,17 +686,20 @@ class TransactionStandings extends ConsumerWidget {
         return StandingsCard(
           children: [
             for (final (i, t) in ranked.take(kStandingsLimit).indexed)
-              StandingRow(
-                rank: i + 1,
-                title: t.payee?.isNotEmpty ?? false ? t.payee! : labelOf(t),
-                subtitle: DateFormat('d MMM yyyy').format(t.date),
-                value: t.type == TxType.income
-                    ? MoneyFormat.signed(t.amount)
-                    : MoneyFormat.signed(-t.amount),
-                valueColor: t.type == TxType.income
-                    ? AppColors.income
-                    : AppColors.expense,
-                onTap: () => context.push('/transaction/${t.id}'),
+              NctVeil(
+                active: t.isNct,
+                child: StandingRow(
+                  rank: i + 1,
+                  title: t.payee?.isNotEmpty ?? false ? t.payee! : labelOf(t),
+                  subtitle: DateFormat('d MMM yyyy').format(t.date),
+                  value: t.type == TxType.income
+                      ? MoneyFormat.signed(t.amount)
+                      : MoneyFormat.signed(-t.amount),
+                  valueColor: t.type == TxType.income
+                      ? AppColors.income
+                      : AppColors.expense,
+                  onTap: () => context.push('/transaction/${t.id}'),
+                ),
               ),
           ],
         );

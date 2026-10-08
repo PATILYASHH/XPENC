@@ -199,7 +199,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 78;
+  int get schemaVersion => 79;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -729,6 +729,10 @@ class AppDatabase extends _$AppDatabase {
       if (from < 78) {
         // Customize dashboard: which widgets, in what order.
         await _addColumnIfMissing(m, settings, settings.dashboardLayout);
+      }
+      if (from < 79) {
+        // NCT — non-capturable transactions (GitHub #143).
+        await _addColumnIfMissing(m, transactions, transactions.isNct);
       }
     },
     beforeOpen: (details) async {
@@ -1415,6 +1419,7 @@ class AppDatabase extends _$AppDatabase {
     String? foreignCurrencyCode,
     Money? foreignAmount,
     String? customIcon,
+    bool isNct = false,
   }) async {
     await _validateTx(
       type: type,
@@ -1463,6 +1468,9 @@ class AppDatabase extends _$AppDatabase {
           recurringRuleId: Value(recurringRuleId),
           imagePath: Value(imagePath),
           needsAmountReview: Value(needsAmountReview),
+          // Set in the same insert, never after: a list watching the ledger
+          // must not get one frame of this row unfrosted.
+          isNct: Value(isNct),
           foreignCurrencyCode: Value(foreignCurrencyCode),
           foreignAmount: Value(foreignAmount),
           currencyCode: Value(sourceCode),
@@ -1500,6 +1508,7 @@ class AppDatabase extends _$AppDatabase {
     int? personId,
     String? imagePath,
     String? customIcon,
+    bool isNct = false,
   }) async {
     if (legs.length < 2) {
       throw ArgumentError('A split payment needs at least two accounts.');
@@ -1535,6 +1544,8 @@ class AppDatabase extends _$AppDatabase {
               personId: Value(personId),
               imagePath: Value(isAnchor ? imagePath : null),
               customIcon: Value(isAnchor ? customIcon : null),
+              // Every leg: each one names the same payee and note.
+              isNct: Value(isNct),
             ),
           ),
         );
@@ -1773,6 +1784,7 @@ class AppDatabase extends _$AppDatabase {
     String? foreignCurrencyCode,
     Money? foreignAmount,
     String? customIcon,
+    bool? isNct,
   }) async {
     await _validateTx(
       type: type,
@@ -1817,6 +1829,7 @@ class AppDatabase extends _$AppDatabase {
           foreignCurrencyCode: Value(foreignCurrencyCode),
           foreignAmount: Value(foreignAmount),
           customIcon: Value(customIcon),
+          isNct: isNct == null ? const Value.absent() : Value(isNct),
         ),
       );
 
@@ -1826,6 +1839,13 @@ class AppDatabase extends _$AppDatabase {
       await _applyTxEffect(fresh, reverse: false);
     });
   }
+
+  /// Marks [id] as an NCT (non-capturable) transaction, or clears it — see
+  /// [Transactions.isNct]. Moves no money, so no balance needs touching.
+  Future<void> setTransactionNct(int id, bool value) =>
+      (update(transactions)..where((t) => t.id.equals(id))).write(
+        TransactionsCompanion(isNct: Value(value)),
+      );
 
   /// Renames every expense that named [from] to [to] instead. If [to] already
   /// names another payee, this merges the two — they simply share a name.

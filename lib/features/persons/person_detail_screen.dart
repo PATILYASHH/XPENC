@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/money.dart';
+import '../../core/security/nct.dart';
 import '../../core/payments/cashapp_launcher.dart';
 import '../../core/payments/paypal_launcher.dart';
 import '../../core/payments/revolut_launcher.dart';
@@ -303,45 +304,48 @@ class _PayeeTxRow extends StatelessWidget {
         ? note
         : categoryName ?? labelForTxType(tx.type);
 
-    return InkWell(
-      borderRadius: BorderRadius.vertical(
-        top: isFirst ? const Radius.circular(16) : Radius.zero,
-        bottom: isLast ? const Radius.circular(16) : Radius.zero,
-      ),
-      onTap: () => context.push('/transaction/${tx.id}'),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-        child: Row(
-          children: [
-            AppIcon(
-              isExpense ? Icons.north_east_rounded : Icons.south_west_rounded,
-              size: 16,
-              color: muted,
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium,
+    return NctVeil(
+      active: tx.isNct,
+      child: InkWell(
+        borderRadius: BorderRadius.vertical(
+          top: isFirst ? const Radius.circular(16) : Radius.zero,
+          bottom: isLast ? const Radius.circular(16) : Radius.zero,
+        ),
+        onTap: () => context.push('/transaction/${tx.id}'),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          child: Row(
+            children: [
+              AppIcon(
+                isExpense ? Icons.north_east_rounded : Icons.south_west_rounded,
+                size: 16,
+                color: muted,
               ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              DateFormat('d MMM').format(tx.date),
-              style: theme.textTheme.bodySmall?.copyWith(color: muted),
-            ),
-            const SizedBox(width: 12),
-            MoneyText(
-              isExpense ? -tx.amount : tx.amount,
-              signed: true,
-              color: muted,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(width: 8),
+              Text(
+                DateFormat('d MMM').format(tx.date),
+                style: theme.textTheme.bodySmall?.copyWith(color: muted),
+              ),
+              const SizedBox(width: 12),
+              MoneyText(
+                isExpense ? -tx.amount : tx.amount,
+                signed: true,
+                color: muted,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
