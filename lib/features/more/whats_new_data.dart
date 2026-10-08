@@ -23,6 +23,16 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.ios_share_rounded,
+    title: 'Share as a PDF or an image',
+    location: 'A transaction, person or group → Share',
+    description:
+        'Pick PDF for a clean, printable document — a receipt for a '
+        'transaction, a statement with a running balance for a person, '
+        'every expense and who owes whom for a group. Pick Image for a '
+        'styled card, dark or light, ready for any chat.',
+  ),
+  WhatsNewEntry(
     icon: Icons.visibility_off_outlined,
     title: 'Hide a transaction from screenshots',
     location: 'Add or edit a transaction → Hide from screenshots',

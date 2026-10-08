@@ -137,6 +137,28 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   balances and who owed whom are as of its last day, Recent lists that
   month's transactions, and every graph ends at it. Upcoming and Ready to
   Assign, which only describe today, step aside.
+- **Share as a PDF or an image** — Share on a transaction (its page, or
+  hold it in Transactions), a person or a group now asks which you want.
+  The PDF is a proper document with real currency symbols: a transaction
+  is a receipt with every detail and its attached receipt photo; a
+  person's statement has an opening balance, every entry with the running
+  balance after it, and today's balance; a group's lists each expense with
+  who paid, how it was split and your share, then who owes whom. The image
+  is a styled card, dark or light, previewed before you share it and saved
+  1080 px wide: a receipt for a transaction, the balance and latest entries
+  for a person, the total spent and who owes whom for a group (All time,
+  This month or Last month). With your name set (Settings → Persons → My
+  UPI ID → Your name), a statement reads "Ram owes Yash" rather than "Ram
+  owes you", since it's sent to Ram. Fully offline; Inter (~105 KB) is
+  bundled for the PDFs.
+- **Choose your country on first run** — onboarding's new "Where do you
+  live?" page (flags, A–Z, search, and a preview of how amounts will look)
+  sets the currency on purpose instead of quietly defaulting to the rupee.
+  The phone's region pre-selects a guess. Restoring a backup skips it,
+  since the backup carries its own currency. Eight more currencies:
+  Bhutanese Ngultrum, Maldivian Rufiyaa, Ethiopian Birr, Tanzanian
+  Shilling, Rwandan Franc, Zambian Kwacha, and the West and Central African
+  CFA francs.
 
 ### Changed
 - **Themes are now Classic, Noir and Glass.** Classic (monochrome) is the
@@ -144,6 +166,12 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   throughout: heavier text everywhere and thicker card, chip and input
   outlines. Colourful, Midnight and Cove are retired. Anyone using them moves
   to Classic, and a forced light or dark choice is kept. No data migration.
+- **Person and group statements are the new PDF**, and the period picker
+  offers "All time" for them.
+- **Hold menus open above the tab bar** — on Persons, Groups and
+  Transactions, the hold menu opens over the bottom nav and can be dragged
+  taller, so its last option is never hidden behind it. Transactions' hold
+  menu gains Share.
 
 ### Fixed
 - **➕ with templates did nothing under Glass** — once a template was saved,
