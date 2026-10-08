@@ -17,6 +17,7 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../auto/recurring_rule_sheet.dart';
+import '../share/share_flows.dart';
 import '../tags/tag_picker_sheet.dart';
 import 'transaction_link_picker_sheet.dart';
 
@@ -42,6 +43,12 @@ class TransactionDetailScreen extends ConsumerWidget {
       appBar: AppTopBar(
         title: const Text('Transaction'),
         actions: [
+          if (t != null)
+            IconButton(
+              icon: const AppIcon(Icons.ios_share_rounded),
+              tooltip: 'Share',
+              onPressed: () => shareTransaction(context, t),
+            ),
           if (canMakeRecurring)
             IconButton(
               icon: const AppIcon(Icons.autorenew_rounded),

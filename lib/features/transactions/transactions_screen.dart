@@ -12,6 +12,7 @@ import '../../core/money.dart';
 import '../../core/security/nct.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/glass.dart';
+import '../../core/widgets/action_sheet.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/group_tag.dart';
@@ -25,6 +26,7 @@ import '../../data/tables.dart';
 import 'transaction_filters.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 import '../persons/person_avatar.dart';
+import '../share/share_flows.dart';
 
 /// All transactions, grouped day-wise (newest first) with a per-day net total.
 /// Searchable by note / category / account and filterable by [TxType].
@@ -933,60 +935,64 @@ Future<void> _openQuickActions(
   Future<void> Function(TransactionRow tx, String title) onCreateTemplate,
 ) async {
   final theme = Theme.of(context);
-  await showAppSheet<void>(
+  await showActionSheet<void>(
     context: context,
-    showDragHandle: true,
-    builder: (sheetContext) => SafeArea(
-      top: false,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // A correction is only ever deleted — see the detail screen.
-          if (!tx.type.isCorrection) ...[
-            AppListTile(
-              leading: const AppIcon(Icons.content_copy_outlined),
-              title: const Text('Duplicate'),
-              subtitle: const Text('Add a new transaction with these details'),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                context.push('/add?duplicate=${tx.id}');
-              },
-            ),
-            AppListTile(
-              leading: const AppIcon(Icons.bookmark_add_outlined),
-              title: const Text('Save as template'),
-              subtitle: const Text('Reuse these details from the ➕ button'),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                onCreateTemplate(tx, title);
-              },
-            ),
-            AppListTile(
-              leading: const AppIcon(Icons.edit_outlined),
-              title: const Text('Edit'),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                context.push('/add?id=${tx.id}');
-              },
-            ),
-          ],
-          AppListTile(
-            leading: AppIcon(
-              Icons.delete_outline_rounded,
-              color: theme.colorScheme.error,
-            ),
-            title: Text(
-              'Delete',
-              style: TextStyle(color: theme.colorScheme.error),
-            ),
-            onTap: () {
-              Navigator.of(sheetContext).pop();
-              onDelete(tx, title);
-            },
-          ),
-        ],
+    title: title,
+    optionCount: tx.type.isCorrection ? 2 : 5,
+    options: (sheetContext) => [
+      // A correction is only ever deleted — see the detail screen.
+      if (!tx.type.isCorrection) ...[
+        AppListTile(
+          leading: const AppIcon(Icons.content_copy_outlined),
+          title: const Text('Duplicate'),
+          subtitle: const Text('Add a new transaction with these details'),
+          onTap: () {
+            Navigator.of(sheetContext).pop();
+            context.push('/add?duplicate=${tx.id}');
+          },
+        ),
+        AppListTile(
+          leading: const AppIcon(Icons.bookmark_add_outlined),
+          title: const Text('Save as template'),
+          subtitle: const Text('Reuse these details from the ➕ button'),
+          onTap: () {
+            Navigator.of(sheetContext).pop();
+            onCreateTemplate(tx, title);
+          },
+        ),
+        AppListTile(
+          leading: const AppIcon(Icons.edit_outlined),
+          title: const Text('Edit'),
+          onTap: () {
+            Navigator.of(sheetContext).pop();
+            context.push('/add?id=${tx.id}');
+          },
+        ),
+      ],
+      AppListTile(
+        leading: const AppIcon(Icons.ios_share_rounded),
+        title: const Text('Share'),
+        subtitle: const Text('As a PDF receipt or an image card'),
+        onTap: () {
+          Navigator.of(sheetContext).pop();
+          shareTransaction(context, tx);
+        },
       ),
-    ),
+      AppListTile(
+        leading: AppIcon(
+          Icons.delete_outline_rounded,
+          color: theme.colorScheme.error,
+        ),
+        title: Text(
+          'Delete',
+          style: TextStyle(color: theme.colorScheme.error),
+        ),
+        onTap: () {
+          Navigator.of(sheetContext).pop();
+          onDelete(tx, title);
+        },
+      ),
+    ],
   );
 }
 

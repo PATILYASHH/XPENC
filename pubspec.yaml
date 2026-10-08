@@ -154,6 +154,11 @@ flutter:
     - assets/tessdata/eng.traineddata
     - assets/tessdata_config.json
     - assets/fonts/Inter-OFL.txt
+    # Static Regular/SemiBold/Bold instances of the Inter subset below, for
+    # shared PDFs (see features/share/pdf_kit.dart) — the pdf package can't
+    # pick a weight out of a variable font, and these carry ₹, €, £ and the
+    # other currency glyphs the built-in PDF fonts lack. ~35 KB each.
+    - assets/fonts/pdf/
 
   # The Glass theme's Liquid Glass lens (see lib/core/theme/glass.dart).
   shaders:

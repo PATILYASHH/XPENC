@@ -7,6 +7,21 @@ import 'app_surfaces.dart';
 /// (per-account, per-budget-category, and the combined all-accounts one)
 /// offers, so picking a period always feels the same.
 Future<DateTimeRange?> pickStatementRange(BuildContext context) async {
+  final picked = await _pick(context, offerAllTime: false);
+  return picked?.range;
+}
+
+/// [pickStatementRange] with an "All time" choice on top — for a ledger
+/// shared with someone, where the whole history is the usual ask. A null
+/// result is a cancel; a null `range` inside it is "All time".
+Future<({DateTimeRange? range})?> pickStatementRangeOrAllTime(
+  BuildContext context,
+) => _pick(context, offerAllTime: true);
+
+Future<({DateTimeRange? range})?> _pick(
+  BuildContext context, {
+  required bool offerAllTime,
+}) async {
   final now = DateTime.now();
   final choice = await showAppSheet<String>(
     context: context,
@@ -30,6 +45,13 @@ Future<DateTimeRange?> pickStatementRange(BuildContext context) async {
               ),
             ),
           ),
+          if (offerAllTime)
+            AppListTile(
+              leading: const AppIcon(Icons.all_inclusive_rounded),
+              title: const Text('All time'),
+              subtitle: const Text('Every entry, from the very first'),
+              onTap: () => Navigator.of(sheetContext).pop('all'),
+            ),
           AppListTile(
             leading: const AppIcon(Icons.calendar_today_outlined),
             title: const Text('This month'),
@@ -53,22 +75,28 @@ Future<DateTimeRange?> pickStatementRange(BuildContext context) async {
   if (choice == null) return null;
 
   switch (choice) {
+    case 'all':
+      return (range: null);
     case 'this':
-      return DateTimeRange(
-        start: DateTime(now.year, now.month),
-        end: DateTime(
-          now.year,
-          now.month + 1,
-        ).subtract(const Duration(days: 1)),
+      return (
+        range: DateTimeRange(
+          start: DateTime(now.year, now.month),
+          end: DateTime(
+            now.year,
+            now.month + 1,
+          ).subtract(const Duration(days: 1)),
+        ),
       );
     case 'last':
-      return DateTimeRange(
-        start: DateTime(now.year, now.month - 1),
-        end: DateTime(now.year, now.month).subtract(const Duration(days: 1)),
+      return (
+        range: DateTimeRange(
+          start: DateTime(now.year, now.month - 1),
+          end: DateTime(now.year, now.month).subtract(const Duration(days: 1)),
+        ),
       );
     default:
       if (!context.mounted) return null;
-      return showDateRangePicker(
+      final custom = await showDateRangePicker(
         context: context,
         firstDate: DateTime(2000),
         lastDate: now,
@@ -77,5 +105,6 @@ Future<DateTimeRange?> pickStatementRange(BuildContext context) async {
           end: now,
         ),
       );
+      return custom == null ? null : (range: custom);
   }
 }

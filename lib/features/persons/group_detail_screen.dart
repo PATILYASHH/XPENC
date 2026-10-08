@@ -7,12 +7,12 @@ import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
-import '../../core/widgets/statement_range_picker.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'delete_person_or_group.dart';
 import 'group_member_picker_sheet.dart';
+import '../share/share_flows.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 
 /// One group's members and shared-expense history. Balances shown here
@@ -73,9 +73,9 @@ class GroupDetailScreen extends ConsumerWidget {
             onPressed: () => context.push('/group/${group.id}/balances'),
           ),
           IconButton(
-            tooltip: 'Share statement',
+            tooltip: 'Share',
             icon: const AppIcon(Icons.ios_share_rounded),
-            onPressed: () => _shareGroupStatement(context, ref, group, balance),
+            onPressed: () => shareGroup(context, group),
           ),
           IconButton(
             tooltip: 'Edit group',
@@ -322,64 +322,6 @@ class GroupDetailScreen extends ConsumerWidget {
 }
 
 enum _GroupMenuAction { archive, remove }
-
-/// Same "pick a period → generate → share" flow as
-/// `_downloadStatement`/`_shareStatement` for an account or person — see
-/// `person_detail_screen.dart`.
-Future<void> _shareGroupStatement(
-  BuildContext context,
-  WidgetRef ref,
-  GroupRow group,
-  Money balance,
-) async {
-  final range = await pickStatementRange(context);
-  if (range == null || !context.mounted) return;
-
-  final messenger = ScaffoldMessenger.of(context);
-  final expenses = await ref.read(groupExpensesProvider(group.id).future);
-  final periodExpenses = expenses
-      .where(
-        (e) =>
-            !e.date.isBefore(range.start) &&
-            e.date.isBefore(range.end.add(const Duration(days: 1))),
-      )
-      .toList();
-  final personMap = ref.read(personMapProvider);
-  final payerNames = {
-    for (final e in periodExpenses)
-      if (e.payerId != null)
-        e.payerId!: personMap[e.payerId]?.name ?? 'Someone',
-  };
-
-  final service = ref.read(backupServiceProvider);
-  messenger
-    ..hideCurrentSnackBar()
-    ..showSnackBar(const SnackBar(content: Text('Generating statement...')));
-  try {
-    final file = await service.writeGroupStatementPdf(
-      group: group,
-      expenses: periodExpenses,
-      payerNames: payerNames,
-      currentBalance: balance,
-      start: range.start,
-      end: range.end,
-    );
-    await service.share(file, subject: '${group.name} statement');
-    if (!context.mounted) return;
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text('Exported ${file.uri.pathSegments.last}')),
-      );
-  } catch (e) {
-    if (!context.mounted) return;
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text("Couldn't generate statement: $e")),
-      );
-  }
-}
 
 class _GroupBalanceHero extends StatelessWidget {
   const _GroupBalanceHero({required this.balance, required this.onSeeAll});

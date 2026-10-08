@@ -17,7 +17,6 @@ import '../../core/widgets/amount_keypad_field.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/group_tag.dart';
 import '../../core/widgets/money_text.dart';
-import '../../core/widgets/statement_range_picker.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
@@ -26,6 +25,7 @@ import 'delete_person_or_group.dart';
 import 'edit_person_sheet.dart';
 import 'payment_action_row.dart';
 import 'person_avatar.dart';
+import '../share/share_flows.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 
 /// One person's ledger. Net balance = Σ(theyOwe) − Σ(iOwe).
@@ -99,9 +99,9 @@ class PersonDetailScreen extends ConsumerWidget {
             ),
             actions: [GlassActionGroup(children: [
               IconButton(
-                tooltip: 'Share statement',
+                tooltip: 'Share',
                 icon: const AppIcon(Icons.ios_share_rounded),
-                onPressed: () => _shareStatement(context, ref, person, balance),
+                onPressed: () => sharePerson(context, person),
               ),
               IconButton(
                 tooltip: 'Edit person',
@@ -633,59 +633,6 @@ class _ActionButtons extends ConsumerWidget {
         ],
       ),
     );
-  }
-}
-
-/// Generates and shares a PDF of [person]'s ledger for a range the user
-/// picks, same "Generating..." → share-sheet flow as an account statement
-/// (see `_downloadStatement` in account_detail_screen.dart). [balance] is
-/// the live net balance, carried straight through as the PDF's "current
-/// balance" line rather than recomputed.
-Future<void> _shareStatement(
-  BuildContext context,
-  WidgetRef ref,
-  PersonRow person,
-  Money balance,
-) async {
-  final range = await pickStatementRange(context);
-  if (range == null || !context.mounted) return;
-
-  final messenger = ScaffoldMessenger.of(context);
-  final entries = await ref.read(personEntriesProvider(person.id).future);
-  final periodEntries = entries
-      .where(
-        (e) =>
-            !e.date.isBefore(range.start) &&
-            e.date.isBefore(range.end.add(const Duration(days: 1))),
-      )
-      .toList();
-
-  final service = ref.read(backupServiceProvider);
-  messenger
-    ..hideCurrentSnackBar()
-    ..showSnackBar(const SnackBar(content: Text('Generating statement...')));
-  try {
-    final file = await service.writePersonStatementPdf(
-      person: person,
-      entries: periodEntries,
-      currentBalance: balance,
-      start: range.start,
-      end: range.end,
-    );
-    await service.share(file, subject: '${person.name} statement');
-    if (!context.mounted) return;
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text('Exported ${file.uri.pathSegments.last}')),
-      );
-  } catch (e) {
-    if (!context.mounted) return;
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text("Couldn't generate statement: $e")),
-      );
   }
 }
 
