@@ -115,6 +115,28 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   Auto, Account Reports, Tags, Categories, Calendar and Goals & Loans.
 - **Light / Dark / System is now its own choice** under Settings → General →
   Theme, separate from the theme itself. Classic and Noir come in both.
+- **Hide a transaction from screenshots (NCT)** (#143) — a "Hide from
+  screenshots" switch on Add/Edit and on the transaction's own page. An NCT
+  transaction shows as a frosted "Hidden · hold to view" row everywhere it's
+  listed (Transactions, Dashboard, accounts, calendar, budgets, payees,
+  people, Stats), so a screenshot or screen recording catches only the
+  frost. Hold the row to see it; while you hold it, and while its own page
+  or editor is open, screenshots and recordings are blocked. Android can't
+  blur part of a screenshot after the fact, so the transaction is simply
+  never on screen in the clear unless you're looking at it. Off by default;
+  schema v79 adds one column, with no data migration.
+- **Customize dashboard** — Settings → General → Customize dashboard now
+  lists every Dashboard widget: drag to reorder, − to take one off, + to
+  add one, and Reset to default. Six new widgets, off until you add them:
+  Cash flow (six months of income against expense), Savings goals, Loans,
+  Shortcuts (your Quick Actions), Groups and Shopping lists. A Customize
+  dashboard link now ends the Dashboard. Schema v78 stores the layout.
+- **Past months on the Dashboard** — pick a past month in the month pill and
+  the whole Dashboard reports it as it closed: Total money shows that
+  month's closing balance with its opening balance beneath, account
+  balances and who owed whom are as of its last day, Recent lists that
+  month's transactions, and every graph ends at it. Upcoming and Ready to
+  Assign, which only describe today, step aside.
 
 ### Changed
 - **Themes are now Classic, Noir and Glass.** Classic (monochrome) is the
@@ -122,6 +144,12 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   throughout: heavier text everywhere and thicker card, chip and input
   outlines. Colourful, Midnight and Cove are retired. Anyone using them moves
   to Classic, and a forced light or dark choice is kept. No data migration.
+
+### Fixed
+- **➕ with templates did nothing under Glass** — once a template was saved,
+  ➕ opens a "start from scratch or a template" sheet; under Glass, picking
+  either option closed the sheet and went nowhere, because the ➕ leaves the
+  tab bar while a sheet is up and the pick was dropped with it.
 
 ## [1.6.3] — 2026-09-30
 

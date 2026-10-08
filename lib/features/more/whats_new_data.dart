@@ -23,6 +23,35 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.visibility_off_outlined,
+    title: 'Hide a transaction from screenshots',
+    location: 'Add or edit a transaction → Hide from screenshots',
+    description:
+        'Turn it on and the transaction shows as a frosted “Hidden · hold '
+        'to view” row everywhere it’s listed, so a screenshot or screen '
+        'recording only catches the frost. Hold the row to see it — '
+        'screenshots and recordings are blocked while you do, and while '
+        'its own page is open.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.dashboard_customize_outlined,
+    title: 'Make the Dashboard yours',
+    location: 'Settings → General → Customize dashboard',
+    description:
+        'Drag widgets into the order you want, take off the ones you '
+        'don’t, and add new ones: Cash flow, Savings goals, Loans, '
+        'Shortcuts, Groups and Shopping lists.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.history_rounded,
+    title: 'Look back at any month',
+    location: 'Dashboard → month pill',
+    description:
+        'Pick a past month and the Dashboard shows it as it closed: its '
+        'opening and closing balance, account balances and who owed whom '
+        'on its last day, and its own transactions.',
+  ),
+  WhatsNewEntry(
     icon: Icons.shortcut_rounded,
     title: 'Shortcuts to related pages',
     location: 'Accounts, Budgets, Transactions and more',
