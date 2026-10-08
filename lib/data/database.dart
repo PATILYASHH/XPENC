@@ -199,7 +199,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 77;
+  int get schemaVersion => 78;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -725,6 +725,10 @@ class AppDatabase extends _$AppDatabase {
         // Settled tab on Persons — replaces the old silent auto-archive.
         await _addColumnIfMissing(m, persons, persons.isSettled);
         await _addColumnIfMissing(m, groups, groups.isSettled);
+      }
+      if (from < 78) {
+        // Customize dashboard: which widgets, in what order.
+        await _addColumnIfMissing(m, settings, settings.dashboardLayout);
       }
     },
     beforeOpen: (details) async {
@@ -5940,6 +5944,24 @@ class AppDatabase extends _$AppDatabase {
     await update(
       settings,
     ).write(SettingsCompanion(bottomNavSlots: Value('$left,$right')));
+  }
+
+  /// The Dashboard's widget order and visibility, already encoded — see
+  /// [Settings.dashboardLayout]. Only the shape is checked here; an id this
+  /// version doesn't know is dropped when the layout is read.
+  Future<void> setDashboardLayout(String encoded) async {
+    final valid = RegExp(r'^-?[a-zA-Z]+$');
+    final ids = encoded.isEmpty ? const <String>[] : encoded.split(',');
+    if (ids.any((id) => !valid.hasMatch(id))) {
+      throw ArgumentError('Unknown dashboard widget.');
+    }
+    final bare = [for (final id in ids) id.replaceFirst('-', '')];
+    if (bare.toSet().length != bare.length) {
+      throw ArgumentError('The same dashboard widget is listed twice.');
+    }
+    await update(
+      settings,
+    ).write(SettingsCompanion(dashboardLayout: Value(encoded)));
   }
 
   Future<void> setShowBottomNavLabels(bool value) => update(

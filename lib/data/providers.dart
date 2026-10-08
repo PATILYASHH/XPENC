@@ -16,6 +16,7 @@ import '../features/message_capture/capture_service.dart';
 import '../features/message_capture/message_source.dart';
 import '../features/message_capture/share_intake.dart';
 import '../features/transactions/transaction_filters.dart';
+import 'currency_conversion.dart';
 import 'database.dart';
 import 'tables.dart';
 
@@ -660,8 +661,13 @@ final personEntriesProvider = StreamProvider.family<List<PersonEntryRow>, int>(
 );
 
 /// Headline totals: what you'll collect, what you'll pay.
-final personTotalsProvider = Provider<({Money youGet, Money youPay})>((ref) {
-  final balances = ref.watch(personBalancesProvider).valueOrNull ?? {};
+final personTotalsProvider = Provider<({Money youGet, Money youPay})>(
+  (ref) => personTotalsOf(ref.watch(personBalancesProvider).valueOrNull ?? {}),
+);
+
+/// [personTotalsProvider]'s sum over any per-person balance map — the
+/// dashboard also runs it over balances as they stood at a past month's end.
+({Money youGet, Money youPay}) personTotalsOf(Map<int, Money> balances) {
   var youGet = const Money.zero();
   var youPay = const Money.zero();
   for (final b in balances.values) {
@@ -672,7 +678,7 @@ final personTotalsProvider = Provider<({Money youGet, Money youPay})>((ref) {
     }
   }
   return (youGet: youGet, youPay: youPay);
-});
+}
 
 // ── Groups ───────────────────────────────────────────────────────────────
 
@@ -2095,6 +2101,22 @@ final accountTypeBalanceTrendProvider =
     Provider.family<
       List<({DateTime month, Money value})>,
       ({AccountType type, int months})
+    >(
+      (ref, args) => ref.watch(
+        accountTypeBalanceTrendEndingProvider((
+          type: args.type,
+          months: args.months,
+          end: _thisCalendarMonth(),
+        )),
+      ),
+    );
+
+/// [accountTypeBalanceTrendProvider], ending at the calendar month [end]
+/// instead of this one — the dashboard's tabs while a past month is picked.
+final accountTypeBalanceTrendEndingProvider =
+    Provider.family<
+      List<({DateTime month, Money value})>,
+      ({AccountType type, int months, DateTime end})
     >((ref, args) {
       final accounts =
           ref.watch(balanceAccountsProvider).valueOrNull ?? const [];
@@ -2107,13 +2129,13 @@ final accountTypeBalanceTrendProvider =
         (sum, a) => sum + a.openingBalance,
       );
 
-      final now = DateTime.now();
+      final last = args.end;
       final out = <({DateTime month, Money value})>[];
 
       for (var i = args.months - 1; i >= 0; i--) {
         final end = DateTime(
-          now.year,
-          now.month - i + 1,
+          last.year,
+          last.month - i + 1,
         ).subtract(const Duration(milliseconds: 1));
         var total = opening;
 
@@ -2143,29 +2165,37 @@ final accountTypeBalanceTrendProvider =
 /// * [people] — what you owe people: each person's net balance as of that
 ///   month end, summed over only the ones where you're the one owing (a
 ///   person who owes *you* never offsets someone you owe).
-final debtTrendProvider =
-    Provider.family<
-      List<
-        ({
-          DateTime month,
-          Money loans,
-          Money payLater,
-          Money people,
-          Money total,
-        })
-      >,
-      int
-    >((ref, months) {
+final debtTrendProvider = Provider.family<List<DebtPoint>, int>(
+  (ref, months) => ref.watch(
+    debtTrendEndingProvider((months: months, end: _thisCalendarMonth())),
+  ),
+);
+
+/// One month-end of [debtTrendProvider].
+typedef DebtPoint = ({
+  DateTime month,
+  Money loans,
+  Money payLater,
+  Money people,
+  Money total,
+});
+
+/// [debtTrendProvider], ending at the calendar month [end] instead of this
+/// one — the dashboard's Loan tab while a past month is picked.
+final debtTrendEndingProvider =
+    Provider.family<List<DebtPoint>, ({int months, DateTime end})>((ref, args) {
       final loanTrend = ref.watch(
-        accountTypeBalanceTrendProvider((
+        accountTypeBalanceTrendEndingProvider((
           type: AccountType.loan,
-          months: months,
+          months: args.months,
+          end: args.end,
         )),
       );
       final payLaterTrend = ref.watch(
-        accountTypeBalanceTrendProvider((
+        accountTypeBalanceTrendEndingProvider((
           type: AccountType.payLater,
-          months: months,
+          months: args.months,
+          end: args.end,
         )),
       );
       final entries =
@@ -2211,20 +2241,209 @@ final debtTrendProvider =
 /// Income and expense per month for the last N months, oldest first.
 final monthlyTotalsProvider =
     Provider.family<List<({DateTime month, Money income, Money expense})>, int>(
-      (ref, months) {
-        final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
-        final now = DateTime.now();
-
-        return List.generate(months, (i) {
-          final m = DateTime(now.year, now.month - (months - 1 - i));
-          var income = const Money.zero();
-          var expense = const Money.zero();
-          for (final t in txs) {
-            if (t.date.year != m.year || t.date.month != m.month) continue;
-            if (t.type == TxType.income) income += t.amount;
-            if (t.type == TxType.expense) expense += t.amount;
-          }
-          return (month: m, income: income, expense: expense);
-        });
-      },
+      (ref, months) => ref.watch(
+        monthlyTotalsEndingProvider((
+          months: months,
+          end: _thisCalendarMonth(),
+        )),
+      ),
     );
+
+/// [monthlyTotalsProvider], ending at the calendar month [end] instead of
+/// this one — the dashboard's Income/Expense tabs while a past month is
+/// picked.
+final monthlyTotalsEndingProvider =
+    Provider.family<
+      List<({DateTime month, Money income, Money expense})>,
+      ({int months, DateTime end})
+    >((ref, args) {
+      final months = args.months;
+      final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
+      final last = args.end;
+
+      return List.generate(months, (i) {
+        final m = DateTime(last.year, last.month - (months - 1 - i));
+        var income = const Money.zero();
+        var expense = const Money.zero();
+        for (final t in txs) {
+          if (t.date.year != m.year || t.date.month != m.month) continue;
+          if (t.type == TxType.income) income += t.amount;
+          if (t.type == TxType.expense) expense += t.amount;
+        }
+        return (month: m, income: income, expense: expense);
+      });
+    });
+
+DateTime _thisCalendarMonth() {
+  final now = DateTime.now();
+  return DateTime(now.year, now.month);
+}
+
+// ── Dashboard: any month, as it stood ───────────────────────────────────────
+//
+// Picking a past month in the Dashboard's month pill used to move only the
+// income/expense, budget and spend figures; Total money, the account
+// balances and who-owes-whom kept showing today. These report that month as
+// it stood at its close instead. Same "compose, don't re-subscribe" rule as
+// the trend providers above.
+
+/// Whether [selectedMonthProvider] points at a budget period that has
+/// already closed. The dashboard then shows that period's closing figures
+/// and hides what only makes sense today (Upcoming, Ready to Assign).
+final viewingPastPeriodProvider = Provider<bool>((ref) {
+  final startDay = ref.watch(budgetStartDayProvider);
+  final current = budgetPeriodAnchorFor(DateTime.now(), startDay);
+  return ref.watch(selectedMonthProvider).isBefore(current);
+});
+
+/// What each money-holding account held at [cutoff] (inclusive), by id —
+/// walked *back* from [AccountRow.currentBalance] by undoing every
+/// transaction dated after it, with the same per-type rules
+/// [AppDatabase.recalculateBalances] replays forward. Walking back rather
+/// than forward from [AccountRow.openingBalance] means the latest period
+/// always closes on exactly the balance every other screen shows.
+///
+/// [accounts] must include instruments and archived accounts, so a row on a
+/// debit card still lands on the bank it draws from. A null [cutoff] undoes
+/// nothing — today's balances.
+Map<int, Money> accountBalancesAt({
+  required Iterable<AccountRow> accounts,
+  required Iterable<TransactionRow> txs,
+  DateTime? cutoff,
+}) {
+  final targetOf = {for (final a in accounts) a.id: a.linkedAccountId ?? a.id};
+  final out = <int, Money>{
+    for (final a in accounts)
+      if (a.linkedAccountId == null) a.id: a.currentBalance,
+  };
+  if (cutoff == null) return out;
+
+  void undo(int accountId, Money delta) {
+    final t = targetOf[accountId] ?? accountId;
+    out[t] = (out[t] ?? const Money.zero()) - delta;
+  }
+
+  for (final t in txs) {
+    if (!t.date.isAfter(cutoff)) continue;
+    switch (t.type) {
+      case TxType.income:
+      case TxType.personIn:
+      case TxType.correctionIn:
+        undo(t.accountId, t.amount);
+      case TxType.expense:
+      case TxType.personOut:
+      case TxType.correctionOut:
+        undo(t.accountId, -t.amount);
+      case TxType.transfer:
+        undo(t.accountId, -t.amount);
+        undo(t.toAccountId!, t.toAmount ?? t.amount);
+    }
+  }
+  return out;
+}
+
+/// Every account — archived and instruments included — for
+/// [accountBalancesAt]. Null until both streams have landed.
+final _ledgerAccountsProvider = Provider<List<AccountRow>?>((ref) {
+  final active = ref.watch(accountsProvider).valueOrNull;
+  final archived = ref.watch(archivedAccountsProvider).valueOrNull;
+  if (active == null || archived == null) return null;
+  return [...active, ...archived];
+});
+
+/// Each balance-holding account's balance at the close of the selected
+/// period, while a past one is picked — the dashboard's Accounts strip.
+/// Null while today's period is picked (use [AccountRow.currentBalance]) or
+/// until the ledger has loaded.
+final periodEndAccountBalancesProvider = Provider<Map<int, Money>?>((ref) {
+  if (!ref.watch(viewingPastPeriodProvider)) return null;
+  final accounts = ref.watch(_ledgerAccountsProvider);
+  final txs = ref.watch(allTransactionsProvider).valueOrNull;
+  if (accounts == null || txs == null) return null;
+  final period = budgetPeriodFor(
+    ref.watch(selectedMonthProvider),
+    ref.watch(budgetStartDayProvider),
+  );
+  return accountBalancesAt(accounts: accounts, txs: txs, cutoff: period.end);
+});
+
+/// The dashboard hero's Total money for the selected period: [opening], as
+/// it stood the instant before the period began, and [trend] — its close at
+/// the end of each of the last [months] periods, oldest first, the selected
+/// one last. Today's period closes on today's balances.
+///
+/// Counts exactly what [AppDatabase.watchNetWorth] counts — balance-holding
+/// accounts with [AccountRow.includeInNetWorth] on, foreign ones at today's
+/// rate — so [opening] to [trend]'s last point is the ledger's movement
+/// alone, never an exchange-rate swing. Null until every source has loaded.
+final periodNetWorthProvider =
+    Provider.family<({Money opening, List<Money> trend})?, int>((ref, months) {
+      final holding = ref.watch(balanceAccountsProvider).valueOrNull;
+      final accounts = ref.watch(_ledgerAccountsProvider);
+      final txs = ref.watch(allTransactionsProvider).valueOrNull;
+      final rates = ref.watch(currencyRatesProvider).valueOrNull;
+      if (holding == null || accounts == null || txs == null || rates == null) {
+        return null;
+      }
+      final month = ref.watch(selectedMonthProvider);
+      final startDay = ref.watch(budgetStartDayProvider);
+      final past = ref.watch(viewingPastPeriodProvider);
+      final rateOf = {
+        for (final r in rates) r.currencyCode: r.rateToBaseMicros,
+      };
+
+      Money totalAt(DateTime? cutoff) {
+        final balances = accountBalancesAt(
+          accounts: accounts,
+          txs: txs,
+          cutoff: cutoff,
+        );
+        var total = const Money.zero();
+        for (final a in holding) {
+          if (!a.includeInNetWorth) continue;
+          final balance = balances[a.id] ?? const Money.zero();
+          final rate = a.currencyCode == null ? null : rateOf[a.currencyCode];
+          total += rate == null ? balance : convertUsingRate(balance, rate);
+        }
+        return total;
+      }
+
+      final start = budgetPeriodFor(month, startDay).start;
+      return (
+        opening: totalAt(start.subtract(const Duration(milliseconds: 1))),
+        trend: [
+          for (var i = months - 1; i >= 0; i--)
+            i == 0 && !past
+                ? totalAt(null)
+                : totalAt(
+                    budgetPeriodFor(
+                      DateTime(month.year, month.month - i),
+                      startDay,
+                    ).end,
+                  ),
+        ],
+      );
+    });
+
+/// Each person's balance (`+` they owe you) at the close of the selected
+/// period, while a past one is picked — the dashboard's People section.
+/// Null while today's period is picked (use [personBalancesProvider]) or
+/// until the entries have loaded.
+final periodEndPersonBalancesProvider = Provider<Map<int, Money>?>((ref) {
+  if (!ref.watch(viewingPastPeriodProvider)) return null;
+  final entries = ref.watch(allPersonEntriesProvider).valueOrNull;
+  if (entries == null) return null;
+  final end = budgetPeriodFor(
+    ref.watch(selectedMonthProvider),
+    ref.watch(budgetStartDayProvider),
+  ).end;
+  final out = <int, Money>{};
+  for (final e in entries) {
+    if (e.date.isAfter(end)) continue;
+    final signed = e.direction == PersonDirection.theyOwe
+        ? e.amount
+        : -e.amount;
+    out[e.personId] = (out[e.personId] ?? const Money.zero()) + signed;
+  }
+  return out;
+});

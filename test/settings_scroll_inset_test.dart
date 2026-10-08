@@ -60,8 +60,20 @@ void main() {
   }
 
   void expectRoomForNavBar(WidgetTester tester) {
-    final list = tester.widget<ListView>(find.byType(ListView).first);
-    final padding = list.padding!.resolve(TextDirection.ltr);
+    final lists = find.byType(ListView);
+    if (lists.evaluate().isNotEmpty) {
+      final list = tester.widget<ListView>(lists.first);
+      final padding = list.padding!.resolve(TextDirection.ltr);
+      expect(padding.bottom, greaterThanOrEqualTo(navBarDp + 32));
+      return;
+    }
+    // A CustomScrollView carries it on its last sliver instead.
+    final view = tester.widget<CustomScrollView>(
+      find.byType(CustomScrollView).first,
+    );
+    final last = view.slivers.last;
+    expect(last, isA<SliverPadding>());
+    final padding = (last as SliverPadding).padding.resolve(TextDirection.ltr);
     expect(padding.bottom, greaterThanOrEqualTo(navBarDp + 32));
   }
 

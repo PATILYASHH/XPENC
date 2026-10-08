@@ -1246,6 +1246,13 @@ class Settings extends Table {
   /// coffee cup, their gym) surfaces without scrolling or typing a search.
   TextColumn get frequentIconKeys => text().withDefault(const Constant(''))();
 
+  /// The Dashboard's widgets, top to bottom, comma-joined — every widget id
+  /// once, a `-` prefix marking one taken off (see
+  /// `lib/features/dashboard/dashboard_layout.dart`). `''` is the built-in
+  /// layout. Every id is kept, hidden ones included, so a widget added in a
+  /// later version is told apart from one the user removed.
+  TextColumn get dashboardLayout => text().withDefault(const Constant(''))();
+
   @override
   Set<Column> get primaryKey => {id};
 }

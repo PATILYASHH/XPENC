@@ -101,6 +101,7 @@ void main() {
       lockScreenScreenshotShortcut: false,
       moreScreenViewMode: MoreScreenViewMode.list,
       frequentIconKeys: '',
+      dashboardLayout: '',
       budgetingMode: BudgetingMode.budgets,
       rtaEnabled: false,
     );

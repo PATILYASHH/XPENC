@@ -10131,6 +10131,18 @@ class $SettingsTable extends Settings
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
   );
+  static const VerificationMeta _dashboardLayoutMeta = const VerificationMeta(
+    'dashboardLayout',
+  );
+  @override
+  late final GeneratedColumn<String> dashboardLayout = GeneratedColumn<String>(
+    'dashboard_layout',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -10204,6 +10216,7 @@ class $SettingsTable extends Settings
     fontFamily,
     extraBottomInset,
     frequentIconKeys,
+    dashboardLayout,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -10751,6 +10764,15 @@ class $SettingsTable extends Settings
         ),
       );
     }
+    if (data.containsKey('dashboard_layout')) {
+      context.handle(
+        _dashboardLayoutMeta,
+        dashboardLayout.isAcceptableOrUnknown(
+          data['dashboard_layout']!,
+          _dashboardLayoutMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -11058,6 +11080,10 @@ class $SettingsTable extends Settings
         DriftSqlType.string,
         data['${effectivePrefix}frequent_icon_keys'],
       )!,
+      dashboardLayout: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}dashboard_layout'],
+      )!,
     );
   }
 
@@ -11109,7 +11135,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   final DateTime? lastMessageScanAt;
   final bool notificationsEnabled;
 
-  /// A `ThemePreset.name`. Stored as text rather than an enum index, so
+  /// A `ThemeChoice.storageName` (`classic`, `noir:dark`, …). Stored as text rather than an enum index, so
   /// reordering the enum can never silently repaint someone's app.
   final String themeName;
 
@@ -11393,16 +11419,16 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// Off by default — press-and-hold the ➕ button is a new, undiscoverable
   /// gesture on a control every existing user already knows; asking them to
   /// opt in avoids surprising anyone who just wants to add a transaction.
-  /// When on, holding ➕ floats 3 quick-access options (see
-  /// [holdMenuSlots]) the user drags a finger toward to jump to that
-  /// destination, without lifting.
+  /// When on, holding ➕ opens a radial menu mid-screen — ✕ (cancel) in the
+  /// centre, up to 8 quick actions around it (see [holdMenuSlots]) — the
+  /// user drags a finger toward one and lets go to open it.
   final bool holdMenuEnabled;
 
-  /// The 3 destinations the hold-➕ menu offers, comma-joined, same catalog
-  /// and id set as [bottomNavSlots] (`AppShell._catalog` /
-  /// `AppDatabase.bottomNavCatalogIds`). Deliberately allowed to overlap
-  /// with `bottomNavSlots` — quick access via a hold gesture and a pinned
-  /// tab aren't mutually exclusive.
+  /// The hold-➕ radial menu's 8 slots, comma-joined, clockwise from
+  /// straight up (`''` = empty) — quick-action ids or `template:<id>`, see
+  /// `lib/core/routing/quick_actions.dart`. The default is the pre-radial
+  /// 3-item format; `parseHoldMenuSlots` maps any 3-item value into the
+  /// ring's upper slots, so it never needed a migration.
   final String holdMenuSlots;
 
   /// Whether the calendar's selected-day section shows an inflow/outflow
@@ -11440,6 +11466,13 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// "Frequently used" row so the icon someone reaches for constantly (their
   /// coffee cup, their gym) surfaces without scrolling or typing a search.
   final String frequentIconKeys;
+
+  /// The Dashboard's widgets, top to bottom, comma-joined — every widget id
+  /// once, a `-` prefix marking one taken off (see
+  /// `lib/features/dashboard/dashboard_layout.dart`). `''` is the built-in
+  /// layout. Every id is kept, hidden ones included, so a widget added in a
+  /// later version is told apart from one the user removed.
+  final String dashboardLayout;
   const SettingRow({
     required this.id,
     required this.currencyCode,
@@ -11512,6 +11545,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     this.fontFamily,
     required this.extraBottomInset,
     required this.frequentIconKeys,
+    required this.dashboardLayout,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -11659,6 +11693,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     }
     map['extra_bottom_inset'] = Variable<int>(extraBottomInset);
     map['frequent_icon_keys'] = Variable<String>(frequentIconKeys);
+    map['dashboard_layout'] = Variable<String>(dashboardLayout);
     return map;
   }
 
@@ -11767,6 +11802,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           : Value(fontFamily),
       extraBottomInset: Value(extraBottomInset),
       frequentIconKeys: Value(frequentIconKeys),
+      dashboardLayout: Value(dashboardLayout),
     );
   }
 
@@ -11901,6 +11937,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       fontFamily: serializer.fromJson<String?>(json['fontFamily']),
       extraBottomInset: serializer.fromJson<int>(json['extraBottomInset']),
       frequentIconKeys: serializer.fromJson<String>(json['frequentIconKeys']),
+      dashboardLayout: serializer.fromJson<String>(json['dashboardLayout']),
     );
   }
   @override
@@ -12010,6 +12047,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'fontFamily': serializer.toJson<String?>(fontFamily),
       'extraBottomInset': serializer.toJson<int>(extraBottomInset),
       'frequentIconKeys': serializer.toJson<String>(frequentIconKeys),
+      'dashboardLayout': serializer.toJson<String>(dashboardLayout),
     };
   }
 
@@ -12085,6 +12123,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     Value<String?> fontFamily = const Value.absent(),
     int? extraBottomInset,
     String? frequentIconKeys,
+    String? dashboardLayout,
   }) => SettingRow(
     id: id ?? this.id,
     currencyCode: currencyCode ?? this.currencyCode,
@@ -12178,6 +12217,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     fontFamily: fontFamily.present ? fontFamily.value : this.fontFamily,
     extraBottomInset: extraBottomInset ?? this.extraBottomInset,
     frequentIconKeys: frequentIconKeys ?? this.frequentIconKeys,
+    dashboardLayout: dashboardLayout ?? this.dashboardLayout,
   );
   SettingRow copyWithCompanion(SettingsCompanion data) {
     return SettingRow(
@@ -12374,6 +12414,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       frequentIconKeys: data.frequentIconKeys.present
           ? data.frequentIconKeys.value
           : this.frequentIconKeys,
+      dashboardLayout: data.dashboardLayout.present
+          ? data.dashboardLayout.value
+          : this.dashboardLayout,
     );
   }
 
@@ -12454,7 +12497,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('fontWeightDelta: $fontWeightDelta, ')
           ..write('fontFamily: $fontFamily, ')
           ..write('extraBottomInset: $extraBottomInset, ')
-          ..write('frequentIconKeys: $frequentIconKeys')
+          ..write('frequentIconKeys: $frequentIconKeys, ')
+          ..write('dashboardLayout: $dashboardLayout')
           ..write(')'))
         .toString();
   }
@@ -12532,6 +12576,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     fontFamily,
     extraBottomInset,
     frequentIconKeys,
+    dashboardLayout,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -12610,7 +12655,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.fontWeightDelta == this.fontWeightDelta &&
           other.fontFamily == this.fontFamily &&
           other.extraBottomInset == this.extraBottomInset &&
-          other.frequentIconKeys == this.frequentIconKeys);
+          other.frequentIconKeys == this.frequentIconKeys &&
+          other.dashboardLayout == this.dashboardLayout);
 }
 
 class SettingsCompanion extends UpdateCompanion<SettingRow> {
@@ -12685,6 +12731,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<String?> fontFamily;
   final Value<int> extraBottomInset;
   final Value<String> frequentIconKeys;
+  final Value<String> dashboardLayout;
   const SettingsCompanion({
     this.id = const Value.absent(),
     this.currencyCode = const Value.absent(),
@@ -12757,6 +12804,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.fontFamily = const Value.absent(),
     this.extraBottomInset = const Value.absent(),
     this.frequentIconKeys = const Value.absent(),
+    this.dashboardLayout = const Value.absent(),
   });
   SettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -12830,6 +12878,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.fontFamily = const Value.absent(),
     this.extraBottomInset = const Value.absent(),
     this.frequentIconKeys = const Value.absent(),
+    this.dashboardLayout = const Value.absent(),
   });
   static Insertable<SettingRow> custom({
     Expression<int>? id,
@@ -12903,6 +12952,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<String>? fontFamily,
     Expression<int>? extraBottomInset,
     Expression<String>? frequentIconKeys,
+    Expression<String>? dashboardLayout,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -12999,6 +13049,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       if (fontFamily != null) 'font_family': fontFamily,
       if (extraBottomInset != null) 'extra_bottom_inset': extraBottomInset,
       if (frequentIconKeys != null) 'frequent_icon_keys': frequentIconKeys,
+      if (dashboardLayout != null) 'dashboard_layout': dashboardLayout,
     });
   }
 
@@ -13074,6 +13125,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<String?>? fontFamily,
     Value<int>? extraBottomInset,
     Value<String>? frequentIconKeys,
+    Value<String>? dashboardLayout,
   }) {
     return SettingsCompanion(
       id: id ?? this.id,
@@ -13160,6 +13212,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       fontFamily: fontFamily ?? this.fontFamily,
       extraBottomInset: extraBottomInset ?? this.extraBottomInset,
       frequentIconKeys: frequentIconKeys ?? this.frequentIconKeys,
+      dashboardLayout: dashboardLayout ?? this.dashboardLayout,
     );
   }
 
@@ -13427,6 +13480,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     if (frequentIconKeys.present) {
       map['frequent_icon_keys'] = Variable<String>(frequentIconKeys.value);
     }
+    if (dashboardLayout.present) {
+      map['dashboard_layout'] = Variable<String>(dashboardLayout.value);
+    }
     return map;
   }
 
@@ -13507,7 +13563,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('fontWeightDelta: $fontWeightDelta, ')
           ..write('fontFamily: $fontFamily, ')
           ..write('extraBottomInset: $extraBottomInset, ')
-          ..write('frequentIconKeys: $frequentIconKeys')
+          ..write('frequentIconKeys: $frequentIconKeys, ')
+          ..write('dashboardLayout: $dashboardLayout')
           ..write(')'))
         .toString();
   }
@@ -34519,6 +34576,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<String?> fontFamily,
       Value<int> extraBottomInset,
       Value<String> frequentIconKeys,
+      Value<String> dashboardLayout,
     });
 typedef $$SettingsTableUpdateCompanionBuilder =
     SettingsCompanion Function({
@@ -34593,6 +34651,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<String?> fontFamily,
       Value<int> extraBottomInset,
       Value<String> frequentIconKeys,
+      Value<String> dashboardLayout,
     });
 
 final class $$SettingsTableReferences
@@ -34993,6 +35052,11 @@ class $$SettingsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get dashboardLayout => $composableBuilder(
+    column: $table.dashboardLayout,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$AccountsTableFilterComposer get quickAddAccountId {
     final $$AccountsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -35376,6 +35440,11 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get dashboardLayout => $composableBuilder(
+    column: $table.dashboardLayout,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$AccountsTableOrderingComposer get quickAddAccountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -35745,6 +35814,11 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get dashboardLayout => $composableBuilder(
+    column: $table.dashboardLayout,
+    builder: (column) => column,
+  );
+
   $$AccountsTableAnnotationComposer get quickAddAccountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -35871,6 +35945,7 @@ class $$SettingsTableTableManager
                 Value<String?> fontFamily = const Value.absent(),
                 Value<int> extraBottomInset = const Value.absent(),
                 Value<String> frequentIconKeys = const Value.absent(),
+                Value<String> dashboardLayout = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
                 currencyCode: currencyCode,
@@ -35943,6 +36018,7 @@ class $$SettingsTableTableManager
                 fontFamily: fontFamily,
                 extraBottomInset: extraBottomInset,
                 frequentIconKeys: frequentIconKeys,
+                dashboardLayout: dashboardLayout,
               ),
           createCompanionCallback:
               ({
@@ -36020,6 +36096,7 @@ class $$SettingsTableTableManager
                 Value<String?> fontFamily = const Value.absent(),
                 Value<int> extraBottomInset = const Value.absent(),
                 Value<String> frequentIconKeys = const Value.absent(),
+                Value<String> dashboardLayout = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
                 currencyCode: currencyCode,
@@ -36092,6 +36169,7 @@ class $$SettingsTableTableManager
                 fontFamily: fontFamily,
                 extraBottomInset: extraBottomInset,
                 frequentIconKeys: frequentIconKeys,
+                dashboardLayout: dashboardLayout,
               ),
           withReferenceMapper: (p0) => p0
               .map(

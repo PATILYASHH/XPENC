@@ -19,30 +19,50 @@ import '../../data/tables.dart';
 import '../budgets/ready_to_assign_screen.dart';
 import '../message_capture/review_inbox_screen.dart';
 import '../persons/person_avatar.dart';
+import '../../core/routing/quick_actions.dart';
 import '../reports/chart_widgets.dart';
+import '../reports/stats_modules.dart';
+import 'dashboard_layout.dart';
 import 'sparkline.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 
 /// The graphical glance view: net worth, this-month income vs expense,
-/// account balances, budgets, spend breakdown and recent activity.
+/// account balances, budgets, spend breakdown and recent activity — whichever
+/// widgets the user has on it, in their order (Settings ▸ Customize
+/// dashboard; see [dashboardLayoutProvider]).
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
-  static const _sections = <Widget>[
-    _ReviewCardsSection(),
-    _NetWorthCard(),
-    _ThisMonthCard(),
-    _AccountsStrip(),
-    _ReadyToAssignSection(),
-    _PersonsSection(),
-    _UpcomingSection(),
-    _BudgetsSection(),
-    _SpendByCategorySection(),
-    _RecentSection(),
-  ];
+  static Widget _section(DashboardWidget widget) => switch (widget) {
+    DashboardWidget.detected => const _ReviewCardsSection(),
+    DashboardWidget.totalMoney => const _NetWorthCard(),
+    DashboardWidget.thisMonth => const _ThisMonthCard(),
+    DashboardWidget.accounts => const _AccountsStrip(),
+    DashboardWidget.readyToAssign => const _ReadyToAssignSection(),
+    DashboardWidget.people => const _PersonsSection(),
+    DashboardWidget.upcoming => const _UpcomingSection(),
+    DashboardWidget.budgets => const _BudgetsSection(),
+    DashboardWidget.spending => const _SpendByCategorySection(),
+    DashboardWidget.recent => const _RecentSection(),
+    DashboardWidget.cashFlow => const _CashFlowSection(),
+    DashboardWidget.goals => const _GoalsSection(),
+    DashboardWidget.loans => const _LoansSection(),
+    DashboardWidget.shortcuts => const _ShortcutsSection(),
+    DashboardWidget.groups => const _GroupsSection(),
+    DashboardWidget.shopping => const _ShoppingSection(),
+  };
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Until settings land there's no telling which layout is theirs; drawing
+    // the built-in one meanwhile would flash it at anyone who changed it.
+    final ready = ref.watch(settingsProvider).hasValue;
+    final shown = [
+      if (ready)
+        for (final s in ref.watch(dashboardLayoutProvider))
+          if (s.visible) s.widget,
+    ];
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -50,8 +70,17 @@ class DashboardScreen extends ConsumerWidget {
           const SliverToBoxAdapter(child: SizedBox(height: 8)),
           SliverList.list(
             children: [
-              for (var i = 0; i < _sections.length; i++)
-                Reveal(index: i, child: _sections[i]),
+              // Keyed by widget, so a reordered section keeps its state.
+              for (var i = 0; i < shown.length; i++)
+                Reveal(
+                  key: ValueKey(shown[i]),
+                  index: i,
+                  child: _section(shown[i]),
+                ),
+              if (ready && shown.isEmpty)
+                const _EmptyDashboard()
+              else if (ready)
+                const _CustomizeLink(),
               const SizedBox(height: 32),
             ],
           ),
@@ -68,6 +97,16 @@ class DashboardScreen extends ConsumerWidget {
 const _sectionPad = EdgeInsets.fromLTRB(20, 0, 20, 24);
 const _cardRadius = 24.0;
 
+/// `30 Sep` — the last day of the month picked in the top bar, for the
+/// sections that report a past month as it closed.
+String _periodEndLabel(WidgetRef ref) {
+  final end = budgetPeriodFor(
+    ref.watch(selectedMonthProvider),
+    ref.watch(budgetStartDayProvider),
+  ).end;
+  return DateFormat('d MMM').format(end);
+}
+
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader(this.title, {this.trailing});
 
@@ -81,13 +120,17 @@ class _SectionHeader extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(20, 0, trailing == null ? 20 : 8, 8),
       child: Row(
         children: [
-          Text(
-            title,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
+          // "People on 30 Sep" beside "See all" must give way, not overflow.
+          Expanded(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
-          const Spacer(),
           ?trailing,
         ],
       ),
@@ -108,6 +151,8 @@ class _CardLabel extends StatelessWidget {
     final theme = Theme.of(context);
     return Text(
       text,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
       style: theme.textTheme.labelMedium?.copyWith(
         color: theme.colorScheme.onSurfaceVariant,
         fontWeight: FontWeight.w600,
@@ -253,7 +298,8 @@ enum _MoneyMetric { income, expense, savings, loan }
 
 /// The hero. One figure, the direction it is heading, and six months of
 /// shape — for net worth by default, or for one metric at a time when a tab
-/// below the graph is picked.
+/// below the graph is picked. Follows the top bar's month: a past month shows
+/// its closing figure, what it opened at, and the six months that led to it.
 class _NetWorthCard extends ConsumerStatefulWidget {
   const _NetWorthCard();
 
@@ -275,14 +321,28 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
     final theme = Theme.of(context);
     // Every metric is rebuilt from the full ledger. Until that stream lands
     // it would report a flat line at the opening balance, which is a lie.
-    final trendReady = ref.watch(allTransactionsProvider).hasValue;
+    var trendReady = ref.watch(allTransactionsProvider).hasValue;
     // Noir's moody wash is a dark-page look; light Noir keeps the tint wash.
     final isBold =
         ref.watch(themeChoiceProvider).style == ThemeStyle.noir &&
         theme.brightness == Brightness.dark;
 
+    final month = ref.watch(selectedMonthProvider);
+    final past = ref.watch(viewingPastPeriodProvider);
+    final period = budgetPeriodFor(month, ref.watch(budgetStartDayProvider));
+    // The metric tabs run on calendar months: this one, or the picked one.
+    final now = DateTime.now();
+    final endMonth = past
+        ? DateTime(month.year, month.month)
+        : DateTime(now.year, now.month);
+    final deltaSuffix = past
+        ? 'in ${DateFormat('MMM').format(month)}'
+        : 'this month';
+
     final metric = _metric;
     final label = switch (metric) {
+      null when past =>
+        'Total money on ${DateFormat('d MMM').format(period.end)}',
       null => 'Total money',
       _MoneyMetric.income => 'Income',
       _MoneyMetric.expense => 'Expense',
@@ -290,30 +350,39 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
       _MoneyMetric.loan => 'Loan',
     };
 
-    // Net worth alone keeps its own AsyncValue (a live DB stream) so its
-    // loading/error states stay exactly as they were. Every other metric is
-    // a plain composition over already-watched streams — see the
-    // "compose, don't resubscribe" note above [netWorthTrendProvider] — so it
-    // has no error state of its own; it is simply not ready until they are.
-    final netWorth = metric == null ? ref.watch(netWorthProvider) : null;
+    // Today's net worth keeps its own AsyncValue (a live DB stream) so its
+    // loading/error states stay exactly as they were. Everything else —
+    // every metric, and net worth at a past month's close — is a plain
+    // composition over already-watched streams (see the "compose, don't
+    // resubscribe" note above [netWorthTrendProvider]), so it has no error
+    // state of its own; it is simply not ready until they are.
+    final netWorth = metric == null && !past
+        ? ref.watch(netWorthProvider)
+        : null;
 
     List<double> trendValues = const [];
     var delta = const Money.zero();
     Money? headline;
+    // Total money only: what the month opened at, shown beneath the figure.
+    Money? opening;
     // Loan tab only: what makes up the headline, shown beneath it.
     String? breakdown;
 
     switch (metric) {
       case null:
-        final trend = ref.watch(netWorthTrendProvider(_months));
-        trendValues = [for (final p in trend) p.value.paise.toDouble()];
-        delta = trend.length >= 2
-            ? trend.last.value - trend[trend.length - 2].value
-            : const Money.zero();
-        headline = netWorth!.valueOrNull;
+        final money = ref.watch(periodNetWorthProvider(_months));
+        trendReady = money != null;
+        if (money != null) {
+          trendValues = [for (final v in money.trend) v.paise.toDouble()];
+          delta = money.trend.last - money.opening;
+          opening = money.opening;
+        }
+        headline = past ? money?.trend.last : netWorth!.valueOrNull;
       case _MoneyMetric.income:
       case _MoneyMetric.expense:
-        final monthly = ref.watch(monthlyTotalsProvider(_months));
+        final monthly = ref.watch(
+          monthlyTotalsEndingProvider((months: _months, end: endMonth)),
+        );
         final values = [
           for (final m in monthly)
             metric == _MoneyMetric.income ? m.income : m.expense,
@@ -329,7 +398,9 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
         // Everything owed: Loans-module loans, pay-later accounts and
         // what you owe people. Used to be pay-later accounts alone, so a
         // real loan never showed up here.
-        final trend = ref.watch(debtTrendProvider(_months));
+        final trend = ref.watch(
+          debtTrendEndingProvider((months: _months, end: endMonth)),
+        );
         trendValues = [for (final p in trend) p.total.paise.toDouble()];
         delta = trend.length >= 2
             ? trend.last.total - trend[trend.length - 2].total
@@ -350,9 +421,10 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
         }
       case _MoneyMetric.savings:
         final trend = ref.watch(
-          accountTypeBalanceTrendProvider((
+          accountTypeBalanceTrendEndingProvider((
             type: AccountType.goal,
             months: _months,
+            end: endMonth,
           )),
         );
         trendValues = [for (final p in trend) p.value.paise.toDouble()];
@@ -433,20 +505,27 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
                         children: [
                           Row(
                             children: [
-                              _CardLabel(label),
-                              const SizedBox(width: 2),
-                              AppIcon(
-                                Icons.chevron_right_rounded,
-                                size: 18,
-                                color: theme.colorScheme.onSurfaceVariant,
+                              // The label keeps its chevron beside it and
+                              // gives way before the toggle does.
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Flexible(child: _CardLabel(label)),
+                                    const SizedBox(width: 2),
+                                    AppIcon(
+                                      Icons.chevron_right_rounded,
+                                      size: 18,
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ],
+                                ),
                               ),
-                              const Spacer(),
                               const AmountVisibilityToggle(),
                             ],
                           ),
                           const SizedBox(height: 8),
-                          if (metric == null)
-                            netWorth!.when(
+                          if (netWorth != null)
+                            netWorth.when(
                               data: (money) => _BoldGradientText(
                                 active: isBold,
                                 child: AnimatedBalanceText(
@@ -463,13 +542,20 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
                           else if (headline == null)
                             const _InlineLoader(height: 44)
                           else
-                            AnimatedBalanceText(
-                              headline,
-                              style: theme.textTheme.displaySmall?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: -1,
+                            _BoldGradientText(
+                              active: isBold && metric == null,
+                              child: AnimatedBalanceText(
+                                headline,
+                                style: theme.textTheme.displaySmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -1,
+                                ),
                               ),
                             ),
+                          if (opening != null) ...[
+                            const SizedBox(height: 4),
+                            _OpeningLine(amount: opening, on: period.start),
+                          ],
                           if (breakdown != null && breakdown.isNotEmpty) ...[
                             const SizedBox(height: 4),
                             Text(
@@ -483,7 +569,11 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
                           // beside a label has nowhere to go on a 360dp screen.
                           if (trendReady && !delta.isZero) ...[
                             const SizedBox(height: 10),
-                            _DeltaChip(delta: delta, color: tint),
+                            _DeltaChip(
+                              delta: delta,
+                              color: tint,
+                              suffix: deltaSuffix,
+                            ),
                           ],
                         ],
                       ),
@@ -620,12 +710,55 @@ class _BoldGradientText extends StatelessWidget {
   }
 }
 
+/// `Opening balance · 1 Sep  ₹1,00,000.00` — what Total money stood at the
+/// moment the shown month began, beneath the figure it grew or shrank into.
+class _OpeningLine extends StatelessWidget {
+  const _OpeningLine({required this.amount, required this.on});
+
+  final Money amount;
+  final DateTime on;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    return Row(
+      children: [
+        Flexible(
+          child: Text(
+            'Opening balance · ${DateFormat('d MMM').format(on)}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: muted,
+          ),
+        ),
+        const SizedBox(width: 8),
+        MoneyText(
+          amount,
+          color: amount.isNegative
+              ? AppColors.expense
+              : theme.colorScheme.onSurface,
+          style: muted?.copyWith(fontWeight: FontWeight.w600),
+        ),
+      ],
+    );
+  }
+}
+
 /// `▲ +₹2.4K this month` — how far the hero figure moved since last month end.
+/// [suffix] names that month: `this month`, or `in Sep` for a past one.
 class _DeltaChip extends StatelessWidget {
-  const _DeltaChip({required this.delta, required this.color});
+  const _DeltaChip({
+    required this.delta,
+    required this.color,
+    required this.suffix,
+  });
 
   final Money delta;
   final Color color;
+  final String suffix;
 
   @override
   Widget build(BuildContext context) {
@@ -650,7 +783,7 @@ class _DeltaChip extends StatelessWidget {
           const SizedBox(width: 5),
           Flexible(
             child: Text(
-              '${up ? '+' : '-'}${MoneyFormat.compact(delta.abs)} this month',
+              '${up ? '+' : '-'}${MoneyFormat.compact(delta.abs)} $suffix',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.labelSmall?.copyWith(
@@ -871,6 +1004,7 @@ class _NetLine extends StatelessWidget {
 
 // ── 3. Accounts strip ─────────────────────────────────────────────────────
 
+/// Each account's balance — today's, or as it closed the picked past month.
 class _AccountsStrip extends ConsumerWidget {
   const _AccountsStrip();
 
@@ -881,6 +1015,12 @@ class _AccountsStrip extends ConsumerWidget {
       return const SizedBox.shrink();
     }
     final accounts = ref.watch(balanceAccountsProvider);
+    final past = ref.watch(viewingPastPeriodProvider);
+    final closing = ref.watch(periodEndAccountBalancesProvider);
+    if (past && closing == null) {
+      return const Padding(padding: _sectionPad, child: _InlineLoader());
+    }
+    final asOf = past ? _periodEndLabel(ref) : null;
 
     return accounts.when(
       data: (list) {
@@ -891,7 +1031,7 @@ class _AccountsStrip extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _SectionHeader(
-                'Accounts',
+                asOf == null ? 'Accounts' : 'Accounts on $asOf',
                 trailing: TextButton(
                   onPressed: () => context.push('/more/accounts'),
                   child: const Text('See all'),
@@ -906,7 +1046,10 @@ class _AccountsStrip extends ConsumerWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   itemCount: list.length,
                   separatorBuilder: (_, _) => const SizedBox(width: 12),
-                  itemBuilder: (context, i) => _AccountCard(account: list[i]),
+                  itemBuilder: (context, i) => _AccountCard(
+                    account: list[i],
+                    balance: closing?[list[i].id] ?? list[i].currentBalance,
+                  ),
                 ),
               ),
             ],
@@ -922,9 +1065,10 @@ class _AccountsStrip extends ConsumerWidget {
 }
 
 class _AccountCard extends StatelessWidget {
-  const _AccountCard({required this.account});
+  const _AccountCard({required this.account, required this.balance});
 
   final AccountRow account;
+  final Money balance;
 
   @override
   Widget build(BuildContext context) {
@@ -985,7 +1129,7 @@ class _AccountCard extends StatelessWidget {
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerLeft,
                           child: BalanceText(
-                            account.currentBalance,
+                            balance,
                             style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.w700,
                             ),
@@ -1014,9 +1158,11 @@ class _ReadyToAssignSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Envelope mode / Ready to Assign is Pro-only (see AppMode).
+    // Envelope mode / Ready to Assign is Pro-only (see AppMode). It is
+    // today's pool, so a past month has nothing to show here.
     if (ref.watch(appModeProvider) != AppMode.pro ||
-        !ref.watch(rtaEnabledProvider)) {
+        !ref.watch(rtaEnabledProvider) ||
+        ref.watch(viewingPastPeriodProvider)) {
       return const SizedBox.shrink();
     }
     final poolAccounts = ref.watch(envelopeModeAccountsProvider);
@@ -1044,20 +1190,24 @@ class _ReadyToAssignSection extends ConsumerWidget {
 /// Who owes you and who you owe, at a glance. Lending is **not** an expense —
 /// the money is still yours, just held by someone else. Shows the two headline
 /// figures over the people with an outstanding balance. Hidden entirely when
-/// nothing is owed either way, so a user who never lends never sees it.
+/// nothing is owed either way, so a user who never lends never sees it. A
+/// past month shows who owed whom as that month closed.
 class _PersonsSection extends ConsumerWidget {
   const _PersonsSection();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final past = ref.watch(viewingPastPeriodProvider);
     final persons = ref.watch(personsProvider).valueOrNull;
-    final balances = ref.watch(personBalancesProvider).valueOrNull;
-    final totals = ref.watch(personTotalsProvider);
+    final balances = past
+        ? ref.watch(periodEndPersonBalancesProvider)
+        : ref.watch(personBalancesProvider).valueOrNull;
 
     // Wait for both streams before deciding to hide — otherwise the section
     // would flicker in and out as they land one after the other.
     if (persons == null || balances == null) return const SizedBox.shrink();
+    final totals = personTotalsOf(balances);
 
     // Only people with something outstanding, biggest balance first. A settled
     // person is off the books; the dashboard is for what still needs settling.
@@ -1078,7 +1228,7 @@ class _PersonsSection extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _SectionHeader(
-            'People',
+            past ? 'People on ${_periodEndLabel(ref)}' : 'People',
             trailing: TextButton(
               onPressed: () => context.push('/persons'),
               child: const Text('See all'),
@@ -1091,12 +1241,20 @@ class _PersonsSection extends ConsumerWidget {
               clipBehavior: Clip.antiAlias,
               child: Column(
                 children: [
-                  _DuesOwesRow(youGet: totals.youGet, youPay: totals.youPay),
+                  _DuesOwesRow(
+                    youGet: totals.youGet,
+                    youPay: totals.youPay,
+                    past: past,
+                  ),
                   Divider(height: 1, color: theme.colorScheme.outline),
                   for (var i = 0; i < top.length; i++) ...[
                     if (i > 0)
                       const Divider(height: 1, indent: 64, endIndent: 16),
-                    _PersonDuesTile(person: top[i], balance: balanceOf(top[i])),
+                    _PersonDuesTile(
+                      person: top[i],
+                      balance: balanceOf(top[i]),
+                      past: past,
+                    ),
                   ],
                   if (extra > 0)
                     Padding(
@@ -1120,12 +1278,18 @@ class _PersonsSection extends ConsumerWidget {
 }
 
 /// The two headline figures side by side: what you'll collect, what you'll pay.
-/// Both are shown positive; colour carries the direction.
+/// Both are shown positive; colour carries the direction. [past] words them
+/// as a month that has already closed.
 class _DuesOwesRow extends StatelessWidget {
-  const _DuesOwesRow({required this.youGet, required this.youPay});
+  const _DuesOwesRow({
+    required this.youGet,
+    required this.youPay,
+    this.past = false,
+  });
 
   final Money youGet;
   final Money youPay;
+  final bool past;
 
   @override
   Widget build(BuildContext context) {
@@ -1137,7 +1301,7 @@ class _DuesOwesRow extends StatelessWidget {
           Expanded(
             child: _column(
               theme,
-              "You'll get",
+              past ? 'Owed to you' : "You'll get",
               youGet,
               AppColors.income,
               Icons.south_west_rounded,
@@ -1147,7 +1311,7 @@ class _DuesOwesRow extends StatelessWidget {
           Expanded(
             child: _column(
               theme,
-              "You'll pay",
+              past ? 'You owed' : "You'll pay",
               youPay,
               AppColors.expense,
               Icons.north_east_rounded,
@@ -1203,17 +1367,27 @@ class _DuesOwesRow extends StatelessWidget {
 /// One person on the dashboard: `+` owes you (green) · `-` you owe (red).
 /// A settled person is filtered out upstream, so there is no zero case here.
 class _PersonDuesTile extends StatelessWidget {
-  const _PersonDuesTile({required this.person, required this.balance});
+  const _PersonDuesTile({
+    required this.person,
+    required this.balance,
+    this.past = false,
+  });
 
   final PersonRow person;
   final Money balance;
+  final bool past;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final owesYou = balance.isPositive;
     final color = owesYou ? AppColors.income : AppColors.expense;
-    final status = owesYou ? 'Owes you' : 'You owe';
+    final status = switch ((owesYou, past)) {
+      (true, false) => 'Owes you',
+      (false, false) => 'You owe',
+      (true, true) => 'Owed you',
+      (false, true) => 'You owed',
+    };
     final statusIcon = owesYou
         ? Icons.south_west_rounded
         : Icons.north_east_rounded;
@@ -1277,6 +1451,8 @@ class _UpcomingSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Due dates run forward from today; a past month has none to show.
+    if (ref.watch(viewingPastPeriodProvider)) return const SizedBox.shrink();
     final items = ref.watch(upcomingPaymentsProvider(_windowDays));
     if (items.isEmpty) return const SizedBox.shrink();
 
@@ -1400,7 +1576,14 @@ class _BudgetsSection extends ConsumerWidget {
     }
     final progress = ref.watch(budgetProgressProvider);
 
-    if (progress.isEmpty) return const _SetBudgetCard();
+    if (progress.isEmpty) {
+      return const _NudgeCard(
+        icon: Icons.pie_chart_outline_rounded,
+        title: 'Set a budget',
+        subtitle: 'Cap a category and watch it fill',
+        route: '/more/budgets',
+      );
+    }
 
     final rtaOn = ref.watch(rtaEnabledProvider);
 
@@ -1456,8 +1639,20 @@ class _BudgetsSection extends ConsumerWidget {
   };
 }
 
-class _SetBudgetCard extends StatelessWidget {
-  const _SetBudgetCard();
+/// An invitation in place of a widget with nothing to show yet: one line on
+/// what it's for, tapping through to where it starts.
+class _NudgeCard extends StatelessWidget {
+  const _NudgeCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.route,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String route;
 
   @override
   Widget build(BuildContext context) {
@@ -1469,7 +1664,7 @@ class _SetBudgetCard extends StatelessWidget {
           margin: EdgeInsets.zero,
           child: InkWell(
             borderRadius: BorderRadius.circular(_cardRadius),
-            onTap: () => context.push('/more/budgets'),
+            onTap: () => context.push(route),
             child: Padding(
               padding: const EdgeInsets.all(18),
               child: Row(
@@ -1485,7 +1680,7 @@ class _SetBudgetCard extends StatelessWidget {
                       ),
                     ),
                     child: AppIcon(
-                      Icons.pie_chart_outline_rounded,
+                      icon,
                       size: 20,
                       color: theme.colorScheme.secondary,
                     ),
@@ -1496,13 +1691,13 @@ class _SetBudgetCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Set a budget',
+                          title,
                           style: theme.textTheme.bodyLarge?.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         Text(
-                          'Cap a category and watch it fill',
+                          subtitle,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -1602,12 +1797,28 @@ class _SpendByCategorySection extends ConsumerWidget {
 
 // ── 6. Recent transactions ────────────────────────────────────────────────
 
+/// The latest few transactions — or, for a past month, the last few that
+/// month recorded.
 class _RecentSection extends ConsumerWidget {
   const _RecentSection();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final recent = ref.watch(recentTransactionsProvider);
+    final past = ref.watch(viewingPastPeriodProvider);
+    final month = ref.watch(selectedMonthProvider);
+    final period = budgetPeriodFor(month, ref.watch(budgetStartDayProvider));
+    final recent = past
+        ? ref
+              .watch(allTransactionsProvider)
+              .whenData(
+                (all) => [
+                  for (final t in all)
+                    if (!t.date.isBefore(period.start) &&
+                        !t.date.isAfter(period.end))
+                      t,
+                ],
+              )
+        : ref.watch(recentTransactionsProvider);
     final cats = ref.watch(categoryMapProvider);
     final accounts = ref.watch(accountMapProvider);
     final persons = ref.watch(personMapProvider);
@@ -1615,7 +1826,11 @@ class _RecentSection extends ConsumerWidget {
 
     return recent.when(
       data: (list) {
-        if (list.isEmpty) return const _EmptyState();
+        // A quiet past month just has nothing to list; the "add your first"
+        // nudge is for an empty ledger.
+        if (list.isEmpty) {
+          return past ? const SizedBox.shrink() : const _EmptyState();
+        }
         final top = list.take(5).toList();
 
         return Padding(
@@ -1624,7 +1839,7 @@ class _RecentSection extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _SectionHeader(
-                'Recent',
+                past ? 'Last in ${DateFormat('MMMM').format(month)}' : 'Recent',
                 trailing: TextButton(
                   onPressed: () => context.push('/transactions'),
                   child: const Text('See all'),
@@ -1850,6 +2065,681 @@ class _EmptyState extends StatelessWidget {
                 onPressed: () => context.push('/add'),
                 icon: const AppIcon(Icons.add_rounded),
                 label: const Text('Add transaction'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── 8. Added from Customize dashboard ─────────────────────────────────────
+//
+// Off until picked in Settings ▸ Customize dashboard. Each shows a
+// [_NudgeCard] while there's nothing of its kind yet — someone who added it
+// should see what it's for, not a gap.
+
+/// A titled card of rows, the shape most added widgets share.
+class _CardSection extends StatelessWidget {
+  const _CardSection({
+    required this.title,
+    required this.children,
+    this.trailing,
+  });
+
+  final String title;
+  final Widget? trailing;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SectionHeader(title, trailing: trailing),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: AppCard(
+              margin: EdgeInsets.zero,
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                children: [
+                  for (var i = 0; i < children.length; i++) ...[
+                    if (i > 0)
+                      Divider(
+                        height: 1,
+                        indent: 16,
+                        endIndent: 16,
+                        color: theme.colorScheme.outline,
+                      ),
+                    children[i],
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A one-line "nothing to do here" inside a [_CardSection].
+class _QuietLine extends StatelessWidget {
+  const _QuietLine(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.all(18),
+      child: Text(
+        text,
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+}
+
+/// A goal or loan: its figure, a bar for how far along it is, and what that
+/// is a share of — `48% of ₹25,000.00`.
+class _ProgressTile extends StatelessWidget {
+  const _ProgressTile({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.amount,
+    required this.fraction,
+    required this.footnote,
+    required this.of,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String title;
+  final Money amount;
+  final double fraction;
+  final String footnote;
+  final Money of;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: color.withValues(alpha: 0.14),
+              ),
+              child: IconWell(icon, size: 20, color: color),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      MoneyText(
+                        amount,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // Full width with its own tint as the track, so 0% still
+                  // reads as a bar — in this column it would hug its fill.
+                  SizedBox(
+                    width: double.infinity,
+                    child: AnimatedBar(
+                      fraction: fraction,
+                      color: color,
+                      track: color.withValues(alpha: 0.16),
+                      height: 6,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Text('$footnote ', style: muted),
+                      Flexible(child: MoneyText(of, style: muted)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _percent(double fraction) => '${(fraction * 100).round()}%';
+
+/// Six months of income against expense, ending with the month picked in
+/// the top bar.
+class _CashFlowSection extends ConsumerWidget {
+  const _CashFlowSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ledger = ref.watch(allTransactionsProvider);
+    final month = ref.watch(selectedMonthProvider);
+    final now = DateTime.now();
+    final end = ref.watch(viewingPastPeriodProvider)
+        ? DateTime(month.year, month.month)
+        : DateTime(now.year, now.month);
+    final months = ref.watch(
+      monthlyTotalsEndingProvider((months: 6, end: end)),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SectionHeader(
+            'Cash flow',
+            trailing: TextButton(
+              onPressed: () => context.push(StatsModule.cashFlow.route),
+              child: const Text('More'),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: AppCard(
+              margin: EdgeInsets.zero,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 20, 18, 12),
+                child: ledger.hasError
+                    ? const _InlineError()
+                    : ledger.hasValue
+                    ? IncomeExpenseBarChart(months: months)
+                    : const _InlineLoader(height: 240),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Each savings goal's progress — as it stood at the close of a past month,
+/// when one is picked.
+class _GoalsSection extends ConsumerWidget {
+  const _GoalsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (!ref.watch(goalDetailsProvider).hasValue) {
+      return const SizedBox.shrink();
+    }
+    final goals = ref.watch(goalProgressListProvider);
+    if (goals.isEmpty) {
+      return const _NudgeCard(
+        icon: Icons.savings_outlined,
+        title: 'Start a savings goal',
+        subtitle: 'Put money aside and watch it grow',
+        route: '/more/goals',
+      );
+    }
+    final past = ref.watch(viewingPastPeriodProvider);
+    final closing = ref.watch(periodEndAccountBalancesProvider);
+    if (past && closing == null) {
+      return const Padding(padding: _sectionPad, child: _InlineLoader());
+    }
+
+    return _CardSection(
+      title: past
+          ? 'Savings goals on ${_periodEndLabel(ref)}'
+          : 'Savings goals',
+      trailing: TextButton(
+        onPressed: () => context.push('/more/goals'),
+        child: const Text('See all'),
+      ),
+      children: [
+        for (final g in goals.take(4))
+          () {
+            final saved = closing?[g.account.id] ?? g.saved;
+            final target = g.detail.targetAmount;
+            final fraction = target.isZero
+                ? 0.0
+                : (saved.paise / target.paise).clamp(0.0, 1.0);
+            return _ProgressTile(
+              icon: AppIcons.resolve(g.account.iconKey),
+              color: Color(g.account.colorValue),
+              title: g.account.name,
+              amount: saved,
+              fraction: fraction,
+              footnote: '${_percent(fraction)} of',
+              of: target,
+              onTap: () => context.push('/more/goals/goal/${g.account.id}'),
+            );
+          }(),
+      ],
+    );
+  }
+}
+
+/// What's left to repay on each loan — as it stood at the close of a past
+/// month, when one is picked.
+class _LoansSection extends ConsumerWidget {
+  const _LoansSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (!ref.watch(loanDetailsProvider).hasValue) {
+      return const SizedBox.shrink();
+    }
+    final loans = ref.watch(loanProgressListProvider);
+    if (loans.isEmpty) {
+      return const _NudgeCard(
+        icon: Icons.request_quote_outlined,
+        title: 'Track a loan',
+        subtitle: 'See what’s left to repay, month by month',
+        route: '/more/goals',
+      );
+    }
+    final past = ref.watch(viewingPastPeriodProvider);
+    final closing = ref.watch(periodEndAccountBalancesProvider);
+    if (past && closing == null) {
+      return const Padding(padding: _sectionPad, child: _InlineLoader());
+    }
+
+    return _CardSection(
+      title: past ? 'Loans on ${_periodEndLabel(ref)}' : 'Loans',
+      trailing: TextButton(
+        onPressed: () => context.push('/more/goals'),
+        child: const Text('See all'),
+      ),
+      children: [
+        for (final l in loans.take(4))
+          () {
+            // A loan account's balance runs negative while money is owed.
+            final balance = closing?[l.account.id];
+            final outstanding = balance == null
+                ? l.outstanding
+                : balance.isNegative
+                ? -balance
+                : const Money.zero();
+            final principal = l.principal;
+            final repaid = principal.isZero
+                ? 0.0
+                : ((principal - outstanding).paise / principal.paise).clamp(
+                    0.0,
+                    1.0,
+                  );
+            return _ProgressTile(
+              icon: AppIcons.resolve(l.account.iconKey),
+              color: Color(l.account.colorValue),
+              title: l.account.name,
+              amount: outstanding,
+              fraction: repaid,
+              footnote: '${_percent(repaid)} repaid of',
+              of: principal,
+              onTap: () => context.push('/more/goals/loan/${l.account.id}'),
+            );
+          }(),
+      ],
+    );
+  }
+}
+
+/// The Quick Actions picked in Settings, as a grid of one-tap buttons.
+class _ShortcutsSection extends ConsumerWidget {
+  const _ShortcutsSection();
+
+  static const _editRoute = '/more/settings/quick-actions';
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final actions = ref
+        .watch(holdMenuActionsProvider)
+        .whereType<QuickActionSpec>()
+        .toList();
+    if (actions.isEmpty) {
+      return const _NudgeCard(
+        icon: Icons.apps_rounded,
+        title: 'Pick your shortcuts',
+        subtitle: 'Choose them in Quick Actions',
+        route: _editRoute,
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SectionHeader(
+            'Shortcuts',
+            trailing: TextButton(
+              onPressed: () => context.push(_editRoute),
+              child: const Text('Edit'),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: AppCard(
+              margin: EdgeInsets.zero,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: LayoutBuilder(
+                  // Full width, or the card shrinks around a short row.
+                  builder: (context, constraints) => SizedBox(
+                    width: constraints.maxWidth,
+                    child: Wrap(
+                      children: [
+                        for (final a in actions)
+                          SizedBox(
+                            width: constraints.maxWidth / 4,
+                            child: _ShortcutButton(action: a),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ShortcutButton extends StatelessWidget {
+  const _ShortcutButton({required this.action});
+
+  final QuickActionSpec action;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final accent = theme.colorScheme.secondary;
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () => context.push(action.route),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        child: Column(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: accent.withValues(alpha: 0.12),
+              ),
+              child: AppIcon(action.icon, size: 20, color: accent),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              action.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.labelSmall,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Where each shared group stands. Today's figures only, so it steps aside
+/// while a past month is picked.
+class _GroupsSection extends ConsumerWidget {
+  const _GroupsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (ref.watch(viewingPastPeriodProvider)) return const SizedBox.shrink();
+    final groups = ref.watch(groupsProvider).valueOrNull;
+    if (groups == null) return const SizedBox.shrink();
+    if (groups.isEmpty) {
+      return const _NudgeCard(
+        icon: Icons.groups_outlined,
+        title: 'Split with a group',
+        subtitle: 'Trips, flatmates, dinners — who owes what',
+        route: '/persons',
+      );
+    }
+    final balances = ref.watch(allGroupBalancesProvider);
+    Money balanceOf(GroupRow g) => balances[g.id] ?? const Money.zero();
+    final open = groups.where((g) => !balanceOf(g).isZero).toList()
+      ..sort(
+        (a, b) => balanceOf(b).paise.abs().compareTo(balanceOf(a).paise.abs()),
+      );
+    final theme = Theme.of(context);
+
+    return _CardSection(
+      title: 'Groups',
+      trailing: TextButton(
+        onPressed: () => context.push('/persons'),
+        child: const Text('See all'),
+      ),
+      children: [
+        if (open.isEmpty) const _QuietLine('All settled up'),
+        for (final g in open.take(4))
+          () {
+            final balance = balanceOf(g);
+            final color = balance.isPositive
+                ? AppColors.income
+                : AppColors.expense;
+            return AppListTile(
+              onTap: () => context.push('/group/${g.id}'),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 2,
+              ),
+              leading: CircleAvatar(
+                backgroundColor: AppColors.person.withValues(alpha: 0.14),
+                foregroundColor: AppColors.person,
+                child: const AppIcon(Icons.groups_outlined, size: 20),
+              ),
+              title: Text(
+                g.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              subtitle: Text(
+                balance.isPositive ? 'You get back' : 'You owe',
+                style: theme.textTheme.bodySmall?.copyWith(color: color),
+              ),
+              trailing: MoneyText(
+                balance.abs,
+                color: color,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            );
+          }(),
+      ],
+    );
+  }
+}
+
+/// Lists with something still to buy. Today's lists only, so it steps aside
+/// while a past month is picked.
+class _ShoppingSection extends ConsumerWidget {
+  const _ShoppingSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (ref.watch(viewingPastPeriodProvider)) return const SizedBox.shrink();
+    final lists = ref.watch(shoppingListsProvider).valueOrNull;
+    if (lists == null) return const SizedBox.shrink();
+    if (lists.isEmpty) {
+      return const _NudgeCard(
+        icon: Icons.shopping_cart_outlined,
+        title: 'Make a shopping list',
+        subtitle: 'Plan what to buy before you spend',
+        route: '/more/shopping',
+      );
+    }
+    final summary = ref.watch(shoppingListSummaryProvider);
+    int left(ShoppingListRow l) {
+      final s = summary[l.id];
+      return s == null ? 0 : s.total - s.checked;
+    }
+
+    final open = lists.where((l) => left(l) > 0).toList();
+    final theme = Theme.of(context);
+
+    return _CardSection(
+      title: 'Shopping lists',
+      trailing: TextButton(
+        onPressed: () => context.push('/more/shopping'),
+        child: const Text('See all'),
+      ),
+      children: [
+        if (open.isEmpty) const _QuietLine('Nothing left to buy'),
+        for (final l in open.take(4))
+          () {
+            final color = Color(l.colorValue);
+            final total = summary[l.id]!.total;
+            return AppListTile(
+              onTap: () => context.push('/more/shopping/${l.id}'),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 2,
+              ),
+              leading: CircleAvatar(
+                backgroundColor: color.withValues(alpha: 0.14),
+                foregroundColor: color,
+                child: const AppIcon(Icons.shopping_cart_outlined, size: 20),
+              ),
+              title: Text(
+                l.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              subtitle: Text(
+                '${left(l)} of $total left to buy',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              trailing: const AppIcon(Icons.chevron_right_rounded),
+            );
+          }(),
+      ],
+    );
+  }
+}
+
+// ── 9. Customizing ────────────────────────────────────────────────────────
+
+/// Where to change what's here, at the foot of the dashboard.
+class _CustomizeLink extends StatelessWidget {
+  const _CustomizeLink();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: TextButton.icon(
+        onPressed: () => pushFromBar<void>(context, '/more/settings/dashboard'),
+        icon: const AppIcon(Icons.tune_rounded, size: 18),
+        label: const Text('Customize dashboard'),
+      ),
+    );
+  }
+}
+
+/// Every widget taken off: say so, and offer the way back.
+class _EmptyDashboard extends StatelessWidget {
+  const _EmptyDashboard();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: _sectionPad,
+      child: AppCard(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          child: Column(
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: theme.colorScheme.secondary.withValues(alpha: 0.10),
+                ),
+                child: IconWell(
+                  Icons.dashboard_customize_outlined,
+                  size: 28,
+                  color: theme.colorScheme.secondary,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Your dashboard is empty',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Add the widgets you want to see here.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                onPressed: () =>
+                    pushFromBar<void>(context, '/more/settings/dashboard'),
+                icon: const AppIcon(Icons.add_rounded),
+                label: const Text('Add widgets'),
               ),
             ],
           ),
