@@ -39,6 +39,21 @@ IMPLICIT_ENTITLEMENTS = {
 # Long sections get cut here, with a link to the full CHANGELOG.
 NOTES_LIMIT = 2500
 
+# iPhone screenshots, in listing order. Captured on a 6.9" iPhone Simulator
+# by .github/workflows/ios-screenshots.yml and served by the website from
+# website/assets/ios/<name>.jpg.
+SCREENSHOTS = [
+    "06-glass-dashboard",
+    "01-dashboard",
+    "02-transactions",
+    "03-add-expense",
+    "04-persons",
+    "05-budgets",
+    "07-glass-transactions",
+]
+SCREENSHOT_URL = "https://xpenc.in/assets/ios/{}.jpg"
+SCREENSHOT_SIZE = (1320, 2868)
+
 
 def info_plist(bundle: Path) -> dict:
     with open(bundle / "Info.plist", "rb") as f:
@@ -152,6 +167,14 @@ def build_source(app: Path, ipa: Path, tag: str, changelog: Path, date: str) -> 
                 "iconURL": "https://xpenc.in/assets/xpenc_icon_512.png",
                 "tintColor": "#2563EB",
                 "category": "utilities",
+                "screenshots": [
+                    {
+                        "imageURL": SCREENSHOT_URL.format(name),
+                        "width": SCREENSHOT_SIZE[0],
+                        "height": SCREENSHOT_SIZE[1],
+                    }
+                    for name in SCREENSHOTS
+                ],
                 "versions": [
                     {
                         "version": version,
@@ -169,6 +192,7 @@ def build_source(app: Path, ipa: Path, tag: str, changelog: Path, date: str) -> 
                     "privacy": privacy(app),
                 },
                 # Pre-"versions" clients (old SideStore) read these instead.
+                "screenshotURLs": [SCREENSHOT_URL.format(n) for n in SCREENSHOTS],
                 "version": version,
                 "versionDate": date,
                 "versionDescription": notes,
