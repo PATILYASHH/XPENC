@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/platform/platform_features.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 
@@ -78,16 +79,19 @@ class DataSettingsScreen extends ConsumerWidget {
   /// importing a backup elsewhere in this screen's family — so a mistaken
   /// tap is recoverable from Backup & Restore afterward.
   Future<void> _clearAllData(BuildContext context, WidgetRef ref) async {
+    final backupWhere = PlatformFeatures.durableBackupFolder
+        ? 'to Download/BACKUP XPENC'
+        : 'on this iPhone';
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Clear all data?'),
-        content: const Text(
+        content: Text(
           'This wipes every account, transaction, category, budget, person '
           'and everything else on this phone, then starts fresh with the '
-          'same defaults a new install gets. A safety backup is saved to '
-          'Download/BACKUP XPENC first — restore it from Backup & Restore '
-          'if this was a mistake.',
+          'same defaults a new install gets. A safety backup is saved '
+          '$backupWhere first — restore it from Backup & Restore if this '
+          'was a mistake.',
         ),
         actions: [
           TextButton(

@@ -4,7 +4,8 @@
     python tool/generate_icons.py
 
 Writes Android launcher icons (legacy, round, adaptive, themed), the splash
-marks, and the web/GitHub favicons. Nothing here is hand-drawn — re-running the
+marks, the iOS app icon and launch mark, and the web/GitHub favicons. Nothing
+here is hand-drawn — re-running the
 script reproduces every asset byte-for-byte, so the icons can never drift out
 of sync with each other.
 
@@ -24,6 +25,7 @@ and fringes the white edges.
 
 from __future__ import annotations
 
+import json
 import math
 import shutil
 from pathlib import Path
@@ -42,6 +44,7 @@ TILE_INSET = 0.02              # breathing room so the shape edge can anti-alias
 
 ROOT = Path(__file__).resolve().parent.parent
 RES = ROOT / "android" / "app" / "src" / "main" / "res"
+IOS_ASSETS = ROOT / "ios" / "Runner" / "Assets.xcassets"
 BRANDING = ROOT / "branding"
 
 
@@ -197,6 +200,14 @@ def splash_mark(size: int, colour) -> Image.Image:
     return img
 
 
+def ios_icon(size: int) -> Image.Image:
+    """iOS app icon: full-bleed and opaque — iOS cuts its own squircle and
+    fills any transparency with black, so no tile shape here."""
+    ink = Image.new("RGBA", (size, size), INK + (0,))
+    ink.putalpha(mark_mask(size, LEGACY))
+    return Image.alpha_composite(background(size), ink).convert("RGB")
+
+
 # ── Android resources ────────────────────────────────────────────────────────
 DENSITIES = {"mdpi": 1, "hdpi": 1.5, "xhdpi": 2, "xxhdpi": 3, "xxxhdpi": 4}
 
@@ -276,6 +287,37 @@ def write(path: Path, img: Image.Image) -> None:
     print(f"  {path.relative_to(ROOT)}  {img.width}×{img.height}")
 
 
+def write_ios() -> None:
+    print("\niOS app icon + launch mark")
+    # Every size the template's AppIcon set asks for, at the name it expects.
+    appicon = IOS_ASSETS / "AppIcon.appiconset"
+    for entry in json.loads((appicon / "Contents.json").read_text())["images"]:
+        points = float(entry["size"].split("x")[0])
+        scale = int(entry["scale"].rstrip("x"))
+        write(appicon / entry["filename"], ios_icon(round(points * scale)))
+
+    # Same 160 pt mark as the Android splash, a light and a dark variant —
+    # LaunchScreen.storyboard sits it on the system background colour.
+    launch = IOS_ASSETS / "LaunchImage.imageset"
+    images = []
+    for scale in (1, 2, 3):
+        suffix = "" if scale == 1 else f"@{scale}x"
+        for dark in (False, True):
+            name = f"LaunchImage{'Dark' if dark else ''}{suffix}.png"
+            write(launch / name,
+                  splash_mark(160 * scale, INK if dark else (10, 10, 11)))
+            image = {"idiom": "universal", "filename": name, "scale": f"{scale}x"}
+            if dark:
+                image["appearances"] = [{"appearance": "luminosity", "value": "dark"}]
+            images.append(image)
+    (launch / "Contents.json").write_text(
+        json.dumps({"images": images, "info": {"version": 1, "author": "xcode"}},
+                   indent=2) + "\n",
+        encoding="utf-8",
+    )
+    print(f"  {(launch / 'Contents.json').relative_to(ROOT)}")
+
+
 def main() -> None:
     print("Android launcher icons")
     for name, scale in DENSITIES.items():
@@ -309,6 +351,8 @@ def main() -> None:
     if stale.exists():
         shutil.rmtree(stale.parent)
         print(f"  removed {stale.parent.relative_to(ROOT)} (shadowed drawable/)")
+
+    write_ios()
 
     print("\nWeb / GitHub")
     write(BRANDING / "xpenc_icon_1024.png", icon(1024))

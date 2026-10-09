@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/branding/app_info.dart';
 import '../../core/branding/brand_mark.dart';
+import '../../core/platform/platform_features.dart';
 import '../../core/widgets/app_surfaces.dart';
 
 /// Settings' front door — a menu of modules, each its own page. Splitting it
@@ -46,25 +47,32 @@ class SettingsScreen extends StatelessWidget {
           _ModuleTile(
             icon: Icons.security_outlined,
             title: 'Security & Privacy',
-            subtitle: 'PIN, recovery phrase, authenticator, screenshots',
+            subtitle: PlatformFeatures.screenshotBlocking
+                ? 'PIN, recovery phrase, authenticator, screenshots'
+                : 'PIN, recovery phrase, authenticator',
             onTap: () => context.push('/more/settings/security'),
           ),
-          _ModuleTile(
-            icon: Icons.verified_user_outlined,
-            title: 'Permissions',
-            subtitle: 'What XPENC can access — turn each on or off',
-            onTap: () => context.push('/more/settings/permissions'),
-          ),
+          if (PlatformFeatures.permissionsScreen)
+            _ModuleTile(
+              icon: Icons.verified_user_outlined,
+              title: 'Permissions',
+              subtitle: 'What XPENC can access — turn each on or off',
+              onTap: () => context.push('/more/settings/permissions'),
+            ),
           _ModuleTile(
             icon: Icons.notifications_outlined,
             title: 'Notifications',
-            subtitle: 'Reminders and quick add from a notification',
+            subtitle: PlatformFeatures.quickAddNotification
+                ? 'Reminders and quick add from a notification'
+                : 'Reminders',
             onTap: () => context.push('/more/settings/notifications'),
           ),
           _ModuleTile(
             icon: Icons.flash_on_outlined,
             title: 'Quick Actions',
-            subtitle: 'Hold ➕ shortcuts, home screen widgets',
+            subtitle: PlatformFeatures.homeWidgets
+                ? 'Hold ➕ shortcuts, home screen widgets'
+                : 'Hold ➕ shortcuts',
             onTap: () => context.push('/more/settings/quick-actions'),
           ),
           _ModuleTile(

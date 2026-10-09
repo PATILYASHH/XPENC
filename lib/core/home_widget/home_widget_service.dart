@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:home_widget/home_widget.dart';
 
 import '../money.dart';
+import '../platform/platform_features.dart';
 import '../routing/app_router.dart';
 
 /// One line on the Budgets widget: a category name plus its "spent / limit"
@@ -21,6 +22,9 @@ typedef WidgetBudgetLine = ({String name, Money spent, Money limit});
 /// There is no background refresh: like message capture, this app has no
 /// background service, so a widget only updates while the app itself is
 /// open (on start, and live thereafter — see `app.dart`).
+///
+/// Every call is a no-op where there are no widgets to drive — see
+/// [PlatformFeatures.homeWidgets].
 class HomeWidgetService {
   const HomeWidgetService();
 
@@ -34,6 +38,7 @@ class HomeWidgetService {
   static const maxBudgetLines = 3;
 
   Future<void> updateBalance(Money netWorth) async {
+    if (!PlatformFeatures.homeWidgets) return;
     try {
       await HomeWidget.saveWidgetData<String>(
         'net_worth',
@@ -51,6 +56,7 @@ class HomeWidgetService {
   /// as JSON the native side reads with no formatting logic of its own
   /// (RemoteViews has no access to the app's currency/locale config).
   Future<void> updateBudgetSummary(List<WidgetBudgetLine> lines) async {
+    if (!PlatformFeatures.homeWidgets) return;
     try {
       final json = jsonEncode([
         for (final line in lines)
@@ -69,6 +75,7 @@ class HomeWidgetService {
   }
 
   Future<void> updateMonthSummary(Money income, Money expense) async {
+    if (!PlatformFeatures.homeWidgets) return;
     try {
       await HomeWidget.saveWidgetData<String>(
         'month_income',
@@ -89,6 +96,7 @@ class HomeWidgetService {
   /// screen" buttons. Android 8+ and launcher-dependent; callers should
   /// check [canRequestPin] first and hide the button otherwise.
   Future<void> requestPin(HomeScreenWidget widget) async {
+    if (!PlatformFeatures.homeWidgets) return;
     try {
       await HomeWidget.requestPinWidget(androidName: _androidNameOf(widget));
     } catch (e) {
@@ -97,6 +105,7 @@ class HomeWidgetService {
   }
 
   Future<bool> canRequestPin() async {
+    if (!PlatformFeatures.homeWidgets) return false;
     try {
       return await HomeWidget.isRequestPinWidgetSupported() ?? false;
     } catch (_) {
@@ -114,6 +123,7 @@ class HomeWidgetService {
   /// Call once at startup. Covers both a cold start launched *from* a
   /// widget and a tap on one while the app is already running.
   void init() {
+    if (!PlatformFeatures.homeWidgets) return;
     HomeWidget.widgetClicked.listen(_handleUri);
     HomeWidget.initiallyLaunchedFromHomeWidget()
         .then(_handleUri)

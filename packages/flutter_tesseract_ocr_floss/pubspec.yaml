@@ -37,8 +37,12 @@ flutter:
       android:
         package: io.paratoner.flutter_tesseract_ocr
         pluginClass: FlutterTesseractOcrPlugin
-      ios:
-        pluginClass: FlutterTesseractOcrPlugin
+      # No ios: entry on purpose. Upstream's iOS side links SwiftyTesseract
+      # 3.x — an unmaintained pod of prebuilt static libraries, the same
+      # unreviewable-binary problem this fork exists to remove on Android —
+      # and it never answers the channel when an image fails to load. XPENC
+      # gates OCR off on iOS instead (see PlatformFeatures.ocr); Apple's own
+      # Vision text recognition is the way to add it there.
       web:
         default_package: FlutterTesseractOcrPlugin
 

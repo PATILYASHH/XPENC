@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/platform/platform_features.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart' show UnlockMethod;
@@ -382,45 +383,47 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
             ),
           ),
 
-          settingsSectionLabel(context, 'Privacy'),
-          AppCard(
-            child: Column(
-              children: [
-                AppSwitchListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  secondary: const AppIcon(Icons.screenshot_outlined),
-                  title: const Text('Block screenshots'),
-                  subtitle: Text(
-                    'Hides XPENC from screenshots, screen recording and the '
-                    'recent-apps thumbnail',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
+          if (PlatformFeatures.screenshotBlocking) ...[
+            settingsSectionLabel(context, 'Privacy'),
+            AppCard(
+              child: Column(
+                children: [
+                  AppSwitchListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    secondary: const AppIcon(Icons.screenshot_outlined),
+                    title: const Text('Block screenshots'),
+                    subtitle: Text(
+                      'Hides XPENC from screenshots, screen recording and the '
+                      'recent-apps thumbnail',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
                     ),
+                    value: preventScreenshots,
+                    onChanged: (v) =>
+                        ref.read(dbProvider).setPreventScreenshots(v),
                   ),
-                  value: preventScreenshots,
-                  onChanged: (v) =>
-                      ref.read(dbProvider).setPreventScreenshots(v),
-                ),
-                Divider(height: 1, indent: 60, color: cs.outline),
-                AppSwitchListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  secondary: const AppIcon(Icons.visibility_outlined),
-                  title: const Text('Remind when screenshots are allowed'),
-                  subtitle: Text(
-                    'A small tag in the corner whenever "Block screenshots" '
-                    "is off — easy to forget it's still off. Off by default, "
-                    "so leaving it off on purpose isn't disturbed.",
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
+                  Divider(height: 1, indent: 60, color: cs.outline),
+                  AppSwitchListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    secondary: const AppIcon(Icons.visibility_outlined),
+                    title: const Text('Remind when screenshots are allowed'),
+                    subtitle: Text(
+                      'A small tag in the corner whenever "Block screenshots" '
+                      "is off — easy to forget it's still off. Off by default, "
+                      "so leaving it off on purpose isn't disturbed.",
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
                     ),
+                    value: screenshotReminderEnabled,
+                    onChanged: (v) =>
+                        ref.read(dbProvider).setScreenshotReminderEnabled(v),
                   ),
-                  value: screenshotReminderEnabled,
-                  onChanged: (v) =>
-                      ref.read(dbProvider).setScreenshotReminderEnabled(v),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );

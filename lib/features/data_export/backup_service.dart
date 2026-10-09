@@ -5,7 +5,9 @@ import 'package:media_store_plus/media_store_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/platform/platform_features.dart';
 import '../../data/database.dart';
+import 'app_folder_backups.dart';
 import 'report_pdf.dart';
 import 'statement_pdf.dart';
 
@@ -36,10 +38,21 @@ final _backupFileNamePattern = RegExp(
 /// directory listing — is what every screen reads. [resyncFromDevice]
 /// rebuilds it by asking the user to grant folder access once, e.g. after a
 /// reinstall, when the table starts out empty but the files on disk don't.
+///
+/// iOS has no such public folder (see [PlatformFeatures.durableBackupFolder]):
+/// there every backup goes through [AppFolderBackups] instead, a folder of
+/// the app's own, and the Android-only `MediaStore` path is never touched.
 class BackupService {
-  const BackupService(this._db);
+  BackupService(this._db, {AppFolderBackups? appFolder})
+    : _appFolder =
+          appFolder ??
+          (PlatformFeatures.durableBackupFolder ? null : AppFolderBackups());
 
   final AppDatabase _db;
+
+  /// Where backups live when there's no `Download/BACKUP XPENC` — null on
+  /// Android, where every backup goes through `MediaStore`.
+  final AppFolderBackups? _appFolder;
 
   static bool _mediaStoreReady = false;
 
@@ -84,7 +97,14 @@ class BackupService {
   /// launch — not lazily the first time something is actually written there.
   /// Cheap and idempotent (see `_mediaStoreReady`), so callable on every
   /// startup without worrying about repeating the work.
-  Future<void> ensureBackupFolderReady() => _ensureMediaStoreReady();
+  Future<void> ensureBackupFolderReady() async {
+    final folder = _appFolder;
+    if (folder != null) {
+      await folder.directory();
+      return;
+    }
+    await _ensureMediaStoreReady();
+  }
 
   /// Checks whether a backup from one of the last [lookbackDays] already
   /// sits in `Download/BACKUP XPENC`, for onboarding's "we found a backup on
@@ -102,10 +122,15 @@ class BackupService {
   /// backwards from today rather than needing a directory listing. Returns
   /// the most recent date found, or `null`.
   Future<DateTime?> detectExistingBackup({int lookbackDays = 60}) async {
-    await _ensureMediaStoreReady();
+    final folder = _appFolder;
+    if (folder == null) await _ensureMediaStoreReady();
     final now = DateTime.now();
     for (var i = 0; i < lookbackDays; i++) {
       final day = DateTime(now.year, now.month, now.day - i);
+      if (folder != null) {
+        if (await folder.exists(backupFileName(day))) return day;
+        continue;
+      }
       final exists = await MediaStore().isFileExist(
         fileName: backupFileName(day),
         dirType: DirType.download,
@@ -120,11 +145,25 @@ class BackupService {
 
   /// Writes a full JSON snapshot to `Download/BACKUP XPENC` and records it.
   Future<BackupRecordRow> createBackup() async {
-    await _ensureMediaStoreReady();
+    final folder = _appFolder;
+    if (folder == null) await _ensureMediaStoreReady();
     final dump = await _db.exportAll();
     final json = const JsonEncoder.withIndent('  ').convert(dump);
     final now = DateTime.now();
     final fileName = backupFileName(now);
+
+    if (folder != null) {
+      await folder.write(fileName, json);
+      // No uri: an iOS app's container path can change across updates,
+      // so the file is only ever found again by name.
+      await _db.upsertBackupRecord(
+        fileName: fileName,
+        uri: '',
+        sizeBytes: utf8.encode(json).length,
+        createdAt: now,
+      );
+      return (await _db.backupRecordByName(fileName))!;
+    }
 
     final tempDir = await getTemporaryDirectory();
     final tempFile = File('${tempDir.path}/$fileName');
@@ -160,6 +199,16 @@ class BackupService {
   /// every MediaStore read needs, since it never hands back a real
   /// filesystem path.
   Future<File> _readToTemp(BackupRecordRow record) async {
+    final folder = _appFolder;
+    if (folder != null) {
+      // A copy, not the file itself — callers delete what this returns.
+      final source = await folder.file(record.fileName);
+      if (!await source.exists()) {
+        throw ArgumentError('That backup no longer exists on this device.');
+      }
+      final tempDir = await getTemporaryDirectory();
+      return source.copy('${tempDir.path}/${record.fileName}');
+    }
     await _ensureMediaStoreReady();
     final tempDir = await getTemporaryDirectory();
     final tempFile = File('${tempDir.path}/${record.fileName}');
@@ -190,12 +239,7 @@ class BackupService {
   }
 
   Future<void> deleteBackup(BackupRecordRow record) async {
-    await _ensureMediaStoreReady();
-    await MediaStore().deleteFile(
-      fileName: record.fileName,
-      dirType: DirType.download,
-      dirName: DirName.download,
-    );
+    await _deleteFile(record.fileName);
     await _db.deleteBackupRecordByName(record.fileName);
   }
 
@@ -259,15 +303,21 @@ class BackupService {
   Future<void> cleanupOldBackups() async {
     final stale = await _db.staleBackupRecords();
     if (stale.isEmpty) return;
-    await _ensureMediaStoreReady();
     for (final record in stale) {
-      await MediaStore().deleteFile(
-        fileName: record.fileName,
-        dirType: DirType.download,
-        dirName: DirName.download,
-      );
+      await _deleteFile(record.fileName);
       await _db.deleteBackupRecordByName(record.fileName);
     }
+  }
+
+  Future<void> _deleteFile(String fileName) async {
+    final folder = _appFolder;
+    if (folder != null) return folder.delete(fileName);
+    await _ensureMediaStoreReady();
+    await MediaStore().deleteFile(
+      fileName: fileName,
+      dirType: DirType.download,
+      dirName: DirName.download,
+    );
   }
 
   /// Rebuilds the local backup index from what's actually in
@@ -280,7 +330,27 @@ class BackupService {
   /// prove it created, which is also exactly why this can't run silently on
   /// its own. Returns how many backups were found (already-known ones are
   /// left alone), or `null` if the user cancelled the picker.
+  ///
+  /// With an [AppFolderBackups] (iOS) there's no picker: the app may list
+  /// its own folder, so this never returns `null` there.
   Future<int?> resyncFromDevice() async {
+    final folder = _appFolder;
+    if (folder != null) {
+      var found = 0;
+      for (final file in await folder.list()) {
+        final name = file.uri.pathSegments.last;
+        if (dateFromBackupFileName(name) == null) continue;
+        final stat = await file.stat();
+        await _db.upsertBackupRecord(
+          fileName: name,
+          uri: '',
+          sizeBytes: stat.size,
+          createdAt: stat.modified,
+        );
+        found++;
+      }
+      return found;
+    }
     await _ensureMediaStoreReady();
     final tree = await MediaStore().requestForAccess(
       initialRelativePath: 'Download/$backupAppFolder',
@@ -311,6 +381,8 @@ class BackupService {
   /// of the durable public one. Safe to call every startup — it's a no-op
   /// once that old folder is empty.
   Future<int> migrateLegacyBackups() async {
+    // The old documents-folder scheme only ever shipped on Android.
+    if (_appFolder != null) return 0;
     final docs = await getApplicationDocumentsDirectory();
     final legacyDir = Directory('${docs.path}/backups');
     if (!legacyDir.existsSync()) return 0;

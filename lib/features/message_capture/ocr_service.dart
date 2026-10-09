@@ -1,5 +1,7 @@
 import 'package:flutter_tesseract_ocr/flutter_tesseract_ocr.dart';
 
+import '../../core/platform/platform_features.dart';
+
 /// Recognises text in an image, entirely on-device.
 ///
 /// Wraps Tesseract (BSD-3-Clause) via `flutter_tesseract_ocr` — not Google
@@ -12,7 +14,14 @@ class OcrService {
 
   /// Returns every line of text Tesseract found in the image at [imagePath],
   /// top-to-bottom as it appears on screen — empty if none.
+  ///
+  /// Throws [UnsupportedError] where there's no OCR engine (iOS, see
+  /// [PlatformFeatures.ocr]) — before the plugin copies its model into the
+  /// app's documents folder for nothing.
   Future<String> recognizeText(String imagePath) async {
+    if (!PlatformFeatures.ocr) {
+      throw UnsupportedError('On-device OCR is not available here.');
+    }
     final text = await FlutterTesseractOcr.extractText(
       imagePath,
       language: 'eng',

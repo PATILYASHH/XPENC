@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/platform/platform_features.dart';
 import '../../core/branding/brand_mark.dart';
 import '../../core/countries.dart';
 import '../../core/theme/app_colors.dart';
@@ -911,7 +912,9 @@ class _RestoreStep extends StatelessWidget {
         _FeatureRow(
           icon: Icons.cloud_download_outlined,
           color: cs.primary,
-          text: 'Looks in Download/$backupAppFolder for a backup you made earlier.',
+          text: PlatformFeatures.durableBackupFolder
+              ? 'Looks in Download/$backupAppFolder for a backup you made earlier.'
+              : 'Looks on this iPhone for a backup you made earlier.',
         ),
         _FeatureRow(
           icon: Icons.settings_backup_restore_rounded,

@@ -8,6 +8,7 @@ import 'package:timezone/timezone.dart' as tz;
 import '../../data/database.dart';
 import '../../data/tables.dart';
 import '../money.dart';
+import '../platform/platform_features.dart';
 
 /// Local notifications only. Nothing leaves the device.
 class NotificationService {
@@ -77,6 +78,13 @@ class NotificationService {
       await _plugin.initialize(
         settings: const InitializationSettings(
           android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+          // Nothing asked at launch — same as Android, the grant is
+          // requested when the user turns notifications on.
+          iOS: DarwinInitializationSettings(
+            requestAlertPermission: false,
+            requestSoundPermission: false,
+            requestBadgePermission: false,
+          ),
         ),
         // Neither quick-add action sets `showsUserInterface`, so Android
         // never brings the app to the foreground — the reply is delivered
@@ -105,8 +113,15 @@ class NotificationService {
     }
   }
 
-  /// Android 13+ requires an explicit runtime grant.
+  /// Android 13+ requires an explicit runtime grant; iOS always does.
   Future<bool> requestPermission() async {
+    final ios = _plugin
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >();
+    if (ios != null) {
+      return await ios.requestPermissions(alert: true, sound: true) ?? false;
+    }
     final android = _plugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
@@ -554,7 +569,8 @@ class NotificationService {
   Future<void> syncQuickAddNotification() async {
     if (!_ready) return;
     final settings = await _db.getSettings();
-    if (!settings.notificationsEnabled ||
+    if (!PlatformFeatures.quickAddNotification ||
+        !settings.notificationsEnabled ||
         !settings.notificationQuickAddEnabled) {
       await _cancel(_quickAddId);
       return;

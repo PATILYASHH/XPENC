@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/platform/platform_features.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/error_view.dart';
 import '../../data/database.dart';
@@ -88,7 +89,9 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
               found == null
                   ? 'Cancelled'
                   : found == 0
-                  ? 'No backups found in Download/$backupAppFolder'
+                  ? PlatformFeatures.durableBackupFolder
+                        ? 'No backups found in Download/$backupAppFolder'
+                        : 'No backups found on this iPhone'
                   : 'Found $found backup${found == 1 ? '' : 's'}',
             ),
           ),
@@ -328,11 +331,16 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Backups live in Download/$backupAppFolder on this phone — '
-                    'visible in any file manager, and kept even if XPENC itself '
-                    'is uninstalled. Moving to a new phone? Send that folder '
-                    'across, or export a file here and use Import on the new '
-                    'phone.',
+                    PlatformFeatures.durableBackupFolder
+                        ? 'Backups live in Download/$backupAppFolder on this '
+                              'phone — visible in any file manager, and kept '
+                              'even if XPENC itself is uninstalled. Moving to a '
+                              'new phone? Send that folder across, or export a '
+                              'file here and use Import on the new phone.'
+                        : 'Backups are kept inside XPENC on this iPhone, so '
+                              'deleting the app deletes them too. Keep a copy '
+                              'somewhere safe — Share one to Files or iCloud '
+                              'Drive — and use Import on a new phone.',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: cs.onSurfaceVariant,
                       height: 1.4,
@@ -763,8 +771,12 @@ class _AutoBackupSettingsSheetState
             ),
             const SizedBox(height: 4),
             Text(
-              'Backs up on its own, no need to tap "Back up now" — saved to '
-              'Download/$backupAppFolder just like a manual backup.',
+              PlatformFeatures.durableBackupFolder
+                  ? 'Backs up on its own, no need to tap "Back up now" — '
+                        'saved to Download/$backupAppFolder just like a manual '
+                        'backup.'
+                  : 'Backs up on its own, no need to tap "Back up now" — '
+                        'kept on this iPhone just like a manual backup.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: cs.onSurfaceVariant,
               ),

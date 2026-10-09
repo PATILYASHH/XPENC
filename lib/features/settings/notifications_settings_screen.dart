@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/platform/platform_features.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -107,36 +108,38 @@ class NotificationsSettingsScreen extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 12),
-          AppCard(
-            child: Column(
-              children: [
-                AppSwitchListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  secondary: const AppIcon(Icons.flash_on_outlined),
-                  title: const Text('Quick add from notification'),
-                  subtitle: Text(
-                    notificationsEnabled
-                        ? 'Reply to the notification with an amount — it '
-                              'posts straight away, uncategorised, with no '
-                              'need to open the app.'
-                        : 'Turn on Notifications above first.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
+          if (PlatformFeatures.quickAddNotification) ...[
+            const SizedBox(height: 12),
+            AppCard(
+              child: Column(
+                children: [
+                  AppSwitchListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    secondary: const AppIcon(Icons.flash_on_outlined),
+                    title: const Text('Quick add from notification'),
+                    subtitle: Text(
+                      notificationsEnabled
+                          ? 'Reply to the notification with an amount — it '
+                                'posts straight away, uncategorised, with no '
+                                'need to open the app.'
+                          : 'Turn on Notifications above first.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
                     ),
+                    value: notificationQuickAddEnabled,
+                    onChanged: notificationsEnabled
+                        ? (v) => _toggleQuickAdd(ref, v)
+                        : null,
                   ),
-                  value: notificationQuickAddEnabled,
-                  onChanged: notificationsEnabled
-                      ? (v) => _toggleQuickAdd(ref, v)
-                      : null,
-                ),
-                if (notificationQuickAddEnabled) ...[
-                  Divider(height: 1, indent: 60, color: cs.outline),
-                  _QuickAddAccountTile(trailingStyle: trailingStyle),
+                  if (notificationQuickAddEnabled) ...[
+                    Divider(height: 1, indent: 60, color: cs.outline),
+                    _QuickAddAccountTile(trailingStyle: trailingStyle),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );

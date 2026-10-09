@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
+import '../../core/platform/platform_features.dart';
 import '../../data/database.dart';
 import '../../data/tables.dart';
 import '../add_transaction/receipt_storage.dart';
@@ -63,6 +64,8 @@ class ShareIntakeService {
   /// and one arriving while the app is already open — mirrors
   /// `HomeWidgetService.init`.
   void init(void Function(ShareIntakeResult result) onResult) {
+    // iOS needs a Share extension before anything can arrive here.
+    if (!PlatformFeatures.shareIntake) return;
     ReceiveSharingIntent.instance.getInitialMedia().then((files) async {
       await _handleAll(files, onResult);
       // Consumed — a later cold start must not replay the same share.

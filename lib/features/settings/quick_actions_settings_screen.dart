@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/platform/platform_features.dart';
 import '../../core/routing/hold_menu_geometry.dart';
 import '../../core/routing/quick_actions.dart';
 import '../../core/widgets/money_text.dart' show iconForTxType;
@@ -81,41 +82,45 @@ class QuickActionsSettingsScreen extends ConsumerWidget {
               ],
             ),
           ),
-          settingsSectionLabel(context, 'Home screen'),
-          AppCard(
-            child: AppListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              leading: const AppIcon(Icons.widgets_outlined),
-              title: const Text('Home screen widgets'),
-              subtitle: Text(
-                'Balance, Budgets, Quick Add or This Month — pick what to '
-                'put on your home screen.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
+          if (PlatformFeatures.homeWidgets) ...[
+            settingsSectionLabel(context, 'Home screen'),
+            AppCard(
+              child: AppListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                leading: const AppIcon(Icons.widgets_outlined),
+                title: const Text('Home screen widgets'),
+                subtitle: Text(
+                  'Balance, Budgets, Quick Add or This Month — pick what to '
+                  'put on your home screen.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
                 ),
+                trailing: const AppIcon(Icons.chevron_right_rounded),
+                onTap: () => context.push('/more/settings/widgets'),
               ),
-              trailing: const AppIcon(Icons.chevron_right_rounded),
-              onTap: () => context.push('/more/settings/widgets'),
             ),
-          ),
-          settingsSectionLabel(context, 'Lock screen shortcuts'),
-          AppCard(
-            child: AppSwitchListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              secondary: const AppIcon(Icons.screenshot_monitor_outlined),
-              title: const Text('Screenshot blocking'),
-              subtitle: Text(
-                'Turn screenshot blocking on or off from the lock screen. '
-                'On applies right away; off only after you unlock.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
+          ],
+          if (PlatformFeatures.screenshotBlocking) ...[
+            settingsSectionLabel(context, 'Lock screen shortcuts'),
+            AppCard(
+              child: AppSwitchListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                secondary: const AppIcon(Icons.screenshot_monitor_outlined),
+                title: const Text('Screenshot blocking'),
+                subtitle: Text(
+                  'Turn screenshot blocking on or off from the lock screen. '
+                  'On applies right away; off only after you unlock.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
                 ),
+                value: screenshotShortcut,
+                onChanged: (v) =>
+                    ref.read(dbProvider).setLockScreenScreenshotShortcut(v),
               ),
-              value: screenshotShortcut,
-              onChanged: (v) =>
-                  ref.read(dbProvider).setLockScreenScreenshotShortcut(v),
             ),
-          ),
+          ],
         ],
       ),
     );

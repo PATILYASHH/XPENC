@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/platform/platform_features.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import 'more_screen_layout_sheet.dart';
@@ -209,21 +210,23 @@ class GeneralSettingsScreen extends ConsumerWidget {
                   trailing: const AppIcon(Icons.chevron_right_rounded),
                   onTap: () => context.push('/more/capture'),
                 ),
-                Divider(height: 1, indent: 60, color: cs.outline),
-                AppListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  leading: const AppIcon(Icons.rate_review_outlined),
-                  title: const Text('OCR corrections'),
-                  subtitle: Text(
-                    'Optional — test a payment screenshot and help improve '
-                    'OCR by sharing what you find, entirely on your terms.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
+                if (PlatformFeatures.ocr) ...[
+                  Divider(height: 1, indent: 60, color: cs.outline),
+                  AppListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    leading: const AppIcon(Icons.rate_review_outlined),
+                    title: const Text('OCR corrections'),
+                    subtitle: Text(
+                      'Optional — test a payment screenshot and help improve '
+                      'OCR by sharing what you find, entirely on your terms.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
                     ),
+                    trailing: const AppIcon(Icons.chevron_right_rounded),
+                    onTap: () => context.push('/more/capture/ocr-feedback'),
                   ),
-                  trailing: const AppIcon(Icons.chevron_right_rounded),
-                  onTap: () => context.push('/more/capture/ocr-feedback'),
-                ),
+                ],
               ],
             ),
           ),
