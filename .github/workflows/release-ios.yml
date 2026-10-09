@@ -41,6 +41,7 @@ jobs:
     env:
       TAG: ${{ inputs.tag || github.event.workflow_run.head_branch }}
       GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -74,4 +75,11 @@ jobs:
           --out release/xpenc-altsource.json
 
       - name: Attach to the release
-        run: gh release upload "$TAG" release/xpenc-ios.ipa release/xpenc-altsource.json --clobber
+        working-directory: release
+        run: |
+          gh release download "$TAG" --pattern SHA256SUMS.txt --clobber
+          grep -v ' xpenc-ios.ipa$' SHA256SUMS.txt > sums.tmp || true
+          shasum -a 256 xpenc-ios.ipa >> sums.tmp
+          mv sums.tmp SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          gh release upload "$TAG" xpenc-ios.ipa xpenc-altsource.json SHA256SUMS.txt --clobber

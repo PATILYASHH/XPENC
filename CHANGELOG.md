@@ -11,6 +11,13 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 ## [1.6.4] — beta
 
 ### Added
+- **XPENC on iPhone (first iOS build).** Installed with SideStore or AltStore
+  — add `https://xpenc.in/ios/source.json`, or open the `.ipa` from a release.
+  Same app, same backups: a backup made on Android restores on iPhone and
+  the other way round. Not on iPhone yet: home screen widgets, sharing into
+  XPENC, reading payment screenshots and blocking screenshots. On iPhone,
+  backups are kept inside the app, so deleting it deletes them — share one
+  to Files or iCloud Drive to keep a copy.
 - **Glass theme — Liquid Glass, like iPhone.** Built the way iOS builds
   it, in two layers. Content sits on frosted cards over a soft, airy
   wallpaper. Controls float above it in clear, lensed glass that bends

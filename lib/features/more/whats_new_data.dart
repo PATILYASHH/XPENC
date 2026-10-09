@@ -23,6 +23,15 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.phone_iphone_outlined,
+    title: 'XPENC on iPhone',
+    location: 'xpenc.in/ios',
+    description:
+        'The same app, now on iPhone through SideStore or AltStore. A '
+        'backup made here restores there and the other way round, so '
+        'switching phones doesn’t mean starting over.',
+  ),
+  WhatsNewEntry(
     icon: Icons.ios_share_rounded,
     title: 'Share as a PDF or an image',
     location: 'A transaction, person or group → Share',

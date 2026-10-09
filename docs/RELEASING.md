@@ -27,9 +27,21 @@ bump version → commit → tag vX.Y.Z → push tag
                 ├─ tool/verify_apk.sh        (libsqlite3.so gate — never skip)
                 └─ GitHub Release: xpenc-arm64-v8a.apk · xpenc-armeabi-v7a.apk
                                    · xpenc-x86_64.apk · SHA256SUMS.txt
-        └─► website Download buttons point at /releases/latest/download/…
-            so they update automatically. Nothing to deploy.
+        └─► then .github/workflows/release-ios.yml (macOS, only if the above went green)
+                ├─ flutter build ios --release --no-codesign
+                ├─ tool/altstore_source.py   (version + permissions read off the build)
+                └─ adds to the same Release: xpenc-ios.ipa · xpenc-altsource.json
+                                             (+ its line in SHA256SUMS.txt)
+        └─► website Download buttons point at /releases/latest/download/…,
+            and xpenc.in/ios/source.json redirects to the latest
+            xpenc-altsource.json — so they update automatically. Nothing to deploy.
 ```
+
+Every push to `BETA` does the same into the rolling `beta` pre-release
+(`beta-release.yml`): `xpenc-beta-*.apk`, then `xpenc-beta-ios.ipa`.
+
+If the iOS step fails, the Android release is already out. Fix it and re-run
+*Release iOS* by hand (Actions → Release iOS → Run workflow, with the tag).
 
 ## Step by step
 
@@ -68,6 +80,12 @@ bump version → commit → tag vX.Y.Z → push tag
 The website links to `releases/latest/download/xpenc-arm64-v8a.apk` (and
 `…-armeabi-v7a.apk`). **Never rename the release assets** in
 `release.yml` without updating `website/index.html` in the same PR.
+
+The same goes for iOS: `website/vercel.json` redirects
+`xpenc.in/ios/source.json` to `releases/latest/download/xpenc-altsource.json`,
+the URL every SideStore / AltStore user has added. Renaming
+`xpenc-altsource.json` (or `xpenc-ios.ipa`, which it points at) breaks updates
+for all of them.
 
 ## Website deployment
 

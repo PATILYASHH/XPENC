@@ -3,11 +3,12 @@ name: iOS build
 # Compiles XPENC for iOS on a macOS runner and packages an unsigned IPA —
 # proof the app still builds for iOS, and the file AltStore / SideStore
 # re-sign with each user's own Apple ID on their device. Nothing here signs
-# or publishes anything; the IPA is only a workflow artifact.
+# or publishes anything; the IPA is only a workflow artifact. (BETA builds
+# and publishes its iOS beta in beta-release.yml instead.)
 
 on:
   push:
-    branches: [ios, BETA]
+    branches: [ios]
     paths-ignore:
       - "website/**"
       - "**.md"

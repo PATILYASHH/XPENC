@@ -6,6 +6,10 @@
 # "current beta" download link — each push replaces the previous build's
 # assets rather than piling up a new release every time.
 #
+# Android publishes first; the beta-ios job then adds the unsigned iPhone
+# build to the same pre-release, so an iOS failure never holds up the
+# Android beta.
+#
 # Signing follows the same fallback as release.yml: if android/key.properties
 # isn't present (no release keystore configured), the build falls back to
 # debug signing. That's fine for a sideloaded beta APK.
@@ -138,11 +142,58 @@ jobs:
             This is a work-in-progress build, not a stable release. Things can be broken.
             This link always points at the latest beta — every push to `BETA` replaces it.
 
-            | Your phone | Download |
-            |---|---|
-            | Most phones (2017+) | `xpenc-beta-arm64-v8a.apk` |
-            | Older 32-bit phones | `xpenc-beta-armeabi-v7a.apk` |
-            | Emulators | `xpenc-beta-x86_64.apk` |
+            | Platform | Your device | Download |
+            |---|---|---|
+            | **(Android)** | Most phones (2017+) · ⭐ **Recommended** | [`xpenc-beta-arm64-v8a.apk`](https://github.com/PATILYASHH/XPENC/releases/download/beta/xpenc-beta-arm64-v8a.apk) |
+            | **(Android)** | Older 32-bit phones | [`xpenc-beta-armeabi-v7a.apk`](https://github.com/PATILYASHH/XPENC/releases/download/beta/xpenc-beta-armeabi-v7a.apk) |
+            | **(Android)** | Emulators | [`xpenc-beta-x86_64.apk`](https://github.com/PATILYASHH/XPENC/releases/download/beta/xpenc-beta-x86_64.apk) |
+            | **(iOS)** | iPhone, iOS 15 or later · ⭐ **Recommended** | [`xpenc-beta-ios.ipa`](https://github.com/PATILYASHH/XPENC/releases/download/beta/xpenc-beta-ios.ipa) |
+
+            **iOS:** the `.ipa` is unsigned — open it with [SideStore](https://sidestore.io) or
+            [AltStore](https://altstore.io), which sign it with your own Apple ID. It's attached
+            a few minutes after the Android files. On iPhone, home screen widgets, sharing into
+            XPENC, reading payment screenshots and blocking screenshots aren't there yet.
 
             Verify your download against `SHA256SUMS.txt`.
             For the stable release, see the [latest release](https://github.com/PATILYASHH/XPENC/releases/latest) instead.
+
+  beta-ios:
+    name: Build & attach iOS beta
+    needs: beta-release
+    runs-on: macos-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.38.9"
+          cache: true
+
+      - name: Pub get
+        run: flutter pub get --enforce-lockfile
+
+      # Same always-increasing build number as the Android beta above.
+      - name: Build
+        run: flutter build ios --release --no-codesign --build-number=${{ github.run_number }}
+
+      # An .ipa is just Payload/Runner.app, zipped.
+      - name: Package IPA
+        run: |
+          mkdir -p release/Payload
+          cp -R build/ios/iphoneos/Runner.app release/Payload/
+          (cd release && zip -qry xpenc-beta-ios.ipa Payload)
+          ls -lh release/xpenc-beta-ios.ipa
+
+      - name: Attach to the beta pre-release
+        working-directory: release
+        run: |
+          gh release download beta --pattern SHA256SUMS.txt --clobber
+          grep -v ' xpenc-beta-ios.ipa$' SHA256SUMS.txt > sums.tmp || true
+          shasum -a 256 xpenc-beta-ios.ipa >> sums.tmp
+          mv sums.tmp SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          gh release upload beta xpenc-beta-ios.ipa SHA256SUMS.txt --clobber
