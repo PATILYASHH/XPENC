@@ -23,6 +23,15 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.add_reaction_outlined,
+    title: 'Your own emoji as a category icon',
+    location: 'More → Categories → a category → Icon',
+    description:
+        'Tap ➕ under Emoji and type any emoji with your keyboard — 🍕 for '
+        'food, 🐶 for the dog. It shows wherever that category does, and '
+        'the emoji you’ve used stay one tap away for the next one.',
+  ),
+  WhatsNewEntry(
     icon: Icons.phone_iphone_outlined,
     title: 'XPENC on iPhone',
     location: 'xpenc.in/ios',

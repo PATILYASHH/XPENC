@@ -166,6 +166,12 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   Bhutanese Ngultrum, Maldivian Rufiyaa, Ethiopian Birr, Tanzanian
   Shilling, Rwandan Franc, Zambian Kwacha, and the West and Central African
   CFA francs.
+- **Your own emoji as a category icon** — in a category's icon picker, the
+  new Emoji section's ➕ opens your keyboard: type any emoji and it becomes
+  that category's icon everywhere it shows (transactions, budgets, filters,
+  shared receipts). Emoji you've used before sit beside it, one tap away.
+  A transaction's own icon still wins over its category's. No data
+  migration; an older version shows a plain circle for these categories.
 
 ### Changed
 - **Themes are now Classic, Noir and Glass.** Classic (monochrome) is the
