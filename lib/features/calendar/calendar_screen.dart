@@ -834,7 +834,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           leading: CircleAvatar(
             backgroundColor: accent.withValues(alpha: 0.15),
             child: transactionRowIcon(
-              customIcon: tx.customIcon,
+              customIcon:
+                  tx.customIcon ??
+                  (isTransfer ? null : AppIcons.emojiOf(category?.iconKey)),
               fallback: icon,
               size: 22,
               color: accent,

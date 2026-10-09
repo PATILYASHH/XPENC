@@ -12,10 +12,16 @@ import 'nav_bar_inset.dart';
 /// and the "Frequently used" row — pass whatever colour the caller's own
 /// entity (category, account, ...) is using, so the preview matches what
 /// saving will actually look like.
+///
+/// [allowEmoji] adds an "Emoji" section on top: the user's own emoji, typed
+/// with their keyboard, resolved as an `AppIcons.encodeEmoji` key. Only pass
+/// it where every place that draws the key handles one (`KeyIcon`,
+/// `IconWell.forKey`) — categories do; accounts and goals don't.
 Future<String?> showIconPickerSheet(
   BuildContext context, {
   required String? selected,
   Color? accentColor,
+  bool allowEmoji = false,
 }) {
   return showAppSheet<String>(
     context: context,
@@ -25,16 +31,94 @@ Future<String?> showIconPickerSheet(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
-    builder: (_) =>
-        _IconPickerSheet(selected: selected, accentColor: accentColor),
+    builder: (_) => _IconPickerSheet(
+      selected: selected,
+      accentColor: accentColor,
+      allowEmoji: allowEmoji,
+    ),
   );
 }
 
+/// A small sheet with one text field that brings up the user's own keyboard,
+/// emoji key included — rather than a bundled emoji browser, which would need
+/// an extra dependency and an emoji data set of its own to maintain. Resolves
+/// to the trimmed text, or `null` if dismissed.
+///
+/// [maxLength] counts characters as the user sees them (grapheme clusters),
+/// so a skin-toned or ZWJ emoji is one.
+Future<String?> showEmojiInputSheet(
+  BuildContext context, {
+  String initial = '',
+  int maxLength = 8,
+}) {
+  // Pre-selected, so typing a new emoji replaces the current one.
+  final controller = TextEditingController(text: initial)
+    ..selection = TextSelection(baseOffset: 0, extentOffset: initial.length);
+  final result = showAppSheet<String>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    showDragHandle: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+    ),
+    builder: (sheetContext) => Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 8,
+        bottom:
+            MediaQuery.of(sheetContext).padding.bottom +
+            MediaQuery.of(sheetContext).viewInsets.bottom +
+            20,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Emoji',
+            style: Theme.of(
+              sheetContext,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            key: const Key('emojiInputField'),
+            controller: controller,
+            autofocus: true,
+            textAlign: TextAlign.center,
+            maxLength: maxLength,
+            style: const TextStyle(fontSize: 40),
+            decoration: const InputDecoration(hintText: '🙂', counterText: ''),
+            onSubmitted: (v) => Navigator.of(sheetContext).pop(v.trim()),
+          ),
+          const SizedBox(height: 12),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(sheetContext).pop(controller.text.trim()),
+            child: const Text('Done'),
+          ),
+        ],
+      ),
+    ),
+  );
+  // Deliberately not disposed — see the same note in persons_screen.dart's
+  // _createGroup: disposing right after the sheet resolves can crash the
+  // TextField mid exit-transition.
+  return result;
+}
+
 class _IconPickerSheet extends ConsumerStatefulWidget {
-  const _IconPickerSheet({required this.selected, required this.accentColor});
+  const _IconPickerSheet({
+    required this.selected,
+    required this.accentColor,
+    required this.allowEmoji,
+  });
 
   final String? selected;
   final Color? accentColor;
+  final bool allowEmoji;
 
   @override
   ConsumerState<_IconPickerSheet> createState() => _IconPickerSheetState();
@@ -69,6 +153,34 @@ class _IconPickerSheetState extends ConsumerState<_IconPickerSheet> {
     Navigator.of(context).pop(key);
   }
 
+  /// One emoji per icon: a category badge is a single glyph, and anything
+  /// longer wouldn't fit the icon-key column's 40 characters anyway.
+  Future<void> _typeEmoji() async {
+    final typed = await showEmojiInputSheet(
+      context,
+      initial: AppIcons.emojiOf(widget.selected) ?? '',
+      maxLength: 1,
+    );
+    if (typed == null || typed.isEmpty || !mounted) return;
+    final key = AppIcons.encodeEmoji(typed.characters.first);
+    if (key.length > 40) return;
+    _pick(key);
+  }
+
+  /// Emoji the user has already used, newest pick first, then any still on a
+  /// category — so a favourite is one tap away for the next category.
+  List<String> _knownEmojiKeys() {
+    final keys = <String>{
+      if (AppIcons.emojiOf(widget.selected) != null) widget.selected!,
+      ...ref
+          .watch(frequentIconKeysProvider)
+          .where((k) => AppIcons.emojiOf(k) != null),
+      for (final c in ref.watch(categoryMapProvider).values)
+        if (AppIcons.emojiOf(c.iconKey) != null) c.iconKey,
+    };
+    return keys.toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -83,6 +195,8 @@ class _IconPickerSheetState extends ConsumerState<_IconPickerSheet> {
           .toList(),
     );
     final all = _filter(AppIcons.allKeys);
+    final showEmoji = widget.allowEmoji && _query.trim().isEmpty;
+    final emoji = showEmoji ? _knownEmojiKeys() : const <String>[];
 
     return ConstrainedBox(
       constraints: BoxConstraints(
@@ -135,6 +249,20 @@ class _IconPickerSheetState extends ConsumerState<_IconPickerSheet> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          if (showEmoji) ...[
+                            _sectionLabel(theme, 'Emoji'),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 12,
+                              runSpacing: 12,
+                              children: [
+                                _addEmojiTile(theme),
+                                for (final k in emoji)
+                                  _iconTile(theme, k, accent),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                          ],
                           if (frequent.isNotEmpty) ...[
                             _sectionLabel(theme, 'Frequently used'),
                             const SizedBox(height: 10),
@@ -196,9 +324,33 @@ class _IconPickerSheetState extends ConsumerState<_IconPickerSheet> {
             width: isSelected ? 2.5 : 1,
           ),
         ),
-        child: IconWell(
-          AppIcons.resolve(key),
+        child: IconWell.forKey(
+          key,
           color: isSelected ? accent : theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+
+  Widget _addEmojiTile(ThemeData theme) {
+    return Tooltip(
+      message: 'Type an emoji',
+      child: GestureDetector(
+        key: const Key('iconPickerAddEmoji'),
+        onTap: _typeEmoji,
+        child: Container(
+          width: 52,
+          height: 52,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest,
+            shape: BoxShape.circle,
+            border: Border.all(color: theme.colorScheme.outline),
+          ),
+          child: AppIcon(
+            Icons.add_reaction_outlined,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
         ),
       ),
     );

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/app_icons.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/amount_keypad_field.dart';
@@ -178,7 +177,7 @@ class _CategoryEnvelopeRow extends ConsumerWidget {
           color: catColor.withValues(alpha: 0.15),
           shape: BoxShape.circle,
         ),
-        child: IconWell(AppIcons.resolve(category.iconKey), color: catColor, size: 18),
+        child: IconWell.forKey(category.iconKey, color: catColor, size: 18),
       ),
       title: Text(category.name),
       trailing: MoneyText(

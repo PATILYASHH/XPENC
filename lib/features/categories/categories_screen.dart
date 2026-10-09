@@ -230,8 +230,8 @@ class _CategoryTile extends ConsumerWidget {
           color: color.withValues(alpha: 0.15),
           shape: BoxShape.circle,
         ),
-        child: IconWell(
-          AppIcons.resolve(category.iconKey),
+        child: IconWell.forKey(
+          category.iconKey,
           color: color,
           size: isChild ? 17 : 22,
         ),
@@ -597,11 +597,7 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
               value: p.id,
               child: Row(
                 children: [
-                  AppIcon(
-                    AppIcons.resolve(p.iconKey),
-                    size: 18,
-                    color: Color(p.colorValue),
-                  ),
+                  KeyIcon(p.iconKey, size: 18, color: Color(p.colorValue)),
                   const SizedBox(width: 10),
                   Flexible(
                     child: Text(p.name, overflow: TextOverflow.ellipsis),
@@ -658,6 +654,7 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
           context,
           selected: _iconKey,
           accentColor: color,
+          allowEmoji: true,
         );
         if (picked != null) setState(() => _iconKey = picked);
       },
@@ -677,7 +674,7 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
                 color: color.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
-              child: AppIcon(AppIcons.resolve(_iconKey), color: color),
+              child: KeyIcon(_iconKey, color: color),
             ),
             const SizedBox(width: 14),
             Expanded(

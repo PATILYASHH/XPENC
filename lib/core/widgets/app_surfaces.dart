@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
+import '../app_icons.dart';
 import '../theme/glass.dart';
 import 'glass_sheet.dart';
 import 'nav_bar_inset.dart';
@@ -95,6 +96,57 @@ class AppIcon extends StatelessWidget {
   }
 }
 
+/// `AppIcon(AppIcons.resolve(iconKey), size: size, color: color)` for an icon
+/// key that may be a user's own emoji (see [AppIcons.emojiOf]) — a
+/// category's. An emoji keeps its own colours; [color] only tints an icon.
+class KeyIcon extends StatelessWidget {
+  const KeyIcon(this.iconKey, {super.key, this.size, this.color});
+
+  final String iconKey;
+  final double? size;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final emoji = AppIcons.emojiOf(iconKey);
+    if (emoji == null) {
+      return AppIcon(AppIcons.resolve(iconKey), size: size, color: color);
+    }
+    return EmojiGlyph(
+      emoji,
+      size: size ?? IconTheme.of(context).size ?? 24,
+      color: color,
+    );
+  }
+}
+
+/// An emoji in the same [size] square an [Icon] takes, so it stands in for
+/// one without shifting the row around it. [color] only shows on a plain
+/// character (a letter, a ₹) — colour emoji ignore it.
+class EmojiGlyph extends StatelessWidget {
+  const EmojiGlyph(this.emoji, {required this.size, this.color, super.key});
+
+  final String emoji;
+  final double size;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) => SizedBox.square(
+    dimension: size,
+    child: Center(
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          emoji,
+          maxLines: 1,
+          textScaler: TextScaler.noScaling,
+          style: TextStyle(fontSize: size * 0.85, height: 1.15, color: color),
+        ),
+      ),
+    ),
+  );
+}
+
 /// [ListTile], with the same arguments. Under Glass a leading [AppIcon]
 /// sits on a glossy [GlassIconTile], iOS Settings–style; everything else
 /// (and every other theme) is a plain ListTile.
@@ -180,6 +232,22 @@ class AppSwitchListTile extends StatelessWidget {
 /// when it has a real one, else a stable colour from iOS's system palette
 /// (a grey "muted" icon colour would make a column of grey tiles).
 Widget? glassLeadingTile(BuildContext context, Widget? leading) {
+  if (leading is KeyIcon && AppSurface.of(context).isGlass) {
+    final emoji = AppIcons.emojiOf(leading.iconKey);
+    if (emoji == null) {
+      leading = AppIcon(
+        AppIcons.resolve(leading.iconKey),
+        size: leading.size,
+        color: leading.color,
+      );
+    } else {
+      return GlassIconTile(
+        color: leading.color ?? GlassIconTile.forIcon(null),
+        extent: 30,
+        child: EmojiGlyph(emoji, size: 19),
+      );
+    }
+  }
   if (leading is! AppIcon || !AppSurface.of(context).isGlass) return leading;
   final own = leading.color;
   final vivid = own != null && HSLColor.fromColor(own).saturation > 0.25;

@@ -773,73 +773,14 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     }
   }
 
-  /// A plain [TextField] rather than a bundled emoji browser — focusing it
-  /// brings up the user's own keyboard, emoji key included, so this needs no
-  /// extra dependency or maintained emoji data set of its own.
-  Future<String?> _pickEmoji() async {
+  Future<String?> _pickEmoji() {
     final current = _customIcon;
-    final controller = TextEditingController(
-      text: (current != null && !CustomIconBadge.isIconKey(current))
+    return showEmojiInputSheet(
+      context,
+      initial: (current != null && !CustomIconBadge.isIconKey(current))
           ? current
           : '',
     );
-    final result = await showAppSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      showDragHandle: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (sheetContext) => Padding(
-        padding: EdgeInsets.only(
-          left: 20,
-          right: 20,
-          top: 8,
-          bottom:
-              MediaQuery.of(sheetContext).padding.bottom +
-              MediaQuery.of(sheetContext).viewInsets.bottom +
-              20,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Emoji',
-              style: Theme.of(
-                sheetContext,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              autofocus: true,
-              textAlign: TextAlign.center,
-              // Room for a multi-codepoint emoji (skin tone / ZWJ sequence),
-              // not a limit on typing several separate characters.
-              maxLength: 8,
-              style: const TextStyle(fontSize: 40),
-              decoration: const InputDecoration(
-                hintText: '🙂',
-                counterText: '',
-              ),
-              onSubmitted: (v) => Navigator.of(sheetContext).pop(v.trim()),
-            ),
-            const SizedBox(height: 12),
-            FilledButton(
-              onPressed: () =>
-                  Navigator.of(sheetContext).pop(controller.text.trim()),
-              child: const Text('Done'),
-            ),
-          ],
-        ),
-      ),
-    );
-    // Deliberately not disposed — see the same note in
-    // persons_screen.dart's _createGroup: disposing right after showDialog
-    // resolves can crash the TextField mid exit-transition.
-    return result;
   }
 
   Future<void> _openCustomIconSheet() async {
@@ -1661,8 +1602,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                AppIcon(
-                  AppIcons.resolve(cat?.iconKey ?? 'other'),
+                KeyIcon(
+                  cat?.iconKey ?? 'other',
                   size: 18,
                   color: cat != null
                       ? Color(cat.colorValue)
@@ -2358,6 +2299,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         tiles.add(
           _pickerTile(
             icon: AppIcons.resolve(cat?.iconKey ?? 'other'),
+            iconKey: cat?.iconKey,
             label: 'Category',
             value: cat == null
                 ? 'Select category'
@@ -2445,8 +2387,11 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     );
   }
 
+  /// [iconKey], when set, is drawn instead of [icon] — a category's, which
+  /// may be the user's own emoji.
   Widget _pickerTile({
     required IconData icon,
+    String? iconKey,
     required String label,
     required String value,
     required bool selected,
@@ -2458,7 +2403,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       clipBehavior: Clip.antiAlias,
       child: AppListTile(
         onTap: onTap,
-        leading: AppIcon(icon, color: theme.colorScheme.onSurfaceVariant),
+        leading: iconKey == null
+            ? AppIcon(icon, color: theme.colorScheme.onSurfaceVariant)
+            : KeyIcon(iconKey, color: theme.colorScheme.onSurfaceVariant),
         title: Text(
           label,
           style: theme.textTheme.bodySmall?.copyWith(
@@ -2733,11 +2680,7 @@ Widget _iconCircle(String iconKey, int colorValue, {double size = 40}) {
     width: size,
     height: size,
     decoration: BoxDecoration(color: Color(colorValue), shape: BoxShape.circle),
-    child: AppIcon(
-      AppIcons.resolve(iconKey),
-      color: Colors.white,
-      size: size * 0.5,
-    ),
+    child: KeyIcon(iconKey, color: Colors.white, size: size * 0.5),
   );
 }
 

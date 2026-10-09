@@ -110,17 +110,29 @@ Widget _plainRowIcon(
 /// `AppIcon(icon, size: size, color: color)`; under Glass it fills the well
 /// with a glossy [GlassIconTile] of [color] and a white glyph.
 class IconWell extends StatelessWidget {
-  const IconWell(this.icon, {this.size, this.color, super.key});
+  const IconWell(this.icon, {this.size, this.color, super.key}) : emoji = null;
+
+  /// The well for an icon key that may be a user's own emoji (see
+  /// [AppIcons.emojiOf]) — a category's. The emoji fills the well in place
+  /// of an icon.
+  IconWell.forKey(String iconKey, {this.size, this.color, super.key})
+    : icon = AppIcons.resolve(iconKey),
+      emoji = AppIcons.emojiOf(iconKey);
 
   final IconData? icon;
+  final String? emoji;
   final double? size;
   final Color? color;
 
   @override
   Widget build(BuildContext context) {
     final surface = AppSurface.of(context);
-    if (!surface.isGlass) return AppIcon(icon, size: size, color: color);
     final glyph = size ?? 24;
+    if (!surface.isGlass) {
+      return emoji == null
+          ? AppIcon(icon, size: size, color: color)
+          : EmojiGlyph(emoji!, size: glyph, color: color);
+    }
     return LayoutBuilder(
       builder: (context, box) {
         final extent = box.hasBoundedWidth && box.hasBoundedHeight
@@ -129,7 +141,9 @@ class IconWell extends StatelessWidget {
         return GlassIconTile(
           color: color ?? Theme.of(context).colorScheme.secondary,
           extent: extent,
-          child: AppIcon(icon, size: extent * 0.5, color: Colors.white),
+          child: emoji == null
+              ? AppIcon(icon, size: extent * 0.5, color: Colors.white)
+              : EmojiGlyph(emoji!, size: extent * 0.6, color: Colors.white),
         );
       },
     );

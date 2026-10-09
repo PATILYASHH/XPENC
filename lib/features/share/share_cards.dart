@@ -610,6 +610,10 @@ class TransactionShareCard extends StatelessWidget {
         data.categoryIconKey != null &&
         data.splits.isEmpty &&
         t.type.isIncomeOrExpense;
+    // The transaction's own icon, else its category's emoji if it has one.
+    final badge =
+        t.customIcon ??
+        (showCategoryIcon ? AppIcons.emojiOf(data.categoryIconKey) : null);
     final date = data.hasTime
         ? DateFormat('EEE, d MMM yyyy · h:mm a').format(t.date)
         : DateFormat('EEE, d MMM yyyy').format(t.date);
@@ -633,13 +637,9 @@ class TransactionShareCard extends StatelessWidget {
                       : t.type == TxType.expense && data.splits.isNotEmpty
                       ? Icons.call_split_rounded
                       : iconForTxType(t.type),
-                  child: t.customIcon == null
+                  child: badge == null
                       ? null
-                      : CustomIconBadge(
-                          value: t.customIcon!,
-                          size: 56,
-                          color: accent,
-                        ),
+                      : CustomIconBadge(value: badge, size: 56, color: accent),
                 ),
                 const SizedBox(height: 14),
                 _Hero(
@@ -682,13 +682,17 @@ class TransactionShareCard extends StatelessWidget {
                     value: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          AppIcons.resolve(data.categoryIconKey ?? 'other'),
-                          size: 16,
-                          color: data.categoryColor == null
-                              ? p.muted
-                              : Color(data.categoryColor!),
-                        ),
+                        if (AppIcons.emojiOf(data.categoryIconKey)
+                            case final emoji?)
+                          CustomIconBadge(value: emoji, size: 15, scaled: false)
+                        else
+                          Icon(
+                            AppIcons.resolve(data.categoryIconKey ?? 'other'),
+                            size: 16,
+                            color: data.categoryColor == null
+                                ? p.muted
+                                : Color(data.categoryColor!),
+                          ),
                         const SizedBox(width: 6),
                         Flexible(
                           child: Text(

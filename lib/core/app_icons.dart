@@ -145,4 +145,20 @@ class AppIcons {
   static IconData resolve(String key) => _map[key] ?? fallback;
 
   static List<String> get allKeys => _map.keys.toList(growable: false);
+
+  /// A user's own emoji stored in an icon-key column: `emoji:<glyph>`. Only
+  /// categories offer one (`showIconPickerSheet(allowEmoji: true)`). [resolve]
+  /// maps it to [fallback] like any unknown key — draw a key that may be an
+  /// emoji with `KeyIcon` / `IconWell.forKey`, which render the glyph itself.
+  static const _emojiPrefix = 'emoji:';
+
+  /// The emoji encoded in [key], or null when [key] is a plain icon key.
+  static String? emojiOf(String? key) =>
+      key != null &&
+          key.startsWith(_emojiPrefix) &&
+          key.length > _emojiPrefix.length
+      ? key.substring(_emojiPrefix.length)
+      : null;
+
+  static String encodeEmoji(String emoji) => '$_emojiPrefix$emoji';
 }

@@ -2,7 +2,10 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:xpenc/core/app_icons.dart';
 import 'package:xpenc/core/theme/app_theme.dart';
+import 'package:xpenc/core/widgets/app_surfaces.dart';
+import 'package:xpenc/core/widgets/custom_icon_badge.dart';
 import 'package:xpenc/data/database.dart';
 import 'package:xpenc/data/providers.dart';
 import 'package:xpenc/features/accounts/add_account_sheet.dart';
@@ -81,6 +84,10 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(find.text('Search icons'), findsOneWidget);
 
+      // Emoji are a category-only option — nothing that draws an account
+      // icon knows how to render one.
+      expect(find.byKey(const Key('iconPickerAddEmoji')), findsNothing);
+
       // No icon has ever been picked yet, so there's nothing to surface.
       expect(find.text('Frequently used'), findsNothing);
 
@@ -140,4 +147,85 @@ void main() {
       await unmount(tester);
     },
   );
+
+  test('AppIcons: an emoji key round-trips and never reads as an icon', () {
+    final key = AppIcons.encodeEmoji('🍕');
+    expect(AppIcons.emojiOf(key), '🍕');
+    expect(AppIcons.emojiOf('coffee'), isNull);
+    expect(AppIcons.emojiOf('emoji:'), isNull);
+    expect(AppIcons.emojiOf(null), isNull);
+    expect(AppIcons.resolve(key), AppIcons.fallback);
+  });
+
+  testWidgets(
+    'Category editor: an emoji typed in the picker becomes the category icon',
+    (tester) async {
+      await pump(tester, const CategoriesScreen());
+
+      await tester.tap(find.byTooltip('New category'));
+      await settleSheet(tester);
+      await tester.enterText(find.widgetWithText(TextField, 'Name'), 'Pizza');
+
+      await tester.tap(find.text('Tap to change'));
+      await settleSheet(tester);
+      expect(tester.takeException(), isNull);
+      expect(find.text('Emoji'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('iconPickerAddEmoji')));
+      await settleSheet(tester);
+      expect(tester.takeException(), isNull);
+      await tester.enterText(find.byKey(const Key('emojiInputField')), '🍕');
+      await tester.pump();
+      await tester.tap(find.text('Done'));
+      await settleSheet(tester);
+      expect(tester.takeException(), isNull);
+
+      // Both sheets are gone and the editor's icon field previews the emoji.
+      expect(find.text('Search icons'), findsNothing);
+      expect(find.text('🍕'), findsOneWidget);
+
+      await tester.tap(find.text('Save'));
+      await settleSheet(tester);
+      expect(tester.takeException(), isNull);
+
+      await tester.runAsync(() async {
+        final all = await db.watchAllCategories().first;
+        expect(all.singleWhere((c) => c.name == 'Pizza').iconKey, 'emoji:🍕');
+        final settings = await db.getSettings();
+        expect(settings.frequentIconKeys, 'emoji:🍕');
+      });
+
+      await unmount(tester);
+    },
+  );
+
+  testWidgets('KeyIcon and IconWell.forKey draw an emoji key as the emoji', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: const Scaffold(
+          body: Column(
+            children: [
+              KeyIcon('emoji:🍕', size: 20),
+              KeyIcon('coffee', size: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+    expect(find.text('🍕'), findsOneWidget);
+    expect(find.byIcon(Icons.coffee_outlined), findsOneWidget);
+    expect(tester.getSize(find.byType(EmojiGlyph)), const Size(20, 20));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(body: IconWell.forKey('emoji:🧾', size: 22)),
+      ),
+    );
+    expect(find.text('🧾'), findsOneWidget);
+    expect(find.byIcon(AppIcons.fallback), findsNothing);
+  });
 }

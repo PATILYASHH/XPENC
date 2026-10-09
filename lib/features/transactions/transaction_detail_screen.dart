@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import '../../core/app_icons.dart';
 import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/security/nct.dart';
@@ -908,11 +907,7 @@ Widget _splitCategoryValue(
                   ),
                 ),
                 const SizedBox(width: 8),
-                AppIcon(
-                  AppIcons.resolve(category?.iconKey ?? 'other'),
-                  size: 16,
-                  color: color,
-                ),
+                KeyIcon(category?.iconKey ?? 'other', size: 16, color: color),
                 const SizedBox(width: 6),
                 // Flexible so a long category name wraps inside the card
                 // instead of overflowing past its edge (#137).
@@ -972,11 +967,7 @@ Widget _categoryValue(
     mainAxisSize: MainAxisSize.min,
     mainAxisAlignment: MainAxisAlignment.end,
     children: [
-      AppIcon(
-        AppIcons.resolve(category?.iconKey ?? 'other'),
-        size: 18,
-        color: color,
-      ),
+      KeyIcon(category?.iconKey ?? 'other', size: 18, color: color),
       const SizedBox(width: 8),
       Flexible(
         child: Text(

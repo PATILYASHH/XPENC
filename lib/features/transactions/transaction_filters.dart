@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../core/app_icons.dart';
 import '../../core/iso_week.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
@@ -270,10 +269,7 @@ class _TransactionFiltersSheetState
                           for (final c in categories)
                             FilterChip(
                               label: Text(c.name),
-                              avatar: AppIcon(
-                                AppIcons.resolve(c.iconKey),
-                                size: 16,
-                              ),
+                              avatar: KeyIcon(c.iconKey, size: 16),
                               selected: _categoryIds.contains(c.id),
                               onSelected: (v) => setState(() {
                                 if (v) {

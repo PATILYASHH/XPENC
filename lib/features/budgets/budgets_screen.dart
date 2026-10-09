@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/app_icons.dart';
 import '../../core/money.dart';
 import '../../core/routing/app_router.dart' show appRouter;
 import '../../core/theme/app_colors.dart';
@@ -414,8 +413,8 @@ class _BudgetTile extends ConsumerWidget {
                   color: catColor.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
-                child: IconWell(
-                  AppIcons.resolve(category.iconKey),
+                child: IconWell.forKey(
+                  category.iconKey,
                   color: catColor,
                   size: compact ? 16 : 22,
                 ),
@@ -865,8 +864,8 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
                   color: catColor.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
-                child: IconWell(
-                  AppIcons.resolve(widget.category.iconKey),
+                child: IconWell.forKey(
+                  widget.category.iconKey,
                   color: catColor,
                   size: 20,
                 ),
@@ -1182,8 +1181,8 @@ class _OverflowTargetSheet extends ConsumerWidget {
                       ),
                       for (final c in options)
                         AppListTile(
-                          leading: AppIcon(
-                            AppIcons.resolve(c.iconKey),
+                          leading: KeyIcon(
+                            c.iconKey,
                             color: Color(c.colorValue),
                           ),
                           title: Text(c.name),

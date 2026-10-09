@@ -1144,7 +1144,11 @@ class _TxCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(14),
                           ),
                           child: transactionRowIcon(
-                            customIcon: tx.customIcon,
+                            customIcon:
+                                tx.customIcon ??
+                                (hasCategory
+                                    ? AppIcons.emojiOf(category!.iconKey)
+                                    : null),
                             fallback: icon,
                             size: 21,
                             color: iconColor,

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../core/app_icons.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_surfaces.dart';
@@ -817,10 +816,6 @@ Widget _iconCircle(String iconKey, int colorValue, {double size = 44}) {
       color: Color(colorValue),
       shape: BoxShape.circle,
     ),
-    child: AppIcon(
-      AppIcons.resolve(iconKey),
-      color: Colors.white,
-      size: size * 0.5,
-    ),
+    child: KeyIcon(iconKey, color: Colors.white, size: size * 0.5),
   );
 }

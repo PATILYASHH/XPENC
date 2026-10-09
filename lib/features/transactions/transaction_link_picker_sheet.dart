@@ -197,7 +197,9 @@ class _TxTile extends StatelessWidget {
         leading: CircleAvatar(
           backgroundColor: accent.withValues(alpha: 0.15),
           child: transactionRowIcon(
-            customIcon: tx.customIcon,
+            customIcon:
+                tx.customIcon ??
+                (isTransfer ? null : AppIcons.emojiOf(category?.iconKey)),
             fallback: icon,
             size: 20,
             color: accent,

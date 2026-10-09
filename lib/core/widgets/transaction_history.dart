@@ -226,7 +226,13 @@ class HistoryRow extends StatelessWidget {
         leading: CircleAvatar(
           backgroundColor: accent.withValues(alpha: 0.15),
           child: transactionRowIcon(
-            customIcon: tx.customIcon,
+            // A category's own emoji rides the custom-icon path, under the
+            // transaction's own pick.
+            customIcon:
+                tx.customIcon ??
+                (isTransfer || isCorrection
+                    ? null
+                    : AppIcons.emojiOf(category?.iconKey)),
             fallback: icon,
             size: 22,
             color: accent,

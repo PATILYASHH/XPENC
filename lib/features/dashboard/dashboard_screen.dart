@@ -1949,7 +1949,9 @@ class _TxRow extends StatelessWidget {
             color: iconColor.withValues(alpha: 0.14),
           ),
           child: transactionRowIcon(
-            customIcon: tx.customIcon,
+            customIcon:
+                tx.customIcon ??
+                (hasCategory ? AppIcons.emojiOf(category!.iconKey) : null),
             fallback: icon,
             size: 20,
             color: iconColor,
