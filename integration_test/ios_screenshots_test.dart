@@ -59,7 +59,9 @@ void main() {
     appRouter.go('/budgets');
     await _shot(tester, '05-budgets');
 
+    // As the theme picker does: Glass's floating tab bar is icons only.
     await db.setThemeName('glass');
+    await db.setShowBottomNavLabels(false);
     appRouter.go('/dashboard');
     await _shot(tester, '06-glass-dashboard');
 

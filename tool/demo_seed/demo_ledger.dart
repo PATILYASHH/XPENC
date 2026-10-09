@@ -34,16 +34,23 @@ Future<void> seedDemoLedger(
   final rnd = Random(20260930);
 
   // [month] months after [today]'s month (negative: before it), on [day],
-  // clamped to that month's length. A time in the past — every month up to
-  // and including [today]'s — never lands after [today], so nothing reads as
-  // scheduled for later.
+  // clamped to that month's length. Nothing in the past — every month up to
+  // and including [today]'s — lands after [today], so nothing reads as
+  // scheduled for later: in [today]'s month the days are squeezed into the
+  // days so far, and on [today] itself the hours into the hours so far, both
+  // in proportion, so the ledger keeps its rhythm instead of piling up on
+  // one moment. With the default [demoLedgerNow] nothing moves.
   DateTime at(int month, int day, [int hour = 13, int minute = 0]) {
     final first = DateTime(today.year, today.month + month);
     final last = DateTime(first.year, first.month + 1, 0).day;
-    var date = DateTime(first.year, first.month, min(day, last), hour, minute);
+    var d = min(day, last);
+    if (month == 0 && d > today.day) d = (d * today.day / last).ceil();
+    var date = DateTime(first.year, first.month, d, hour, minute);
     if (month <= 0 && date.isAfter(today)) {
-      date = DateTime(today.year, today.month, today.day, hour, minute);
-      if (date.isAfter(today)) date = today.subtract(const Duration(minutes: 30));
+      final sofar = today.hour * 60 + today.minute;
+      final minutes = (hour * 60 + minute) * sofar ~/ (24 * 60);
+      date = DateTime(first.year, first.month, d, minutes ~/ 60, minutes % 60);
+      if (date.isAfter(today)) date = today.subtract(const Duration(minutes: 1));
     }
     return date;
   }
