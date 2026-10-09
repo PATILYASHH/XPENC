@@ -1,0 +1,120 @@
+name: iOS screenshots
+
+# Runs XPENC on an iPhone Simulator with the demo ledger and captures the
+# screenshots for the SideStore / AltStore listing — see
+# integration_test/ios_screenshots_test.dart. It is also proof the app
+# launches on iOS: a screen that throws fails the run. Nothing here signs,
+# publishes or commits anything — the PNGs are a workflow artifact.
+
+# Manual, plus a push to `ios` that touches the test, the demo ledger or this
+# file (workflow_dispatch only works once a workflow is on master).
+on:
+  workflow_dispatch:
+  push:
+    branches: [ios]
+    paths:
+      - "integration_test/**"
+      - "tool/demo_seed/**"
+      - ".github/workflows/ios-screenshots.yml"
+
+concurrency:
+  group: ios-screenshots-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  screenshots:
+    name: Simulator screenshots
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.38.9"
+          cache: true
+
+      # integration_test ships inside Flutter. It's added on this runner only,
+      # so the committed pubspec.lock — pinned for CI and F-Droid — never
+      # changes for it.
+      - name: Add integration_test (runner only)
+        run: |
+          python3 - <<'EOF'
+          from pathlib import Path
+          p = Path("pubspec.yaml")
+          s = p.read_text()
+          assert "dev_dependencies:\n" in s
+          s = s.replace(
+              "dev_dependencies:\n",
+              "dev_dependencies:\n  integration_test:\n    sdk: flutter\n",
+              1,
+          )
+          p.write_text(s)
+          EOF
+          flutter pub get
+
+      # The largest iPhone on the newest iOS runtime: its 6.9" screenshots
+      # suit any listing.
+      - name: Boot an iPhone Simulator
+        run: |
+          UDID=$(python3 - <<'EOF'
+          import json, re, subprocess
+          data = json.loads(subprocess.check_output(
+              ["xcrun", "simctl", "list", "devices", "available", "-j"]))
+          phones = []
+          for runtime, devices in data["devices"].items():
+              m = re.search(r"iOS-(\d+)-(\d+)", runtime)
+              if not m:
+                  continue
+              for d in devices:
+                  if d["name"].startswith("iPhone"):
+                      size = next((i for i, w in enumerate(("Pro Max", "Plus", "Pro")) if w in d["name"]), 3)
+                      phones.append((-int(m[1]), -int(m[2]), size, d["name"], d["udid"]))
+          phones.sort()
+          print(phones[0][4])
+          EOF
+          )
+          xcrun simctl list devices | grep "$UDID"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl ui "$UDID" appearance light
+          xcrun simctl status_bar "$UDID" override --time "9:41" \
+            --dataNetwork wifi --wifiMode active --wifiBars 3 \
+            --cellularMode active --cellularBars 4 --operatorName "" \
+            --batteryState charged --batteryLevel 100
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+
+      # The test writes a screen's name to Documents/screenshot_request in the
+      # app's container and waits; this loop captures the Simulator's screen
+      # under that name and deletes the file to let the test go on.
+      - name: Run the app and capture
+        run: |
+          mkdir -p screens
+          capture() {
+            while :; do
+              DATA=$(xcrun simctl get_app_container "$UDID" com.yash.xpenc data 2>/dev/null) || DATA=
+              REQUEST="$DATA/Documents/screenshot_request"
+              if [ -n "$DATA" ] && [ -f "$REQUEST" ]; then
+                NAME=$(cat "$REQUEST")
+                xcrun simctl io "$UDID" screenshot "screens/$NAME.png" > /dev/null
+                echo "captured $NAME"
+                rm -f "$REQUEST"
+              fi
+              sleep 0.5
+            done
+          }
+          capture &
+          CAPTURE=$!
+          STATUS=0
+          flutter test integration_test/ios_screenshots_test.dart -d "$UDID" --no-pub || STATUS=$?
+          kill "$CAPTURE" 2> /dev/null || true
+          ls -l screens
+          exit "$STATUS"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xpenc-ios-screenshots
+          path: screens/
+          if-no-files-found: warn
+          retention-days: 30

@@ -19,6 +19,10 @@ analyzer:
     # Vendored third-party plugin (see pubspec.yaml) — not this project's own
     # code, so not held to its lint rules.
     - packages/**
+    # Needs the integration_test package, which only
+    # .github/workflows/ios-screenshots.yml adds (on its runner), so the
+    # pinned lockfile never changes for it.
+    - integration_test/**
 include: package:flutter_lints/flutter.yaml
 
 linter:
