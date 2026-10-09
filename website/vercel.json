@@ -2,6 +2,13 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": true,
   "trailingSlash": false,
+  "redirects": [
+    {
+      "source": "/ios/source.json",
+      "destination": "https://github.com/PATILYASHH/XPENC/releases/latest/download/xpenc-altsource.json",
+      "permanent": false
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

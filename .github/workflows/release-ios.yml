@@ -1,0 +1,77 @@
+# Adds the iOS build to a GitHub Release, once "Release APK" has published it:
+#   xpenc-ios.ipa         — unsigned; AltStore / SideStore sign it on the
+#                           user's device with their own Apple ID
+#   xpenc-altsource.json  — the AltStore / SideStore source for this version
+#                           (tool/altstore_source.py)
+#
+# https://xpenc.in/ios/source.json redirects to the latest release's
+# xpenc-altsource.json (website/vercel.json), so these two asset names must
+# never change.
+#
+# Its own workflow on purpose, not a job in release.yml: an iOS failure can
+# never hold up the Android release, and F-Droid's build recipe greps
+# release.yml for its one `flutter-version:` line.
+
+name: Release iOS
+
+on:
+  workflow_run:
+    workflows: ["Release APK"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to add the iOS build to, e.g. v1.6.4"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  ios:
+    name: Build IPA & source
+    # Only after a tag's Android release actually went out.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       startsWith(github.event.workflow_run.head_branch, 'v'))
+    runs-on: macos-latest
+    timeout-minutes: 45
+    env:
+      TAG: ${{ inputs.tag || github.event.workflow_run.head_branch }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.TAG }}
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.38.9"
+          cache: true
+
+      - name: Pub get
+        run: flutter pub get --enforce-lockfile
+
+      - name: Build
+        run: flutter build ios --release --no-codesign
+
+      # An .ipa is just Payload/Runner.app, zipped.
+      - name: Package IPA
+        run: |
+          mkdir -p release/Payload
+          cp -R build/ios/iphoneos/Runner.app release/Payload/
+          (cd release && zip -qry xpenc-ios.ipa Payload)
+          ls -lh release/xpenc-ios.ipa
+
+      - name: Write AltStore / SideStore source
+        run: >-
+          python3 tool/altstore_source.py
+          --app build/ios/iphoneos/Runner.app
+          --ipa release/xpenc-ios.ipa
+          --tag "$TAG"
+          --out release/xpenc-altsource.json
+
+      - name: Attach to the release
+        run: gh release upload "$TAG" release/xpenc-ios.ipa release/xpenc-altsource.json --clobber

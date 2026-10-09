@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XPENC for iPhone</title>
+  <meta name="description" content="Install XPENC on iPhone with SideStore or AltStore. Free, open-source, offline-first expense tracker — everything stays on your phone.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://xpenc.in/ios">
+  <meta name="theme-color" content="#000000">
+
+  <link rel="icon" href="assets/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon_32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon_16.png">
+  <link rel="apple-touch-icon" href="assets/apple_touch_icon_180.png">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="XPENC for iPhone">
+  <meta property="og:description" content="Install XPENC on iPhone with SideStore or AltStore. Everything stays on your phone.">
+  <meta property="og:url" content="https://xpenc.in/ios">
+  <meta property="og:image" content="https://xpenc.in/assets/xpenc_icon_1024.png">
+  <meta name="twitter:card" content="summary">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #050506;
+      --panel: #0c0c0f;
+      --border: rgba(255,255,255,.08);
+      --ink: #f4f4f6;
+      --muted: #a2a2ac;
+      --faint: #62626c;
+      --green: #3ecf8e;
+      --font-display: "Space Grotesk", system-ui, sans-serif;
+      --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg); color: var(--ink);
+      font-family: var(--font-body); font-size: 15.5px; line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--faint); text-underline-offset: 3px; }
+    a:hover { text-decoration-color: var(--ink); }
+    ::selection { background: #fff; color: #000; }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 0 28px; }
+
+    nav {
+      border-bottom: 1px solid var(--border);
+      background: rgba(5,5,6,.78); backdrop-filter: blur(20px);
+      position: sticky; top: 0; z-index: 10;
+    }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+    .brand {
+      display: flex; align-items: center; gap: 11px; text-decoration: none;
+      font-family: var(--font-display); font-weight: 700; letter-spacing: .18em; font-size: 15px;
+    }
+    .brand img { width: 26px; height: 26px; border-radius: 7px; }
+    .nav-back { font-size: 13.5px; color: var(--muted); text-decoration: none; }
+    .nav-back:hover { color: var(--ink); }
+
+    header.doc { padding: 64px 0 8px; }
+    .kicker {
+      font-family: var(--font-display); font-size: 12px; font-weight: 600;
+      letter-spacing: .22em; text-transform: uppercase; color: var(--green);
+    }
+    h1 { font-family: var(--font-display); font-size: clamp(30px, 5vw, 42px); letter-spacing: -.02em; margin: 10px 0 14px; }
+    .meta { color: var(--muted); font-size: 14px; }
+
+    main { padding: 28px 0 80px; }
+    h2 {
+      font-family: var(--font-display); font-size: 21px; letter-spacing: -.01em;
+      margin: 44px 0 12px; padding-top: 28px; border-top: 1px solid var(--border);
+    }
+    p, ul, ol { margin: 0 0 14px; color: var(--muted); }
+    strong { color: var(--ink); }
+    ul, ol { padding-left: 22px; }
+    li { margin-bottom: 6px; }
+    li::marker { color: var(--faint); }
+    code {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: .88em;
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 6px; padding: 1px 6px; color: var(--ink);
+      overflow-wrap: anywhere;
+    }
+    .callout {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+      padding: 18px 20px; margin: 18px 0 26px; color: var(--muted);
+    }
+    .callout strong { color: var(--green); }
+
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 22px 0 14px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      min-height: 48px; padding: 0 22px; border-radius: 999px;
+      font-family: var(--font-display); font-weight: 600; font-size: 15px;
+      text-decoration: none; border: 1px solid var(--border); cursor: pointer;
+    }
+    .btn.primary { background: var(--ink); color: #000; border-color: var(--ink); }
+    .btn.primary:hover { background: #fff; }
+    .btn.ghost { background: var(--panel); color: var(--ink); }
+    .btn.ghost:hover { border-color: var(--faint); }
+
+    .source {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+      padding: 12px 12px 12px 16px; margin: 0 0 8px;
+    }
+    .source code { background: none; border: 0; padding: 0; flex: 1 1 240px; font-size: 14px; }
+    .copy {
+      background: transparent; color: var(--ink); border: 1px solid var(--border);
+      border-radius: 999px; padding: 6px 14px; font: 600 13px var(--font-body); cursor: pointer;
+    }
+    .copy:hover { border-color: var(--faint); }
+    .hint { font-size: 13.5px; color: var(--faint); }
+
+    footer { border-top: 1px solid var(--border); padding: 34px 0 46px; color: var(--faint); font-size: 13.5px; }
+    .foot-bottom { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+    footer a { color: var(--faint); }
+    footer a:hover { color: var(--ink); }
+
+    @media (max-width: 520px) {
+      .wrap { padding: 0 16px; }
+      .actions .btn { flex: 1 1 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="wrap nav-inner">
+      <a class="brand" href="index.html">
+        <img src="assets/icon_192.png" alt="">
+        XPENC
+      </a>
+      <a class="nav-back" href="index.html">← xpenc.in</a>
+    </div>
+  </nav>
+
+  <header class="doc">
+    <div class="wrap">
+      <div class="kicker">iPhone</div>
+      <h1>XPENC on iPhone.</h1>
+      <p class="meta">
+        Free and open source, installed with SideStore or AltStore — not the App Store.
+        Needs iOS 15 or later.
+      </p>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap">
+
+      <div class="callout">
+        <strong>Already have SideStore or AltStore?</strong> Add the XPENC source and install
+        from there. Updates show up in the same place.
+      </div>
+
+      <div class="actions">
+        <a class="btn primary" href="sidestore://source?url=https://xpenc.in/ios/source.json">Add to SideStore</a>
+        <a class="btn ghost" href="altstore-classic://source?url=https://xpenc.in/ios/source.json">Add to AltStore</a>
+      </div>
+
+      <div class="source">
+        <code id="source-url">https://xpenc.in/ios/source.json</code>
+        <button class="copy" type="button" data-copy="source-url">Copy</button>
+      </div>
+      <p class="hint">
+        The buttons only work on an iPhone that already has the store installed. If nothing
+        happens, copy the address and add it under Sources → + in the app.
+      </p>
+
+      <h2>First time</h2>
+      <ol>
+        <li>
+          Install <a href="https://sidestore.io" target="_blank" rel="noopener">SideStore</a>
+          or <a href="https://altstore.io" target="_blank" rel="noopener">AltStore</a>.
+          Both are free, and need a computer once, for setup.
+        </li>
+        <li>On your iPhone, tap <strong>Add to SideStore</strong> or <strong>Add to AltStore</strong> above.</li>
+        <li>Open the XPENC source and tap <strong>Free</strong> to install.</li>
+        <li>
+          Keep it refreshed. With a free Apple ID, sideloaded apps expire after 7 days;
+          SideStore and AltStore renew them when you refresh — XPENC and your data stay put.
+        </li>
+      </ol>
+
+      <h2>Good to know</h2>
+      <ul>
+        <li>
+          A free Apple ID can keep <strong>3 sideloaded apps</strong> at a time, and SideStore or
+          AltStore itself counts as one.
+        </li>
+        <li>
+          <strong>Back up somewhere safe.</strong> On iPhone, backups are kept inside XPENC, so
+          deleting the app deletes them too. Share a backup to Files or iCloud Drive to keep a copy —
+          the same file restores on Android, and the other way round.
+        </li>
+        <li>
+          Not here yet: home screen widgets, sharing a message or screenshot into XPENC, reading
+          payment screenshots, and blocking screenshots. Everything else is the same app.
+        </li>
+        <li>
+          Using another sideloading tool? The app itself is
+          <a href="https://github.com/PATILYASHH/XPENC/releases/latest/download/xpenc-ios.ipa">xpenc-ios.ipa</a>
+          on every release — unsigned, for the tool to sign.
+        </li>
+      </ul>
+
+      <h2>Something wrong?</h2>
+      <p>
+        This is the first iOS version, so tell us what breaks:
+        <a href="https://github.com/PATILYASHH/XPENC/issues" target="_blank" rel="noopener">GitHub issues</a>
+        or <a href="mailto:feedback.yashpatil@gmail.com">feedback.yashpatil@gmail.com</a>.
+      </p>
+
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap foot-bottom">
+      <span>© <span id="year">2026</span> Yash Patil</span>
+      <span><a href="index.html">Home</a> · <a href="privacy.html">Privacy</a> · <a href="https://github.com/PATILYASHH/XPENC" target="_blank" rel="noopener">GitHub</a></span>
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+    for (const button of document.querySelectorAll('[data-copy]')) {
+      button.addEventListener('click', async () => {
+        const text = document.getElementById(button.dataset.copy).textContent;
+        try {
+          await navigator.clipboard.writeText(text);
+          button.textContent = 'Copied';
+        } catch {
+          button.textContent = 'Select & copy';
+        }
+        setTimeout(() => { button.textContent = 'Copy'; }, 2000);
+      });
+    }
+  </script>
+</body>
+</html>
