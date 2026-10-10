@@ -122,12 +122,11 @@ jobs:
             | **(Android)** | Most phones (2017+) · ⭐ **Recommended** | [`xpenc-arm64-v8a.apk`](https://github.com/PATILYASHH/XPENC/releases/download/${{ github.ref_name }}/xpenc-arm64-v8a.apk) |
             | **(Android)** | Older 32-bit phones | [`xpenc-armeabi-v7a.apk`](https://github.com/PATILYASHH/XPENC/releases/download/${{ github.ref_name }}/xpenc-armeabi-v7a.apk) |
             | **(Android)** | Emulators | [`xpenc-x86_64.apk`](https://github.com/PATILYASHH/XPENC/releases/download/${{ github.ref_name }}/xpenc-x86_64.apk) |
-            | **(iOS)** | iPhone, iOS 15 or later · ⭐ **Recommended** | Add `https://xpenc.in/ios/source.json` in SideStore or AltStore — updates arrive there |
-            | **(iOS)** | Other sideloading tools | [`xpenc-ios.ipa`](https://github.com/PATILYASHH/XPENC/releases/download/${{ github.ref_name }}/xpenc-ios.ipa) (unsigned) |
+            | **(iOS)** | iPhone, iOS 15 or later · ⭐ **Recommended** | [`xpenc-ios.ipa`](https://github.com/PATILYASHH/XPENC/releases/download/${{ github.ref_name }}/xpenc-ios.ipa) — unsigned; sideload it with your own Apple ID |
 
             Android is also on [Google Play](https://play.google.com/store/apps/details?id=com.yash.xpenc) and [F-Droid](https://f-droid.org/packages/com.yash.xpenc/).
-            iPhone setup, step by step: [xpenc.in/ios](https://xpenc.in/ios). The iOS files are attached a few
-            minutes after the Android ones.
+            iPhone setup, step by step: [xpenc.in/ios](https://xpenc.in/ios) — SideStore and AltStore are
+            coming soon. The iOS files are attached a few minutes after the Android ones.
 
             Verify your download against `SHA256SUMS.txt`.
             Full history in [CHANGELOG.md](https://github.com/PATILYASHH/XPENC/blob/master/CHANGELOG.md).

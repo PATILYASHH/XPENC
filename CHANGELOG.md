@@ -8,7 +8,7 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
-## [1.6.4] — beta
+## [1.6.4] — 2026-10-10
 
 ### Added
 - **XPENC on iPhone (first iOS build).** Installed with SideStore or AltStore
@@ -1235,7 +1235,8 @@ First public release. 🎉
 - `tool/verify_apk.sh` gates every shipped APK against the missing
   `libsqlite3.so` class of crash.
 
-[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.6.3...HEAD
+[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.6.4...HEAD
+[1.6.4]: https://github.com/PATILYASHH/XPENC/compare/v1.6.3...v1.6.4
 [1.6.3]: https://github.com/PATILYASHH/XPENC/compare/v1.6.2...v1.6.3
 [1.6.2]: https://github.com/PATILYASHH/XPENC/compare/v1.6.1...v1.6.2
 [1.6.1]: https://github.com/PATILYASHH/XPENC/compare/v1.6.0...v1.6.1
