@@ -247,3 +247,220 @@ int modeDaysElapsed(ModeRow mode, DateTime now) {
   final days = to.difference(from).inDays + 1;
   return days < 1 ? 1 : days;
 }
+
+// ── v2: allocations, limits, people, planned costs, templates, sandbox ─────
+
+final _modeCategoryLimitRowsProvider =
+    StreamProvider<List<ModeCategoryLimitRow>>(
+      (ref) => ref.watch(dbProvider).watchModeCategoryLimits(),
+    );
+final _modePlannedCostRowsProvider = StreamProvider<List<ModePlannedCostRow>>(
+  (ref) => ref.watch(dbProvider).watchModePlannedCosts(),
+);
+final _modePersonEntryRowsProvider = StreamProvider<List<PersonEntryRow>>(
+  (ref) => ref.watch(dbProvider).watchModePersonEntries(),
+);
+
+/// Each of a mode's accounts and what it was allocated (null = none).
+final modeAllocationsProvider = Provider.family<Map<int, Money?>, int>((
+  ref,
+  modeId,
+) {
+  final links = ref.watch(_modeAccountLinksProvider).valueOrNull ?? const [];
+  return {
+    for (final l in links)
+      if (l.modeId == modeId) l.accountId: l.allocation,
+  };
+});
+
+/// A mode's planned costs, in their order.
+final modePlannedCostsProvider = Provider.family<List<ModePlannedCostRow>, int>(
+  (ref, modeId) {
+    final rows =
+        ref.watch(_modePlannedCostRowsProvider).valueOrNull ?? const [];
+    return [
+      for (final c in rows)
+        if (c.modeId == modeId) c,
+    ];
+  },
+);
+
+/// One category cap in a mode, and what's gone against it (a parent's cap
+/// counts its subcategories).
+typedef ModeLimitLine = ({int categoryId, Money limit, Money spent});
+
+final modeCategoryLimitsProvider = Provider.family<List<ModeLimitLine>, int>((
+  ref,
+  modeId,
+) {
+  final rows =
+      ref.watch(_modeCategoryLimitRowsProvider).valueOrNull ?? const [];
+  final cats = ref.watch(categoryMapProvider);
+  final spentBy = ref.watch(modeSummaryProvider(modeId)).byCategory;
+  return [
+    for (final l in rows)
+      if (l.modeId == modeId)
+        (
+          categoryId: l.categoryId,
+          limit: l.amount,
+          spent: spentBy.entries
+              .where(
+                (e) =>
+                    e.key == l.categoryId ||
+                    cats[e.key]?.parentId == l.categoryId,
+              )
+              .fold(const Money.zero(), (a, e) => a + e.value),
+        ),
+  ];
+});
+
+/// Where a mode stands against its money: [budget] (its own, or its
+/// allocations' total), [spent], unpaid [planned] costs, what's [left]
+/// (budget − spent − planned), and — with an end date — [daysLeft] and the
+/// [perDayLeft] that keeps it in budget. [today] is today's spend.
+typedef ModeBudgetView = ({
+  Money? budget,
+  Money spent,
+  Money planned,
+  Money? left,
+  int? daysLeft,
+  Money? perDayLeft,
+  Money today,
+});
+
+final modeBudgetProvider = Provider.family<ModeBudgetView, int>((ref, modeId) {
+  final mode = ref.watch(modeMapProvider)[modeId];
+  final summary = ref.watch(modeSummaryProvider(modeId));
+  final budget = effectiveModeBudget(
+    mode?.budget,
+    ref.watch(modeAllocationsProvider(modeId)).values,
+  );
+  final planned = ref
+      .watch(modePlannedCostsProvider(modeId))
+      .where((c) => c.transactionId == null)
+      .fold(const Money.zero(), (a, c) => a + c.amount);
+  final now = DateTime.now();
+  final today = ref
+      .watch(modeTransactionsProvider(modeId))
+      .where(
+        (t) =>
+            t.type == TxType.expense &&
+            t.date.year == now.year &&
+            t.date.month == now.month &&
+            t.date.day == now.day,
+      )
+      .fold(const Money.zero(), (a, t) => a + t.amount);
+  final left = budget == null ? null : budget - summary.spent - planned;
+  final end = mode?.endDate;
+  int? daysLeft;
+  if (end != null) {
+    final d = DateTime(
+      end.year,
+      end.month,
+      end.day,
+    ).difference(DateTime(now.year, now.month, now.day)).inDays;
+    daysLeft = d < 0 ? 0 : d + 1;
+  }
+  return (
+    budget: budget,
+    spent: summary.spent,
+    planned: planned,
+    left: left,
+    daysLeft: daysLeft,
+    perDayLeft: left == null || daysLeft == null || daysLeft == 0
+        ? null
+        : Money(left.paise ~/ daysLeft),
+    today: today,
+  );
+});
+
+/// A mode account as the mode sees it: [allocation] (null = none) and its
+/// [balance] — what's left of the allocation, or the real balance.
+typedef ModeAccountBalance = ({Money? allocation, Money balance});
+
+final modeAccountBalancesProvider =
+    Provider.family<Map<int, ModeAccountBalance>, int>((ref, modeId) {
+      final allocations = ref.watch(modeAllocationsProvider(modeId));
+      final accounts = ref.watch(accountMapProvider);
+      final txs = ref.watch(modeTransactionsProvider(modeId));
+      return {
+        for (final e in allocations.entries)
+          if (accounts[e.key] != null)
+            e.key: (
+              allocation: e.value,
+              balance: e.value == null
+                  ? accounts[e.key]!.currentBalance
+                  : allocatedBalance(e.value!, e.key, txs),
+            ),
+      };
+    });
+
+/// The people on a mode — its group's members.
+final modePeopleProvider = Provider.family<List<PersonRow>, int>((ref, modeId) {
+  final groupId = ref.watch(modeMapProvider)[modeId]?.groupId;
+  if (groupId == null) return const [];
+  return ref.watch(groupMembersProvider(groupId)).valueOrNull ?? const [];
+});
+
+/// Each person's balance inside a mode only — `+` they owe you, `-` you owe
+/// them — from the entries made in it. Their real balance is untouched.
+final tripBalancesProvider = Provider.family<Map<int, Money>, int>((
+  ref,
+  modeId,
+) {
+  final rows = ref.watch(_modePersonEntryRowsProvider).valueOrNull ?? const [];
+  final out = <int, Money>{};
+  for (final e in rows) {
+    if (e.modeId != modeId) continue;
+    final signed = e.direction == PersonDirection.theyOwe
+        ? e.amount
+        : -e.amount;
+    out[e.personId] = (out[e.personId] ?? const Money.zero()) + signed;
+  }
+  return out;
+});
+
+/// Every person entry made in a mode.
+final modePersonEntriesProvider = Provider.family<List<PersonEntryRow>, int>((
+  ref,
+  modeId,
+) {
+  final rows = ref.watch(_modePersonEntryRowsProvider).valueOrNull ?? const [];
+  return [
+    for (final e in rows)
+      if (e.modeId == modeId) e,
+  ];
+});
+
+/// A mode's own templates.
+final modeTemplatesProvider =
+    StreamProvider.family<List<TransactionTemplateRow>, int>(
+      (ref, modeId) => ref.watch(dbProvider).watchModeTemplates(modeId),
+    );
+
+/// The ➕ templates to offer right now: the focused mode's own, or the
+/// everyday ones.
+final shownTemplatesProvider = Provider<List<TransactionTemplateRow>>((ref) {
+  final mode = ref.watch(focusedModeProvider);
+  if (mode != null) {
+    return ref.watch(modeTemplatesProvider(mode.id)).valueOrNull ?? const [];
+  }
+  return ref.watch(transactionTemplatesProvider).valueOrNull ?? const [];
+});
+
+/// The ledger as the app shows it right now — a focused mode's sandbox
+/// (only its transactions), or everything. For views only: anything that
+/// walks balances needs the whole ledger ([allTransactionsProvider]).
+final viewTransactionsProvider = Provider<AsyncValue<List<TransactionRow>>>((
+  ref,
+) {
+  final all = ref.watch(allTransactionsProvider);
+  final mode = ref.watch(focusedModeProvider);
+  if (mode == null) return all;
+  return all.whenData(
+    (txs) => [
+      for (final t in txs)
+        if (t.modeId == mode.id) t,
+    ],
+  );
+});

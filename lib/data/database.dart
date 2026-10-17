@@ -187,6 +187,8 @@ String? _statementNote(TransactionRow t, String? personName) {
     ModeAccounts,
     ModeCategories,
     ModeTags,
+    ModeCategoryLimits,
+    ModePlannedCosts,
     TagGroups,
     TagGroupTags,
     TransactionSplits,
@@ -229,7 +231,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 86;
+  int get schemaVersion => 87;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -811,6 +813,24 @@ class AppDatabase extends _$AppDatabase {
         await _addColumnIfMissing(m, tags, tags.modeId);
         await _addColumnIfMissing(m, settings, settings.activeModeId);
       }
+      if (from < 87) {
+        // Modes v2 — people, allocations, limits, wallet, planned costs.
+        await _addColumnIfMissing(m, personEntries, personEntries.modeId);
+        await _addColumnIfMissing(
+          m,
+          transactionTemplates,
+          transactionTemplates.modeId,
+        );
+        await _addColumnIfMissing(m, modeAccounts, modeAccounts.allocation);
+        await _addColumnIfMissing(m, modes, modes.dailyLimit);
+        await _addColumnIfMissing(m, modes, modes.spendLimit);
+        await _addColumnIfMissing(m, modes, modes.walletAccountId);
+        await _addColumnIfMissing(m, modes, modes.walletSourceAccountId);
+        await _addColumnIfMissing(m, modes, modes.walletAmount);
+        await _addColumnIfMissing(m, modes, modes.alerts);
+        await m.createTable(modeCategoryLimits);
+        await m.createTable(modePlannedCosts);
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -1261,6 +1281,13 @@ class AppDatabase extends _$AppDatabase {
         activeModeId: Value(null),
       ),
     );
+    // A trip wallet points at accounts, which go before modes.
+    await update(modes).write(
+      const ModesCompanion(
+        walletAccountId: Value(null),
+        walletSourceAccountId: Value(null),
+      ),
+    );
     await delete(budgetAlerts).go();
     await delete(pendingTxns).go();
     await delete(merchantRules).go();
@@ -1291,6 +1318,8 @@ class AppDatabase extends _$AppDatabase {
     await delete(modeAccounts).go();
     await delete(modeCategories).go();
     await delete(modeTags).go();
+    await delete(modeCategoryLimits).go();
+    await delete(modePlannedCosts).go();
     await delete(transactions).go();
     // References recurringRules and tags, so it goes before both deletes.
     await delete(recurringRuleTags).go();
@@ -1877,6 +1906,9 @@ class AppDatabase extends _$AppDatabase {
       await (update(reminders)..where((r) => r.transactionId.equals(id))).write(
         const RemindersCompanion(transactionId: Value(null)),
       );
+      // A mode's planned cost goes back to unpaid.
+      await (update(modePlannedCosts)..where((c) => c.transactionId.equals(id)))
+          .write(const ModePlannedCostsCompanion(transactionId: Value(null)));
       await (update(pendingTxns)
             ..where((t) => t.createdTransactionId.equals(id)))
           .write(const PendingTxnsCompanion(createdTransactionId: Value(null)));
@@ -2220,11 +2252,17 @@ class AppDatabase extends _$AppDatabase {
   // form. Picking one from the ➕ button's choice sheet just prefills
   // AddTransactionScreen the same way duplicating a transaction does.
 
+  /// Everyday templates — a mode's own (see [TransactionTemplates.modeId])
+  /// only show inside it.
   Stream<List<TransactionTemplateRow>> watchTransactionTemplates() =>
-      (select(transactionTemplates)..orderBy([
-            (t) =>
-                OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
-          ]))
+      (select(transactionTemplates)
+            ..where((t) => t.modeId.isNull())
+            ..orderBy([
+              (t) => OrderingTerm(
+                expression: t.createdAt,
+                mode: OrderingMode.desc,
+              ),
+            ]))
           .watch();
 
   Future<TransactionTemplateRow?> transactionTemplateById(int id) => (select(
@@ -2245,6 +2283,8 @@ class AppDatabase extends _$AppDatabase {
   Future<int> createTemplateFromTransaction({
     required int transactionId,
     required String name,
+    // Made inside a mode, the template belongs to it.
+    int? modeId,
   }) async {
     final row = await transactionById(transactionId);
     if (row == null) throw ArgumentError('Transaction not found.');
@@ -2274,6 +2314,7 @@ class AppDatabase extends _$AppDatabase {
           categoryId: Value(row.categoryId),
           note: Value(row.note),
           payee: Value(row.payee),
+          modeId: Value(modeId),
         ),
       );
       for (final tagId in tagIds) {
@@ -3016,6 +3057,7 @@ class AppDatabase extends _$AppDatabase {
           transactionId: Value(txId),
           note: Value(note),
           categoryId: Value(categoryId),
+          modeId: Value(modeId),
         ),
       );
       await _tagPersonEntry(entryId, txId, tagIds);
@@ -3083,12 +3125,14 @@ class AppDatabase extends _$AppDatabase {
       // Detach before deleting: deleteTransaction refuses to delete a
       // transaction a person entry still points to (see deleteTransaction).
       // The rebuilt row stays in whatever mode the old one was in.
-      int? keptModeId;
+      int? keptModeId = existing.modeId;
       if (existing.transactionId != null) {
         final oldTxId = existing.transactionId!;
-        keptModeId = (await (select(
-          transactions,
-        )..where((t) => t.id.equals(oldTxId))).getSingleOrNull())?.modeId;
+        keptModeId =
+            (await (select(
+              transactions,
+            )..where((t) => t.id.equals(oldTxId))).getSingleOrNull())?.modeId ??
+            keptModeId;
         await (update(personEntries)..where((e) => e.id.equals(id))).write(
           const PersonEntriesCompanion(transactionId: Value(null)),
         );
@@ -3920,6 +3964,11 @@ class AppDatabase extends _$AppDatabase {
       )..where((c) => c.accountId.equals(id))).go();
       // A mode that paid with it simply stops offering it.
       await (delete(modeAccounts)..where((l) => l.accountId.equals(id))).go();
+      await (update(modes)..where((m) => m.walletAccountId.equals(id))).write(
+        const ModesCompanion(walletAccountId: Value(null)),
+      );
+      await (update(modes)..where((m) => m.walletSourceAccountId.equals(id)))
+          .write(const ModesCompanion(walletSourceAccountId: Value(null)));
       await (delete(accounts)..where((a) => a.id.equals(id))).go();
       return _maybeAutoDisableRta();
     });
@@ -6885,8 +6934,14 @@ class AppDatabase extends _$AppDatabase {
     }
     final reason = await _categoryInUseReason(id);
     if (reason != null) throw ArgumentError(reason);
-    // A mode offering it is a setting, not a use — the offer just goes.
+    // A mode offering it (or capping it) is a setting, not a use — that
+    // just goes; a planned cost keeps its amount, minus the category.
     await (delete(modeCategories)..where((l) => l.categoryId.equals(id))).go();
+    await (delete(
+      modeCategoryLimits,
+    )..where((l) => l.categoryId.equals(id))).go();
+    await (update(modePlannedCosts)..where((c) => c.categoryId.equals(id)))
+        .write(const ModePlannedCostsCompanion(categoryId: Value(null)));
     await (delete(categories)..where((c) => c.id.equals(id))).go();
   });
 
@@ -7623,6 +7678,12 @@ class AppDatabase extends _$AppDatabase {
       'modeAccounts': (await select(modeAccounts).get()).map(m).toList(),
       'modeCategories': (await select(modeCategories).get()).map(m).toList(),
       'modeTags': (await select(modeTags).get()).map(m).toList(),
+      'modeCategoryLimits': (await select(
+        modeCategoryLimits,
+      ).get()).map(m).toList(),
+      'modePlannedCosts': (await select(
+        modePlannedCosts,
+      ).get()).map(m).toList(),
       // `importAll` clears these two, so they MUST be exported. Otherwise
       // restoring the app's own backup silently wipes un-reviewed capture cards
       // and resets the budget-alert dedupe (re-firing alerts already seen).
@@ -7723,10 +7784,11 @@ class AppDatabase extends _$AppDatabase {
       // already resolves. An older backup simply has no rows for it.
       await load(customCurrencies, 'customCurrencies');
       await _refreshCustomCurrencies();
-      // Categories, tags and transactions point at modes; modes at groups.
+      // Categories, tags and transactions point at modes; modes at groups
+      // and (a trip wallet) accounts.
       await load(groups, 'groups');
-      await load(modes, 'modes');
       await load(accounts, 'accounts');
+      await load(modes, 'modes');
       // No foreign key references currencyRates, so it can load anywhere —
       // grouped with accounts since that's the other half of "an account's
       // currency resolves to a rate" (AppDatabase.latestRate).
@@ -7772,6 +7834,7 @@ class AppDatabase extends _$AppDatabase {
       await load(modeAccounts, 'modeAccounts');
       await load(modeCategories, 'modeCategories');
       await load(modeTags, 'modeTags');
+      await load(modeCategoryLimits, 'modeCategoryLimits');
       await load(shoppingLists, 'shoppingLists');
       // Before `transactions`, whose `recurringRuleId` references it — and an
       // older backup simply has no rows for it, so `rows()` yields nothing.
@@ -7796,6 +7859,8 @@ class AppDatabase extends _$AppDatabase {
       await load(transactionTemplateTags, 'transactionTemplateTags');
       await load(categoryTemplates, 'categoryTemplates');
       await load(categoryTemplateItems, 'categoryTemplateItems');
+      // Points at a transaction once paid.
+      await load(modePlannedCosts, 'modePlannedCosts');
       await load(reminders, 'reminders');
       await load(merchantRules, 'merchantRules');
       await load(senderRules, 'senderRules');

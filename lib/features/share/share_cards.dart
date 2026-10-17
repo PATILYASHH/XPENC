@@ -1214,3 +1214,174 @@ class GroupShareCard extends StatelessWidget {
     );
   }
 }
+
+/// A mode (a trip) as a card: what it came to against its budget, where
+/// it went, and who owes whom.
+class ModeShareCard extends StatelessWidget {
+  const ModeShareCard({required this.data, required this.tone, super.key});
+
+  static const maxRows = 4;
+
+  final ModeShare data;
+  final ShareCardTone tone;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = _Palette.of(tone);
+    final currency = MoneyFormat.currency;
+    final accent = Color(data.colorValue);
+    final budget = data.budget;
+    final over = budget != null && data.spent.paise > budget.paise;
+    final cats = data.categories.take(maxRows).toList();
+    final owing = [
+      for (final x in data.people)
+        if (!x.balance.isZero) x,
+    ];
+    final people = owing.take(maxRows).toList();
+
+    return _Frame(
+      tone: tone,
+      accent: accent,
+      kind: 'Trip',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    _Disc(color: accent, size: 46, icon: Icons.luggage_rounded),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            data.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
+                            [
+                              ?data.dates,
+                              '${data.days} ${data.days == 1 ? 'day' : 'days'}',
+                            ].join(' · '),
+                            style: TextStyle(fontSize: 12, color: p.muted),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'SPENT',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                    color: p.muted,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                _Hero(_money(data.spent, currency), p.text),
+                const SizedBox(height: 4),
+                Text(
+                  '${data.count} '
+                  '${data.count == 1 ? 'transaction' : 'transactions'}',
+                  style: TextStyle(fontSize: 11.5, color: p.faint),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _Stat(p, 'Per day', _money(data.perDay, currency)),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: budget == null
+                          ? _Stat(p, 'Days', '${data.days}')
+                          : _Stat(
+                              p,
+                              over ? 'Over budget' : 'Under budget',
+                              _money(
+                                over
+                                    ? data.spent - budget
+                                    : budget - data.spent,
+                                currency,
+                              ),
+                              caption: 'of ${_money(budget, currency)}',
+                              color: over
+                                  ? AppColors.expense
+                                  : AppColors.income,
+                            ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          _Perforation(p),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _SectionLabel(p, 'Where it went'),
+                if (cats.isEmpty)
+                  _Empty(p, 'Nothing spent.')
+                else
+                  for (final c in cats)
+                    _ListLine(
+                      p: p,
+                      icon: Icons.sell_rounded,
+                      color: Color(c.colorValue),
+                      title: c.name,
+                      subtitle: data.spent.isZero
+                          ? ''
+                          : '${(c.amount.paise / data.spent.paise * 100).round()}% of it',
+                      amount: _money(c.amount, currency),
+                    ),
+                _MoreLine(
+                  p,
+                  data.categories.length - cats.length,
+                  'category',
+                  'categories',
+                ),
+                if (owing.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  _SectionLabel(p, 'Who owes whom'),
+                  for (final x in people)
+                    _ListLine(
+                      p: p,
+                      icon: Icons.person_rounded,
+                      color: AppColors.person,
+                      title: x.name,
+                      subtitle: x.balance.isPositive ? 'Owes you' : 'You owe',
+                      amount: _money(x.balance.abs, currency),
+                      amountColor: x.balance.isPositive
+                          ? AppColors.income
+                          : AppColors.expense,
+                    ),
+                  _MoreLine(
+                    p,
+                    owing.length - people.length,
+                    'person',
+                    'people',
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

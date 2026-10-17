@@ -9,9 +9,11 @@ import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/module_shortcuts.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
+import '../../data/mode_providers.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../modes/mode_sandbox_views.dart';
 
 /// A top-level category paired with its live (non-archived) children, in the
 /// tree shape the budgets list renders — see [_categoryTree].
@@ -52,6 +54,9 @@ class BudgetsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Inside a mode (a trip), budgets are the mode's own.
+    final mode = ref.watch(focusedModeProvider);
+    if (mode != null) return ModeBudgetsView(mode: mode, embedded: embedded);
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 

@@ -284,12 +284,15 @@ void main() {
         startDate: DateTime(2026, 10, 12),
         endDate: DateTime(2026, 10, 18),
       );
-      expect(await db.syncModeSchedule(DateTime(2026, 10, 11, 9)), 0);
+      expect((await db.syncModeSchedule(DateTime(2026, 10, 11, 9))).changed, 0);
       expect(await db.activeModeId(), isNull);
-      expect(await db.syncModeSchedule(DateTime(2026, 10, 12, 9)), 1);
+      expect((await db.syncModeSchedule(DateTime(2026, 10, 12, 9))).changed, 1);
       expect(await db.activeModeId(), id);
-      expect(await db.syncModeSchedule(DateTime(2026, 10, 18, 23)), 0);
-      expect(await db.syncModeSchedule(DateTime(2026, 10, 19, 9)), 1);
+      expect(
+        (await db.syncModeSchedule(DateTime(2026, 10, 18, 23))).changed,
+        0,
+      );
+      expect((await db.syncModeSchedule(DateTime(2026, 10, 19, 9))).changed, 1);
       expect(await db.activeModeId(), isNull);
       expect((await db.modeById(id))!.status, ModeStatus.ended);
     });
@@ -304,7 +307,7 @@ void main() {
         colorValue: 0,
         startDate: now,
       );
-      expect(await db.syncModeSchedule(now), 0);
+      expect((await db.syncModeSchedule(now)).changed, 0);
       expect(await db.activeModeId(), on);
     });
   });

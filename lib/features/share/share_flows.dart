@@ -180,3 +180,29 @@ Future<void> _sharePdf(
       ..showSnackBar(SnackBar(content: Text("Couldn't create the PDF: $e")));
   }
 }
+
+/// Share a mode (a trip): its summary as a PDF report or an image card.
+Future<void> shareMode(BuildContext context, ModeShare data) async {
+  final format = await pickShareFormat(context, title: 'Share ${data.name}');
+  if (format == null || !context.mounted) return;
+  final stem = shareFileStem('${data.name} summary');
+  final subject = '${data.name} · ${MoneyFormat.symbol(data.spent)} spent';
+  if (format == ShareFormat.image) {
+    await _openImage(
+      context,
+      ShareImageScreen(
+        title: 'Share ${data.name}',
+        fileStem: stem,
+        subject: subject,
+        builder: (tone, _) => ModeShareCard(data: data, tone: tone),
+      ),
+    );
+    return;
+  }
+  await _sharePdf(
+    context,
+    build: () => buildModeSummaryPdf(data),
+    fileStem: stem,
+    subject: subject,
+  );
+}

@@ -1667,6 +1667,70 @@ class $ModesTable extends Modes with TableInfo<$ModesTable, ModeRow> {
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
   );
+  @override
+  late final GeneratedColumnWithTypeConverter<Money?, int> dailyLimit =
+      GeneratedColumn<int>(
+        'daily_limit',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<Money?>($ModesTable.$converterdailyLimitn);
+  @override
+  late final GeneratedColumnWithTypeConverter<Money?, int> spendLimit =
+      GeneratedColumn<int>(
+        'spend_limit',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<Money?>($ModesTable.$converterspendLimitn);
+  static const VerificationMeta _walletAccountIdMeta = const VerificationMeta(
+    'walletAccountId',
+  );
+  @override
+  late final GeneratedColumn<int> walletAccountId = GeneratedColumn<int>(
+    'wallet_account_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES accounts (id)',
+    ),
+  );
+  static const VerificationMeta _walletSourceAccountIdMeta =
+      const VerificationMeta('walletSourceAccountId');
+  @override
+  late final GeneratedColumn<int> walletSourceAccountId = GeneratedColumn<int>(
+    'wallet_source_account_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES accounts (id)',
+    ),
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<Money?, int> walletAmount =
+      GeneratedColumn<int>(
+        'wallet_amount',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<Money?>($ModesTable.$converterwalletAmountn);
+  static const VerificationMeta _alertsMeta = const VerificationMeta('alerts');
+  @override
+  late final GeneratedColumn<String> alerts = GeneratedColumn<String>(
+    'alerts',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1695,6 +1759,12 @@ class $ModesTable extends Modes with TableInfo<$ModesTable, ModeRow> {
     groupId,
     navSlots,
     modules,
+    dailyLimit,
+    spendLimit,
+    walletAccountId,
+    walletSourceAccountId,
+    walletAmount,
+    alerts,
     createdAt,
   ];
   @override
@@ -1787,6 +1857,30 @@ class $ModesTable extends Modes with TableInfo<$ModesTable, ModeRow> {
         modules.isAcceptableOrUnknown(data['modules']!, _modulesMeta),
       );
     }
+    if (data.containsKey('wallet_account_id')) {
+      context.handle(
+        _walletAccountIdMeta,
+        walletAccountId.isAcceptableOrUnknown(
+          data['wallet_account_id']!,
+          _walletAccountIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('wallet_source_account_id')) {
+      context.handle(
+        _walletSourceAccountIdMeta,
+        walletSourceAccountId.isAcceptableOrUnknown(
+          data['wallet_source_account_id']!,
+          _walletSourceAccountIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('alerts')) {
+      context.handle(
+        _alertsMeta,
+        alerts.isAcceptableOrUnknown(data['alerts']!, _alertsMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -1862,6 +1956,36 @@ class $ModesTable extends Modes with TableInfo<$ModesTable, ModeRow> {
         DriftSqlType.string,
         data['${effectivePrefix}modules'],
       )!,
+      dailyLimit: $ModesTable.$converterdailyLimitn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}daily_limit'],
+        ),
+      ),
+      spendLimit: $ModesTable.$converterspendLimitn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}spend_limit'],
+        ),
+      ),
+      walletAccountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}wallet_account_id'],
+      ),
+      walletSourceAccountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}wallet_source_account_id'],
+      ),
+      walletAmount: $ModesTable.$converterwalletAmountn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}wallet_amount'],
+        ),
+      ),
+      alerts: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}alerts'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -1879,6 +2003,18 @@ class $ModesTable extends Modes with TableInfo<$ModesTable, ModeRow> {
   static TypeConverter<Money, int> $converterbudget = const MoneyConverter();
   static TypeConverter<Money?, int?> $converterbudgetn =
       NullAwareTypeConverter.wrap($converterbudget);
+  static TypeConverter<Money, int> $converterdailyLimit =
+      const MoneyConverter();
+  static TypeConverter<Money?, int?> $converterdailyLimitn =
+      NullAwareTypeConverter.wrap($converterdailyLimit);
+  static TypeConverter<Money, int> $converterspendLimit =
+      const MoneyConverter();
+  static TypeConverter<Money?, int?> $converterspendLimitn =
+      NullAwareTypeConverter.wrap($converterspendLimit);
+  static TypeConverter<Money, int> $converterwalletAmount =
+      const MoneyConverter();
+  static TypeConverter<Money?, int?> $converterwalletAmountn =
+      NullAwareTypeConverter.wrap($converterwalletAmount);
 }
 
 class ModeRow extends DataClass implements Insertable<ModeRow> {
@@ -1916,6 +2052,21 @@ class ModeRow extends DataClass implements Insertable<ModeRow> {
   /// The More modules shown while focused, comma-joined keys (see
   /// `mode_modules.dart`). Empty = all of them.
   final String modules;
+
+  /// Most to spend in one day, and in one transaction. Going over only
+  /// warns — a spend that happened is never refused.
+  final Money? dailyLimit;
+  final Money? spendLimit;
+
+  /// Trip wallet: on start, [walletAmount] moves from [walletSourceAccountId]
+  /// into a cash account made for the mode ([walletAccountId], set then).
+  final int? walletAccountId;
+  final int? walletSourceAccountId;
+  final Money? walletAmount;
+
+  /// Which spending alerts already fired, comma-joined (`budget80`,
+  /// `budget100`, `cat12-80`…), so each fires once per mode.
+  final String alerts;
   final DateTime createdAt;
   const ModeRow({
     required this.id,
@@ -1932,6 +2083,12 @@ class ModeRow extends DataClass implements Insertable<ModeRow> {
     this.groupId,
     this.navSlots,
     required this.modules,
+    this.dailyLimit,
+    this.spendLimit,
+    this.walletAccountId,
+    this.walletSourceAccountId,
+    this.walletAmount,
+    required this.alerts,
     required this.createdAt,
   });
   @override
@@ -1973,6 +2130,28 @@ class ModeRow extends DataClass implements Insertable<ModeRow> {
       map['nav_slots'] = Variable<String>(navSlots);
     }
     map['modules'] = Variable<String>(modules);
+    if (!nullToAbsent || dailyLimit != null) {
+      map['daily_limit'] = Variable<int>(
+        $ModesTable.$converterdailyLimitn.toSql(dailyLimit),
+      );
+    }
+    if (!nullToAbsent || spendLimit != null) {
+      map['spend_limit'] = Variable<int>(
+        $ModesTable.$converterspendLimitn.toSql(spendLimit),
+      );
+    }
+    if (!nullToAbsent || walletAccountId != null) {
+      map['wallet_account_id'] = Variable<int>(walletAccountId);
+    }
+    if (!nullToAbsent || walletSourceAccountId != null) {
+      map['wallet_source_account_id'] = Variable<int>(walletSourceAccountId);
+    }
+    if (!nullToAbsent || walletAmount != null) {
+      map['wallet_amount'] = Variable<int>(
+        $ModesTable.$converterwalletAmountn.toSql(walletAmount),
+      );
+    }
+    map['alerts'] = Variable<String>(alerts);
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -2009,6 +2188,22 @@ class ModeRow extends DataClass implements Insertable<ModeRow> {
           ? const Value.absent()
           : Value(navSlots),
       modules: Value(modules),
+      dailyLimit: dailyLimit == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dailyLimit),
+      spendLimit: spendLimit == null && nullToAbsent
+          ? const Value.absent()
+          : Value(spendLimit),
+      walletAccountId: walletAccountId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(walletAccountId),
+      walletSourceAccountId: walletSourceAccountId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(walletSourceAccountId),
+      walletAmount: walletAmount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(walletAmount),
+      alerts: Value(alerts),
       createdAt: Value(createdAt),
     );
   }
@@ -2035,6 +2230,14 @@ class ModeRow extends DataClass implements Insertable<ModeRow> {
       groupId: serializer.fromJson<int?>(json['groupId']),
       navSlots: serializer.fromJson<String?>(json['navSlots']),
       modules: serializer.fromJson<String>(json['modules']),
+      dailyLimit: serializer.fromJson<Money?>(json['dailyLimit']),
+      spendLimit: serializer.fromJson<Money?>(json['spendLimit']),
+      walletAccountId: serializer.fromJson<int?>(json['walletAccountId']),
+      walletSourceAccountId: serializer.fromJson<int?>(
+        json['walletSourceAccountId'],
+      ),
+      walletAmount: serializer.fromJson<Money?>(json['walletAmount']),
+      alerts: serializer.fromJson<String>(json['alerts']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -2058,6 +2261,12 @@ class ModeRow extends DataClass implements Insertable<ModeRow> {
       'groupId': serializer.toJson<int?>(groupId),
       'navSlots': serializer.toJson<String?>(navSlots),
       'modules': serializer.toJson<String>(modules),
+      'dailyLimit': serializer.toJson<Money?>(dailyLimit),
+      'spendLimit': serializer.toJson<Money?>(spendLimit),
+      'walletAccountId': serializer.toJson<int?>(walletAccountId),
+      'walletSourceAccountId': serializer.toJson<int?>(walletSourceAccountId),
+      'walletAmount': serializer.toJson<Money?>(walletAmount),
+      'alerts': serializer.toJson<String>(alerts),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -2077,6 +2286,12 @@ class ModeRow extends DataClass implements Insertable<ModeRow> {
     Value<int?> groupId = const Value.absent(),
     Value<String?> navSlots = const Value.absent(),
     String? modules,
+    Value<Money?> dailyLimit = const Value.absent(),
+    Value<Money?> spendLimit = const Value.absent(),
+    Value<int?> walletAccountId = const Value.absent(),
+    Value<int?> walletSourceAccountId = const Value.absent(),
+    Value<Money?> walletAmount = const Value.absent(),
+    String? alerts,
     DateTime? createdAt,
   }) => ModeRow(
     id: id ?? this.id,
@@ -2093,6 +2308,16 @@ class ModeRow extends DataClass implements Insertable<ModeRow> {
     groupId: groupId.present ? groupId.value : this.groupId,
     navSlots: navSlots.present ? navSlots.value : this.navSlots,
     modules: modules ?? this.modules,
+    dailyLimit: dailyLimit.present ? dailyLimit.value : this.dailyLimit,
+    spendLimit: spendLimit.present ? spendLimit.value : this.spendLimit,
+    walletAccountId: walletAccountId.present
+        ? walletAccountId.value
+        : this.walletAccountId,
+    walletSourceAccountId: walletSourceAccountId.present
+        ? walletSourceAccountId.value
+        : this.walletSourceAccountId,
+    walletAmount: walletAmount.present ? walletAmount.value : this.walletAmount,
+    alerts: alerts ?? this.alerts,
     createdAt: createdAt ?? this.createdAt,
   );
   ModeRow copyWithCompanion(ModesCompanion data) {
@@ -2115,6 +2340,22 @@ class ModeRow extends DataClass implements Insertable<ModeRow> {
       groupId: data.groupId.present ? data.groupId.value : this.groupId,
       navSlots: data.navSlots.present ? data.navSlots.value : this.navSlots,
       modules: data.modules.present ? data.modules.value : this.modules,
+      dailyLimit: data.dailyLimit.present
+          ? data.dailyLimit.value
+          : this.dailyLimit,
+      spendLimit: data.spendLimit.present
+          ? data.spendLimit.value
+          : this.spendLimit,
+      walletAccountId: data.walletAccountId.present
+          ? data.walletAccountId.value
+          : this.walletAccountId,
+      walletSourceAccountId: data.walletSourceAccountId.present
+          ? data.walletSourceAccountId.value
+          : this.walletSourceAccountId,
+      walletAmount: data.walletAmount.present
+          ? data.walletAmount.value
+          : this.walletAmount,
+      alerts: data.alerts.present ? data.alerts.value : this.alerts,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -2136,13 +2377,19 @@ class ModeRow extends DataClass implements Insertable<ModeRow> {
           ..write('groupId: $groupId, ')
           ..write('navSlots: $navSlots, ')
           ..write('modules: $modules, ')
+          ..write('dailyLimit: $dailyLimit, ')
+          ..write('spendLimit: $spendLimit, ')
+          ..write('walletAccountId: $walletAccountId, ')
+          ..write('walletSourceAccountId: $walletSourceAccountId, ')
+          ..write('walletAmount: $walletAmount, ')
+          ..write('alerts: $alerts, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     name,
     iconKey,
@@ -2157,8 +2404,14 @@ class ModeRow extends DataClass implements Insertable<ModeRow> {
     groupId,
     navSlots,
     modules,
+    dailyLimit,
+    spendLimit,
+    walletAccountId,
+    walletSourceAccountId,
+    walletAmount,
+    alerts,
     createdAt,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2177,6 +2430,12 @@ class ModeRow extends DataClass implements Insertable<ModeRow> {
           other.groupId == this.groupId &&
           other.navSlots == this.navSlots &&
           other.modules == this.modules &&
+          other.dailyLimit == this.dailyLimit &&
+          other.spendLimit == this.spendLimit &&
+          other.walletAccountId == this.walletAccountId &&
+          other.walletSourceAccountId == this.walletSourceAccountId &&
+          other.walletAmount == this.walletAmount &&
+          other.alerts == this.alerts &&
           other.createdAt == this.createdAt);
 }
 
@@ -2195,6 +2454,12 @@ class ModesCompanion extends UpdateCompanion<ModeRow> {
   final Value<int?> groupId;
   final Value<String?> navSlots;
   final Value<String> modules;
+  final Value<Money?> dailyLimit;
+  final Value<Money?> spendLimit;
+  final Value<int?> walletAccountId;
+  final Value<int?> walletSourceAccountId;
+  final Value<Money?> walletAmount;
+  final Value<String> alerts;
   final Value<DateTime> createdAt;
   const ModesCompanion({
     this.id = const Value.absent(),
@@ -2211,6 +2476,12 @@ class ModesCompanion extends UpdateCompanion<ModeRow> {
     this.groupId = const Value.absent(),
     this.navSlots = const Value.absent(),
     this.modules = const Value.absent(),
+    this.dailyLimit = const Value.absent(),
+    this.spendLimit = const Value.absent(),
+    this.walletAccountId = const Value.absent(),
+    this.walletSourceAccountId = const Value.absent(),
+    this.walletAmount = const Value.absent(),
+    this.alerts = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   ModesCompanion.insert({
@@ -2228,6 +2499,12 @@ class ModesCompanion extends UpdateCompanion<ModeRow> {
     this.groupId = const Value.absent(),
     this.navSlots = const Value.absent(),
     this.modules = const Value.absent(),
+    this.dailyLimit = const Value.absent(),
+    this.spendLimit = const Value.absent(),
+    this.walletAccountId = const Value.absent(),
+    this.walletSourceAccountId = const Value.absent(),
+    this.walletAmount = const Value.absent(),
+    this.alerts = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : name = Value(name),
        iconKey = Value(iconKey),
@@ -2247,6 +2524,12 @@ class ModesCompanion extends UpdateCompanion<ModeRow> {
     Expression<int>? groupId,
     Expression<String>? navSlots,
     Expression<String>? modules,
+    Expression<int>? dailyLimit,
+    Expression<int>? spendLimit,
+    Expression<int>? walletAccountId,
+    Expression<int>? walletSourceAccountId,
+    Expression<int>? walletAmount,
+    Expression<String>? alerts,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -2264,6 +2547,13 @@ class ModesCompanion extends UpdateCompanion<ModeRow> {
       if (groupId != null) 'group_id': groupId,
       if (navSlots != null) 'nav_slots': navSlots,
       if (modules != null) 'modules': modules,
+      if (dailyLimit != null) 'daily_limit': dailyLimit,
+      if (spendLimit != null) 'spend_limit': spendLimit,
+      if (walletAccountId != null) 'wallet_account_id': walletAccountId,
+      if (walletSourceAccountId != null)
+        'wallet_source_account_id': walletSourceAccountId,
+      if (walletAmount != null) 'wallet_amount': walletAmount,
+      if (alerts != null) 'alerts': alerts,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -2283,6 +2573,12 @@ class ModesCompanion extends UpdateCompanion<ModeRow> {
     Value<int?>? groupId,
     Value<String?>? navSlots,
     Value<String>? modules,
+    Value<Money?>? dailyLimit,
+    Value<Money?>? spendLimit,
+    Value<int?>? walletAccountId,
+    Value<int?>? walletSourceAccountId,
+    Value<Money?>? walletAmount,
+    Value<String>? alerts,
     Value<DateTime>? createdAt,
   }) {
     return ModesCompanion(
@@ -2300,6 +2596,13 @@ class ModesCompanion extends UpdateCompanion<ModeRow> {
       groupId: groupId ?? this.groupId,
       navSlots: navSlots ?? this.navSlots,
       modules: modules ?? this.modules,
+      dailyLimit: dailyLimit ?? this.dailyLimit,
+      spendLimit: spendLimit ?? this.spendLimit,
+      walletAccountId: walletAccountId ?? this.walletAccountId,
+      walletSourceAccountId:
+          walletSourceAccountId ?? this.walletSourceAccountId,
+      walletAmount: walletAmount ?? this.walletAmount,
+      alerts: alerts ?? this.alerts,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -2353,6 +2656,32 @@ class ModesCompanion extends UpdateCompanion<ModeRow> {
     if (modules.present) {
       map['modules'] = Variable<String>(modules.value);
     }
+    if (dailyLimit.present) {
+      map['daily_limit'] = Variable<int>(
+        $ModesTable.$converterdailyLimitn.toSql(dailyLimit.value),
+      );
+    }
+    if (spendLimit.present) {
+      map['spend_limit'] = Variable<int>(
+        $ModesTable.$converterspendLimitn.toSql(spendLimit.value),
+      );
+    }
+    if (walletAccountId.present) {
+      map['wallet_account_id'] = Variable<int>(walletAccountId.value);
+    }
+    if (walletSourceAccountId.present) {
+      map['wallet_source_account_id'] = Variable<int>(
+        walletSourceAccountId.value,
+      );
+    }
+    if (walletAmount.present) {
+      map['wallet_amount'] = Variable<int>(
+        $ModesTable.$converterwalletAmountn.toSql(walletAmount.value),
+      );
+    }
+    if (alerts.present) {
+      map['alerts'] = Variable<String>(alerts.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -2376,6 +2705,12 @@ class ModesCompanion extends UpdateCompanion<ModeRow> {
           ..write('groupId: $groupId, ')
           ..write('navSlots: $navSlots, ')
           ..write('modules: $modules, ')
+          ..write('dailyLimit: $dailyLimit, ')
+          ..write('spendLimit: $spendLimit, ')
+          ..write('walletAccountId: $walletAccountId, ')
+          ..write('walletSourceAccountId: $walletSourceAccountId, ')
+          ..write('walletAmount: $walletAmount, ')
+          ..write('alerts: $alerts, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -7467,6 +7802,18 @@ class $PersonEntriesTable extends PersonEntries
       'REFERENCES categories (id)',
     ),
   );
+  static const VerificationMeta _modeIdMeta = const VerificationMeta('modeId');
+  @override
+  late final GeneratedColumn<int> modeId = GeneratedColumn<int>(
+    'mode_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES modes (id)',
+    ),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -7491,6 +7838,7 @@ class $PersonEntriesTable extends PersonEntries
     accountId,
     transactionId,
     categoryId,
+    modeId,
     createdAt,
   ];
   @override
@@ -7557,6 +7905,12 @@ class $PersonEntriesTable extends PersonEntries
         categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
       );
     }
+    if (data.containsKey('mode_id')) {
+      context.handle(
+        _modeIdMeta,
+        modeId.isAcceptableOrUnknown(data['mode_id']!, _modeIdMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -7616,6 +7970,10 @@ class $PersonEntriesTable extends PersonEntries
         DriftSqlType.int,
         data['${effectivePrefix}category_id'],
       ),
+      modeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}mode_id'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -7657,6 +8015,11 @@ class PersonEntryRow extends DataClass implements Insertable<PersonEntryRow> {
   /// ordinary way. Null for every other entry — lending and borrowing are
   /// never income or expense.
   final int? categoryId;
+
+  /// The mode (a trip) this entry was made in — even when no money moved,
+  /// so there's no transaction to carry it. Inside the mode a person's
+  /// balance counts only these; everywhere else they count like any other.
+  final int? modeId;
   final DateTime createdAt;
   const PersonEntryRow({
     required this.id,
@@ -7669,6 +8032,7 @@ class PersonEntryRow extends DataClass implements Insertable<PersonEntryRow> {
     this.accountId,
     this.transactionId,
     this.categoryId,
+    this.modeId,
     required this.createdAt,
   });
   @override
@@ -7702,6 +8066,9 @@ class PersonEntryRow extends DataClass implements Insertable<PersonEntryRow> {
     if (!nullToAbsent || categoryId != null) {
       map['category_id'] = Variable<int>(categoryId);
     }
+    if (!nullToAbsent || modeId != null) {
+      map['mode_id'] = Variable<int>(modeId);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -7726,6 +8093,9 @@ class PersonEntryRow extends DataClass implements Insertable<PersonEntryRow> {
       categoryId: categoryId == null && nullToAbsent
           ? const Value.absent()
           : Value(categoryId),
+      modeId: modeId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(modeId),
       createdAt: Value(createdAt),
     );
   }
@@ -7748,6 +8118,7 @@ class PersonEntryRow extends DataClass implements Insertable<PersonEntryRow> {
       accountId: serializer.fromJson<int?>(json['accountId']),
       transactionId: serializer.fromJson<int?>(json['transactionId']),
       categoryId: serializer.fromJson<int?>(json['categoryId']),
+      modeId: serializer.fromJson<int?>(json['modeId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -7767,6 +8138,7 @@ class PersonEntryRow extends DataClass implements Insertable<PersonEntryRow> {
       'accountId': serializer.toJson<int?>(accountId),
       'transactionId': serializer.toJson<int?>(transactionId),
       'categoryId': serializer.toJson<int?>(categoryId),
+      'modeId': serializer.toJson<int?>(modeId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -7782,6 +8154,7 @@ class PersonEntryRow extends DataClass implements Insertable<PersonEntryRow> {
     Value<int?> accountId = const Value.absent(),
     Value<int?> transactionId = const Value.absent(),
     Value<int?> categoryId = const Value.absent(),
+    Value<int?> modeId = const Value.absent(),
     DateTime? createdAt,
   }) => PersonEntryRow(
     id: id ?? this.id,
@@ -7796,6 +8169,7 @@ class PersonEntryRow extends DataClass implements Insertable<PersonEntryRow> {
         ? transactionId.value
         : this.transactionId,
     categoryId: categoryId.present ? categoryId.value : this.categoryId,
+    modeId: modeId.present ? modeId.value : this.modeId,
     createdAt: createdAt ?? this.createdAt,
   );
   PersonEntryRow copyWithCompanion(PersonEntriesCompanion data) {
@@ -7814,6 +8188,7 @@ class PersonEntryRow extends DataClass implements Insertable<PersonEntryRow> {
       categoryId: data.categoryId.present
           ? data.categoryId.value
           : this.categoryId,
+      modeId: data.modeId.present ? data.modeId.value : this.modeId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -7831,6 +8206,7 @@ class PersonEntryRow extends DataClass implements Insertable<PersonEntryRow> {
           ..write('accountId: $accountId, ')
           ..write('transactionId: $transactionId, ')
           ..write('categoryId: $categoryId, ')
+          ..write('modeId: $modeId, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -7848,6 +8224,7 @@ class PersonEntryRow extends DataClass implements Insertable<PersonEntryRow> {
     accountId,
     transactionId,
     categoryId,
+    modeId,
     createdAt,
   );
   @override
@@ -7864,6 +8241,7 @@ class PersonEntryRow extends DataClass implements Insertable<PersonEntryRow> {
           other.accountId == this.accountId &&
           other.transactionId == this.transactionId &&
           other.categoryId == this.categoryId &&
+          other.modeId == this.modeId &&
           other.createdAt == this.createdAt);
 }
 
@@ -7878,6 +8256,7 @@ class PersonEntriesCompanion extends UpdateCompanion<PersonEntryRow> {
   final Value<int?> accountId;
   final Value<int?> transactionId;
   final Value<int?> categoryId;
+  final Value<int?> modeId;
   final Value<DateTime> createdAt;
   const PersonEntriesCompanion({
     this.id = const Value.absent(),
@@ -7890,6 +8269,7 @@ class PersonEntriesCompanion extends UpdateCompanion<PersonEntryRow> {
     this.accountId = const Value.absent(),
     this.transactionId = const Value.absent(),
     this.categoryId = const Value.absent(),
+    this.modeId = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   PersonEntriesCompanion.insert({
@@ -7903,6 +8283,7 @@ class PersonEntriesCompanion extends UpdateCompanion<PersonEntryRow> {
     this.accountId = const Value.absent(),
     this.transactionId = const Value.absent(),
     this.categoryId = const Value.absent(),
+    this.modeId = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : personId = Value(personId),
        direction = Value(direction),
@@ -7919,6 +8300,7 @@ class PersonEntriesCompanion extends UpdateCompanion<PersonEntryRow> {
     Expression<int>? accountId,
     Expression<int>? transactionId,
     Expression<int>? categoryId,
+    Expression<int>? modeId,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -7932,6 +8314,7 @@ class PersonEntriesCompanion extends UpdateCompanion<PersonEntryRow> {
       if (accountId != null) 'account_id': accountId,
       if (transactionId != null) 'transaction_id': transactionId,
       if (categoryId != null) 'category_id': categoryId,
+      if (modeId != null) 'mode_id': modeId,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -7947,6 +8330,7 @@ class PersonEntriesCompanion extends UpdateCompanion<PersonEntryRow> {
     Value<int?>? accountId,
     Value<int?>? transactionId,
     Value<int?>? categoryId,
+    Value<int?>? modeId,
     Value<DateTime>? createdAt,
   }) {
     return PersonEntriesCompanion(
@@ -7960,6 +8344,7 @@ class PersonEntriesCompanion extends UpdateCompanion<PersonEntryRow> {
       accountId: accountId ?? this.accountId,
       transactionId: transactionId ?? this.transactionId,
       categoryId: categoryId ?? this.categoryId,
+      modeId: modeId ?? this.modeId,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -8001,6 +8386,9 @@ class PersonEntriesCompanion extends UpdateCompanion<PersonEntryRow> {
     if (categoryId.present) {
       map['category_id'] = Variable<int>(categoryId.value);
     }
+    if (modeId.present) {
+      map['mode_id'] = Variable<int>(modeId.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -8020,6 +8408,7 @@ class PersonEntriesCompanion extends UpdateCompanion<PersonEntryRow> {
           ..write('accountId: $accountId, ')
           ..write('transactionId: $transactionId, ')
           ..write('categoryId: $categoryId, ')
+          ..write('modeId: $modeId, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -18798,7 +19187,16 @@ class $ModeAccountsTable extends ModeAccounts
     ),
   );
   @override
-  List<GeneratedColumn> get $columns => [modeId, accountId];
+  late final GeneratedColumnWithTypeConverter<Money?, int> allocation =
+      GeneratedColumn<int>(
+        'allocation',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<Money?>($ModeAccountsTable.$converterallocationn);
+  @override
+  List<GeneratedColumn> get $columns => [modeId, accountId, allocation];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -18844,6 +19242,12 @@ class $ModeAccountsTable extends ModeAccounts
         DriftSqlType.int,
         data['${effectivePrefix}account_id'],
       )!,
+      allocation: $ModeAccountsTable.$converterallocationn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}allocation'],
+        ),
+      ),
     );
   }
 
@@ -18851,17 +19255,36 @@ class $ModeAccountsTable extends ModeAccounts
   $ModeAccountsTable createAlias(String alias) {
     return $ModeAccountsTable(attachedDatabase, alias);
   }
+
+  static TypeConverter<Money, int> $converterallocation =
+      const MoneyConverter();
+  static TypeConverter<Money?, int?> $converterallocationn =
+      NullAwareTypeConverter.wrap($converterallocation);
 }
 
 class ModeAccountRow extends DataClass implements Insertable<ModeAccountRow> {
   final int modeId;
   final int accountId;
-  const ModeAccountRow({required this.modeId, required this.accountId});
+
+  /// What the mode may spend from this account ("₹5,000 of HDFC for the
+  /// trip"). While the mode is ON the account reads this minus what the
+  /// mode took from it; null = its real balance.
+  final Money? allocation;
+  const ModeAccountRow({
+    required this.modeId,
+    required this.accountId,
+    this.allocation,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['mode_id'] = Variable<int>(modeId);
     map['account_id'] = Variable<int>(accountId);
+    if (!nullToAbsent || allocation != null) {
+      map['allocation'] = Variable<int>(
+        $ModeAccountsTable.$converterallocationn.toSql(allocation),
+      );
+    }
     return map;
   }
 
@@ -18869,6 +19292,9 @@ class ModeAccountRow extends DataClass implements Insertable<ModeAccountRow> {
     return ModeAccountsCompanion(
       modeId: Value(modeId),
       accountId: Value(accountId),
+      allocation: allocation == null && nullToAbsent
+          ? const Value.absent()
+          : Value(allocation),
     );
   }
 
@@ -18880,6 +19306,7 @@ class ModeAccountRow extends DataClass implements Insertable<ModeAccountRow> {
     return ModeAccountRow(
       modeId: serializer.fromJson<int>(json['modeId']),
       accountId: serializer.fromJson<int>(json['accountId']),
+      allocation: serializer.fromJson<Money?>(json['allocation']),
     );
   }
   @override
@@ -18888,17 +19315,26 @@ class ModeAccountRow extends DataClass implements Insertable<ModeAccountRow> {
     return <String, dynamic>{
       'modeId': serializer.toJson<int>(modeId),
       'accountId': serializer.toJson<int>(accountId),
+      'allocation': serializer.toJson<Money?>(allocation),
     };
   }
 
-  ModeAccountRow copyWith({int? modeId, int? accountId}) => ModeAccountRow(
+  ModeAccountRow copyWith({
+    int? modeId,
+    int? accountId,
+    Value<Money?> allocation = const Value.absent(),
+  }) => ModeAccountRow(
     modeId: modeId ?? this.modeId,
     accountId: accountId ?? this.accountId,
+    allocation: allocation.present ? allocation.value : this.allocation,
   );
   ModeAccountRow copyWithCompanion(ModeAccountsCompanion data) {
     return ModeAccountRow(
       modeId: data.modeId.present ? data.modeId.value : this.modeId,
       accountId: data.accountId.present ? data.accountId.value : this.accountId,
+      allocation: data.allocation.present
+          ? data.allocation.value
+          : this.allocation,
     );
   }
 
@@ -18906,44 +19342,51 @@ class ModeAccountRow extends DataClass implements Insertable<ModeAccountRow> {
   String toString() {
     return (StringBuffer('ModeAccountRow(')
           ..write('modeId: $modeId, ')
-          ..write('accountId: $accountId')
+          ..write('accountId: $accountId, ')
+          ..write('allocation: $allocation')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(modeId, accountId);
+  int get hashCode => Object.hash(modeId, accountId, allocation);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is ModeAccountRow &&
           other.modeId == this.modeId &&
-          other.accountId == this.accountId);
+          other.accountId == this.accountId &&
+          other.allocation == this.allocation);
 }
 
 class ModeAccountsCompanion extends UpdateCompanion<ModeAccountRow> {
   final Value<int> modeId;
   final Value<int> accountId;
+  final Value<Money?> allocation;
   final Value<int> rowid;
   const ModeAccountsCompanion({
     this.modeId = const Value.absent(),
     this.accountId = const Value.absent(),
+    this.allocation = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ModeAccountsCompanion.insert({
     required int modeId,
     required int accountId,
+    this.allocation = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : modeId = Value(modeId),
        accountId = Value(accountId);
   static Insertable<ModeAccountRow> custom({
     Expression<int>? modeId,
     Expression<int>? accountId,
+    Expression<int>? allocation,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (modeId != null) 'mode_id': modeId,
       if (accountId != null) 'account_id': accountId,
+      if (allocation != null) 'allocation': allocation,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -18951,11 +19394,13 @@ class ModeAccountsCompanion extends UpdateCompanion<ModeAccountRow> {
   ModeAccountsCompanion copyWith({
     Value<int>? modeId,
     Value<int>? accountId,
+    Value<Money?>? allocation,
     Value<int>? rowid,
   }) {
     return ModeAccountsCompanion(
       modeId: modeId ?? this.modeId,
       accountId: accountId ?? this.accountId,
+      allocation: allocation ?? this.allocation,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -18969,6 +19414,11 @@ class ModeAccountsCompanion extends UpdateCompanion<ModeAccountRow> {
     if (accountId.present) {
       map['account_id'] = Variable<int>(accountId.value);
     }
+    if (allocation.present) {
+      map['allocation'] = Variable<int>(
+        $ModeAccountsTable.$converterallocationn.toSql(allocation.value),
+      );
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -18980,6 +19430,7 @@ class ModeAccountsCompanion extends UpdateCompanion<ModeAccountRow> {
     return (StringBuffer('ModeAccountsCompanion(')
           ..write('modeId: $modeId, ')
           ..write('accountId: $accountId, ')
+          ..write('allocation: $allocation, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -19418,6 +19869,756 @@ class ModeTagsCompanion extends UpdateCompanion<ModeTagRow> {
           ..write('modeId: $modeId, ')
           ..write('tagId: $tagId, ')
           ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ModeCategoryLimitsTable extends ModeCategoryLimits
+    with TableInfo<$ModeCategoryLimitsTable, ModeCategoryLimitRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ModeCategoryLimitsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _modeIdMeta = const VerificationMeta('modeId');
+  @override
+  late final GeneratedColumn<int> modeId = GeneratedColumn<int>(
+    'mode_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES modes (id)',
+    ),
+  );
+  static const VerificationMeta _categoryIdMeta = const VerificationMeta(
+    'categoryId',
+  );
+  @override
+  late final GeneratedColumn<int> categoryId = GeneratedColumn<int>(
+    'category_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES categories (id)',
+    ),
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<Money, int> amount =
+      GeneratedColumn<int>(
+        'amount',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: true,
+      ).withConverter<Money>($ModeCategoryLimitsTable.$converteramount);
+  @override
+  List<GeneratedColumn> get $columns => [modeId, categoryId, amount];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'mode_category_limits';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ModeCategoryLimitRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('mode_id')) {
+      context.handle(
+        _modeIdMeta,
+        modeId.isAcceptableOrUnknown(data['mode_id']!, _modeIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_modeIdMeta);
+    }
+    if (data.containsKey('category_id')) {
+      context.handle(
+        _categoryIdMeta,
+        categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_categoryIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {modeId, categoryId};
+  @override
+  ModeCategoryLimitRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ModeCategoryLimitRow(
+      modeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}mode_id'],
+      )!,
+      categoryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}category_id'],
+      )!,
+      amount: $ModeCategoryLimitsTable.$converteramount.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}amount'],
+        )!,
+      ),
+    );
+  }
+
+  @override
+  $ModeCategoryLimitsTable createAlias(String alias) {
+    return $ModeCategoryLimitsTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<Money, int> $converteramount = const MoneyConverter();
+}
+
+class ModeCategoryLimitRow extends DataClass
+    implements Insertable<ModeCategoryLimitRow> {
+  final int modeId;
+  final int categoryId;
+  final Money amount;
+  const ModeCategoryLimitRow({
+    required this.modeId,
+    required this.categoryId,
+    required this.amount,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['mode_id'] = Variable<int>(modeId);
+    map['category_id'] = Variable<int>(categoryId);
+    {
+      map['amount'] = Variable<int>(
+        $ModeCategoryLimitsTable.$converteramount.toSql(amount),
+      );
+    }
+    return map;
+  }
+
+  ModeCategoryLimitsCompanion toCompanion(bool nullToAbsent) {
+    return ModeCategoryLimitsCompanion(
+      modeId: Value(modeId),
+      categoryId: Value(categoryId),
+      amount: Value(amount),
+    );
+  }
+
+  factory ModeCategoryLimitRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ModeCategoryLimitRow(
+      modeId: serializer.fromJson<int>(json['modeId']),
+      categoryId: serializer.fromJson<int>(json['categoryId']),
+      amount: serializer.fromJson<Money>(json['amount']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'modeId': serializer.toJson<int>(modeId),
+      'categoryId': serializer.toJson<int>(categoryId),
+      'amount': serializer.toJson<Money>(amount),
+    };
+  }
+
+  ModeCategoryLimitRow copyWith({
+    int? modeId,
+    int? categoryId,
+    Money? amount,
+  }) => ModeCategoryLimitRow(
+    modeId: modeId ?? this.modeId,
+    categoryId: categoryId ?? this.categoryId,
+    amount: amount ?? this.amount,
+  );
+  ModeCategoryLimitRow copyWithCompanion(ModeCategoryLimitsCompanion data) {
+    return ModeCategoryLimitRow(
+      modeId: data.modeId.present ? data.modeId.value : this.modeId,
+      categoryId: data.categoryId.present
+          ? data.categoryId.value
+          : this.categoryId,
+      amount: data.amount.present ? data.amount.value : this.amount,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ModeCategoryLimitRow(')
+          ..write('modeId: $modeId, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('amount: $amount')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(modeId, categoryId, amount);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ModeCategoryLimitRow &&
+          other.modeId == this.modeId &&
+          other.categoryId == this.categoryId &&
+          other.amount == this.amount);
+}
+
+class ModeCategoryLimitsCompanion
+    extends UpdateCompanion<ModeCategoryLimitRow> {
+  final Value<int> modeId;
+  final Value<int> categoryId;
+  final Value<Money> amount;
+  final Value<int> rowid;
+  const ModeCategoryLimitsCompanion({
+    this.modeId = const Value.absent(),
+    this.categoryId = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ModeCategoryLimitsCompanion.insert({
+    required int modeId,
+    required int categoryId,
+    required Money amount,
+    this.rowid = const Value.absent(),
+  }) : modeId = Value(modeId),
+       categoryId = Value(categoryId),
+       amount = Value(amount);
+  static Insertable<ModeCategoryLimitRow> custom({
+    Expression<int>? modeId,
+    Expression<int>? categoryId,
+    Expression<int>? amount,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (modeId != null) 'mode_id': modeId,
+      if (categoryId != null) 'category_id': categoryId,
+      if (amount != null) 'amount': amount,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ModeCategoryLimitsCompanion copyWith({
+    Value<int>? modeId,
+    Value<int>? categoryId,
+    Value<Money>? amount,
+    Value<int>? rowid,
+  }) {
+    return ModeCategoryLimitsCompanion(
+      modeId: modeId ?? this.modeId,
+      categoryId: categoryId ?? this.categoryId,
+      amount: amount ?? this.amount,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (modeId.present) {
+      map['mode_id'] = Variable<int>(modeId.value);
+    }
+    if (categoryId.present) {
+      map['category_id'] = Variable<int>(categoryId.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<int>(
+        $ModeCategoryLimitsTable.$converteramount.toSql(amount.value),
+      );
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ModeCategoryLimitsCompanion(')
+          ..write('modeId: $modeId, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('amount: $amount, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ModePlannedCostsTable extends ModePlannedCosts
+    with TableInfo<$ModePlannedCostsTable, ModePlannedCostRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ModePlannedCostsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _modeIdMeta = const VerificationMeta('modeId');
+  @override
+  late final GeneratedColumn<int> modeId = GeneratedColumn<int>(
+    'mode_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES modes (id)',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 60,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<Money, int> amount =
+      GeneratedColumn<int>(
+        'amount',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: true,
+      ).withConverter<Money>($ModePlannedCostsTable.$converteramount);
+  static const VerificationMeta _categoryIdMeta = const VerificationMeta(
+    'categoryId',
+  );
+  @override
+  late final GeneratedColumn<int> categoryId = GeneratedColumn<int>(
+    'category_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES categories (id)',
+    ),
+  );
+  static const VerificationMeta _transactionIdMeta = const VerificationMeta(
+    'transactionId',
+  );
+  @override
+  late final GeneratedColumn<int> transactionId = GeneratedColumn<int>(
+    'transaction_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES transactions (id)',
+    ),
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    modeId,
+    name,
+    amount,
+    categoryId,
+    transactionId,
+    sortOrder,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'mode_planned_costs';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ModePlannedCostRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('mode_id')) {
+      context.handle(
+        _modeIdMeta,
+        modeId.isAcceptableOrUnknown(data['mode_id']!, _modeIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_modeIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('category_id')) {
+      context.handle(
+        _categoryIdMeta,
+        categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
+      );
+    }
+    if (data.containsKey('transaction_id')) {
+      context.handle(
+        _transactionIdMeta,
+        transactionId.isAcceptableOrUnknown(
+          data['transaction_id']!,
+          _transactionIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ModePlannedCostRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ModePlannedCostRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      modeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}mode_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      amount: $ModePlannedCostsTable.$converteramount.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}amount'],
+        )!,
+      ),
+      categoryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}category_id'],
+      ),
+      transactionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}transaction_id'],
+      ),
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+    );
+  }
+
+  @override
+  $ModePlannedCostsTable createAlias(String alias) {
+    return $ModePlannedCostsTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<Money, int> $converteramount = const MoneyConverter();
+}
+
+class ModePlannedCostRow extends DataClass
+    implements Insertable<ModePlannedCostRow> {
+  final int id;
+  final int modeId;
+  final String name;
+  final Money amount;
+  final int? categoryId;
+  final int? transactionId;
+  final int sortOrder;
+  const ModePlannedCostRow({
+    required this.id,
+    required this.modeId,
+    required this.name,
+    required this.amount,
+    this.categoryId,
+    this.transactionId,
+    required this.sortOrder,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['mode_id'] = Variable<int>(modeId);
+    map['name'] = Variable<String>(name);
+    {
+      map['amount'] = Variable<int>(
+        $ModePlannedCostsTable.$converteramount.toSql(amount),
+      );
+    }
+    if (!nullToAbsent || categoryId != null) {
+      map['category_id'] = Variable<int>(categoryId);
+    }
+    if (!nullToAbsent || transactionId != null) {
+      map['transaction_id'] = Variable<int>(transactionId);
+    }
+    map['sort_order'] = Variable<int>(sortOrder);
+    return map;
+  }
+
+  ModePlannedCostsCompanion toCompanion(bool nullToAbsent) {
+    return ModePlannedCostsCompanion(
+      id: Value(id),
+      modeId: Value(modeId),
+      name: Value(name),
+      amount: Value(amount),
+      categoryId: categoryId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(categoryId),
+      transactionId: transactionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(transactionId),
+      sortOrder: Value(sortOrder),
+    );
+  }
+
+  factory ModePlannedCostRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ModePlannedCostRow(
+      id: serializer.fromJson<int>(json['id']),
+      modeId: serializer.fromJson<int>(json['modeId']),
+      name: serializer.fromJson<String>(json['name']),
+      amount: serializer.fromJson<Money>(json['amount']),
+      categoryId: serializer.fromJson<int?>(json['categoryId']),
+      transactionId: serializer.fromJson<int?>(json['transactionId']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'modeId': serializer.toJson<int>(modeId),
+      'name': serializer.toJson<String>(name),
+      'amount': serializer.toJson<Money>(amount),
+      'categoryId': serializer.toJson<int?>(categoryId),
+      'transactionId': serializer.toJson<int?>(transactionId),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+    };
+  }
+
+  ModePlannedCostRow copyWith({
+    int? id,
+    int? modeId,
+    String? name,
+    Money? amount,
+    Value<int?> categoryId = const Value.absent(),
+    Value<int?> transactionId = const Value.absent(),
+    int? sortOrder,
+  }) => ModePlannedCostRow(
+    id: id ?? this.id,
+    modeId: modeId ?? this.modeId,
+    name: name ?? this.name,
+    amount: amount ?? this.amount,
+    categoryId: categoryId.present ? categoryId.value : this.categoryId,
+    transactionId: transactionId.present
+        ? transactionId.value
+        : this.transactionId,
+    sortOrder: sortOrder ?? this.sortOrder,
+  );
+  ModePlannedCostRow copyWithCompanion(ModePlannedCostsCompanion data) {
+    return ModePlannedCostRow(
+      id: data.id.present ? data.id.value : this.id,
+      modeId: data.modeId.present ? data.modeId.value : this.modeId,
+      name: data.name.present ? data.name.value : this.name,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      categoryId: data.categoryId.present
+          ? data.categoryId.value
+          : this.categoryId,
+      transactionId: data.transactionId.present
+          ? data.transactionId.value
+          : this.transactionId,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ModePlannedCostRow(')
+          ..write('id: $id, ')
+          ..write('modeId: $modeId, ')
+          ..write('name: $name, ')
+          ..write('amount: $amount, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('transactionId: $transactionId, ')
+          ..write('sortOrder: $sortOrder')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    modeId,
+    name,
+    amount,
+    categoryId,
+    transactionId,
+    sortOrder,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ModePlannedCostRow &&
+          other.id == this.id &&
+          other.modeId == this.modeId &&
+          other.name == this.name &&
+          other.amount == this.amount &&
+          other.categoryId == this.categoryId &&
+          other.transactionId == this.transactionId &&
+          other.sortOrder == this.sortOrder);
+}
+
+class ModePlannedCostsCompanion extends UpdateCompanion<ModePlannedCostRow> {
+  final Value<int> id;
+  final Value<int> modeId;
+  final Value<String> name;
+  final Value<Money> amount;
+  final Value<int?> categoryId;
+  final Value<int?> transactionId;
+  final Value<int> sortOrder;
+  const ModePlannedCostsCompanion({
+    this.id = const Value.absent(),
+    this.modeId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.categoryId = const Value.absent(),
+    this.transactionId = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+  });
+  ModePlannedCostsCompanion.insert({
+    this.id = const Value.absent(),
+    required int modeId,
+    required String name,
+    required Money amount,
+    this.categoryId = const Value.absent(),
+    this.transactionId = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+  }) : modeId = Value(modeId),
+       name = Value(name),
+       amount = Value(amount);
+  static Insertable<ModePlannedCostRow> custom({
+    Expression<int>? id,
+    Expression<int>? modeId,
+    Expression<String>? name,
+    Expression<int>? amount,
+    Expression<int>? categoryId,
+    Expression<int>? transactionId,
+    Expression<int>? sortOrder,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (modeId != null) 'mode_id': modeId,
+      if (name != null) 'name': name,
+      if (amount != null) 'amount': amount,
+      if (categoryId != null) 'category_id': categoryId,
+      if (transactionId != null) 'transaction_id': transactionId,
+      if (sortOrder != null) 'sort_order': sortOrder,
+    });
+  }
+
+  ModePlannedCostsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? modeId,
+    Value<String>? name,
+    Value<Money>? amount,
+    Value<int?>? categoryId,
+    Value<int?>? transactionId,
+    Value<int>? sortOrder,
+  }) {
+    return ModePlannedCostsCompanion(
+      id: id ?? this.id,
+      modeId: modeId ?? this.modeId,
+      name: name ?? this.name,
+      amount: amount ?? this.amount,
+      categoryId: categoryId ?? this.categoryId,
+      transactionId: transactionId ?? this.transactionId,
+      sortOrder: sortOrder ?? this.sortOrder,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (modeId.present) {
+      map['mode_id'] = Variable<int>(modeId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<int>(
+        $ModePlannedCostsTable.$converteramount.toSql(amount.value),
+      );
+    }
+    if (categoryId.present) {
+      map['category_id'] = Variable<int>(categoryId.value);
+    }
+    if (transactionId.present) {
+      map['transaction_id'] = Variable<int>(transactionId.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ModePlannedCostsCompanion(')
+          ..write('id: $id, ')
+          ..write('modeId: $modeId, ')
+          ..write('name: $name, ')
+          ..write('amount: $amount, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('transactionId: $transactionId, ')
+          ..write('sortOrder: $sortOrder')
           ..write(')'))
         .toString();
   }
@@ -25433,6 +26634,18 @@ class $TransactionTemplatesTable extends TransactionTemplates
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _modeIdMeta = const VerificationMeta('modeId');
+  @override
+  late final GeneratedColumn<int> modeId = GeneratedColumn<int>(
+    'mode_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES modes (id)',
+    ),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -25456,6 +26669,7 @@ class $TransactionTemplatesTable extends TransactionTemplates
     categoryId,
     note,
     payee,
+    modeId,
     createdAt,
   ];
   @override
@@ -25516,6 +26730,12 @@ class $TransactionTemplatesTable extends TransactionTemplates
         payee.isAcceptableOrUnknown(data['payee']!, _payeeMeta),
       );
     }
+    if (data.containsKey('mode_id')) {
+      context.handle(
+        _modeIdMeta,
+        modeId.isAcceptableOrUnknown(data['mode_id']!, _modeIdMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -25571,6 +26791,10 @@ class $TransactionTemplatesTable extends TransactionTemplates
         DriftSqlType.string,
         data['${effectivePrefix}payee'],
       ),
+      modeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}mode_id'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -25599,6 +26823,9 @@ class TransactionTemplateRow extends DataClass
   final int? categoryId;
   final String? note;
   final String? payee;
+
+  /// A mode's own template — offered only inside that mode, never outside.
+  final int? modeId;
   final DateTime createdAt;
   const TransactionTemplateRow({
     required this.id,
@@ -25610,6 +26837,7 @@ class TransactionTemplateRow extends DataClass
     this.categoryId,
     this.note,
     this.payee,
+    this.modeId,
     required this.createdAt,
   });
   @override
@@ -25640,6 +26868,9 @@ class TransactionTemplateRow extends DataClass
     if (!nullToAbsent || payee != null) {
       map['payee'] = Variable<String>(payee);
     }
+    if (!nullToAbsent || modeId != null) {
+      map['mode_id'] = Variable<int>(modeId);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -25661,6 +26892,9 @@ class TransactionTemplateRow extends DataClass
       payee: payee == null && nullToAbsent
           ? const Value.absent()
           : Value(payee),
+      modeId: modeId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(modeId),
       createdAt: Value(createdAt),
     );
   }
@@ -25682,6 +26916,7 @@ class TransactionTemplateRow extends DataClass
       categoryId: serializer.fromJson<int?>(json['categoryId']),
       note: serializer.fromJson<String?>(json['note']),
       payee: serializer.fromJson<String?>(json['payee']),
+      modeId: serializer.fromJson<int?>(json['modeId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -25700,6 +26935,7 @@ class TransactionTemplateRow extends DataClass
       'categoryId': serializer.toJson<int?>(categoryId),
       'note': serializer.toJson<String?>(note),
       'payee': serializer.toJson<String?>(payee),
+      'modeId': serializer.toJson<int?>(modeId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -25714,6 +26950,7 @@ class TransactionTemplateRow extends DataClass
     Value<int?> categoryId = const Value.absent(),
     Value<String?> note = const Value.absent(),
     Value<String?> payee = const Value.absent(),
+    Value<int?> modeId = const Value.absent(),
     DateTime? createdAt,
   }) => TransactionTemplateRow(
     id: id ?? this.id,
@@ -25725,6 +26962,7 @@ class TransactionTemplateRow extends DataClass
     categoryId: categoryId.present ? categoryId.value : this.categoryId,
     note: note.present ? note.value : this.note,
     payee: payee.present ? payee.value : this.payee,
+    modeId: modeId.present ? modeId.value : this.modeId,
     createdAt: createdAt ?? this.createdAt,
   );
   TransactionTemplateRow copyWithCompanion(TransactionTemplatesCompanion data) {
@@ -25742,6 +26980,7 @@ class TransactionTemplateRow extends DataClass
           : this.categoryId,
       note: data.note.present ? data.note.value : this.note,
       payee: data.payee.present ? data.payee.value : this.payee,
+      modeId: data.modeId.present ? data.modeId.value : this.modeId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -25758,6 +26997,7 @@ class TransactionTemplateRow extends DataClass
           ..write('categoryId: $categoryId, ')
           ..write('note: $note, ')
           ..write('payee: $payee, ')
+          ..write('modeId: $modeId, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -25774,6 +27014,7 @@ class TransactionTemplateRow extends DataClass
     categoryId,
     note,
     payee,
+    modeId,
     createdAt,
   );
   @override
@@ -25789,6 +27030,7 @@ class TransactionTemplateRow extends DataClass
           other.categoryId == this.categoryId &&
           other.note == this.note &&
           other.payee == this.payee &&
+          other.modeId == this.modeId &&
           other.createdAt == this.createdAt);
 }
 
@@ -25803,6 +27045,7 @@ class TransactionTemplatesCompanion
   final Value<int?> categoryId;
   final Value<String?> note;
   final Value<String?> payee;
+  final Value<int?> modeId;
   final Value<DateTime> createdAt;
   const TransactionTemplatesCompanion({
     this.id = const Value.absent(),
@@ -25814,6 +27057,7 @@ class TransactionTemplatesCompanion
     this.categoryId = const Value.absent(),
     this.note = const Value.absent(),
     this.payee = const Value.absent(),
+    this.modeId = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   TransactionTemplatesCompanion.insert({
@@ -25826,6 +27070,7 @@ class TransactionTemplatesCompanion
     this.categoryId = const Value.absent(),
     this.note = const Value.absent(),
     this.payee = const Value.absent(),
+    this.modeId = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : name = Value(name),
        type = Value(type),
@@ -25841,6 +27086,7 @@ class TransactionTemplatesCompanion
     Expression<int>? categoryId,
     Expression<String>? note,
     Expression<String>? payee,
+    Expression<int>? modeId,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -25853,6 +27099,7 @@ class TransactionTemplatesCompanion
       if (categoryId != null) 'category_id': categoryId,
       if (note != null) 'note': note,
       if (payee != null) 'payee': payee,
+      if (modeId != null) 'mode_id': modeId,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -25867,6 +27114,7 @@ class TransactionTemplatesCompanion
     Value<int?>? categoryId,
     Value<String?>? note,
     Value<String?>? payee,
+    Value<int?>? modeId,
     Value<DateTime>? createdAt,
   }) {
     return TransactionTemplatesCompanion(
@@ -25879,6 +27127,7 @@ class TransactionTemplatesCompanion
       categoryId: categoryId ?? this.categoryId,
       note: note ?? this.note,
       payee: payee ?? this.payee,
+      modeId: modeId ?? this.modeId,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -25917,6 +27166,9 @@ class TransactionTemplatesCompanion
     if (payee.present) {
       map['payee'] = Variable<String>(payee.value);
     }
+    if (modeId.present) {
+      map['mode_id'] = Variable<int>(modeId.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -25935,6 +27187,7 @@ class TransactionTemplatesCompanion
           ..write('categoryId: $categoryId, ')
           ..write('note: $note, ')
           ..write('payee: $payee, ')
+          ..write('modeId: $modeId, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -26212,6 +27465,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ModeAccountsTable modeAccounts = $ModeAccountsTable(this);
   late final $ModeCategoriesTable modeCategories = $ModeCategoriesTable(this);
   late final $ModeTagsTable modeTags = $ModeTagsTable(this);
+  late final $ModeCategoryLimitsTable modeCategoryLimits =
+      $ModeCategoryLimitsTable(this);
+  late final $ModePlannedCostsTable modePlannedCosts = $ModePlannedCostsTable(
+    this,
+  );
   late final $TagGroupsTable tagGroups = $TagGroupsTable(this);
   late final $TagGroupTagsTable tagGroupTags = $TagGroupTagsTable(this);
   late final $TransactionSplitsTable transactionSplits =
@@ -26268,6 +27526,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     modeAccounts,
     modeCategories,
     modeTags,
+    modeCategoryLimits,
+    modePlannedCosts,
     tagGroups,
     tagGroupTags,
     transactionSplits,
@@ -28458,6 +29718,12 @@ typedef $$ModesTableCreateCompanionBuilder =
       Value<int?> groupId,
       Value<String?> navSlots,
       Value<String> modules,
+      Value<Money?> dailyLimit,
+      Value<Money?> spendLimit,
+      Value<int?> walletAccountId,
+      Value<int?> walletSourceAccountId,
+      Value<Money?> walletAmount,
+      Value<String> alerts,
       Value<DateTime> createdAt,
     });
 typedef $$ModesTableUpdateCompanionBuilder =
@@ -28476,6 +29742,12 @@ typedef $$ModesTableUpdateCompanionBuilder =
       Value<int?> groupId,
       Value<String?> navSlots,
       Value<String> modules,
+      Value<Money?> dailyLimit,
+      Value<Money?> spendLimit,
+      Value<int?> walletAccountId,
+      Value<int?> walletSourceAccountId,
+      Value<Money?> walletAmount,
+      Value<String> alerts,
       Value<DateTime> createdAt,
     });
 
@@ -28495,6 +29767,46 @@ final class $$ModesTableReferences
       $_db.groups,
     ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_groupIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $AccountsTable _walletAccountIdTable(_$AppDatabase db) =>
+      db.accounts.createAlias(
+        $_aliasNameGenerator(db.modes.walletAccountId, db.accounts.id),
+      );
+
+  $$AccountsTableProcessedTableManager? get walletAccountId {
+    final $_column = $_itemColumn<int>('wallet_account_id');
+    if ($_column == null) return null;
+    final manager = $$AccountsTableTableManager(
+      $_db,
+      $_db.accounts,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_walletAccountIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $AccountsTable _walletSourceAccountIdTable(_$AppDatabase db) =>
+      db.accounts.createAlias(
+        $_aliasNameGenerator(db.modes.walletSourceAccountId, db.accounts.id),
+      );
+
+  $$AccountsTableProcessedTableManager? get walletSourceAccountId {
+    final $_column = $_itemColumn<int>('wallet_source_account_id');
+    if ($_column == null) return null;
+    final manager = $$AccountsTableTableManager(
+      $_db,
+      $_db.accounts,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(
+      _walletSourceAccountIdTable($_db),
+    );
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -28532,6 +29844,24 @@ final class $$ModesTableReferences
     ).filter((f) => f.modeId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_transactionsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$PersonEntriesTable, List<PersonEntryRow>>
+  _personEntriesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.personEntries,
+    aliasName: $_aliasNameGenerator(db.modes.id, db.personEntries.modeId),
+  );
+
+  $$PersonEntriesTableProcessedTableManager get personEntriesRefs {
+    final manager = $$PersonEntriesTableTableManager(
+      $_db,
+      $_db.personEntries,
+    ).filter((f) => f.modeId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_personEntriesRefsTable($_db));
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -28605,6 +29935,81 @@ final class $$ModesTableReferences
     ).filter((f) => f.modeId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_modeTagsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $ModeCategoryLimitsTable,
+    List<ModeCategoryLimitRow>
+  >
+  _modeCategoryLimitsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.modeCategoryLimits,
+        aliasName: $_aliasNameGenerator(
+          db.modes.id,
+          db.modeCategoryLimits.modeId,
+        ),
+      );
+
+  $$ModeCategoryLimitsTableProcessedTableManager get modeCategoryLimitsRefs {
+    final manager = $$ModeCategoryLimitsTableTableManager(
+      $_db,
+      $_db.modeCategoryLimits,
+    ).filter((f) => f.modeId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _modeCategoryLimitsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$ModePlannedCostsTable, List<ModePlannedCostRow>>
+  _modePlannedCostsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.modePlannedCosts,
+    aliasName: $_aliasNameGenerator(db.modes.id, db.modePlannedCosts.modeId),
+  );
+
+  $$ModePlannedCostsTableProcessedTableManager get modePlannedCostsRefs {
+    final manager = $$ModePlannedCostsTableTableManager(
+      $_db,
+      $_db.modePlannedCosts,
+    ).filter((f) => f.modeId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _modePlannedCostsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $TransactionTemplatesTable,
+    List<TransactionTemplateRow>
+  >
+  _transactionTemplatesRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.transactionTemplates,
+        aliasName: $_aliasNameGenerator(
+          db.modes.id,
+          db.transactionTemplates.modeId,
+        ),
+      );
+
+  $$TransactionTemplatesTableProcessedTableManager
+  get transactionTemplatesRefs {
+    final manager = $$TransactionTemplatesTableTableManager(
+      $_db,
+      $_db.transactionTemplates,
+    ).filter((f) => f.modeId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _transactionTemplatesRefsTable($_db),
+    );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -28686,6 +30091,29 @@ class $$ModesTableFilterComposer extends Composer<_$AppDatabase, $ModesTable> {
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnWithTypeConverterFilters<Money?, Money, int> get dailyLimit =>
+      $composableBuilder(
+        column: $table.dailyLimit,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnWithTypeConverterFilters<Money?, Money, int> get spendLimit =>
+      $composableBuilder(
+        column: $table.spendLimit,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnWithTypeConverterFilters<Money?, Money, int> get walletAmount =>
+      $composableBuilder(
+        column: $table.walletAmount,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<String> get alerts => $composableBuilder(
+    column: $table.alerts,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
@@ -28705,6 +30133,52 @@ class $$ModesTableFilterComposer extends Composer<_$AppDatabase, $ModesTable> {
           }) => $$GroupsTableFilterComposer(
             $db: $db,
             $table: $db.groups,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$AccountsTableFilterComposer get walletAccountId {
+    final $$AccountsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.walletAccountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableFilterComposer(
+            $db: $db,
+            $table: $db.accounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$AccountsTableFilterComposer get walletSourceAccountId {
+    final $$AccountsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.walletSourceAccountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableFilterComposer(
+            $db: $db,
+            $table: $db.accounts,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -28755,6 +30229,31 @@ class $$ModesTableFilterComposer extends Composer<_$AppDatabase, $ModesTable> {
           }) => $$TransactionsTableFilterComposer(
             $db: $db,
             $table: $db.transactions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> personEntriesRefs(
+    Expression<bool> Function($$PersonEntriesTableFilterComposer f) f,
+  ) {
+    final $$PersonEntriesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.personEntries,
+      getReferencedColumn: (t) => t.modeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PersonEntriesTableFilterComposer(
+            $db: $db,
+            $table: $db.personEntries,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -28863,6 +30362,81 @@ class $$ModesTableFilterComposer extends Composer<_$AppDatabase, $ModesTable> {
     );
     return f(composer);
   }
+
+  Expression<bool> modeCategoryLimitsRefs(
+    Expression<bool> Function($$ModeCategoryLimitsTableFilterComposer f) f,
+  ) {
+    final $$ModeCategoryLimitsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.modeCategoryLimits,
+      getReferencedColumn: (t) => t.modeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ModeCategoryLimitsTableFilterComposer(
+            $db: $db,
+            $table: $db.modeCategoryLimits,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> modePlannedCostsRefs(
+    Expression<bool> Function($$ModePlannedCostsTableFilterComposer f) f,
+  ) {
+    final $$ModePlannedCostsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.modePlannedCosts,
+      getReferencedColumn: (t) => t.modeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ModePlannedCostsTableFilterComposer(
+            $db: $db,
+            $table: $db.modePlannedCosts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> transactionTemplatesRefs(
+    Expression<bool> Function($$TransactionTemplatesTableFilterComposer f) f,
+  ) {
+    final $$TransactionTemplatesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.transactionTemplates,
+      getReferencedColumn: (t) => t.modeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TransactionTemplatesTableFilterComposer(
+            $db: $db,
+            $table: $db.transactionTemplates,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$ModesTableOrderingComposer
@@ -28939,6 +30513,26 @@ class $$ModesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get dailyLimit => $composableBuilder(
+    column: $table.dailyLimit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get spendLimit => $composableBuilder(
+    column: $table.spendLimit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get walletAmount => $composableBuilder(
+    column: $table.walletAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get alerts => $composableBuilder(
+    column: $table.alerts,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -28958,6 +30552,52 @@ class $$ModesTableOrderingComposer
           }) => $$GroupsTableOrderingComposer(
             $db: $db,
             $table: $db.groups,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$AccountsTableOrderingComposer get walletAccountId {
+    final $$AccountsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.walletAccountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableOrderingComposer(
+            $db: $db,
+            $table: $db.accounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$AccountsTableOrderingComposer get walletSourceAccountId {
+    final $$AccountsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.walletSourceAccountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableOrderingComposer(
+            $db: $db,
+            $table: $db.accounts,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -29020,6 +30660,27 @@ class $$ModesTableAnnotationComposer
   GeneratedColumn<String> get modules =>
       $composableBuilder(column: $table.modules, builder: (column) => column);
 
+  GeneratedColumnWithTypeConverter<Money?, int> get dailyLimit =>
+      $composableBuilder(
+        column: $table.dailyLimit,
+        builder: (column) => column,
+      );
+
+  GeneratedColumnWithTypeConverter<Money?, int> get spendLimit =>
+      $composableBuilder(
+        column: $table.spendLimit,
+        builder: (column) => column,
+      );
+
+  GeneratedColumnWithTypeConverter<Money?, int> get walletAmount =>
+      $composableBuilder(
+        column: $table.walletAmount,
+        builder: (column) => column,
+      );
+
+  GeneratedColumn<String> get alerts =>
+      $composableBuilder(column: $table.alerts, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -29037,6 +30698,52 @@ class $$ModesTableAnnotationComposer
           }) => $$GroupsTableAnnotationComposer(
             $db: $db,
             $table: $db.groups,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$AccountsTableAnnotationComposer get walletAccountId {
+    final $$AccountsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.walletAccountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.accounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$AccountsTableAnnotationComposer get walletSourceAccountId {
+    final $$AccountsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.walletSourceAccountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.accounts,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -29087,6 +30794,31 @@ class $$ModesTableAnnotationComposer
           }) => $$TransactionsTableAnnotationComposer(
             $db: $db,
             $table: $db.transactions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> personEntriesRefs<T extends Object>(
+    Expression<T> Function($$PersonEntriesTableAnnotationComposer a) f,
+  ) {
+    final $$PersonEntriesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.personEntries,
+      getReferencedColumn: (t) => t.modeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PersonEntriesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.personEntries,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -29195,6 +30927,83 @@ class $$ModesTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> modeCategoryLimitsRefs<T extends Object>(
+    Expression<T> Function($$ModeCategoryLimitsTableAnnotationComposer a) f,
+  ) {
+    final $$ModeCategoryLimitsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.modeCategoryLimits,
+          getReferencedColumn: (t) => t.modeId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ModeCategoryLimitsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.modeCategoryLimits,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<T> modePlannedCostsRefs<T extends Object>(
+    Expression<T> Function($$ModePlannedCostsTableAnnotationComposer a) f,
+  ) {
+    final $$ModePlannedCostsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.modePlannedCosts,
+      getReferencedColumn: (t) => t.modeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ModePlannedCostsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.modePlannedCosts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> transactionTemplatesRefs<T extends Object>(
+    Expression<T> Function($$TransactionTemplatesTableAnnotationComposer a) f,
+  ) {
+    final $$TransactionTemplatesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.transactionTemplates,
+          getReferencedColumn: (t) => t.modeId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$TransactionTemplatesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.transactionTemplates,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$ModesTableTableManager
@@ -29212,12 +31021,18 @@ class $$ModesTableTableManager
           ModeRow,
           PrefetchHooks Function({
             bool groupId,
+            bool walletAccountId,
+            bool walletSourceAccountId,
             bool categoriesRefs,
             bool transactionsRefs,
+            bool personEntriesRefs,
             bool tagsRefs,
             bool modeAccountsRefs,
             bool modeCategoriesRefs,
             bool modeTagsRefs,
+            bool modeCategoryLimitsRefs,
+            bool modePlannedCostsRefs,
+            bool transactionTemplatesRefs,
           })
         > {
   $$ModesTableTableManager(_$AppDatabase db, $ModesTable table)
@@ -29247,6 +31062,12 @@ class $$ModesTableTableManager
                 Value<int?> groupId = const Value.absent(),
                 Value<String?> navSlots = const Value.absent(),
                 Value<String> modules = const Value.absent(),
+                Value<Money?> dailyLimit = const Value.absent(),
+                Value<Money?> spendLimit = const Value.absent(),
+                Value<int?> walletAccountId = const Value.absent(),
+                Value<int?> walletSourceAccountId = const Value.absent(),
+                Value<Money?> walletAmount = const Value.absent(),
+                Value<String> alerts = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => ModesCompanion(
                 id: id,
@@ -29263,6 +31084,12 @@ class $$ModesTableTableManager
                 groupId: groupId,
                 navSlots: navSlots,
                 modules: modules,
+                dailyLimit: dailyLimit,
+                spendLimit: spendLimit,
+                walletAccountId: walletAccountId,
+                walletSourceAccountId: walletSourceAccountId,
+                walletAmount: walletAmount,
+                alerts: alerts,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -29281,6 +31108,12 @@ class $$ModesTableTableManager
                 Value<int?> groupId = const Value.absent(),
                 Value<String?> navSlots = const Value.absent(),
                 Value<String> modules = const Value.absent(),
+                Value<Money?> dailyLimit = const Value.absent(),
+                Value<Money?> spendLimit = const Value.absent(),
+                Value<int?> walletAccountId = const Value.absent(),
+                Value<int?> walletSourceAccountId = const Value.absent(),
+                Value<Money?> walletAmount = const Value.absent(),
+                Value<String> alerts = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => ModesCompanion.insert(
                 id: id,
@@ -29297,6 +31130,12 @@ class $$ModesTableTableManager
                 groupId: groupId,
                 navSlots: navSlots,
                 modules: modules,
+                dailyLimit: dailyLimit,
+                spendLimit: spendLimit,
+                walletAccountId: walletAccountId,
+                walletSourceAccountId: walletSourceAccountId,
+                walletAmount: walletAmount,
+                alerts: alerts,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0
@@ -29308,22 +31147,32 @@ class $$ModesTableTableManager
           prefetchHooksCallback:
               ({
                 groupId = false,
+                walletAccountId = false,
+                walletSourceAccountId = false,
                 categoriesRefs = false,
                 transactionsRefs = false,
+                personEntriesRefs = false,
                 tagsRefs = false,
                 modeAccountsRefs = false,
                 modeCategoriesRefs = false,
                 modeTagsRefs = false,
+                modeCategoryLimitsRefs = false,
+                modePlannedCostsRefs = false,
+                transactionTemplatesRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (categoriesRefs) db.categories,
                     if (transactionsRefs) db.transactions,
+                    if (personEntriesRefs) db.personEntries,
                     if (tagsRefs) db.tags,
                     if (modeAccountsRefs) db.modeAccounts,
                     if (modeCategoriesRefs) db.modeCategories,
                     if (modeTagsRefs) db.modeTags,
+                    if (modeCategoryLimitsRefs) db.modeCategoryLimits,
+                    if (modePlannedCostsRefs) db.modePlannedCosts,
+                    if (transactionTemplatesRefs) db.transactionTemplates,
                   ],
                   addJoins:
                       <
@@ -29350,6 +31199,32 @@ class $$ModesTableTableManager
                                         ._groupIdTable(db),
                                     referencedColumn: $$ModesTableReferences
                                         ._groupIdTable(db)
+                                        .id,
+                                  )
+                                  as T;
+                        }
+                        if (walletAccountId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.walletAccountId,
+                                    referencedTable: $$ModesTableReferences
+                                        ._walletAccountIdTable(db),
+                                    referencedColumn: $$ModesTableReferences
+                                        ._walletAccountIdTable(db)
+                                        .id,
+                                  )
+                                  as T;
+                        }
+                        if (walletSourceAccountId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.walletSourceAccountId,
+                                    referencedTable: $$ModesTableReferences
+                                        ._walletSourceAccountIdTable(db),
+                                    referencedColumn: $$ModesTableReferences
+                                        ._walletSourceAccountIdTable(db)
                                         .id,
                                   )
                                   as T;
@@ -29395,6 +31270,27 @@ class $$ModesTableTableManager
                                 table,
                                 p0,
                               ).transactionsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.modeId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (personEntriesRefs)
+                        await $_getPrefetchedData<
+                          ModeRow,
+                          $ModesTable,
+                          PersonEntryRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ModesTableReferences
+                              ._personEntriesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ModesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).personEntriesRefs,
                           referencedItemsForCurrentItem:
                               (item, referencedItems) => referencedItems.where(
                                 (e) => e.modeId == item.id,
@@ -29477,6 +31373,69 @@ class $$ModesTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (modeCategoryLimitsRefs)
+                        await $_getPrefetchedData<
+                          ModeRow,
+                          $ModesTable,
+                          ModeCategoryLimitRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ModesTableReferences
+                              ._modeCategoryLimitsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ModesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).modeCategoryLimitsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.modeId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (modePlannedCostsRefs)
+                        await $_getPrefetchedData<
+                          ModeRow,
+                          $ModesTable,
+                          ModePlannedCostRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ModesTableReferences
+                              ._modePlannedCostsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ModesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).modePlannedCostsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.modeId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (transactionTemplatesRefs)
+                        await $_getPrefetchedData<
+                          ModeRow,
+                          $ModesTable,
+                          TransactionTemplateRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ModesTableReferences
+                              ._transactionTemplatesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ModesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).transactionTemplatesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.modeId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -29499,12 +31458,18 @@ typedef $$ModesTableProcessedTableManager =
       ModeRow,
       PrefetchHooks Function({
         bool groupId,
+        bool walletAccountId,
+        bool walletSourceAccountId,
         bool categoriesRefs,
         bool transactionsRefs,
+        bool personEntriesRefs,
         bool tagsRefs,
         bool modeAccountsRefs,
         bool modeCategoriesRefs,
         bool modeTagsRefs,
+        bool modeCategoryLimitsRefs,
+        bool modePlannedCostsRefs,
+        bool transactionTemplatesRefs,
       })
     >;
 typedef $$CategoriesTableCreateCompanionBuilder =
@@ -29714,6 +31679,56 @@ final class $$CategoriesTableReferences
     ).filter((f) => f.categoryId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_modeCategoriesRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $ModeCategoryLimitsTable,
+    List<ModeCategoryLimitRow>
+  >
+  _modeCategoryLimitsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.modeCategoryLimits,
+        aliasName: $_aliasNameGenerator(
+          db.categories.id,
+          db.modeCategoryLimits.categoryId,
+        ),
+      );
+
+  $$ModeCategoryLimitsTableProcessedTableManager get modeCategoryLimitsRefs {
+    final manager = $$ModeCategoryLimitsTableTableManager(
+      $_db,
+      $_db.modeCategoryLimits,
+    ).filter((f) => f.categoryId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _modeCategoryLimitsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$ModePlannedCostsTable, List<ModePlannedCostRow>>
+  _modePlannedCostsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.modePlannedCosts,
+    aliasName: $_aliasNameGenerator(
+      db.categories.id,
+      db.modePlannedCosts.categoryId,
+    ),
+  );
+
+  $$ModePlannedCostsTableProcessedTableManager get modePlannedCostsRefs {
+    final manager = $$ModePlannedCostsTableTableManager(
+      $_db,
+      $_db.modePlannedCosts,
+    ).filter((f) => f.categoryId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _modePlannedCostsRefsTable($_db),
+    );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -30099,6 +32114,56 @@ class $$CategoriesTableFilterComposer
           }) => $$ModeCategoriesTableFilterComposer(
             $db: $db,
             $table: $db.modeCategories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> modeCategoryLimitsRefs(
+    Expression<bool> Function($$ModeCategoryLimitsTableFilterComposer f) f,
+  ) {
+    final $$ModeCategoryLimitsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.modeCategoryLimits,
+      getReferencedColumn: (t) => t.categoryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ModeCategoryLimitsTableFilterComposer(
+            $db: $db,
+            $table: $db.modeCategoryLimits,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> modePlannedCostsRefs(
+    Expression<bool> Function($$ModePlannedCostsTableFilterComposer f) f,
+  ) {
+    final $$ModePlannedCostsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.modePlannedCosts,
+      getReferencedColumn: (t) => t.categoryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ModePlannedCostsTableFilterComposer(
+            $db: $db,
+            $table: $db.modePlannedCosts,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -30567,6 +32632,57 @@ class $$CategoriesTableAnnotationComposer
     return f(composer);
   }
 
+  Expression<T> modeCategoryLimitsRefs<T extends Object>(
+    Expression<T> Function($$ModeCategoryLimitsTableAnnotationComposer a) f,
+  ) {
+    final $$ModeCategoryLimitsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.modeCategoryLimits,
+          getReferencedColumn: (t) => t.categoryId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ModeCategoryLimitsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.modeCategoryLimits,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<T> modePlannedCostsRefs<T extends Object>(
+    Expression<T> Function($$ModePlannedCostsTableAnnotationComposer a) f,
+  ) {
+    final $$ModePlannedCostsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.modePlannedCosts,
+      getReferencedColumn: (t) => t.categoryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ModePlannedCostsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.modePlannedCosts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
   Expression<T> transactionSplitsRefs<T extends Object>(
     Expression<T> Function($$TransactionSplitsTableAnnotationComposer a) f,
   ) {
@@ -30718,6 +32834,8 @@ class $$CategoriesTableTableManager
             bool merchantRulesRefs,
             bool budgetAlertsRefs,
             bool modeCategoriesRefs,
+            bool modeCategoryLimitsRefs,
+            bool modePlannedCostsRefs,
             bool transactionSplitsRefs,
             bool goalDetailsRefs,
             bool loanDetailsRefs,
@@ -30799,6 +32917,8 @@ class $$CategoriesTableTableManager
                 merchantRulesRefs = false,
                 budgetAlertsRefs = false,
                 modeCategoriesRefs = false,
+                modeCategoryLimitsRefs = false,
+                modePlannedCostsRefs = false,
                 transactionSplitsRefs = false,
                 goalDetailsRefs = false,
                 loanDetailsRefs = false,
@@ -30816,6 +32936,8 @@ class $$CategoriesTableTableManager
                     if (merchantRulesRefs) db.merchantRules,
                     if (budgetAlertsRefs) db.budgetAlerts,
                     if (modeCategoriesRefs) db.modeCategories,
+                    if (modeCategoryLimitsRefs) db.modeCategoryLimits,
+                    if (modePlannedCostsRefs) db.modePlannedCosts,
                     if (transactionSplitsRefs) db.transactionSplits,
                     if (goalDetailsRefs) db.goalDetails,
                     if (loanDetailsRefs) db.loanDetails,
@@ -31025,6 +33147,48 @@ class $$CategoriesTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (modeCategoryLimitsRefs)
+                        await $_getPrefetchedData<
+                          CategoryRow,
+                          $CategoriesTable,
+                          ModeCategoryLimitRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$CategoriesTableReferences
+                              ._modeCategoryLimitsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$CategoriesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).modeCategoryLimitsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.categoryId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (modePlannedCostsRefs)
+                        await $_getPrefetchedData<
+                          CategoryRow,
+                          $CategoriesTable,
+                          ModePlannedCostRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$CategoriesTableReferences
+                              ._modePlannedCostsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$CategoriesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).modePlannedCostsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.categoryId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                       if (transactionSplitsRefs)
                         await $_getPrefetchedData<
                           CategoryRow,
@@ -31160,6 +33324,8 @@ typedef $$CategoriesTableProcessedTableManager =
         bool merchantRulesRefs,
         bool budgetAlertsRefs,
         bool modeCategoriesRefs,
+        bool modeCategoryLimitsRefs,
+        bool modePlannedCostsRefs,
         bool transactionSplitsRefs,
         bool goalDetailsRefs,
         bool loanDetailsRefs,
@@ -33477,6 +35643,29 @@ final class $$TransactionsTableReferences
     );
   }
 
+  static MultiTypedResultKey<$ModePlannedCostsTable, List<ModePlannedCostRow>>
+  _modePlannedCostsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.modePlannedCosts,
+    aliasName: $_aliasNameGenerator(
+      db.transactions.id,
+      db.modePlannedCosts.transactionId,
+    ),
+  );
+
+  $$ModePlannedCostsTableProcessedTableManager get modePlannedCostsRefs {
+    final manager = $$ModePlannedCostsTableTableManager(
+      $_db,
+      $_db.modePlannedCosts,
+    ).filter((f) => f.transactionId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _modePlannedCostsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
   static MultiTypedResultKey<$TransactionSplitsTable, List<TransactionSplitRow>>
   _transactionSplitsRefsTable(_$AppDatabase db) =>
       MultiTypedResultKey.fromTable(
@@ -33887,6 +36076,31 @@ class $$TransactionsTableFilterComposer
           }) => $$TransactionTagsTableFilterComposer(
             $db: $db,
             $table: $db.transactionTags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> modePlannedCostsRefs(
+    Expression<bool> Function($$ModePlannedCostsTableFilterComposer f) f,
+  ) {
+    final $$ModePlannedCostsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.modePlannedCosts,
+      getReferencedColumn: (t) => t.transactionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ModePlannedCostsTableFilterComposer(
+            $db: $db,
+            $table: $db.modePlannedCosts,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -34558,6 +36772,31 @@ class $$TransactionsTableAnnotationComposer
     return f(composer);
   }
 
+  Expression<T> modePlannedCostsRefs<T extends Object>(
+    Expression<T> Function($$ModePlannedCostsTableAnnotationComposer a) f,
+  ) {
+    final $$ModePlannedCostsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.modePlannedCosts,
+      getReferencedColumn: (t) => t.transactionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ModePlannedCostsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.modePlannedCosts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
   Expression<T> transactionSplitsRefs<T extends Object>(
     Expression<T> Function($$TransactionSplitsTableAnnotationComposer a) f,
   ) {
@@ -34611,6 +36850,7 @@ class $$TransactionsTableTableManager
             bool remindersRefs,
             bool pendingTxnsRefs,
             bool transactionTagsRefs,
+            bool modePlannedCostsRefs,
             bool transactionSplitsRefs,
           })
         > {
@@ -34759,6 +36999,7 @@ class $$TransactionsTableTableManager
                 remindersRefs = false,
                 pendingTxnsRefs = false,
                 transactionTagsRefs = false,
+                modePlannedCostsRefs = false,
                 transactionSplitsRefs = false,
               }) {
                 return PrefetchHooks(
@@ -34769,6 +37010,7 @@ class $$TransactionsTableTableManager
                     if (remindersRefs) db.reminders,
                     if (pendingTxnsRefs) db.pendingTxns,
                     if (transactionTagsRefs) db.transactionTags,
+                    if (modePlannedCostsRefs) db.modePlannedCosts,
                     if (transactionSplitsRefs) db.transactionSplits,
                   ],
                   addJoins:
@@ -35002,6 +37244,27 @@ class $$TransactionsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (modePlannedCostsRefs)
+                        await $_getPrefetchedData<
+                          TransactionRow,
+                          $TransactionsTable,
+                          ModePlannedCostRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$TransactionsTableReferences
+                              ._modePlannedCostsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$TransactionsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).modePlannedCostsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.transactionId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                       if (transactionSplitsRefs)
                         await $_getPrefetchedData<
                           TransactionRow,
@@ -35056,6 +37319,7 @@ typedef $$TransactionsTableProcessedTableManager =
         bool remindersRefs,
         bool pendingTxnsRefs,
         bool transactionTagsRefs,
+        bool modePlannedCostsRefs,
         bool transactionSplitsRefs,
       })
     >;
@@ -35604,6 +37868,7 @@ typedef $$PersonEntriesTableCreateCompanionBuilder =
       Value<int?> accountId,
       Value<int?> transactionId,
       Value<int?> categoryId,
+      Value<int?> modeId,
       Value<DateTime> createdAt,
     });
 typedef $$PersonEntriesTableUpdateCompanionBuilder =
@@ -35618,6 +37883,7 @@ typedef $$PersonEntriesTableUpdateCompanionBuilder =
       Value<int?> accountId,
       Value<int?> transactionId,
       Value<int?> categoryId,
+      Value<int?> modeId,
       Value<DateTime> createdAt,
     });
 
@@ -35702,6 +37968,24 @@ final class $$PersonEntriesTableReferences
       $_db.categories,
     ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_categoryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $ModesTable _modeIdTable(_$AppDatabase db) => db.modes.createAlias(
+    $_aliasNameGenerator(db.personEntries.modeId, db.modes.id),
+  );
+
+  $$ModesTableProcessedTableManager? get modeId {
+    final $_column = $_itemColumn<int>('mode_id');
+    if ($_column == null) return null;
+    final manager = $$ModesTableTableManager(
+      $_db,
+      $_db.modes,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_modeIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -35897,6 +38181,29 @@ class $$PersonEntriesTableFilterComposer
     return composer;
   }
 
+  $$ModesTableFilterComposer get modeId {
+    final $$ModesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.modeId,
+      referencedTable: $db.modes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ModesTableFilterComposer(
+            $db: $db,
+            $table: $db.modes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
   Expression<bool> groupExpenseSharesRefs(
     Expression<bool> Function($$GroupExpenseSharesTableFilterComposer f) f,
   ) {
@@ -36083,6 +38390,29 @@ class $$PersonEntriesTableOrderingComposer
     );
     return composer;
   }
+
+  $$ModesTableOrderingComposer get modeId {
+    final $$ModesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.modeId,
+      referencedTable: $db.modes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ModesTableOrderingComposer(
+            $db: $db,
+            $table: $db.modes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$PersonEntriesTableAnnotationComposer
@@ -36207,6 +38537,29 @@ class $$PersonEntriesTableAnnotationComposer
     return composer;
   }
 
+  $$ModesTableAnnotationComposer get modeId {
+    final $$ModesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.modeId,
+      referencedTable: $db.modes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ModesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.modes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
   Expression<T> groupExpenseSharesRefs<T extends Object>(
     Expression<T> Function($$GroupExpenseSharesTableAnnotationComposer a) f,
   ) {
@@ -36277,6 +38630,7 @@ class $$PersonEntriesTableTableManager
             bool accountId,
             bool transactionId,
             bool categoryId,
+            bool modeId,
             bool groupExpenseSharesRefs,
             bool personEntryTagsRefs,
           })
@@ -36304,6 +38658,7 @@ class $$PersonEntriesTableTableManager
                 Value<int?> accountId = const Value.absent(),
                 Value<int?> transactionId = const Value.absent(),
                 Value<int?> categoryId = const Value.absent(),
+                Value<int?> modeId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => PersonEntriesCompanion(
                 id: id,
@@ -36316,6 +38671,7 @@ class $$PersonEntriesTableTableManager
                 accountId: accountId,
                 transactionId: transactionId,
                 categoryId: categoryId,
+                modeId: modeId,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -36330,6 +38686,7 @@ class $$PersonEntriesTableTableManager
                 Value<int?> accountId = const Value.absent(),
                 Value<int?> transactionId = const Value.absent(),
                 Value<int?> categoryId = const Value.absent(),
+                Value<int?> modeId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => PersonEntriesCompanion.insert(
                 id: id,
@@ -36342,6 +38699,7 @@ class $$PersonEntriesTableTableManager
                 accountId: accountId,
                 transactionId: transactionId,
                 categoryId: categoryId,
+                modeId: modeId,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0
@@ -36358,6 +38716,7 @@ class $$PersonEntriesTableTableManager
                 accountId = false,
                 transactionId = false,
                 categoryId = false,
+                modeId = false,
                 groupExpenseSharesRefs = false,
                 personEntryTagsRefs = false,
               }) {
@@ -36443,6 +38802,21 @@ class $$PersonEntriesTableTableManager
                                   )
                                   as T;
                         }
+                        if (modeId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.modeId,
+                                    referencedTable:
+                                        $$PersonEntriesTableReferences
+                                            ._modeIdTable(db),
+                                    referencedColumn:
+                                        $$PersonEntriesTableReferences
+                                            ._modeIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
 
                         return state;
                       },
@@ -36515,6 +38889,7 @@ typedef $$PersonEntriesTableProcessedTableManager =
         bool accountId,
         bool transactionId,
         bool categoryId,
+        bool modeId,
         bool groupExpenseSharesRefs,
         bool personEntryTagsRefs,
       })
@@ -44868,12 +47243,14 @@ typedef $$ModeAccountsTableCreateCompanionBuilder =
     ModeAccountsCompanion Function({
       required int modeId,
       required int accountId,
+      Value<Money?> allocation,
       Value<int> rowid,
     });
 typedef $$ModeAccountsTableUpdateCompanionBuilder =
     ModeAccountsCompanion Function({
       Value<int> modeId,
       Value<int> accountId,
+      Value<Money?> allocation,
       Value<int> rowid,
     });
 
@@ -44928,6 +47305,12 @@ class $$ModeAccountsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnWithTypeConverterFilters<Money?, Money, int> get allocation =>
+      $composableBuilder(
+        column: $table.allocation,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
   $$ModesTableFilterComposer get modeId {
     final $$ModesTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -44984,6 +47367,11 @@ class $$ModeAccountsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnOrderings<int> get allocation => $composableBuilder(
+    column: $table.allocation,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$ModesTableOrderingComposer get modeId {
     final $$ModesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -45040,6 +47428,12 @@ class $$ModeAccountsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  GeneratedColumnWithTypeConverter<Money?, int> get allocation =>
+      $composableBuilder(
+        column: $table.allocation,
+        builder: (column) => column,
+      );
+
   $$ModesTableAnnotationComposer get modeId {
     final $$ModesTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -45117,20 +47511,24 @@ class $$ModeAccountsTableTableManager
               ({
                 Value<int> modeId = const Value.absent(),
                 Value<int> accountId = const Value.absent(),
+                Value<Money?> allocation = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ModeAccountsCompanion(
                 modeId: modeId,
                 accountId: accountId,
+                allocation: allocation,
                 rowid: rowid,
               ),
           createCompanionCallback:
               ({
                 required int modeId,
                 required int accountId,
+                Value<Money?> allocation = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ModeAccountsCompanion.insert(
                 modeId: modeId,
                 accountId: accountId,
+                allocation: allocation,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -45914,6 +48312,948 @@ typedef $$ModeTagsTableProcessedTableManager =
       (ModeTagRow, $$ModeTagsTableReferences),
       ModeTagRow,
       PrefetchHooks Function({bool modeId, bool tagId})
+    >;
+typedef $$ModeCategoryLimitsTableCreateCompanionBuilder =
+    ModeCategoryLimitsCompanion Function({
+      required int modeId,
+      required int categoryId,
+      required Money amount,
+      Value<int> rowid,
+    });
+typedef $$ModeCategoryLimitsTableUpdateCompanionBuilder =
+    ModeCategoryLimitsCompanion Function({
+      Value<int> modeId,
+      Value<int> categoryId,
+      Value<Money> amount,
+      Value<int> rowid,
+    });
+
+final class $$ModeCategoryLimitsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $ModeCategoryLimitsTable,
+          ModeCategoryLimitRow
+        > {
+  $$ModeCategoryLimitsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $ModesTable _modeIdTable(_$AppDatabase db) => db.modes.createAlias(
+    $_aliasNameGenerator(db.modeCategoryLimits.modeId, db.modes.id),
+  );
+
+  $$ModesTableProcessedTableManager get modeId {
+    final $_column = $_itemColumn<int>('mode_id')!;
+
+    final manager = $$ModesTableTableManager(
+      $_db,
+      $_db.modes,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_modeIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $CategoriesTable _categoryIdTable(_$AppDatabase db) =>
+      db.categories.createAlias(
+        $_aliasNameGenerator(
+          db.modeCategoryLimits.categoryId,
+          db.categories.id,
+        ),
+      );
+
+  $$CategoriesTableProcessedTableManager get categoryId {
+    final $_column = $_itemColumn<int>('category_id')!;
+
+    final manager = $$CategoriesTableTableManager(
+      $_db,
+      $_db.categories,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_categoryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$ModeCategoryLimitsTableFilterComposer
+    extends Composer<_$AppDatabase, $ModeCategoryLimitsTable> {
+  $$ModeCategoryLimitsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnWithTypeConverterFilters<Money, Money, int> get amount =>
+      $composableBuilder(
+        column: $table.amount,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  $$ModesTableFilterComposer get modeId {
+    final $$ModesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.modeId,
+      referencedTable: $db.modes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ModesTableFilterComposer(
+            $db: $db,
+            $table: $db.modes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CategoriesTableFilterComposer get categoryId {
+    final $$CategoriesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableFilterComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ModeCategoryLimitsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ModeCategoryLimitsTable> {
+  $$ModeCategoryLimitsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ModesTableOrderingComposer get modeId {
+    final $$ModesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.modeId,
+      referencedTable: $db.modes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ModesTableOrderingComposer(
+            $db: $db,
+            $table: $db.modes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CategoriesTableOrderingComposer get categoryId {
+    final $$CategoriesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableOrderingComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ModeCategoryLimitsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ModeCategoryLimitsTable> {
+  $$ModeCategoryLimitsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumnWithTypeConverter<Money, int> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  $$ModesTableAnnotationComposer get modeId {
+    final $$ModesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.modeId,
+      referencedTable: $db.modes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ModesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.modes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CategoriesTableAnnotationComposer get categoryId {
+    final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ModeCategoryLimitsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ModeCategoryLimitsTable,
+          ModeCategoryLimitRow,
+          $$ModeCategoryLimitsTableFilterComposer,
+          $$ModeCategoryLimitsTableOrderingComposer,
+          $$ModeCategoryLimitsTableAnnotationComposer,
+          $$ModeCategoryLimitsTableCreateCompanionBuilder,
+          $$ModeCategoryLimitsTableUpdateCompanionBuilder,
+          (ModeCategoryLimitRow, $$ModeCategoryLimitsTableReferences),
+          ModeCategoryLimitRow,
+          PrefetchHooks Function({bool modeId, bool categoryId})
+        > {
+  $$ModeCategoryLimitsTableTableManager(
+    _$AppDatabase db,
+    $ModeCategoryLimitsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ModeCategoryLimitsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ModeCategoryLimitsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ModeCategoryLimitsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> modeId = const Value.absent(),
+                Value<int> categoryId = const Value.absent(),
+                Value<Money> amount = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ModeCategoryLimitsCompanion(
+                modeId: modeId,
+                categoryId: categoryId,
+                amount: amount,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required int modeId,
+                required int categoryId,
+                required Money amount,
+                Value<int> rowid = const Value.absent(),
+              }) => ModeCategoryLimitsCompanion.insert(
+                modeId: modeId,
+                categoryId: categoryId,
+                amount: amount,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$ModeCategoryLimitsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({modeId = false, categoryId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (modeId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.modeId,
+                                referencedTable:
+                                    $$ModeCategoryLimitsTableReferences
+                                        ._modeIdTable(db),
+                                referencedColumn:
+                                    $$ModeCategoryLimitsTableReferences
+                                        ._modeIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+                    if (categoryId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.categoryId,
+                                referencedTable:
+                                    $$ModeCategoryLimitsTableReferences
+                                        ._categoryIdTable(db),
+                                referencedColumn:
+                                    $$ModeCategoryLimitsTableReferences
+                                        ._categoryIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$ModeCategoryLimitsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ModeCategoryLimitsTable,
+      ModeCategoryLimitRow,
+      $$ModeCategoryLimitsTableFilterComposer,
+      $$ModeCategoryLimitsTableOrderingComposer,
+      $$ModeCategoryLimitsTableAnnotationComposer,
+      $$ModeCategoryLimitsTableCreateCompanionBuilder,
+      $$ModeCategoryLimitsTableUpdateCompanionBuilder,
+      (ModeCategoryLimitRow, $$ModeCategoryLimitsTableReferences),
+      ModeCategoryLimitRow,
+      PrefetchHooks Function({bool modeId, bool categoryId})
+    >;
+typedef $$ModePlannedCostsTableCreateCompanionBuilder =
+    ModePlannedCostsCompanion Function({
+      Value<int> id,
+      required int modeId,
+      required String name,
+      required Money amount,
+      Value<int?> categoryId,
+      Value<int?> transactionId,
+      Value<int> sortOrder,
+    });
+typedef $$ModePlannedCostsTableUpdateCompanionBuilder =
+    ModePlannedCostsCompanion Function({
+      Value<int> id,
+      Value<int> modeId,
+      Value<String> name,
+      Value<Money> amount,
+      Value<int?> categoryId,
+      Value<int?> transactionId,
+      Value<int> sortOrder,
+    });
+
+final class $$ModePlannedCostsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $ModePlannedCostsTable,
+          ModePlannedCostRow
+        > {
+  $$ModePlannedCostsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $ModesTable _modeIdTable(_$AppDatabase db) => db.modes.createAlias(
+    $_aliasNameGenerator(db.modePlannedCosts.modeId, db.modes.id),
+  );
+
+  $$ModesTableProcessedTableManager get modeId {
+    final $_column = $_itemColumn<int>('mode_id')!;
+
+    final manager = $$ModesTableTableManager(
+      $_db,
+      $_db.modes,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_modeIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $CategoriesTable _categoryIdTable(_$AppDatabase db) =>
+      db.categories.createAlias(
+        $_aliasNameGenerator(db.modePlannedCosts.categoryId, db.categories.id),
+      );
+
+  $$CategoriesTableProcessedTableManager? get categoryId {
+    final $_column = $_itemColumn<int>('category_id');
+    if ($_column == null) return null;
+    final manager = $$CategoriesTableTableManager(
+      $_db,
+      $_db.categories,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_categoryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $TransactionsTable _transactionIdTable(_$AppDatabase db) =>
+      db.transactions.createAlias(
+        $_aliasNameGenerator(
+          db.modePlannedCosts.transactionId,
+          db.transactions.id,
+        ),
+      );
+
+  $$TransactionsTableProcessedTableManager? get transactionId {
+    final $_column = $_itemColumn<int>('transaction_id');
+    if ($_column == null) return null;
+    final manager = $$TransactionsTableTableManager(
+      $_db,
+      $_db.transactions,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_transactionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$ModePlannedCostsTableFilterComposer
+    extends Composer<_$AppDatabase, $ModePlannedCostsTable> {
+  $$ModePlannedCostsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<Money, Money, int> get amount =>
+      $composableBuilder(
+        column: $table.amount,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$ModesTableFilterComposer get modeId {
+    final $$ModesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.modeId,
+      referencedTable: $db.modes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ModesTableFilterComposer(
+            $db: $db,
+            $table: $db.modes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CategoriesTableFilterComposer get categoryId {
+    final $$CategoriesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableFilterComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TransactionsTableFilterComposer get transactionId {
+    final $$TransactionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.transactionId,
+      referencedTable: $db.transactions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TransactionsTableFilterComposer(
+            $db: $db,
+            $table: $db.transactions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ModePlannedCostsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ModePlannedCostsTable> {
+  $$ModePlannedCostsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ModesTableOrderingComposer get modeId {
+    final $$ModesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.modeId,
+      referencedTable: $db.modes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ModesTableOrderingComposer(
+            $db: $db,
+            $table: $db.modes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CategoriesTableOrderingComposer get categoryId {
+    final $$CategoriesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableOrderingComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TransactionsTableOrderingComposer get transactionId {
+    final $$TransactionsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.transactionId,
+      referencedTable: $db.transactions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TransactionsTableOrderingComposer(
+            $db: $db,
+            $table: $db.transactions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ModePlannedCostsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ModePlannedCostsTable> {
+  $$ModePlannedCostsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<Money, int> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  $$ModesTableAnnotationComposer get modeId {
+    final $$ModesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.modeId,
+      referencedTable: $db.modes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ModesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.modes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CategoriesTableAnnotationComposer get categoryId {
+    final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TransactionsTableAnnotationComposer get transactionId {
+    final $$TransactionsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.transactionId,
+      referencedTable: $db.transactions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TransactionsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.transactions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ModePlannedCostsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ModePlannedCostsTable,
+          ModePlannedCostRow,
+          $$ModePlannedCostsTableFilterComposer,
+          $$ModePlannedCostsTableOrderingComposer,
+          $$ModePlannedCostsTableAnnotationComposer,
+          $$ModePlannedCostsTableCreateCompanionBuilder,
+          $$ModePlannedCostsTableUpdateCompanionBuilder,
+          (ModePlannedCostRow, $$ModePlannedCostsTableReferences),
+          ModePlannedCostRow,
+          PrefetchHooks Function({
+            bool modeId,
+            bool categoryId,
+            bool transactionId,
+          })
+        > {
+  $$ModePlannedCostsTableTableManager(
+    _$AppDatabase db,
+    $ModePlannedCostsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ModePlannedCostsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ModePlannedCostsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ModePlannedCostsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> modeId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<Money> amount = const Value.absent(),
+                Value<int?> categoryId = const Value.absent(),
+                Value<int?> transactionId = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+              }) => ModePlannedCostsCompanion(
+                id: id,
+                modeId: modeId,
+                name: name,
+                amount: amount,
+                categoryId: categoryId,
+                transactionId: transactionId,
+                sortOrder: sortOrder,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int modeId,
+                required String name,
+                required Money amount,
+                Value<int?> categoryId = const Value.absent(),
+                Value<int?> transactionId = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+              }) => ModePlannedCostsCompanion.insert(
+                id: id,
+                modeId: modeId,
+                name: name,
+                amount: amount,
+                categoryId: categoryId,
+                transactionId: transactionId,
+                sortOrder: sortOrder,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$ModePlannedCostsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({modeId = false, categoryId = false, transactionId = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (modeId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.modeId,
+                                    referencedTable:
+                                        $$ModePlannedCostsTableReferences
+                                            ._modeIdTable(db),
+                                    referencedColumn:
+                                        $$ModePlannedCostsTableReferences
+                                            ._modeIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (categoryId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.categoryId,
+                                    referencedTable:
+                                        $$ModePlannedCostsTableReferences
+                                            ._categoryIdTable(db),
+                                    referencedColumn:
+                                        $$ModePlannedCostsTableReferences
+                                            ._categoryIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (transactionId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.transactionId,
+                                    referencedTable:
+                                        $$ModePlannedCostsTableReferences
+                                            ._transactionIdTable(db),
+                                    referencedColumn:
+                                        $$ModePlannedCostsTableReferences
+                                            ._transactionIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$ModePlannedCostsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ModePlannedCostsTable,
+      ModePlannedCostRow,
+      $$ModePlannedCostsTableFilterComposer,
+      $$ModePlannedCostsTableOrderingComposer,
+      $$ModePlannedCostsTableAnnotationComposer,
+      $$ModePlannedCostsTableCreateCompanionBuilder,
+      $$ModePlannedCostsTableUpdateCompanionBuilder,
+      (ModePlannedCostRow, $$ModePlannedCostsTableReferences),
+      ModePlannedCostRow,
+      PrefetchHooks Function({bool modeId, bool categoryId, bool transactionId})
     >;
 typedef $$TagGroupsTableCreateCompanionBuilder =
     TagGroupsCompanion Function({
@@ -51053,6 +54393,7 @@ typedef $$TransactionTemplatesTableCreateCompanionBuilder =
       Value<int?> categoryId,
       Value<String?> note,
       Value<String?> payee,
+      Value<int?> modeId,
       Value<DateTime> createdAt,
     });
 typedef $$TransactionTemplatesTableUpdateCompanionBuilder =
@@ -51066,6 +54407,7 @@ typedef $$TransactionTemplatesTableUpdateCompanionBuilder =
       Value<int?> categoryId,
       Value<String?> note,
       Value<String?> payee,
+      Value<int?> modeId,
       Value<DateTime> createdAt,
     });
 
@@ -51139,6 +54481,24 @@ final class $$TransactionTemplatesTableReferences
       $_db.categories,
     ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_categoryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $ModesTable _modeIdTable(_$AppDatabase db) => db.modes.createAlias(
+    $_aliasNameGenerator(db.transactionTemplates.modeId, db.modes.id),
+  );
+
+  $$ModesTableProcessedTableManager? get modeId {
+    final $_column = $_itemColumn<int>('mode_id');
+    if ($_column == null) return null;
+    final manager = $$ModesTableTableManager(
+      $_db,
+      $_db.modes,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_modeIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -51289,6 +54649,29 @@ class $$TransactionTemplatesTableFilterComposer
     return composer;
   }
 
+  $$ModesTableFilterComposer get modeId {
+    final $$ModesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.modeId,
+      referencedTable: $db.modes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ModesTableFilterComposer(
+            $db: $db,
+            $table: $db.modes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
   Expression<bool> transactionTemplateTagsRefs(
     Expression<bool> Function($$TransactionTemplateTagsTableFilterComposer f) f,
   ) {
@@ -51428,6 +54811,29 @@ class $$TransactionTemplatesTableOrderingComposer
     );
     return composer;
   }
+
+  $$ModesTableOrderingComposer get modeId {
+    final $$ModesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.modeId,
+      referencedTable: $db.modes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ModesTableOrderingComposer(
+            $db: $db,
+            $table: $db.modes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$TransactionTemplatesTableAnnotationComposer
@@ -51529,6 +54935,29 @@ class $$TransactionTemplatesTableAnnotationComposer
     return composer;
   }
 
+  $$ModesTableAnnotationComposer get modeId {
+    final $$ModesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.modeId,
+      referencedTable: $db.modes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ModesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.modes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
   Expression<T> transactionTemplateTagsRefs<T extends Object>(
     Expression<T> Function($$TransactionTemplateTagsTableAnnotationComposer a)
     f,
@@ -51574,6 +55003,7 @@ class $$TransactionTemplatesTableTableManager
             bool accountId,
             bool toAccountId,
             bool categoryId,
+            bool modeId,
             bool transactionTemplateTagsRefs,
           })
         > {
@@ -51607,6 +55037,7 @@ class $$TransactionTemplatesTableTableManager
                 Value<int?> categoryId = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<String?> payee = const Value.absent(),
+                Value<int?> modeId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => TransactionTemplatesCompanion(
                 id: id,
@@ -51618,6 +55049,7 @@ class $$TransactionTemplatesTableTableManager
                 categoryId: categoryId,
                 note: note,
                 payee: payee,
+                modeId: modeId,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -51631,6 +55063,7 @@ class $$TransactionTemplatesTableTableManager
                 Value<int?> categoryId = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<String?> payee = const Value.absent(),
+                Value<int?> modeId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => TransactionTemplatesCompanion.insert(
                 id: id,
@@ -51642,6 +55075,7 @@ class $$TransactionTemplatesTableTableManager
                 categoryId: categoryId,
                 note: note,
                 payee: payee,
+                modeId: modeId,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0
@@ -51657,6 +55091,7 @@ class $$TransactionTemplatesTableTableManager
                 accountId = false,
                 toAccountId = false,
                 categoryId = false,
+                modeId = false,
                 transactionTemplateTagsRefs = false,
               }) {
                 return PrefetchHooks(
@@ -51725,6 +55160,21 @@ class $$TransactionTemplatesTableTableManager
                                   )
                                   as T;
                         }
+                        if (modeId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.modeId,
+                                    referencedTable:
+                                        $$TransactionTemplatesTableReferences
+                                            ._modeIdTable(db),
+                                    referencedColumn:
+                                        $$TransactionTemplatesTableReferences
+                                            ._modeIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
 
                         return state;
                       },
@@ -51775,6 +55225,7 @@ typedef $$TransactionTemplatesTableProcessedTableManager =
         bool accountId,
         bool toAccountId,
         bool categoryId,
+        bool modeId,
         bool transactionTemplateTagsRefs,
       })
     >;
@@ -52211,6 +55662,10 @@ class $AppDatabaseManager {
       $$ModeCategoriesTableTableManager(_db, _db.modeCategories);
   $$ModeTagsTableTableManager get modeTags =>
       $$ModeTagsTableTableManager(_db, _db.modeTags);
+  $$ModeCategoryLimitsTableTableManager get modeCategoryLimits =>
+      $$ModeCategoryLimitsTableTableManager(_db, _db.modeCategoryLimits);
+  $$ModePlannedCostsTableTableManager get modePlannedCosts =>
+      $$ModePlannedCostsTableTableManager(_db, _db.modePlannedCosts);
   $$TagGroupsTableTableManager get tagGroups =>
       $$TagGroupsTableTableManager(_db, _db.tagGroups);
   $$TagGroupTagsTableTableManager get tagGroupTags =>

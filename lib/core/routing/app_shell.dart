@@ -160,11 +160,20 @@ class AppShell extends ConsumerWidget {
     final (leftId, rightId) = _slotIds(ref);
     final left = _catalog[leftId]!;
     final right = _catalog[rightId]!;
+    // A focused mode's home is its first tab, under its name.
+    final home = ref.watch(focusedModeProvider) == null
+        ? _dashboard
+        : _TabSpec(
+            0,
+            Icons.luggage_outlined,
+            Icons.luggage_rounded,
+            ref.watch(focusedModeProvider)!.name,
+          );
 
     final add = _AddButton(
       holdEnabled: ref.watch(holdMenuEnabledProvider),
       actions: ref.watch(holdMenuActionsProvider),
-      hasTemplates: ref.watch(hasTransactionTemplatesProvider),
+      hasTemplates: ref.watch(shownTemplatesProvider).isNotEmpty,
       glass: glass,
     );
 
@@ -236,7 +245,7 @@ class AppShell extends ConsumerWidget {
             ref,
             glass
                 ? _LiquidTabBar(
-                    tabs: [_dashboard, left, right, _more],
+                    tabs: [home, left, right, _more],
                     currentBranch: navigationShell.currentIndex,
                     showLabels: ref.watch(showBottomNavLabelsProvider),
                     onSelect: (branch) => _goBranch(ref, branch),
@@ -252,7 +261,7 @@ class AppShell extends ConsumerWidget {
                         height: 68,
                         child: Row(
                           children: [
-                            _navItem(context, ref, _dashboard),
+                            _navItem(context, ref, home),
                             _navItem(context, ref, left),
                             add,
                             _navItem(context, ref, right),
@@ -300,6 +309,8 @@ class AppShell extends ConsumerWidget {
               const SizedBox(height: 4),
               Text(
                 tab.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: color,
                   fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
@@ -1240,6 +1251,16 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
     'Payees', // 8
   ];
 
+  /// The tab's title — the Dashboard tab takes the name of a mode (a trip)
+  /// that's the focus, since it's that mode's home then.
+  static String titleFor(WidgetRef ref, int index) {
+    if (index == 0) {
+      final mode = ref.watch(focusedModeProvider);
+      if (mode != null) return mode.name;
+    }
+    return _titles[index];
+  }
+
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
@@ -1260,7 +1281,12 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
           child: child,
         ),
       ),
-      child: Text(_titles[currentIndex], key: ValueKey(currentIndex)),
+      child: Text(
+        titleFor(ref, currentIndex),
+        key: ValueKey(titleFor(ref, currentIndex)),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
     );
 
     return DecoratedBox(

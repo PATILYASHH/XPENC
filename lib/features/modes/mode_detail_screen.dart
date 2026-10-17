@@ -60,9 +60,11 @@ class ModeDetailScreen extends ConsumerWidget {
           ),
           PopupMenuButton<String>(
             onSelected: (v) {
+              if (v == 'summary') context.push('/mode/${mode.id}/summary');
               if (v == 'delete') _delete(context, ref, mode);
             },
             itemBuilder: (_) => const [
+              PopupMenuItem(value: 'summary', child: Text('Summary & share')),
               PopupMenuItem(value: 'delete', child: Text('Delete mode')),
             ],
           ),
@@ -153,6 +155,13 @@ class ModeDetailScreen extends ConsumerWidget {
                 ),
                 onTap: () => context.push('/group/${group.id}'),
               ),
+            ),
+          ],
+          if (ref.watch(modePlannedCostsProvider(mode.id)).isNotEmpty) ...[
+            modeSectionLabel(theme, 'PLANNED COSTS'),
+            ModePlannedCostsCard(
+              mode: mode,
+              costs: ref.watch(modePlannedCostsProvider(mode.id)),
             ),
           ],
           modeSectionLabel(theme, 'TRANSACTIONS'),
@@ -248,18 +257,7 @@ class _Header extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: 8),
-            if (mode.status == ModeStatus.active)
-              OutlinedButton(
-                onPressed: () => endModeWithConfirm(context, ref, mode),
-                child: const Text('End'),
-              )
-            else
-              FilledButton(
-                onPressed: () => startModeWithConfirm(context, ref, mode),
-                child: Text(
-                  mode.status == ModeStatus.ended ? 'Restart' : 'Start',
-                ),
-              ),
+            ModeSwitch(mode),
           ],
         ),
       ),

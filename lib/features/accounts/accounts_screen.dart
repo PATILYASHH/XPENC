@@ -12,11 +12,13 @@ import '../../core/widgets/module_shortcuts.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/statement_range_picker.dart';
 import '../../data/database.dart';
+import '../../data/mode_providers.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'add_account_sheet.dart';
 import 'edit_account_sheet.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../modes/mode_sandbox_views.dart';
 
 /// Total money + per-account balances, grouped Cash · Bank · Cards.
 ///
@@ -30,6 +32,12 @@ class AccountsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // A mode (a trip) that's the focus shows only its own accounts.
+    final mode = ref.watch(focusedModeProvider);
+    if (mode != null &&
+        ref.watch(modeAllocationsProvider(mode.id)).isNotEmpty) {
+      return ModeAccountsView(mode: mode, embedded: embedded);
+    }
     final accountsAsync = ref.watch(accountsProvider);
     final accountMap = ref.watch(accountMapProvider);
 

@@ -495,6 +495,28 @@ class NotificationService {
 
   /// One-shot confirmation after [AppDatabase.runDueRecurringRules] posts
   /// something — nothing about "auto" should ever land in the ledger silently.
+  /// The ON mode's (trip's) budget and category limits at 80% and 100% —
+  /// each alert once per mode (see `Modes.alerts`). Run whenever the ledger
+  /// changes, like [checkBudgets].
+  Future<void> checkModeAlerts() async {
+    if (!_ready) return;
+    final settings = await _db.getSettings();
+    final modeId = settings.activeModeId;
+    if (modeId == null || !settings.notificationsEnabled) return;
+    final sent = <String>[];
+    for (final (i, a) in (await _db.dueModeAlerts(modeId)).indexed) {
+      if (await _show(
+        800000 + modeId * 100 + i,
+        a.title,
+        a.body,
+        _budgetChannel,
+      )) {
+        sent.add(a.key);
+      }
+    }
+    if (sent.isNotEmpty) await _db.markModeAlerts(modeId, sent);
+  }
+
   Future<void> notifyAutoPosted(int count) async {
     if (count <= 0) return;
     final settings = await _db.getSettings();

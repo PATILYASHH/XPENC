@@ -65,6 +65,29 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
   final List<({String name, String iconKey})> _newCategories = [];
   final List<({String name, bool auto})> _newTags = [];
 
+  final _daily = TextEditingController();
+  final _perSpend = TextEditingController();
+
+  /// What each picked account gives the mode — see `ModeAccounts.allocation`.
+  final Map<int, TextEditingController> _allocations = {};
+
+  /// Category caps, by category id.
+  final Map<int, TextEditingController> _limits = {};
+
+  /// Who's on the trip — the mode's group members.
+  Set<int> _people = {};
+
+  bool _wallet = false;
+  int? _walletSourceId;
+  final _walletAmount = TextEditingController();
+
+  /// The wallet once the mode has made it — its setup is fixed from then.
+  int? _walletMade;
+
+  /// Planned costs as edited; saved ones keep their id.
+  final List<_PlannedDraft> _planned = [];
+  final Set<int> _removedPlanned = {};
+
   bool _loaded = false;
   bool _saving = false;
 
@@ -102,6 +125,16 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
       )..where((l) => l.modeId.equals(id))).get())
         l.categoryId,
     };
+    final accountRows = await (db.select(
+      db.modeAccounts,
+    )..where((l) => l.modeId.equals(id))).get();
+    final limitRows = await (db.select(
+      db.modeCategoryLimits,
+    )..where((l) => l.modeId.equals(id))).get();
+    final plannedRows = await (db.select(
+      db.modePlannedCosts,
+    )..where((c) => c.modeId.equals(id))).get();
+    final people = await db.modePeopleIds(id);
     if (!mounted) return;
     if (mode == null) {
       Navigator.of(context).pop();
@@ -128,14 +161,75 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
       _accountIds = accounts;
       _categoryIds = cats;
       _tagIds = tags;
+      for (final r in accountRows) {
+        if (r.allocation != null) {
+          _allocCtrl(r.accountId).text = _moneyText(r.allocation);
+        }
+      }
+      for (final r in limitRows) {
+        _limits[r.categoryId] = TextEditingController(
+          text: _moneyText(r.amount),
+        );
+      }
+      _daily.text = _moneyText(mode.dailyLimit);
+      _perSpend.text = _moneyText(mode.spendLimit);
+      _people = people;
+      _walletMade = mode.walletAccountId;
+      _wallet = mode.walletAmount != null;
+      _walletSourceId = mode.walletSourceAccountId;
+      _walletAmount.text = _moneyText(mode.walletAmount);
+      plannedRows.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+      _planned.addAll([
+        for (final r in plannedRows)
+          _PlannedDraft(
+            id: r.id,
+            name: r.name,
+            amount: r.amount,
+            categoryId: r.categoryId,
+            paid: r.transactionId != null,
+          ),
+      ]);
       _loaded = true;
     });
+  }
+
+  TextEditingController _allocCtrl(int accountId) =>
+      _allocations.putIfAbsent(accountId, TextEditingController.new);
+
+  static String _moneyText(Money? m) => m == null
+      ? ''
+      : m.paise % 100 == 0
+      ? '${m.paise ~/ 100}'
+      : m.rupees.toStringAsFixed(2);
+
+  /// [c]'s amount, null when empty; a typo is an error naming [label].
+  static Money? _moneyOf(TextEditingController c, String label) {
+    final raw = c.text.trim();
+    if (raw.isEmpty) return null;
+    final m = Money.tryParse(raw);
+    if (m == null) throw ArgumentError("The $label isn't a number.");
+    return m;
+  }
+
+  /// The people now become the linked group's members.
+  Future<void> _linkGroup(int? groupId) async {
+    setState(() => _groupId = groupId);
+    if (groupId == null) return;
+    final members = await ref.read(dbProvider).watchGroupMembers(groupId).first;
+    if (!mounted) return;
+    setState(() => _people = {for (final p in members) p.id});
   }
 
   @override
   void dispose() {
     _name.dispose();
     _budget.dispose();
+    _daily.dispose();
+    _perSpend.dispose();
+    _walletAmount.dispose();
+    for (final c in [..._allocations.values, ..._limits.values]) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -152,6 +246,33 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
     }
     final navSlots = _slotLeft != null && _slotRight != null
         ? '$_slotLeft,$_slotRight'
+        : null;
+    final Money? daily;
+    final Money? perSpend;
+    final Money? walletAmount;
+    final allocations = <int, Money>{};
+    final limits = <int, Money>{};
+    try {
+      daily = _moneyOf(_daily, 'daily limit');
+      perSpend = _moneyOf(_perSpend, 'per-spend limit');
+      walletAmount = _wallet && _walletMade == null
+          ? _moneyOf(_walletAmount, 'wallet amount')
+          : null;
+      for (final id in _accountIds) {
+        final c = _allocations[id];
+        final m = c == null ? null : _moneyOf(c, 'allocation');
+        if (m != null) allocations[id] = m;
+      }
+      for (final e in _limits.entries) {
+        final m = _moneyOf(e.value, 'category limit');
+        if (m != null) limits[e.key] = m;
+      }
+    } on ArgumentError catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('${e.message}')));
+      return;
+    }
+    final walletSource = _wallet && _walletMade == null
+        ? _walletSourceId
         : null;
     setState(() => _saving = true);
     final db = ref.read(dbProvider);
@@ -172,6 +293,13 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
           accountIds: _accountIds,
           categoryIds: _categoryIds,
           tagIds: _tagIds,
+          allocations: allocations,
+          categoryLimits: limits,
+          dailyLimit: daily,
+          spendLimit: perSpend,
+          walletSourceAccountId: walletSource,
+          walletAmount: walletAmount,
+          personIds: _people,
         );
       } else {
         id = widget.modeId!;
@@ -190,7 +318,34 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
           accountIds: _accountIds,
           categoryIds: _categoryIds,
           tagIds: _tagIds,
+          allocations: allocations,
+          categoryLimits: limits,
+          dailyLimit: daily,
+          spendLimit: perSpend,
+          walletSourceAccountId: walletSource,
+          walletAmount: walletAmount,
+          personIds: _people,
         );
+      }
+      for (final pid in _removedPlanned) {
+        await db.deletePlannedCost(pid);
+      }
+      for (final p in _planned) {
+        if (p.id == null) {
+          await db.addPlannedCost(
+            modeId: id,
+            name: p.name,
+            amount: p.amount,
+            categoryId: p.categoryId,
+          );
+        } else {
+          await db.updatePlannedCost(
+            p.id!,
+            name: p.name,
+            amount: p.amount,
+            categoryId: p.categoryId,
+          );
+        }
       }
       for (final c in _newCategories) {
         await db.addModeCategory(
@@ -201,34 +356,16 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
           iconKey: c.iconKey,
         );
       }
-      final autoTags = <int>{..._tagIds};
+      final newAuto = <int>[];
       for (final t in _newTags) {
         final tagId = await db.addModeTag(
           modeId: id,
           name: t.name,
           colorValue: _colorValue,
         );
-        if (t.auto) autoTags.add(tagId);
+        if (t.auto) newAuto.add(tagId);
       }
-      if (autoTags.length != _tagIds.length) {
-        final mode = (await db.modeById(id))!;
-        await db.updateMode(
-          id,
-          name: mode.name,
-          iconKey: mode.iconKey,
-          colorValue: mode.colorValue,
-          startDate: mode.startDate,
-          endDate: mode.endDate,
-          budget: mode.budget,
-          currencyCode: mode.currencyCode,
-          groupId: mode.groupId,
-          navSlots: mode.navSlots,
-          modules: mode.modules,
-          accountIds: _accountIds,
-          categoryIds: _categoryIds,
-          tagIds: autoTags,
-        );
-      }
+      await db.addModeAutoTags(id, newAuto);
       if (!mounted) return;
       if (_isNew) {
         await _offerStart(id);
@@ -378,6 +515,171 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
     return (name: name, iconKey: iconKey);
   }
 
+  /// Picks a category to cap — everyday ones and this mode's own.
+  Future<int?> _pickCategory({Set<int> exclude = const {}}) {
+    final everyday =
+        ref.read(categoriesProvider(CategoryKind.expense)).valueOrNull ?? [];
+    final own = [
+      for (final c in ref.read(modeOwnCategoriesProvider).valueOrNull ?? [])
+        if (c.modeId == widget.modeId && c.kind == CategoryKind.expense) c,
+    ];
+    final choices = [
+      for (final c in [...own, ...everyday])
+        if (c.parentId == null && !exclude.contains(c.id)) c,
+    ];
+    return showAppSheet<int>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        top: false,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.6,
+          ),
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              for (final c in choices)
+                AppListTile(
+                  leading: KeyIcon(c.iconKey, color: Color(c.colorValue)),
+                  title: Text(c.name),
+                  onTap: () => Navigator.of(context).pop(c.id),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _addLimit() async {
+    final id = await _pickCategory(exclude: _limits.keys.toSet());
+    if (id == null || !mounted) return;
+    setState(() => _limits[id] = TextEditingController());
+  }
+
+  /// Adds or edits a planned cost ([index] null = new).
+  Future<void> _editPlanned([int? index]) async {
+    final draft = index == null ? null : _planned[index];
+    final name = TextEditingController(text: draft?.name ?? '');
+    final amount = TextEditingController(text: _moneyText(draft?.amount));
+    var categoryId = draft?.categoryId;
+    final cats = ref.read(categoryMapProvider);
+    final ok = await showAppDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setLocal) => AlertDialog(
+          title: Text(draft == null ? 'Planned cost' : 'Edit planned cost'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: name,
+                autofocus: draft == null,
+                maxLength: 60,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                  labelText: 'What',
+                  hintText: 'Hotel, tickets…',
+                  counterText: '',
+                ),
+              ),
+              TextField(
+                controller: amount,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: InputDecoration(
+                  labelText: 'Amount',
+                  prefixText: '${MoneyFormat.currency.symbol} ',
+                ),
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: ActionChip(
+                  avatar: const AppIcon(Icons.category_outlined, size: 18),
+                  label: Text(cats[categoryId]?.name ?? 'Category (optional)'),
+                  onPressed: () async {
+                    final picked = await _pickCategory();
+                    if (picked != null) setLocal(() => categoryId = picked);
+                  },
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            if (index != null)
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(null),
+                child: const Text('Cancel'),
+              ),
+            if (index != null)
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    final removed = _planned.removeAt(index);
+                    if (removed.id != null) _removedPlanned.add(removed.id!);
+                  });
+                  Navigator.of(context).pop(false);
+                },
+                child: const Text('Remove'),
+              )
+            else
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
+              ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Done'),
+            ),
+          ],
+        ),
+      ),
+    );
+    final text = name.text.trim();
+    final money = Money.tryParse(amount.text.trim());
+    name.dispose();
+    amount.dispose();
+    if (ok != true || !mounted) return;
+    if (text.isEmpty || money == null || !money.isPositive) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Give it a name and an amount')),
+      );
+      return;
+    }
+    setState(() {
+      final next = _PlannedDraft(
+        id: draft?.id,
+        name: text,
+        amount: money,
+        categoryId: categoryId,
+        paid: draft?.paid ?? false,
+      );
+      if (index == null) {
+        _planned.add(next);
+      } else {
+        _planned[index] = next;
+      }
+    });
+  }
+
+  Widget _moneyField(TextEditingController c, String label, {String? hint}) =>
+      TextField(
+        controller: c,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+        ],
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          prefixText: '${MoneyFormat.currency.symbol} ',
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -414,6 +716,8 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
         if (widget.modeId != null && t.modeId == widget.modeId) t,
     ];
     final groups = ref.watch(groupsProvider).valueOrNull ?? const [];
+    final persons = ref.watch(personsProvider).valueOrNull ?? const [];
+    final cats = ref.watch(categoryMapProvider);
     final day = DateFormat('d MMM yyyy');
     final currency = _currencyCode == null
         ? null
@@ -552,6 +856,61 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
               prefixText: '${MoneyFormat.currency.symbol} ',
             ),
           ),
+          hint(
+            'Left empty, the budget is what you allocate from your accounts '
+            'below.',
+          ),
+          modeSectionLabel(theme, 'LIMITS'),
+          hint(
+            'Going over one asks before saving — it never stops you. Alerts '
+            'at 80% and 100%.',
+          ),
+          Row(
+            children: [
+              Expanded(child: _moneyField(_daily, 'Per day')),
+              const SizedBox(width: 12),
+              Expanded(child: _moneyField(_perSpend, 'Per spend')),
+            ],
+          ),
+          const SizedBox(height: 12),
+          for (final e in _limits.entries)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  KeyIcon(
+                    cats[e.key]?.iconKey ?? 'other',
+                    color: Color(
+                      cats[e.key]?.colorValue ?? cs.primary.toARGB32(),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      cats[e.key]?.name ?? 'Category',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  SizedBox(width: 130, child: _moneyField(e.value, 'Limit')),
+                  IconButton(
+                    tooltip: 'Remove',
+                    icon: const AppIcon(Icons.close_rounded),
+                    onPressed: () => setState(() {
+                      _limits.remove(e.key)?.dispose();
+                    }),
+                  ),
+                ],
+              ),
+            ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: ActionChip(
+              avatar: const AppIcon(Icons.add_rounded, size: 18),
+              label: const Text('Limit a category'),
+              onPressed: _addLimit,
+            ),
+          ),
           modeSectionLabel(theme, 'CURRENCY'),
           AppCard(
             margin: EdgeInsets.zero,
@@ -588,18 +947,147 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
           ),
 
           // ── Limits ────────────────────────────────────────────────────
-          modeSectionLabel(theme, 'PAYS WITH'),
-          hint('Only these accounts are offered while it is ON. None = any.'),
+          modeSectionLabel(theme, 'PEOPLE'),
+          hint(
+            "Who's with you. Inside the mode, Persons shows only them, "
+            'starting from zero — and Add can split a bill with them.',
+          ),
           _chips([
-            for (final a in accounts)
+            for (final p in persons)
               FilterChip(
-                label: Text(a.name),
-                selected: _accountIds.contains(a.id),
+                label: Text(p.name),
+                selected: _people.contains(p.id),
                 onSelected: (v) => setState(
-                  () => v ? _accountIds.add(a.id) : _accountIds.remove(a.id),
+                  () => v ? _people.add(p.id) : _people.remove(p.id),
+                ),
+              ),
+            if (persons.isEmpty)
+              Text(
+                'Add people in Persons first.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
                 ),
               ),
           ]),
+          modeSectionLabel(theme, 'PAYS WITH'),
+          hint(
+            'Only these accounts are offered while it is ON (none = any). Set '
+            "how much of each is for the trip: while it's ON the account "
+            "shows what's left of that, after it the real balance.",
+          ),
+          _chips([
+            for (final a in accounts)
+              if (a.id != _walletMade)
+                FilterChip(
+                  label: Text(a.name),
+                  selected: _accountIds.contains(a.id),
+                  onSelected: (v) => setState(
+                    () => v ? _accountIds.add(a.id) : _accountIds.remove(a.id),
+                  ),
+                ),
+          ]),
+          const SizedBox(height: 8),
+          for (final a in accounts)
+            if (_accountIds.contains(a.id) && a.id != _walletMade)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        a.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    SizedBox(
+                      width: 150,
+                      child: _moneyField(
+                        _allocCtrl(a.id),
+                        'For the trip',
+                        hint: 'All of it',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          modeSectionLabel(theme, 'TRIP WALLET'),
+          if (_walletMade != null)
+            hint(
+              'Made when it started: '
+              '${accounts.where((a) => a.id == _walletMade).firstOrNull?.name ?? 'the wallet'}. '
+              'Its leftover goes back from the summary.',
+            )
+          else ...[
+            AppCard(
+              margin: EdgeInsets.zero,
+              clipBehavior: Clip.antiAlias,
+              child: AppSwitchListTile(
+                value: _wallet,
+                onChanged: (v) => setState(() => _wallet = v),
+                title: const Text('Fill a trip wallet when it starts'),
+                subtitle: const Text(
+                  'A cash account for the trip — what is left goes back at '
+                  'the end',
+                ),
+              ),
+            ),
+            if (_wallet) ...[
+              const SizedBox(height: 12),
+              _moneyField(_walletAmount, 'Amount'),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<int>(
+                initialValue: accounts.any((a) => a.id == _walletSourceId)
+                    ? _walletSourceId
+                    : null,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'From'),
+                items: [
+                  for (final a in accounts)
+                    DropdownMenuItem(value: a.id, child: Text(a.name)),
+                ],
+                onChanged: (v) => setState(() => _walletSourceId = v),
+              ),
+            ],
+          ],
+          modeSectionLabel(theme, 'PLANNED COSTS'),
+          hint(
+            'Known costs (the hotel, the tickets) — counted against the '
+            'budget before you pay them.',
+          ),
+          if (_planned.isNotEmpty)
+            AppCard(
+              margin: EdgeInsets.zero,
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                children: [
+                  for (final (i, p) in _planned.indexed) ...[
+                    if (i > 0)
+                      Divider(height: 1, indent: 16, color: cs.outline),
+                    AppListTile(
+                      onTap: () => _editPlanned(i),
+                      title: Text(p.name),
+                      subtitle: Text(
+                        [
+                          if (p.paid) 'Paid',
+                          ?cats[p.categoryId]?.name,
+                        ].join(' · '),
+                      ),
+                      trailing: Text(MoneyFormat.symbol(p.amount)),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: ActionChip(
+              avatar: const AppIcon(Icons.add_rounded, size: 18),
+              label: const Text('Add a planned cost'),
+              onPressed: _editPlanned,
+            ),
+          ),
           modeSectionLabel(theme, 'CATEGORIES'),
           hint(
             'Only these are offered while it is ON (with their '
@@ -721,7 +1209,10 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
           // ── Group ─────────────────────────────────────────────────────
           if (groups.isNotEmpty) ...[
             modeSectionLabel(theme, 'GROUP'),
-            hint("A linked group's expenses always join this mode."),
+            hint(
+              "A linked group's expenses always join this mode, and its "
+              'members are the people above.',
+            ),
             DropdownButtonFormField<int?>(
               initialValue: groups.any((g) => g.id == _groupId)
                   ? _groupId
@@ -733,7 +1224,7 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
                 for (final g in groups)
                   DropdownMenuItem(value: g.id, child: Text(g.name)),
               ],
-              onChanged: (v) => setState(() => _groupId = v),
+              onChanged: _linkGroup,
             ),
           ],
           const SizedBox(height: 24),
@@ -764,4 +1255,21 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
     ],
     onChanged: onChanged,
   );
+}
+
+/// A planned cost while the editor holds it; [id] null = not saved yet.
+class _PlannedDraft {
+  const _PlannedDraft({
+    required this.id,
+    required this.name,
+    required this.amount,
+    required this.categoryId,
+    required this.paid,
+  });
+
+  final int? id;
+  final String name;
+  final Money amount;
+  final int? categoryId;
+  final bool paid;
 }

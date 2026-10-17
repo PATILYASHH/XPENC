@@ -13,6 +13,7 @@ import '../../core/widgets/module_shortcuts.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
+import '../../data/mode_providers.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../auto/recurring_rule_sheet.dart';
@@ -147,7 +148,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final txAsync = ref.watch(allTransactionsProvider);
+    // A focused mode's sandbox, or everything.
+    final txAsync = ref.watch(viewTransactionsProvider);
     final categoryMap = ref.watch(categoryMapProvider);
     final accountMap = ref.watch(accountMapProvider);
     final openReminders = ref.watch(openRemindersProvider);

@@ -140,9 +140,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
     final messenger = ScaffoldMessenger.of(context);
     try {
+      // Made inside a mode (a trip), the template is the mode's own.
       await ref
           .read(dbProvider)
-          .createTemplateFromTransaction(transactionId: tx.id, name: name);
+          .createTemplateFromTransaction(
+            transactionId: tx.id,
+            name: name,
+            modeId: ref.read(focusedModeProvider)?.id,
+          );
       messenger.showSnackBar(
         SnackBar(content: Text('Saved "$name" as a template')),
       );

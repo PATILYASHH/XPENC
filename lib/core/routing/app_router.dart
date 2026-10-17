@@ -24,6 +24,7 @@ import '../../features/categories/categories_screen.dart';
 import '../../features/categories/category_detail_screen.dart';
 import '../../features/modes/mode_detail_screen.dart';
 import '../../features/modes/mode_editor_screen.dart';
+import '../../features/modes/mode_summary_screen.dart';
 import '../../features/modes/modes_screen.dart';
 import '../../features/categories/category_templates_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
@@ -619,6 +620,9 @@ final appRouter = GoRouter(
           initialPayee: payee,
           initialNote: note,
           initialAmount: amount,
+          plannedCostId: int.tryParse(
+            state.uri.queryParameters['plannedCost'] ?? '',
+          ),
         );
       },
     ),
@@ -682,6 +686,13 @@ final appRouter = GoRouter(
       parentNavigatorKey: _rootKey,
       builder: (_, state) =>
           ModeDetailScreen(modeId: int.parse(state.pathParameters['id']!)),
+    ),
+
+    GoRoute(
+      path: '/mode/:id/summary',
+      parentNavigatorKey: _rootKey,
+      builder: (_, state) =>
+          ModeSummaryScreen(modeId: int.parse(state.pathParameters['id']!)),
     ),
 
     GoRoute(

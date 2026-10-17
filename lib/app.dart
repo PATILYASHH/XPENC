@@ -107,7 +107,19 @@ class _XpencAppState extends ConsumerState<XpencApp>
   Future<void> _runRecurring() async {
     // A planned mode (a trip) starts on its first day and ends after its
     // last — checked on the same launch/resume beat.
-    await ref.read(dbProvider).syncModeSchedule(DateTime.now());
+    final db = ref.read(dbProvider);
+    final sync = await db.syncModeSchedule(DateTime.now());
+    for (final id in sync.ended) {
+      final mode = await db.modeById(id);
+      if (mode == null) continue;
+      showAppSnackBar(
+        '${mode.name} has ended',
+        action: SnackBarAction(
+          label: 'Summary',
+          onPressed: () => appRouter.push('/mode/$id/summary'),
+        ),
+      );
+    }
     final posted = await ref.read(dbProvider).runDueRecurringRules();
     if (!mounted) return;
     final notifications = ref.read(notificationServiceProvider);
@@ -255,6 +267,7 @@ class _XpencAppState extends ConsumerState<XpencApp>
     ref.listen(allTransactionsProvider, (_, next) {
       if (next.hasValue) {
         ref.read(notificationServiceProvider).checkBudgets();
+        ref.read(notificationServiceProvider).checkModeAlerts();
         _onLedgerChanged();
       }
     });

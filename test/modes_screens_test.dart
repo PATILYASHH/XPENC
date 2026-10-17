@@ -146,7 +146,7 @@ void main() {
     expect(mode.status, ModeStatus.active);
     expect(mode.navSlots, 'transactions,persons');
     expect(mode.modules, contains('shopping'));
-    expect(find.text('End'), findsOneWidget);
+    expect(tester.widget<Switch>(find.byType(Switch).first).value, isTrue);
     expect(tester.takeException(), isNull);
     await unmount(tester);
   });

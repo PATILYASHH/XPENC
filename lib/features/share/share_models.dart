@@ -483,3 +483,48 @@ class GroupPeriod {
   final Money total;
   final Money myShare;
 }
+
+/// A mode (a trip) told back — the data behind its summary card and PDF.
+/// Built by the mode's summary screen from what's on it.
+class ModeShare {
+  const ModeShare({
+    required this.name,
+    required this.colorValue,
+    required this.dates,
+    required this.spent,
+    required this.budget,
+    required this.planned,
+    required this.days,
+    required this.perDay,
+    required this.count,
+    required this.categories,
+    required this.accounts,
+    required this.people,
+    required this.plannedCosts,
+    required this.lines,
+  });
+
+  final String name;
+  final int colorValue;
+
+  /// "12–18 Oct", or null when it never had dates.
+  final String? dates;
+  final Money spent;
+  final Money? budget;
+
+  /// Planned costs not yet paid.
+  final Money planned;
+  final int days;
+  final Money perDay;
+  final int count;
+  final List<({String name, int colorValue, Money amount})> categories;
+  final List<({String name, Money amount})> accounts;
+
+  /// Trip balances — `+` they owe you, `-` you owe them.
+  final List<({String name, Money balance})> people;
+  final List<({String name, Money amount, bool paid})> plannedCosts;
+
+  /// Every transaction, newest first; [amount] signed from your side.
+  final List<({DateTime date, String title, String detail, Money amount})>
+  lines;
+}

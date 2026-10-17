@@ -6,6 +6,7 @@ import '../../core/money.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
+import '../../data/mode_providers.dart';
 import '../../data/providers.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 
@@ -46,8 +47,8 @@ class _AddChoiceSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final templates =
-        ref.watch(transactionTemplatesProvider).valueOrNull ?? const [];
+    // Inside a mode (a trip) only its own templates; outside, never them.
+    final templates = ref.watch(shownTemplatesProvider);
     final categoryMap = ref.watch(categoryMapProvider);
 
     // DraggableScrollableSheet (not a plain Column) so a long template list

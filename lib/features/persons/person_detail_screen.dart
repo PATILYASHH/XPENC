@@ -18,6 +18,7 @@ import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/group_tag.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
+import '../../data/mode_providers.dart';
 import '../../data/modes_db.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
@@ -69,10 +70,23 @@ class PersonDetailScreen extends ConsumerWidget {
 
   Widget _buildScaffold(BuildContext context, WidgetRef ref, PersonRow person) {
     final theme = Theme.of(context);
-    final balance =
-        ref.watch(personBalancesProvider).valueOrNull?[person.id] ??
-        const Money.zero();
-    final entriesAsync = ref.watch(personEntriesProvider(person.id));
+    // Inside a mode (a trip) a person's page is the trip only: its entries
+    // and its balance. Everything else is back outside the mode.
+    final mode = ref.watch(focusedModeProvider);
+    final balances = mode == null
+        ? ref.watch(personBalancesProvider).valueOrNull ?? const <int, Money>{}
+        : ref.watch(tripBalancesProvider(mode.id));
+    final balance = balances[person.id] ?? const Money.zero();
+    final entriesAsync = mode == null
+        ? ref.watch(personEntriesProvider(person.id))
+        : ref
+              .watch(personEntriesProvider(person.id))
+              .whenData(
+                (all) => [
+                  for (final e in all)
+                    if (e.modeId == mode.id) e,
+                ],
+              );
     final accountMap = ref.watch(accountMapProvider);
 
     return Scaffold(

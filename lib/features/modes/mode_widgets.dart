@@ -171,9 +171,32 @@ Future<void> endModeWithConfirm(
       ],
     ),
   );
-  if (ok != true) return;
+  if (ok != true || !context.mounted) return;
+  final router = GoRouter.of(context);
   await ref.read(dbProvider).endMode(mode.id);
   ref.read(modeFullAppProvider.notifier).state = false;
+  // The trip, told back: what it came to and who owes whom.
+  await router.push('/mode/${mode.id}/summary');
+}
+
+/// ON / OFF for one mode — the same switch on its card and its page. On
+/// ends whichever other mode was ON (after asking); off asks first, then
+/// shows the mode's summary.
+class ModeSwitch extends ConsumerWidget {
+  const ModeSwitch(this.mode, {super.key});
+
+  final ModeRow mode;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final on = mode.status == ModeStatus.active;
+    return Switch(
+      value: on,
+      onChanged: (v) => v
+          ? startModeWithConfirm(context, ref, mode)
+          : endModeWithConfirm(context, ref, mode),
+    );
+  }
 }
 
 /// The strip over the tab bar while a mode is ON: "🧳 Goa trip · Day 3",
@@ -598,4 +621,317 @@ Future<bool> pickModeForTransaction(
   if (picked == null) return false;
   await ref.read(dbProvider).setTransactionMode(txId, picked);
   return true;
+}
+
+/// A mode's planned costs: paid ones ticked (tap opens the payment),
+/// unpaid ones open Add filled in to pay them.
+class ModePlannedCostsCard extends ConsumerWidget {
+  const ModePlannedCostsCard({
+    required this.mode,
+    required this.costs,
+    super.key,
+  });
+
+  final ModeRow mode;
+  final List<ModePlannedCostRow> costs;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final cats = ref.watch(categoryMapProvider);
+    return AppCard(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (final (i, c) in costs.indexed) ...[
+            if (i > 0) Divider(height: 1, indent: 60, color: cs.outline),
+            AppListTile(
+              onTap: () => c.transactionId != null
+                  ? context.push('/transaction/${c.transactionId}')
+                  : context.push('/add?type=expense&plannedCost=${c.id}'),
+              leading: AppIcon(
+                c.transactionId != null
+                    ? Icons.check_circle_rounded
+                    : Icons.radio_button_unchecked_rounded,
+                color: c.transactionId != null
+                    ? AppColors.income
+                    : cs.onSurfaceVariant,
+              ),
+              title: Text(
+                c.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: c.transactionId != null
+                    ? TextStyle(
+                        decoration: TextDecoration.lineThrough,
+                        color: cs.onSurfaceVariant,
+                      )
+                    : null,
+              ),
+              subtitle: Text(
+                [
+                  c.transactionId != null ? 'Paid' : 'Tap to pay',
+                  ?cats[c.categoryId]?.name,
+                ].join(' · '),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+              trailing: MoneyText(
+                c.amount,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// The hero: what's left to spend — budget minus spent minus the planned
+/// costs still to pay — or, with no budget, what's been spent.
+class ModeLeftToSpendCard extends ConsumerWidget {
+  const ModeLeftToSpendCard({required this.mode, super.key});
+
+  final ModeRow mode;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final b = ref.watch(modeBudgetProvider(mode.id));
+    final color = Color(mode.colorValue);
+    final budget = b.budget;
+    final left = b.left;
+    final over = left != null && left.isNegative;
+    final used = budget == null || budget.paise == 0
+        ? 0.0
+        : (b.spent + b.planned).paise / budget.paise;
+
+    return AppCard(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                ModeBadge(mode, size: 28),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    modeStatusLine(mode, DateTime.now()),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text(
+              left == null
+                  ? 'Spent'
+                  : over
+                  ? 'Over budget by'
+                  : 'Left to spend',
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: cs.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 2),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: MoneyText(
+                left == null ? b.spent : left.abs,
+                color: left == null || over ? AppColors.expense : null,
+                style: theme.textTheme.displaySmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            if (budget != null) ...[
+              const SizedBox(height: 14),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  value: used.clamp(0.0, 1.0),
+                  minHeight: 8,
+                  color: over ? AppColors.expense : color,
+                  backgroundColor: cs.surfaceContainerHighest,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                [
+                  '${MoneyFormat.symbol(b.spent)} spent',
+                  if (b.planned.isPositive)
+                    '${MoneyFormat.symbol(b.planned)} planned',
+                  'of ${MoneyFormat.symbol(budget)}',
+                ].join(' · '),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+            ] else ...[
+              const SizedBox(height: 6),
+              Text(
+                'Set a budget (or account allocations) to see what’s left.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ModeLimitsCard extends ConsumerWidget {
+  const ModeLimitsCard({required this.lines, super.key});
+
+  final List<ModeLimitLine> lines;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final cats = ref.watch(categoryMapProvider);
+    return AppCard(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (final (i, l) in lines.indexed) ...[
+            if (i > 0) Divider(height: 1, indent: 60, color: cs.outline),
+            Builder(
+              builder: (context) {
+                final cat = cats[l.categoryId];
+                final color = cat == null
+                    ? cs.onSurfaceVariant
+                    : Color(cat.colorValue);
+                final over = l.spent.paise > l.limit.paise;
+                final share = l.limit.paise == 0
+                    ? 0.0
+                    : l.spent.paise / l.limit.paise;
+                return AppListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 2,
+                  ),
+                  leading: Container(
+                    width: 36,
+                    height: 36,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconWell.forKey(
+                      cat?.iconKey ?? 'other',
+                      color: color,
+                      size: 18,
+                    ),
+                  ),
+                  title: Text(
+                    cat?.name ?? 'Category',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        value: share.clamp(0.0, 1.0),
+                        minHeight: 4,
+                        color: over ? AppColors.expense : color,
+                        backgroundColor: cs.surfaceContainerHighest,
+                      ),
+                    ),
+                  ),
+                  trailing: Text(
+                    over
+                        ? '${MoneyFormat.compact(l.spent - l.limit)} over'
+                        : '${MoneyFormat.compact(l.limit - l.spent)} left',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: over ? AppColors.expense : null,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// The mode's accounts — what's left of each allocation, or the real
+/// balance where none was set.
+class ModeAccountsCard extends ConsumerWidget {
+  const ModeAccountsCard({required this.balances, super.key});
+
+  final Map<int, ModeAccountBalance> balances;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final accounts = ref.watch(accountMapProvider);
+    final entries = balances.entries.toList();
+    return AppCard(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (final (i, e) in entries.indexed) ...[
+            if (i > 0) Divider(height: 1, indent: 60, color: cs.outline),
+            AppListTile(
+              onTap: () => context.push('/account/${e.key}'),
+              leading: CircleAvatar(
+                backgroundColor: Color(
+                  accounts[e.key]?.colorValue ?? cs.primary.toARGB32(),
+                ).withValues(alpha: 0.15),
+                child: AppIcon(
+                  AppIcons.resolve(accounts[e.key]?.iconKey ?? 'bank'),
+                  size: 18,
+                  color: Color(
+                    accounts[e.key]?.colorValue ?? cs.primary.toARGB32(),
+                  ),
+                ),
+              ),
+              title: Text(
+                accounts[e.key]?.name ?? 'Account',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Text(
+                e.value.allocation == null
+                    ? 'Real balance'
+                    : 'Of ${MoneyFormat.symbol(e.value.allocation!)} for the trip',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+              trailing: BalanceText(e.value.balance),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }

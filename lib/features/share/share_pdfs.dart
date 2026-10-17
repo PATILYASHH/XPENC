@@ -475,3 +475,156 @@ Future<Uint8List> buildGroupStatementPdf(
   );
   return doc.save();
 }
+
+// ── Mode summary ─────────────────────────────────────────────────────────────
+
+/// A mode (a trip) as a report: what it came to against its budget, by
+/// category and account, who owes whom, the planned costs, and every
+/// transaction.
+Future<Uint8List> buildModeSummaryPdf(ModeShare s) async {
+  final kit = await PdfKit.load();
+  final currency = MoneyFormat.currency;
+  final doc = pw.Document(title: '${s.name} · summary', author: 'XPENC');
+  String m(Money v, {bool signed = false}) =>
+      kit.money(v, currency, signed: signed);
+  String pct(Money part, Money whole) => whole.isZero
+      ? '—'
+      : '${(part.paise / whole.paise * 100).toStringAsFixed(1)}%';
+  final budget = s.budget;
+  final over = budget != null && s.spent.paise > budget.paise;
+
+  doc.addPage(
+    pw.MultiPage(
+      pageTheme: kit.pageTheme(),
+      header: (context) =>
+          kit.header(context, kind: 'Trip summary', who: s.name),
+      footer: kit.footer,
+      build: (context) => [
+        kit.titleBlock(s.name, [
+          [
+            ?s.dates,
+            '${s.days} ${s.days == 1 ? 'day' : 'days'}',
+            '${s.count} ${s.count == 1 ? 'transaction' : 'transactions'}',
+          ].join(' · '),
+          'Amounts in ${currency.code}',
+        ]),
+        pw.SizedBox(height: 16),
+        kit.tiles([
+          PdfTile('Spent', m(s.spent), color: PdfKit.expense),
+          PdfTile('Per day', m(s.perDay)),
+          if (budget != null)
+            PdfTile(
+              over ? 'Over budget' : 'Under budget',
+              m(over ? s.spent - budget : budget - s.spent),
+              caption: 'of ${m(budget)}',
+              color: over ? PdfKit.expense : PdfKit.income,
+            ),
+        ]),
+        if (s.categories.isNotEmpty) ...[
+          kit.section('By category'),
+          kit.table(
+            columns: const [
+              PdfColumn('Category', flex: 3),
+              PdfColumn('Share', flex: 1, numeric: true),
+              PdfColumn('Spent', flex: 1.6, numeric: true),
+            ],
+            rows: [
+              for (final c in s.categories)
+                [
+                  PdfCell(c.name),
+                  PdfCell(pct(c.amount, s.spent)),
+                  PdfCell(m(c.amount), strong: true),
+                ],
+            ],
+          ),
+        ],
+        if (s.accounts.isNotEmpty) ...[
+          kit.section('By account'),
+          kit.table(
+            columns: const [
+              PdfColumn('Account', flex: 3),
+              PdfColumn('Spent', flex: 1.6, numeric: true),
+            ],
+            rows: [
+              for (final a in s.accounts)
+                [PdfCell(a.name), PdfCell(m(a.amount), strong: true)],
+            ],
+          ),
+        ],
+        if (s.people.isNotEmpty) ...[
+          kit.section('Who owes whom', trailing: 'On this trip'),
+          kit.table(
+            columns: const [
+              PdfColumn('Person', flex: 3),
+              PdfColumn('', flex: 1.4),
+              PdfColumn('Amount', flex: 1.6, numeric: true),
+            ],
+            rows: [
+              for (final x in s.people)
+                [
+                  PdfCell(x.name),
+                  PdfCell(
+                    x.balance.isZero
+                        ? 'Even'
+                        : x.balance.isPositive
+                        ? 'Owes you'
+                        : 'You owe',
+                  ),
+                  PdfCell(
+                    m(x.balance.abs),
+                    color: _balanceColor(x.balance),
+                    strong: true,
+                  ),
+                ],
+            ],
+          ),
+        ],
+        if (s.plannedCosts.isNotEmpty) ...[
+          kit.section('Planned costs'),
+          kit.table(
+            columns: const [
+              PdfColumn('Cost', flex: 3),
+              PdfColumn('', flex: 1.2),
+              PdfColumn('Amount', flex: 1.6, numeric: true),
+            ],
+            rows: [
+              for (final c in s.plannedCosts)
+                [
+                  PdfCell(c.name),
+                  PdfCell(c.paid ? 'Paid' : 'Not paid yet'),
+                  PdfCell(m(c.amount)),
+                ],
+            ],
+          ),
+        ],
+        kit.section('Transactions', trailing: 'Newest first'),
+        if (s.lines.isEmpty)
+          kit.emptyNote('Nothing recorded in this mode.')
+        else
+          kit.table(
+            columns: const [
+              PdfColumn('Date', flex: 1.3),
+              PdfColumn('Details', flex: 3.2),
+              PdfColumn('Amount', flex: 1.6, numeric: true),
+            ],
+            rows: [
+              for (final l in s.lines)
+                [
+                  PdfCell(PdfKit.date(l.date)),
+                  PdfCell(l.title, sub: l.detail.isEmpty ? null : l.detail),
+                  PdfCell(
+                    m(l.amount, signed: true),
+                    color: l.amount.isNegative
+                        ? PdfKit.expense
+                        : l.amount.isPositive
+                        ? PdfKit.income
+                        : PdfKit.ink,
+                  ),
+                ],
+            ],
+          ),
+      ],
+    ),
+  );
+  return doc.save();
+}

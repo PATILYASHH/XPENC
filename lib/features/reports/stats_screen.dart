@@ -5,7 +5,9 @@ import 'package:intl/intl.dart';
 import '../../core/budget_cycle.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/module_shortcuts.dart';
+import '../../data/mode_providers.dart';
 import '../../data/providers.dart';
+import '../modes/mode_sandbox_views.dart';
 import 'stats_modules.dart';
 import 'stats_sections.dart';
 import 'xpenc_score_screen.dart';
@@ -27,6 +29,9 @@ class StatsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Inside a mode (a trip), stats are the mode's own.
+    final mode = ref.watch(focusedModeProvider);
+    if (mode != null) return ModeStatsView(mode: mode, embedded: embedded);
     final theme = Theme.of(context);
     final month = ref.watch(selectedMonthProvider);
     final showYear = ref.watch(statsShowYearProvider);

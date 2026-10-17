@@ -93,10 +93,15 @@ class AddTransactionScreen extends ConsumerStatefulWidget {
     this.initialPayee,
     this.initialNote,
     this.initialAmount,
+    this.plannedCostId,
     super.key,
   });
 
   final int? transactionId;
+
+  /// Paying one of a mode's planned costs (see `ModePlannedCosts`): its
+  /// amount, category and name come filled in, and saving marks it paid.
+  final int? plannedCostId;
   final int? duplicateFromId;
   final int? templateId;
 
@@ -219,6 +224,20 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   /// The mode the pickers limit themselves to.
   int? get _pickerModeId => _inMode ? _mode?.id : null;
 
+  /// The mode's people this expense is split with — equal shares, you paid
+  /// (see `_splitsWithPeople`). Empty = not split.
+  Set<int> _splitWith = {};
+
+  bool get _splitsWithPeople =>
+      _splitWith.isNotEmpty &&
+      _inMode &&
+      _mode?.groupId != null &&
+      _type == TxType.expense &&
+      !_isEditing &&
+      !_isSplitting &&
+      !_isHybrid &&
+      !_isChange;
+
   /// True while an existing transaction is being fetched for editing.
   bool _loading = false;
 
@@ -308,7 +327,79 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       // selection the user already made while this was loading.
       _seedLastUsedAccount();
       _seedMode();
+      if (widget.plannedCostId != null) _loadPlannedCost();
     }
+  }
+
+  /// Fills in the planned cost being paid.
+  Future<void> _loadPlannedCost() async {
+    final db = ref.read(dbProvider);
+    final cost = await (db.select(
+      db.modePlannedCosts,
+    )..where((c) => c.id.equals(widget.plannedCostId!))).getSingleOrNull();
+    if (!mounted || cost == null) return;
+    setState(() {
+      _type = TxType.expense;
+      _mainAmountCtrl.setAmount(cost.amount);
+      _categoryId = cost.categoryId ?? _categoryId;
+      if (_noteController.text.isEmpty) _noteController.text = cost.name;
+    });
+  }
+
+  /// Over one of the mode's limits? Ask first — going over is the person's
+  /// call, so this never refuses on its own.
+  Future<bool> _withinModeLimits(Money amount) async {
+    final mode = _mode;
+    if (!_inMode ||
+        mode == null ||
+        _type != TxType.expense ||
+        !amount.isPositive) {
+      return true;
+    }
+    // A split counts only your own share as spent.
+    final mine = _splitsWithPeople
+        ? Money(amount.paise ~/ (_splitWith.length + 1))
+        : amount;
+    final warnings = await ref
+        .read(dbProvider)
+        .modeLimitWarnings(
+          modeId: mode.id,
+          amount: mine,
+          categoryId: _isSplitting ? null : _categoryId,
+          accountId: _isHybrid ? null : _accountId,
+          date: _date,
+          excludeTxId: widget.transactionId,
+          plannedCostId: widget.plannedCostId,
+        );
+    if (warnings.isEmpty || !mounted) return true;
+    final go = await showAppDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Over ${mode.name}’s limits'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final w in warnings)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text('• $w'),
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Change'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Save anyway'),
+          ),
+        ],
+      ),
+    );
+    return go == true;
   }
 
   /// A new transaction joins the mode that's ON: its auto-tags come
@@ -1745,6 +1836,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       );
       return;
     }
+    if (!await _withinModeLimits(amount)) return;
     if (_isHybrid) {
       if (_hybridLegs.any((r) => r.accountId == null)) {
         messenger.showSnackBar(
@@ -1799,6 +1891,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         // leg only, same reasoning as the receipt.
         _unsavedPickedPath = null;
         await db.setTransactionTags(ids.first, _tagIds);
+        if (widget.plannedCostId != null) {
+          await db.setPlannedCostPaid(widget.plannedCostId!, ids.first);
+        }
       } on ArgumentError catch (e) {
         messenger.showSnackBar(
           SnackBar(
@@ -1995,6 +2090,22 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         if (_mode != null) {
           await db.setTransactionMode(id, _pickerModeId);
         }
+      } else if (_splitsWithPeople) {
+        // Split with the mode's people: a group expense in the mode's group
+        // — you paid, equal shares — so each share becomes a trip due.
+        final expenseId = await db.addGroupExpense(
+          groupId: _mode!.groupId!,
+          amount: amount,
+          splitMethod: GroupSplitMethod.equal,
+          date: _date,
+          note: note.isEmpty ? (payee ?? 'Split') : note,
+          accountId: _accountId!,
+          categoryId: categoryId,
+          participantIds: {null, ..._splitWith},
+        );
+        final mine = await db.myGroupShareTransactionId(expenseId);
+        if (mine == null) throw ArgumentError('Could not split this one.');
+        id = mine;
       } else {
         id = await db.addTransaction(
           type: _type,
@@ -2018,6 +2129,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       // orphan `dispose()` needs to clean up.
       _unsavedPickedPath = null;
       await db.setTransactionTags(id, _tagIds);
+      if (widget.plannedCostId != null) {
+        await db.setPlannedCostPaid(widget.plannedCostId!, id);
+      }
       await db.setTransactionSplits(
         id,
         _isSplitting
@@ -2278,6 +2392,11 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     if (_mode != null) {
       tiles.add(_modeToggleTile(_mode!));
       tiles.add(const SizedBox(height: 12));
+      final splitTile = _splitWithTile(_mode!);
+      if (splitTile != null) {
+        tiles.add(splitTile);
+        tiles.add(const SizedBox(height: 12));
+      }
     }
 
     if (_type == TxType.transfer) {
@@ -2411,6 +2530,65 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     tiles.add(const SizedBox(height: 12));
     tiles.add(_nctToggleTile());
     return tiles;
+  }
+
+  /// "Split with" the mode's people — a new expense in a mode that has
+  /// some, and nothing else splitting it already.
+  Widget? _splitWithTile(ModeRow mode) {
+    if (!_inMode ||
+        mode.groupId == null ||
+        _type != TxType.expense ||
+        _isEditing ||
+        _isSplitting ||
+        _isHybrid ||
+        _isChange) {
+      return null;
+    }
+    final people = ref.watch(modePeopleProvider(mode.id));
+    if (people.isEmpty) return null;
+    final theme = Theme.of(context);
+    final share = _splitWith.isEmpty
+        ? null
+        : Money(_amount.paise ~/ (_splitWith.length + 1));
+    return AppCard(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              share == null
+                  ? 'Split with'
+                  : 'Split with · ${MoneyFormat.symbol(share)} each, you paid',
+              style: theme.textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final p in people)
+                  FilterChip(
+                    avatar: PersonAvatar(
+                      name: p.name,
+                      photoPath: p.photoPath,
+                      radius: 12,
+                      glow: false,
+                    ),
+                    label: Text(p.name),
+                    selected: _splitWith.contains(p.id),
+                    onSelected: (v) => setState(() {
+                      _splitWith = {..._splitWith};
+                      v ? _splitWith.add(p.id) : _splitWith.remove(p.id);
+                    }),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   /// "Part of 🧳 Goa trip" — on for a new transaction while a mode is ON;

@@ -130,7 +130,13 @@ const guideSections = <GuideSection>[
           'modules to show, a linked group and a currency. On Add, switch '
           '"Part of …" off to keep one spend out. "Full app" in the bar over '
           'the tabs steps out without ending it. A transaction’s page moves '
-          'it in or out of a mode.',
+          'it in or out of a mode. While ON the app is a sandbox: the home '
+          'leads with what’s left to spend, every screen shows only the '
+          'mode, Persons shows its people from zero, and each account what '
+          'you allocated to it. Set limits (per day, per spend, per '
+          'category), planned costs and a trip wallet in the editor; split '
+          'bills with the mode’s people on Add; the switch off shows the '
+          'summary to share.',
       location: 'More → Modes',
     ),
     GuideEntry(

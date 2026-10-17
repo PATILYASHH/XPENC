@@ -149,20 +149,23 @@ class _ModeCard extends ConsumerWidget {
             fontWeight: FontWeight.w600,
           ),
         ),
-        subtitle: Text(
-          modeStatusLine(mode, DateTime.now()),
-          maxLines: 1,
+        subtitle: Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(text: '${modeStatusLine(mode, DateTime.now())} · '),
+              TextSpan(
+                text: modeSpentLabel(summary.spent),
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: summary.spent.isZero ? null : AppColors.expense,
+                ),
+              ),
+            ],
+          ),
+          maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
-        trailing: Text(
-          modeSpentLabel(summary.spent),
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: summary.spent.isZero
-                ? theme.colorScheme.onSurfaceVariant
-                : AppColors.expense,
-          ),
-        ),
+        trailing: ModeSwitch(mode),
       ),
     );
   }

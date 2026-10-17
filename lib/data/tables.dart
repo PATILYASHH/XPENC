@@ -663,6 +663,11 @@ class PersonEntries extends Table {
   IntColumn get categoryId =>
       integer().nullable().references(Categories, #id)();
 
+  /// The mode (a trip) this entry was made in — even when no money moved,
+  /// so there's no transaction to carry it. Inside the mode a person's
+  /// balance counts only these; everywhere else they count like any other.
+  IntColumn get modeId => integer().nullable().references(Modes, #id)();
+
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
@@ -780,6 +785,26 @@ class Modes extends Table {
   /// `mode_modules.dart`). Empty = all of them.
   TextColumn get modules => text().withDefault(const Constant(''))();
 
+  /// Most to spend in one day, and in one transaction. Going over only
+  /// warns — a spend that happened is never refused.
+  IntColumn get dailyLimit =>
+      integer().map(const MoneyConverter()).nullable()();
+  IntColumn get spendLimit =>
+      integer().map(const MoneyConverter()).nullable()();
+
+  /// Trip wallet: on start, [walletAmount] moves from [walletSourceAccountId]
+  /// into a cash account made for the mode ([walletAccountId], set then).
+  IntColumn get walletAccountId =>
+      integer().nullable().references(Accounts, #id)();
+  IntColumn get walletSourceAccountId =>
+      integer().nullable().references(Accounts, #id)();
+  IntColumn get walletAmount =>
+      integer().map(const MoneyConverter()).nullable()();
+
+  /// Which spending alerts already fired, comma-joined (`budget80`,
+  /// `budget100`, `cat12-80`…), so each fires once per mode.
+  TextColumn get alerts => text().withDefault(const Constant(''))();
+
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
@@ -789,8 +814,41 @@ class ModeAccounts extends Table {
   IntColumn get modeId => integer().references(Modes, #id)();
   IntColumn get accountId => integer().references(Accounts, #id)();
 
+  /// What the mode may spend from this account ("₹5,000 of HDFC for the
+  /// trip"). While the mode is ON the account reads this minus what the
+  /// mode took from it; null = its real balance.
+  IntColumn get allocation =>
+      integer().map(const MoneyConverter()).nullable()();
+
   @override
   Set<Column> get primaryKey => {modeId, accountId};
+}
+
+/// A cap on one category inside a mode (Food ₹5,000 for the trip). A parent's
+/// cap counts its subcategories. Going over only warns.
+@DataClassName('ModeCategoryLimitRow')
+class ModeCategoryLimits extends Table {
+  IntColumn get modeId => integer().references(Modes, #id)();
+  IntColumn get categoryId => integer().references(Categories, #id)();
+  IntColumn get amount => integer().map(const MoneyConverter())();
+
+  @override
+  Set<Column> get primaryKey => {modeId, categoryId};
+}
+
+/// A cost known before it's paid (the hotel, the tickets) — counted against
+/// the mode's budget from the start. Paid once [transactionId] is set.
+@DataClassName('ModePlannedCostRow')
+class ModePlannedCosts extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get modeId => integer().references(Modes, #id)();
+  TextColumn get name => text().withLength(min: 1, max: 60)();
+  IntColumn get amount => integer().map(const MoneyConverter())();
+  IntColumn get categoryId =>
+      integer().nullable().references(Categories, #id)();
+  IntColumn get transactionId =>
+      integer().nullable().references(Transactions, #id)();
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
 }
 
 /// The everyday categories a mode offers — empty means all of them. Its own
@@ -1660,6 +1718,9 @@ class TransactionTemplates extends Table {
       integer().nullable().references(Categories, #id)();
   TextColumn get note => text().nullable()();
   TextColumn get payee => text().withLength(min: 1, max: 80).nullable()();
+
+  /// A mode's own template — offered only inside that mode, never outside.
+  IntColumn get modeId => integer().nullable().references(Modes, #id)();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 

@@ -18,6 +18,7 @@ import '../features/message_capture/share_intake.dart';
 import '../features/transactions/transaction_filters.dart';
 import 'currency_conversion.dart';
 import 'database.dart';
+import 'mode_providers.dart';
 import 'modes_db.dart';
 import 'tables.dart';
 
@@ -2108,7 +2109,7 @@ typedef PayeeSummary = ({
 /// the Payees hub. Rows linked to a person group by that person (so a rename
 /// never splits them); everything else groups by the payee text.
 final payeeSummariesProvider = Provider<List<PayeeSummary>>((ref) {
-  final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
+  final txs = ref.watch(viewTransactionsProvider).valueOrNull ?? const [];
   final people = ref.watch(allPersonsByIdProvider);
   final nets = <String, Money>{};
   final counts = <String, int>{};
@@ -2145,7 +2146,7 @@ final payeeSummariesProvider = Provider<List<PayeeSummary>>((ref) {
 /// payee that isn't a person (see [personPayeeTransactionsProvider]).
 final payeeTransactionsProvider = Provider.family<List<TransactionRow>, String>(
   (ref, payee) {
-    final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
+    final txs = ref.watch(viewTransactionsProvider).valueOrNull ?? const [];
     return txs
         .where(
           (t) =>
@@ -2164,7 +2165,7 @@ final payeeTransactionsProvider = Provider.family<List<TransactionRow>, String>(
 /// has no payee (its entry already shows it), so it never appears here.
 final personPayeeTransactionsProvider =
     Provider.family<List<TransactionRow>, int>((ref, personId) {
-      final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
+      final txs = ref.watch(viewTransactionsProvider).valueOrNull ?? const [];
       return txs
           .where(
             (t) =>

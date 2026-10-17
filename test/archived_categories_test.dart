@@ -197,8 +197,11 @@ void main() {
         'transaction_templates.category_id',
         'goal_details.category_id',
         'loan_details.category_id',
-        // Not a use: deleting the category just drops the mode's offer.
+        // Not uses: deleting the category drops a mode's offer and cap, and
+        // a planned cost just loses its category.
         'mode_categories.category_id',
+        'mode_category_limits.category_id',
+        'mode_planned_costs.category_id',
       });
     });
   });

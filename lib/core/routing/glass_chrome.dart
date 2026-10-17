@@ -194,7 +194,7 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
     final tone = AppSurface.of(context).tone;
     final top = MediaQuery.paddingOf(context).top;
     final index = widget.currentIndex;
-    final title = _TopBar._titles[index];
+    final title = _TopBar.titleFor(ref, index);
     final classic = _TopBar(currentIndex: index);
     final searching = index == 1 && ref.watch(txSearchActiveProvider);
     if (searching != _searching) {

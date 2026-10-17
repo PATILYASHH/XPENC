@@ -12,6 +12,7 @@ import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/morph_dialog.dart';
 import '../../data/database.dart';
+import '../../data/mode_providers.dart';
 import '../../data/providers.dart';
 import 'contact_import.dart';
 import 'delete_person_or_group.dart';
@@ -239,10 +240,28 @@ class _IndividualTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final personsAsync = ref.watch(personsProvider);
-    final totals = ref.watch(personTotalsProvider);
-    final balances =
-        ref.watch(personBalancesProvider).valueOrNull ?? const <int, Money>{};
+    // Inside a mode (a trip): only its people, and only what happened on
+    // it — a fresh start. Their whole history is back outside the mode.
+    final mode = ref.watch(focusedModeProvider);
+    final people = mode == null
+        ? null
+        : {for (final p in ref.watch(modePeopleProvider(mode.id))) p.id};
+    final personsAsync = people == null
+        ? ref.watch(personsProvider)
+        : ref
+              .watch(personsProvider)
+              .whenData(
+                (all) => [
+                  for (final p in all)
+                    if (people.contains(p.id)) p,
+                ],
+              );
+    final balances = mode == null
+        ? ref.watch(personBalancesProvider).valueOrNull ?? const <int, Money>{}
+        : ref.watch(tripBalancesProvider(mode.id));
+    final totals = mode == null
+        ? ref.watch(personTotalsProvider)
+        : personTotalsOf(balances);
 
     return CustomScrollView(
       slivers: [
@@ -270,12 +289,23 @@ class _IndividualTab extends ConsumerWidget {
             ),
           ),
           data: (all) {
+            if (all.isEmpty && mode != null) {
+              return SliverToBoxAdapter(
+                child: _EmptyNote(
+                  icon: Icons.group_add_outlined,
+                  text:
+                      'No one on ${mode.name} yet — add people in its '
+                      'editor.',
+                ),
+              );
+            }
             if (all.isEmpty) {
               return const SliverToBoxAdapter(child: _EmptyPersons());
             }
             final persons = [
               for (final p in all)
-                if (!p.isSettled) p,
+                // A trip shows everyone on it, settled or not.
+                if (mode != null || !p.isSettled) p,
             ];
             if (persons.isEmpty) {
               return const SliverToBoxAdapter(
@@ -666,7 +696,18 @@ class _GroupTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final groupsAsync = ref.watch(groupsProvider);
+    // Inside a mode (a trip): only its own group.
+    final mode = ref.watch(focusedModeProvider);
+    final groupsAsync = mode == null
+        ? ref.watch(groupsProvider)
+        : ref
+              .watch(groupsProvider)
+              .whenData(
+                (all) => [
+                  for (final g in all)
+                    if (g.id == mode.groupId) g,
+                ],
+              );
 
     return groupsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -687,7 +728,7 @@ class _GroupTab extends ConsumerWidget {
         }
         final groups = [
           for (final g in all)
-            if (!g.isSettled) g,
+            if (mode != null || !g.isSettled) g,
         ];
         if (groups.isEmpty) {
           return Padding(
