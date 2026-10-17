@@ -495,7 +495,7 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 55) {
         // Adds RecurringRules.toAccountId and loosens categoryId to
-        // nullable (a G&L rule's transfer carries neither) — SQLite can't
+        // nullable (a transfer rule carries neither) — SQLite can't
         // relax a NOT NULL via a plain ALTER TABLE, so this recreates the
         // table against the current Dart schema, copying existing rows by
         // column name.
@@ -2381,7 +2381,7 @@ class AppDatabase extends _$AppDatabase {
           startDate: Value(startDate),
         ),
       );
-      // "Auto-pay EMI" from the loan editor — an ordinary G&L Auto rule,
+      // "Auto-pay EMI" from the loan editor — an ordinary transfer Auto rule,
       // created in the same transaction so a loan never ends up half set up.
       if (autoPayFromAccountId != null) {
         await addRecurringRule(
@@ -4722,14 +4722,18 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 
-  /// A G&L rule's [RecurringRules.toAccountId] must be a real goal/loan
-  /// account, its [RecurringRules.accountId] must be a real non-goal/loan
-  /// (spendable) account, and the two must differ — the same shape
-  /// [_validateTx] enforces for a one-off transfer, checked up front here so
-  /// a bad rule can never be saved.
-  Future<void> _validateGoalOrLoanTarget({
+  /// A transfer rule's [RecurringRules.toAccountId] may be any other live
+  /// account of the person's — cash, a bank, a card, a goal or a loan — but
+  /// never a debit card/UPI instrument, which holds no money of its own. Its
+  /// [RecurringRules.accountId] must be a spendable (non-goal/loan) account,
+  /// and the two must differ. Only a goal or loan destination carries a
+  /// category. Any foreign currency involved needs an exchange rate to post
+  /// with. All checked up front, so a rule that could never post is never
+  /// saved.
+  Future<void> _validateTransferTarget({
     required int accountId,
     required int toAccountId,
+    required int? categoryId,
   }) async {
     if (accountId == toAccountId) {
       throw ArgumentError('The source and destination must be different.');
@@ -4737,9 +4741,13 @@ class AppDatabase extends _$AppDatabase {
     final to = await (select(
       accounts,
     )..where((a) => a.id.equals(toAccountId))).getSingleOrNull();
-    if (to == null ||
-        (to.type != AccountType.goal && to.type != AccountType.loan)) {
-      throw ArgumentError('Choose a goal or loan to fund.');
+    if (to == null || to.isArchived) {
+      throw ArgumentError('Choose where the money goes.');
+    }
+    if (to.linkedAccountId != null) {
+      throw ArgumentError(
+        '"${to.name}" draws from its bank — send the money to the bank.',
+      );
     }
     final from = await (select(
       accounts,
@@ -4749,6 +4757,17 @@ class AppDatabase extends _$AppDatabase {
         from.type == AccountType.loan) {
       throw ArgumentError('Choose a spendable account to fund it from.');
     }
+    if (categoryId != null &&
+        to.type != AccountType.goal &&
+        to.type != AccountType.loan) {
+      throw ArgumentError(
+        'A transfer between your own accounts has no category.',
+      );
+    }
+    // Throws a user-facing "add a rate" when one is missing.
+    final now = DateTime.now();
+    await _resolveTxCurrency(accountId, now);
+    await _resolveTxCurrency(toAccountId, now);
   }
 
   Future<int> addRecurringRule({
@@ -4772,9 +4791,10 @@ class AppDatabase extends _$AppDatabase {
   }) async {
     CategoryRow? category;
     if (toAccountId != null) {
-      await _validateGoalOrLoanTarget(
+      await _validateTransferTarget(
         accountId: accountId,
         toAccountId: toAccountId,
+        categoryId: categoryId,
       );
     } else {
       if (categoryId == null) {
@@ -4856,9 +4876,10 @@ class AppDatabase extends _$AppDatabase {
   }) async {
     CategoryRow? category;
     if (toAccountId != null) {
-      await _validateGoalOrLoanTarget(
+      await _validateTransferTarget(
         accountId: accountId,
         toAccountId: toAccountId,
+        categoryId: categoryId,
       );
     } else {
       if (categoryId == null) {

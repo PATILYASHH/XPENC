@@ -1833,7 +1833,7 @@ void main() {
       );
     });
 
-    group('G&L — funding a goal or paying a loan', () {
+    group('Transfer rules — funding a goal or paying a loan', () {
       test(
         'posts a transfer, not an expense, and moves both balances',
         () async {
@@ -1976,7 +1976,8 @@ void main() {
         },
       );
 
-      test('rejects a destination that is not a goal or loan', () async {
+      test('rejects a debit card as the destination — it holds no money of '
+          'its own', () async {
         final cash = await cashId();
         final bank = await db.addAccount(
           name: 'Bank',
@@ -1985,13 +1986,22 @@ void main() {
           iconKey: 'bank',
           openingBalance: const Money.zero(),
         );
+        final debit = await db.addAccount(
+          name: 'Bank debit card',
+          type: AccountType.card,
+          cardKind: CardKind.debit,
+          linkedAccountId: bank,
+          colorValue: 0,
+          iconKey: 'card',
+          openingBalance: const Money.zero(),
+        );
         expect(
           () => db.addRecurringRule(
             name: 'Broken',
             kind: CategoryKind.expense,
             amount: Money.fromRupees(500),
             accountId: cash,
-            toAccountId: bank,
+            toAccountId: debit,
             frequency: RecurringFrequency.monthly,
             startsOn: DateTime(2026, 7, 1),
           ),

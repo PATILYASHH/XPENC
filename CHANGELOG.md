@@ -14,6 +14,12 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   — split by subcategory for a parent, with every transaction behind the
   figure. Money-in categories show what came in. A budget's page links to
   it too (**History**).
+- **Auto transfers between your own accounts.** Auto → new rule →
+  **Transfer** (it replaces G&L): move money on a schedule from one account
+  to any other — bank to cash, paying a credit card bill, into a savings
+  goal or towards a loan. Goal and loan rules work as before, interest split
+  included, and are now listed under **Transfers**. A transfer that crosses
+  currencies converts with your exchange rate.
 
 ### Fixed
 - **Statement PDFs now include transaction notes** (#152). The account and

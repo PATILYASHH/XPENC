@@ -8,6 +8,7 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import 'auto_screen.dart';
 
 /// Auto rules paused via **Pause** on [AutoScreen] — hidden from its main
 /// list entirely (see GitHub #61) and gathered here instead. Restoring one
@@ -61,16 +62,13 @@ class _ArchivedRuleTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final isGoalOrLoan = rule.toAccountId != null;
+    final isTransfer = rule.toAccountId != null;
     final isExpense = rule.kind == CategoryKind.expense;
-    final color = isGoalOrLoan
+    final color = isTransfer
         ? AppColors.transfer
         : (isExpense ? AppColors.expense : AppColors.income);
-    final icon = isGoalOrLoan
-        ? (ref.watch(accountMapProvider)[rule.toAccountId]?.type ==
-                  AccountType.loan
-              ? Icons.account_balance_rounded
-              : Icons.savings_rounded)
+    final icon = isTransfer
+        ? transferRuleIcon(ref.watch(accountMapProvider)[rule.toAccountId])
         : (isExpense ? Icons.north_east_rounded : Icons.south_west_rounded);
 
     return AppListTile(

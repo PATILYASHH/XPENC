@@ -45,9 +45,9 @@ class AutoRuleDetailScreen extends ConsumerWidget {
     final destination = rule.toAccountId == null
         ? null
         : accountMap[rule.toAccountId];
-    final isGoalOrLoan = rule.toAccountId != null;
+    final isTransfer = rule.toAccountId != null;
     final isExpense = rule.kind == CategoryKind.expense;
-    final color = isGoalOrLoan
+    final color = isTransfer
         ? AppColors.transfer
         : (isExpense ? AppColors.expense : AppColors.income);
     final onPromo =
@@ -110,7 +110,7 @@ class AutoRuleDetailScreen extends ConsumerWidget {
                     _divider(theme),
                     _row(
                       context,
-                      isGoalOrLoan ? 'From' : 'Account',
+                      isTransfer ? 'From' : 'Account',
                       _plainValue(context, sourceAccount.name),
                     ),
                   ],

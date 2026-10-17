@@ -978,7 +978,7 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
   late DateTime _startDate;
   bool _submitting = false;
 
-  /// New loans only: also create a monthly G&L Auto rule for the EMI, so
+  /// New loans only: also create a monthly transfer Auto rule for the EMI, so
   /// it shows up (and posts itself) in Auto without a second trip there.
   bool _autoPay = true;
   int? _autoPayFromId;

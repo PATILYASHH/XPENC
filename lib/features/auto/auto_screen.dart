@@ -98,7 +98,7 @@ class AutoScreen extends ConsumerWidget {
                         r.toAccountId == null && r.kind == CategoryKind.income,
                   )
                   .toList();
-              final goalOrLoan = rules
+              final transfers = rules
                   .where((r) => r.toAccountId != null)
                   .toList();
               return SliverList.list(
@@ -111,9 +111,9 @@ class AutoScreen extends ConsumerWidget {
                     _sectionHeader(theme, 'Money in'),
                     _section(context, theme, income),
                   ],
-                  if (goalOrLoan.isNotEmpty) ...[
-                    _sectionHeader(theme, 'G&L'),
-                    _section(context, theme, goalOrLoan),
+                  if (transfers.isNotEmpty) ...[
+                    _sectionHeader(theme, 'Transfers'),
+                    _section(context, theme, transfers),
                   ],
                 ],
               );
@@ -185,6 +185,15 @@ class AutoScreen extends ConsumerWidget {
   }
 }
 
+/// A transfer rule's icon, by where the money goes: a loan, a savings goal,
+/// or another everyday account.
+IconData transferRuleIcon(AccountRow? destination) =>
+    switch (destination?.type) {
+      AccountType.loan => Icons.account_balance_rounded,
+      AccountType.goal => Icons.savings_rounded,
+      _ => Icons.swap_horiz_rounded,
+    };
+
 class _EmptyAuto extends StatelessWidget {
   const _EmptyAuto();
 
@@ -226,7 +235,7 @@ class _RuleTile extends ConsumerWidget {
 
   bool get _isExpense => rule.kind == CategoryKind.expense;
 
-  bool get _isGoalOrLoan => rule.toAccountId != null;
+  bool get _isTransfer => rule.toAccountId != null;
 
   bool get _onPromo =>
       rule.promoAmount != null && (rule.promoOccurrencesLeft ?? 0) > 0;
@@ -234,16 +243,14 @@ class _RuleTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final destination = _isGoalOrLoan
-        ? ref.watch(accountMapProvider)[rule.toAccountId]
-        : null;
-    final color = _isGoalOrLoan
+    final accounts = ref.watch(accountMapProvider);
+    final destination = _isTransfer ? accounts[rule.toAccountId] : null;
+    final source = _isTransfer ? accounts[rule.accountId] : null;
+    final color = _isTransfer
         ? AppColors.transfer
         : (_isExpense ? AppColors.expense : AppColors.income);
-    final icon = _isGoalOrLoan
-        ? (destination?.type == AccountType.loan
-              ? Icons.account_balance_rounded
-              : Icons.savings_rounded)
+    final icon = _isTransfer
+        ? transferRuleIcon(destination)
         : (_isExpense ? Icons.north_east_rounded : Icons.south_west_rounded);
 
     return AppListTile(
@@ -261,7 +268,7 @@ class _RuleTile extends ConsumerWidget {
       ),
       subtitle: Text(
         '${_frequencyLabel(rule)} · Next ${DateFormat('d MMM').format(rule.nextDueDate)}'
-        '${destination != null ? ' → ${destination.name}' : ''}'
+        '${destination != null ? ' · ${source?.name ?? '—'} → ${destination.name}' : ''}'
         '${rule.isEstimate ? ' · Estimate' : ''}'
         '${_onPromo ? ' · Promo ×${rule.promoOccurrencesLeft}' : ''}',
         maxLines: 1,
