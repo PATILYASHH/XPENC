@@ -6,6 +6,7 @@ import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../../data/database.dart';
+import '../../data/modes_db.dart';
 import '../../data/tables.dart';
 import '../money.dart';
 import '../platform/platform_features.dart';
@@ -684,12 +685,16 @@ Future<void> _handleQuickAddReply(NotificationResponse response) async {
       await result('No account to post to — nothing was added.');
       return;
     }
-    await db.addTransaction(
+    // Added by hand, so it joins the mode (trip) that's ON, if any.
+    final modeId = await db.activeModeId();
+    final txId = await db.addTransaction(
       type: type,
       amount: amount,
       accountId: accountId,
       date: DateTime.now(),
+      modeId: modeId,
     );
+    await db.applyModeTags(txId, modeId);
     final account = await db.watchAccount(accountId).first;
     await result(
       '${type == TxType.expense ? 'Money out' : 'Money in'} of '

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/database.dart';
+import '../../data/mode_providers.dart';
 import '../../data/providers.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 
@@ -10,9 +11,17 @@ import '../../core/widgets/nav_bar_inset.dart';
 /// are created from **More → Tags**, not from here — this sheet only selects.
 /// Shared by [AddTransactionScreen] and [RecurringRuleSheet] (GitHub #63).
 class TagPickerSheet extends ConsumerStatefulWidget {
-  const TagPickerSheet({required this.initiallySelected, super.key});
+  const TagPickerSheet({
+    required this.initiallySelected,
+    this.modeId,
+    super.key,
+  });
 
   final Set<int> initiallySelected;
+
+  /// Also offers this mode's own tags (see `Tags.modeId`) — never shown
+  /// outside it.
+  final int? modeId;
 
   @override
   ConsumerState<TagPickerSheet> createState() => _TagPickerSheetState();
@@ -30,7 +39,9 @@ class _TagPickerSheetState extends ConsumerState<TagPickerSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final tagsAsync = ref.watch(tagsProvider);
+    final tagsAsync = ref
+        .watch(tagsProvider)
+        .whenData((_) => ref.watch(pickerTagsProvider(widget.modeId)));
     final groups = ref.watch(tagGroupsProvider).valueOrNull ?? const [];
     final tagsByGroup = ref.watch(tagGroupTagsByGroupProvider);
 

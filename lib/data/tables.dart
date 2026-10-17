@@ -180,6 +180,11 @@ enum TxIconBackground { category, direction, single }
 /// there.
 enum WeekStart { sunday, monday }
 
+/// Where a [Modes] row is in its life: set up but not started, ON (exactly
+/// one at a time — see [Settings.activeModeId]), or over. An ended mode can
+/// be started again.
+enum ModeStatus { planned, active, ended }
+
 /// Legacy — superseded by `Settings.rtaEnabled` (GitHub #100 v2). Budget
 /// (the per-category ceiling system) is now always on for everyone, and
 /// Ready to Assign is a single on/off layer on top of it rather than a
@@ -328,6 +333,12 @@ class Categories extends Table {
   /// ([AppDatabase.addCategory] / [AppDatabase.updateCategory]); a stray id
   /// from an old backup is treated as top-level rather than wedging a query.
   IntColumn get parentId => integer().nullable()();
+
+  /// Set on a category made just for one mode (a trip's "Beach shacks"): it
+  /// is only ever offered inside that mode, never in everyday lists, but
+  /// still names its transactions everywhere. Null for every everyday
+  /// category.
+  IntColumn get modeId => integer().nullable().references(Modes, #id)();
 }
 
 /// A currency the person made themselves, for one the app doesn't list.
@@ -395,6 +406,12 @@ class Transactions extends Table {
 
   /// personOut / personIn only — who the money went to or came from.
   IntColumn get personId => integer().nullable().references(Persons, #id)();
+
+  /// The mode (a trip, an event) this transaction belongs to — see [Modes].
+  /// Set only where a person adds money by hand while a mode is ON (or from
+  /// a mode's linked group), and movable later. Never set by an Auto rule,
+  /// an import or a correction.
+  IntColumn get modeId => integer().nullable().references(Modes, #id)();
 
   DateTimeColumn get date => dateTime()();
   TextColumn get note => text().nullable()();
@@ -719,6 +736,84 @@ class GroupExpenses extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
+// ─── Modes ────────────────────────────────────────────────────────────────
+
+/// A mode: a temporary event — a trip, a wedding, a festival — the person
+/// switches on, spends in, and switches off. While it's ON the app focuses on
+/// it; afterwards it's one line in the everyday app that opens into the whole
+/// story. See `docs/superpowers/specs/2026-10-17-modes-design.md`.
+@DataClassName('ModeRow')
+class Modes extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text().withLength(min: 1, max: 40)();
+
+  /// An `AppIcons` key, or `emoji:<glyph>` — same as a category's.
+  TextColumn get iconKey => text().withLength(min: 1, max: 40)();
+  IntColumn get colorValue => integer()();
+  TextColumn get status =>
+      textEnum<ModeStatus>().withDefault(const Constant('planned'))();
+
+  /// Optional plan: it switches itself on at [startDate] and off after
+  /// [endDate] (both date-only, local).
+  DateTimeColumn get startDate => dateTime().nullable()();
+  DateTimeColumn get endDate => dateTime().nullable()();
+
+  /// When it actually went ON / OFF.
+  DateTimeColumn get startedAt => dateTime().nullable()();
+  DateTimeColumn get endedAt => dateTime().nullable()();
+
+  /// Optional total to spend, tracked on the mode's page and home.
+  IntColumn get budget => integer().map(const MoneyConverter()).nullable()();
+
+  /// Spending abroad: new transactions in this mode get a foreign amount in
+  /// this currency (GitHub #85). Null = the parent currency.
+  TextColumn get currencyCode => text().withLength(min: 3, max: 3).nullable()();
+
+  /// A Groups trip tied to this mode: its expenses join the mode.
+  IntColumn get groupId => integer().nullable().references(Groups, #id)();
+
+  /// The bottom bar's two slots while focused (`"transactions,persons"`),
+  /// same format as [Settings.bottomNavSlots]. Null = the everyday ones.
+  TextColumn get navSlots => text().nullable()();
+
+  /// The More modules shown while focused, comma-joined keys (see
+  /// `mode_modules.dart`). Empty = all of them.
+  TextColumn get modules => text().withDefault(const Constant(''))();
+
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// The accounts a mode offers — empty means every account.
+@DataClassName('ModeAccountRow')
+class ModeAccounts extends Table {
+  IntColumn get modeId => integer().references(Modes, #id)();
+  IntColumn get accountId => integer().references(Accounts, #id)();
+
+  @override
+  Set<Column> get primaryKey => {modeId, accountId};
+}
+
+/// The everyday categories a mode offers — empty means all of them. Its own
+/// categories (see [Categories.modeId]) are always offered.
+@DataClassName('ModeCategoryRow')
+class ModeCategories extends Table {
+  IntColumn get modeId => integer().references(Modes, #id)();
+  IntColumn get categoryId => integer().references(Categories, #id)();
+
+  @override
+  Set<Column> get primaryKey => {modeId, categoryId};
+}
+
+/// Tags added to every transaction made in a mode (removable one by one).
+@DataClassName('ModeTagRow')
+class ModeTags extends Table {
+  IntColumn get modeId => integer().references(Modes, #id)();
+  IntColumn get tagId => integer().references(Tags, #id)();
+
+  @override
+  Set<Column> get primaryKey => {modeId, tagId};
+}
+
 /// One participant's computed share of a [GroupExpenses] row. Every
 /// participant gets exactly one row here, whether or not their share ended
 /// up trackable — a row with both [personEntryId] and [transactionId] null
@@ -801,26 +896,28 @@ class RecurringRules extends Table {
   TextColumn get name => text().withLength(min: 1, max: 60)();
 
   /// Reuses [CategoryKind] rather than a bespoke enum — a rule is exactly as
-  /// income-or-expense as the category it posts under. For a G&L rule (see
-  /// [toAccountId]) this is always [CategoryKind.expense] — money leaves
-  /// [accountId] the same direction as an expense — but it's otherwise
-  /// unread: every code path branches on [toAccountId] first.
+  /// income-or-expense as the category it posts under. For a transfer rule
+  /// (see [toAccountId]) this is always [CategoryKind.expense] — money
+  /// leaves [accountId] the same direction as an expense — but it's
+  /// otherwise unread: every code path branches on [toAccountId] first.
   TextColumn get kind => textEnum<CategoryKind>()();
 
   IntColumn get amount => integer().map(const MoneyConverter())();
   IntColumn get accountId => integer().references(Accounts, #id)();
 
-  /// Null for a G&L rule (see [toAccountId]) — a transfer into a goal or
-  /// loan is only ever optionally tagged, exactly like
-  /// [GoalDetails.categoryId]/[LoanDetails.categoryId]. Required for an
-  /// expense/income rule.
+  /// Required for an expense/income rule. A transfer rule (see
+  /// [toAccountId]) carries one only into a goal or loan, and only
+  /// optionally — exactly like [GoalDetails.categoryId]/
+  /// [LoanDetails.categoryId]; a transfer between everyday accounts has none.
   IntColumn get categoryId =>
       integer().nullable().references(Categories, #id)();
 
-  /// Non-null makes this a "G&L" rule: it posts a [TxType.transfer] from
-  /// [accountId] to this goal or loan account instead of an
-  /// income/expense transaction. Null (the common case) means the rule
-  /// posts an ordinary expense/income per [kind].
+  /// Non-null makes this a transfer rule: it posts a [TxType.transfer] from
+  /// [accountId] to this account — any of the person's own: cash, a bank, a
+  /// card (paying its bill), a savings goal or a loan — instead of an
+  /// income/expense transaction. A loan destination with a rate also splits
+  /// out the interest. Null (the common case) means the rule posts an
+  /// ordinary expense/income per [kind].
   IntColumn get toAccountId => integer().nullable().references(Accounts, #id)();
 
   /// Same free-text field as [Transactions.payee] — who the rule pays (an
@@ -1323,6 +1420,9 @@ class Settings extends Table {
   TextColumn get weekStart =>
       textEnum<WeekStart>().withDefault(const Constant('monday'))();
 
+  /// The mode that's ON, if any — see [Modes]. At most one at a time.
+  IntColumn get activeModeId => integer().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -1452,6 +1552,9 @@ class Tags extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text().withLength(min: 1, max: 30)();
   IntColumn get colorValue => integer()();
+
+  /// Same as [Categories.modeId]: a tag made just for one mode.
+  IntColumn get modeId => integer().nullable().references(Modes, #id)();
 
   @override
   List<Set<Column>> get uniqueKeys => [

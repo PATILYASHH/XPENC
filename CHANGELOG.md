@@ -20,11 +20,34 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   goal or towards a loan. Goal and loan rules work as before, interest split
   included, and are now listed under **Transfers**. A transfer that crosses
   currencies converts with your exchange rate.
+- **Modes — a trip or an event, in focus.** More → **Modes** → **New mode**
+  (start from **Trip** or **Blank**). Give it dates and a budget, the
+  accounts and categories it may use, tags to put on every spend, its own
+  categories and tags (a trip's "Beach shacks"), the tabs and More modules
+  to show, a linked group and the currency you'll spend in. Switch it **ON**
+  and everything you add joins it — from Add (with a **Part of …** switch to
+  keep one out), quick add, a detected bank message or a person entry —
+  while auto rules, imports and corrections never do. The Dashboard becomes
+  the mode's home (spent against the budget, per day, where it went), the
+  Transactions tab shows only its spends, and a bar over the tabs offers
+  **Full app** and **End**. Outside it, the mode is one card in
+  Transactions ("Goa trip · 12–18 Oct · −₹18,400") and one slice in Stats
+  and the Dashboard's Spending; budgets don't count it, monthly totals do.
+  A mode with dates starts on its first day and ends after its last. Move
+  any transaction in or out from its page.
+
+### Changed
+- **"App mode" is now "App level"** (Basic / Medium / Pro), so it isn't
+  confused with Modes. Settings → **Level & Budgeting**.
 
 ### Fixed
 - **Statement PDFs now include transaction notes** (#152). The account and
   combined statements get a **Note** column whenever the period has notes
   to show. A lending entry's automatic "Gave to …" isn't repeated there.
+- **Backups now carry loans' terms, groups, transaction templates and
+  category templates.** They were left out — a phone move lost them, and
+  restoring onto a phone that had groups (or a quick-add account) failed.
+  **Clear all data** works on such a phone too.
 
 ## [1.6.5] — beta
 

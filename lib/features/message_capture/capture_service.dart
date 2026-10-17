@@ -1,4 +1,5 @@
 import '../../data/database.dart';
+import '../../data/modes_db.dart';
 import '../../data/tables.dart';
 import 'message_source.dart';
 import 'parser/bank_message.dart';
@@ -163,13 +164,18 @@ class CaptureService {
     if (!matches) return false;
 
     try {
-      await db.approvePending(
+      // A spend the bank told us about joins the mode (trip) that's ON,
+      // same as one typed in.
+      final modeId = await db.activeModeId();
+      final txId = await db.approvePending(
         pendingId,
         categoryId: rule.categoryId,
         accountId: accountId,
         autoFilled: true,
         appliedRuleId: rule.id,
+        modeId: modeId,
       );
+      await db.applyModeTags(txId, modeId);
       return true;
     } on ArgumentError {
       return false;

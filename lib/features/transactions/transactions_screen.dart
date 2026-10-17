@@ -21,8 +21,11 @@ import '../../core/widgets/money_text.dart';
 import '../../core/widgets/motion.dart';
 import '../../data/currency_conversion.dart';
 import '../../data/database.dart';
+import '../../data/mode_providers.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../modes/mode_detail_screen.dart' show modeSpentLabel;
+import '../modes/mode_widgets.dart';
 import 'transaction_filters.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 import '../persons/person_avatar.dart';
@@ -211,6 +214,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         quickFilter != null ||
         linkedOnly ||
         advanced.count > 0;
+    // While a mode (a trip) is the focus, this is that mode's list. Outside
+    // it, each mode's transactions fold into one card — unless searching or
+    // filtering, which looks at every row.
+    final focused = ref.watch(focusedModeProvider);
+    final foldModes = focused == null && !searchOrFilterActive;
     // The top bar's close-search button clears the provider directly; this
     // screen owns the actual TextField, so it's on the hook for clearing the
     // stale text left sitting in its controller.
@@ -255,7 +263,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             advanced: advanced,
             linkedOnly: linkedOnly,
             clusters: clusters,
-          )
+          ).where((t) => focused == null || t.modeId == focused.id).toList()
         : const <TransactionRow>[];
 
     final Widget body = txAsync.when(
@@ -299,7 +307,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
         final entries = linkedOnly
             ? _groupLinked(matched, clusters)
-            : _group(matched);
+            : _group(matched, foldModes: foldModes);
         return SliverList.builder(
           itemCount: entries.length,
           itemBuilder: (context, i) {
@@ -309,6 +317,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 day: day,
                 net: net,
                 count: count,
+              ),
+              _ModeEntry(:final modeId) => Reveal(
+                index: i < 8 ? i : 0,
+                child: _ModeCard(modeId: modeId),
               ),
               _TxEntry(:final tx) => Reveal(
                 // Only the first screenful is worth staggering; past that the
@@ -334,6 +346,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   ],
                   onDelete: _confirmDelete,
                   onCreateTemplate: _createTemplateFrom,
+                  showModeChip: focused == null,
                 ),
               ),
               _ClusterHeaderEntry(:final count, :final start, :final end) =>
@@ -532,11 +545,24 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     }).toList()..sort((a, b) => b.date.compareTo(a.date));
   }
 
-  /// Groups by calendar day and flattens into headers + rows.
-  List<_Entry> _group(List<TransactionRow> filtered) {
+  /// Groups by calendar day and flattens into headers + rows. With
+  /// [foldModes], a mode's transactions become one card on the day of its
+  /// latest one (the day's figures leave them to the card).
+  List<_Entry> _group(List<TransactionRow> filtered, {bool foldModes = false}) {
     final groups = <DateTime, List<TransactionRow>>{};
+    final modeCards = <DateTime, List<int>>{};
+    final placed = <int>{};
     for (final tx in filtered) {
       final day = DateTime(tx.date.year, tx.date.month, tx.date.day);
+      final mode = tx.modeId;
+      if (foldModes && mode != null) {
+        // Newest first, so the first one seen is the mode's latest.
+        if (placed.add(mode)) {
+          modeCards.putIfAbsent(day, () => []).add(mode);
+          groups.putIfAbsent(day, () => []);
+        }
+        continue;
+      }
       groups.putIfAbsent(day, () => []).add(tx);
     }
 
@@ -555,7 +581,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           net -= tx.baseAmount;
         }
       }
-      entries.add(_HeaderEntry(day, net, rows.length));
+      final cards = modeCards[day] ?? const <int>[];
+      entries.add(_HeaderEntry(day, net, rows.length + cards.length));
+      for (final mode in cards) {
+        entries.add(_ModeEntry(mode));
+      }
       for (final tx in rows) {
         entries.add(_TxEntry(tx));
       }
@@ -645,6 +675,95 @@ class _ClusterTxEntry extends _Entry {
 class _TxEntry extends _Entry {
   const _TxEntry(this.tx);
   final TransactionRow tx;
+}
+
+/// A whole mode (a trip), folded into one card.
+class _ModeEntry extends _Entry {
+  const _ModeEntry(this.modeId);
+  final int modeId;
+}
+
+/// "🧳 Goa trip · 12–18 Oct · 23 spends · −₹18,400" — a mode's transactions
+/// as one line of the everyday list. Opens the mode's page.
+class _ModeCard extends ConsumerWidget {
+  const _ModeCard({required this.modeId});
+
+  final int modeId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final mode = ref.watch(modeMapProvider)[modeId];
+    if (mode == null) return const SizedBox.shrink();
+    final summary = ref.watch(modeSummaryProvider(modeId));
+    final range = modeDateRange(mode);
+    final subtitle = [
+      ?range,
+      summary.count == 1 ? '1 transaction' : '${summary.count} transactions',
+    ].join(' · ');
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+      child: PressScale(
+        child: AppCard(
+          margin: EdgeInsets.zero,
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => context.push('/mode/${mode.id}'),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  ModeBadge(mode, size: 44),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          mode.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        modeSpentLabel(summary.spent),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: summary.spent.isZero
+                              ? theme.colorScheme.onSurfaceVariant
+                              : AppColors.expense,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // ── Summary of whatever is currently on screen ───────────────────────────────
@@ -998,6 +1117,7 @@ Future<void> _openQuickActions(
 
 class _TxCard extends StatelessWidget {
   const _TxCard({
+    this.showModeChip = true,
     required this.tx,
     required this.category,
     required this.account,
@@ -1027,6 +1147,9 @@ class _TxCard extends StatelessWidget {
   final GroupRow? group;
   final Future<void> Function(TransactionRow tx, String title) onDelete;
   final Future<void> Function(TransactionRow tx, String title) onCreateTemplate;
+
+  /// Marks a transaction that's in a mode (a trip) — off inside that mode.
+  final bool showModeChip;
 
   @override
   Widget build(BuildContext context) {
@@ -1209,6 +1332,7 @@ class _TxCard extends StatelessWidget {
                               splitCategories: splitCategories,
                               hasReceipt: hasReceipt,
                               group: group,
+                              modeId: showModeChip ? tx.modeId : null,
                             ),
                           ],
                         ),
@@ -1274,6 +1398,7 @@ class _Meta extends StatelessWidget {
     required this.splitCategories,
     required this.hasReceipt,
     required this.group,
+    this.modeId,
   });
 
   final bool isTransfer;
@@ -1285,6 +1410,7 @@ class _Meta extends StatelessWidget {
   final List<CategoryRow> splitCategories;
   final bool hasReceipt;
   final GroupRow? group;
+  final int? modeId;
 
   @override
   Widget build(BuildContext context) {
@@ -1372,6 +1498,7 @@ class _Meta extends StatelessWidget {
           const SizedBox(height: 4),
           GroupTag(group: group!),
         ],
+        if (modeId != null) ...[const SizedBox(height: 4), ModeChip(modeId!)],
         if (tags.isNotEmpty) ...[
           const SizedBox(height: 4),
           Wrap(

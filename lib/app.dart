@@ -15,6 +15,7 @@ import 'core/theme/theme_preset.dart';
 import 'core/week_start.dart';
 import 'core/widgets/error_view.dart';
 import 'core/widgets/money_text.dart';
+import 'data/modes_db.dart';
 import 'data/providers.dart';
 import 'features/message_capture/parser/bank_message.dart';
 import 'features/message_capture/share_intake.dart';
@@ -104,6 +105,9 @@ class _XpencAppState extends ConsumerState<XpencApp>
   /// service — like message capture, this only ever runs while the app is
   /// open, so it also runs again on every resume, not just cold start.
   Future<void> _runRecurring() async {
+    // A planned mode (a trip) starts on its first day and ends after its
+    // last — checked on the same launch/resume beat.
+    await ref.read(dbProvider).syncModeSchedule(DateTime.now());
     final posted = await ref.read(dbProvider).runDueRecurringRules();
     if (!mounted) return;
     final notifications = ref.read(notificationServiceProvider);

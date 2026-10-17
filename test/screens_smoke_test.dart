@@ -971,6 +971,8 @@ void main() {
   testWidgets('More hub renders every tile', (tester) async {
     await pump(tester, const MoreScreen());
     expect(tester.takeException(), isNull);
+    expect(find.text('Modes'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Stats'), 240);
     expect(find.text('Stats'), findsOneWidget);
     // Sits below the fold at phone size — bring it into the viewport first.
     await tester.scrollUntilVisible(find.text('Backup & Restore'), 240);
@@ -1249,11 +1251,15 @@ void main() {
   ) async {
     await pump(tester, const GuideScreen());
     expect(tester.takeException(), isNull);
-    expect(find.text('App modes'), findsOneWidget);
+    expect(find.text('App levels'), findsOneWidget);
     for (final mode in appModeGuide) {
       expect(find.text(mode.title), findsOneWidget);
     }
     for (final section in guideSections) {
+      // From the top each time: the list sizes its rows lazily, so jumping
+      // to the previous section's last entry can land past this heading.
+      await tester.drag(find.byType(Scrollable), const Offset(0, 100000));
+      await tester.pump();
       await tester.scrollUntilVisible(
         find.text(section.title.toUpperCase()),
         300,

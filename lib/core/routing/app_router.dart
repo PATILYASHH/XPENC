@@ -22,6 +22,9 @@ import '../../features/calculators/calculator_screen.dart';
 import '../../features/categories/archived_categories_screen.dart';
 import '../../features/categories/categories_screen.dart';
 import '../../features/categories/category_detail_screen.dart';
+import '../../features/modes/mode_detail_screen.dart';
+import '../../features/modes/mode_editor_screen.dart';
+import '../../features/modes/modes_screen.dart';
 import '../../features/categories/category_templates_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/data_export/backup_screen.dart';
@@ -354,6 +357,21 @@ final appRouter = GoRouter(
                     ),
                   ],
                 ),
+                // Trips and events (see `Modes`).
+                GoRoute(
+                  path: 'modes',
+                  parentNavigatorKey: _rootKey,
+                  builder: (_, _) => const ModesScreen(),
+                  routes: [
+                    GoRoute(
+                      path: 'new',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, state) => ModeEditorScreen(
+                        presetKey: state.uri.queryParameters['preset'],
+                      ),
+                    ),
+                  ],
+                ),
                 GoRoute(
                   path: 'tags',
                   parentNavigatorKey: _rootKey,
@@ -657,6 +675,20 @@ final appRouter = GoRouter(
       path: '/persons/ussd-pay',
       parentNavigatorKey: _rootKey,
       builder: (_, _) => const UssdPayScreen(),
+    ),
+
+    GoRoute(
+      path: '/mode/:id',
+      parentNavigatorKey: _rootKey,
+      builder: (_, state) =>
+          ModeDetailScreen(modeId: int.parse(state.pathParameters['id']!)),
+    ),
+
+    GoRoute(
+      path: '/mode/:id/edit',
+      parentNavigatorKey: _rootKey,
+      builder: (_, state) =>
+          ModeEditorScreen(modeId: int.parse(state.pathParameters['id']!)),
     ),
 
     GoRoute(

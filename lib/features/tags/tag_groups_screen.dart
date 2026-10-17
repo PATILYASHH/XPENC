@@ -308,7 +308,9 @@ class _GroupEditorSheetState extends ConsumerState<_GroupEditorSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final tagsAsync = ref.watch(tagsProvider);
+    final tagsAsync = ref
+        .watch(tagsProvider)
+        .whenData((_) => ref.watch(everydayTagsProvider));
 
     return ConstrainedBox(
       constraints: BoxConstraints(

@@ -15,6 +15,7 @@ import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/motion.dart';
 import '../../data/database.dart';
+import '../../data/mode_providers.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../budgets/ready_to_assign_screen.dart';
@@ -26,6 +27,8 @@ import '../reports/stats_modules.dart';
 import 'dashboard_layout.dart';
 import 'sparkline.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../modes/mode_home.dart';
+import '../modes/mode_widgets.dart';
 
 /// The graphical glance view: net worth, this-month income vs expense,
 /// account balances, budgets, spend breakdown and recent activity — whichever
@@ -55,6 +58,10 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // A mode (a trip) that's the focus has a home of its own.
+    final focused = ref.watch(focusedModeProvider);
+    if (focused != null) return ModeHome(mode: focused);
+
     // Until settings land there's no telling which layout is theirs; drawing
     // the built-in one meanwhile would flash it at anyone who changed it.
     final ready = ref.watch(settingsProvider).hasValue;
@@ -1803,17 +1810,38 @@ class _SpendByCategorySection extends ConsumerWidget {
     final theme = Theme.of(context);
     final spendAsync = ref.watch(spendByCategoryProvider);
     final cats = ref.watch(categoryMapProvider);
+    final modes = ref.watch(modeMapProvider);
+    final modeSpend = ref.watch(modeSpendForPeriodProvider);
 
     return spendAsync.when(
       data: (rawMap) {
         // Roll each subcategory's spend up into its parent, so the breakdown is
-        // by top-level category — the level a glance wants.
+        // by top-level category — the level a glance wants. A mode's (trip's)
+        // spending is one slice of its own.
         final map = rollUpToParents(rawMap, cats);
-        final entries = map.entries.where((e) => e.value.isPositive).toList()
-          ..sort((a, b) => b.value.compareTo(a.value));
-        if (entries.isEmpty) return const SizedBox.shrink();
+        final slices = <({String label, Money value, Color color, int? id})>[
+          for (final e in map.entries)
+            if (e.value.isPositive)
+              (
+                label: cats[e.key]?.name ?? 'Uncategorised',
+                value: e.value,
+                color: cats[e.key] != null
+                    ? Color(cats[e.key]!.colorValue)
+                    : theme.colorScheme.secondary,
+                id: e.key,
+              ),
+          for (final e in modeSpend.entries)
+            if (e.value.isPositive && modes[e.key] != null)
+              (
+                label: modes[e.key]!.name,
+                value: e.value,
+                color: Color(modes[e.key]!.colorValue),
+                id: -e.key,
+              ),
+        ]..sort((a, b) => b.value.compareTo(a.value));
+        if (slices.isEmpty) return const SizedBox.shrink();
 
-        final total = entries.fold(
+        final total = slices.fold(
           const Money.zero(),
           (sum, e) => sum + e.value,
         );
@@ -1840,20 +1868,7 @@ class _SpendByCategorySection extends ConsumerWidget {
                   margin: EdgeInsets.zero,
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
-                    child: CategoryPieChart(
-                      showLegend: false,
-                      slices: [
-                        for (final e in entries)
-                          (
-                            label: cats[e.key]?.name ?? 'Uncategorised',
-                            value: e.value,
-                            color: cats[e.key] != null
-                                ? Color(cats[e.key]!.colorValue)
-                                : theme.colorScheme.secondary,
-                            id: e.key,
-                          ),
-                      ],
-                    ),
+                    child: CategoryPieChart(showLegend: false, slices: slices),
                   ),
                 ),
               ),
@@ -2041,13 +2056,24 @@ class _TxRow extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
         ),
-        subtitle: Text(
-          subtitle,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+        subtitle: Row(
+          children: [
+            Flexible(
+              child: Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            // In a mode (a trip) — see `Transactions.modeId`.
+            if (tx.modeId != null) ...[
+              const SizedBox(width: 6),
+              Flexible(child: ModeChip(tx.modeId!)),
+            ],
+          ],
         ),
         trailing: _amount(theme),
       ),

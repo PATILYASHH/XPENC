@@ -32,7 +32,10 @@ class TagsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final tagsAsync = ref.watch(tagsProvider);
+    // A mode's own tags are managed in that mode's editor.
+    final tagsAsync = ref
+        .watch(tagsProvider)
+        .whenData((_) => ref.watch(everydayTagsProvider));
 
     return Scaffold(
       appBar: AppTopBar(

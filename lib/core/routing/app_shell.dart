@@ -19,6 +19,8 @@ import 'hold_menu_geometry.dart';
 import 'quick_actions.dart';
 import '../../features/add_transaction/add_transaction_choice_sheet.dart';
 import '../../features/dashboard/month_picker_sheet.dart';
+import '../../features/modes/mode_widgets.dart';
+import '../../data/mode_providers.dart';
 import '../../features/persons/persons_screen.dart' show showAddPersonDialog;
 import '../../features/persons/settled_prompt_listener.dart';
 import '../../features/transactions/transaction_filters.dart';
@@ -108,6 +110,18 @@ class AppShell extends ConsumerWidget {
 
   static (String, String) _slotIds(WidgetRef ref) {
     final basic = ref.watch(appModeProvider) == AppMode.basic;
+    // A mode (a trip) that's the focus may pick its own two tabs.
+    final modeSlots = ref.watch(focusedModeProvider)?.navSlots?.split(',');
+    if (modeSlots != null &&
+        modeSlots.length == 2 &&
+        modeSlots[0] != modeSlots[1] &&
+        _catalog.containsKey(modeSlots[0]) &&
+        _catalog.containsKey(modeSlots[1]) &&
+        !(basic &&
+            (basicModeHiddenCatalogIds.contains(modeSlots[0]) ||
+                basicModeHiddenCatalogIds.contains(modeSlots[1])))) {
+      return (modeSlots[0], modeSlots[1]);
+    }
     final raw =
         ref.watch(settingsProvider).valueOrNull?.bottomNavSlots ??
         'transactions,persons';
@@ -217,36 +231,48 @@ class AppShell extends ConsumerWidget {
           // bar's height as bottom padding, which every tab already honours
           // (see `NavBarInset`).
           extendBody: glass,
-          bottomNavigationBar: glass
-              ? _LiquidTabBar(
-                  tabs: [_dashboard, left, right, _more],
-                  currentBranch: navigationShell.currentIndex,
-                  showLabels: ref.watch(showBottomNavLabelsProvider),
-                  onSelect: (branch) => _goBranch(ref, branch),
-                  add: add,
-                )
-              : DecoratedBox(
-                  decoration: BoxDecoration(
-                    border: Border(top: BorderSide(color: border)),
-                  ),
-                  child: SafeArea(
-                    top: false,
-                    child: SizedBox(
-                      height: 68,
-                      child: Row(
-                        children: [
-                          _navItem(context, ref, _dashboard),
-                          _navItem(context, ref, left),
-                          add,
-                          _navItem(context, ref, right),
-                          _navItem(context, ref, _more),
-                        ],
+          // While a mode (a trip) is ON, its bar rides just above the tabs.
+          bottomNavigationBar: _withModeBar(
+            ref,
+            glass
+                ? _LiquidTabBar(
+                    tabs: [_dashboard, left, right, _more],
+                    currentBranch: navigationShell.currentIndex,
+                    showLabels: ref.watch(showBottomNavLabelsProvider),
+                    onSelect: (branch) => _goBranch(ref, branch),
+                    add: add,
+                  )
+                : DecoratedBox(
+                    decoration: BoxDecoration(
+                      border: Border(top: BorderSide(color: border)),
+                    ),
+                    child: SafeArea(
+                      top: false,
+                      child: SizedBox(
+                        height: 68,
+                        child: Row(
+                          children: [
+                            _navItem(context, ref, _dashboard),
+                            _navItem(context, ref, left),
+                            add,
+                            _navItem(context, ref, right),
+                            _navItem(context, ref, _more),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
+          ),
         ),
       ),
+    );
+  }
+
+  static Widget _withModeBar(WidgetRef ref, Widget bar) {
+    if (ref.watch(activeModeProvider) == null) return bar;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [const ModeBar(), bar],
     );
   }
 

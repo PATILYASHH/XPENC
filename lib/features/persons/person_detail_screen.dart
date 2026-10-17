@@ -18,6 +18,7 @@ import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/group_tag.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
+import '../../data/modes_db.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../accounts/envelope_outflow.dart';
@@ -1018,6 +1019,8 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
           note: note.isEmpty ? null : note,
           categoryId: widget.isRepayment ? _repaymentCategoryId : null,
           tagIds: _tagIds ?? const {},
+          // Lending on a trip is part of the trip.
+          modeId: await db.activeModeId(),
         );
       }
       // Written only after the entry itself is safely saved — a failed save

@@ -26,7 +26,7 @@ class GuideScreen extends StatelessWidget {
         ),
         children: [
           Text(
-            'App modes',
+            'App levels',
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
             ),

@@ -10,9 +10,31 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/error_view.dart';
 import '../../data/database.dart';
+import '../../data/mode_providers.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'chart_widgets.dart';
+
+/// A mode's (trip's) spending in a category breakdown: one slice of its
+/// own, in its colour, keyed by the negated mode id so a tap can tell it
+/// from a category. See [modeSliceRoute].
+List<({int id, String label, Money value, Color color})> modeSlices(
+  Map<int, Money> spend,
+  Map<int, ModeRow> modes,
+) => [
+  for (final e in spend.entries)
+    if (e.value.isPositive && modes[e.key] != null)
+      (
+        id: -e.key,
+        label: modes[e.key]!.name,
+        value: e.value,
+        color: Color(modes[e.key]!.colorValue),
+      ),
+];
+
+/// Where a breakdown slice opens: a mode's page (negative ids, see
+/// [modeSlices]) or the category's budget detail.
+String modeSliceRoute(int id) => id < 0 ? '/mode/${-id}' : '/more/budgets/$id';
 
 /// Shared building blocks for the Stats hub and every stats module screen —
 /// pulled out of the old single-page Stats screen so each module can reuse
@@ -300,6 +322,10 @@ class CategorySection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final categories = ref.watch(categoryMapProvider);
+    final modes = ref.watch(modeMapProvider);
+    final modeSpend = showYear
+        ? ref.watch(yearModeSpendProvider(year))
+        : ref.watch(modeSpendForPeriodProvider);
 
     Widget chartOf(Map<int, Money> rawSpend) {
       final slices = <({String label, Money value, Color color, int? id})>[];
@@ -334,9 +360,12 @@ class CategorySection extends ConsumerWidget {
           ));
         });
       }
+      for (final m in modeSlices(modeSpend, modes)) {
+        slices.add((label: m.label, value: m.value, color: m.color, id: m.id));
+      }
       return CategoryPieChart(
         slices: slices,
-        onSliceTap: (categoryId) => context.push('/more/budgets/$categoryId'),
+        onSliceTap: (id) => context.push(modeSliceRoute(id)),
       );
     }
 
@@ -725,6 +754,10 @@ class CategoryStandings extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final categories = ref.watch(categoryMapProvider);
+    final modes = ref.watch(modeMapProvider);
+    final modeSpend = showYear
+        ? ref.watch(yearModeSpendProvider(year))
+        : ref.watch(modeSpendForPeriodProvider);
 
     Widget rankingOf(Map<int, Money> rawSpend) {
       // Same grouping rule as the pie above: subcategories stand alone
@@ -756,6 +789,7 @@ class CategoryStandings extends ConsumerWidget {
         });
       }
 
+      entries.addAll(modeSlices(modeSpend, modes));
       final positive = entries.where((e) => e.value.isPositive).toList()
         ..sort(
           (a, b) => ascending
@@ -788,7 +822,7 @@ class CategoryStandings extends ConsumerWidget {
               dotColor: e.color,
               barFraction: maxValue == 0 ? 0 : e.value.paise / maxValue,
               barColor: e.color,
-              onTap: () => context.push('/more/budgets/${e.id}'),
+              onTap: () => context.push(modeSliceRoute(e.id)),
             ),
         ],
       );

@@ -80,7 +80,7 @@ void main() {
   final screens = <String, Widget>{
     'Settings': const SettingsScreen(),
     'General': const GeneralSettingsScreen(),
-    'Mode & Budgeting': const ModeBudgetingSettingsScreen(),
+    'Level & Budgeting': const ModeBudgetingSettingsScreen(),
     'Persons': const PersonsSettingsScreen(),
     'Security & Privacy': const SecurityPrivacySettingsScreen(),
     'Notifications': const NotificationsSettingsScreen(),

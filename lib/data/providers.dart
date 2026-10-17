@@ -18,6 +18,7 @@ import '../features/message_capture/share_intake.dart';
 import '../features/transactions/transaction_filters.dart';
 import 'currency_conversion.dart';
 import 'database.dart';
+import 'modes_db.dart';
 import 'tables.dart';
 
 final dbProvider = Provider<AppDatabase>((ref) {
@@ -66,14 +67,21 @@ final archivedCategoriesProvider = StreamProvider<List<CategoryRow>>(
   (ref) => ref.watch(dbProvider).watchArchivedCategories(),
 );
 
+/// Categories made for one mode (a trip) — see [Categories.modeId]. Never in
+/// everyday lists; [categoryMapProvider] still resolves them.
+final modeOwnCategoriesProvider = StreamProvider<List<CategoryRow>>(
+  (ref) => ref.watch(dbProvider).watchModeOwnCategories(),
+);
+
 /// Every category, keyed by id — for resolving names/icons on list rows.
 final categoryMapProvider = Provider<Map<int, CategoryRow>>((ref) {
   final income =
       ref.watch(categoriesProvider(CategoryKind.income)).valueOrNull ?? [];
   final expense =
       ref.watch(categoriesProvider(CategoryKind.expense)).valueOrNull ?? [];
+  final ofModes = ref.watch(modeOwnCategoriesProvider).valueOrNull ?? [];
   return {
-    for (final c in [...income, ...expense]) c.id: c,
+    for (final c in [...income, ...expense, ...ofModes]) c.id: c,
   };
 });
 
@@ -216,6 +224,9 @@ final yearSpendByCategoryProvider = Provider.family<Map<int, Money>, int>((
   final out = <int, Money>{};
   for (final t in txs) {
     if (t.type != TxType.expense || t.date.year != year) continue;
+    // A mode's (trip's) spending is one slice of its own — see
+    // `yearModeSpendProvider`.
+    if (t.modeId != null) continue;
     if (t.categoryId != null) {
       out[t.categoryId!] =
           (out[t.categoryId!] ?? const Money.zero()) + t.amount;
@@ -312,6 +323,8 @@ final categoryTransactionsProvider = Provider.family<List<CategoryTx>, int>((
   final out = <CategoryTx>[];
   for (final t in txs) {
     if (t.date.isBefore(start) || t.date.isAfter(end)) continue;
+    // Budgets don't count a mode's (trip's) spending.
+    if (t.modeId != null) continue;
     if (t.type == TxType.expense) {
       if (t.categoryId != null) {
         if (categoryIds.contains(t.categoryId)) {
@@ -390,6 +403,9 @@ final categoryLinesProvider =
       final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
       final splitsByTx = ref.watch(transactionSplitsByTxProvider);
       final isIncome = self.kind == CategoryKind.income;
+      // An everyday category leaves a mode's (trip's) spending to the mode;
+      // a mode's own category is nothing but.
+      final everyday = self.modeId == null;
 
       final out = <CategoryLine>[];
       for (final t in txs) {
@@ -397,6 +413,7 @@ final categoryLinesProvider =
             (t.date.isBefore(window.start) || t.date.isAfter(window.end))) {
           continue;
         }
+        if (everyday && t.modeId != null) continue;
         if (isIncome) {
           if (t.type == TxType.income && ids.contains(t.categoryId)) {
             out.add((
@@ -1939,6 +1956,16 @@ LoanProgress _loanProgressOf(
 final tagsProvider = StreamProvider<List<TagRow>>(
   (ref) => ref.watch(dbProvider).watchTags(),
 );
+
+/// Tags offered everywhere — a mode's own tags (see [Tags.modeId]) only
+/// inside it. [tagMapProvider] still resolves them all.
+final everydayTagsProvider = Provider<List<TagRow>>((ref) {
+  final tags = ref.watch(tagsProvider).valueOrNull ?? const [];
+  return [
+    for (final t in tags)
+      if (t.modeId == null) t,
+  ];
+});
 
 final tagMapProvider = Provider<Map<int, TagRow>>((ref) {
   final tags = ref.watch(tagsProvider).valueOrNull ?? const [];

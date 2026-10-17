@@ -13,9 +13,12 @@ import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/error_view.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
+import '../../data/mode_providers.dart';
+import '../../data/modes_db.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../auto/recurring_rule_sheet.dart';
+import '../modes/mode_widgets.dart';
 import '../share/share_flows.dart';
 import '../tags/tag_picker_sheet.dart';
 import 'transaction_link_picker_sheet.dart';
@@ -244,6 +247,8 @@ class _TransactionView extends ConsumerWidget {
                 ],
                 _divider(theme),
                 _TagsRow(transaction: t, tags: tags),
+                _divider(theme),
+                _ModeRow(transaction: t),
                 _divider(theme),
                 _detailRow(context, 'Note', _valueText(context, noteText)),
                 _divider(theme),
@@ -822,11 +827,74 @@ class _TagsRow extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) =>
-          TagPickerSheet(initiallySelected: tags.map((t) => t.id).toSet()),
+      builder: (_) => TagPickerSheet(
+        initiallySelected: tags.map((t) => t.id).toSet(),
+        modeId: transaction.modeId,
+      ),
     );
     if (result == null) return;
     await ref.read(dbProvider).setTransactionTags(transaction.id, result);
+  }
+}
+
+/// Which mode (a trip) this is in. Tap to open it or move this out — or,
+/// when it's in none, to add it to one.
+class _ModeRow extends ConsumerWidget {
+  const _ModeRow({required this.transaction});
+
+  final TransactionRow transaction;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final modeId = transaction.modeId;
+    final mode = modeId == null ? null : ref.watch(modeMapProvider)[modeId];
+    return InkWell(
+      onTap: () => mode == null
+          ? pickModeForTransaction(context, ref, transaction.id)
+          : _inMode(context, ref, mode),
+      child: _detailRow(
+        context,
+        'Mode',
+        mode == null ? _valueText(context, '—') : ModeChip(mode.id),
+      ),
+    );
+  }
+
+  Future<void> _inMode(
+    BuildContext context,
+    WidgetRef ref,
+    ModeRow mode,
+  ) async {
+    final choice = await showAppSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppListTile(
+              leading: ModeBadge(mode, size: 36),
+              title: Text('Open ${mode.name}'),
+              onTap: () => Navigator.of(context).pop('open'),
+            ),
+            AppListTile(
+              leading: const AppIcon(Icons.logout_rounded),
+              title: Text('Move out of ${mode.name}'),
+              subtitle: const Text('It stays in your everyday transactions'),
+              onTap: () => Navigator.of(context).pop('out'),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+    if (!context.mounted) return;
+    if (choice == 'open') {
+      await context.push('/mode/${mode.id}');
+    } else if (choice == 'out') {
+      await ref.read(dbProvider).setTransactionMode(transaction.id, null);
+    }
   }
 }
 

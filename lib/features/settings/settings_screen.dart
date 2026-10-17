@@ -34,8 +34,8 @@ class SettingsScreen extends StatelessWidget {
           ),
           _ModuleTile(
             icon: Icons.savings_outlined,
-            title: 'Mode & Budgeting',
-            subtitle: 'App mode, budget cycle, Ready to Assign',
+            title: 'Level & Budgeting',
+            subtitle: 'App level, budget cycle, Ready to Assign',
             onTap: () => context.push('/more/settings/mode-budgeting'),
           ),
           _ModuleTile(

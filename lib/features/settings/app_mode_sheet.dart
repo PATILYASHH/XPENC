@@ -102,7 +102,7 @@ class _AppModeSheetState extends ConsumerState<AppModeSheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'App mode',
+            'App level',
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.w700,
             ),

@@ -115,6 +115,25 @@ const guideSections = <GuideSection>[
       location: 'More → Transactions',
     ),
     GuideEntry(
+      icon: Icons.luggage_outlined,
+      title: 'Modes',
+      whatItDoes:
+          'A trip, a wedding, a festival — an event you switch ON. While it '
+          'is ON everything you add joins it, tagged and limited the way you '
+          'set it up, and the app shows only the modules it needs. Outside '
+          'it, it is one card in Transactions and one slice in Stats, and '
+          'budgets leave it out.',
+      howToUse:
+          'More → Modes → New mode, from Trip or Blank. Pick dates (it then '
+          'starts and ends itself), a budget, the accounts and categories '
+          'it may use, auto-tags, its own categories and tags, the tabs and '
+          'modules to show, a linked group and a currency. On Add, switch '
+          '"Part of …" off to keep one spend out. "Full app" in the bar over '
+          'the tabs steps out without ending it. A transaction’s page moves '
+          'it in or out of a mode.',
+      location: 'More → Modes',
+    ),
+    GuideEntry(
       icon: Icons.people_alt_outlined,
       title: 'Persons',
       whatItDoes:
@@ -360,7 +379,7 @@ const guideSections = <GuideSection>[
       whatItDoes:
           'Currency, theme, security (PIN, master password, and/or an '
           'authenticator app — any combination you turn on unlocks the '
-          'app), notifications, the app mode (Basic/Medium/Pro), budget '
+          'app), notifications, the app level (Basic/Medium/Pro), budget '
           'cycle start day, and which tabs show in the bottom nav.',
       howToUse: 'Everything here takes effect immediately, no save button.',
       location: 'More → Settings',

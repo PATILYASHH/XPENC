@@ -183,6 +183,10 @@ String? _statementNote(TransactionRow t, String? personName) {
     RecurringRuleTags,
     PersonEntryTags,
     CustomCurrencies,
+    Modes,
+    ModeAccounts,
+    ModeCategories,
+    ModeTags,
     TagGroups,
     TagGroupTags,
     TransactionSplits,
@@ -225,7 +229,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 85;
+  int get schemaVersion => 86;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -796,6 +800,17 @@ class AppDatabase extends _$AppDatabase {
         // Currencies the person makes themselves.
         await m.createTable(customCurrencies);
       }
+      if (from < 86) {
+        // Modes — a trip or event the app focuses on while it's ON.
+        await m.createTable(modes);
+        await m.createTable(modeAccounts);
+        await m.createTable(modeCategories);
+        await m.createTable(modeTags);
+        await _addColumnIfMissing(m, transactions, transactions.modeId);
+        await _addColumnIfMissing(m, categories, categories.modeId);
+        await _addColumnIfMissing(m, tags, tags.modeId);
+        await _addColumnIfMissing(m, settings, settings.activeModeId);
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -1226,30 +1241,77 @@ class AppDatabase extends _$AppDatabase {
   /// Deletes go children-before-parents, the same order [importAll] already
   /// established, so foreign keys never reject a delete partway through.
   Future<void> clearAllData() => transaction(() async {
+    await _deleteLedger();
+    await _seedDefaultAccountsAndCategories();
+  });
+
+  /// Every row of the ledger, children before parents so no foreign key
+  /// rejects a delete partway through. Shared by [clearAllData] and
+  /// [importAll] so the two can't drift apart again (they did: groups, loans
+  /// and templates were missing from both, so a phone with a group could
+  /// neither restore a backup nor start fresh).
+  ///
+  /// Leaves alone what isn't ledger: settings (only its two pointers at
+  /// ledger rows are cleared), bank-sender rules, custom currencies, backup
+  /// records and OCR corrections.
+  Future<void> _deleteLedger() async {
+    await update(settings).write(
+      const SettingsCompanion(
+        quickAddAccountId: Value(null),
+        activeModeId: Value(null),
+      ),
+    );
     await delete(budgetAlerts).go();
     await delete(pendingTxns).go();
     await delete(merchantRules).go();
     await delete(reminders).go();
     await delete(personEntryTags).go();
+    // Shares point at person entries, transactions and expenses; expenses
+    // and members point at groups, persons, accounts and categories.
+    await delete(groupExpenseShares).go();
+    await delete(groupExpenses).go();
+    await delete(groupMembers).go();
     await delete(personEntries).go();
     await delete(budgets).go();
+    // Both reference transactions/categories, so they go before either.
     await delete(transactionSplits).go();
     await delete(transactionTags).go();
+    // References two transactions, so it goes before that delete too.
+    await delete(transactionLinks).go();
+    // References accounts and categories, so it goes before both deletes.
+    await delete(allocations).go();
+    // Reference accounts, categories and tags, so before those deletes.
     await delete(goalDetails).go();
     await delete(creditCardDetails).go();
-    await delete(shoppingItems).go();
-    await delete(shoppingLists).go();
-    // transactions references accounts/categories/persons/recurringRules,
-    // so it must go before all four.
+    await delete(loanDetails).go();
+    await delete(transactionTemplateTags).go();
+    await delete(transactionTemplates).go();
+    await delete(categoryTemplateItems).go();
+    await delete(categoryTemplates).go();
+    await delete(modeAccounts).go();
+    await delete(modeCategories).go();
+    await delete(modeTags).go();
     await delete(transactions).go();
+    // References recurringRules and tags, so it goes before both deletes.
+    await delete(recurringRuleTags).go();
+    // References accounts/categories, and transactions.recurringRuleId
+    // references it back — so it goes after that delete, before these.
     await delete(recurringRules).go();
     await delete(persons).go();
     await delete(categories).go();
     await delete(accounts).go();
+    // References tags and tagGroups, so it goes before both deletes.
+    await delete(tagGroupTags).go();
+    await delete(tagGroups).go();
     await delete(tags).go();
+    // Items reference lists, so they go first.
+    await delete(shoppingItems).go();
+    await delete(shoppingLists).go();
+    // Transactions, categories and tags point at modes; modes at groups.
+    await delete(modes).go();
+    await delete(groups).go();
     await delete(currencyRates).go();
-    await _seedDefaultAccountsAndCategories();
-  });
+  }
 
   // ── Balance mechanics ─────────────────────────────────────────────────────
 
@@ -1485,6 +1547,9 @@ class AppDatabase extends _$AppDatabase {
     Money? foreignAmount,
     String? customIcon,
     bool isNct = false,
+    // The mode (trip) this joins — see [Transactions.modeId]. Only hand-entry
+    // call sites pass it; nothing here infers it from the active mode.
+    int? modeId,
   }) async {
     await _validateTx(
       type: type,
@@ -1544,6 +1609,7 @@ class AppDatabase extends _$AppDatabase {
           toCurrencyCode: Value(toCode),
           toFxRateToBaseMicros: Value(toRate),
           customIcon: Value(customIcon),
+          modeId: Value(modeId),
         ),
       );
       final row = await (select(
@@ -1574,6 +1640,7 @@ class AppDatabase extends _$AppDatabase {
     String? imagePath,
     String? customIcon,
     bool isNct = false,
+    int? modeId,
   }) async {
     if (legs.length < 2) {
       throw ArgumentError('A split payment needs at least two accounts.');
@@ -1611,6 +1678,8 @@ class AppDatabase extends _$AppDatabase {
               customIcon: Value(isAnchor ? customIcon : null),
               // Every leg: each one names the same payee and note.
               isNct: Value(isNct),
+              // Every leg too — the payment is in the mode as a whole.
+              modeId: Value(modeId),
             ),
           ),
         );
@@ -1654,6 +1723,7 @@ class AppDatabase extends _$AppDatabase {
     int? personId,
     String? imagePath,
     String? customIcon,
+    int? modeId,
   }) async {
     if (changeAccountId == accountId) {
       throw ArgumentError('Change must go to a different account.');
@@ -1686,6 +1756,7 @@ class AppDatabase extends _$AppDatabase {
           personId: Value(personId),
           imagePath: Value(imagePath),
           customIcon: Value(customIcon),
+          modeId: Value(modeId),
         ),
       );
       final changeId = await into(transactions).insert(
@@ -1695,6 +1766,7 @@ class AppDatabase extends _$AppDatabase {
           accountId: accountId,
           toAccountId: Value(changeAccountId),
           date: date,
+          modeId: Value(modeId),
         ),
       );
 
@@ -1999,6 +2071,7 @@ class AppDatabase extends _$AppDatabase {
     await (delete(recurringRuleTags)..where((t) => t.tagId.equals(id))).go();
     await (delete(tagGroupTags)..where((t) => t.tagId.equals(id))).go();
     await (delete(personEntryTags)..where((t) => t.tagId.equals(id))).go();
+    await (delete(modeTags)..where((t) => t.tagId.equals(id))).go();
     await (delete(tags)..where((t) => t.id.equals(id))).go();
   });
 
@@ -2889,6 +2962,7 @@ class AppDatabase extends _$AppDatabase {
     String? note,
     int? categoryId,
     Set<int> tagIds = const {},
+    int? modeId,
   }) {
     if (!amount.isPositive) {
       throw ArgumentError('Amount must be positive.');
@@ -2922,6 +2996,7 @@ class AppDatabase extends _$AppDatabase {
           categoryId: asRepaymentIncome ? categoryId : null,
           personId: personId,
           date: date,
+          modeId: modeId,
           note:
               note ??
               (direction == PersonDirection.theyOwe
@@ -3007,8 +3082,13 @@ class AppDatabase extends _$AppDatabase {
 
       // Detach before deleting: deleteTransaction refuses to delete a
       // transaction a person entry still points to (see deleteTransaction).
+      // The rebuilt row stays in whatever mode the old one was in.
+      int? keptModeId;
       if (existing.transactionId != null) {
         final oldTxId = existing.transactionId!;
+        keptModeId = (await (select(
+          transactions,
+        )..where((t) => t.id.equals(oldTxId))).getSingleOrNull())?.modeId;
         await (update(personEntries)..where((e) => e.id.equals(id))).write(
           const PersonEntriesCompanion(transactionId: Value(null)),
         );
@@ -3033,6 +3113,7 @@ class AppDatabase extends _$AppDatabase {
           categoryId: asRepaymentIncome ? categoryId : null,
           personId: existing.personId,
           date: date,
+          modeId: keptModeId,
           note:
               note ??
               (direction == PersonDirection.theyOwe
@@ -3380,10 +3461,15 @@ class AppDatabase extends _$AppDatabase {
         AccountsCompanion(includeInNetWorth: Value(value)),
       );
 
+  /// Everyday categories of [kind] — a mode's own ones (see
+  /// [Categories.modeId]) are only offered inside that mode.
   Stream<List<CategoryRow>> watchCategories(CategoryKind kind) =>
       (select(categories)
             ..where(
-              (c) => c.kind.equalsValue(kind) & c.isArchived.equals(false),
+              (c) =>
+                  c.kind.equalsValue(kind) &
+                  c.isArchived.equals(false) &
+                  c.modeId.isNull(),
             )
             ..orderBy([(c) => OrderingTerm(expression: c.sortOrder)]))
           .watch();
@@ -3444,7 +3530,13 @@ class AppDatabase extends _$AppDatabase {
       if (t.type == TxType.income) income += t.amount;
       if (t.type == TxType.expense) expense += t.amount;
     }
-    final expenseByCategory = await watchSpendByCategory(start, end).first;
+    // Every expense, mode or not — the report's categories must add up to
+    // its expense line.
+    final expenseByCategory = await watchSpendByCategory(
+      start,
+      end,
+      includeModes: true,
+    ).first;
     return (
       income: income,
       expense: expense,
@@ -3456,31 +3548,38 @@ class AppDatabase extends _$AppDatabase {
   /// A split expense (see [TransactionSplits]) has no [Transactions.categoryId]
   /// of its own — its amount is attributed per split line instead, so it
   /// still counts correctly toward budgets and every category breakdown.
-  Stream<Map<int, Money>> watchSpendByCategory(DateTime start, DateTime end) =>
-      watchTransactionsBetween(start, end).asyncMap((rows) async {
-        final out = <int, Money>{};
-        for (final t in rows) {
-          if (t.type == TxType.expense) {
-            if (t.categoryId != null) {
-              out[t.categoryId!] =
-                  (out[t.categoryId!] ?? const Money.zero()) + t.amount;
-              continue;
-            }
-            for (final s in await splitsForTransaction(t.id)) {
-              out[s.categoryId] =
-                  (out[s.categoryId] ?? const Money.zero()) + s.amount;
-            }
-            continue;
-          }
-          // A categorized transfer into/from a goal or loan counts toward
-          // that category's budget progress (GitHub #75).
-          if (t.type == TxType.transfer && t.categoryId != null) {
-            out[t.categoryId!] =
-                (out[t.categoryId!] ?? const Money.zero()) + t.amount;
-          }
+  ///
+  /// A mode's (trip's) spending is left out unless [includeModes]: budgets
+  /// don't count it, and breakdowns show each mode as one slice of its own.
+  Stream<Map<int, Money>> watchSpendByCategory(
+    DateTime start,
+    DateTime end, {
+    bool includeModes = false,
+  }) => watchTransactionsBetween(start, end).asyncMap((rows) async {
+    final out = <int, Money>{};
+    for (final t in rows) {
+      if (!includeModes && t.modeId != null) continue;
+      if (t.type == TxType.expense) {
+        if (t.categoryId != null) {
+          out[t.categoryId!] =
+              (out[t.categoryId!] ?? const Money.zero()) + t.amount;
+          continue;
         }
-        return out;
-      });
+        for (final s in await splitsForTransaction(t.id)) {
+          out[s.categoryId] =
+              (out[s.categoryId] ?? const Money.zero()) + s.amount;
+        }
+        continue;
+      }
+      // A categorized transfer into/from a goal or loan counts toward
+      // that category's budget progress (GitHub #75).
+      if (t.type == TxType.transfer && t.categoryId != null) {
+        out[t.categoryId!] =
+            (out[t.categoryId!] ?? const Money.zero()) + t.amount;
+      }
+    }
+    return out;
+  });
 
   // ── Split expenses ───────────────────────────────────────────────────────
 
@@ -3819,6 +3918,8 @@ class AppDatabase extends _$AppDatabase {
       await (delete(
         creditCardDetails,
       )..where((c) => c.accountId.equals(id))).go();
+      // A mode that paid with it simply stops offering it.
+      await (delete(modeAccounts)..where((l) => l.accountId.equals(id))).go();
       await (delete(accounts)..where((a) => a.id.equals(id))).go();
       return _maybeAutoDisableRta();
     });
@@ -4407,6 +4508,10 @@ class AppDatabase extends _$AppDatabase {
       await deleteGroupExpense(expense.id);
     }
     await (delete(groupMembers)..where((m) => m.groupId.equals(id))).go();
+    // A mode (trip) linked to it stays; it just has no group any more.
+    await (update(modes)..where((m) => m.groupId.equals(id))).write(
+      const ModesCompanion(groupId: Value(null)),
+    );
     await (delete(groups)..where((g) => g.id.equals(id))).go();
   });
 
@@ -4506,6 +4611,11 @@ class AppDatabase extends _$AppDatabase {
       manualAmounts: manualAmounts,
     );
 
+    // A group linked to a mode (a trip) puts its money in that mode.
+    final modeId = (await (select(
+      modes,
+    )..where((m) => m.groupId.equals(groupId))).get()).firstOrNull?.id;
+
     return transaction(() async {
       final expenseId = await into(groupExpenses).insert(
         GroupExpensesCompanion.insert(
@@ -4540,6 +4650,7 @@ class AppDatabase extends _$AppDatabase {
               categoryId: categoryId,
               date: date,
               note: note ?? 'Group expense',
+              modeId: modeId,
             );
           } else {
             // Every other participant owes me.
@@ -4550,6 +4661,7 @@ class AppDatabase extends _$AppDatabase {
               date: date,
               accountId: accountId,
               note: note,
+              modeId: modeId,
             );
           }
         } else if (memberId == null) {
@@ -5438,6 +5550,7 @@ class AppDatabase extends _$AppDatabase {
     int? appliedRuleId,
     bool learnMerchantRule = false,
     String? payee,
+    int? modeId,
   }) {
     return transaction(() async {
       final p = await (select(
@@ -5461,6 +5574,7 @@ class AppDatabase extends _$AppDatabase {
         note: p.parsedMerchant,
         payee: resolvedPayee,
         imagePath: p.sourceImagePath,
+        modeId: modeId,
       );
 
       await (update(pendingTxns)..where((t) => t.id.equals(pendingId))).write(
@@ -6612,7 +6726,7 @@ class AppDatabase extends _$AppDatabase {
 
   Stream<List<CategoryRow>> watchAllCategories() =>
       (select(categories)
-            ..where((c) => c.isArchived.equals(false))
+            ..where((c) => c.isArchived.equals(false) & c.modeId.isNull())
             ..orderBy([(c) => OrderingTerm(expression: c.sortOrder)]))
           .watch();
 
@@ -6771,6 +6885,8 @@ class AppDatabase extends _$AppDatabase {
     }
     final reason = await _categoryInUseReason(id);
     if (reason != null) throw ArgumentError(reason);
+    // A mode offering it is a setting, not a use — the offer just goes.
+    await (delete(modeCategories)..where((l) => l.categoryId.equals(id))).go();
     await (delete(categories)..where((c) => c.id.equals(id))).go();
   });
 
@@ -7484,6 +7600,29 @@ class AppDatabase extends _$AppDatabase {
       'allocations': (await select(allocations).get()).map(m).toList(),
       'shoppingLists': (await select(shoppingLists).get()).map(m).toList(),
       'shoppingItems': (await select(shoppingItems).get()).map(m).toList(),
+      'loanDetails': (await select(loanDetails).get()).map(m).toList(),
+      'groups': (await select(groups).get()).map(m).toList(),
+      'groupMembers': (await select(groupMembers).get()).map(m).toList(),
+      'groupExpenses': (await select(groupExpenses).get()).map(m).toList(),
+      'groupExpenseShares': (await select(
+        groupExpenseShares,
+      ).get()).map(m).toList(),
+      'transactionTemplates': (await select(
+        transactionTemplates,
+      ).get()).map(m).toList(),
+      'transactionTemplateTags': (await select(
+        transactionTemplateTags,
+      ).get()).map(m).toList(),
+      'categoryTemplates': (await select(
+        categoryTemplates,
+      ).get()).map(m).toList(),
+      'categoryTemplateItems': (await select(
+        categoryTemplateItems,
+      ).get()).map(m).toList(),
+      'modes': (await select(modes).get()).map(m).toList(),
+      'modeAccounts': (await select(modeAccounts).get()).map(m).toList(),
+      'modeCategories': (await select(modeCategories).get()).map(m).toList(),
+      'modeTags': (await select(modeTags).get()).map(m).toList(),
       // `importAll` clears these two, so they MUST be exported. Otherwise
       // restoring the app's own backup silently wipes un-reviewed capture cards
       // and resets the budget-alert dedupe (re-firing alerts already seen).
@@ -7554,43 +7693,9 @@ class AppDatabase extends _$AppDatabase {
     // missing account must blow up and roll back, not import a broken ledger.
     await transaction(() async {
       // Children first, or the deletes violate the foreign keys.
-      // `person_entries` -> `transactions` -> `persons`, so that exact order.
-      await delete(budgetAlerts).go();
-      await delete(pendingTxns).go();
-      await delete(merchantRules).go();
-      await delete(reminders).go();
-      await delete(personEntryTags).go();
-      await delete(personEntries).go();
-      await delete(budgets).go();
-      // Both reference transactions/categories, so they go before either.
-      await delete(transactionSplits).go();
-      await delete(transactionTags).go();
-      // References two transactions, so it goes before that delete too.
-      await delete(transactionLinks).go();
-      // References accounts and categories, so it goes before both deletes.
-      await delete(allocations).go();
-      // References accounts, so it goes before that delete too.
-      await delete(goalDetails).go();
-      await delete(creditCardDetails).go();
-      await delete(transactions).go();
-      // References recurringRules and tags, so it goes before both deletes.
-      await delete(recurringRuleTags).go();
-      // References accounts/categories, and transactions.recurringRuleId
-      // references it back — so it goes after that delete, before these.
-      await delete(recurringRules).go();
-      await delete(persons).go();
-      await delete(categories).go();
-      await delete(accounts).go();
+      await _deleteLedger();
       await delete(senderRules).go();
-      // References tags and tagGroups, so it goes before both deletes.
-      await delete(tagGroupTags).go();
-      await delete(tagGroups).go();
-      await delete(tags).go();
-      // Items reference lists, so they go first.
-      await delete(shoppingItems).go();
-      await delete(shoppingLists).go();
       await delete(settings).go();
-      await delete(currencyRates).go();
       await delete(customCurrencies).go();
 
       Future<void> load<T extends Table, D>(
@@ -7618,6 +7723,9 @@ class AppDatabase extends _$AppDatabase {
       // already resolves. An older backup simply has no rows for it.
       await load(customCurrencies, 'customCurrencies');
       await _refreshCustomCurrencies();
+      // Categories, tags and transactions point at modes; modes at groups.
+      await load(groups, 'groups');
+      await load(modes, 'modes');
       await load(accounts, 'accounts');
       // No foreign key references currencyRates, so it can load anywhere —
       // grouped with accounts since that's the other half of "an account's
@@ -7659,6 +7767,11 @@ class AppDatabase extends _$AppDatabase {
       // References accounts, already loaded above. An older backup simply
       // has no rows for it, so `rows()` yields nothing.
       await load(creditCardDetails, 'creditCardDetails');
+      await load(loanDetails, 'loanDetails');
+      await load(groupMembers, 'groupMembers');
+      await load(modeAccounts, 'modeAccounts');
+      await load(modeCategories, 'modeCategories');
+      await load(modeTags, 'modeTags');
       await load(shoppingLists, 'shoppingLists');
       // Before `transactions`, whose `recurringRuleId` references it — and an
       // older backup simply has no rows for it, so `rows()` yields nothing.
@@ -7675,6 +7788,14 @@ class AppDatabase extends _$AppDatabase {
       // References personEntries and tags, both loaded above. An older
       // backup simply has no rows for it, so `rows()` yields nothing.
       await load(personEntryTags, 'personEntryTags');
+      // Shares point at the transactions and person entries an expense
+      // created, so both load after those.
+      await load(groupExpenses, 'groupExpenses');
+      await load(groupExpenseShares, 'groupExpenseShares');
+      await load(transactionTemplates, 'transactionTemplates');
+      await load(transactionTemplateTags, 'transactionTemplateTags');
+      await load(categoryTemplates, 'categoryTemplates');
+      await load(categoryTemplateItems, 'categoryTemplateItems');
       await load(reminders, 'reminders');
       await load(merchantRules, 'merchantRules');
       await load(senderRules, 'senderRules');

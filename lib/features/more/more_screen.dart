@@ -7,9 +7,12 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/bar_page_transition.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/beta_badge.dart';
+import '../../data/mode_providers.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart' show AppMode, MoreScreenViewMode;
 import '../calculators/calculator_kind.dart';
+import '../modes/mode_modules.dart';
+import '../modes/mode_widgets.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 
 /// Hub page. Grouped, not a flat dump. Every tile navigates to a real route.
@@ -45,12 +48,30 @@ class MoreScreen extends ConsumerWidget {
         ? 'Automate a fixed payment or money in'
         : '$activeRuleCount active';
 
-    final groups = <_Group>[
+    // While a mode (a trip) is the focus, More shows only the modules it
+    // picked — Modes, Settings and the app's own pages always stay.
+    final focused = ref.watch(focusedModeProvider);
+    final active = ref.watch(activeModeProvider);
+    final modeCount = ref.watch(modesProvider).valueOrNull?.length ?? 0;
+    final shown = focused == null ? null : modeModuleKeys(focused);
+
+    final allGroups = <_Group>[
       _Group('Money', [
+        _Item(
+          Icons.luggage_outlined,
+          'Modes',
+          route: '/more/modes',
+          subtitle: active != null
+              ? '${active.name} is ON'
+              : modeCount == 0
+              ? 'Trips and events, each in focus'
+              : '$modeCount ${modeCount == 1 ? 'mode' : 'modes'}',
+        ),
         _Item(
           Icons.account_balance_wallet_outlined,
           'Accounts',
           route: '/more/accounts',
+          module: 'accounts',
           subtitle: netWorth == null
               ? 'Manage where your money is'
               : 'Total money: ${MoneyFormat.compact(netWorth)}',
@@ -60,12 +81,14 @@ class MoreScreen extends ConsumerWidget {
           'Transactions',
           route: '/more/transactions',
           subtitle: 'Every transaction, searchable and filterable',
+          module: 'transactions',
         ),
         _Item(
           Icons.people_alt_outlined,
           'Persons',
           route: '/more/persons',
           subtitle: 'Who owes you, who you owe',
+          module: 'persons',
         ),
         if (appMode != AppMode.basic)
           _Item(
@@ -74,12 +97,14 @@ class MoreScreen extends ConsumerWidget {
             route: '/more/budgets',
             subtitle: budgetSubtitle,
             subtitleColor: budgetSubtitleColor,
+            module: 'budgets',
           ),
         if (appMode == AppMode.pro && rtaEnabled)
           _Item(
             Icons.savings_outlined,
             'Ready to Assign',
             route: '/more/ready-to-assign',
+            module: 'budgets',
             subtitle:
                 '${MoneyFormat.compact(ref.watch(readyToAssignProvider))} '
                 'unassigned',
@@ -89,24 +114,28 @@ class MoreScreen extends ConsumerWidget {
           'Auto',
           route: '/more/auto',
           subtitle: autoSubtitle,
+          module: 'auto',
         ),
         _Item(
           Icons.storefront_outlined,
           'Payees',
           route: '/more/payees',
           subtitle: 'Who you pay, and how much',
+          module: 'payees',
         ),
         _Item(
           Icons.savings_outlined,
           'Goals & Loans',
           route: '/more/goals',
           subtitle: 'Savings goals and loans in one place',
+          module: 'goals',
         ),
         _Item(
           Icons.checklist_outlined,
           'Shopping List',
           route: '/more/shopping',
           subtitle: 'Plan what to buy',
+          module: 'shopping',
         ),
       ]),
       _Group('Insights', [
@@ -115,18 +144,21 @@ class MoreScreen extends ConsumerWidget {
           'Calendar & Reminders',
           route: '/more/calendar',
           subtitle: 'Day-wise in/out · planned payments',
+          module: 'calendar',
         ),
         _Item(
           Icons.insights_outlined,
           'Stats',
           route: '/more/stats',
           subtitle: 'Trends and deeper analytics',
+          module: 'stats',
         ),
         _Item(
           Icons.account_balance_outlined,
           'Account Reports',
           route: '/more/account-reports',
           subtitle: 'Per-account breakdown',
+          module: 'reports',
         ),
       ]),
       _Group('Calculators', beta: true, [
@@ -136,6 +168,7 @@ class MoreScreen extends ConsumerWidget {
             kind.label,
             route: kind.route,
             subtitle: kind.subtitle,
+            module: 'calculators',
           ),
       ]),
       _Group('Data', [
@@ -144,12 +177,14 @@ class MoreScreen extends ConsumerWidget {
           'Download Data',
           route: '/more/export',
           subtitle: 'Export CSV / JSON',
+          module: 'data',
         ),
         _Item(
           Icons.backup_outlined,
           'Backup & Restore',
           route: '/more/backup',
           subtitle: 'Back up, import & move to a new phone',
+          module: 'data',
         ),
       ]),
       _Group('Setup', [
@@ -158,12 +193,14 @@ class MoreScreen extends ConsumerWidget {
           'Categories',
           route: '/more/categories',
           subtitle: 'Money in & out categories',
+          module: 'setup',
         ),
         _Item(
           Icons.sell_outlined,
           'Tags',
           route: '/more/tags',
           subtitle: 'Label transactions, cutting across category',
+          module: 'setup',
         ),
         _Item(
           Icons.settings_outlined,
@@ -191,6 +228,16 @@ class MoreScreen extends ConsumerWidget {
         ),
       ]),
     ];
+    final groups = [
+      for (final g in allGroups)
+        if (shown == null)
+          g
+        else
+          _Group(g.title, beta: g.beta, [
+            for (final i in g.items)
+              if (i.module == null || shown.contains(i.module)) i,
+          ]),
+    ].where((g) => g.items.isNotEmpty).toList();
 
     final viewMode = ref.watch(moreScreenViewModeProvider);
     final isCards = viewMode == MoreScreenViewMode.cards;
@@ -200,6 +247,25 @@ class MoreScreen extends ConsumerWidget {
         slivers: [
           const TopBarInsetSliver(),
           const SliverToBoxAdapter(child: SizedBox(height: 8)),
+          if (focused != null)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                child: AppCard(
+                  margin: EdgeInsets.zero,
+                  clipBehavior: Clip.antiAlias,
+                  child: AppListTile(
+                    leading: ModeBadge(focused),
+                    title: Text(focused.name),
+                    subtitle: const Text(
+                      'Showing what this mode needs · Full app shows it all',
+                    ),
+                    trailing: const AppIcon(Icons.chevron_right_rounded),
+                    onTap: () => pushFromBar(context, '/mode/${focused.id}'),
+                  ),
+                ),
+              ),
+            ),
           for (final group in groups) ...[
             SliverToBoxAdapter(
               child: Padding(
@@ -361,13 +427,18 @@ class _Item {
     required this.route,
     required this.subtitle,
     this.subtitleColor,
+    this.module,
   });
 
   final IconData icon;
+
+  /// The `ModeModule` key that shows this item while a mode is the focus;
+  /// null = always shown.
   final String label;
 
   /// Destination route pushed when the tile is tapped.
   final String route;
   final String subtitle;
   final Color? subtitleColor;
+  final String? module;
 }

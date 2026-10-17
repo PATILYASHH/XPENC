@@ -10,6 +10,7 @@ import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
+import '../../data/modes_db.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../../core/widgets/nav_bar_inset.dart';
@@ -525,13 +526,17 @@ class _ApproveSheetState extends ConsumerState<_ApproveSheet> {
     }
 
     try {
-      await ref.read(dbProvider).approvePending(
-            _p.id,
-            categoryId: categoryId,
-            accountId: accountId,
-            learnMerchantRule: _remember && _merchant != null,
-            payee: _merchant,
-          );
+      final db = ref.read(dbProvider);
+      final modeId = await db.activeModeId();
+      final txId = await db.approvePending(
+        _p.id,
+        categoryId: categoryId,
+        accountId: accountId,
+        learnMerchantRule: _remember && _merchant != null,
+        payee: _merchant,
+        modeId: modeId,
+      );
+      await db.applyModeTags(txId, modeId);
     } on ArgumentError catch (e) {
       messenger.showSnackBar(
         SnackBar(

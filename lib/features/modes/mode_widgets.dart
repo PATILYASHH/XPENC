@@ -1,0 +1,601 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+
+import '../../core/app_icons.dart';
+import '../../core/money.dart';
+import '../../core/security/nct.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_surfaces.dart';
+import '../../core/widgets/custom_icon_badge.dart';
+import '../../core/widgets/money_text.dart';
+import '../../data/database.dart';
+import '../../data/mode_providers.dart';
+import '../../data/modes_db.dart';
+import '../../data/providers.dart';
+import '../../data/tables.dart';
+
+/// A mode's icon on its colour, in a circle.
+class ModeBadge extends StatelessWidget {
+  const ModeBadge(this.mode, {this.size = 40, super.key});
+
+  final ModeRow mode;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    alignment: Alignment.center,
+    decoration: BoxDecoration(
+      color: Color(mode.colorValue),
+      shape: BoxShape.circle,
+    ),
+    child: KeyIcon(mode.iconKey, color: Colors.white, size: size * 0.5),
+  );
+}
+
+/// "🧳 Goa trip" — marks a transaction that's in a mode, wherever it's
+/// listed outside that mode. Taps through to the mode's page.
+class ModeChip extends ConsumerWidget {
+  const ModeChip(this.modeId, {super.key});
+
+  final int modeId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mode = ref.watch(modeMapProvider)[modeId];
+    if (mode == null) return const SizedBox.shrink();
+    final color = Color(mode.colorValue);
+    final theme = Theme.of(context);
+    return GestureDetector(
+      onTap: () => context.push('/mode/${mode.id}'),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            KeyIcon(mode.iconKey, color: color, size: 12),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                mode.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// "12–18 Oct", "From 12 Oct", or null when the mode has no dates at all.
+/// Prefers when it actually ran over what was planned.
+String? modeDateRange(ModeRow mode) {
+  final start = mode.startedAt ?? mode.startDate;
+  final end = mode.status == ModeStatus.ended
+      ? (mode.endedAt ?? mode.endDate)
+      : mode.endDate;
+  if (start == null) return null;
+  final day = DateFormat('d MMM');
+  if (end == null) return 'From ${day.format(start)}';
+  if (start.year == end.year && start.month == end.month) {
+    if (start.day == end.day) return day.format(start);
+    return '${start.day}–${day.format(end)}';
+  }
+  return '${day.format(start)} – ${day.format(end)}';
+}
+
+/// What a mode is doing right now, in a few words.
+String modeStatusLine(ModeRow mode, DateTime now) {
+  final range = modeDateRange(mode);
+  switch (mode.status) {
+    case ModeStatus.active:
+      final day = modeDayNumber(mode, now);
+      return ['ON', if (day != null) 'Day $day', ?range].join(' · ');
+    case ModeStatus.planned:
+      return range == null ? 'Not started' : 'Planned · $range';
+    case ModeStatus.ended:
+      return range == null ? 'Ended' : 'Ended · $range';
+  }
+}
+
+/// Starts [mode], confirming first when another one is ON (it ends).
+Future<void> startModeWithConfirm(
+  BuildContext context,
+  WidgetRef ref,
+  ModeRow mode,
+) async {
+  final db = ref.read(dbProvider);
+  final active = ref.read(activeModeProvider);
+  if (active != null && active.id != mode.id) {
+    final ok = await showAppDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Start ${mode.name}?'),
+        content: Text(
+          '${active.name} is ON. Only one mode runs at a time, so it ends.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Start'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+  }
+  await db.startMode(mode.id);
+  ref.read(modeFullAppProvider.notifier).state = false;
+}
+
+/// Ends [mode] after a confirm.
+Future<void> endModeWithConfirm(
+  BuildContext context,
+  WidgetRef ref,
+  ModeRow mode,
+) async {
+  final ok = await showAppDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text('End ${mode.name}?'),
+      content: const Text(
+        'New spends stop joining it and the app goes back to everyday. '
+        'You can start it again any time.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('End'),
+        ),
+      ],
+    ),
+  );
+  if (ok != true) return;
+  await ref.read(dbProvider).endMode(mode.id);
+  ref.read(modeFullAppProvider.notifier).state = false;
+}
+
+/// The strip over the tab bar while a mode is ON: "🧳 Goa trip · Day 3",
+/// with Exit to full app (or Back to trip) and End.
+class ModeBar extends ConsumerWidget {
+  const ModeBar({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mode = ref.watch(activeModeProvider);
+    if (mode == null) return const SizedBox.shrink();
+    final fullApp = ref.watch(modeFullAppProvider);
+    final theme = Theme.of(context);
+    final color = Color(mode.colorValue);
+    final day = modeDayNumber(mode, DateTime.now());
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+      child: Material(
+        color: Color.alphaBlend(
+          color.withValues(alpha: 0.16),
+          theme.colorScheme.surface,
+        ),
+        shape: StadiumBorder(
+          side: BorderSide(color: color.withValues(alpha: 0.35)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => context.push('/mode/${mode.id}'),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(6, 4, 4, 4),
+            child: Row(
+              children: [
+                ModeBadge(mode, size: 28),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    fullApp
+                        ? '${mode.name} is ON'
+                        : [mode.name, if (day != null) 'Day $day'].join(' · '),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                  ),
+                  onPressed: () =>
+                      ref.read(modeFullAppProvider.notifier).state = !fullApp,
+                  child: Text(fullApp ? 'Back to ${mode.name}' : 'Full app'),
+                ),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip: 'End ${mode.name}',
+                  icon: const AppIcon(Icons.stop_circle_outlined, size: 22),
+                  onPressed: () => endModeWithConfirm(context, ref, mode),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Spent so far, against the budget if there is one, with the per-day
+/// average — the top of a mode's page and of its home.
+class ModeSpendCard extends StatelessWidget {
+  const ModeSpendCard({
+    required this.mode,
+    required this.summary,
+    this.currencyNote,
+    super.key,
+  });
+
+  final ModeRow mode;
+  final ModeSummary summary;
+  final String? currencyNote;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final budget = mode.budget;
+    final days = modeDaysElapsed(mode, DateTime.now());
+    final perDay = Money(summary.spent.paise ~/ days);
+    final share = budget == null || budget.paise == 0
+        ? 0.0
+        : summary.spent.paise / budget.paise;
+    final over = budget != null && summary.spent.paise > budget.paise;
+
+    return AppCard(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Spent',
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: cs.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 4),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: MoneyText(
+                summary.spent,
+                color: AppColors.expense,
+                style: theme.textTheme.displaySmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            if (budget != null) ...[
+              const SizedBox(height: 14),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  value: share.clamp(0.0, 1.0),
+                  minHeight: 8,
+                  color: over ? AppColors.expense : Color(mode.colorValue),
+                  backgroundColor: cs.surfaceContainerHighest,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                over
+                    ? 'Over the ${MoneyFormat.symbol(budget)} budget by '
+                          '${MoneyFormat.symbol(summary.spent - budget)}'
+                    : '${MoneyFormat.symbol(budget - summary.spent)} left of '
+                          '${MoneyFormat.symbol(budget)}',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: over ? AppColors.expense : cs.onSurfaceVariant,
+                  fontWeight: over ? FontWeight.w600 : null,
+                ),
+              ),
+            ],
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 18,
+              runSpacing: 8,
+              children: [
+                _Fact(label: 'Per day', value: MoneyFormat.symbol(perDay)),
+                _Fact(label: 'Days', value: '$days'),
+                _Fact(label: 'Spends', value: '${summary.count}'),
+                if (currencyNote != null)
+                  _Fact(label: 'Currency', value: currencyNote!),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Fact extends StatelessWidget {
+  const _Fact({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        Text(
+          value,
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// One slice of a mode's spending (a category, an account) with a bar for
+/// its share.
+class ModeShareRow extends StatelessWidget {
+  const ModeShareRow({
+    required this.iconKey,
+    required this.colorValue,
+    required this.label,
+    required this.amount,
+    required this.total,
+    this.onTap,
+    super.key,
+  });
+
+  final String iconKey;
+  final int colorValue;
+  final String label;
+  final Money amount;
+  final Money total;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = Color(colorValue);
+    final share = total.paise == 0 ? 0.0 : amount.paise / total.paise;
+    return AppListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      onTap: onTap,
+      leading: Container(
+        width: 36,
+        height: 36,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.15),
+          shape: BoxShape.circle,
+        ),
+        child: IconWell.forKey(iconKey, color: color, size: 18),
+      ),
+      title: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: LinearProgressIndicator(
+            value: share.clamp(0.0, 1.0),
+            minHeight: 4,
+            color: color,
+            backgroundColor: theme.colorScheme.surfaceContainerHighest,
+          ),
+        ),
+      ),
+      trailing: MoneyText(
+        amount,
+        color: AppColors.expense,
+        style: theme.textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+/// A transaction on a mode's page or home: signed from the person's side —
+/// money out negative, money in positive, a transfer plain.
+class ModeTxRow extends ConsumerWidget {
+  const ModeTxRow(this.tx, {super.key});
+
+  final TransactionRow tx;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final categories = ref.watch(categoryMapProvider);
+    final accounts = ref.watch(accountMapProvider);
+    final persons = ref.watch(allPersonsByIdProvider);
+    final category = tx.categoryId == null ? null : categories[tx.categoryId];
+    final isTransfer = tx.type == TxType.transfer;
+    final accent = txIconColor(
+      tx.type,
+      isTransfer
+          ? AppColors.transfer
+          : (category != null
+                ? Color(category.colorValue)
+                : theme.colorScheme.onSurfaceVariant),
+    );
+    final icon = isTransfer
+        ? Icons.swap_horiz_rounded
+        : tx.type.isPersonMovement || tx.type.isCorrection
+        ? iconForTxType(tx.type)
+        : AppIcons.resolve(category?.iconKey ?? 'other');
+    final payee = tx.payee?.trim();
+    final note = tx.note?.trim();
+    final title = (payee != null && payee.isNotEmpty)
+        ? payee
+        : tx.type.isPersonMovement
+        ? (persons[tx.personId]?.name ?? 'Person')
+        : isTransfer
+        ? 'Transfer'
+        : (note != null && note.isNotEmpty)
+        ? note
+        : (category?.name ?? 'Uncategorised');
+    final subtitle = [
+      DateFormat('d MMM').format(tx.date),
+      if (category != null && title != category.name) category.name,
+      if (isTransfer)
+        '${accounts[tx.accountId]?.name ?? '?'} → '
+            '${accounts[tx.toAccountId]?.name ?? '?'}'
+      else
+        ?accounts[tx.accountId]?.name,
+    ].join(' · ');
+    final signed = switch (tx.type) {
+      TxType.expense || TxType.personOut || TxType.correctionOut => -tx.amount,
+      _ => tx.amount,
+    };
+
+    return NctVeil(
+      active: tx.isNct,
+      child: AppListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        onTap: () => context.push('/transaction/${tx.id}'),
+        leading: CircleAvatar(
+          backgroundColor: accent.withValues(alpha: 0.14),
+          child: transactionRowIcon(
+            customIcon:
+                tx.customIcon ??
+                (isTransfer ? null : AppIcons.emojiOf(category?.iconKey)),
+            fallback: icon,
+            size: 20,
+            color: accent,
+          ),
+        ),
+        title: Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodyLarge?.copyWith(
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        trailing: MoneyText(
+          signed,
+          signed: !isTransfer,
+          color: colorForTxType(tx.type),
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Small uppercase section heading, as on every detail page.
+Widget modeSectionLabel(ThemeData theme, String text) => Padding(
+  padding: const EdgeInsets.fromLTRB(4, 22, 4, 10),
+  child: Text(
+    text,
+    style: theme.textTheme.labelSmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 1.1,
+    ),
+  ),
+);
+
+/// Ask, then put [txId] in a mode (or none). Returns whether it changed.
+Future<bool> pickModeForTransaction(
+  BuildContext context,
+  WidgetRef ref,
+  int txId,
+) async {
+  final modes = ref.read(modesProvider).valueOrNull ?? const [];
+  if (modes.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('No modes yet — make one in More → Modes')),
+    );
+    return false;
+  }
+  final picked = await showAppSheet<int>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (context) => SafeArea(
+      top: false,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.6,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+              child: Text(
+                'Add to a mode',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final m in modes)
+                    AppListTile(
+                      leading: ModeBadge(m, size: 36),
+                      title: Text(m.name),
+                      subtitle: Text(modeStatusLine(m, DateTime.now())),
+                      onTap: () => Navigator.of(context).pop(m.id),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+  if (picked == null) return false;
+  await ref.read(dbProvider).setTransactionMode(txId, picked);
+  return true;
+}

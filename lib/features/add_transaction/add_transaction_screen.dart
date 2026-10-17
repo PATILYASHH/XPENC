@@ -16,6 +16,8 @@ import '../../core/widgets/icon_picker_sheet.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/currency_conversion.dart';
 import '../../data/database.dart';
+import '../../data/mode_providers.dart';
+import '../../data/modes_db.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../accounts/envelope_outflow.dart';
@@ -203,6 +205,20 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   /// captures blocked while it's open. See `lib/core/security/nct.dart`.
   bool _isNct = false;
 
+  /// The mode (a trip) this transaction is in, or would join — see
+  /// `Transactions.modeId`. A new one joins whichever mode is ON; an edited
+  /// one shows its own (or the ON one, to move it in). [_inMode] is the
+  /// "Part of …" switch.
+  ModeRow? _mode;
+  bool _inMode = false;
+
+  /// The foreign amount was opened by the mode's currency, not by hand —
+  /// left empty, the transaction simply has none.
+  bool _foreignFromMode = false;
+
+  /// The mode the pickers limit themselves to.
+  int? get _pickerModeId => _inMode ? _mode?.id : null;
+
   /// True while an existing transaction is being fetched for editing.
   bool _loading = false;
 
@@ -266,10 +282,16 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) => _loadForEdit());
     } else if (widget.duplicateFromId != null) {
       _loading = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _loadForDuplicate());
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await _loadForDuplicate();
+        await _seedMode();
+      });
     } else if (widget.templateId != null) {
       _loading = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _loadForTemplate());
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await _loadForTemplate();
+        await _seedMode();
+      });
     } else {
       if (widget.initialPayee != null) {
         _payeeController.text = widget.initialPayee!;
@@ -285,7 +307,52 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       // the guard on `_accountId` below means it never overwrites a
       // selection the user already made while this was loading.
       _seedLastUsedAccount();
+      _seedMode();
     }
+  }
+
+  /// A new transaction joins the mode that's ON: its auto-tags come
+  /// pre-picked, a limited mode starts on one of its accounts and, abroad,
+  /// its currency opens the foreign amount.
+  Future<void> _seedMode() async {
+    final db = ref.read(dbProvider);
+    final id = await db.activeModeId();
+    if (id == null) return;
+    final mode = await db.modeById(id);
+    final autoTags = await db.modeTagIds(id);
+    final allowed = await db.modeAccountIds(id);
+    if (!mounted || mode == null) return;
+    setState(() {
+      _mode = mode;
+      _inMode = true;
+      _tagIds = {..._tagIds, ...autoTags};
+      if (allowed.isNotEmpty &&
+          (_accountId == null || !allowed.contains(_accountId))) {
+        _accountId = allowed.first;
+      }
+      final code = mode.currencyCode;
+      if (code != null &&
+          code != MoneyFormat.currency.code &&
+          !_hasForeignCurrency) {
+        _hasForeignCurrency = true;
+        _foreignFromMode = true;
+        _foreignCurrencyCode = code;
+      }
+    });
+  }
+
+  /// An edited transaction shows its own mode — or, when it's in none, the
+  /// one that's ON, so it can be moved in.
+  Future<void> _loadEditMode(int? modeId) async {
+    final db = ref.read(dbProvider);
+    final id = modeId ?? await db.activeModeId();
+    if (id == null) return;
+    final mode = await db.modeById(id);
+    if (!mounted || mode == null) return;
+    setState(() {
+      _mode = mode;
+      _inMode = modeId != null;
+    });
   }
 
   Future<void> _seedLastUsedAccount() async {
@@ -382,6 +449,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       }
       _loading = false;
     });
+    await _loadEditMode(row.modeId);
   }
 
   /// Fetch the transaction being duplicated and prefill every field from it,
@@ -517,6 +585,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             ? 'To account'
             : (_type == TxType.transfer ? 'From account' : 'Account'),
         excludeId: forTo ? _accountId : null,
+        // A mode's account limit is about what it pays with — a transfer
+        // can still land anywhere.
+        modeId: forTo ? null : _pickerModeId,
         // A goal isn't a spendable account — it's only funded or drawn down
         // by a transfer. Hide it from expense/income pickers entirely.
         excludeGoals: _type != TxType.transfer,
@@ -544,6 +615,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       builder: (_) => _CategoryPickerSheet(
         kind: kind,
         envelopeAccountId: _envelopeAccountId,
+        modeId: _pickerModeId,
       ),
     );
     if (selected == null || !mounted) return;
@@ -1004,6 +1076,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       builder: (_) => _CategoryPickerSheet(
         kind: CategoryKind.expense,
         envelopeAccountId: _envelopeAccountId,
+        modeId: _pickerModeId,
       ),
     );
     if (selected == null || !mounted) return;
@@ -1057,6 +1130,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         title: 'Account',
         excludeGoals: true,
         excludeIds: excludeIds,
+        modeId: _pickerModeId,
       ),
     );
     if (selected == null || !mounted) return;
@@ -1718,6 +1792,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           imagePath: _imagePath,
           customIcon: _customIcon,
           isNct: _isNct,
+          modeId: _pickerModeId,
         );
         // The receipt (if any) is now referenced by a saved row — no longer
         // an orphan `dispose()` needs to clean up. Tags apply to the anchor
@@ -1781,6 +1856,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           personId: payeeText.isEmpty ? null : _payeePersonId,
           imagePath: _imagePath,
           customIcon: _customIcon,
+          modeId: _pickerModeId,
         );
         _unsavedPickedPath = null;
         await db.setTransactionTags(ids.first, _tagIds);
@@ -1868,7 +1944,11 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     // it just posts uncategorised, same as any transaction whose category
     // was later deleted already renders (see `_categoryValue` on the
     // transaction detail screen).
-    if (_isForeignCurrency &&
+    // A mode's currency opens the foreign amount ready (see `_seedMode`);
+    // left empty, this one simply has none.
+    final useForeign =
+        _isForeignCurrency && !(_foreignFromMode && !_foreignAmount.isPositive);
+    if (useForeign &&
         (_foreignCurrencyCode == null || !_foreignAmount.isPositive)) {
       messenger.showSnackBar(
         const SnackBar(content: Text('Choose a currency and enter its amount')),
@@ -1888,10 +1968,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final categoryId = (_type == TxType.transfer || _isSplitting)
         ? null
         : _categoryId;
-    final foreignCurrencyCode = _isForeignCurrency
-        ? _foreignCurrencyCode
-        : null;
-    final foreignAmount = _isForeignCurrency ? _foreignAmount : null;
+    final foreignCurrencyCode = useForeign ? _foreignCurrencyCode : null;
+    final foreignAmount = useForeign ? _foreignAmount : null;
     try {
       final db = ref.read(dbProvider);
       int id;
@@ -1914,6 +1992,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           customIcon: _customIcon,
           isNct: _isNct,
         );
+        if (_mode != null) {
+          await db.setTransactionMode(id, _pickerModeId);
+        }
       } else {
         id = await db.addTransaction(
           type: _type,
@@ -1930,6 +2011,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           foreignAmount: foreignAmount,
           customIcon: _customIcon,
           isNct: _isNct,
+          modeId: _pickerModeId,
         );
       }
       // The receipt (if any) is now referenced by a saved row — no longer an
@@ -2193,6 +2275,11 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   ) {
     final tiles = <Widget>[];
 
+    if (_mode != null) {
+      tiles.add(_modeToggleTile(_mode!));
+      tiles.add(const SizedBox(height: 12));
+    }
+
     if (_type == TxType.transfer) {
       tiles.add(
         _pickerTile(
@@ -2324,6 +2411,24 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     tiles.add(const SizedBox(height: 12));
     tiles.add(_nctToggleTile());
     return tiles;
+  }
+
+  /// "Part of 🧳 Goa trip" — on for a new transaction while a mode is ON;
+  /// off keeps this one out of it.
+  Widget _modeToggleTile(ModeRow mode) {
+    return AppCard(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: AppSwitchListTile(
+        value: _inMode,
+        onChanged: (v) => setState(() => _inMode = v),
+        secondary: _iconCircle(mode.iconKey, mode.colorValue, size: 32),
+        title: Text('Part of ${mode.name}'),
+        subtitle: Text(
+          _inMode ? 'Counted in this mode' : 'Kept out of this mode',
+        ),
+      ),
+    );
   }
 
   Widget _nctToggleTile() {
@@ -2612,7 +2717,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => TagPickerSheet(initiallySelected: _tagIds),
+      builder: (_) =>
+          TagPickerSheet(initiallySelected: _tagIds, modeId: _pickerModeId),
     );
     if (result == null || !mounted) return;
     setState(() => _tagIds = result);
@@ -2694,9 +2800,13 @@ class _AccountPickerSheet extends ConsumerWidget {
     this.excludeIds = const {},
     this.excludeGoals = false,
     this.onlyTypes,
+    this.modeId,
   });
 
   final String title;
+
+  /// Offers only the accounts this mode allows (all, if it sets no limit).
+  final int? modeId;
   final int? excludeId;
 
   /// Every other hybrid-payment leg's already-chosen account — see GitHub
@@ -2717,6 +2827,9 @@ class _AccountPickerSheet extends ConsumerWidget {
     final theme = Theme.of(context);
     final accountsAsync = ref.watch(accountsProvider);
     final accountMap = ref.watch(accountMapProvider);
+    final allowed = modeId == null
+        ? const <int>{}
+        : ref.watch(modeConfigProvider(modeId!)).accountIds;
 
     return ConstrainedBox(
       constraints: BoxConstraints(
@@ -2751,6 +2864,7 @@ class _AccountPickerSheet extends ConsumerWidget {
                       .where((a) => !excludeIds.contains(a.id))
                       .where((a) => !excludeGoals || a.type != AccountType.goal)
                       .where((a) => onlyTypes?.contains(a.type) ?? true)
+                      .where((a) => allowed.isEmpty || allowed.contains(a.id))
                       .toList();
                   if (list.isEmpty) {
                     return Padding(
@@ -2804,9 +2918,16 @@ class _AccountPickerSheet extends ConsumerWidget {
 /// [parent]" chip to pick the parent directly); a childless one is picked on the
 /// spot. Popping returns the chosen category id.
 class _CategoryPickerSheet extends ConsumerStatefulWidget {
-  const _CategoryPickerSheet({required this.kind, this.envelopeAccountId});
+  const _CategoryPickerSheet({
+    required this.kind,
+    this.envelopeAccountId,
+    this.modeId,
+  });
 
   final CategoryKind kind;
+
+  /// Offers what this mode allows, plus its own categories.
+  final int? modeId;
 
   /// Set only for an expense on an Envelope Mode account — shows each
   /// category's remaining envelope balance under its name instead of just
@@ -2825,7 +2946,14 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final catsAsync = ref.watch(categoriesProvider(widget.kind));
+    final everyday = ref.watch(categoriesProvider(widget.kind));
+    final catsAsync = widget.modeId == null
+        ? everyday
+        : everyday.whenData(
+            (_) => ref.watch(
+              pickerCategoriesProvider((widget.kind, widget.modeId)),
+            ),
+          );
 
     return ConstrainedBox(
       constraints: BoxConstraints(

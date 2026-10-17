@@ -8,7 +8,7 @@ import '../../data/tables.dart' show AppMode;
 import 'app_mode_sheet.dart';
 import 'budget_start_day_sheet.dart';
 
-/// Mode & Budgeting — which features are switched on (Basic/Medium/Pro) and
+/// Level & Budgeting — which features are switched on (Basic/Medium/Pro) and
 /// how the budget cycle and Ready to Assign behave.
 class ModeBudgetingSettingsScreen extends ConsumerWidget {
   const ModeBudgetingSettingsScreen({super.key});
@@ -23,7 +23,7 @@ class ModeBudgetingSettingsScreen extends ConsumerWidget {
     final appMode = ref.watch(appModeProvider);
 
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Mode & Budgeting')),
+      appBar: AppTopBar(title: const Text('Level & Budgeting')),
       body: ListView(
         // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
         padding: EdgeInsets.fromLTRB(
@@ -39,7 +39,7 @@ class ModeBudgetingSettingsScreen extends ConsumerWidget {
                 AppListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   leading: const AppIcon(Icons.tune_outlined),
-                  title: const Text('App mode'),
+                  title: const Text('App level'),
                   subtitle: Text(
                     switch (appMode) {
                       AppMode.basic => 'Basic — transactions & persons only',
