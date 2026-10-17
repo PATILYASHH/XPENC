@@ -8,47 +8,6 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
-### Added
-- **A page for every category** (#169). Tap a category in Categories to
-  see how much went to it — **This month**, **This year** or **All time**
-  — split by subcategory for a parent, with every transaction behind the
-  figure. Money-in categories show what came in. A budget's page links to
-  it too (**History**).
-- **Auto transfers between your own accounts.** Auto → new rule →
-  **Transfer** (it replaces G&L): move money on a schedule from one account
-  to any other — bank to cash, paying a credit card bill, into a savings
-  goal or towards a loan. Goal and loan rules work as before, interest split
-  included, and are now listed under **Transfers**. A transfer that crosses
-  currencies converts with your exchange rate.
-- **Modes — a trip or an event, in focus.** More → **Modes** → **New mode**
-  (start from **Trip** or **Blank**). Give it dates and a budget, the
-  accounts and categories it may use, tags to put on every spend, its own
-  categories and tags (a trip's "Beach shacks"), the tabs and More modules
-  to show, a linked group and the currency you'll spend in. Switch it **ON**
-  and everything you add joins it — from Add (with a **Part of …** switch to
-  keep one out), quick add, a detected bank message or a person entry —
-  while auto rules, imports and corrections never do. The Dashboard becomes
-  the mode's home (spent against the budget, per day, where it went), the
-  Transactions tab shows only its spends, and a bar over the tabs offers
-  **Full app** and **End**. Outside it, the mode is one card in
-  Transactions ("Goa trip · 12–18 Oct · −₹18,400") and one slice in Stats
-  and the Dashboard's Spending; budgets don't count it, monthly totals do.
-  A mode with dates starts on its first day and ends after its last. Move
-  any transaction in or out from its page.
-
-### Changed
-- **"App mode" is now "App level"** (Basic / Medium / Pro), so it isn't
-  confused with Modes. Settings → **Level & Budgeting**.
-
-### Fixed
-- **Statement PDFs now include transaction notes** (#152). The account and
-  combined statements get a **Note** column whenever the period has notes
-  to show. A lending entry's automatic "Gave to …" isn't repeated there.
-- **Backups now carry loans' terms, groups, transaction templates and
-  category templates.** They were left out — a phone move lost them, and
-  restoring onto a phone that had groups (or a quick-add account) failed.
-  **Clear all data** works on such a phone too.
-
 ## [1.6.5] — beta
 
 ### Added
@@ -91,6 +50,32 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   decimal places. It works like any other currency — as your parent
   currency, an account's own, or with an exchange rate — and comes along
   in backups. It can be edited later, and deleted while nothing uses it.
+- **A page for every category** (#169). Tap a category in Categories to
+  see how much went to it — **This month**, **This year** or **All time**
+  — split by subcategory for a parent, with every transaction behind the
+  figure. Money-in categories show what came in. A budget's page links to
+  it too (**History**).
+- **Auto transfers between your own accounts.** Auto → new rule →
+  **Transfer** (it replaces G&L): move money on a schedule from one account
+  to any other — bank to cash, paying a credit card bill, into a savings
+  goal or towards a loan. Goal and loan rules work as before, interest split
+  included, and are now listed under **Transfers**. A transfer that crosses
+  currencies converts with your exchange rate.
+- **Modes — a trip or an event, in focus.** More → **Modes** → **New mode**
+  (start from **Trip** or **Blank**). Give it dates and a budget, the
+  accounts and categories it may use, tags to put on every spend, its own
+  categories and tags (a trip's "Beach shacks"), the tabs and More modules
+  to show, a linked group and the currency you'll spend in. Switch it **ON**
+  and everything you add joins it — from Add (with a **Part of …** switch to
+  keep one out), quick add, a detected bank message or a person entry —
+  while auto rules, imports and corrections never do. The Dashboard becomes
+  the mode's home (spent against the budget, per day, where it went), the
+  Transactions tab shows only its spends, and a bar over the tabs offers
+  **Full app** and **End**. Outside it, the mode is one card in
+  Transactions ("Goa trip · 12–18 Oct · −₹18,400") and one slice in Stats
+  and the Dashboard's Spending; budgets don't count it, monthly totals do.
+  A mode with dates starts on its first day and ends after its last. Move
+  any transaction in or out from its page.
 
 ### Changed
 - **"Income" and "Expense" are now "Money in" and "Money out"** (#159). A
@@ -104,12 +89,21 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   XPENC hides every "from contacts" button (Add/Edit person, Link contact,
   group members, payees) and never opens your address book. Turn it back
   on in Settings → Permissions and they return.
+- **"App mode" is now "App level"** (Basic / Medium / Pro), so it isn't
+  confused with Modes. Settings → **Level & Budgeting**.
 
 ### Fixed
 - **Deleting a tag used by an Auto rule or a tag group failed.** It's now
   taken off those first, like it already was from transactions.
 - **Editing a lend/borrow entry dropped the tags on its transaction.** They
   now stay.
+- **Statement PDFs now include transaction notes** (#152). The account and
+  combined statements get a **Note** column whenever the period has notes
+  to show. A lending entry's automatic "Gave to …" isn't repeated there.
+- **Backups now carry loans' terms, groups, transaction templates and
+  category templates.** They were left out — a phone move lost them, and
+  restoring onto a phone that had groups (or a quick-add account) failed.
+  **Clear all data** works on such a phone too.
 
 ## [1.6.4] — 2026-10-10
 

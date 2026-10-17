@@ -23,6 +23,33 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.luggage_outlined,
+    title: 'Modes: a trip, in focus',
+    location: 'More → Modes → New mode',
+    description:
+        'Set up a trip — dates, budget, the accounts and categories it uses, '
+        'tags for every spend — and switch it ON. Everything you add joins '
+        'it, and the app shows only what the trip needs. Afterwards it’s one '
+        'line in Transactions that opens into the whole story.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.category_outlined,
+    title: 'A page for every category',
+    location: 'Categories → tap a category',
+    description:
+        'How much went to it this month, this year or all time — split by '
+        'subcategory for a parent — with every transaction behind the figure.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.swap_horiz_rounded,
+    title: 'Auto transfers',
+    location: 'Auto → New rule → Transfer',
+    description:
+        'Move money on a schedule between your own accounts — bank to cash, '
+        'a card bill, into a goal or towards a loan. It replaces G&L; goal '
+        'and loan rules work as before.',
+  ),
+  WhatsNewEntry(
     icon: Icons.sell_outlined,
     title: 'Tags on money lent and borrowed',
     location: 'Persons → a person → They owe you / You owe them → Tags',
