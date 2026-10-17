@@ -8,39 +8,6 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
-### Added
-- **Modes are now a sandbox for the trip.** Switch a mode ON from the
-  switch on its card or page (or let its dates do it) and the whole app is
-  that mode:
-  - **The Dashboard is the mode's home**, titled with its name: **Left to
-    spend** first (budget − spent − planned costs still to pay), today's
-    spend and the per-day allowance to stay in budget, its limits, its
-    accounts, its people, its planned costs and the latest spends.
-  - **Only the mode's data shows** — Transactions, Calendar, Stats,
-    Payees and search read just the mode; Budgets shows its limits;
-    Accounts its accounts; ➕ only its own templates.
-  - **People** — pick who's with you. Inside the mode, Persons shows only
-    them and only what happened on the trip, starting from zero; their full
-    balances are untouched outside it. Lending and borrowing entries made
-    during a mode now belong to it even when no money moved.
-  - **Split with mode people** — on Add, split an expense equally with
-    them (you paid); each share becomes a trip due.
-  - **Account allocations** — give each account an amount for the trip
-    ("₹5,000 of HDFC"). While ON it shows what's left of that; after, the
-    real balance. With no budget of its own, the allocations are the
-    budget.
-  - **Limits** — per day, per spend and per category. Going over asks
-    "save anyway?" (it never refuses), and notifications come at 80% and
-    100% of the budget and each category limit.
-  - **Trip wallet** — on start, move a set amount into a "<mode> wallet"
-    cash account; at the end, move what's left back in one tap.
-  - **Planned costs** — the hotel, the tickets: listed up front, counted
-    against the budget, and **Mark paid** opens Add filled in.
-  - **Templates made inside a mode** belong to it and show only there.
-  - **End-of-mode summary** — when a mode ends: what it came to against the
-    budget, per day, by category and account, who owes whom, the planned
-    costs and the wallet's leftover. Share it as a PDF or an image.
-
 ## [1.6.5] — beta
 
 ### Added
@@ -109,6 +76,37 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   and the Dashboard's Spending; budgets don't count it, monthly totals do.
   A mode with dates starts on its first day and ends after its last. Move
   any transaction in or out from its page.
+- **Modes are now a sandbox for the trip.** Switch a mode ON from the
+  switch on its card or page (or let its dates do it) and the whole app is
+  that mode:
+  - **The Dashboard is the mode's home**, titled with its name: **Left to
+    spend** first (budget − spent − planned costs still to pay), today's
+    spend and the per-day allowance to stay in budget, its limits, its
+    accounts, its people, its planned costs and the latest spends.
+  - **Only the mode's data shows** — Transactions, Calendar, Stats,
+    Payees and search read just the mode; Budgets shows its limits;
+    Accounts its accounts; ➕ only its own templates.
+  - **People** — pick who's with you. Inside the mode, Persons shows only
+    them and only what happened on the trip, starting from zero; their full
+    balances are untouched outside it. Lending and borrowing entries made
+    during a mode now belong to it even when no money moved.
+  - **Split with mode people** — on Add, split an expense equally with
+    them (you paid); each share becomes a trip due.
+  - **Account allocations** — give each account an amount for the trip
+    ("₹5,000 of HDFC"). While ON it shows what's left of that; after, the
+    real balance. With no budget of its own, the allocations are the
+    budget.
+  - **Limits** — per day, per spend and per category. Going over asks
+    "save anyway?" (it never refuses), and notifications come at 80% and
+    100% of the budget and each category limit.
+  - **Trip wallet** — on start, move a set amount into a "<mode> wallet"
+    cash account; at the end, move what's left back in one tap.
+  - **Planned costs** — the hotel, the tickets: listed up front, counted
+    against the budget, and **Mark paid** opens Add filled in.
+  - **Templates made inside a mode** belong to it and show only there.
+  - **End-of-mode summary** — when a mode ends: what it came to against the
+    budget, per day, by category and account, who owes whom, the planned
+    costs and the wallet's leftover. Share it as a PDF or an image.
 
 ### Changed
 - **"Income" and "Expense" are now "Money in" and "Money out"** (#159). A

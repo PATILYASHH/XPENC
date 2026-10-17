@@ -23,6 +23,18 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.beach_access_outlined,
+    title: 'A mode is now its own little app',
+    location: 'More → Modes → the switch on a mode',
+    description:
+        'Switch a trip ON and the app is the trip: the home shows what’s left '
+        'to spend and how much a day, Persons shows only the people with you '
+        '(starting from zero), each account shows what you gave the trip, and '
+        'limits ask before you go over. Split bills with your people, plan '
+        'costs up front, fill a trip wallet — and share the summary at the '
+        'end.',
+  ),
+  WhatsNewEntry(
     icon: Icons.luggage_outlined,
     title: 'Modes: a trip, in focus',
     location: 'More → Modes → New mode',
