@@ -21,6 +21,7 @@ import '../../features/calculators/calculator_kind.dart';
 import '../../features/calculators/calculator_screen.dart';
 import '../../features/categories/archived_categories_screen.dart';
 import '../../features/categories/categories_screen.dart';
+import '../../features/categories/category_detail_screen.dart';
 import '../../features/categories/category_templates_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/data_export/backup_screen.dart';
@@ -340,6 +341,16 @@ final appRouter = GoRouter(
                       path: 'archived',
                       parentNavigatorKey: _rootKey,
                       builder: (_, _) => const ArchivedCategoriesScreen(),
+                    ),
+                    // One category's totals and transactions (GitHub #169).
+                    GoRoute(
+                      path: ':categoryId',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, state) => CategoryDetailScreen(
+                        categoryId: int.parse(
+                          state.pathParameters['categoryId']!,
+                        ),
+                      ),
                     ),
                   ],
                 ),

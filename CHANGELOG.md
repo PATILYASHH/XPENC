@@ -8,6 +8,13 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
+### Added
+- **A page for every category** (#169). Tap a category in Categories to
+  see how much went to it — **This month**, **This year** or **All time**
+  — split by subcategory for a parent, with every transaction behind the
+  figure. Money-in categories show what came in. A budget's page links to
+  it too (**History**).
+
 ### Fixed
 - **Statement PDFs now include transaction notes** (#152). The account and
   combined statements get a **Note** column whenever the period has notes

@@ -53,6 +53,12 @@ class BudgetDetailScreen extends ConsumerWidget {
       appBar: AppTopBar(
         title: Text(category.name),
         actions: [
+          // Every month, not just this one (GitHub #169).
+          IconButton(
+            icon: const AppIcon(Icons.history_rounded),
+            tooltip: 'History',
+            onPressed: () => context.push('/more/categories/$categoryId'),
+          ),
           IconButton(
             icon: const AppIcon(Icons.picture_as_pdf_outlined),
             tooltip: 'Download statement',

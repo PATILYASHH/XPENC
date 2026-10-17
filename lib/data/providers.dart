@@ -337,6 +337,118 @@ final categoryTransactionsProvider = Provider.family<List<CategoryTx>, int>((
   return out;
 });
 
+/// How far back a category's own page looks (GitHub #169).
+enum CategoryRange { thisMonth, thisYear, allTime }
+
+/// One line on a category's page: a transaction in the category or one of
+/// its subcategories ([categoryId] says which), or one leg of a split
+/// expense — then [amount] is that leg's slice, not the whole transaction.
+typedef CategoryLine = ({
+  TransactionRow tx,
+  int categoryId,
+  Money amount,
+  bool isSplit,
+});
+
+/// Everything in a category over a [CategoryRange], newest first (GitHub
+/// #169) — "where did the money go" for one category, all time if asked.
+/// A parent pulls in every subcategory, archived ones too: past spending
+/// stays where it happened. An expense category counts expenses, split legs
+/// and categorized goal/loan transfers (same as [categoryTransactionsProvider]);
+/// an income category counts money in.
+final categoryLinesProvider =
+    Provider.family<List<CategoryLine>, (int, CategoryRange)>((ref, args) {
+      final (categoryId, range) = args;
+      final all = [
+        ...ref.watch(categoryMapProvider).values,
+        ...?ref.watch(archivedCategoriesProvider).valueOrNull,
+      ];
+      final self = all.where((c) => c.id == categoryId).firstOrNull;
+      if (self == null) return const [];
+      final ids = {
+        categoryId,
+        for (final c in all)
+          if (c.parentId == categoryId) c.id,
+      };
+
+      final now = DateTime.now();
+      final ({DateTime start, DateTime end})? window = switch (range) {
+        CategoryRange.allTime => null,
+        CategoryRange.thisYear => (
+          start: DateTime(now.year),
+          end: DateTime(now.year + 1).subtract(const Duration(milliseconds: 1)),
+        ),
+        CategoryRange.thisMonth => () {
+          final startDay = ref.watch(budgetStartDayProvider);
+          return budgetPeriodFor(
+            budgetPeriodAnchorFor(now, startDay),
+            startDay,
+          );
+        }(),
+      };
+
+      final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
+      final splitsByTx = ref.watch(transactionSplitsByTxProvider);
+      final isIncome = self.kind == CategoryKind.income;
+
+      final out = <CategoryLine>[];
+      for (final t in txs) {
+        if (window != null &&
+            (t.date.isBefore(window.start) || t.date.isAfter(window.end))) {
+          continue;
+        }
+        if (isIncome) {
+          if (t.type == TxType.income && ids.contains(t.categoryId)) {
+            out.add((
+              tx: t,
+              categoryId: t.categoryId!,
+              amount: t.amount,
+              isSplit: false,
+            ));
+          }
+          continue;
+        }
+        if (t.type == TxType.expense) {
+          if (t.categoryId != null) {
+            if (ids.contains(t.categoryId)) {
+              out.add((
+                tx: t,
+                categoryId: t.categoryId!,
+                amount: t.amount,
+                isSplit: false,
+              ));
+            }
+            continue;
+          }
+          for (final split
+              in splitsByTx[t.id] ?? const <TransactionSplitRow>[]) {
+            if (ids.contains(split.categoryId)) {
+              out.add((
+                tx: t,
+                categoryId: split.categoryId,
+                amount: split.amount,
+                isSplit: true,
+              ));
+            }
+          }
+          continue;
+        }
+        if (t.type == TxType.transfer && ids.contains(t.categoryId)) {
+          out.add((
+            tx: t,
+            categoryId: t.categoryId!,
+            amount: t.amount,
+            isSplit: false,
+          ));
+        }
+      }
+      out.sort((a, b) {
+        final byDate = b.tx.date.compareTo(a.tx.date);
+        return byDate != 0 ? byDate : b.tx.id.compareTo(a.tx.id);
+      });
+      return out;
+    });
+
 /// Live "previous period unspent" per rollover-enabled budgeted category —
 /// max(0, previous period's [Budgets.amount] minus previous period's actual
 /// spend), computed fresh from transactions exactly like

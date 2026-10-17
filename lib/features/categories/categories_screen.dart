@@ -229,6 +229,8 @@ class _CategoryTile extends ConsumerWidget {
 
     return AppListTile(
       contentPadding: EdgeInsets.only(left: isChild ? 32 : 16, right: 4),
+      // Its own page: totals and every transaction (GitHub #169).
+      onTap: () => context.push('/more/categories/${category.id}'),
       leading: Container(
         width: badge,
         height: badge,
