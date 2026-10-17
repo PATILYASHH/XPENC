@@ -1836,7 +1836,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       );
       return;
     }
-    if (!await _withinModeLimits(amount)) return;
+    if (!await _withinModeLimits(amount) || !mounted) return;
     if (_isHybrid) {
       if (_hybridLegs.any((r) => r.accountId == null)) {
         messenger.showSnackBar(
