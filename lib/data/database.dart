@@ -85,6 +85,10 @@ typedef StatementLine = ({
   int transactionId,
   DateTime date,
   String description,
+
+  /// The note typed on the transaction (GitHub #152) — null when there's
+  /// none, or it's only the "Gave to …" a lending entry fills in itself.
+  String? note,
   Money debit,
   Money credit,
   Money balance,
@@ -132,8 +136,28 @@ typedef CombinedStatementLine = ({
   String accountName,
   String type,
   String description,
+
+  /// See [StatementLine.note].
+  String? note,
   Money amount,
 });
+
+/// [t]'s note for a statement (GitHub #152): trimmed, and null when empty
+/// or when it's only the "Gave to …"/"Received from …" a person entry
+/// writes for itself — the description already says that.
+String? _statementNote(TransactionRow t, String? personName) {
+  final note = t.note?.trim();
+  if (note == null || note.isEmpty) return null;
+  if (t.type == TxType.personOut &&
+      note == 'Gave to ${personName ?? 'person'}') {
+    return null;
+  }
+  if (t.type == TxType.personIn &&
+      note == 'Received from ${personName ?? 'person'}') {
+    return null;
+  }
+  return note;
+}
 
 @DriftDatabase(
   tables: [
@@ -7123,6 +7147,10 @@ class AppDatabase extends _$AppDatabase {
         transactionId: t.id,
         date: t.date,
         description: describe(t),
+        note: _statementNote(
+          t,
+          t.personId == null ? null : personsById[t.personId]?.name,
+        ),
         debit: movement.isNegative ? movement.abs : const Money.zero(),
         credit: movement.isPositive ? movement : const Money.zero(),
         balance: running,
@@ -7341,9 +7369,8 @@ class AppDatabase extends _$AppDatabase {
           final category = t.categoryId == null
               ? null
               : categoriesById[t.categoryId]?.name;
-          if (category != null) return category;
-          final note = t.note?.trim();
-          return (note != null && note.isNotEmpty) ? note : 'Uncategorised';
+          // The note has a column of its own now (GitHub #152).
+          return category ?? 'Uncategorised';
       }
     }
 
@@ -7354,6 +7381,10 @@ class AppDatabase extends _$AppDatabase {
           accountName: accountsById[t.accountId]?.name ?? 'Unknown',
           type: typeLabel(t.type),
           description: describe(t),
+          note: _statementNote(
+            t,
+            t.personId == null ? null : personsById[t.personId]?.name,
+          ),
           amount: t.amount,
         ),
     ];

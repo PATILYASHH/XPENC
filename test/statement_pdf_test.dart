@@ -249,4 +249,101 @@ void main() {
     );
     expect(looksLikePdf(bytes), isTrue);
   });
+  group('notes (GitHub #152)', () {
+    Future<AccountRow> cash() async => (await db.watchAccounts().first)
+        .firstWhere((a) => a.type == AccountType.cash);
+
+    test('each line carries its note — never a lending entry’s own '
+        '"Gave to …"', () async {
+      final account = await cash();
+      final food = (await db.watchCategories(CategoryKind.expense).first)
+          .firstWhere((c) => c.name == 'Food');
+      await db.addTransaction(
+        type: TxType.expense,
+        amount: Money.fromRupees(450),
+        accountId: account.id,
+        categoryId: food.id,
+        date: DateTime(2026, 7, 5),
+        payee: 'Grocery',
+        note: '  Monthly groceries for home ',
+      );
+      final asha = await db.addPerson('Asha');
+      await db.addPersonEntry(
+        personId: asha,
+        direction: PersonDirection.theyOwe,
+        amount: Money.fromRupees(200),
+        date: DateTime(2026, 7, 6),
+        accountId: account.id,
+      );
+      await db.addPersonEntry(
+        personId: asha,
+        direction: PersonDirection.theyOwe,
+        amount: Money.fromRupees(100),
+        date: DateTime(2026, 7, 7),
+        accountId: account.id,
+        note: 'Cab home',
+      );
+
+      final statement = await db.accountStatement(
+        accountId: account.id,
+        start: DateTime(2026, 7, 1),
+        end: DateTime(2026, 7, 31),
+      );
+      expect(statement.lines.map((l) => l.note), [
+        'Monthly groceries for home',
+        null,
+        'Cab home',
+      ]);
+      expect(statement.lines.first.description, 'Food - Grocery');
+
+      final combined = await db.combinedStatement(
+        start: DateTime(2026, 7, 1),
+        end: DateTime(2026, 7, 31),
+      );
+      final grocery = combined.firstWhere((l) => l.description == 'Food');
+      expect(grocery.note, 'Monthly groceries for home');
+    });
+
+    test('a note in any script still renders both PDFs', () async {
+      final account = await cash();
+      await db.addTransaction(
+        type: TxType.expense,
+        amount: Money.fromRupees(90),
+        accountId: account.id,
+        categoryId:
+            (await db.watchCategories(CategoryKind.expense).first).first.id,
+        date: DateTime(2026, 7, 5),
+        note: '₹90 चाय for the café 😀',
+      );
+      final statement = await db.accountStatement(
+        accountId: account.id,
+        start: DateTime(2026, 7, 1),
+        end: DateTime(2026, 7, 31),
+      );
+      expect(
+        looksLikePdf(
+          await buildAccountStatementPdf(
+            account: account,
+            statement: statement,
+            start: DateTime(2026, 7, 1),
+            end: DateTime(2026, 7, 31),
+          ),
+        ),
+        isTrue,
+      );
+      expect(
+        looksLikePdf(
+          await buildCombinedStatementPdf(
+            start: DateTime(2026, 7, 1),
+            end: DateTime(2026, 7, 31),
+            lines: await db.combinedStatement(
+              start: DateTime(2026, 7, 1),
+              end: DateTime(2026, 7, 31),
+            ),
+          ),
+        ),
+        isTrue,
+      );
+    });
+  });
 }

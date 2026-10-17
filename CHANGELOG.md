@@ -8,6 +8,11 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
+### Fixed
+- **Statement PDFs now include transaction notes** (#152). The account and
+  combined statements get a **Note** column whenever the period has notes
+  to show. A lending entry's automatic "Gave to …" isn't repeated there.
+
 ## [1.6.5] — beta
 
 ### Added

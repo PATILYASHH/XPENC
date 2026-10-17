@@ -35,6 +35,8 @@ Future<Uint8List> buildAccountStatementPdf({
   final currency = account.currencyCode == null
       ? MoneyFormat.currency
       : currencyForCode(account.currencyCode!);
+  // A Note column only when the period has one to show (GitHub #152).
+  final withNotes = statement.lines.any((l) => l.note != null);
 
   doc.addPage(
     pw.MultiPage(
@@ -60,9 +62,10 @@ Future<Uint8List> buildAccountStatementPdf({
           )
         else
           pw.TableHelper.fromTextArray(
-            headers: const [
+            headers: [
               'Date',
               'Description',
+              if (withNotes) 'Note',
               'Debit',
               'Credit',
               'Balance',
@@ -72,6 +75,7 @@ Future<Uint8List> buildAccountStatementPdf({
                 [
                   _dateLabel(line.date),
                   line.description,
+                  if (withNotes) line.note ?? '',
                   line.debit.isZero
                       ? ''
                       : MoneyFormat.bareIn(line.debit, currency),
@@ -81,12 +85,22 @@ Future<Uint8List> buildAccountStatementPdf({
                   MoneyFormat.bareIn(line.balance, currency),
                 ],
             ],
-            cellAlignments: const {
+            columnWidths: withNotes
+                ? const {
+                    0: pw.FixedColumnWidth(58),
+                    1: pw.FlexColumnWidth(3),
+                    2: pw.FlexColumnWidth(3),
+                    3: pw.FlexColumnWidth(2),
+                    4: pw.FlexColumnWidth(2),
+                    5: pw.FlexColumnWidth(2),
+                  }
+                : null,
+            cellAlignments: {
               0: pw.Alignment.centerLeft,
               1: pw.Alignment.centerLeft,
-              2: pw.Alignment.centerRight,
-              3: pw.Alignment.centerRight,
-              4: pw.Alignment.centerRight,
+              if (withNotes) 2: pw.Alignment.centerLeft,
+              for (var i = withNotes ? 3 : 2; i < (withNotes ? 6 : 5); i++)
+                i: pw.Alignment.centerRight,
             },
             headerStyle: pw.TextStyle(
               fontWeight: pw.FontWeight.bold,
@@ -263,6 +277,8 @@ Future<Uint8List> buildCombinedStatementPdf({
   required List<CombinedStatementLine> lines,
 }) async {
   final doc = pw.Document(title: 'Combined statement');
+  // A Note column only when the period has one to show (GitHub #152).
+  final withNotes = lines.any((l) => l.note != null);
 
   doc.addPage(
     pw.MultiPage(
@@ -280,11 +296,12 @@ Future<Uint8List> buildCombinedStatementPdf({
           )
         else
           pw.TableHelper.fromTextArray(
-            headers: const [
+            headers: [
               'Date',
               'Account',
               'Type',
-              'Category / Note',
+              'Category',
+              if (withNotes) 'Note',
               'Amount',
             ],
             data: [
@@ -294,15 +311,17 @@ Future<Uint8List> buildCombinedStatementPdf({
                   l.accountName,
                   l.type,
                   l.description,
+                  if (withNotes) l.note ?? '',
                   MoneyFormat.bare(l.amount),
                 ],
             ],
-            cellAlignments: const {
+            cellAlignments: {
               0: pw.Alignment.centerLeft,
               1: pw.Alignment.centerLeft,
               2: pw.Alignment.centerLeft,
               3: pw.Alignment.centerLeft,
-              4: pw.Alignment.centerRight,
+              if (withNotes) 4: pw.Alignment.centerLeft,
+              withNotes ? 5 : 4: pw.Alignment.centerRight,
             },
             headerStyle: pw.TextStyle(
               fontWeight: pw.FontWeight.bold,
