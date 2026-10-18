@@ -145,33 +145,37 @@ Future<void> startModeWithConfirm(
   ref.read(modeFullAppProvider.notifier).state = false;
 }
 
-/// Ends [mode] after a confirm.
+/// Asks before ending [mode]; true = end it.
+Future<bool> confirmEndMode(BuildContext context, ModeRow mode) async =>
+    await showAppDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('End ${mode.name}?'),
+        content: const Text(
+          'New spends stop joining it and the app goes back to everyday. '
+          'You can start it again any time.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('End'),
+          ),
+        ],
+      ),
+    ) ==
+    true;
+
+/// Ends [mode] after a confirm, then shows its summary.
 Future<void> endModeWithConfirm(
   BuildContext context,
   WidgetRef ref,
   ModeRow mode,
 ) async {
-  final ok = await showAppDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text('End ${mode.name}?'),
-      content: const Text(
-        'New spends stop joining it and the app goes back to everyday. '
-        'You can start it again any time.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('End'),
-        ),
-      ],
-    ),
-  );
-  if (ok != true || !context.mounted) return;
+  if (!await confirmEndMode(context, mode) || !context.mounted) return;
   final router = GoRouter.of(context);
   await ref.read(dbProvider).endMode(mode.id);
   ref.read(modeFullAppProvider.notifier).state = false;
@@ -199,72 +203,138 @@ class ModeSwitch extends ConsumerWidget {
   }
 }
 
-/// The strip over the tab bar while a mode is ON: "🧳 Goa trip · Day 3",
-/// with Exit to full app (or Back to trip) and End.
-class ModeBar extends ConsumerWidget {
-  const ModeBar({super.key});
+/// The mode that's ON, as one floating circle in the top-left corner of the
+/// tabs: filled in its colour while the app is the mode, a ring once you've
+/// stepped out to the full app. Tap it for the mode's name and day, Full
+/// app / Back, its page and End.
+class ModeOrb extends ConsumerWidget {
+  const ModeOrb({this.size = 40, super.key});
+
+  final double size;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(activeModeProvider);
     if (mode == null) return const SizedBox.shrink();
     final fullApp = ref.watch(modeFullAppProvider);
-    final theme = Theme.of(context);
     final color = Color(mode.colorValue);
-    final day = modeDayNumber(mode, DateTime.now());
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
-      child: Material(
-        color: Color.alphaBlend(
-          color.withValues(alpha: 0.16),
-          theme.colorScheme.surface,
-        ),
-        shape: StadiumBorder(
-          side: BorderSide(color: color.withValues(alpha: 0.35)),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () => context.push('/mode/${mode.id}'),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(6, 4, 4, 4),
-            child: Row(
-              children: [
-                ModeBadge(mode, size: 28),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    fullApp
-                        ? '${mode.name} is ON'
-                        : [mode.name, if (day != null) 'Day $day'].join(' · '),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                TextButton(
-                  style: TextButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                  ),
-                  onPressed: () =>
-                      ref.read(modeFullAppProvider.notifier).state = !fullApp,
-                  child: Text(fullApp ? 'Back to ${mode.name}' : 'Full app'),
-                ),
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  tooltip: 'End ${mode.name}',
-                  icon: const AppIcon(Icons.stop_circle_outlined, size: 22),
-                  onPressed: () => endModeWithConfirm(context, ref, mode),
-                ),
-              ],
+    return Tooltip(
+      message: fullApp ? '${mode.name} is ON' : mode.name,
+      child: Semantics(
+        button: true,
+        label: '${mode.name} mode',
+        child: GestureDetector(
+          key: const ValueKey('modeOrb'),
+          onTap: () => showModeOrbSheet(context, mode),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            width: size,
+            height: size,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: fullApp ? color.withValues(alpha: 0.12) : color,
+              border: Border.all(color: color, width: fullApp ? 2 : 0),
+              boxShadow: fullApp
+                  ? null
+                  : [
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.35),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+            ),
+            child: KeyIcon(
+              mode.iconKey,
+              color: fullApp ? color : Colors.white,
+              size: size * 0.5,
             ),
           ),
         ),
       ),
     );
+  }
+}
+
+enum _OrbAction { open, toggle, end }
+
+/// The orb's sheet. Everything it does runs after the sheet has closed,
+/// through what was captured before — under Glass a sheet can take its
+/// opener out of the tree.
+Future<void> showModeOrbSheet(BuildContext context, ModeRow mode) async {
+  final container = ProviderScope.containerOf(context, listen: false);
+  final router = GoRouter.of(context);
+  final fullApp = container.read(modeFullAppProvider);
+  final day = modeDayNumber(mode, DateTime.now());
+  final action = await showAppSheet<_OrbAction>(
+    context: context,
+    showDragHandle: true,
+    builder: (context) => SafeArea(
+      top: false,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppListTile(
+            leading: ModeBadge(mode, size: 44),
+            title: Text(
+              mode.name,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            subtitle: Text(
+              [
+                fullApp ? 'ON · showing the full app' : 'ON',
+                if (day != null) 'Day $day',
+              ].join(' · '),
+            ),
+          ),
+          const Divider(height: 1),
+          AppListTile(
+            leading: const AppIcon(Icons.open_in_new_rounded),
+            title: Text('Open ${mode.name}'),
+            subtitle: const Text('Its page — spent, people, every transaction'),
+            onTap: () => Navigator.of(context).pop(_OrbAction.open),
+          ),
+          AppListTile(
+            leading: AppIcon(
+              fullApp ? Icons.filter_center_focus_rounded : Icons.apps_rounded,
+            ),
+            title: Text(fullApp ? 'Back to ${mode.name}' : 'Full app'),
+            subtitle: Text(
+              fullApp
+                  ? 'Show only the mode again'
+                  : 'Everything, for now — the mode stays ON',
+            ),
+            onTap: () => Navigator.of(context).pop(_OrbAction.toggle),
+          ),
+          AppListTile(
+            leading: const AppIcon(Icons.stop_circle_outlined),
+            title: Text('End ${mode.name}'),
+            subtitle: const Text('See its summary'),
+            onTap: () => Navigator.of(context).pop(_OrbAction.end),
+          ),
+          const SizedBox(height: 12),
+        ],
+      ),
+    ),
+  );
+  switch (action) {
+    case null:
+      return;
+    case _OrbAction.open:
+      await router.push('/mode/${mode.id}');
+    case _OrbAction.toggle:
+      container.read(modeFullAppProvider.notifier).state = !fullApp;
+    case _OrbAction.end:
+      final dialogContext = router.routerDelegate.navigatorKey.currentContext;
+      if (dialogContext == null || !dialogContext.mounted) return;
+      if (!await confirmEndMode(dialogContext, mode)) return;
+      await container.read(dbProvider).endMode(mode.id);
+      container.read(modeFullAppProvider.notifier).state = false;
+      await router.push('/mode/${mode.id}/summary');
   }
 }
 

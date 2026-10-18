@@ -294,7 +294,11 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
     final landTop =
         top + (bar - capsule) / 2 + capsule / 2 - lineLarge * shrink / 2;
     final titleTop = restTop + (landTop - restTop) * c;
-    final titleLeft = 20 + (12 + 5 + 12 - 20) * c;
+    // The mode that's ON (a trip) floats in its own circle at the bar's
+    // left end; the capsule — and the title once it lands in it — make room.
+    final orb = ref.watch(activeModeProvider) != null;
+    final orbInset = orb ? capsule + 8 : 0.0;
+    final titleLeft = 20 + (12 + orbInset + 5 + 12 - 20) * c;
     final titleScale =
         (1 + (shrink - 1) * c) * (1 + (pull / 600).clamp(0.0, 0.08));
 
@@ -338,9 +342,17 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
           ),
           // The capsule: the actions at rest; the whole bar once the title
           // has landed. Width follows the spring; speed squashes it.
+          if (orb)
+            Positioned(
+              top: top + (bar - capsule) / 2,
+              left: 12,
+              width: capsule,
+              height: capsule,
+              child: const LiquidGlass(child: Center(child: ModeOrb(size: 40))),
+            ),
           Positioned(
             top: top + (bar - capsule) / 2,
-            left: 12,
+            left: 12 + orbInset,
             right: 12,
             height: capsule,
             child: LayoutBuilder(

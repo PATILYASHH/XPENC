@@ -96,7 +96,7 @@ extension ModesDb on AppDatabase {
   /// The people on [modeId] — its group's members.
   Future<Set<int>> modePeopleIds(int modeId) async {
     final groupId = (await modeById(modeId))?.groupId;
-    if (groupId == null) return const {};
+    if (groupId == null) return <int>{};
     return {
       for (final m in await (select(
         groupMembers,

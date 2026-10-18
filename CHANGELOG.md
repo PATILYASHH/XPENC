@@ -8,6 +8,21 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
+### Changed
+- **The mode that's ON is now a circle in the top-left corner** instead of
+  a bar over the tabs. Tap it for the mode's name and day, **Full app** /
+  **Back to …**, its page, and **End**. It's filled in the mode's colour
+  while the app is the mode, and a ring once you've stepped out to the
+  full app.
+
+### Fixed
+- **People couldn't be picked on a mode** made before the last beta (and
+  a Trip's module chips didn't toggle) — the editor now always lets you.
+- **Paying a planned cost** from the page of a mode that isn't ON now puts
+  the payment in that mode.
+- **A person added while a mode is ON** joins the mode's people, so the
+  mode's Persons tab shows them straight away.
+
 ## [1.6.5] — beta
 
 ### Added

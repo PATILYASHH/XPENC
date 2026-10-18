@@ -7,6 +7,8 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/database.dart';
+import '../../data/mode_providers.dart';
+import '../../data/modes_db.dart';
 import '../../data/providers.dart';
 import 'contact_import.dart';
 import 'person_avatar.dart';
@@ -184,6 +186,20 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
     return true;
   }
 
+  /// Added while a mode (a trip) is the focus: they're on the trip too —
+  /// otherwise the mode's Persons tab, which lists only its people, would
+  /// never show them.
+  Future<void> _joinFocusedMode(int personId) async {
+    // Read from the database, not a provider that may not have loaded yet.
+    final db = ref.read(dbProvider);
+    final modeId = await db.activeModeId();
+    if (modeId == null || ref.read(modeFullAppProvider)) return;
+    await db.setModePeople(modeId, {
+      ...await db.modePeopleIds(modeId),
+      personId,
+    });
+  }
+
   Future<void> _save() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
@@ -232,6 +248,7 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
           if (existing.isArchived) {
             await ref.read(dbProvider).unarchivePerson(existing.id);
           }
+          await _joinFocusedMode(existing.id);
           if (mounted) Navigator.of(context).pop();
           return;
         }
@@ -241,7 +258,7 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
     setState(() => _saving = true);
     final db = ref.read(dbProvider);
     if (person == null) {
-      await db.addPerson(
+      final id = await db.addPerson(
         name,
         contact: _contactController.text.trim().nullIfEmpty,
         note: _noteController.text.trim().nullIfEmpty,
@@ -253,6 +270,7 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
         revolut: _revolutController.text.trim().nullIfEmpty,
         photoPath: _photoPath,
       );
+      await _joinFocusedMode(id);
     } else {
       await db.updatePerson(
         id: person.id,

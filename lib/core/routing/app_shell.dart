@@ -240,48 +240,36 @@ class AppShell extends ConsumerWidget {
           // bar's height as bottom padding, which every tab already honours
           // (see `NavBarInset`).
           extendBody: glass,
-          // While a mode (a trip) is ON, its bar rides just above the tabs.
-          bottomNavigationBar: _withModeBar(
-            ref,
-            glass
-                ? _LiquidTabBar(
-                    tabs: [home, left, right, _more],
-                    currentBranch: navigationShell.currentIndex,
-                    showLabels: ref.watch(showBottomNavLabelsProvider),
-                    onSelect: (branch) => _goBranch(ref, branch),
-                    add: add,
-                  )
-                : DecoratedBox(
-                    decoration: BoxDecoration(
-                      border: Border(top: BorderSide(color: border)),
-                    ),
-                    child: SafeArea(
-                      top: false,
-                      child: SizedBox(
-                        height: 68,
-                        child: Row(
-                          children: [
-                            _navItem(context, ref, home),
-                            _navItem(context, ref, left),
-                            add,
-                            _navItem(context, ref, right),
-                            _navItem(context, ref, _more),
-                          ],
-                        ),
+          bottomNavigationBar: glass
+              ? _LiquidTabBar(
+                  tabs: [home, left, right, _more],
+                  currentBranch: navigationShell.currentIndex,
+                  showLabels: ref.watch(showBottomNavLabelsProvider),
+                  onSelect: (branch) => _goBranch(ref, branch),
+                  add: add,
+                )
+              : DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: Border(top: BorderSide(color: border)),
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: SizedBox(
+                      height: 68,
+                      child: Row(
+                        children: [
+                          _navItem(context, ref, home),
+                          _navItem(context, ref, left),
+                          add,
+                          _navItem(context, ref, right),
+                          _navItem(context, ref, _more),
+                        ],
                       ),
                     ),
                   ),
-          ),
+                ),
         ),
       ),
-    );
-  }
-
-  static Widget _withModeBar(WidgetRef ref, Widget bar) {
-    if (ref.watch(activeModeProvider) == null) return bar;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [const ModeBar(), bar],
     );
   }
 
@@ -1296,6 +1284,15 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
       child: AppBar(
         automaticallyImplyLeading: false,
         centerTitle: false,
+        // The mode that's ON (a trip) floats in the corner, before the title.
+        leading: ref.watch(activeModeProvider) == null
+            ? null
+            : const Padding(
+                padding: EdgeInsets.only(left: 12),
+                child: Center(child: ModeOrb(size: 38)),
+              ),
+        leadingWidth: ref.watch(activeModeProvider) == null ? null : 58,
+        titleSpacing: ref.watch(activeModeProvider) == null ? null : 6,
         title: title,
         actions: [
           AnimatedSwitcher(

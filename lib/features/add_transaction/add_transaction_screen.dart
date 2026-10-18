@@ -326,8 +326,12 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       // the guard on `_accountId` below means it never overwrites a
       // selection the user already made while this was loading.
       _seedLastUsedAccount();
-      _seedMode();
-      if (widget.plannedCostId != null) _loadPlannedCost();
+      // Paying a planned cost joins that cost's mode, ON or not.
+      if (widget.plannedCostId != null) {
+        _loadPlannedCost();
+      } else {
+        _seedMode();
+      }
     }
   }
 
@@ -344,6 +348,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       _categoryId = cost.categoryId ?? _categoryId;
       if (_noteController.text.isEmpty) _noteController.text = cost.name;
     });
+    await _seedMode(modeId: cost.modeId);
   }
 
   /// Over one of the mode's limits? Ask first — going over is the person's
@@ -405,9 +410,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   /// A new transaction joins the mode that's ON: its auto-tags come
   /// pre-picked, a limited mode starts on one of its accounts and, abroad,
   /// its currency opens the foreign amount.
-  Future<void> _seedMode() async {
+  Future<void> _seedMode({int? modeId}) async {
     final db = ref.read(dbProvider);
-    final id = await db.activeModeId();
+    final id = modeId ?? await db.activeModeId();
     if (id == null) return;
     final mode = await db.modeById(id);
     final autoTags = await db.modeTagIds(id);

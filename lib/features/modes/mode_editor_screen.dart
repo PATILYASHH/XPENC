@@ -100,7 +100,8 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
     _name.text = preset.name;
     _iconKey = preset.iconKey;
     _colorValue = preset.colorValue;
-    _modules = preset.modules.isEmpty ? {...ModeModule.keys} : preset.modules;
+    // Copies: the editor changes these sets, and a preset's are constant.
+    _modules = {...(preset.modules.isEmpty ? ModeModule.keys : preset.modules)};
     final slots = preset.navSlots?.split(',');
     if (slots != null && slots.length == 2) {
       _slotLeft = slots[0];
@@ -157,10 +158,11 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
       final slots = mode.navSlots?.split(',');
       _slotLeft = slots != null && slots.length == 2 ? slots[0] : null;
       _slotRight = slots != null && slots.length == 2 ? slots[1] : null;
-      _modules = modeModuleKeys(mode);
-      _accountIds = accounts;
-      _categoryIds = cats;
-      _tagIds = tags;
+      // Copies — the chips change them in place.
+      _modules = {...modeModuleKeys(mode)};
+      _accountIds = {...accounts};
+      _categoryIds = {...cats};
+      _tagIds = {...tags};
       for (final r in accountRows) {
         if (r.allocation != null) {
           _allocCtrl(r.accountId).text = _moneyText(r.allocation);
@@ -173,7 +175,7 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
       }
       _daily.text = _moneyText(mode.dailyLimit);
       _perSpend.text = _moneyText(mode.spendLimit);
-      _people = people;
+      _people = {...people};
       _walletMade = mode.walletAccountId;
       _wallet = mode.walletAmount != null;
       _walletSourceId = mode.walletSourceAccountId;

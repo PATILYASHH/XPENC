@@ -39,7 +39,7 @@ class ModeModule {
 /// a key from a newer build is ignored.
 Set<String> modeModuleKeys(ModeRow mode) {
   final raw = mode.modules.trim();
-  if (raw.isEmpty) return ModeModule.keys;
+  if (raw.isEmpty) return {...ModeModule.keys};
   return {
     for (final k in raw.split(','))
       if (ModeModule.keys.contains(k.trim())) k.trim(),
