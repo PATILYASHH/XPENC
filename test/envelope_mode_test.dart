@@ -719,6 +719,34 @@ void main() {
       await tester.pump(Duration.zero);
     });
 
+    testWidgets('is zero in Pro mode while Ready to Assign is off', (
+      tester,
+    ) async {
+      // GitHub #172: an enrolled account left over from when Ready to
+      // Assign was on must not prompt on a plain transfer.
+      late int cash;
+      await tester.runAsync(() async {
+        cash = await cashId();
+        await db.setEnvelopeMode(cash, true);
+        await db.setAppMode(AppMode.pro);
+        await db.setRtaEnabled(false);
+      });
+
+      final ref = await captureRef(tester);
+      expect(
+        envelopeOutflowShortfall(
+          ref,
+          accountId: cash,
+          amount: Money.fromRupees(2000),
+        ),
+        const Money.zero(),
+        reason: 'no Ready to Assign pool to fall short of',
+      );
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(Duration.zero);
+    });
+
     testWidgets('is zero for an account with Envelope Mode off', (
       tester,
     ) async {
