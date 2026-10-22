@@ -11696,6 +11696,20 @@ class $SettingsTable extends Settings
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _showRunningBalanceMeta =
+      const VerificationMeta('showRunningBalance');
+  @override
+  late final GeneratedColumn<bool> showRunningBalance = GeneratedColumn<bool>(
+    'show_running_balance',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("show_running_balance" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -11780,6 +11794,7 @@ class $SettingsTable extends Settings
     contactsPermissionAsked,
     weekStart,
     activeModeId,
+    showRunningBalance,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -12399,6 +12414,15 @@ class $SettingsTable extends Settings
         ),
       );
     }
+    if (data.containsKey('show_running_balance')) {
+      context.handle(
+        _showRunningBalanceMeta,
+        showRunningBalance.isAcceptableOrUnknown(
+          data['show_running_balance']!,
+          _showRunningBalanceMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -12757,6 +12781,10 @@ class $SettingsTable extends Settings
         DriftSqlType.int,
         data['${effectivePrefix}active_mode_id'],
       ),
+      showRunningBalance: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}show_running_balance'],
+      )!,
     );
   }
 
@@ -13189,6 +13217,10 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
 
   /// The mode that's ON, if any — see [Modes]. At most one at a time.
   final int? activeModeId;
+
+  /// Account history shows the balance after every entry, like a bank
+  /// passbook (GitHub #150). Off by default — opt-in.
+  final bool showRunningBalance;
   const SettingRow({
     required this.id,
     required this.currencyCode,
@@ -13272,6 +13304,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     required this.contactsPermissionAsked,
     required this.weekStart,
     this.activeModeId,
+    required this.showRunningBalance,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -13456,6 +13489,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     if (!nullToAbsent || activeModeId != null) {
       map['active_mode_id'] = Variable<int>(activeModeId);
     }
+    map['show_running_balance'] = Variable<bool>(showRunningBalance);
     return map;
   }
 
@@ -13587,6 +13621,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       activeModeId: activeModeId == null && nullToAbsent
           ? const Value.absent()
           : Value(activeModeId),
+      showRunningBalance: Value(showRunningBalance),
     );
   }
 
@@ -13741,6 +13776,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
         serializer.fromJson<String>(json['weekStart']),
       ),
       activeModeId: serializer.fromJson<int?>(json['activeModeId']),
+      showRunningBalance: serializer.fromJson<bool>(json['showRunningBalance']),
     );
   }
   @override
@@ -13871,6 +13907,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
         $SettingsTable.$converterweekStart.toJson(weekStart),
       ),
       'activeModeId': serializer.toJson<int?>(activeModeId),
+      'showRunningBalance': serializer.toJson<bool>(showRunningBalance),
     };
   }
 
@@ -13957,6 +13994,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     bool? contactsPermissionAsked,
     WeekStart? weekStart,
     Value<int?> activeModeId = const Value.absent(),
+    bool? showRunningBalance,
   }) => SettingRow(
     id: id ?? this.id,
     currencyCode: currencyCode ?? this.currencyCode,
@@ -14065,6 +14103,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
         contactsPermissionAsked ?? this.contactsPermissionAsked,
     weekStart: weekStart ?? this.weekStart,
     activeModeId: activeModeId.present ? activeModeId.value : this.activeModeId,
+    showRunningBalance: showRunningBalance ?? this.showRunningBalance,
   );
   SettingRow copyWithCompanion(SettingsCompanion data) {
     return SettingRow(
@@ -14292,6 +14331,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       activeModeId: data.activeModeId.present
           ? data.activeModeId.value
           : this.activeModeId,
+      showRunningBalance: data.showRunningBalance.present
+          ? data.showRunningBalance.value
+          : this.showRunningBalance,
     );
   }
 
@@ -14383,7 +14425,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('txIconColor: $txIconColor, ')
           ..write('contactsPermissionAsked: $contactsPermissionAsked, ')
           ..write('weekStart: $weekStart, ')
-          ..write('activeModeId: $activeModeId')
+          ..write('activeModeId: $activeModeId, ')
+          ..write('showRunningBalance: $showRunningBalance')
           ..write(')'))
         .toString();
   }
@@ -14472,6 +14515,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     contactsPermissionAsked,
     weekStart,
     activeModeId,
+    showRunningBalance,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -14561,7 +14605,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.txIconColor == this.txIconColor &&
           other.contactsPermissionAsked == this.contactsPermissionAsked &&
           other.weekStart == this.weekStart &&
-          other.activeModeId == this.activeModeId);
+          other.activeModeId == this.activeModeId &&
+          other.showRunningBalance == this.showRunningBalance);
 }
 
 class SettingsCompanion extends UpdateCompanion<SettingRow> {
@@ -14647,6 +14692,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<bool> contactsPermissionAsked;
   final Value<WeekStart> weekStart;
   final Value<int?> activeModeId;
+  final Value<bool> showRunningBalance;
   const SettingsCompanion({
     this.id = const Value.absent(),
     this.currencyCode = const Value.absent(),
@@ -14730,6 +14776,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.contactsPermissionAsked = const Value.absent(),
     this.weekStart = const Value.absent(),
     this.activeModeId = const Value.absent(),
+    this.showRunningBalance = const Value.absent(),
   });
   SettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -14814,6 +14861,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.contactsPermissionAsked = const Value.absent(),
     this.weekStart = const Value.absent(),
     this.activeModeId = const Value.absent(),
+    this.showRunningBalance = const Value.absent(),
   });
   static Insertable<SettingRow> custom({
     Expression<int>? id,
@@ -14898,6 +14946,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<bool>? contactsPermissionAsked,
     Expression<String>? weekStart,
     Expression<int>? activeModeId,
+    Expression<bool>? showRunningBalance,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -15007,6 +15056,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
         'contacts_permission_asked': contactsPermissionAsked,
       if (weekStart != null) 'week_start': weekStart,
       if (activeModeId != null) 'active_mode_id': activeModeId,
+      if (showRunningBalance != null)
+        'show_running_balance': showRunningBalance,
     });
   }
 
@@ -15093,6 +15144,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<bool>? contactsPermissionAsked,
     Value<WeekStart>? weekStart,
     Value<int?>? activeModeId,
+    Value<bool>? showRunningBalance,
   }) {
     return SettingsCompanion(
       id: id ?? this.id,
@@ -15192,6 +15244,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           contactsPermissionAsked ?? this.contactsPermissionAsked,
       weekStart: weekStart ?? this.weekStart,
       activeModeId: activeModeId ?? this.activeModeId,
+      showRunningBalance: showRunningBalance ?? this.showRunningBalance,
     );
   }
 
@@ -15502,6 +15555,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     if (activeModeId.present) {
       map['active_mode_id'] = Variable<int>(activeModeId.value);
     }
+    if (showRunningBalance.present) {
+      map['show_running_balance'] = Variable<bool>(showRunningBalance.value);
+    }
     return map;
   }
 
@@ -15593,7 +15649,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('txIconColor: $txIconColor, ')
           ..write('contactsPermissionAsked: $contactsPermissionAsked, ')
           ..write('weekStart: $weekStart, ')
-          ..write('activeModeId: $activeModeId')
+          ..write('activeModeId: $activeModeId, ')
+          ..write('showRunningBalance: $showRunningBalance')
           ..write(')'))
         .toString();
   }
@@ -21813,6 +21870,21 @@ class $GoalDetailsTable extends GoalDetails
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _showInMoneyInOutMeta = const VerificationMeta(
+    'showInMoneyInOut',
+  );
+  @override
+  late final GeneratedColumn<bool> showInMoneyInOut = GeneratedColumn<bool>(
+    'show_in_money_in_out',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("show_in_money_in_out" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     accountId,
@@ -21820,6 +21892,7 @@ class $GoalDetailsTable extends GoalDetails
     targetDate,
     categoryId,
     notes,
+    showInMoneyInOut,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -21857,6 +21930,15 @@ class $GoalDetailsTable extends GoalDetails
         notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
       );
     }
+    if (data.containsKey('show_in_money_in_out')) {
+      context.handle(
+        _showInMoneyInOutMeta,
+        showInMoneyInOut.isAcceptableOrUnknown(
+          data['show_in_money_in_out']!,
+          _showInMoneyInOutMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -21888,6 +21970,10 @@ class $GoalDetailsTable extends GoalDetails
         DriftSqlType.string,
         data['${effectivePrefix}notes'],
       ),
+      showInMoneyInOut: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}show_in_money_in_out'],
+      )!,
     );
   }
 
@@ -21912,12 +21998,19 @@ class GoalDetailRow extends DataClass implements Insertable<GoalDetailRow> {
   /// Free-form notes about the goal — e.g. why it exists or what it's for
   /// (GitHub #76). Purely informational; never read by any calculation.
   final String? notes;
+
+  /// "Show in Money in / out" (GitHub #173): the goal works like a pocket
+  /// of a bank account — money in and money out can post straight against
+  /// it, not only transfers. Off by default, so a goal stays a savings
+  /// store until the person says otherwise.
+  final bool showInMoneyInOut;
   const GoalDetailRow({
     required this.accountId,
     required this.targetAmount,
     this.targetDate,
     this.categoryId,
     this.notes,
+    required this.showInMoneyInOut,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -21937,6 +22030,7 @@ class GoalDetailRow extends DataClass implements Insertable<GoalDetailRow> {
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
     }
+    map['show_in_money_in_out'] = Variable<bool>(showInMoneyInOut);
     return map;
   }
 
@@ -21953,6 +22047,7 @@ class GoalDetailRow extends DataClass implements Insertable<GoalDetailRow> {
       notes: notes == null && nullToAbsent
           ? const Value.absent()
           : Value(notes),
+      showInMoneyInOut: Value(showInMoneyInOut),
     );
   }
 
@@ -21967,6 +22062,7 @@ class GoalDetailRow extends DataClass implements Insertable<GoalDetailRow> {
       targetDate: serializer.fromJson<DateTime?>(json['targetDate']),
       categoryId: serializer.fromJson<int?>(json['categoryId']),
       notes: serializer.fromJson<String?>(json['notes']),
+      showInMoneyInOut: serializer.fromJson<bool>(json['showInMoneyInOut']),
     );
   }
   @override
@@ -21978,6 +22074,7 @@ class GoalDetailRow extends DataClass implements Insertable<GoalDetailRow> {
       'targetDate': serializer.toJson<DateTime?>(targetDate),
       'categoryId': serializer.toJson<int?>(categoryId),
       'notes': serializer.toJson<String?>(notes),
+      'showInMoneyInOut': serializer.toJson<bool>(showInMoneyInOut),
     };
   }
 
@@ -21987,12 +22084,14 @@ class GoalDetailRow extends DataClass implements Insertable<GoalDetailRow> {
     Value<DateTime?> targetDate = const Value.absent(),
     Value<int?> categoryId = const Value.absent(),
     Value<String?> notes = const Value.absent(),
+    bool? showInMoneyInOut,
   }) => GoalDetailRow(
     accountId: accountId ?? this.accountId,
     targetAmount: targetAmount ?? this.targetAmount,
     targetDate: targetDate.present ? targetDate.value : this.targetDate,
     categoryId: categoryId.present ? categoryId.value : this.categoryId,
     notes: notes.present ? notes.value : this.notes,
+    showInMoneyInOut: showInMoneyInOut ?? this.showInMoneyInOut,
   );
   GoalDetailRow copyWithCompanion(GoalDetailsCompanion data) {
     return GoalDetailRow(
@@ -22007,6 +22106,9 @@ class GoalDetailRow extends DataClass implements Insertable<GoalDetailRow> {
           ? data.categoryId.value
           : this.categoryId,
       notes: data.notes.present ? data.notes.value : this.notes,
+      showInMoneyInOut: data.showInMoneyInOut.present
+          ? data.showInMoneyInOut.value
+          : this.showInMoneyInOut,
     );
   }
 
@@ -22017,14 +22119,21 @@ class GoalDetailRow extends DataClass implements Insertable<GoalDetailRow> {
           ..write('targetAmount: $targetAmount, ')
           ..write('targetDate: $targetDate, ')
           ..write('categoryId: $categoryId, ')
-          ..write('notes: $notes')
+          ..write('notes: $notes, ')
+          ..write('showInMoneyInOut: $showInMoneyInOut')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(accountId, targetAmount, targetDate, categoryId, notes);
+  int get hashCode => Object.hash(
+    accountId,
+    targetAmount,
+    targetDate,
+    categoryId,
+    notes,
+    showInMoneyInOut,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -22033,7 +22142,8 @@ class GoalDetailRow extends DataClass implements Insertable<GoalDetailRow> {
           other.targetAmount == this.targetAmount &&
           other.targetDate == this.targetDate &&
           other.categoryId == this.categoryId &&
-          other.notes == this.notes);
+          other.notes == this.notes &&
+          other.showInMoneyInOut == this.showInMoneyInOut);
 }
 
 class GoalDetailsCompanion extends UpdateCompanion<GoalDetailRow> {
@@ -22042,12 +22152,14 @@ class GoalDetailsCompanion extends UpdateCompanion<GoalDetailRow> {
   final Value<DateTime?> targetDate;
   final Value<int?> categoryId;
   final Value<String?> notes;
+  final Value<bool> showInMoneyInOut;
   const GoalDetailsCompanion({
     this.accountId = const Value.absent(),
     this.targetAmount = const Value.absent(),
     this.targetDate = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.notes = const Value.absent(),
+    this.showInMoneyInOut = const Value.absent(),
   });
   GoalDetailsCompanion.insert({
     this.accountId = const Value.absent(),
@@ -22055,6 +22167,7 @@ class GoalDetailsCompanion extends UpdateCompanion<GoalDetailRow> {
     this.targetDate = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.notes = const Value.absent(),
+    this.showInMoneyInOut = const Value.absent(),
   }) : targetAmount = Value(targetAmount);
   static Insertable<GoalDetailRow> custom({
     Expression<int>? accountId,
@@ -22062,6 +22175,7 @@ class GoalDetailsCompanion extends UpdateCompanion<GoalDetailRow> {
     Expression<DateTime>? targetDate,
     Expression<int>? categoryId,
     Expression<String>? notes,
+    Expression<bool>? showInMoneyInOut,
   }) {
     return RawValuesInsertable({
       if (accountId != null) 'account_id': accountId,
@@ -22069,6 +22183,7 @@ class GoalDetailsCompanion extends UpdateCompanion<GoalDetailRow> {
       if (targetDate != null) 'target_date': targetDate,
       if (categoryId != null) 'category_id': categoryId,
       if (notes != null) 'notes': notes,
+      if (showInMoneyInOut != null) 'show_in_money_in_out': showInMoneyInOut,
     });
   }
 
@@ -22078,6 +22193,7 @@ class GoalDetailsCompanion extends UpdateCompanion<GoalDetailRow> {
     Value<DateTime?>? targetDate,
     Value<int?>? categoryId,
     Value<String?>? notes,
+    Value<bool>? showInMoneyInOut,
   }) {
     return GoalDetailsCompanion(
       accountId: accountId ?? this.accountId,
@@ -22085,6 +22201,7 @@ class GoalDetailsCompanion extends UpdateCompanion<GoalDetailRow> {
       targetDate: targetDate ?? this.targetDate,
       categoryId: categoryId ?? this.categoryId,
       notes: notes ?? this.notes,
+      showInMoneyInOut: showInMoneyInOut ?? this.showInMoneyInOut,
     );
   }
 
@@ -22108,6 +22225,9 @@ class GoalDetailsCompanion extends UpdateCompanion<GoalDetailRow> {
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
     }
+    if (showInMoneyInOut.present) {
+      map['show_in_money_in_out'] = Variable<bool>(showInMoneyInOut.value);
+    }
     return map;
   }
 
@@ -22118,7 +22238,8 @@ class GoalDetailsCompanion extends UpdateCompanion<GoalDetailRow> {
           ..write('targetAmount: $targetAmount, ')
           ..write('targetDate: $targetDate, ')
           ..write('categoryId: $categoryId, ')
-          ..write('notes: $notes')
+          ..write('notes: $notes, ')
+          ..write('showInMoneyInOut: $showInMoneyInOut')
           ..write(')'))
         .toString();
   }
@@ -41583,6 +41704,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<bool> contactsPermissionAsked,
       Value<WeekStart> weekStart,
       Value<int?> activeModeId,
+      Value<bool> showRunningBalance,
     });
 typedef $$SettingsTableUpdateCompanionBuilder =
     SettingsCompanion Function({
@@ -41668,6 +41790,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<bool> contactsPermissionAsked,
       Value<WeekStart> weekStart,
       Value<int?> activeModeId,
+      Value<bool> showRunningBalance,
     });
 
 final class $$SettingsTableReferences
@@ -42130,6 +42253,11 @@ class $$SettingsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get showRunningBalance => $composableBuilder(
+    column: $table.showRunningBalance,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$AccountsTableFilterComposer get quickAddAccountId {
     final $$AccountsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -42568,6 +42696,11 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get showRunningBalance => $composableBuilder(
+    column: $table.showRunningBalance,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$AccountsTableOrderingComposer get quickAddAccountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -42992,6 +43125,11 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get showRunningBalance => $composableBuilder(
+    column: $table.showRunningBalance,
+    builder: (column) => column,
+  );
+
   $$AccountsTableAnnotationComposer get quickAddAccountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -43130,6 +43268,7 @@ class $$SettingsTableTableManager
                 Value<bool> contactsPermissionAsked = const Value.absent(),
                 Value<WeekStart> weekStart = const Value.absent(),
                 Value<int?> activeModeId = const Value.absent(),
+                Value<bool> showRunningBalance = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
                 currencyCode: currencyCode,
@@ -43213,6 +43352,7 @@ class $$SettingsTableTableManager
                 contactsPermissionAsked: contactsPermissionAsked,
                 weekStart: weekStart,
                 activeModeId: activeModeId,
+                showRunningBalance: showRunningBalance,
               ),
           createCompanionCallback:
               ({
@@ -43302,6 +43442,7 @@ class $$SettingsTableTableManager
                 Value<bool> contactsPermissionAsked = const Value.absent(),
                 Value<WeekStart> weekStart = const Value.absent(),
                 Value<int?> activeModeId = const Value.absent(),
+                Value<bool> showRunningBalance = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
                 currencyCode: currencyCode,
@@ -43385,6 +43526,7 @@ class $$SettingsTableTableManager
                 contactsPermissionAsked: contactsPermissionAsked,
                 weekStart: weekStart,
                 activeModeId: activeModeId,
+                showRunningBalance: showRunningBalance,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -50684,6 +50826,7 @@ typedef $$GoalDetailsTableCreateCompanionBuilder =
       Value<DateTime?> targetDate,
       Value<int?> categoryId,
       Value<String?> notes,
+      Value<bool> showInMoneyInOut,
     });
 typedef $$GoalDetailsTableUpdateCompanionBuilder =
     GoalDetailsCompanion Function({
@@ -50692,6 +50835,7 @@ typedef $$GoalDetailsTableUpdateCompanionBuilder =
       Value<DateTime?> targetDate,
       Value<int?> categoryId,
       Value<String?> notes,
+      Value<bool> showInMoneyInOut,
     });
 
 final class $$GoalDetailsTableReferences
@@ -50759,6 +50903,11 @@ class $$GoalDetailsTableFilterComposer
 
   ColumnFilters<String> get notes => $composableBuilder(
     column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get showInMoneyInOut => $composableBuilder(
+    column: $table.showInMoneyInOut,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -50833,6 +50982,11 @@ class $$GoalDetailsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get showInMoneyInOut => $composableBuilder(
+    column: $table.showInMoneyInOut,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$AccountsTableOrderingComposer get accountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -50902,6 +51056,11 @@ class $$GoalDetailsTableAnnotationComposer
 
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<bool> get showInMoneyInOut => $composableBuilder(
+    column: $table.showInMoneyInOut,
+    builder: (column) => column,
+  );
 
   $$AccountsTableAnnotationComposer get accountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
@@ -50983,12 +51142,14 @@ class $$GoalDetailsTableTableManager
                 Value<DateTime?> targetDate = const Value.absent(),
                 Value<int?> categoryId = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
+                Value<bool> showInMoneyInOut = const Value.absent(),
               }) => GoalDetailsCompanion(
                 accountId: accountId,
                 targetAmount: targetAmount,
                 targetDate: targetDate,
                 categoryId: categoryId,
                 notes: notes,
+                showInMoneyInOut: showInMoneyInOut,
               ),
           createCompanionCallback:
               ({
@@ -50997,12 +51158,14 @@ class $$GoalDetailsTableTableManager
                 Value<DateTime?> targetDate = const Value.absent(),
                 Value<int?> categoryId = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
+                Value<bool> showInMoneyInOut = const Value.absent(),
               }) => GoalDetailsCompanion.insert(
                 accountId: accountId,
                 targetAmount: targetAmount,
                 targetDate: targetDate,
                 categoryId: categoryId,
                 notes: notes,
+                showInMoneyInOut: showInMoneyInOut,
               ),
           withReferenceMapper: (p0) => p0
               .map(

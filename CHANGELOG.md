@@ -55,6 +55,17 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   — split by subcategory for a parent, with every transaction behind the
   figure. Money-in categories show what came in. A budget's page links to
   it too (**History**).
+- **Pay straight from a savings goal** (#173). A goal's page has **Show in
+  Money in / out**: turn it on and the goal works like a pocket of your
+  bank account — pick it as the account for money in or money out (also in
+  Auto rules, CSV import and modes), and its balance moves with them. Off
+  by default, so every goal stays transfer-only until you say otherwise.
+  Entries already on a goal stay editable if you turn it off again.
+- **Running balance** (#150). An account's (or goal's) page has a
+  **Running balance** chip above its history: turn it on and every entry
+  shows the balance right after it, like a bank passbook — the same figure
+  the statement PDF prints, ending on the account's balance today. Off by
+  default.
 - **Auto transfers between your own accounts.** Auto → new rule →
   **Transfer** (it replaces G&L): move money on a schedule from one account
   to any other — bank to cash, paying a credit card bill, into a savings

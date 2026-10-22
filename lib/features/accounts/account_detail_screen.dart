@@ -99,6 +99,10 @@ class _AccountDetailView extends ConsumerWidget {
     for (final a in accountMap.values) {
       if (a.linkedAccountId == account.id) ownIds.add(a.id);
     }
+    // A debit card holds no balance of its own — nothing to run.
+    final showRunningBalance =
+        !isDebitCard &&
+        (ref.watch(settingsProvider).valueOrNull?.showRunningBalance ?? false);
 
     return Scaffold(
       appBar: AppTopBar(
@@ -141,9 +145,12 @@ class _AccountDetailView extends ConsumerWidget {
             categoryMap: categoryMap,
             ownIds: ownIds,
             currency: _accountCurrency(account, accountMap),
+            openingBalance: showRunningBalance ? account.openingBalance : null,
+            showBalanceChip: !isDebitCard,
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 32)),
-        const NavBarInsetSliver(),],
+          const NavBarInsetSliver(),
+        ],
       ),
     );
   }
@@ -155,6 +162,8 @@ class _AccountDetailView extends ConsumerWidget {
     required Map<int, CategoryRow> categoryMap,
     required Set<int> ownIds,
     required Currency? currency,
+    required Money? openingBalance,
+    required bool showBalanceChip,
   }) {
     final theme = Theme.of(context);
 
@@ -196,6 +205,16 @@ class _AccountDetailView extends ConsumerWidget {
         }
 
         return [
+          if (showBalanceChip)
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: RunningBalanceChip(),
+                ),
+              ),
+            ),
           SliverList.list(
             children: historyChildren(
               txns: txns,
@@ -203,6 +222,7 @@ class _AccountDetailView extends ConsumerWidget {
               categoryMap: categoryMap,
               ownIds: ownIds,
               currency: currency,
+              openingBalance: openingBalance,
             ),
           ),
         ];

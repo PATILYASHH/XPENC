@@ -1651,6 +1651,25 @@ final goalDetailProvider = StreamProvider.family<GoalDetailRow?, int>(
   (ref, accountId) => ref.watch(dbProvider).watchGoalDetail(accountId),
 );
 
+/// Goals with "Show in Money in / out" on (GitHub #173) — the only goals an
+/// income/expense picker offers. Every other goal stays transfer-only.
+final moneyInOutGoalIdsProvider = Provider<Set<int>>((ref) {
+  final details = ref.watch(goalDetailsProvider).valueOrNull ?? const [];
+  return {
+    for (final d in details)
+      if (d.showInMoneyInOut) d.accountId,
+  };
+});
+
+/// Whether money in / out may post against [a] — anything but a loan, and a
+/// goal only when its "Show in Money in / out" switch is on.
+bool takesMoneyInOut(AccountRow a, Set<int> moneyInOutGoalIds) =>
+    switch (a.type) {
+      AccountType.loan => false,
+      AccountType.goal => moneyInOutGoalIds.contains(a.id),
+      _ => true,
+    };
+
 typedef GoalProgress = ({
   AccountRow account,
   GoalDetailRow detail,

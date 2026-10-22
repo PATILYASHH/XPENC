@@ -409,9 +409,16 @@ class _MappingForm extends StatelessWidget {
 
     return Consumer(
       builder: (context, ref, _) {
+        // Every imported row is money in or out — a goal only joins in with
+        // its "Show in Money in / out" on (GitHub #173).
+        final moneyInOutGoals = ref.watch(moneyInOutGoalIdsProvider);
         final accounts =
             (ref.watch(balanceAccountsProvider).valueOrNull ?? const [])
-                .where((a) => a.type != AccountType.goal)
+                .where(
+                  (a) =>
+                      a.type != AccountType.goal ||
+                      moneyInOutGoals.contains(a.id),
+                )
                 .toList();
 
         return Column(

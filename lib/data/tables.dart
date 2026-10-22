@@ -1481,6 +1481,11 @@ class Settings extends Table {
   /// The mode that's ON, if any — see [Modes]. At most one at a time.
   IntColumn get activeModeId => integer().nullable()();
 
+  /// Account history shows the balance after every entry, like a bank
+  /// passbook (GitHub #150). Off by default — opt-in.
+  BoolColumn get showRunningBalance =>
+      boolean().withDefault(const Constant(false))();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -1788,6 +1793,13 @@ class GoalDetails extends Table {
   /// Free-form notes about the goal — e.g. why it exists or what it's for
   /// (GitHub #76). Purely informational; never read by any calculation.
   TextColumn get notes => text().nullable()();
+
+  /// "Show in Money in / out" (GitHub #173): the goal works like a pocket
+  /// of a bank account — money in and money out can post straight against
+  /// it, not only transfers. Off by default, so a goal stays a savings
+  /// store until the person says otherwise.
+  BoolColumn get showInMoneyInOut =>
+      boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {accountId};

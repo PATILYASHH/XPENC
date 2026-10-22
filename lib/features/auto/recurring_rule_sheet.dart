@@ -398,9 +398,15 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     ref.watch(loanDetailsProvider);
     // A goal/loan is not a spendable/depositable account — an expense/income
     // rule (or the "from" side of a transfer rule) never posts against one;
-    // only a transfer can.
+    // only a transfer can. A goal with "Show in Money in / out" on (#173)
+    // is the exception for an expense/income rule.
+    final moneyInOutGoals = ref.watch(moneyInOutGoalIdsProvider);
     final fromAccounts = allAccounts
-        .where((a) => a.type != AccountType.goal && a.type != AccountType.loan)
+        .where(
+          (a) => isTransfer
+              ? a.type != AccountType.goal && a.type != AccountType.loan
+              : takesMoneyInOut(a, moneyInOutGoals),
+        )
         .toList();
     // A rule saved before loan accounts were excluded here may still point
     // at one — keep it selectable in its own dropdown rather than crashing

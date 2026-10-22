@@ -176,6 +176,20 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
               ),
             ),
           ),
+          const SizedBox(height: 12),
+          AppCard(
+            child: AppSwitchListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+              title: const Text('Show in Money in / out'),
+              subtitle: const Text(
+                'Pay or receive straight from this goal, like a pocket of '
+                'your bank account. Off: only transfers move its money.',
+              ),
+              value: detail.showInMoneyInOut,
+              onChanged: (v) =>
+                  ref.read(dbProvider).setGoalShowInMoneyInOut(account.id, v),
+            ),
+          ),
           if (!progress.reached) ...[
             const SizedBox(height: 12),
             () {
@@ -217,11 +231,18 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
             ),
           ],
           const SizedBox(height: 28),
-          Text(
-            'History',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'History',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const RunningBalanceChip(),
+            ],
           ),
           TransactionHistorySection(
             txAsync: txAsync,
@@ -230,6 +251,11 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
             ownIds: {goalId},
             currency: null,
             emptyMessage: 'No funding activity yet.',
+            openingBalance:
+                (ref.watch(settingsProvider).valueOrNull?.showRunningBalance ??
+                    false)
+                ? account.openingBalance
+                : null,
           ),
         ],
       ),

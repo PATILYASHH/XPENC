@@ -692,9 +692,10 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
         body: const Center(child: CircularProgressIndicator()),
       );
     }
+    final moneyInOutGoals = ref.watch(moneyInOutGoalIdsProvider);
     final accounts = [
       for (final a in ref.watch(accountsProvider).valueOrNull ?? const [])
-        if (a.type != AccountType.goal && a.type != AccountType.loan) a,
+        if (takesMoneyInOut(a, moneyInOutGoals)) a,
     ];
     final everydayCats = [
       for (final c

@@ -53,6 +53,23 @@ const whatsNewEntries = <WhatsNewEntry>[
         'subcategory for a parent — with every transaction behind the figure.',
   ),
   WhatsNewEntry(
+    icon: Icons.savings_outlined,
+    title: 'Pay straight from a savings goal',
+    location: 'More → Goals & Loans → a goal → Show in Money in / out',
+    description:
+        'Turn it on and the goal works like a pocket of your bank account: '
+        'pick it for money in or money out, and its balance moves with them. '
+        'Off by default — a goal stays transfer-only until you say so.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.receipt_long_outlined,
+    title: 'Running balance',
+    location: 'An account’s page → Running balance',
+    description:
+        'Every entry shows the balance right after it, like a bank passbook '
+        '— the same figure your statement PDF prints. Off by default.',
+  ),
+  WhatsNewEntry(
     icon: Icons.swap_horiz_rounded,
     title: 'Auto transfers',
     location: 'Auto → New rule → Transfer',

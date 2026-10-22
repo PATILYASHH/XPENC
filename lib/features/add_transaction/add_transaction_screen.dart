@@ -685,8 +685,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         // can still land anywhere.
         modeId: forTo ? null : _pickerModeId,
         // A goal isn't a spendable account — it's only funded or drawn down
-        // by a transfer. Hide it from expense/income pickers entirely.
+        // by a transfer — unless its "Show in Money in / out" is on (#173).
         excludeGoals: _type != TxType.transfer,
+        moneyInOut: _type.isIncomeOrExpense,
       ),
     );
     if (selected == null || !mounted) return;
@@ -1225,6 +1226,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       builder: (_) => _AccountPickerSheet(
         title: 'Account',
         excludeGoals: true,
+        moneyInOut: true,
         excludeIds: excludeIds,
         modeId: _pickerModeId,
       ),
@@ -2982,6 +2984,7 @@ class _AccountPickerSheet extends ConsumerWidget {
     this.excludeId,
     this.excludeIds = const {},
     this.excludeGoals = false,
+    this.moneyInOut = false,
     this.onlyTypes,
     this.modeId,
   });
@@ -3000,6 +3003,10 @@ class _AccountPickerSheet extends ConsumerWidget {
   /// may fund or draw it down. Set for expense/income pickers.
   final bool excludeGoals;
 
+  /// A money in / out picker: [excludeGoals] still lets through the goals
+  /// whose "Show in Money in / out" is on (GitHub #173).
+  final bool moneyInOut;
+
   /// Restricts the list to these account types when set — e.g. change from
   /// a cash payment only ever lands in another cash-type account, never a
   /// card or bank one (see GitHub #55).
@@ -3013,6 +3020,9 @@ class _AccountPickerSheet extends ConsumerWidget {
     final allowed = modeId == null
         ? const <int>{}
         : ref.watch(modeConfigProvider(modeId!)).accountIds;
+    final moneyInOutGoals = moneyInOut
+        ? ref.watch(moneyInOutGoalIdsProvider)
+        : const <int>{};
 
     return ConstrainedBox(
       constraints: BoxConstraints(
@@ -3045,7 +3055,12 @@ class _AccountPickerSheet extends ConsumerWidget {
                   final list = accounts
                       .where((a) => a.id != excludeId)
                       .where((a) => !excludeIds.contains(a.id))
-                      .where((a) => !excludeGoals || a.type != AccountType.goal)
+                      .where(
+                        (a) =>
+                            !excludeGoals ||
+                            a.type != AccountType.goal ||
+                            moneyInOutGoals.contains(a.id),
+                      )
                       .where((a) => onlyTypes?.contains(a.type) ?? true)
                       .where((a) => allowed.isEmpty || allowed.contains(a.id))
                       .toList();

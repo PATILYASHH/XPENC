@@ -108,6 +108,7 @@ void main() {
       weekStart: WeekStart.monday,
       budgetingMode: BudgetingMode.budgets,
       rtaEnabled: false,
+      showRunningBalance: false,
     );
 
     final now = DateTime(2026, 8, 5, 12);

@@ -657,9 +657,14 @@ class _ApproveSheetState extends ConsumerState<_ApproveSheet> {
       ),
       data: (allAccounts) {
         // A captured message always posts as income or expense, never a
-        // transfer — a goal isn't a spendable account, so keep it out.
+        // transfer — a goal isn't a spendable account, so keep it out
+        // unless its "Show in Money in / out" is on (#173).
+        final moneyInOutGoals = ref.watch(moneyInOutGoalIdsProvider);
         final accounts = allAccounts
-            .where((a) => a.type != AccountType.goal)
+            .where(
+              (a) =>
+                  a.type != AccountType.goal || moneyInOutGoals.contains(a.id),
+            )
             .toList();
         if (accounts.isEmpty) {
           return Text(

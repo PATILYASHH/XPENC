@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../data/database.dart';
+import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../app_icons.dart';
 import '../currency.dart';
@@ -28,6 +29,7 @@ class TransactionHistorySection extends StatelessWidget {
     required this.ownIds,
     required this.currency,
     this.emptyMessage = 'No transactions yet.',
+    this.openingBalance,
     super.key,
   });
 
@@ -37,6 +39,9 @@ class TransactionHistorySection extends StatelessWidget {
   final Set<int> ownIds;
   final Currency? currency;
   final String emptyMessage;
+
+  /// Set to show the running balance under every row (GitHub #150).
+  final Money? openingBalance;
 
   @override
   Widget build(BuildContext context) {
@@ -73,6 +78,7 @@ class TransactionHistorySection extends StatelessWidget {
             categoryMap: categoryMap,
             ownIds: ownIds,
             currency: currency,
+            openingBalance: openingBalance,
           ),
         );
       },
@@ -83,15 +89,30 @@ class TransactionHistorySection extends StatelessWidget {
 /// Groups [txns] by day (most recent first) into alternating day-header and
 /// row widgets. Used directly by [TransactionHistorySection] and by the
 /// account detail screen, which needs the flat widget list to feed a
-/// [SliverList] instead of a plain [Column].
+/// [SliverList] instead of a plain [Column]. With [openingBalance] set, each
+/// row also shows the balance right after it (GitHub #150).
 List<Widget> historyChildren({
   required List<TransactionRow> txns,
   required Map<int, AccountRow> accountMap,
   required Map<int, CategoryRow> categoryMap,
   required Set<int> ownIds,
   required Currency? currency,
+  Money? openingBalance,
 }) {
-  final sorted = [...txns]..sort((a, b) => b.date.compareTo(a.date));
+  final balances = openingBalance == null
+      ? null
+      : runningBalances(
+          txns: txns,
+          ownIds: ownIds,
+          openingBalance: openingBalance,
+        );
+  // Newest first, same-moment entries by id — the order the running
+  // balance walks in, reversed.
+  final sorted = [...txns]
+    ..sort((a, b) {
+      final byDate = b.date.compareTo(a.date);
+      return byDate != 0 ? byDate : b.id.compareTo(a.id);
+    });
   final groups = <DateTime, List<TransactionRow>>{};
   for (final tx in sorted) {
     final day = DateTime(tx.date.year, tx.date.month, tx.date.day);
@@ -115,11 +136,30 @@ List<Widget> historyChildren({
           categoryMap: categoryMap,
           ownIds: ownIds,
           currency: currency,
+          balance: balances?[tx.id],
         ),
       );
     }
   }
   return children;
+}
+
+/// "Running balance" on/off for account history (GitHub #150) — one
+/// setting, shared by every account and goal page.
+class RunningBalanceChip extends ConsumerWidget {
+  const RunningBalanceChip({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final on =
+        ref.watch(settingsProvider).valueOrNull?.showRunningBalance ?? false;
+    return FilterChip(
+      label: const Text('Running balance'),
+      selected: on,
+      visualDensity: VisualDensity.compact,
+      onSelected: (v) => ref.read(dbProvider).setShowRunningBalance(v),
+    );
+  }
 }
 
 class HistoryDayHeader extends StatelessWidget {
@@ -179,6 +219,7 @@ class HistoryRow extends StatelessWidget {
     required this.categoryMap,
     required this.ownIds,
     required this.currency,
+    this.balance,
     super.key,
   });
 
@@ -187,6 +228,10 @@ class HistoryRow extends StatelessWidget {
   final Map<int, CategoryRow> categoryMap;
   final Set<int> ownIds;
   final Currency? currency;
+
+  /// The account's balance right after this entry, when running balance
+  /// is on (GitHub #150).
+  final Money? balance;
 
   @override
   Widget build(BuildContext context) {
@@ -245,15 +290,32 @@ class HistoryRow extends StatelessWidget {
         subtitle: subtitle == null
             ? null
             : Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
-        trailing: MoneyText(
-          movement,
-          signed: true,
-          color: colorForTxType(tx.type),
-          currency: currency,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
-        ),
+        trailing: () {
+          final amount = MoneyText(
+            movement,
+            signed: true,
+            color: colorForTxType(tx.type),
+            currency: currency,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          );
+          if (balance == null) return amount;
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              amount,
+              MoneyText(
+                balance!,
+                currency: currency,
+                color: theme.colorScheme.onSurfaceVariant,
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
+          );
+        }(),
       ),
     );
   }

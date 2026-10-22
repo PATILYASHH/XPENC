@@ -662,6 +662,20 @@ void main() {
     await unmount(tester);
   });
 
+  testWidgets('Account detail: running balance shows under each entry', (
+    tester,
+  ) async {
+    late int bank;
+    await tester.runAsync(() async {
+      bank = (await seed()).bank;
+      await db.setShowRunningBalance(true);
+    });
+    await pump(tester, AccountDetailScreen(accountId: bank));
+    expect(tester.takeException(), isNull);
+    expect(find.text('Running balance'), findsOneWidget);
+    await unmount(tester);
+  });
+
   testWidgets('Account detail: debit card explains it holds no balance', (
     tester,
   ) async {
@@ -906,6 +920,41 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Add funds'), findsOneWidget);
     expect(find.text('Withdraw'), findsOneWidget);
+    expect(find.text('Show in Money in / out'), findsOneWidget);
+    await unmount(tester);
+  });
+
+  testWidgets('Goal detail: money in / out and running balance on', (
+    tester,
+  ) async {
+    late int goalId;
+    await tester.runAsync(() async {
+      goalId = await db.addGoal(
+        name: 'Pocket',
+        targetAmount: Money.fromRupees(50000),
+        colorValue: 0xFF16A34A,
+        iconKey: 'travel',
+      );
+      await db.setGoalShowInMoneyInOut(goalId, true);
+      await db.setShowRunningBalance(true);
+      await db.addTransaction(
+        type: TxType.income,
+        amount: Money.fromRupees(4000),
+        accountId: goalId,
+        date: DateTime.now(),
+      );
+    });
+    await pump(tester, SavingsGoalDetailScreen(goalId: goalId));
+    expect(tester.takeException(), isNull);
+    // History sits below the fold on a phone — scroll it (and its balance
+    // rows) into view so they're laid out too.
+    await tester.scrollUntilVisible(
+      find.text('Running balance'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(tester.takeException(), isNull);
+    expect(find.text('Running balance'), findsOneWidget);
     await unmount(tester);
   });
 

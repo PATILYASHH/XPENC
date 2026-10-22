@@ -35,6 +35,28 @@ Money accountMovement(TransactionRow tx, Set<int> ownIds) => switch (tx.type) {
     ownIds.contains(tx.accountId) ? -tx.amount : (tx.toAmount ?? tx.amount),
 };
 
+/// The balance right after each of [txns] (by transaction id) — the running
+/// balance a bank passbook prints (GitHub #150). Walks forward from
+/// [openingBalance] oldest first, ties broken by id, exactly like
+/// [AppDatabase.accountStatement], so the app and the PDF statement agree.
+/// [txns] must be the account's whole history: a filtered list would give
+/// balances that never existed.
+Map<int, Money> runningBalances({
+  required List<TransactionRow> txns,
+  required Set<int> ownIds,
+  required Money openingBalance,
+}) {
+  final ordered = [...txns]
+    ..sort((a, b) {
+      final byDate = a.date.compareTo(b.date);
+      return byDate != 0 ? byDate : a.id.compareTo(b.id);
+    });
+  var running = openingBalance;
+  return {
+    for (final tx in ordered) tx.id: running += accountMovement(tx, ownIds),
+  };
+}
+
 /// The gap between automatic backups for a given schedule. `monthly` is
 /// approximated as 30 days — good enough for "about once a month" without
 /// pulling in calendar-month arithmetic for what is, after all, just a
@@ -231,7 +253,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 87;
+  int get schemaVersion => 88;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -520,9 +542,7 @@ class AppDatabase extends _$AppDatabase {
             if (!await _hasColumn(recurringRules.actualTableName, column.name))
               column,
         ];
-        await m.alterTable(
-          TableMigration(recurringRules, newColumns: missing),
-        );
+        await m.alterTable(TableMigration(recurringRules, newColumns: missing));
       }
       if (from < 56) {
         await _addColumnIfMissing(m, settings, settings.moreScreenViewMode);
@@ -830,6 +850,12 @@ class AppDatabase extends _$AppDatabase {
         await _addColumnIfMissing(m, modes, modes.alerts);
         await m.createTable(modeCategoryLimits);
         await m.createTable(modePlannedCosts);
+      }
+      if (from < 88) {
+        // A goal can show in money in / out (GitHub #173).
+        await _addColumnIfMissing(m, goalDetails, goalDetails.showInMoneyInOut);
+        // Running balance in account history (GitHub #150).
+        await _addColumnIfMissing(m, settings, settings.showRunningBalance);
       }
     },
     beforeOpen: (details) async {
@@ -1418,6 +1444,7 @@ class AppDatabase extends _$AppDatabase {
     int? recurringRuleId,
     String? foreignCurrencyCode,
     Money? foreignAmount,
+    int? editedFromAccountId,
   }) async {
     _validateForeignCurrency(foreignCurrencyCode, foreignAmount);
     // Zero is a legitimate income/expense (GitHub #87) — a free item, a
@@ -1436,15 +1463,32 @@ class AppDatabase extends _$AppDatabase {
     }
     // Goals and loans are not spendable accounts — they are only ever funded
     // or drawn down by a transfer (or set straight by a balance correction).
+    // The one exception: a goal with "Show in Money in / out" on (GitHub
+    // #173) takes money in and money out directly. Editing an entry that
+    // already sits on a goal keeps working after the switch goes off.
     if (type != TxType.transfer && !type.isCorrection) {
       final account = await (select(
         accounts,
       )..where((a) => a.id.equals(accountId))).getSingleOrNull();
-      if (account?.type == AccountType.goal ||
-          account?.type == AccountType.loan) {
+      if (account?.type == AccountType.loan) {
         throw ArgumentError(
           'A goal or loan account is not spendable — transfer funds instead.',
         );
+      }
+      if (account?.type == AccountType.goal) {
+        final allowed =
+            type.isIncomeOrExpense &&
+            (accountId == editedFromAccountId ||
+                await _goalShowsInMoneyInOut(accountId));
+        if (!allowed) {
+          throw ArgumentError(
+            type.isIncomeOrExpense
+                ? 'Turn on "Show in Money in / out" on this goal to use it '
+                      'here — or transfer funds instead.'
+                : 'A goal or loan account is not spendable — transfer funds '
+                      'instead.',
+          );
+        }
       }
     }
     // An income/expense may name a person too — a person picked as its payee
@@ -1955,6 +1999,9 @@ class AppDatabase extends _$AppDatabase {
     String? customIcon,
     bool? isNct,
   }) async {
+    final before = await (select(
+      transactions,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     await _validateTx(
       type: type,
       amount: amount,
@@ -1965,6 +2012,7 @@ class AppDatabase extends _$AppDatabase {
       payee: payee,
       foreignCurrencyCode: foreignCurrencyCode,
       foreignAmount: foreignAmount,
+      editedFromAccountId: before?.accountId,
     );
 
     return transaction(() async {
@@ -2419,6 +2467,20 @@ class AppDatabase extends _$AppDatabase {
       );
     });
   }
+
+  /// "Show in Money in / out" (GitHub #173) — never touches a balance; it
+  /// only decides whether money in / out may post against the goal.
+  Future<void> setGoalShowInMoneyInOut(int accountId, bool show) =>
+      (update(goalDetails)..where((g) => g.accountId.equals(accountId))).write(
+        GoalDetailsCompanion(showInMoneyInOut: Value(show)),
+      );
+
+  Future<bool> _goalShowsInMoneyInOut(int accountId) async =>
+      (await (select(
+            goalDetails,
+          )..where((g) => g.accountId.equals(accountId))).getSingleOrNull())
+          ?.showInMoneyInOut ??
+      false;
 
   // ── Loans ─────────────────────────────────────────────────────────────────
 
@@ -5898,6 +5960,10 @@ class AppDatabase extends _$AppDatabase {
   Future<void> setShowCurrencySymbol(bool show) => update(
     settings,
   ).write(SettingsCompanion(showCurrencySymbol: Value(show)));
+
+  Future<void> setShowRunningBalance(bool show) => update(
+    settings,
+  ).write(SettingsCompanion(showRunningBalance: Value(show)));
 
   /// Which day of the month Dashboard/Budgets/Stats treat as the start of a
   /// "month" — 1 for an ordinary calendar month, or a payday-anchored cycle
