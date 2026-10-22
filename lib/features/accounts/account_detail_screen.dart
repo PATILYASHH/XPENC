@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/currency.dart';
 import '../../core/money.dart';
@@ -129,6 +130,15 @@ class _AccountDetailView extends ConsumerWidget {
               currency: _accountCurrency(account, accountMap),
             ),
           ),
+          // Move money between your own accounts in one tap (GitHub #171) —
+          // cash at home into the wallet, a bank to cash, a card's bill. A
+          // debit card moves its bank's money, so it's done from the bank;
+          // goals and loans have their own pages.
+          if (!isDebitCard &&
+              !account.isArchived &&
+              account.type != AccountType.goal &&
+              account.type != AccountType.loan)
+            SliverToBoxAdapter(child: _TransferButtons(accountId: account.id)),
           // A linked instrument (debit card / UPI) holds no balance of its
           // own — there is no money on it to give a job to.
           if (account.linkedAccountId == null)
@@ -227,6 +237,41 @@ class _AccountDetailView extends ConsumerWidget {
           ),
         ];
       },
+    );
+  }
+}
+
+/// Transfer in / Transfer out — opens Add Transaction as a transfer with
+/// this account already on the right side (GitHub #171).
+class _TransferButtons extends StatelessWidget {
+  const _TransferButtons({required this.accountId});
+
+  final int accountId;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: FilledButton.tonalIcon(
+              onPressed: () => context.push('/add?type=transfer&to=$accountId'),
+              icon: const AppIcon(Icons.south_west_rounded),
+              label: const Text('Transfer in'),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () =>
+                  context.push('/add?type=transfer&from=$accountId'),
+              icon: const AppIcon(Icons.north_east_rounded),
+              label: const Text('Transfer out'),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

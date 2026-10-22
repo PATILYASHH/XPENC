@@ -192,9 +192,34 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
               focusNode: _nameFocus,
               textCapitalization: TextCapitalization.words,
               textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Name',
                 hintText: 'e.g. Wallet, IPPB Savings',
+                // The two cash places most people keep (GitHub #171): what's
+                // in the wallet, and the stash at home you "withdraw" from
+                // like an ATM — both plain Cash accounts, only the name and
+                // icon. Inside the field, so the sheet keeps fitting a phone
+                // without scrolling to "Add account".
+                suffixIcon: _type == AccountType.cash
+                    ? PopupMenuButton<(String, String)>(
+                        tooltip: 'Suggestions',
+                        icon: const AppIcon(Icons.arrow_drop_down_rounded),
+                        onSelected: (s) => setState(() {
+                          _nameController.text = s.$1;
+                          _iconKey = s.$2;
+                        }),
+                        itemBuilder: (_) => const [
+                          PopupMenuItem(
+                            value: ('Wallet', 'wallet'),
+                            child: Text('Wallet'),
+                          ),
+                          PopupMenuItem(
+                            value: ('Cash at home', 'house'),
+                            child: Text('Cash at home (V-ATM)'),
+                          ),
+                        ],
+                      )
+                    : null,
               ),
             ),
             const SizedBox(height: 20),

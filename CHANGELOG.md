@@ -66,6 +66,12 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   shows the balance right after it, like a bank passbook — the same figure
   the statement PDF prints, ending on the account's balance today. Off by
   default.
+- **Transfer in / Transfer out on every account's page** (#171). One tap
+  opens a transfer with that account already filled in — "To" for Transfer
+  in, "From" for Transfer out. Keep cash at home as its own account and
+  "withdraw" from it into your wallet like an ATM, top up the wallet from
+  the bank, or pay a card's bill from its own page. Add account → Cash: the
+  ▾ in the Name field suggests **Wallet** and **Cash at home (V-ATM)**.
 - **Auto transfers between your own accounts.** Auto → new rule →
   **Transfer** (it replaces G&L): move money on a schedule from one account
   to any other — bank to cash, paying a credit card bill, into a savings

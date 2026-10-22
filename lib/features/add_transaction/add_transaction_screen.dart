@@ -93,6 +93,8 @@ class AddTransactionScreen extends ConsumerStatefulWidget {
     this.initialPayee,
     this.initialNote,
     this.initialAmount,
+    this.initialAccountId,
+    this.initialToAccountId,
     this.plannedCostId,
     super.key,
   });
@@ -120,6 +122,12 @@ class AddTransactionScreen extends ConsumerStatefulWidget {
   final String? initialPayee;
   final String? initialNote;
   final Money? initialAmount;
+
+  /// Prefills the account (a transfer's "From") and a transfer's "To" — an
+  /// account page's Transfer out / Transfer in (GitHub #171). Ignored like
+  /// the fields above once an existing transaction is loaded.
+  final int? initialAccountId;
+  final int? initialToAccountId;
 
   @override
   ConsumerState<AddTransactionScreen> createState() =>
@@ -288,11 +296,14 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   void initState() {
     super.initState();
     _activeAmountCtrl = _mainAmountCtrl;
-    // Only expense/income are ever meaningful here — anything else (or
-    // nothing) falls back to the screen's own default.
+    // Only expense/income/transfer are ever meaningful here — anything else
+    // (or nothing) falls back to the screen's own default.
     final initial = widget.initialType;
     _type =
-        (!_isEditing && (initial == TxType.expense || initial == TxType.income))
+        (!_isEditing &&
+            (initial == TxType.expense ||
+                initial == TxType.income ||
+                initial == TxType.transfer))
         ? initial!
         : TxType.expense;
     _noteFocus.addListener(_onFieldFocusChanged);
@@ -321,6 +332,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       if (widget.initialAmount != null) {
         _mainAmountCtrl.setAmount(widget.initialAmount!);
       }
+      _accountId = widget.initialAccountId;
+      if (_type == TxType.transfer) _toAccountId = widget.initialToAccountId;
       // Pre-select the last-used account on a brand-new transaction, once the
       // one-shot query resolves. Still freely changeable via "Paid via", and
       // the guard on `_accountId` below means it never overwrites a
@@ -422,7 +435,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       _mode = mode;
       _inMode = true;
       _tagIds = {..._tagIds, ...autoTags};
-      if (allowed.isNotEmpty &&
+      // An account the person came from (an account page's Transfer out)
+      // is their pick — the mode doesn't swap it.
+      if (widget.initialAccountId == null &&
+          allowed.isNotEmpty &&
           (_accountId == null || !allowed.contains(_accountId))) {
         _accountId = allowed.first;
       }
@@ -454,6 +470,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   Future<void> _seedLastUsedAccount() async {
     final txs = await ref.read(dbProvider).watchTransactions(limit: 1).first;
     if (!mounted || _accountId != null || txs.isEmpty) return;
+    // A transfer can't leave from the account it's going to.
+    if (txs.first.accountId == _toAccountId) return;
     setState(() => _accountId = txs.first.accountId);
   }
 

@@ -62,6 +62,16 @@ const whatsNewEntries = <WhatsNewEntry>[
         'Off by default — a goal stays transfer-only until you say so.',
   ),
   WhatsNewEntry(
+    icon: Icons.swap_vert_rounded,
+    title: 'Transfer in / out from an account',
+    location: 'An account’s page → Transfer in / Transfer out',
+    description:
+        'One tap starts a transfer with that account already filled in. Keep '
+        'cash at home as its own account and withdraw from it into your '
+        'wallet like an ATM — Add account → Cash suggests Cash at home '
+        '(V-ATM).',
+  ),
+  WhatsNewEntry(
     icon: Icons.receipt_long_outlined,
     title: 'Running balance',
     location: 'An account’s page → Running balance',

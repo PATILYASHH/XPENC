@@ -598,6 +598,7 @@ final appRouter = GoRouter(
         final type = switch (state.uri.queryParameters['type']) {
           'expense' => TxType.expense,
           'income' => TxType.income,
+          'transfer' => TxType.transfer,
           _ => null,
         };
         // Only the "Pay without internet" (*99#) flow sends these — it hands
@@ -620,6 +621,13 @@ final appRouter = GoRouter(
           initialPayee: payee,
           initialNote: note,
           initialAmount: amount,
+          // An account page's Transfer out / Transfer in (GitHub #171).
+          initialAccountId: int.tryParse(
+            state.uri.queryParameters['from'] ?? '',
+          ),
+          initialToAccountId: int.tryParse(
+            state.uri.queryParameters['to'] ?? '',
+          ),
           plannedCostId: int.tryParse(
             state.uri.queryParameters['plannedCost'] ?? '',
           ),
