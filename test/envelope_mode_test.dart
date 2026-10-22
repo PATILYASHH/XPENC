@@ -36,12 +36,12 @@ void main() {
     await container
         .read(allAllocationsProvider.future)
         .timeout(const Duration(seconds: 5));
-    await container.read(accountsProvider.future).timeout(
-      const Duration(seconds: 5),
-    );
-    await container.read(netWorthProvider.future).timeout(
-      const Duration(seconds: 5),
-    );
+    await container
+        .read(accountsProvider.future)
+        .timeout(const Duration(seconds: 5));
+    await container
+        .read(netWorthProvider.future)
+        .timeout(const Duration(seconds: 5));
   }
 
   Future<void> settle() =>
@@ -57,45 +57,33 @@ void main() {
           .id;
 
   group('setRtaEnabled — GitHub #100 v2', () {
-    test(
-      'turning RTA on enrolls every existing account, including one never '
-      'touched before',
-      () async {
-        final cash = await cashId();
-        final bank = await db.addAccount(
-          name: 'IPPB',
-          type: AccountType.bank,
-          colorValue: 0,
-          iconKey: 'bank',
-          openingBalance: Money.fromRupees(5000),
-        );
+    test('turning RTA on enrolls every existing account, including one never '
+        'touched before', () async {
+      final cash = await cashId();
+      final bank = await db.addAccount(
+        name: 'IPPB',
+        type: AccountType.bank,
+        colorValue: 0,
+        iconKey: 'bank',
+        openingBalance: Money.fromRupees(5000),
+      );
 
-        await db.setRtaEnabled(true);
+      await db.setRtaEnabled(true);
 
-        final accounts = await db.watchAccounts().first;
-        expect(
-          accounts.firstWhere((a) => a.id == cash).envelopeMode,
-          isTrue,
-        );
-        expect(
-          accounts.firstWhere((a) => a.id == bank).envelopeMode,
-          isTrue,
-        );
-      },
-    );
+      final accounts = await db.watchAccounts().first;
+      expect(accounts.firstWhere((a) => a.id == cash).envelopeMode, isTrue);
+      expect(accounts.firstWhere((a) => a.id == bank).envelopeMode, isTrue);
+    });
 
-    test(
-      'turning RTA off leaves every account\'s flag untouched',
-      () async {
-        final cash = await cashId();
-        await db.setRtaEnabled(true);
-        await db.setRtaEnabled(false);
+    test('turning RTA off leaves every account\'s flag untouched', () async {
+      final cash = await cashId();
+      await db.setRtaEnabled(true);
+      await db.setRtaEnabled(false);
 
-        final after = await db.watchAccounts().first;
-        expect(after.firstWhere((a) => a.id == cash).envelopeMode, isTrue);
-        expect((await db.getSettings()).rtaEnabled, isFalse);
-      },
-    );
+      final after = await db.watchAccounts().first;
+      expect(after.firstWhere((a) => a.id == cash).envelopeMode, isTrue);
+      expect((await db.getSettings()).rtaEnabled, isFalse);
+    });
 
     test(
       'a new account created while RTA is on joins the pool automatically',
@@ -137,44 +125,38 @@ void main() {
   });
 
   group('auto-disable RTA — GitHub #100 v2', () {
-    test(
-      'turning off the last pool account via setEnvelopeMode while RTA is '
-      'on also turns RTA off, and reports it',
-      () async {
-        final cash = await cashId();
-        await db.setRtaEnabled(true);
+    test('turning off the last pool account via setEnvelopeMode while RTA is '
+        'on also turns RTA off, and reports it', () async {
+      final cash = await cashId();
+      await db.setRtaEnabled(true);
 
-        final autoDisabled = await db.setEnvelopeMode(cash, false);
+      final autoDisabled = await db.setEnvelopeMode(cash, false);
 
-        expect(autoDisabled, isTrue);
-        expect((await db.getSettings()).rtaEnabled, isFalse);
-      },
-    );
+      expect(autoDisabled, isTrue);
+      expect((await db.getSettings()).rtaEnabled, isFalse);
+    });
 
-    test(
-      'turning off a non-last pool account leaves RTA on, and reports '
-      'nothing happened',
-      () async {
-        final cash = await cashId();
-        final bank = await db.addAccount(
-          name: 'IPPB',
-          type: AccountType.bank,
-          colorValue: 0,
-          iconKey: 'bank',
-          openingBalance: Money.fromRupees(5000),
-        );
-        await db.setRtaEnabled(true);
+    test('turning off a non-last pool account leaves RTA on, and reports '
+        'nothing happened', () async {
+      final cash = await cashId();
+      final bank = await db.addAccount(
+        name: 'IPPB',
+        type: AccountType.bank,
+        colorValue: 0,
+        iconKey: 'bank',
+        openingBalance: Money.fromRupees(5000),
+      );
+      await db.setRtaEnabled(true);
 
-        final autoDisabled = await db.setEnvelopeMode(cash, false);
+      final autoDisabled = await db.setEnvelopeMode(cash, false);
 
-        expect(autoDisabled, isFalse);
-        expect((await db.getSettings()).rtaEnabled, isTrue);
-        final bankRow = await (db.select(
-          db.accounts,
-        )..where((a) => a.id.equals(bank))).getSingle();
-        expect(bankRow.envelopeMode, isTrue);
-      },
-    );
+      expect(autoDisabled, isFalse);
+      expect((await db.getSettings()).rtaEnabled, isTrue);
+      final bankRow = await (db.select(
+        db.accounts,
+      )..where((a) => a.id.equals(bank))).getSingle();
+      expect(bankRow.envelopeMode, isTrue);
+    });
 
     test(
       'deleting the last pool account also turns RTA off, and reports it',
@@ -234,27 +216,29 @@ void main() {
       );
     });
 
-    test('a negative amount unassigns — both directions are one method',
-        () async {
-      final cash = await cashId();
-      final food = await expenseCategory('Food');
-      await db.setEnvelopeMode(cash, true);
+    test(
+      'a negative amount unassigns — both directions are one method',
+      () async {
+        final cash = await cashId();
+        final food = await expenseCategory('Food');
+        await db.setEnvelopeMode(cash, true);
 
-      await db.addAllocation(
-        accountId: cash,
-        categoryId: food,
-        amount: Money.fromRupees(1000),
-      );
-      await db.addAllocation(
-        accountId: cash,
-        categoryId: food,
-        amount: -Money.fromRupees(300),
-      );
+        await db.addAllocation(
+          accountId: cash,
+          categoryId: food,
+          amount: Money.fromRupees(1000),
+        );
+        await db.addAllocation(
+          accountId: cash,
+          categoryId: food,
+          amount: -Money.fromRupees(300),
+        );
 
-      final rows = await db.watchAllocationsForAccount(cash).first;
-      final total = rows.fold(const Money.zero(), (s, r) => s + r.amount);
-      expect(total, Money.fromRupees(700));
-    });
+        final rows = await db.watchAllocationsForAccount(cash).first;
+        final total = rows.fold(const Money.zero(), (s, r) => s + r.amount);
+        expect(total, Money.fromRupees(700));
+      },
+    );
   });
 
   group('moveAllocation', () {
@@ -319,30 +303,32 @@ void main() {
   });
 
   group('the invariant — allocations never move real money', () {
-    test('assigning money changes neither the account balance nor net worth',
-        () async {
-      await warmUp();
-      final cash = await cashId();
-      final food = await expenseCategory('Food');
-      await db.setEnvelopeMode(cash, true);
+    test(
+      'assigning money changes neither the account balance nor net worth',
+      () async {
+        await warmUp();
+        final cash = await cashId();
+        final food = await expenseCategory('Food');
+        await db.setEnvelopeMode(cash, true);
 
-      final netBefore = container.read(netWorthProvider).valueOrNull;
-      final balanceBefore =
-          (await db.watchAccounts().first).single.currentBalance;
+        final netBefore = container.read(netWorthProvider).valueOrNull;
+        final balanceBefore =
+            (await db.watchAccounts().first).single.currentBalance;
 
-      await db.addAllocation(
-        accountId: cash,
-        categoryId: food,
-        amount: Money.fromRupees(2000),
-      );
-      await settle();
+        await db.addAllocation(
+          accountId: cash,
+          categoryId: food,
+          amount: Money.fromRupees(2000),
+        );
+        await settle();
 
-      expect(container.read(netWorthProvider).valueOrNull, netBefore);
-      expect(
-        (await db.watchAccounts().first).single.currentBalance,
-        balanceBefore,
-      );
-    });
+        expect(container.read(netWorthProvider).valueOrNull, netBefore);
+        expect(
+          (await db.watchAccounts().first).single.currentBalance,
+          balanceBefore,
+        );
+      },
+    );
 
     test('moving money between two envelopes changes neither', () async {
       await warmUp();
@@ -392,9 +378,7 @@ void main() {
       );
       await settle();
 
-      final balance = container.read(
-        categoryBalanceProvider(food),
-      );
+      final balance = container.read(categoryBalanceProvider(food));
       expect(balance, Money.fromRupees(1400));
     });
 
@@ -418,14 +402,11 @@ void main() {
       );
       await settle();
 
-      final balance = container.read(
-        categoryBalanceProvider(food),
-      );
+      final balance = container.read(categoryBalanceProvider(food));
       expect(balance, Money.fromRupees(-300));
     });
 
-    test(
-        'the same category pools across every Envelope-Mode account '
+    test('the same category pools across every Envelope-Mode account '
         '(GitHub #48 — one shared balance, not one per account)', () async {
       await warmUp();
       final cash = await cashId();
@@ -458,8 +439,7 @@ void main() {
       );
     });
 
-    test(
-        "an account that isn't in Envelope Mode never contributes to the "
+    test("an account that isn't in Envelope Mode never contributes to the "
         'shared pool, even sharing a category with one that is', () async {
       await warmUp();
       final cash = await cashId();
@@ -497,29 +477,27 @@ void main() {
   });
 
   group('readyToAssignProvider', () {
-    test('starts equal to the account balance before anything is assigned',
-        () async {
-      await warmUp();
-      final cash = await cashId();
-      await db.setEnvelopeMode(cash, true);
-      await db.addTransaction(
-        type: TxType.income,
-        amount: Money.fromRupees(5000),
-        accountId: cash,
-        categoryId: await (db.watchCategories(CategoryKind.income).first)
-            .then((c) => c.firstWhere((c) => c.name == 'Salary').id),
-        date: DateTime.now(),
-      );
-      await settle();
+    test(
+      'starts equal to the account balance before anything is assigned',
+      () async {
+        await warmUp();
+        final cash = await cashId();
+        await db.setEnvelopeMode(cash, true);
+        await db.addTransaction(
+          type: TxType.income,
+          amount: Money.fromRupees(5000),
+          accountId: cash,
+          categoryId: await (db.watchCategories(CategoryKind.income).first)
+              .then((c) => c.firstWhere((c) => c.name == 'Salary').id),
+          date: DateTime.now(),
+        );
+        await settle();
 
-      expect(
-        container.read(readyToAssignProvider),
-        Money.fromRupees(5000),
-      );
-    });
+        expect(container.read(readyToAssignProvider), Money.fromRupees(5000));
+      },
+    );
 
-    test('assigning to a category lowers it by exactly that amount',
-        () async {
+    test('assigning to a category lowers it by exactly that amount', () async {
       await warmUp();
       final cash = await cashId();
       final food = await expenseCategory('Food');
@@ -528,8 +506,9 @@ void main() {
         type: TxType.income,
         amount: Money.fromRupees(5000),
         accountId: cash,
-        categoryId: await (db.watchCategories(CategoryKind.income).first)
-            .then((c) => c.firstWhere((c) => c.name == 'Salary').id),
+        categoryId: await (db.watchCategories(CategoryKind.income).first).then(
+          (c) => c.firstWhere((c) => c.name == 'Salary').id,
+        ),
         date: DateTime.now(),
       );
       await settle();
@@ -541,21 +520,18 @@ void main() {
       );
       await settle();
 
-      expect(
-        container.read(readyToAssignProvider),
-        Money.fromRupees(3800),
-      );
+      expect(container.read(readyToAssignProvider), Money.fromRupees(3800));
     });
 
-    test(
-        'overspending a category never pushes ready-to-assign past what the '
+    test('overspending a category never pushes ready-to-assign past what the '
         'account actually holds', () async {
       await warmUp();
       final cash = await cashId();
       final food = await expenseCategory('Food');
       await db.setEnvelopeMode(cash, true);
-      final salary = await (db.watchCategories(CategoryKind.income).first)
-          .then((c) => c.firstWhere((c) => c.name == 'Salary').id);
+      final salary = await (db.watchCategories(CategoryKind.income).first).then(
+        (c) => c.firstWhere((c) => c.name == 'Salary').id,
+      );
       await db.addTransaction(
         type: TxType.income,
         amount: Money.fromRupees(1000),
@@ -585,10 +561,7 @@ void main() {
       // 750 — never more than the account's real balance.
       final balance = (await db.watchAccounts().first).single.currentBalance;
       expect(balance, Money.fromRupees(750));
-      expect(
-        container.read(readyToAssignProvider),
-        Money.fromRupees(750),
-      );
+      expect(container.read(readyToAssignProvider), Money.fromRupees(750));
       expect(
         container.read(readyToAssignProvider).paise <= balance.paise,
         isTrue,
@@ -596,8 +569,7 @@ void main() {
       );
     });
 
-    test(
-        'pools across every Envelope-Mode account (GitHub #48 — one shared '
+    test('pools across every Envelope-Mode account (GitHub #48 — one shared '
         'figure, not one per account)', () async {
       await warmUp();
       final cash = await cashId();
@@ -611,8 +583,9 @@ void main() {
       final food = await expenseCategory('Food');
       await db.setEnvelopeMode(cash, true);
       await db.setEnvelopeMode(bank, true);
-      final salary = await (db.watchCategories(CategoryKind.income).first)
-          .then((c) => c.firstWhere((c) => c.name == 'Salary').id);
+      final salary = await (db.watchCategories(CategoryKind.income).first).then(
+        (c) => c.firstWhere((c) => c.name == 'Salary').id,
+      );
       await db.addTransaction(
         type: TxType.income,
         amount: Money.fromRupees(1000),
@@ -631,10 +604,7 @@ void main() {
 
       // cash: 1000 balance, 600 claimed by Food. bank: 2000 balance,
       // nothing claimed. Pool RTA = (1000 + 2000) − 600 = 2400.
-      expect(
-        container.read(readyToAssignProvider),
-        Money.fromRupees(2400),
-      );
+      expect(container.read(readyToAssignProvider), Money.fromRupees(2400));
     });
   });
 
@@ -664,63 +634,94 @@ void main() {
         () => Future<void>.delayed(const Duration(milliseconds: 200)),
       );
       await tester.pump();
+      await captured.read(settingsProvider.future);
       await captured.read(allAllocationsProvider.future);
       await captured.read(accountsProvider.future);
       return captured;
     }
 
     testWidgets(
-        'is the part of the amount Ready to Assign does not already cover',
-        (tester) async {
+      'is the part of the amount Ready to Assign does not already cover',
+      (tester) async {
+        late int cash;
+        late int food;
+        await tester.runAsync(() async {
+          cash = await cashId();
+          food = await expenseCategory('Food');
+          final salary = (await db.watchCategories(CategoryKind.income).first)
+              .firstWhere((c) => c.name == 'Salary')
+              .id;
+          await db.addTransaction(
+            type: TxType.income,
+            amount: Money.fromRupees(1000),
+            accountId: cash,
+            categoryId: salary,
+            date: DateTime.now(),
+          );
+          await db.setEnvelopeMode(cash, true);
+          await db.addAllocation(
+            accountId: cash,
+            categoryId: food,
+            amount: Money.fromRupees(700),
+          );
+          await db.setAppMode(AppMode.pro);
+          await db.setRtaEnabled(true);
+        });
+
+        final ref = await captureRef(tester);
+        // Ready to Assign is 1000 − 700 = 300.
+        expect(
+          envelopeOutflowShortfall(
+            ref,
+            accountId: cash,
+            amount: Money.fromRupees(200),
+          ),
+          const Money.zero(),
+          reason: 'fully covered by Ready to Assign — no shortfall',
+        );
+        expect(
+          envelopeOutflowShortfall(
+            ref,
+            accountId: cash,
+            amount: Money.fromRupees(500),
+          ),
+          Money.fromRupees(200),
+        );
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump(Duration.zero);
+      },
+    );
+
+    testWidgets('is zero outside Pro mode even when the account is enrolled', (
+      tester,
+    ) async {
       late int cash;
-      late int food;
       await tester.runAsync(() async {
         cash = await cashId();
-        food = await expenseCategory('Food');
-        final salary = (await db.watchCategories(CategoryKind.income).first)
-            .firstWhere((c) => c.name == 'Salary')
-            .id;
-        await db.addTransaction(
-          type: TxType.income,
-          amount: Money.fromRupees(1000),
-          accountId: cash,
-          categoryId: salary,
-          date: DateTime.now(),
-        );
         await db.setEnvelopeMode(cash, true);
-        await db.addAllocation(
-          accountId: cash,
-          categoryId: food,
-          amount: Money.fromRupees(700),
-        );
+        await db.setAppMode(AppMode.medium);
+        await db.setRtaEnabled(true);
       });
 
       final ref = await captureRef(tester);
-      // Ready to Assign is 1000 − 700 = 300.
       expect(
         envelopeOutflowShortfall(
           ref,
           accountId: cash,
-          amount: Money.fromRupees(200),
+          amount: Money.fromRupees(2000),
         ),
         const Money.zero(),
-        reason: 'fully covered by Ready to Assign — no shortfall',
-      );
-      expect(
-        envelopeOutflowShortfall(
-          ref,
-          accountId: cash,
-          amount: Money.fromRupees(500),
-        ),
-        Money.fromRupees(200),
+        reason: 'Medium mode does not use Ready to Assign outflow prompts',
       );
 
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump(Duration.zero);
     });
 
-    testWidgets('is zero for an account with Envelope Mode off',
-        (tester) async {
+    testWidgets('is zero for an account with Envelope Mode off', (
+      tester,
+    ) async {
       late int cash;
       await tester.runAsync(() async {
         cash = await cashId();

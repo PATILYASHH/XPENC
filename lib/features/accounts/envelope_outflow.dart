@@ -26,6 +26,11 @@ Money envelopeOutflowShortfall(
   required int accountId,
   required Money amount,
 }) {
+  if (ref.read(appModeProvider) != AppMode.pro ||
+      !ref.read(rtaEnabledProvider)) {
+    return const Money.zero();
+  }
+
   final account = ref.read(accountMapProvider)[accountId];
   if (account == null || !account.envelopeMode) return const Money.zero();
 
@@ -61,9 +66,7 @@ class _EnvelopeSourceSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final categoriesAsync = ref.watch(
-      categoriesProvider(CategoryKind.expense),
-    );
+    final categoriesAsync = ref.watch(categoriesProvider(CategoryKind.expense));
 
     return SafeArea(
       top: false,
@@ -112,9 +115,7 @@ class _EnvelopeSourceSheet extends ConsumerWidget {
                       trailing: MoneyText(
                         balance,
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: balance.isNegative
-                              ? AppColors.expense
-                              : null,
+                          color: balance.isNegative ? AppColors.expense : null,
                         ),
                       ),
                       onTap: () => Navigator.of(context).pop(c.id),
