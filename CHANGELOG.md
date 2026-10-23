@@ -8,7 +8,7 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
-## [1.6.5] — beta
+## [1.6.5] — 2026-10-23
 
 ### Added
 - **Edit an account's icon and colour** (#158). Hold an account → **Edit**,
@@ -163,6 +163,9 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   the payment in that mode.
 - **A person added while a mode is ON** joins the mode's people, so the
   mode's Persons tab shows them straight away.
+- **A transfer asked "Take … from which category?" outside Pro** (#172).
+  That prompt belongs to Ready to Assign, so it now only appears in Pro with
+  Ready to Assign on. Thanks to @Muthuraj5107220 for the fix (#174).
 
 ## [1.6.4] — 2026-10-10
 
@@ -1391,7 +1394,8 @@ First public release. 🎉
 - `tool/verify_apk.sh` gates every shipped APK against the missing
   `libsqlite3.so` class of crash.
 
-[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.6.4...HEAD
+[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.6.5...HEAD
+[1.6.5]: https://github.com/PATILYASHH/XPENC/compare/v1.6.4...v1.6.5
 [1.6.4]: https://github.com/PATILYASHH/XPENC/compare/v1.6.3...v1.6.4
 [1.6.3]: https://github.com/PATILYASHH/XPENC/compare/v1.6.2...v1.6.3
 [1.6.2]: https://github.com/PATILYASHH/XPENC/compare/v1.6.1...v1.6.2
