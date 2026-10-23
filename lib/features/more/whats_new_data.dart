@@ -100,7 +100,7 @@ const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
     icon: Icons.currency_exchange_rounded,
     title: 'Make your own currency',
-    location: 'Settings → Currency → Create a custom currency',
+    location: 'Settings → General → Currency → Create a custom currency',
     description:
         'For a currency XPENC doesn’t list: a three-letter code, a symbol, a '
         'name and its decimal places. It works like any other — as your '

@@ -76,12 +76,17 @@ const guideSections = <GuideSection>[
           'debit/credit cards, prepaid balances, and multi-currency '
           'accounts. Each can carry an optional minimum-balance floor '
           'that flags — never blocks — a transaction that would take it '
-          'below that line.',
+          'below that line. Its page shows its whole history, with an '
+          'optional running balance after every entry, like a passbook.',
       howToUse:
           'Add one from the + button on the Accounts screen. Pick a type, '
           'a colour/icon, an opening balance, and (for a non-home '
           "currency) which currency it's in — that's locked in once the "
-          'first transaction posts.',
+          'first transaction posts. On its page, Transfer in / Transfer out '
+          'start a transfer with it already filled in — keep cash at home '
+          'as its own Cash account and withdraw from it into your wallet '
+          'like an ATM. Hold an account → Edit to change its name, colour '
+          'and icon.',
       location: 'More → Accounts → +',
     ),
     GuideEntry(
@@ -147,8 +152,10 @@ const guideSections = <GuideSection>[
           'own accounts — lending someone money isn\'t spending, and '
           'being repaid isn\'t money in.',
       howToUse:
-          'Open a person to log a lend/borrow entry or a repayment, and '
-          'share their whole ledger as a PDF. Hold a person for Edit, Link '
+          'Open a person to log a lend/borrow entry (with tags, if you '
+          'like) or a repayment, and share their whole ledger as a PDF. '
+          'Edit gives them a photo from your gallery. Hold a person for '
+          'Edit, Link '
           'contact, Move to Settled, Archive or Delete (delete takes their '
           'whole history and puts the money back). Settings → Payment '
           'Support can turn on paying a person offline through the *99# '
@@ -214,10 +221,12 @@ const guideSections = <GuideSection>[
       title: 'Auto (recurring rules)',
       whatItDoes:
           'Rules that post themselves on schedule instead of you logging '
-          'them by hand: a fixed payment or money in, a transfer into a '
-          'savings goal, or an EMI into a loan.',
+          'them by hand: a fixed payment or money in, or a transfer '
+          'between your own accounts — bank to cash, a credit card bill, '
+          'into a savings goal, or an EMI into a loan.',
       howToUse:
-          'Add one with a frequency (daily/weekly/biweekly/monthly/'
+          'New rule → Money out, Money in or Transfer, '
+          'with a frequency (daily/weekly/biweekly/monthly/'
           'yearly), an optional promo price for the first few '
           'occurrences, and reminders before it\'s due. "Pay early" posts '
           'it today instead of waiting for the due date.',
@@ -245,7 +254,9 @@ const guideSections = <GuideSection>[
           'start date, XPENC computes the EMI itself, splits every '
           'payment into interest vs. principal automatically (a plain '
           'payment or a recurring EMI, either way), and shows how much '
-          'paying extra actually saves you in interest.',
+          'paying extra actually saves you in interest. A goal can also '
+          'work like a pocket of your bank account: turn on "Show in Money '
+          'in / out" on its page to pay or receive straight from it.',
       howToUse:
           'Add a goal or loan from the + on the Goals & Loans tab. For a '
           'loan, fill in the rate/tenure/start date to unlock the full '
@@ -359,11 +370,14 @@ const guideSections = <GuideSection>[
       title: 'Categories',
       whatItDoes:
           'Money in and out categories, each with its own icon and '
-          'colour, picked from a searchable icon sheet.',
+          'colour, picked from a searchable icon sheet. Tap one to see how '
+          'much went to it — this month, this year or all time — split by '
+          'subcategory, with every transaction behind the figure.',
       howToUse:
           'Save your whole category structure as a named template and '
           'switch between saved templates any time — switching never '
-          'touches a transaction.',
+          'touches a transaction. The archive button lists archived '
+          'categories to restore, or to delete one nothing has ever used.',
       location: 'More → Categories',
     ),
     GuideEntry(
@@ -383,10 +397,13 @@ const guideSections = <GuideSection>[
       icon: Icons.settings_outlined,
       title: 'Settings',
       whatItDoes:
-          'Currency, theme, security (PIN, master password, and/or an '
+          'Currency (including ones you create), theme, your own colours '
+          'for money in, out, transfers and people, the day the week '
+          'starts, security (PIN, master password, and/or an '
           'authenticator app — any combination you turn on unlocks the '
-          'app), notifications, the app level (Basic/Medium/Pro), budget '
-          'cycle start day, and which tabs show in the bottom nav.',
+          'app), notifications, permissions such as contacts, the app '
+          'level (Basic/Medium/Pro), budget cycle start day, and which '
+          'tabs show in the bottom nav.',
       howToUse: 'Everything here takes effect immediately, no save button.',
       location: 'More → Settings',
     ),

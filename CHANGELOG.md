@@ -44,7 +44,7 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   its tags. When the money moved through an account, its transaction
   carries the same tags, so it shows up when you filter Transactions by
   tag.
-- **Custom currencies.** Settings → Currency → **Create a custom currency**
+- **Custom currencies.** Settings → General → Currency → **Create a custom currency**
   (or the same option at the top of any currency list) for one XPENC
   doesn't list: a three-letter code, a symbol, a name and 0, 2 or 3
   decimal places. It works like any other currency — as your parent
