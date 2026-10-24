@@ -23,6 +23,33 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.sync_alt_rounded,
+    title: 'Tell Connector',
+    location: 'Settings → Backup & Restore → Import from file',
+    description:
+        'Use the Connector app to move backups between phones? After '
+        'importing the backup it pulled, one tap tells Connector — so this '
+        'phone keeps syncing without a trip back to Connector. XPENC still '
+        'never touches the internet.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.lock_outline_rounded,
+    title: 'Your lock stays yours',
+    location: 'Settings → Backup & Restore',
+    description:
+        'Backups no longer hold your PIN, recovery phrase or authenticator '
+        'secret, and importing another phone’s backup keeps this phone’s '
+        'own PIN length — so your PIN always still types.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.laptop_outlined,
+    title: 'XPENC on a computer',
+    location: 'xpenc.in/web',
+    description:
+        'A preview of XPENC in your browser — offline, your data stays in '
+        'that browser. Bring a phone backup over with Import from file.',
+  ),
+  WhatsNewEntry(
     icon: Icons.beach_access_outlined,
     title: 'A mode is now its own little app',
     location: 'More → Modes → the switch on a mode',

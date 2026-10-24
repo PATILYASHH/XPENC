@@ -8,6 +8,41 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
+## [1.6.6] — beta
+
+### Added
+- **Tell Connector** (Android). Importing the backup the Connector app
+  pulled from your other phone (Settings → Backup & Restore → **Import from
+  file**, the file `xpenc_backup.json`) now ends with **Tell Connector**.
+  One tap tells Connector the import is done, so this phone's backups carry
+  on syncing from it — no going back to tap "I've imported it". It's an
+  ordinary link between the two apps: XPENC still asks for no internet
+  permission. Connector checks the file's fingerprint and only confirms the
+  backup it actually pulled.
+- **XPENC web (preview)** at [xpenc.in/web](https://xpenc.in/web): the same
+  app in a browser, fully offline after the first visit — your data stays
+  in that browser and nothing is sent anywhere. Backups there are downloads
+  (the same `DDMMYYXPENCEBACKUP.json`), and a phone's backup comes in with
+  Import from file. On a computer-sized window it lays out for a PC: a
+  sidebar with every module, a two-column dashboard, transactions as a
+  table (right-click for quick actions), sheets as dialogs, and the amount
+  typed on the keyboard. Things that need a phone — sharing SMS or
+  screenshots in, reading screenshots, fingerprint unlock, the home widget,
+  notifications, contacts and USSD pay — aren't there.
+
+### Security
+- **A backup no longer carries your lock.** Your PIN's hash, the recovery
+  phrase's hash and the authenticator secret are left out of every backup
+  and export. Importing never used them — each phone always kept its own
+  lock — but they were still in the file, and a backup is a file you share
+  or keep in the cloud.
+
+### Fixed
+- **Importing another phone's backup could make your PIN untypeable.** The
+  lock screen takes exactly as many digits as your PIN has, and an import
+  took that length from the other phone. Importing now keeps this phone's
+  own PIN length.
+
 ## [1.6.5] — 2026-10-23
 
 ### Added
