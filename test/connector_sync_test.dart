@@ -216,8 +216,9 @@ class _FakeGithub implements HttpTransport {
           : _json(404, {'message': 'Not Found'});
     }
     if (method == 'GET' && path == '$_repoPath/commits') {
-      if (commits.isEmpty)
+      if (commits.isEmpty) {
         return _json(409, {'message': 'Git Repository is empty.'});
+      }
       final c = commits.last;
       return _json(200, [
         {
