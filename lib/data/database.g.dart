@@ -3461,6 +3461,28 @@ class $PersonsTable extends Persons with TableInfo<$PersonsTable, PersonRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _remoteFriendIdMeta = const VerificationMeta(
+    'remoteFriendId',
+  );
+  @override
+  late final GeneratedColumn<String> remoteFriendId = GeneratedColumn<String>(
+    'remote_friend_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _remoteUsernameMeta = const VerificationMeta(
+    'remoteUsername',
+  );
+  @override
+  late final GeneratedColumn<String> remoteUsername = GeneratedColumn<String>(
+    'remote_username',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -3477,6 +3499,8 @@ class $PersonsTable extends Persons with TableInfo<$PersonsTable, PersonRow> {
     venmo,
     cashapp,
     revolut,
+    remoteFriendId,
+    remoteUsername,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3573,6 +3597,24 @@ class $PersonsTable extends Persons with TableInfo<$PersonsTable, PersonRow> {
         revolut.isAcceptableOrUnknown(data['revolut']!, _revolutMeta),
       );
     }
+    if (data.containsKey('remote_friend_id')) {
+      context.handle(
+        _remoteFriendIdMeta,
+        remoteFriendId.isAcceptableOrUnknown(
+          data['remote_friend_id']!,
+          _remoteFriendIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('remote_username')) {
+      context.handle(
+        _remoteUsernameMeta,
+        remoteUsername.isAcceptableOrUnknown(
+          data['remote_username']!,
+          _remoteUsernameMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -3638,6 +3680,14 @@ class $PersonsTable extends Persons with TableInfo<$PersonsTable, PersonRow> {
         DriftSqlType.string,
         data['${effectivePrefix}revolut'],
       ),
+      remoteFriendId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}remote_friend_id'],
+      ),
+      remoteUsername: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}remote_username'],
+      ),
     );
   }
 
@@ -3694,6 +3744,16 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
   /// Their Revolut.me username. Powers the "Pay" button — used to build a
   /// `revolut.me` link (see `RevolutLauncher`). Mainly useful in Europe.
   final String? revolut;
+
+  /// The Connector friend this person is — their Connector user id, set by
+  /// "Link Connector friend" or adding them from Connector friends. At most
+  /// one person per friend (the `persons_remote_friend_id` unique index,
+  /// see `AppDatabase.migration`). Only remembered here, on this device and
+  /// in its backups: linking sends nothing anywhere.
+  final String? remoteFriendId;
+
+  /// Their Connector username, as of linking — shown as "@username".
+  final String? remoteUsername;
   const PersonRow({
     required this.id,
     required this.name,
@@ -3709,6 +3769,8 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
     this.venmo,
     this.cashapp,
     this.revolut,
+    this.remoteFriendId,
+    this.remoteUsername,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3745,6 +3807,12 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
     if (!nullToAbsent || revolut != null) {
       map['revolut'] = Variable<String>(revolut);
     }
+    if (!nullToAbsent || remoteFriendId != null) {
+      map['remote_friend_id'] = Variable<String>(remoteFriendId);
+    }
+    if (!nullToAbsent || remoteUsername != null) {
+      map['remote_username'] = Variable<String>(remoteUsername);
+    }
     return map;
   }
 
@@ -3780,6 +3848,12 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
       revolut: revolut == null && nullToAbsent
           ? const Value.absent()
           : Value(revolut),
+      remoteFriendId: remoteFriendId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remoteFriendId),
+      remoteUsername: remoteUsername == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remoteUsername),
     );
   }
 
@@ -3803,6 +3877,8 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
       venmo: serializer.fromJson<String?>(json['venmo']),
       cashapp: serializer.fromJson<String?>(json['cashapp']),
       revolut: serializer.fromJson<String?>(json['revolut']),
+      remoteFriendId: serializer.fromJson<String?>(json['remoteFriendId']),
+      remoteUsername: serializer.fromJson<String?>(json['remoteUsername']),
     );
   }
   @override
@@ -3823,6 +3899,8 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
       'venmo': serializer.toJson<String?>(venmo),
       'cashapp': serializer.toJson<String?>(cashapp),
       'revolut': serializer.toJson<String?>(revolut),
+      'remoteFriendId': serializer.toJson<String?>(remoteFriendId),
+      'remoteUsername': serializer.toJson<String?>(remoteUsername),
     };
   }
 
@@ -3841,6 +3919,8 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
     Value<String?> venmo = const Value.absent(),
     Value<String?> cashapp = const Value.absent(),
     Value<String?> revolut = const Value.absent(),
+    Value<String?> remoteFriendId = const Value.absent(),
+    Value<String?> remoteUsername = const Value.absent(),
   }) => PersonRow(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -3856,6 +3936,12 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
     venmo: venmo.present ? venmo.value : this.venmo,
     cashapp: cashapp.present ? cashapp.value : this.cashapp,
     revolut: revolut.present ? revolut.value : this.revolut,
+    remoteFriendId: remoteFriendId.present
+        ? remoteFriendId.value
+        : this.remoteFriendId,
+    remoteUsername: remoteUsername.present
+        ? remoteUsername.value
+        : this.remoteUsername,
   );
   PersonRow copyWithCompanion(PersonsCompanion data) {
     return PersonRow(
@@ -3875,6 +3961,12 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
       venmo: data.venmo.present ? data.venmo.value : this.venmo,
       cashapp: data.cashapp.present ? data.cashapp.value : this.cashapp,
       revolut: data.revolut.present ? data.revolut.value : this.revolut,
+      remoteFriendId: data.remoteFriendId.present
+          ? data.remoteFriendId.value
+          : this.remoteFriendId,
+      remoteUsername: data.remoteUsername.present
+          ? data.remoteUsername.value
+          : this.remoteUsername,
     );
   }
 
@@ -3894,7 +3986,9 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
           ..write('paypal: $paypal, ')
           ..write('venmo: $venmo, ')
           ..write('cashapp: $cashapp, ')
-          ..write('revolut: $revolut')
+          ..write('revolut: $revolut, ')
+          ..write('remoteFriendId: $remoteFriendId, ')
+          ..write('remoteUsername: $remoteUsername')
           ..write(')'))
         .toString();
   }
@@ -3915,6 +4009,8 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
     venmo,
     cashapp,
     revolut,
+    remoteFriendId,
+    remoteUsername,
   );
   @override
   bool operator ==(Object other) =>
@@ -3933,7 +4029,9 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
           other.paypal == this.paypal &&
           other.venmo == this.venmo &&
           other.cashapp == this.cashapp &&
-          other.revolut == this.revolut);
+          other.revolut == this.revolut &&
+          other.remoteFriendId == this.remoteFriendId &&
+          other.remoteUsername == this.remoteUsername);
 }
 
 class PersonsCompanion extends UpdateCompanion<PersonRow> {
@@ -3951,6 +4049,8 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
   final Value<String?> venmo;
   final Value<String?> cashapp;
   final Value<String?> revolut;
+  final Value<String?> remoteFriendId;
+  final Value<String?> remoteUsername;
   const PersonsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -3966,6 +4066,8 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
     this.venmo = const Value.absent(),
     this.cashapp = const Value.absent(),
     this.revolut = const Value.absent(),
+    this.remoteFriendId = const Value.absent(),
+    this.remoteUsername = const Value.absent(),
   });
   PersonsCompanion.insert({
     this.id = const Value.absent(),
@@ -3982,6 +4084,8 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
     this.venmo = const Value.absent(),
     this.cashapp = const Value.absent(),
     this.revolut = const Value.absent(),
+    this.remoteFriendId = const Value.absent(),
+    this.remoteUsername = const Value.absent(),
   }) : name = Value(name);
   static Insertable<PersonRow> custom({
     Expression<int>? id,
@@ -3998,6 +4102,8 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
     Expression<String>? venmo,
     Expression<String>? cashapp,
     Expression<String>? revolut,
+    Expression<String>? remoteFriendId,
+    Expression<String>? remoteUsername,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -4014,6 +4120,8 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
       if (venmo != null) 'venmo': venmo,
       if (cashapp != null) 'cashapp': cashapp,
       if (revolut != null) 'revolut': revolut,
+      if (remoteFriendId != null) 'remote_friend_id': remoteFriendId,
+      if (remoteUsername != null) 'remote_username': remoteUsername,
     });
   }
 
@@ -4032,6 +4140,8 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
     Value<String?>? venmo,
     Value<String?>? cashapp,
     Value<String?>? revolut,
+    Value<String?>? remoteFriendId,
+    Value<String?>? remoteUsername,
   }) {
     return PersonsCompanion(
       id: id ?? this.id,
@@ -4048,6 +4158,8 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
       venmo: venmo ?? this.venmo,
       cashapp: cashapp ?? this.cashapp,
       revolut: revolut ?? this.revolut,
+      remoteFriendId: remoteFriendId ?? this.remoteFriendId,
+      remoteUsername: remoteUsername ?? this.remoteUsername,
     );
   }
 
@@ -4096,6 +4208,12 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
     if (revolut.present) {
       map['revolut'] = Variable<String>(revolut.value);
     }
+    if (remoteFriendId.present) {
+      map['remote_friend_id'] = Variable<String>(remoteFriendId.value);
+    }
+    if (remoteUsername.present) {
+      map['remote_username'] = Variable<String>(remoteUsername.value);
+    }
     return map;
   }
 
@@ -4115,7 +4233,9 @@ class PersonsCompanion extends UpdateCompanion<PersonRow> {
           ..write('paypal: $paypal, ')
           ..write('venmo: $venmo, ')
           ..write('cashapp: $cashapp, ')
-          ..write('revolut: $revolut')
+          ..write('revolut: $revolut, ')
+          ..write('remoteFriendId: $remoteFriendId, ')
+          ..write('remoteUsername: $remoteUsername')
           ..write(')'))
         .toString();
   }
@@ -33470,6 +33590,8 @@ typedef $$PersonsTableCreateCompanionBuilder =
       Value<String?> venmo,
       Value<String?> cashapp,
       Value<String?> revolut,
+      Value<String?> remoteFriendId,
+      Value<String?> remoteUsername,
     });
 typedef $$PersonsTableUpdateCompanionBuilder =
     PersonsCompanion Function({
@@ -33487,6 +33609,8 @@ typedef $$PersonsTableUpdateCompanionBuilder =
       Value<String?> venmo,
       Value<String?> cashapp,
       Value<String?> revolut,
+      Value<String?> remoteFriendId,
+      Value<String?> remoteUsername,
     });
 
 final class $$PersonsTableReferences
@@ -33687,6 +33811,16 @@ class $$PersonsTableFilterComposer
 
   ColumnFilters<String> get revolut => $composableBuilder(
     column: $table.revolut,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get remoteFriendId => $composableBuilder(
+    column: $table.remoteFriendId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get remoteUsername => $composableBuilder(
+    column: $table.remoteUsername,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -33919,6 +34053,16 @@ class $$PersonsTableOrderingComposer
     column: $table.revolut,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get remoteFriendId => $composableBuilder(
+    column: $table.remoteFriendId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get remoteUsername => $composableBuilder(
+    column: $table.remoteUsername,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$PersonsTableAnnotationComposer
@@ -33973,6 +34117,16 @@ class $$PersonsTableAnnotationComposer
 
   GeneratedColumn<String> get revolut =>
       $composableBuilder(column: $table.revolut, builder: (column) => column);
+
+  GeneratedColumn<String> get remoteFriendId => $composableBuilder(
+    column: $table.remoteFriendId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get remoteUsername => $composableBuilder(
+    column: $table.remoteUsername,
+    builder: (column) => column,
+  );
 
   Expression<T> transactionsRefs<T extends Object>(
     Expression<T> Function($$TransactionsTableAnnotationComposer a) f,
@@ -34175,6 +34329,8 @@ class $$PersonsTableTableManager
                 Value<String?> venmo = const Value.absent(),
                 Value<String?> cashapp = const Value.absent(),
                 Value<String?> revolut = const Value.absent(),
+                Value<String?> remoteFriendId = const Value.absent(),
+                Value<String?> remoteUsername = const Value.absent(),
               }) => PersonsCompanion(
                 id: id,
                 name: name,
@@ -34190,6 +34346,8 @@ class $$PersonsTableTableManager
                 venmo: venmo,
                 cashapp: cashapp,
                 revolut: revolut,
+                remoteFriendId: remoteFriendId,
+                remoteUsername: remoteUsername,
               ),
           createCompanionCallback:
               ({
@@ -34207,6 +34365,8 @@ class $$PersonsTableTableManager
                 Value<String?> venmo = const Value.absent(),
                 Value<String?> cashapp = const Value.absent(),
                 Value<String?> revolut = const Value.absent(),
+                Value<String?> remoteFriendId = const Value.absent(),
+                Value<String?> remoteUsername = const Value.absent(),
               }) => PersonsCompanion.insert(
                 id: id,
                 name: name,
@@ -34222,6 +34382,8 @@ class $$PersonsTableTableManager
                 venmo: venmo,
                 cashapp: cashapp,
                 revolut: revolut,
+                remoteFriendId: remoteFriendId,
+                remoteUsername: remoteUsername,
               ),
           withReferenceMapper: (p0) => p0
               .map(

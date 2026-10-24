@@ -51,6 +51,11 @@ private const val SCREEN_SECURITY_CHANNEL = "xpenc/screen_security"
  * -----------
  * `xpenc/permissions` lives in [PermissionsChannel] — created here as a field
  * because its result launcher must be registered before the activity starts.
+ *
+ * Connector friends
+ * -----------------
+ * `xpenc/connector_friends` lives in [ConnectorFriendsChannel]: it reads the
+ * friends list the Connector app shares, on the device.
  */
 class MainActivity : FlutterFragmentActivity() {
     private val permissions = PermissionsChannel(this)
@@ -91,6 +96,8 @@ class MainActivity : FlutterFragmentActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         permissions.attach(flutterEngine.dartExecutor.binaryMessenger)
+        ConnectorFriendsChannel(applicationContext)
+            .attach(flutterEngine.dartExecutor.binaryMessenger)
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             SCREEN_SECURITY_CHANNEL,

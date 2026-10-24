@@ -71,4 +71,9 @@ abstract final class PlatformFeatures {
   /// Telling the Connector app which backup was just imported (see
   /// `connector_handoff.dart`). Connector is an Android app.
   static bool get connectorHandoff => _android;
+
+  /// Reading Connector friends from the Connector app on this phone (see
+  /// `connector_friends_source.dart`). XPENC web reads them itself, through
+  /// its built-in Connector, when that's on.
+  static bool get connectorFriendsApp => _android;
 }

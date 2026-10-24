@@ -9,6 +9,7 @@ import '../../features/calculators/calculator_kind.dart';
 import '../../features/modes/mode_modules.dart';
 import '../branding/app_info.dart';
 import '../branding/brand_mark.dart';
+import '../connector/connector_platform.dart';
 import '../routing/app_router.dart';
 import '../widgets/app_surfaces.dart';
 
@@ -320,14 +321,15 @@ List<_Section> _sections(WidgetRef ref) {
       for (final kind in CalculatorKind.values)
         _Destination(kind.icon, kind.label, kind.route, module: 'calculators'),
     ]),
-    const _Section('Data', [
-      _Destination(
+    _Section('Data', [
+      const _Destination(
         Icons.backup_outlined,
         'Backup & Restore',
         '/more/backup',
         module: 'data',
       ),
-      _Destination(
+      if (connectorPlatform != null) _connector,
+      const _Destination(
         Icons.download_outlined,
         'Download Data',
         '/more/export',
@@ -364,6 +366,15 @@ List<_Section> _sections(WidgetRef ref) {
       ]),
   ].where((s) => s.items.isNotEmpty).toList();
 }
+
+/// XPENC web's built-in Connector (Settings → Connector on a phone-size
+/// screen).
+const _connector = _Destination(
+  Icons.sync_alt_rounded,
+  'Connector',
+  '/more/settings/connector',
+  module: 'data',
+);
 
 const _settings = _Destination(
   Icons.settings_outlined,
@@ -409,6 +420,7 @@ final _sectionsRoutes = <String>{
   '/more/stats',
   '/more/account-reports',
   '/more/backup',
+  '/more/settings/connector',
   '/more/export',
   '/more/categories',
   '/more/tags',

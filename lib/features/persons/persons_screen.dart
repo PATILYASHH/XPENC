@@ -14,6 +14,7 @@ import '../../core/widgets/morph_dialog.dart';
 import '../../data/database.dart';
 import '../../data/mode_providers.dart';
 import '../../data/providers.dart';
+import 'connector_friends.dart';
 import 'contact_import.dart';
 import 'delete_person_or_group.dart';
 import 'edit_person_sheet.dart';
@@ -131,6 +132,9 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
   @override
   Widget build(BuildContext context) {
     final ussdPayEnabled = ref.watch(ussdPayEnabledProvider);
+    // Kept loaded while the list is up, so holding a person knows at once
+    // whether to offer "Link Connector friend".
+    ref.watch(connectorFriendsProvider);
     // Glass: the shell's floating tab bar covers the foot of the screen —
     // its ➕ right where a FAB goes — so the FAB rides above it.
     final fabLift = AppSurface.of(context).isGlass
@@ -524,11 +528,17 @@ class _PersonTile extends ConsumerWidget {
   Future<void> _showActions(BuildContext context, WidgetRef ref) async {
     final theme = Theme.of(context);
     final contactsOn = ref.read(contactsAccessProvider).valueOrNull ?? false;
+    // Unlinking stays possible even with Connector gone.
+    final linked = person.remoteUsername != null;
+    final friendsOn =
+        linked || friendsShownIn(ref.read(connectorFriendsProvider));
     final action = await showActionSheet<_PersonAction>(
       context: context,
       title: person.name,
       optionCount:
-          (person.isSettled || balance.isZero ? 5 : 4) - (contactsOn ? 0 : 1),
+          (person.isSettled || balance.isZero ? 5 : 4) -
+          (contactsOn ? 0 : 1) +
+          (friendsOn ? 1 : 0),
       options: (sheetContext) => [
         AppListTile(
           leading: const AppIcon(Icons.edit_outlined),
@@ -545,6 +555,23 @@ class _PersonTile extends ConsumerWidget {
             onTap: () =>
                 Navigator.of(sheetContext).pop(_PersonAction.linkContact),
           ),
+        if (friendsOn)
+          linked
+              ? AppListTile(
+                  leading: const AppIcon(Icons.link_off_rounded),
+                  title: Text('Unlink @${person.remoteUsername}'),
+                  subtitle: const Text('Stop tying them to Connector.'),
+                  onTap: () => Navigator.of(
+                    sheetContext,
+                  ).pop(_PersonAction.unlinkFriend),
+                )
+              : AppListTile(
+                  leading: const AppIcon(Icons.group_outlined),
+                  title: const Text('Link Connector friend'),
+                  subtitle: const Text('Who they are on Connector.'),
+                  onTap: () =>
+                      Navigator.of(sheetContext).pop(_PersonAction.linkFriend),
+                ),
         if (person.isSettled)
           AppListTile(
             leading: const AppIcon(Icons.undo_rounded),
@@ -584,6 +611,10 @@ class _PersonTile extends ConsumerWidget {
       await showEditPersonSheet(context, ref, person);
     } else if (action == _PersonAction.linkContact) {
       await _linkContact(context, ref);
+    } else if (action == _PersonAction.linkFriend) {
+      await linkPersonToFriend(context, ref, person);
+    } else if (action == _PersonAction.unlinkFriend) {
+      await confirmUnlinkFriend(context, ref, person);
     } else if (action == _PersonAction.settle ||
         action == _PersonAction.unsettle) {
       final db = ref.read(dbProvider);
@@ -683,7 +714,16 @@ class _PersonTile extends ConsumerWidget {
       confirmDeletePerson(context, ref, person);
 }
 
-enum _PersonAction { edit, linkContact, settle, unsettle, archive, remove }
+enum _PersonAction {
+  edit,
+  linkContact,
+  linkFriend,
+  unlinkFriend,
+  settle,
+  unsettle,
+  archive,
+  remove,
+}
 
 /// Groups, each showing member count and the group's aggregate balance
 /// (`groupBalanceProvider` — what this group's own split created, not its

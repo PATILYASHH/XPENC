@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/branding/app_info.dart';
 import '../../core/branding/brand_mark.dart';
+import '../../core/connector/connector_platform.dart';
 import '../../core/platform/platform_features.dart';
 import '../../core/widgets/app_surfaces.dart';
 
@@ -82,6 +83,14 @@ class SettingsScreen extends StatelessWidget {
             subtitle: 'Recalculate balances, clear all data',
             onTap: () => context.push('/more/settings/data'),
           ),
+          // XPENC web only; phones have the Connector app.
+          if (connectorPlatform != null)
+            _ModuleTile(
+              icon: Icons.sync_alt_rounded,
+              title: 'Connector',
+              subtitle: 'Sync with your phones, Connector friends',
+              onTap: () => context.push('/more/settings/connector'),
+            ),
           AppCard(
             child: AppListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),

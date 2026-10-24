@@ -1,6 +1,6 @@
 # XPENC Privacy Policy
 
-**Effective date:** 26 September 2026
+**Effective date:** 24 October 2026
 **Applies to:** XPENC for Android (package name `com.yash.xpenc`), version 1.1.0 and later
 **Developer:** Yash Patil (individual developer)
 **Contact:** feedback.yashpatil@gmail.com
@@ -63,6 +63,23 @@ internet permission. (The final app package also contains `VIBRATE`,
 notifications library uses to deliver reminders on time — and an internal
 Android-library permission scoped to the app itself. None of them gives access
 to any of your data.)
+
+## XPENC web and Connector
+
+**XPENC web** (<https://xpenc.in/web>) keeps your data in that browser's own
+storage and, as it comes, talks to nothing but xpenc.in. It can go online only
+if you turn on **Connector** yourself, in Settings → Connector. Then, to keep
+it in step with XPENC on your phones, it signs you in with GitHub (through the
+Connector sign-in, run on Supabase) and keeps your backup — the same JSON file
+XPENC makes — in a private GitHub repository of yours, `XPENC-BACKUP`. It isn't
+encrypted there. It also reads your Connector friends' usernames, to link
+people. Disconnect at any time; your data in the browser and on GitHub stays.
+
+**Connector friends.** On Android, if the separate Connector app is installed,
+XPENC can read the list of your Connector friends from it, on the phone, to
+link a person to a friend. The link — the friend's Connector id and username —
+is stored only in XPENC (and in its backups). XPENC still has no internet
+permission and sends Connector nothing.
 
 ## Backups and exports
 

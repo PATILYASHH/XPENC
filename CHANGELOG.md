@@ -19,9 +19,24 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   ordinary link between the two apps: XPENC still asks for no internet
   permission. Connector checks the file's fingerprint and only confirms the
   backup it actually pulled.
+- **Connector friends in Persons.** Add a person straight from your
+  Connector friends (Add person → **From Connector friends**), or link
+  someone already here (hold them → **Link Connector friend**, or the link
+  on their page). They show as "@username · Connector friend"; a friend is
+  only ever one person, and the link travels in backups. On Android this
+  reads the friends list the Connector app shares on the phone — XPENC
+  still asks for no internet permission and sends Connector nothing.
+  Linking is the first step; shared dues between friends come later.
+- **Connector built into XPENC web** (Settings → Connector, off until you
+  turn it on): connect GitHub and the browser syncs through the same
+  private `XPENC-BACKUP` repo as your phones, by the same rule — it takes in
+  the newest backup from another device before uploading its own, and a
+  write that races another device is refused, never overwritten. It also
+  lists your Connector friends for Persons.
 - **XPENC web (preview)** at [xpenc.in/web](https://xpenc.in/web): the same
   app in a browser, fully offline after the first visit — your data stays
-  in that browser and nothing is sent anywhere. Backups there are downloads
+  in that browser, and nothing is sent anywhere unless you turn on
+  Connector. Backups there are downloads
   (the same `DDMMYYXPENCEBACKUP.json`), and a phone's backup comes in with
   Import from file. On a computer-sized window it lays out for a PC: a
   sidebar with every module, a two-column dashboard, transactions as a

@@ -4,7 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
+import 'core/connector/connector_platform.dart';
 import 'core/theme/glass.dart';
+import 'features/connector/connector_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,5 +25,8 @@ Future<void> main() async {
     const Duration(milliseconds: 600),
     onTimeout: () {},
   );
+  // XPENC web, back from Connector's GitHub sign-in: the token is in the
+  // address. Taken (and wiped from it) before the router reads the address.
+  connectorLoginResult = connectorPlatform?.takeLoginResult();
   runApp(const ProviderScope(child: XpencApp()));
 }

@@ -23,6 +23,16 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.group_outlined,
+    title: 'Connector friends in Persons',
+    location: 'Persons → Add person → From Connector friends',
+    description:
+        'Add a person straight from your Connector friends, or hold someone '
+        'already here to link them. They show as @username. On a phone it '
+        'reads the list the Connector app shares — XPENC still never goes '
+        'online.',
+  ),
+  WhatsNewEntry(
     icon: Icons.sync_alt_rounded,
     title: 'Tell Connector',
     location: 'Settings → Backup & Restore → Import from file',
@@ -47,7 +57,9 @@ const whatsNewEntries = <WhatsNewEntry>[
     location: 'xpenc.in/web',
     description:
         'A preview of XPENC in your browser — offline, your data stays in '
-        'that browser. Bring a phone backup over with Import from file.',
+        'that browser. Bring a phone backup over with Import from file, or '
+        'turn on Connector there (Settings → Connector) to keep it in sync '
+        'with your phones.',
   ),
   WhatsNewEntry(
     icon: Icons.beach_access_outlined,

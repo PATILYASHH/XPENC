@@ -25,9 +25,15 @@ void main() {
       ),
     };
 
+    // XPENC web's built-in Connector — the one reviewed place, reached
+    // only once the user turns Connector on (and absent from phone builds:
+    // it's behind a `dart.library.js_interop` conditional import).
+    final allowed = {'lib/core/connector/web/fetch_transport.dart'};
+
     final offenders = <String>[];
     for (final file in Directory('lib').listSync(recursive: true)) {
       if (file is! File || !file.path.endsWith('.dart')) continue;
+      if (allowed.contains(file.path.replaceAll(r'\', '/'))) continue;
       final source = file.readAsStringSync();
       for (final MapEntry(key: what, value: pattern) in networkApis.entries) {
         if (pattern.hasMatch(source)) offenders.add('${file.path}: $what');
@@ -40,6 +46,23 @@ void main() {
           'XPENC is offline by design. Network access, when it comes (the '
           'web build\'s Connector), goes through one reviewed place that '
           'this test names explicitly — never quietly from anywhere else.',
+    );
+  });
+
+  test('the one place allowed is still the only one using fetch', () {
+    final fetchUsers = [
+      for (final file in Directory('lib').listSync(recursive: true))
+        if (file is File &&
+            file.path.endsWith('.dart') &&
+            file.readAsStringSync().contains('FetchTransport('))
+          file.path.replaceAll(r'\', '/'),
+    ];
+    expect(
+      fetchUsers,
+      unorderedEquals([
+        'lib/core/connector/web/fetch_transport.dart', // its declaration
+        'lib/core/connector/web/connector_platform_web.dart',
+      ]),
     );
   });
 }

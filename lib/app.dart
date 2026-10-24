@@ -19,6 +19,8 @@ import 'core/widgets/error_view.dart';
 import 'core/widgets/money_text.dart';
 import 'data/modes_db.dart';
 import 'data/providers.dart';
+import 'core/connector/connector_platform.dart';
+import 'features/connector/connector_controller.dart';
 import 'features/message_capture/parser/bank_message.dart';
 import 'features/message_capture/share_intake.dart';
 import 'features/security/lock_screen.dart';
@@ -292,6 +294,11 @@ class _XpencAppState extends ConsumerState<XpencApp>
           .read(homeWidgetServiceProvider)
           .updateMonthSummary(next.income, next.expense);
     });
+
+    // XPENC web's built-in Connector syncs while the app is open — once the
+    // user has turned it on. Listened to, not watched: its every tick
+    // shouldn't rebuild the app.
+    if (connectorPlatform != null) ref.listen(connectorProvider, (_, _) {});
 
     final ready = ref.watch(databaseReadyProvider);
     final choice = ref.watch(themeChoiceProvider);

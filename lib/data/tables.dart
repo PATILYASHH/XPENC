@@ -626,6 +626,16 @@ class Persons extends Table {
   /// Their Revolut.me username. Powers the "Pay" button — used to build a
   /// `revolut.me` link (see `RevolutLauncher`). Mainly useful in Europe.
   TextColumn get revolut => text().nullable()();
+
+  /// The Connector friend this person is — their Connector user id, set by
+  /// "Link Connector friend" or adding them from Connector friends. At most
+  /// one person per friend (the `persons_remote_friend_id` unique index,
+  /// see `AppDatabase.migration`). Only remembered here, on this device and
+  /// in its backups: linking sends nothing anywhere.
+  TextColumn get remoteFriendId => text().nullable()();
+
+  /// Their Connector username, as of linking — shown as "@username".
+  TextColumn get remoteUsername => text().nullable()();
 }
 
 /// Signed ledger per person. Balance = Σ(theyOwe) − Σ(iOwe).

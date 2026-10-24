@@ -3,11 +3,13 @@ import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../core/connector/friends/connector_friend.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/database.dart';
 import '../../data/mode_providers.dart';
 import '../../data/modes_db.dart';
 import '../../data/providers.dart';
+import 'connector_friends.dart';
 import 'contact_import.dart';
 import 'person_avatar.dart';
 import 'person_photo_storage.dart';
@@ -77,6 +79,10 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
   /// every other field on this sheet.
   late String? _photoPath = widget.person?.photoPath;
 
+  /// Adding someone from Connector friends: the friend they'll be linked to.
+  /// (An existing person links from their page or the Persons list.)
+  ConnectorFriend? _friend;
+
   bool _saving = false;
 
   @override
@@ -122,6 +128,85 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
       if (!mounted) return;
       _showError("Couldn't open contacts.");
     }
+  }
+
+  /// "From Connector friends": this new person is that friend. Someone of
+  /// the same name already here, not linked yet, is most likely them — so
+  /// that's offered first, rather than a second copy.
+  Future<void> _pickFromFriends() async {
+    final friend = await pickConnectorFriend(context);
+    if (friend == null || !mounted) return;
+    final key = friend.name.trim().toLowerCase();
+    PersonRow? sameName;
+    for (final p in [
+      ...?ref.read(personsProvider).valueOrNull,
+      ...?ref.read(archivedPersonsProvider).valueOrNull,
+    ]) {
+      if (p.remoteFriendId == null && p.name.trim().toLowerCase() == key) {
+        sameName = p;
+        break;
+      }
+    }
+    if (sameName != null) {
+      final existing = sameName;
+      final link = await showAppDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('Is this ${existing.name}?'),
+          content: Text(
+            '${existing.name} is already in your people'
+            '${existing.isArchived ? ' (archived)' : ''}. Link them to '
+            '@${friend.username}, or add a separate person?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Add separate'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text('Link ${existing.name}'),
+            ),
+          ],
+        ),
+      );
+      if (link == null || !mounted) return;
+      if (link) {
+        await _linkExisting(existing, friend);
+        return;
+      }
+    }
+    setState(() {
+      _friend = friend;
+      if (_nameController.text.trim().isEmpty) {
+        _nameController.text = friend.name;
+      }
+    });
+  }
+
+  /// Links [existing] to [friend] instead of adding anyone, and closes.
+  Future<void> _linkExisting(PersonRow existing, ConnectorFriend friend) async {
+    final db = ref.read(dbProvider);
+    try {
+      await db.linkPersonFriend(
+        existing.id,
+        friendId: friend.id,
+        username: friend.username,
+      );
+    } on FriendAlreadyLinked catch (e) {
+      _showError('@${friend.username} is already ${e.person.name}.');
+      return;
+    }
+    if (existing.isArchived) await db.unarchivePerson(existing.id);
+    await _joinFocusedMode(existing.id);
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    Navigator.of(context).pop();
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text('${existing.name} is @${friend.username}')),
+      );
   }
 
   /// A profile photo from the gallery. Downscaled on pick — an avatar never
@@ -243,6 +328,11 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
         );
         if (addAnyway == null || !mounted) return;
         if (!addAnyway) {
+          final friend = _friend;
+          if (friend != null && existing.remoteFriendId == null) {
+            await _linkExisting(existing, friend);
+            return;
+          }
           if (existing.isArchived) {
             await ref.read(dbProvider).unarchivePerson(existing.id);
           }
@@ -250,6 +340,15 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
           if (mounted) Navigator.of(context).pop();
           return;
         }
+      }
+    }
+
+    final friend = _friend;
+    if (person == null && friend != null) {
+      final taken = await ref.read(dbProvider).personByFriendId(friend.id);
+      if (taken != null) {
+        _showError('@${friend.username} is already ${taken.name}.');
+        return;
       }
     }
 
@@ -267,6 +366,8 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
         cashapp: _cashappController.text.trim().nullIfEmpty,
         revolut: _revolutController.text.trim().nullIfEmpty,
         photoPath: _photoPath,
+        remoteFriendId: friend?.id,
+        remoteUsername: friend?.username,
       );
       await _joinFocusedMode(id);
     } else {
@@ -298,6 +399,7 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
     final revolutEnabled = ref.watch(revolutEnabledProvider);
     // GitHub #167: with contacts access off, there's no way into them.
     final contactsOn = ref.watch(contactsAccessProvider).valueOrNull ?? false;
+    final friendsOn = widget.person == null && connectorFriendsShown(ref);
     final anyPaymentMethodEnabled =
         upiEnabled ||
         paypalEnabled ||
@@ -411,6 +513,23 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
                     : null,
               ),
             ),
+            if (friendsOn) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: _friend == null
+                    ? TextButton.icon(
+                        onPressed: _pickFromFriends,
+                        icon: const AppIcon(Icons.group_outlined, size: 18),
+                        label: const Text('From Connector friends'),
+                      )
+                    : InputChip(
+                        avatar: const AppIcon(Icons.link_rounded, size: 18),
+                        label: Text('@${_friend!.username} · Connector friend'),
+                        onDeleted: () => setState(() => _friend = null),
+                      ),
+              ),
+            ],
             const SizedBox(height: 16),
 
             if (anyPaymentMethodEnabled) ...[

@@ -27,6 +27,7 @@ import '../../features/modes/mode_editor_screen.dart';
 import '../../features/modes/mode_summary_screen.dart';
 import '../../features/modes/modes_screen.dart';
 import '../../features/categories/category_templates_screen.dart';
+import '../../features/connector/connector_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/data_export/backup_screen.dart';
 import '../../features/data_export/csv_import_screen.dart';
@@ -201,6 +202,12 @@ final appRouter = GoRouter(
                       path: 'general',
                       parentNavigatorKey: _rootKey,
                       builder: (_, _) => const GeneralSettingsScreen(),
+                    ),
+                    // XPENC web's built-in Connector.
+                    GoRoute(
+                      path: 'connector',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const ConnectorScreen(),
                     ),
                     GoRoute(
                       path: 'mode-budgeting',

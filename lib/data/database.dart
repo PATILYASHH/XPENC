@@ -259,12 +259,13 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 88;
+  int get schemaVersion => 89;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
+      await _createPersonsFriendIndex();
       await _seed();
       await _seedSenderRules();
     },
@@ -863,6 +864,12 @@ class AppDatabase extends _$AppDatabase {
         // Running balance in account history (GitHub #150).
         await _addColumnIfMissing(m, settings, settings.showRunningBalance);
       }
+      if (from < 89) {
+        // A person can be linked to a Connector friend.
+        await _addColumnIfMissing(m, persons, persons.remoteFriendId);
+        await _addColumnIfMissing(m, persons, persons.remoteUsername);
+        await _createPersonsFriendIndex();
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -886,6 +893,14 @@ class AppDatabase extends _$AppDatabase {
       // exact orphaned shape the v17 migration repairs.
       await backfillShoppingListIds();
     },
+  );
+
+  /// One person per Connector friend. A plain index rather than a declared
+  /// unique column: SQLite can't add a UNIQUE column to an existing table,
+  /// and an index allows any number of unlinked (NULL) people.
+  Future<void> _createPersonsFriendIndex() => customStatement(
+    'CREATE UNIQUE INDEX IF NOT EXISTS persons_remote_friend_id '
+    'ON persons (remote_friend_id)',
   );
 
   /// True if [table] already has a column named [column].
@@ -4050,6 +4065,8 @@ class AppDatabase extends _$AppDatabase {
     String? cashapp,
     String? revolut,
     String? photoPath,
+    String? remoteFriendId,
+    String? remoteUsername,
   }) => into(persons).insert(
     PersonsCompanion.insert(
       name: name,
@@ -4062,6 +4079,8 @@ class AppDatabase extends _$AppDatabase {
       cashapp: Value(cashapp),
       revolut: Value(revolut),
       photoPath: Value(photoPath),
+      remoteFriendId: Value(remoteFriendId),
+      remoteUsername: Value(remoteUsername),
     ),
   );
 
@@ -4120,6 +4139,37 @@ class AppDatabase extends _$AppDatabase {
               : Value(photoPath),
         ),
       );
+
+  /// "Link Connector friend": [id] becomes Connector friend [friendId]. A
+  /// friend is one person — throws [FriendAlreadyLinked] if someone else
+  /// already is them. Only remembered here; nothing is sent.
+  Future<void> linkPersonFriend(
+    int id, {
+    required String friendId,
+    required String username,
+  }) => transaction(() async {
+    final other = await personByFriendId(friendId);
+    if (other != null && other.id != id) throw FriendAlreadyLinked(other);
+    await (update(persons)..where((p) => p.id.equals(id))).write(
+      PersonsCompanion(
+        remoteFriendId: Value(friendId),
+        remoteUsername: Value(username),
+      ),
+    );
+  });
+
+  Future<void> unlinkPersonFriend(int id) =>
+      (update(persons)..where((p) => p.id.equals(id))).write(
+        const PersonsCompanion(
+          remoteFriendId: Value(null),
+          remoteUsername: Value(null),
+        ),
+      );
+
+  /// Archived people included — a friend is never linked twice.
+  Future<PersonRow?> personByFriendId(String friendId) => (select(
+    persons,
+  )..where((p) => p.remoteFriendId.equals(friendId))).getSingleOrNull();
 
   Future<PersonRow?> personById(int id) =>
       (select(persons)..where((p) => p.id.equals(id))).getSingleOrNull();
@@ -8051,4 +8101,11 @@ class AppDatabase extends _$AppDatabase {
     }
     return b.toString();
   }
+}
+
+/// [AppDatabase.linkPersonFriend]: that Connector friend is already
+/// [person].
+class FriendAlreadyLinked implements Exception {
+  const FriendAlreadyLinked(this.person);
+  final PersonRow person;
 }

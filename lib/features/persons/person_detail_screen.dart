@@ -23,6 +23,7 @@ import '../../data/modes_db.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../accounts/envelope_outflow.dart';
+import 'connector_friends.dart';
 import 'delete_person_or_group.dart';
 import 'edit_person_sheet.dart';
 import 'payment_action_row.dart';
@@ -137,6 +138,7 @@ class PersonDetailScreen extends ConsumerWidget {
             ])],
           ),
           SliverToBoxAdapter(child: _BalanceHero(balance: balance)),
+          SliverToBoxAdapter(child: ConnectorFriendBadge(person: person)),
           SliverToBoxAdapter(
             child: _ActionButtons(person: person, balance: balance),
           ),

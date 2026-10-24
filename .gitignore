@@ -72,3 +72,7 @@ packages/flutter_tesseract_ocr_floss/android/.gradle/
 # (`flutter build web --base-href /web/` → website/web/). Build output,
 # rebuilt from web/ and lib/ — never committed.
 /website/web/
+
+# XPENC web's Connector settings for tool/build_web.sh — the Connector
+# app's Supabase project. Kept out of git with the Connector app's own.
+/tool/web/connector.local.json
