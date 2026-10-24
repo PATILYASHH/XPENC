@@ -67,4 +67,8 @@ abstract final class PlatformFeatures {
 
   /// Paying by dialling a USSD code — needs a phone.
   static bool get ussdPay => !isWeb;
+
+  /// Telling the Connector app which backup was just imported (see
+  /// `connector_handoff.dart`). Connector is an Android app.
+  static bool get connectorHandoff => _android;
 }

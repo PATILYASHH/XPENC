@@ -5,6 +5,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/connector/connector_handoff.dart';
+import '../../core/platform/platform_features.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 
@@ -47,15 +49,18 @@ Future<void> importDataFromFile(
 
   final file = picked.files.single;
   // Prefer the in-memory bytes (withData); fall back to reading the path.
+  // The bytes themselves are kept: Connector recognises its file by them.
+  List<int> bytes;
   String content;
   try {
     if (file.bytes != null) {
-      content = utf8.decode(file.bytes!);
+      bytes = file.bytes!;
     } else if (file.path != null) {
-      content = await File(file.path!).readAsString();
+      bytes = await File(file.path!).readAsBytes();
     } else {
       throw const FormatException('empty selection');
     }
+    content = utf8.decode(bytes);
   } catch (_) {
     if (!context.mounted) return;
     messenger
@@ -107,6 +112,10 @@ Future<void> importDataFromFile(
           ),
         ),
       );
+    if (PlatformFeatures.connectorHandoff &&
+        file.name == connectorPulledFileName) {
+      await _offerConnectorHandoff(context, messenger, bytes);
+    }
   } on ArgumentError catch (e) {
     if (!context.mounted) return;
     messenger
@@ -123,5 +132,48 @@ Future<void> importDataFromFile(
       );
   } finally {
     setBusy?.call(false);
+  }
+}
+
+/// The file was the backup Connector pulled from another phone. Connector
+/// holds this phone's uploads until it knows the import happened — saying
+/// so here, in one tap, beats remembering to go back and do it there.
+Future<void> _offerConnectorHandoff(
+  BuildContext context,
+  ScaffoldMessengerState messenger,
+  List<int> bytes,
+) async {
+  final tell = await showAppDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('Let Connector know?'),
+      content: const Text(
+        'This backup came from Connector. Tell it the import is done, so '
+        'backups from this phone carry on syncing from here.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(false),
+          child: const Text('Not now'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(true),
+          child: const Text('Tell Connector'),
+        ),
+      ],
+    ),
+  );
+  if (tell != true) return;
+  if (!await tellConnectorImported(bytes)) {
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Couldn't open Connector. In Connector, tap \"I've imported "
+            'it" instead.',
+          ),
+        ),
+      );
   }
 }
