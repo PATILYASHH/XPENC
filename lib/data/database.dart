@@ -7755,9 +7755,31 @@ class AppDatabase extends _$AppDatabase {
       // and resets the budget-alert dedupe (re-firing alerts already seen).
       'pendingTxns': (await select(pendingTxns).get()).map(m).toList(),
       'budgetAlerts': (await select(budgetAlerts).get()).map(m).toList(),
-      'settings': (await select(settings).get()).map(m).toList(),
+      'settings': (await select(
+        settings,
+      ).get()).map(m).map(_withoutDeviceLock).toList(),
     };
   }
+
+  /// This phone's lock, not the ledger's: [importAll] keeps the importing
+  /// phone's own values for every one of these, so a backup has no use for
+  /// them. Left in, each backup file carries a plaintext TOTP secret and a
+  /// PIN hash a million guesses crack — and once the Connector app uploads
+  /// it, so does the GitHub repo's history, for good.
+  static const _deviceLockColumns = [
+    'passcode_hash',
+    'passcode_salt',
+    'passcode_length',
+    'master_phrase_hash',
+    'master_phrase_salt',
+    'totp_secret',
+  ];
+
+  static Map<String, dynamic> _withoutDeviceLock(Map<String, dynamic> row) => {
+    ...row,
+    for (final column in _deviceLockColumns)
+      if (row.containsKey(column)) column: null,
+  };
 
   /// Replace everything with the contents of a backup.
   ///
@@ -7791,6 +7813,9 @@ class AppDatabase extends _$AppDatabase {
     final localTheme = localSettings?.themeName;
     final localPasscodeHash = localSettings?.passcodeHash;
     final localPasscodeSalt = localSettings?.passcodeSalt;
+    // The lock screen takes exactly this many digits, so another phone's
+    // length over this phone's hash would make its own PIN untypeable.
+    final localPasscodeLength = localSettings?.passcodeLength;
     final localBiometricEnabled = localSettings?.biometricEnabled ?? false;
     // Same reasoning as the passcode fields above, plus: the phrase can
     // never be recovered if lost, so importing a backup must never be able
@@ -7948,6 +7973,7 @@ class AppDatabase extends _$AppDatabase {
             themeName: Value(localTheme),
             passcodeHash: Value(localPasscodeHash),
             passcodeSalt: Value(localPasscodeSalt),
+            passcodeLength: Value(localPasscodeLength),
             biometricEnabled: Value(localBiometricEnabled),
             masterPhraseHash: Value(localMasterPhraseHash),
             masterPhraseSalt: Value(localMasterPhraseSalt),
