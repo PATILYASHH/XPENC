@@ -265,6 +265,7 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
           ),
         ),
         swap(trailing),
+        if (DesktopLayout.of(context)) const _ProfileButton(),
       ],
     );
 

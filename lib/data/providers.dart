@@ -7,6 +7,7 @@ import '../core/loan_amortization.dart';
 import '../core/group_split_math.dart';
 import '../core/money.dart';
 import '../core/notifications/notification_service.dart';
+import '../core/platform/platform_features.dart';
 import '../core/routing/quick_actions.dart';
 import '../core/security/unlock_method.dart';
 import '../core/theme/font_options.dart';
@@ -1194,6 +1195,7 @@ final revolutEnabledProvider = Provider<bool>((ref) {
 /// the payment methods above, this is new, unfamiliar UI, not something to
 /// hide from users who don't need it.
 final ussdPayEnabledProvider = Provider<bool>((ref) {
+  if (!PlatformFeatures.ussdPay) return false;
   return ref.watch(settingsProvider).valueOrNull?.ussdPayEnabled ?? false;
 });
 
@@ -1204,6 +1206,8 @@ final hasPasscodeProvider = Provider<bool>((ref) {
 });
 
 final biometricEnabledProvider = Provider<bool>((ref) {
+  // A backup from a phone with it on must not offer it in a browser.
+  if (!PlatformFeatures.biometrics) return false;
   return ref.watch(settingsProvider).valueOrNull?.biometricEnabled ?? false;
 });
 

@@ -46,6 +46,7 @@ ROOT = Path(__file__).resolve().parent.parent
 RES = ROOT / "android" / "app" / "src" / "main" / "res"
 IOS_ASSETS = ROOT / "ios" / "Runner" / "Assets.xcassets"
 BRANDING = ROOT / "branding"
+WEB = ROOT / "web"
 
 
 class Geometry:
@@ -318,6 +319,19 @@ def write_ios() -> None:
     print(f"  {(launch / 'Contents.json').relative_to(ROOT)}")
 
 
+def write_web() -> None:
+    """XPENC web's PWA icons (`web/icons`, named as Flutter's template and
+    `web/manifest.json` expect) and favicon. Maskable icons are full-bleed,
+    like iOS: the browser cuts its own shape, keeping the mark in the centre
+    80% it promises never to crop."""
+    print("\nXPENC web")
+    for size in (192, 512):
+        write(WEB / "icons" / f"Icon-{size}.png", icon(size))
+        write(WEB / "icons" / f"Icon-maskable-{size}.png",
+              ios_icon(size).convert("RGBA"))
+    write(WEB / "favicon.png", icon(32))
+
+
 def main() -> None:
     print("Android launcher icons")
     for name, scale in DENSITIES.items():
@@ -369,6 +383,8 @@ def main() -> None:
     svg = BRANDING / "xpenc_icon.svg"
     svg.write_text(svg_master(), encoding="utf-8")
     print(f"  {svg.relative_to(ROOT)}")
+
+    write_web()
 
 
 if __name__ == "__main__":

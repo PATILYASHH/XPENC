@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 
 import '../../core/app_icons.dart';
 import '../../core/budget_cycle.dart';
+import '../../core/layout/desktop.dart';
+import '../../core/layout/masonry.dart';
 import '../../core/money.dart';
 import '../../core/security/nct.dart';
 import '../../core/theme/app_colors.dart';
@@ -70,6 +72,9 @@ class DashboardScreen extends ConsumerWidget {
         for (final s in ref.watch(dashboardLayoutProvider))
           if (s.visible) s.widget,
     ];
+    if (DesktopLayout.of(context)) {
+      return _DesktopDashboard(shown: shown, ready: ready);
+    }
 
     return Scaffold(
       body: CustomScrollView(
@@ -93,6 +98,68 @@ class DashboardScreen extends ConsumerWidget {
             ],
           ),
           const NavBarInsetSliver(),
+        ],
+      ),
+    );
+  }
+}
+
+/// The dashboard on a PC: Total money with the accounts beside it, then
+/// every other widget in two even columns ([Masonry]) — still in the user's
+/// own order, each taking whichever side is shorter.
+class _DesktopDashboard extends StatelessWidget {
+  const _DesktopDashboard({required this.shown, required this.ready});
+
+  final List<DashboardWidget> shown;
+  final bool ready;
+
+  @override
+  Widget build(BuildContext context) {
+    final hero = [
+      if (shown.contains(DashboardWidget.totalMoney))
+        DashboardWidget.totalMoney,
+      if (shown.contains(DashboardWidget.accounts)) DashboardWidget.accounts,
+    ];
+    final rest = [
+      for (final w in shown)
+        if (!hero.contains(w)) w,
+    ];
+    Widget reveal(DashboardWidget w, int i) =>
+        Reveal(key: ValueKey(w), index: i, child: DashboardScreen._section(w));
+
+    return Scaffold(
+      body: CustomScrollView(
+        slivers: [
+          const TopBarInsetSliver(),
+          const SliverToBoxAdapter(child: SizedBox(height: 16)),
+          SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (hero.length == 2)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 3, child: reveal(hero[0], 0)),
+                      Expanded(flex: 2, child: reveal(hero[1], 1)),
+                    ],
+                  )
+                else
+                  for (var i = 0; i < hero.length; i++) reveal(hero[i], i),
+                Masonry(
+                  children: [
+                    for (var i = 0; i < rest.length; i++)
+                      reveal(rest[i], hero.length + i),
+                  ],
+                ),
+                if (ready && shown.isEmpty)
+                  const _EmptyDashboard()
+                else if (ready)
+                  const _CustomizeLink(),
+                const SizedBox(height: 32),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -1033,9 +1100,12 @@ class _AccountsStrip extends ConsumerWidget {
       return const Padding(padding: _sectionPad, child: _InlineLoader());
     }
     final asOf = past ? _periodEndLabel(ref) : null;
+    // On a PC the accounts sit beside Total money as a list (see
+    // `_DesktopDashboard`) — a swiping strip belongs to a phone.
     final oneCard =
+        DesktopLayout.of(context) ||
         ref.watch(dashboardAccountsStyleProvider) ==
-        DashboardAccountsStyle.oneCard;
+            DashboardAccountsStyle.oneCard;
     final title = asOf == null ? 'Accounts' : 'Accounts on $asOf';
     final seeAll = TextButton(
       onPressed: () => context.push('/more/accounts'),

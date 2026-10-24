@@ -59,14 +59,15 @@ class SettingsScreen extends StatelessWidget {
               subtitle: 'What XPENC can access — turn each on or off',
               onTap: () => context.push('/more/settings/permissions'),
             ),
-          _ModuleTile(
-            icon: Icons.notifications_outlined,
-            title: 'Notifications',
-            subtitle: PlatformFeatures.quickAddNotification
-                ? 'Reminders and quick add from a notification'
-                : 'Reminders',
-            onTap: () => context.push('/more/settings/notifications'),
-          ),
+          if (PlatformFeatures.notifications)
+            _ModuleTile(
+              icon: Icons.notifications_outlined,
+              title: 'Notifications',
+              subtitle: PlatformFeatures.quickAddNotification
+                  ? 'Reminders and quick add from a notification'
+                  : 'Reminders',
+              onTap: () => context.push('/more/settings/notifications'),
+            ),
           _ModuleTile(
             icon: Icons.flash_on_outlined,
             title: 'Quick Actions',

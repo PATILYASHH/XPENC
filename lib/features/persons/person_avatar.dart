@@ -1,10 +1,10 @@
-import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/platform/stored_images.dart';
 import '../../core/theme/glass.dart';
 
 /// A person's avatar: their imported contact photo if they have one,
@@ -36,10 +36,10 @@ class PersonAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final path = photoPath;
-    if (path != null && File(path).existsSync()) {
+    if (path != null && StoredImages.existsSync(path)) {
       final avatar = CircleAvatar(
         radius: radius,
-        backgroundImage: FileImage(File(path)),
+        backgroundImage: StoredImages.provider(path),
       );
       if (!glow || !AppSurface.of(context).isGlass) return avatar;
       // CircleAvatar's own default radius.
@@ -171,7 +171,8 @@ Future<Color?> photoAmbientColor(String path) {
 
 Future<Color?> _sample(String path) async {
   try {
-    final bytes = await File(path).readAsBytes();
+    final bytes = await StoredImages.read(path);
+    if (bytes == null) return null;
     final codec = await ui.instantiateImageCodec(
       bytes,
       targetWidth: 16,

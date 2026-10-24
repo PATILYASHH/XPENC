@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/app_icons.dart';
 import '../../core/currency.dart';
+import '../../core/layout/desktop.dart';
 import '../../core/money.dart';
 import '../../core/security/nct.dart';
 import '../../core/theme/app_colors.dart';
@@ -904,23 +905,47 @@ class _DayHeader extends StatelessWidget {
         ? AppColors.expense
         : cs.onSurfaceVariant;
 
+    final desktop = DesktopLayout.of(context);
+    final total = FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerRight,
+      child: MoneyText(
+        net,
+        signed: true,
+        color: netColor,
+        style: theme.textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+    final label = Text(
+      _label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: theme.textTheme.titleSmall?.copyWith(
+        fontWeight: FontWeight.w700,
+        color: cs.onSurface,
+      ),
+    );
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+      // On a PC the day's total lines up with the amount column of the
+      // table rows under it (see `_TxCard._desktopRow`).
+      padding: desktop
+          ? const EdgeInsets.fromLTRB(32, 22, 32, 6)
+          : const EdgeInsets.fromLTRB(24, 20, 24, 8),
       child: Row(
         children: [
           AppIcon(_icon, size: 15, color: cs.onSurfaceVariant),
           const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              _label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: cs.onSurface,
-              ),
-            ),
-          ),
+          // A flexible label would hold half the row's room for itself; on
+          // a PC the total needs all of it to reach the amount column.
+          if (desktop)
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 320),
+              child: label,
+            )
+          else
+            Flexible(child: label),
           const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
@@ -937,22 +962,15 @@ class _DayHeader extends StatelessWidget {
               ),
             ),
           ),
-          const Spacer(),
-          const SizedBox(width: 8),
-          Flexible(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerRight,
-              child: MoneyText(
-                net,
-                signed: true,
-                color: netColor,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
+          if (desktop)
+            Expanded(
+              child: Align(alignment: Alignment.centerRight, child: total),
+            )
+          else ...[
+            const Spacer(),
+            const SizedBox(width: 8),
+            Flexible(child: total),
+          ],
         ],
       ),
     );
@@ -1207,6 +1225,20 @@ class _TxCard extends StatelessWidget {
         ? null
         : currencyForCode(account!.currencyCode!);
 
+    if (DesktopLayout.of(context)) {
+      return _desktopRow(
+        context,
+        title: title,
+        icon: icon,
+        iconColor: iconColor,
+        hasCategory: hasCategory,
+        isTransfer: isTransfer,
+        details: [?(showPayee ? payee : null), ?(showNote ? note : null)],
+        amount: displayAmount,
+        currency: displayCurrency,
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
       child: Slidable(
@@ -1380,6 +1412,243 @@ class _TxCard extends StatelessWidget {
                     ],
                   ),
                 ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+extension on _TxCard {
+  /// The card as a table row, for a PC: what it was for, the details, the
+  /// account, its labels, the time and the amount, each in its own column.
+  /// A click opens it; a right-click opens the quick actions a long press
+  /// does on a phone (a mouse has no swipe to delete either — they're there).
+  Widget _desktopRow(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required Color iconColor,
+    required bool hasCategory,
+    required bool isTransfer,
+    required List<String> details,
+    required Money amount,
+    required Currency? currency,
+  }) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: cs.onSurfaceVariant,
+    );
+    void quickActions() =>
+        _openQuickActions(context, tx, title, onDelete, onCreateTemplate);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: NctVeil(
+        active: tx.isNct,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            hoverColor: cs.onSurface.withValues(alpha: 0.05),
+            onTap: () => context.push('/transaction/${tx.id}'),
+            onSecondaryTap: tx.isNct ? null : quickActions,
+            onLongPress: tx.isNct ? null : quickActions,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: cs.outline.withValues(alpha: 0.6)),
+                ),
+              ),
+              child: Row(
+                children: [
+                  if (person != null)
+                    PersonAvatar(
+                      name: person!.name,
+                      photoPath: person!.photoPath,
+                      radius: 17,
+                    )
+                  else
+                    Container(
+                      width: 34,
+                      height: 34,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: iconColor.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: transactionRowIcon(
+                        customIcon:
+                            tx.customIcon ??
+                            (hasCategory
+                                ? AppIcons.emojiOf(category!.iconKey)
+                                : null),
+                        fallback: icon,
+                        size: 18,
+                        color: iconColor,
+                      ),
+                    ),
+                  const SizedBox(width: 14),
+                  // What it was for, and the payee / note under it.
+                  Expanded(
+                    flex: 5,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          children: [
+                            if (tx.recurringRuleId != null) ...[
+                              AppIcon(
+                                Icons.autorenew_rounded,
+                                size: 13,
+                                color: cs.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 4),
+                            ],
+                            if (tx.needsAmountReview) ...[
+                              Tooltip(
+                                message:
+                                    'Posted from an estimate — open it to '
+                                    'confirm the exact amount.',
+                                child: AppIcon(
+                                  Icons.error_outline_rounded,
+                                  size: 13,
+                                  color: AppColors.expense,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                            ],
+                            Flexible(
+                              child: Text(
+                                title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (details.isNotEmpty || splitCategories.isNotEmpty)
+                          Text(
+                            [
+                              ...details,
+                              if (splitCategories.isNotEmpty)
+                                splitCategories.map((c) => c.name).join(', '),
+                            ].join(' · '),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: muted,
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // The account (both, for a transfer).
+                  Expanded(
+                    flex: 3,
+                    child: Row(
+                      children: [
+                        AppIcon(
+                          AppIcons.resolve(account?.iconKey ?? 'wallet'),
+                          size: 15,
+                          color: cs.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            isTransfer
+                                ? '${account?.name ?? '—'} → '
+                                      '${toAccount?.name ?? '—'}'
+                                : (account?.name ?? '—'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // Labels: tags, the group it came from, its mode, a receipt.
+                  Expanded(
+                    flex: 4,
+                    child: ClipRect(
+                      child: Wrap(
+                        spacing: 5,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          if (group != null) GroupTag(group: group!),
+                          if (showModeChip && tx.modeId != null)
+                            ModeChip(tx.modeId!),
+                          for (final tag in tags)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                                vertical: 1,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Color(
+                                  tag.colorValue,
+                                ).withValues(alpha: 0.14),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                tag.name,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: Color(tag.colorValue),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          if (hasReceipt)
+                            AppIcon(
+                              Icons.receipt_long_outlined,
+                              size: 15,
+                              color: cs.onSurfaceVariant,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  SizedBox(
+                    width: 72,
+                    child: Text(
+                      DateFormat('h:mm a').format(tx.date),
+                      maxLines: 1,
+                      style: muted,
+                    ),
+                  ),
+                  SizedBox(
+                    width: 140,
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: MoneyText(
+                          amount,
+                          signed: !isTransfer,
+                          color: colorForTxType(tx.type),
+                          currency: currency,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

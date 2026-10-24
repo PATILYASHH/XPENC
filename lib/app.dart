@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/branding/app_info.dart';
 import 'core/branding/brand_mark.dart';
+import 'core/layout/desktop.dart';
 import 'core/money.dart';
+import 'core/platform/browser_storage.dart';
 import 'core/routing/app_router.dart';
 import 'core/security/screen_security.dart';
 import 'core/security/unlock_method.dart';
@@ -137,6 +139,10 @@ class _XpencAppState extends ConsumerState<XpencApp>
       final settings = await ref.read(dbProvider).getSettings();
       if (!settings.onboarded && mounted) {
         appRouter.go('/onboarding');
+      } else {
+        // Only once there's a ledger worth keeping — Firefox asks the user,
+        // and a prompt before the first screen explains nothing.
+        unawaited(requestPersistentStorage());
       }
     } catch (_) {
       // A settings read failure is already surfaced by databaseReadyProvider.
@@ -420,7 +426,9 @@ class _XpencAppState extends ConsumerState<XpencApp>
                       ? const _LaunchSplash()
                       : Stack(
                           children: [
-                            ?child,
+                            // On a PC-sized screen, a sidebar beside every
+                            // page — see `DesktopFrame`.
+                            if (child != null) DesktopFrame(child: child),
                             // Opt-in (GitHub #90) — someone who deliberately
                             // leaves screenshot-blocking off made that choice
                             // on purpose and shouldn't be nagged about it

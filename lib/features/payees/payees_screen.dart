@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/layout/desktop.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_surfaces.dart';
@@ -34,7 +35,11 @@ class PayeesScreen extends ConsumerWidget {
         slivers: [
           if (embedded) const TopBarInsetSliver(),
           if (!embedded)
-            SliverAppBar(pinned: true, title: const Text('Payees')),
+            SliverAppBar(
+              pinned: true,
+              automaticallyImplyLeading: impliesBackArrow(context),
+              title: const Text('Payees'),
+            ),
           SliverToBoxAdapter(
             child: _TotalsHeader(net: net, count: summaries.length),
           ),

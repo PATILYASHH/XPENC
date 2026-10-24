@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 import '../app_icons.dart';
+import '../layout/desktop.dart';
 import '../theme/glass.dart';
 import 'glass_sheet.dart';
 import 'nav_bar_inset.dart';
@@ -261,21 +262,50 @@ Widget? glassLeadingTile(BuildContext context, Widget? leading) {
 /// [AppBar], with the same arguments. Under Glass the actions are gathered
 /// into one floating glass capsule (iOS groups toolbar buttons the same
 /// way); elsewhere they lay out exactly as on a plain AppBar.
-class AppTopBar extends AppBar {
-  AppTopBar({
+///
+/// On a PC ([DesktopLayout]) a page the sidebar leads to has no back arrow:
+/// it's somewhere you went, not something to go back from.
+class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
+  const AppTopBar({
     super.key,
-    super.leading,
-    super.automaticallyImplyLeading,
-    super.title,
-    List<Widget>? actions,
-    super.bottom,
-    super.backgroundColor,
-    super.iconTheme,
-  }) : super(
-         actions: actions == null || actions.isEmpty
-             ? actions
-             : [GlassActionGroup(children: actions)],
-       );
+    this.leading,
+    this.automaticallyImplyLeading = true,
+    this.title,
+    this.actions,
+    this.bottom,
+    this.backgroundColor,
+    this.iconTheme,
+  });
+
+  final Widget? leading;
+  final bool automaticallyImplyLeading;
+  final Widget? title;
+  final List<Widget>? actions;
+  final PreferredSizeWidget? bottom;
+  final Color? backgroundColor;
+  final IconThemeData? iconTheme;
+
+  /// What [AppBar] reports for the same arguments.
+  @override
+  Size get preferredSize =>
+      Size.fromHeight(kToolbarHeight + (bottom?.preferredSize.height ?? 0));
+
+  @override
+  Widget build(BuildContext context) {
+    final actions = this.actions;
+    return AppBar(
+      leading: leading,
+      automaticallyImplyLeading:
+          automaticallyImplyLeading && impliesBackArrow(context),
+      title: title,
+      actions: actions == null || actions.isEmpty
+          ? actions
+          : [GlassActionGroup(children: actions)],
+      bottom: bottom,
+      backgroundColor: backgroundColor,
+      iconTheme: iconTheme,
+    );
+  }
 }
 
 /// A search field that lives *in* a Glass top bar, taking the title's place:
@@ -416,6 +446,29 @@ Future<T?> showAppSheet<T>({
   ShapeBorder? shape,
   bool useSafeArea = false,
 }) {
+  // A PC screen has no bottom edge in reach to slide a sheet up from: the
+  // same content opens as a dialog in the middle of the page instead.
+  if (DesktopLayout.of(context)) {
+    return showAppDialog<T>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
+        clipBehavior: Clip.antiAlias,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: 560,
+            maxHeight: MediaQuery.sizeOf(dialogContext).height * 0.85,
+          ),
+          // A sheet built to sit under a drag handle starts at its very top;
+          // in a dialog the handle's room becomes plain padding.
+          child: Padding(
+            padding: EdgeInsets.only(top: showDragHandle == true ? 20 : 0),
+            child: Builder(builder: builder),
+          ),
+        ),
+      ),
+    );
+  }
   if (!AppSurface.of(context).isGlass) {
     return showModalBottomSheet<T>(
       context: context,

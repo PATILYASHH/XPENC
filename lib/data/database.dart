@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
@@ -9,6 +7,7 @@ import '../core/currency.dart';
 import '../core/group_split_math.dart';
 import '../core/loan_amortization.dart';
 import '../core/money.dart';
+import '../core/platform/stored_images.dart';
 import '../core/security/passcode.dart';
 import '../core/security/totp.dart';
 import '../core/security/unlock_method.dart';
@@ -249,6 +248,13 @@ class AppDatabase extends _$AppDatabase {
             driftDatabase(
               name: 'money_manager',
               native: const DriftNativeOptions(shareAcrossIsolates: true),
+              // XPENC web: SQLite compiled to WebAssembly, in drift's
+              // worker, storing in the browser's own private storage. Both
+              // files come from `tool/build_web_db_assets.sh`.
+              web: DriftWebOptions(
+                sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+                driftWorker: Uri.parse('drift_worker.js'),
+              ),
             ),
       );
 
@@ -1568,12 +1574,7 @@ class AppDatabase extends _$AppDatabase {
   /// never a reason to fail the transaction write it's attached to.
   Future<void> _deleteReceiptFile(String? path) async {
     if (path == null) return;
-    try {
-      final file = File(path);
-      if (await file.exists()) await file.delete();
-    } catch (_) {
-      // Ignored — see above.
-    }
+    await StoredImages.delete(path);
   }
 
   /// Resolves what [accountId] should stamp onto a transaction posted on

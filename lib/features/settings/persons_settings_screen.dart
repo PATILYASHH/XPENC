@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/platform/platform_features.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import 'settings_common.dart';
@@ -109,21 +110,23 @@ class PersonsSettingsScreen extends ConsumerWidget {
                       currentName: myUpiName,
                     ),
                   ),
-                  Divider(height: 1, indent: 16, color: cs.outline),
-                  AppListTile(
-                    contentPadding: const EdgeInsets.only(left: 16, right: 8),
-                    title: const Text('Pay without internet (Beta)'),
-                    subtitle: const Text(
-                      'Send via *99# USSD when you have no data — tap for '
-                      'how it works',
+                  if (PlatformFeatures.ussdPay) ...[
+                    Divider(height: 1, indent: 16, color: cs.outline),
+                    AppListTile(
+                      contentPadding: const EdgeInsets.only(left: 16, right: 8),
+                      title: const Text('Pay without internet (Beta)'),
+                      subtitle: const Text(
+                        'Send via *99# USSD when you have no data — tap for '
+                        'how it works',
+                      ),
+                      onTap: () => _showUssdPayInfoSheet(context),
+                      trailing: Switch(
+                        value: ussdPayEnabled,
+                        onChanged: (v) =>
+                            ref.read(dbProvider).setUssdPayEnabled(v),
+                      ),
                     ),
-                    onTap: () => _showUssdPayInfoSheet(context),
-                    trailing: Switch(
-                      value: ussdPayEnabled,
-                      onChanged: (v) =>
-                          ref.read(dbProvider).setUssdPayEnabled(v),
-                    ),
-                  ),
+                  ],
                 ],
               ],
             ),

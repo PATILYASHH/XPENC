@@ -1,10 +1,9 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/money.dart';
+import '../../core/platform/stored_images.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
@@ -306,8 +305,8 @@ class PendingCard extends ConsumerWidget {
     if (imagePath != null) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(10),
-        child: Image.file(
-          File(imagePath),
+        child: Image(
+          image: StoredImages.provider(imagePath),
           width: 44,
           height: 44,
           fit: BoxFit.cover,

@@ -250,9 +250,7 @@ class BudgetsScreen extends ConsumerWidget {
       if (!context.mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(content: Text('Exported ${file.uri.pathSegments.last}')),
-        );
+        ..showSnackBar(SnackBar(content: Text('Exported ${file.name}')));
     } catch (e) {
       if (!context.mounted) return;
       messenger

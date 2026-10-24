@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:intl/intl.dart';
@@ -7,6 +6,7 @@ import 'package:pdf/widgets.dart' as pw;
 
 import '../../core/currency.dart';
 import '../../core/money.dart';
+import '../../core/platform/stored_images.dart';
 import '../../data/database.dart';
 import '../../data/tables.dart';
 import 'pdf_kit.dart';
@@ -196,9 +196,8 @@ String _percent(Money part, Money whole) {
 Future<pw.ImageProvider?> _receiptImage(String? path) async {
   if (path == null) return null;
   try {
-    final file = File(path);
-    if (!await file.exists()) return null;
-    return pw.MemoryImage(await file.readAsBytes());
+    final bytes = await StoredImages.read(path);
+    return bytes == null ? null : pw.MemoryImage(bytes);
   } catch (_) {
     return null;
   }

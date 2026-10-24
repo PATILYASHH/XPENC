@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/layout/desktop.dart';
 import '../../core/money.dart';
+import '../../core/platform/platform_features.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/module_shortcuts.dart';
@@ -31,37 +33,43 @@ class AutoScreen extends ConsumerWidget {
         slivers: [
           SliverAppBar(
             pinned: true,
+            automaticallyImplyLeading: impliesBackArrow(context),
             title: const Text('Auto'),
-            actions: [GlassActionGroup(children: [
-              IconButton(
-                tooltip: 'Archived auto rules',
-                icon: const AppIcon(Icons.inventory_2_outlined),
-                onPressed: () => context.push('/more/auto/archived'),
+            actions: [
+              GlassActionGroup(
+                children: [
+                  IconButton(
+                    tooltip: 'Archived auto rules',
+                    icon: const AppIcon(Icons.inventory_2_outlined),
+                    onPressed: () => context.push('/more/auto/archived'),
+                  ),
+                  IconButton(
+                    tooltip: 'New auto rule',
+                    icon: const AppIcon(Icons.add_rounded),
+                    onPressed: () => showRecurringRuleSheet(context),
+                  ),
+                ],
               ),
-              IconButton(
-                tooltip: 'New auto rule',
-                icon: const AppIcon(Icons.add_rounded),
-                onPressed: () => showRecurringRuleSheet(context),
-              ),
-            ])],
+            ],
           ),
-          const SliverToBoxAdapter(
+          SliverToBoxAdapter(
             child: ModuleShortcuts([
-              ModuleShortcut(
+              const ModuleShortcut(
                 Icons.calendar_month_outlined,
                 'Calendar',
                 '/more/calendar',
               ),
-              ModuleShortcut(
+              const ModuleShortcut(
                 Icons.savings_outlined,
                 'Goals & Loans',
                 '/more/goals',
               ),
-              ModuleShortcut(
-                Icons.notifications_outlined,
-                'Notifications',
-                '/more/settings/notifications',
-              ),
+              if (PlatformFeatures.notifications)
+                const ModuleShortcut(
+                  Icons.notifications_outlined,
+                  'Notifications',
+                  '/more/settings/notifications',
+                ),
             ]),
           ),
           rulesAsync.when(

@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -138,7 +136,7 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
         imageQuality: 85,
       );
       if (picked == null) return;
-      final path = await PersonPhotoStorage.storeFile(File(picked.path));
+      final path = await PersonPhotoStorage.storePicked(picked);
       if (!mounted) return;
       setState(() => _photoPath = path);
     } on PlatformException {

@@ -27,6 +27,7 @@ import '../../features/transactions/transaction_filters.dart';
 import '../branding/app_info.dart';
 import '../branding/brand_mark.dart';
 import '../budget_cycle.dart';
+import '../layout/desktop.dart';
 import '../theme/bar_page_transition.dart';
 import '../theme/glass.dart';
 import '../widgets/nav_bar_inset.dart';
@@ -178,6 +179,9 @@ class AppShell extends ConsumerWidget {
     );
 
     final index = navigationShell.currentIndex;
+    // On a PC the sidebar navigates (see `DesktopFrame`): no bottom bar,
+    // and the ➕ sits in the page's corner.
+    final desktop = DesktopLayout.of(context);
     if (glass && _glassBranch != index) {
       // A tab keeps its own scroll — and so its own title state — when you
       // come back to it.
@@ -240,7 +244,14 @@ class AppShell extends ConsumerWidget {
           // bar's height as bottom padding, which every tab already honours
           // (see `NavBarInset`).
           extendBody: glass,
-          bottomNavigationBar: glass
+          floatingActionButton: desktop
+              ? _DesktopAddButton(
+                  hasTemplates: ref.watch(shownTemplatesProvider).isNotEmpty,
+                )
+              : null,
+          bottomNavigationBar: desktop
+              ? null
+              : glass
               ? _LiquidTabBar(
                   tabs: [home, left, right, _more],
                   currentBranch: navigationShell.currentIndex,
@@ -306,6 +317,81 @@ class AppShell extends ConsumerWidget {
               ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The ➕ on a PC: the page's floating button, in its bottom-right corner.
+/// Opens what the bar's ➕ does on a tap; the hold menu is a touch gesture
+/// and has no place under a mouse.
+class _DesktopAddButton extends StatelessWidget {
+  const _DesktopAddButton({required this.hasTemplates});
+
+  final bool hasTemplates;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return FloatingActionButton(
+      tooltip: 'New transaction',
+      backgroundColor: cs.secondary,
+      foregroundColor: Colors.white,
+      onPressed: () => hasTemplates
+          ? openAddTransactionChoiceSheet(context)
+          : context.push('/add'),
+      child: const AppIcon(Icons.add_rounded, size: 28, color: Colors.white),
+    );
+  }
+}
+
+/// The profile circle at a PC top bar's right end: your initials, opening
+/// Settings — where everything about you and this app lives.
+class _ProfileButton extends ConsumerWidget {
+  const _ProfileButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final name = ref.watch(settingsProvider).valueOrNull?.myUpiName?.trim();
+    final initials = name == null || name.isEmpty
+        ? null
+        : name
+              .split(RegExp(r'\s+'))
+              .take(2)
+              .map((w) => w.characters.first.toUpperCase())
+              .join();
+    return Padding(
+      padding: const EdgeInsets.only(left: 6, right: 6),
+      child: Tooltip(
+        message: 'Profile & settings',
+        child: Material(
+          color: cs.secondary,
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: () => context.go('/more/settings'),
+            child: SizedBox(
+              width: 38,
+              height: 38,
+              child: Center(
+                child: initials == null
+                    ? const AppIcon(
+                        Icons.person_rounded,
+                        size: 22,
+                        color: Colors.white,
+                      )
+                    : Text(
+                        initials,
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -1325,6 +1411,7 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
               ],
             ),
           ),
+          if (DesktopLayout.of(context)) const _ProfileButton(),
           const SizedBox(width: 4),
         ],
       ),

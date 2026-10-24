@@ -67,3 +67,8 @@ packages/flutter_tesseract_ocr_floss/android/.gradle/
 # under the top-level assets/, declared in pubspec.yaml) and must never
 # ship bundled into a release APK.
 /android/app/src/main/assets/adi-registration.properties
+
+# XPENC web's build, copied in to deploy it with the rest of xpenc.in
+# (`flutter build web --base-href /web/` → website/web/). Build output,
+# rebuilt from web/ and lib/ — never committed.
+/website/web/

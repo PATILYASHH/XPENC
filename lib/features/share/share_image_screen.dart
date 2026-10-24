@@ -3,10 +3,10 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
+import '../../core/platform/outgoing_file.dart';
 import '../../core/security/nct.dart';
 import '../../core/widgets/app_surfaces.dart';
 import 'share_cards.dart';
-import 'share_files.dart';
 import 'share_models.dart';
 
 /// Shows the card exactly as it will be sent — with a Dark/Light switch and,
@@ -66,11 +66,11 @@ class _ShareImageScreenState extends State<ShareImageScreen> {
       final image = await boundary.toImage(pixelRatio: 3);
       final png = await image.toByteData(format: ui.ImageByteFormat.png);
       image.dispose();
-      final file = await writeShareFile(
-        png!.buffer.asUint8List(),
-        '${widget.fileStem}.png',
-      );
-      await shareFile(file, mimeType: 'image/png', subject: widget.subject);
+      await OutgoingFile(
+        name: '${widget.fileStem}.png',
+        bytes: png!.buffer.asUint8List(),
+        mimeType: 'image/png',
+      ).deliver(subject: widget.subject);
     } catch (e) {
       messenger
         ..hideCurrentSnackBar()

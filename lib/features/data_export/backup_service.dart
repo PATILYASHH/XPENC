@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:media_store_plus/media_store_plus.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
+import '../../core/platform/outgoing_file.dart';
 import '../../core/platform/platform_features.dart';
 import '../../data/database.dart';
 import 'app_folder_backups.dart';
@@ -42,17 +43,33 @@ final _backupFileNamePattern = RegExp(
 /// iOS has no such public folder (see [PlatformFeatures.durableBackupFolder]):
 /// there every backup goes through [AppFolderBackups] instead, a folder of
 /// the app's own, and the Android-only `MediaStore` path is never touched.
+///
+/// XPENC web has no folder at all: a backup is a file the browser downloads
+/// — the same JSON, under the same name — and restoring one is "Import from
+/// file", since a page can't open what it downloaded. Nothing is ever
+/// downloaded unasked, so automatic backups don't run there.
 class BackupService {
   BackupService(this._db, {AppFolderBackups? appFolder})
-    : _appFolder =
+    : _browser = appFolder == null && PlatformFeatures.isWeb,
+      _appFolder =
           appFolder ??
-          (PlatformFeatures.durableBackupFolder ? null : AppFolderBackups());
+          (PlatformFeatures.durableBackupFolder || PlatformFeatures.isWeb
+              ? null
+              : AppFolderBackups());
 
   final AppDatabase _db;
 
   /// Where backups live when there's no `Download/BACKUP XPENC` — null on
-  /// Android, where every backup goes through `MediaStore`.
+  /// Android, where every backup goes through `MediaStore`, and on the web.
   final AppFolderBackups? _appFolder;
+
+  /// XPENC web: backups are downloads, see the class doc.
+  final bool _browser;
+
+  /// What restoring one of [listBackups]' entries tells the user on the web.
+  static const browserRestoreHint =
+      'A browser can\'t open a backup it downloaded. Use Import from file '
+      'and pick it from your downloads.';
 
   static bool _mediaStoreReady = false;
 
@@ -98,6 +115,7 @@ class BackupService {
   /// Cheap and idempotent (see `_mediaStoreReady`), so callable on every
   /// startup without worrying about repeating the work.
   Future<void> ensureBackupFolderReady() async {
+    if (_browser) return;
     final folder = _appFolder;
     if (folder != null) {
       await folder.directory();
@@ -122,6 +140,7 @@ class BackupService {
   /// backwards from today rather than needing a directory listing. Returns
   /// the most recent date found, or `null`.
   Future<DateTime?> detectExistingBackup({int lookbackDays = 60}) async {
+    if (_browser) return null;
     final folder = _appFolder;
     if (folder == null) await _ensureMediaStoreReady();
     final now = DateTime.now();
@@ -143,14 +162,32 @@ class BackupService {
 
   // ── Backup ────────────────────────────────────────────────────────────────
 
-  /// Writes a full JSON snapshot to `Download/BACKUP XPENC` and records it.
+  /// Writes a full JSON snapshot to `Download/BACKUP XPENC` (on the web:
+  /// downloads it) and records it.
   Future<BackupRecordRow> createBackup() async {
     final folder = _appFolder;
-    if (folder == null) await _ensureMediaStoreReady();
+    if (folder == null && !_browser) await _ensureMediaStoreReady();
     final dump = await _db.exportAll();
     final json = const JsonEncoder.withIndent('  ').convert(dump);
     final now = DateTime.now();
     final fileName = backupFileName(now);
+
+    if (_browser) {
+      final bytes = utf8.encode(json);
+      await OutgoingFile(
+        name: fileName,
+        bytes: bytes,
+        mimeType: 'application/json',
+      ).deliver(subject: 'XPENC backup');
+      // The record is all "Last backup" needs; there's no file to point at.
+      await _db.upsertBackupRecord(
+        fileName: fileName,
+        uri: '',
+        sizeBytes: bytes.length,
+        createdAt: now,
+      );
+      return (await _db.backupRecordByName(fileName))!;
+    }
 
     if (folder != null) {
       await folder.write(fileName, json);
@@ -199,6 +236,7 @@ class BackupService {
   /// every MediaStore read needs, since it never hands back a real
   /// filesystem path.
   Future<File> _readToTemp(BackupRecordRow record) async {
+    if (_browser) throw ArgumentError(browserRestoreHint);
     final folder = _appFolder;
     if (folder != null) {
       // A copy, not the file itself — callers delete what this returns.
@@ -279,7 +317,18 @@ class BackupService {
   /// Hands a copy of the backup to the system share sheet.
   Future<void> shareBackup(BackupRecordRow record) async {
     final tempFile = await _readToTemp(record);
-    await share(tempFile, subject: 'XPENC backup');
+    try {
+      await share(
+        OutgoingFile(
+          name: record.fileName,
+          bytes: await tempFile.readAsBytes(),
+          mimeType: 'application/json',
+        ),
+        subject: 'XPENC backup',
+      );
+    } finally {
+      await tempFile.delete().catchError((_) => tempFile);
+    }
   }
 
   // ── Auto backup ───────────────────────────────────────────────────────────
@@ -290,6 +339,8 @@ class BackupService {
   /// capture, there is no background service; this only ever runs while the
   /// app is open (see `XpencApp._onStart`).
   Future<bool> runAutoBackupIfDue() async {
+    // A download nobody asked for is not a backup anyone wants.
+    if (_browser) return false;
     if (!await _db.checkAutoBackupDue()) return false;
     await createBackup();
     await _db.setLastAutoBackupAt(DateTime.now());
@@ -310,6 +361,8 @@ class BackupService {
   }
 
   Future<void> _deleteFile(String fileName) async {
+    // A download isn't the app's to delete.
+    if (_browser) return;
     final folder = _appFolder;
     if (folder != null) return folder.delete(fileName);
     await _ensureMediaStoreReady();
@@ -334,6 +387,7 @@ class BackupService {
   /// With an [AppFolderBackups] (iOS) there's no picker: the app may list
   /// its own folder, so this never returns `null` there.
   Future<int?> resyncFromDevice() async {
+    if (_browser) return 0;
     final folder = _appFolder;
     if (folder != null) {
       var found = 0;
@@ -382,7 +436,7 @@ class BackupService {
   /// once that old folder is empty.
   Future<int> migrateLegacyBackups() async {
     // The old documents-folder scheme only ever shipped on Android.
-    if (_appFolder != null) return 0;
+    if (_appFolder != null || _browser) return 0;
     final docs = await getApplicationDocumentsDirectory();
     final legacyDir = Directory('${docs.path}/backups');
     if (!legacyDir.existsSync()) return 0;
@@ -428,31 +482,26 @@ class BackupService {
 
   // ── Export ────────────────────────────────────────────────────────────────
 
-  Future<File> writeCsv() async {
+  Future<OutgoingFile> writeCsv() async {
     final csv = await _db.transactionsCsv();
-    final dir = await getApplicationDocumentsDirectory();
-    final file = File(
-      '${dir.path}/xpenc-transactions-${_stamp(DateTime.now())}.csv',
+    return OutgoingFile(
+      name: 'xpenc-transactions-${_stamp(DateTime.now())}.csv',
+      bytes: utf8.encode(csv),
+      mimeType: 'text/csv',
     );
-    await file.writeAsString(csv, flush: true);
-    return file;
   }
 
-  Future<File> writeJson() async {
+  Future<OutgoingFile> writeJson() async {
     final dump = await _db.exportAll();
-    final dir = await getApplicationDocumentsDirectory();
-    final file = File(
-      '${dir.path}/xpenc-export-${_stamp(DateTime.now())}.json',
+    return OutgoingFile(
+      name: 'xpenc-export-${_stamp(DateTime.now())}.json',
+      bytes: utf8.encode(const JsonEncoder.withIndent('  ').convert(dump)),
+      mimeType: 'application/json',
     );
-    await file.writeAsString(
-      const JsonEncoder.withIndent('  ').convert(dump),
-      flush: true,
-    );
-    return file;
   }
 
   /// A bank/cash statement for one account, [start] to [end] inclusive.
-  Future<File> writeAccountStatementPdf({
+  Future<OutgoingFile> writeAccountStatementPdf({
     required AccountRow account,
     required DateTime start,
     required DateTime end,
@@ -468,20 +517,18 @@ class BackupService {
       start: start,
       end: end,
     );
-    final dir = await getApplicationDocumentsDirectory();
     final safeName = account.name
         .replaceAll(RegExp(r'[^A-Za-z0-9]+'), '-')
         .toLowerCase();
-    final file = File(
-      '${dir.path}/xpenc-statement-$safeName-${_stamp(DateTime.now())}.pdf',
+    return _pdf(
+      'xpenc-statement-$safeName-${_stamp(DateTime.now())}.pdf',
+      bytes,
     );
-    await file.writeAsBytes(bytes, flush: true);
-    return file;
   }
 
   /// Every account's transactions for [start] to [end] inclusive, merged
   /// date-wise — the Accounts screen's "Statement" action.
-  Future<File> writeCombinedStatementPdf({
+  Future<OutgoingFile> writeCombinedStatementPdf({
     required DateTime start,
     required DateTime end,
   }) async {
@@ -491,17 +538,15 @@ class BackupService {
       end: end,
       lines: lines,
     );
-    final dir = await getApplicationDocumentsDirectory();
-    final file = File(
-      '${dir.path}/xpenc-combined-statement-${_stamp(DateTime.now())}.pdf',
+    return _pdf(
+      'xpenc-combined-statement-${_stamp(DateTime.now())}.pdf',
+      bytes,
     );
-    await file.writeAsBytes(bytes, flush: true);
-    return file;
   }
 
   /// Income & Expense Report for an arbitrary range — whatever period the
   /// Stats screen is showing (a month or a calendar year).
-  Future<File> writeIncomeExpenseReportPdf({
+  Future<OutgoingFile> writeIncomeExpenseReportPdf({
     required DateTime start,
     required DateTime end,
     required String periodLabel,
@@ -516,29 +561,26 @@ class BackupService {
       expenseByCategory: totals.expenseByCategory,
       categories: categories,
     );
-    final dir = await getApplicationDocumentsDirectory();
-    final file = File('${dir.path}/xpenc-report-$fileSuffix.pdf');
-    await file.writeAsBytes(bytes, flush: true);
-    return file;
+    return _pdf('xpenc-report-$fileSuffix.pdf', bytes);
   }
 
   /// Planned vs. actual for every budgeted category in [month]'s period
   /// (see [startDay]).
-  Future<File> writeBudgetStatementPdf(DateTime month, int startDay) async {
+  Future<OutgoingFile> writeBudgetStatementPdf(
+    DateTime month,
+    int startDay,
+  ) async {
     final lines = await _db.budgetStatement(month, startDay);
     final bytes = await buildBudgetStatementPdf(month: month, lines: lines);
-    final dir = await getApplicationDocumentsDirectory();
-    final file = File(
-      '${dir.path}/xpenc-budget-statement-${month.year}-'
-      '${_two(month.month)}.pdf',
+    return _pdf(
+      'xpenc-budget-statement-${month.year}-${_two(month.month)}.pdf',
+      bytes,
     );
-    await file.writeAsBytes(bytes, flush: true);
-    return file;
   }
 
   /// One category's budget line plus every expense in it for [month]'s
   /// period (see [startDay]) — the download action on the Budget Detail page.
-  Future<File> writeCategoryStatementPdf({
+  Future<OutgoingFile> writeCategoryStatementPdf({
     required int categoryId,
     required DateTime month,
     required int startDay,
@@ -552,26 +594,20 @@ class BackupService {
       month: month,
       statement: statement,
     );
-    final dir = await getApplicationDocumentsDirectory();
     final safeName = statement.category.name
         .replaceAll(RegExp(r'[^A-Za-z0-9]+'), '-')
         .toLowerCase();
-    final file = File(
-      '${dir.path}/xpenc-budget-$safeName-${month.year}-'
-      '${_two(month.month)}.pdf',
+    return _pdf(
+      'xpenc-budget-$safeName-${month.year}-${_two(month.month)}.pdf',
+      bytes,
     );
-    await file.writeAsBytes(bytes, flush: true);
-    return file;
   }
 
+  static OutgoingFile _pdf(String name, Uint8List bytes) =>
+      OutgoingFile(name: name, bytes: bytes, mimeType: 'application/pdf');
+
   /// Hands the file to the system share sheet so it can leave the app only
-  /// when the user explicitly chooses to send it.
-  Future<void> share(File file, {String? subject}) async {
-    await SharePlus.instance.share(
-      ShareParams(
-        files: [XFile(file.path)],
-        subject: subject ?? 'XPENC export',
-      ),
-    );
-  }
+  /// when the user explicitly chooses to send it — on the web, downloads it.
+  Future<void> share(OutgoingFile file, {String? subject}) =>
+      file.deliver(subject: subject ?? 'XPENC export');
 }

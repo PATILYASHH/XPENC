@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,7 +13,8 @@ import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart' show AppMode;
-import '../data_export/backup_service.dart' show backupAppFolder;
+import '../data_export/backup_service.dart'
+    show BackupService, backupAppFolder;
 import '../../core/widgets/nav_bar_inset.dart';
 import 'country_step.dart';
 
@@ -208,6 +212,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
     setState(() => _restoring = true);
     try {
+      if (PlatformFeatures.isWeb) {
+        if (!await _restoreFromPickedFile(service)) {
+          if (mounted) setState(() => _restoring = false);
+          return;
+        }
+        await db.markOnboarded();
+        if (!mounted) return;
+        router.go('/dashboard');
+        return;
+      }
       final foundCount = await service.resyncFromDevice();
       if (foundCount == null || foundCount == 0) {
         if (!mounted) return;
@@ -249,6 +263,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text("Couldn't restore: $e")));
     }
+  }
+
+  /// XPENC web has no folder to look in: the backup is a file the user
+  /// picks — the one their phone made, or one this browser downloaded.
+  /// False if they cancelled.
+  Future<bool> _restoreFromPickedFile(BackupService service) async {
+    final picked = await FilePicker.platform.pickFiles(withData: true);
+    final bytes = picked?.files.single.bytes;
+    if (bytes == null) return false;
+    await service.restoreFromContent(utf8.decode(bytes));
+    return true;
   }
 
   @override
@@ -431,7 +456,10 @@ class _WelcomeStep extends StatelessWidget {
           _FeatureRow(
             icon: Icons.lock_outline_rounded,
             color: cs.primary,
-            text: 'Open-source and private — everything stays on this phone.',
+            text: PlatformFeatures.isWeb
+                ? 'Open-source and private — everything stays in this '
+                      'browser.'
+                : 'Open-source and private — everything stays on this phone.',
           ),
           _FeatureRow(
             icon: Icons.wifi_off_rounded,
@@ -905,14 +933,19 @@ class _RestoreStep extends StatelessWidget {
     return _StepScaffold(
       onSkip: restoring ? null : onSkip,
       title: 'Restore your data?',
-      subtitle:
-          'If you have an XPENC backup on this phone, restore it now — or '
-          'skip and start fresh.',
+      subtitle: PlatformFeatures.isWeb
+          ? 'If you have an XPENC backup file, restore it now — or skip and '
+                'start fresh.'
+          : 'If you have an XPENC backup on this phone, restore it now — or '
+                'skip and start fresh.',
       rows: [
         _FeatureRow(
           icon: Icons.cloud_download_outlined,
           color: cs.primary,
-          text: PlatformFeatures.durableBackupFolder
+          text: PlatformFeatures.isWeb
+              ? 'Pick the backup file your phone made, or one this browser '
+                    'downloaded earlier.'
+              : PlatformFeatures.durableBackupFolder
               ? 'Looks in Download/$backupAppFolder for a backup you made earlier.'
               : 'Looks on this iPhone for a backup you made earlier.',
         ),

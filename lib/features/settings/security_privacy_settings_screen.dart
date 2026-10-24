@@ -168,23 +168,27 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                   onTap: () => context.push('/more/settings/passcode'),
                 ),
                 if (hasPasscode) ...[
-                  Divider(height: 1, indent: 60, color: cs.outline),
-                  AppSwitchListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    secondary: const AppIcon(Icons.fingerprint_rounded),
-                    title: const Text('Biometric unlock'),
-                    subtitle: Text(
-                      'Use your fingerprint or face instead of the PIN — the '
-                      'PIN always still works. Only applies while PIN unlock '
-                      'is turned on.',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
+                  if (PlatformFeatures.biometrics) ...[
+                    Divider(height: 1, indent: 60, color: cs.outline),
+                    AppSwitchListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
                       ),
+                      secondary: const AppIcon(Icons.fingerprint_rounded),
+                      title: const Text('Biometric unlock'),
+                      subtitle: Text(
+                        'Use your fingerprint or face instead of the PIN — the '
+                        'PIN always still works. Only applies while PIN unlock '
+                        'is turned on.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                      value: biometricEnabled,
+                      onChanged: (v) =>
+                          ref.read(dbProvider).setBiometricEnabled(v),
                     ),
-                    value: biometricEnabled,
-                    onChanged: (v) =>
-                        ref.read(dbProvider).setBiometricEnabled(v),
-                  ),
+                  ],
                   Divider(height: 1, indent: 60, color: cs.outline),
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),

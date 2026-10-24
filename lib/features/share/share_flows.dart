@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/money.dart';
+import '../../core/platform/outgoing_file.dart';
 import '../../core/widgets/action_sheet.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/statement_range_picker.dart';
@@ -171,9 +172,13 @@ Future<void> _sharePdf(
     ..hideCurrentSnackBar()
     ..showSnackBar(const SnackBar(content: Text('Preparing PDF...')));
   try {
-    final file = await writeShareFile(await build(), '$fileStem.pdf');
+    final file = OutgoingFile(
+      name: '$fileStem.pdf',
+      bytes: await build(),
+      mimeType: 'application/pdf',
+    );
     messenger.hideCurrentSnackBar();
-    await shareFile(file, mimeType: 'application/pdf', subject: subject);
+    await file.deliver(subject: subject);
   } catch (e) {
     messenger
       ..hideCurrentSnackBar()

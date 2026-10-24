@@ -1,10 +1,11 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/app_icons.dart';
+import '../../core/layout/desktop.dart';
+import '../../core/platform/stored_images.dart';
 import '../../core/security/nct.dart';
 import '../../core/currency.dart';
 import '../../core/money.dart';
@@ -292,9 +293,45 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   /// while it has focus.
   bool get _textFieldFocused => _noteFocus.hasFocus;
 
+  /// Laid out for a PC (see [DesktopLayout]) as of the last build: the
+  /// keyboard types the amount, and the on-screen keypad stays hidden.
+  bool _desktop = false;
+
+  /// A PC's keyboard does what the keypad does — digits and `.` into the
+  /// amount being edited, Backspace — plus Enter to save and Esc to close.
+  /// Not while Note has the keyboard, nor under a picker opened over this.
+  bool _onHardwareKey(KeyEvent event) {
+    if (!_desktop || !mounted || event is KeyUpEvent || _textFieldFocused) {
+      return false;
+    }
+    if (ModalRoute.of(context)?.isCurrent != true) return false;
+    final key = event.logicalKey;
+    final char = event.character;
+    if (char != null && RegExp(r'^[0-9.]$').hasMatch(char)) {
+      _onKey(char);
+      return true;
+    }
+    if (key == LogicalKeyboardKey.backspace) {
+      _onBackspace();
+      return true;
+    }
+    if (event is KeyRepeatEvent) return false;
+    if (key == LogicalKeyboardKey.enter ||
+        key == LogicalKeyboardKey.numpadEnter) {
+      _save();
+      return true;
+    }
+    if (key == LogicalKeyboardKey.escape) {
+      Navigator.of(context).maybePop();
+      return true;
+    }
+    return false;
+  }
+
   @override
   void initState() {
     super.initState();
+    HardwareKeyboard.instance.addHandler(_onHardwareKey);
     _activeAmountCtrl = _mainAmountCtrl;
     // Only expense/income/transfer are ever meaningful here — anything else
     // (or nothing) falls back to the screen's own default.
@@ -478,11 +515,12 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   void _onFieldFocusChanged() => setState(() {});
 
   static void _deleteQuietly(String path) {
-    File(path).delete().ignore();
+    StoredImages.delete(path).ignore();
   }
 
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_onHardwareKey);
     _noteController.dispose();
     _noteFocus.dispose();
     _payeeController.dispose();
@@ -1130,8 +1168,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: Image.file(
-                  File(path),
+                child: Image(
+                  image: StoredImages.provider(path),
                   height: 220,
                   width: double.infinity,
                   fit: BoxFit.cover,
@@ -2279,6 +2317,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       _activeAmountCtrl = _mainAmountCtrl;
     }
 
+    _desktop = DesktopLayout.of(context);
+
     // An NCT transaction's details are on screen in full here — no frosting
     // a form — so captures stay blocked while the switch is on.
     return SecureWhile(
@@ -2376,6 +2416,16 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                           ),
                         ),
                       ),
+                      if (_desktop)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            'Type the amount · Enter to save · Esc to close',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
                       _selectedTagsChips(),
                       const SizedBox(height: 20),
                       Expanded(
@@ -2392,7 +2442,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                           ),
                         ),
                       ),
-                      if (!_textFieldFocused)
+                      if (!_textFieldFocused && !_desktop)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
                           child: AmountKeypadGrid(

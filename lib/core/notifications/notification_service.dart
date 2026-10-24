@@ -69,7 +69,8 @@ class NotificationService {
   static const _quickAddIncomeAction = 'quick_add_income';
 
   Future<void> init() async {
-    if (_ready) return;
+    // Never ready on the web: every reminder and alert below no-ops there.
+    if (_ready || !PlatformFeatures.notifications) return;
     try {
       tzdata.initializeTimeZones();
       // The app is India-first. Period boundaries and scheduled reminders must

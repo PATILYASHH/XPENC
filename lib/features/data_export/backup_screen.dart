@@ -300,6 +300,10 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
     final cs = theme.colorScheme;
     final backupsAsync = ref.watch(backupRecordsProvider);
     final autoBackup = ref.watch(autoBackupSettingsProvider);
+    // XPENC web: a backup is a download the page can't open again (see
+    // `BackupService`), so there's no schedule, no "find" and no restoring
+    // from the list — only Import from file.
+    final web = PlatformFeatures.isWeb;
 
     return Scaffold(
       appBar: AppTopBar(title: const Text('Backup & Restore')),
@@ -331,7 +335,13 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    PlatformFeatures.durableBackupFolder
+                    web
+                        ? 'Back up now downloads the backup file. Your data '
+                              'lives in this browser, and clearing its site '
+                              'data deletes it — keep the downloaded files '
+                              'somewhere safe. To restore one, or to bring in '
+                              'a phone backup, use Import from file.'
+                        : PlatformFeatures.durableBackupFolder
                         ? 'Backups live in Download/$backupAppFolder on this '
                               'phone — visible in any file manager, and kept '
                               'even if XPENC itself is uninstalled. Moving to a '
@@ -350,43 +360,49 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 24),
-          Text(
-            'Automatic backups',
-            style: theme.textTheme.titleSmall?.copyWith(
-              color: cs.onSurfaceVariant,
+          if (!web) ...[
+            const SizedBox(height: 24),
+            Text(
+              'Automatic backups',
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: cs.onSurfaceVariant,
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          AppCard(
-            child: AppListTile(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 4,
-              ),
-              leading: AppIcon(
-                autoBackup.enabled
-                    ? Icons.schedule_outlined
-                    : Icons.schedule_outlined,
-                color: autoBackup.enabled ? cs.primary : cs.onSurfaceVariant,
-              ),
-              title: const Text('Automatic backups'),
-              subtitle: Text(
-                _autoBackupSummary(autoBackup),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
+            const SizedBox(height: 12),
+            AppCard(
+              child: AppListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
                 ),
+                leading: AppIcon(
+                  autoBackup.enabled
+                      ? Icons.schedule_outlined
+                      : Icons.schedule_outlined,
+                  color: autoBackup.enabled ? cs.primary : cs.onSurfaceVariant,
+                ),
+                title: const Text('Automatic backups'),
+                subtitle: Text(
+                  _autoBackupSummary(autoBackup),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+                trailing: const AppIcon(Icons.chevron_right_rounded),
+                onTap: () => _openAutoBackupSheet(context, autoBackup),
               ),
-              trailing: const AppIcon(Icons.chevron_right_rounded),
-              onTap: () => _openAutoBackupSheet(context, autoBackup),
             ),
-          ),
+          ],
           const SizedBox(height: 24),
           Row(
             children: [
               Expanded(
                 child: Text(
-                  _selecting ? '${_selected.length} selected' : 'Backups',
+                  _selecting
+                      ? '${_selected.length} selected'
+                      : web
+                      ? 'Downloaded backups'
+                      : 'Backups',
                   style: theme.textTheme.titleSmall?.copyWith(
                     color: cs.onSurfaceVariant,
                   ),
@@ -409,7 +425,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
                   label: const Text('Delete'),
                   style: TextButton.styleFrom(foregroundColor: cs.error),
                 ),
-              ] else ...[
+              ] else if (!web) ...[
                 TextButton.icon(
                   onPressed: _busy ? null : _findExistingBackups,
                   icon: const AppIcon(Icons.search_rounded, size: 18),
@@ -430,8 +446,10 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 24),
                   child: Text(
-                    'No backups yet. If you reinstalled and had backups '
-                    'before, tap "Find existing" above.',
+                    web
+                        ? 'No backups downloaded yet.'
+                        : 'No backups yet. If you reinstalled and had backups '
+                              'before, tap "Find existing" above.',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: cs.onSurfaceVariant,
@@ -444,6 +462,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
                   for (final b in backups)
                     _BackupTile(
                       backup: b,
+                      downloadOnly: web,
                       selecting: _selecting,
                       selected: _selected.contains(b.fileName),
                       onRestore: () => _restore(b),
@@ -525,6 +544,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
 class _BackupTile extends StatelessWidget {
   const _BackupTile({
     required this.backup,
+    required this.downloadOnly,
     required this.selecting,
     required this.selected,
     required this.onRestore,
@@ -534,6 +554,10 @@ class _BackupTile extends StatelessWidget {
   });
 
   final BackupRecordRow backup;
+
+  /// A web download: only a record of it is here, so it can't be restored
+  /// or shared, and deleting removes just the record.
+  final bool downloadOnly;
   final bool selecting;
   final bool selected;
   final VoidCallback onRestore;
@@ -606,14 +630,19 @@ class _BackupTile extends StatelessWidget {
                     }
                   },
                   itemBuilder: (_) => [
-                    const PopupMenuItem(
-                      value: 'restore',
-                      child: Text('Restore'),
-                    ),
-                    const PopupMenuItem(value: 'share', child: Text('Share')),
+                    if (!downloadOnly) ...[
+                      const PopupMenuItem(
+                        value: 'restore',
+                        child: Text('Restore'),
+                      ),
+                      const PopupMenuItem(value: 'share', child: Text('Share')),
+                    ],
                     PopupMenuItem(
                       value: 'delete',
-                      child: Text('Delete', style: TextStyle(color: cs.error)),
+                      child: Text(
+                        downloadOnly ? 'Remove from list' : 'Delete',
+                        style: TextStyle(color: cs.error),
+                      ),
                     ),
                   ],
                 ),

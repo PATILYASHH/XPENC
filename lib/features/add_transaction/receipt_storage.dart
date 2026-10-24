@@ -4,6 +4,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../core/platform/platform_features.dart';
+import '../../core/platform/stored_images.dart';
+
 /// Picks and stores receipt photos entirely on-device.
 ///
 /// Gallery/file attach uses `file_picker` (same picker as backup import),
@@ -22,8 +25,23 @@ class ReceiptStorage {
   /// receipt now lives at (inside the app's own storage), or null if the
   /// user cancelled.
   static Future<String?> pickAndStore() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.image);
-    final pickedPath = result?.files.single.path;
+    // The browser hands back bytes, never a path.
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      withData: PlatformFeatures.isWeb,
+    );
+    final picked = result?.files.single;
+    if (picked == null) return null;
+    if (PlatformFeatures.isWeb) {
+      final bytes = picked.bytes;
+      if (bytes == null) return null;
+      return StoredImages.store(
+        _folder,
+        bytes,
+        extension: StoredImages.extensionOf(picked.name),
+      );
+    }
+    final pickedPath = picked.path;
     if (pickedPath == null) return null;
     return _copyIntoAppStorage(File(pickedPath));
   }
@@ -39,6 +57,13 @@ class ReceiptStorage {
       imageQuality: 85,
     );
     if (picked == null) return null;
+    if (PlatformFeatures.isWeb) {
+      return StoredImages.store(
+        _folder,
+        await picked.readAsBytes(),
+        extension: StoredImages.extensionOf(picked.name),
+      );
+    }
     return _copyIntoAppStorage(File(picked.path));
   }
 
@@ -50,9 +75,11 @@ class ReceiptStorage {
   static Future<String> storeExternalFile(File source) =>
       _copyIntoAppStorage(source);
 
+  static const _folder = 'receipts';
+
   static Future<String> _copyIntoAppStorage(File source) async {
     final docs = await getApplicationDocumentsDirectory();
-    final dir = Directory('${docs.path}/receipts');
+    final dir = Directory('${docs.path}/$_folder');
     if (!await dir.exists()) await dir.create(recursive: true);
 
     final dot = source.path.lastIndexOf('.');

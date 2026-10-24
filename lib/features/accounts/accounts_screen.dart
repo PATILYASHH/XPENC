@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/app_icons.dart';
 import '../../core/currency.dart';
+import '../../core/layout/desktop.dart';
 import '../../core/money.dart';
 import '../../core/widgets/amount_keypad_field.dart';
 import '../../core/widgets/app_surfaces.dart';
@@ -48,24 +49,29 @@ class AccountsScreen extends ConsumerWidget {
           if (!embedded)
             SliverAppBar(
               pinned: true,
+              automaticallyImplyLeading: impliesBackArrow(context),
               title: const Text('Accounts'),
-              actions: [GlassActionGroup(children: [
-                IconButton(
-                  tooltip: 'Statement',
-                  icon: const AppIcon(Icons.picture_as_pdf_outlined),
-                  onPressed: () => _downloadCombinedStatement(context, ref),
+              actions: [
+                GlassActionGroup(
+                  children: [
+                    IconButton(
+                      tooltip: 'Statement',
+                      icon: const AppIcon(Icons.picture_as_pdf_outlined),
+                      onPressed: () => _downloadCombinedStatement(context, ref),
+                    ),
+                    IconButton(
+                      tooltip: 'Archived accounts',
+                      icon: const AppIcon(Icons.inventory_2_outlined),
+                      onPressed: () => context.push('/more/accounts/archived'),
+                    ),
+                    IconButton(
+                      tooltip: 'Add account',
+                      icon: const AppIcon(Icons.add_rounded),
+                      onPressed: () => showAddAccountSheet(context),
+                    ),
+                  ],
                 ),
-                IconButton(
-                  tooltip: 'Archived accounts',
-                  icon: const AppIcon(Icons.inventory_2_outlined),
-                  onPressed: () => context.push('/more/accounts/archived'),
-                ),
-                IconButton(
-                  tooltip: 'Add account',
-                  icon: const AppIcon(Icons.add_rounded),
-                  onPressed: () => showAddAccountSheet(context),
-                ),
-              ])],
+              ],
             ),
           const SliverToBoxAdapter(child: _TotalMoneyCard()),
           SliverToBoxAdapter(
@@ -150,9 +156,7 @@ class AccountsScreen extends ConsumerWidget {
       if (!context.mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(content: Text('Exported ${file.uri.pathSegments.last}')),
-        );
+        ..showSnackBar(SnackBar(content: Text('Exported ${file.name}')));
     } catch (e) {
       if (!context.mounted) return;
       messenger

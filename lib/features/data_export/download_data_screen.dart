@@ -1,9 +1,8 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/platform/outgoing_file.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import 'import_from_file.dart';
@@ -30,7 +29,7 @@ class _DownloadDataScreenState extends ConsumerState<DownloadDataScreen> {
 
   Future<void> _export({
     required String tag,
-    required Future<File> Function() write,
+    required Future<OutgoingFile> Function() write,
     required String subject,
   }) async {
     if (_busy) return;
@@ -44,7 +43,7 @@ class _DownloadDataScreenState extends ConsumerState<DownloadDataScreen> {
       final f = await write();
       await service.share(f, subject: subject);
       if (!mounted) return;
-      final name = f.uri.pathSegments.last;
+      final name = f.name;
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(

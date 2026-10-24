@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/currency.dart';
 import '../../core/money.dart';
+import '../../core/platform/stored_images.dart';
 import '../../core/security/nct.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
@@ -306,8 +305,8 @@ class _ReceiptCard extends StatelessWidget {
             ),
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 220),
-              child: Image.file(
-                File(path),
+              child: Image(
+                image: StoredImages.provider(path),
                 width: double.infinity,
                 fit: BoxFit.cover,
                 errorBuilder: (_, _, _) => Padding(
@@ -340,8 +339,8 @@ class _ReceiptCard extends StatelessWidget {
           ),
           body: Center(
             child: InteractiveViewer(
-              child: Image.file(
-                File(path),
+              child: Image(
+                image: StoredImages.provider(path),
                 errorBuilder: (_, _, _) => const AppIcon(
                   Icons.broken_image_outlined,
                   color: Colors.white54,

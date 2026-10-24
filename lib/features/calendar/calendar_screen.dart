@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/app_icons.dart';
 import '../../core/money.dart';
+import '../../core/platform/platform_features.dart';
 import '../../core/security/nct.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/amount_keypad_field.dart';
@@ -265,14 +266,15 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           const SizedBox(height: 8),
           _grid(theme, incomeByDay, expenseByDay, transferDays, dueDays),
           const SizedBox(height: 16),
-          const ModuleShortcuts([
-            ModuleShortcut(Icons.autorenew_rounded, 'Auto', '/more/auto'),
-            ModuleShortcut(
-              Icons.notifications_outlined,
-              'Notifications',
-              '/more/settings/notifications',
-            ),
-            ModuleShortcut(
+          ModuleShortcuts([
+            const ModuleShortcut(Icons.autorenew_rounded, 'Auto', '/more/auto'),
+            if (PlatformFeatures.notifications)
+              const ModuleShortcut(
+                Icons.notifications_outlined,
+                'Notifications',
+                '/more/settings/notifications',
+              ),
+            const ModuleShortcut(
               Icons.receipt_long_outlined,
               'Transactions',
               '/more/transactions',

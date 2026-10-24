@@ -79,7 +79,9 @@ class DataSettingsScreen extends ConsumerWidget {
   /// importing a backup elsewhere in this screen's family — so a mistaken
   /// tap is recoverable from Backup & Restore afterward.
   Future<void> _clearAllData(BuildContext context, WidgetRef ref) async {
-    final backupWhere = PlatformFeatures.durableBackupFolder
+    final backupWhere = PlatformFeatures.isWeb
+        ? 'as a download'
+        : PlatformFeatures.durableBackupFolder
         ? 'to Download/BACKUP XPENC'
         : 'on this iPhone';
     final confirmed = await showAppDialog<bool>(

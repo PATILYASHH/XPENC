@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Replaced by `flutter build web --base-href`; XPENC web is served from
+       /web/ on xpenc.in. -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="XPENC web: track where your money is, privately. Your data stays in this browser and nothing is sent anywhere.">
+  <meta name="theme-color" content="#000000">
+  <meta name="color-scheme" content="dark light">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="XPENC">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>XPENC</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    html, body { margin: 0; background: #000; }
+  </style>
+</head>
+<body>
+  <script>
+    // Lets XPENC web open with no connection after the first visit — see
+    // sw.js. It only ever caches this site's own files.
+    //
+    // xpenc.in serves this page at /web, without a trailing slash, which a
+    // worker scoped to its own folder (/web/) wouldn't control — so the
+    // scope is the page's path, which xpenc.in allows with a
+    // Service-Worker-Allowed header on sw.js (website/vercel.json).
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        const path = location.pathname;
+        const options = path.endsWith('/') ? undefined : { scope: path };
+        navigator.serviceWorker.register('sw.js', options).catch(() => {});
+      });
+    }
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

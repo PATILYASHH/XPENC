@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -8,6 +6,7 @@ import '../../core/branding/app_info.dart';
 import '../../core/branding/brand_mark.dart';
 import '../../core/currency.dart';
 import '../../core/money.dart';
+import '../../core/platform/stored_images.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/money_text.dart';
@@ -977,9 +976,12 @@ class _Avatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final file = path == null ? null : File(path!);
-    if (file != null && file.existsSync()) {
-      return CircleAvatar(radius: 23, backgroundImage: FileImage(file));
+    final path = this.path;
+    if (path != null && StoredImages.existsSync(path)) {
+      return CircleAvatar(
+        radius: 23,
+        backgroundImage: StoredImages.provider(path),
+      );
     }
     return CircleAvatar(
       radius: 23,
