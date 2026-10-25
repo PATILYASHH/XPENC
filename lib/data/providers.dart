@@ -211,8 +211,15 @@ final txScrollToTopProvider = StateProvider<int>((ref) => 0);
 /// `txScrollToTopProvider` above (GitHub #70).
 final calendarGoToTodaySignalProvider = StateProvider<int>((ref) => 0);
 
-/// Same idiom, for the "New reminder" action.
-final calendarNewReminderSignalProvider = StateProvider<int>((ref) => 0);
+/// Same idiom, for the ➕ action: money in, money out or a reminder on the
+/// selected day.
+final calendarAddSignalProvider = StateProvider<int>((ref) => 0);
+
+/// True while the embedded `CalendarScreen` has anything but today selected
+/// — another day of this month included — so `AppShell` shows its "Today"
+/// action only when there's somewhere to go back from. Written by the
+/// screen; never read for anything else.
+final calendarAwayFromTodayProvider = StateProvider<bool>((ref) => false);
 
 /// Same split-aware category aggregation as [spendByCategoryProvider], for a
 /// whole calendar year instead of one month — composed locally so the

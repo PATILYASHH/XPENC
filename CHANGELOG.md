@@ -18,6 +18,13 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   everything else, averaged over the last 3 full months, so groceries
   that aren't rules still count. Shows where you'll be, the lowest point
   (with the day you'd run short, if you would), and month by month.
+- **Add money from the Calendar.** The Calendar's ➕ now offers **Money
+  in**, **Money out** or a **Reminder** for the day you've picked — Add
+  transaction opens already dated to that day (the time is now; change it
+  as usual). Nothing picked means today.
+- **Today, one tap away.** Pick any other day — even in the same month —
+  and the Calendar shows the **Today** button to jump straight back; it
+  goes away once you're on today.
 - **Backups from Connector come in by themselves** (Android, with Connector
   1.2.0). When Connector has pulled a newer backup from your other phone,
   XPENC takes it in as it opens — no Import from file, no "I've imported

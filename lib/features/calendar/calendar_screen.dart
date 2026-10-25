@@ -55,13 +55,23 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final now = DateTime.now();
     _shownMonth = DateTime(now.year, now.month, 1);
     _selectedDay = _dateOnly(now);
+    // A calendar left on another day, then rebuilt, starts on today again.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _publishAway();
+    });
   }
 
   static DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
-  bool get _onCurrentMonth {
-    final now = DateTime.now();
-    return _shownMonth.year == now.year && _shownMonth.month == now.month;
+  /// Anything but today selected — another day of this month too — which
+  /// is when the Today action shows. A selection only ever falls in the
+  /// shown month, so this also covers being on another month.
+  bool get _awayFromToday => _selectedDay != _dateOnly(DateTime.now());
+
+  /// Tells `AppShell`'s top bar, which owns the embedded tab's Today action.
+  void _publishAway() {
+    if (!widget.embedded) return;
+    ref.read(calendarAwayFromTodayProvider.notifier).state = _awayFromToday;
   }
 
   void _goToToday() {
@@ -70,6 +80,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       _shownMonth = DateTime(now.year, now.month, 1);
       _selectedDay = _dateOnly(now);
     });
+    _publishAway();
   }
 
   void _stepMonth(int delta) {
@@ -78,6 +89,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       // Selection belongs to whatever month it was made in; drop it on navigation.
       _selectedDay = null;
     });
+    _publishAway();
+  }
+
+  void _selectDay(DateTime day) {
+    setState(() => _selectedDay = day);
+    _publishAway();
   }
 
   // ── Actions ─────────────────────────────────────────────────────────────────
@@ -144,6 +161,34 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     );
   }
 
+  /// The ➕: money in or out on the selected day (today when none is
+  /// picked), or a reminder for it.
+  Future<void> _openAddSheet() async {
+    final day = _selectedDay ?? _dateOnly(DateTime.now());
+    // Taken before the sheet opens: under Glass a sheet can take its opener
+    // out of the tree, and the context with it. The router outlives both.
+    final router = GoRouter.of(context);
+    final choice = await showAppSheet<_AddChoice>(
+      context: context,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (_) => _AddForDaySheet(day: day),
+    );
+    final date = DateFormat('yyyy-MM-dd').format(day);
+    switch (choice) {
+      case null:
+        return;
+      case _AddChoice.moneyIn:
+        router.push('/add?type=income&date=$date');
+      case _AddChoice.moneyOut:
+        router.push('/add?type=expense&date=$date');
+      case _AddChoice.reminder:
+        if (mounted) _openReminderSheet();
+    }
+  }
+
   // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
@@ -160,10 +205,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
     if (widget.embedded) {
       ref.listen<int>(calendarGoToTodaySignalProvider, (_, _) => _goToToday());
-      ref.listen<int>(
-        calendarNewReminderSignalProvider,
-        (_, _) => _openReminderSheet(),
-      );
+      ref.listen<int>(calendarAddSignalProvider, (_, _) => _openAddSheet());
     }
 
     final body = txAsync.when(
@@ -197,16 +239,16 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       appBar: AppTopBar(
         title: const Text('Calendar'),
         actions: [
-          if (!_onCurrentMonth)
+          if (_awayFromToday)
             IconButton(
               tooltip: 'Today',
               icon: const AppIcon(Icons.today_rounded),
               onPressed: _goToToday,
             ),
           IconButton(
-            tooltip: 'New reminder',
+            tooltip: 'Add',
             icon: const AppIcon(Icons.add_rounded),
-            onPressed: _openReminderSheet,
+            onPressed: _openAddSheet,
           ),
         ],
       ),
@@ -431,7 +473,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => setState(() => _selectedDay = date),
+      onTap: () => _selectDay(date),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
@@ -866,6 +908,59 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           // Same destination a tap in the Transactions tab opens (GitHub #56)
           // — the calendar's day list gave no way in before this.
           onTap: () => context.push('/transaction/${tx.id}'),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Add-on-a-day sheet ────────────────────────────────────────────────────────
+
+enum _AddChoice { moneyIn, moneyOut, reminder }
+
+/// What the calendar's ➕ can add on [day].
+class _AddForDaySheet extends StatelessWidget {
+  const _AddForDaySheet({required this.day});
+
+  final DateTime day;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    void pick(_AddChoice choice) => Navigator.of(context).pop(choice);
+
+    Widget money(TxType type, _AddChoice choice) => AppListTile(
+      leading: AppIcon(iconForTxType(type), color: colorForTxType(type)),
+      title: Text(labelForTxType(type)),
+      onTap: () => pick(choice),
+    );
+
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 8).plusNavBar(context),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+              child: Text(
+                'Add on ${DateFormat('EEE, d MMM yyyy').format(day)}',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            money(TxType.income, _AddChoice.moneyIn),
+            money(TxType.expense, _AddChoice.moneyOut),
+            AppListTile(
+              leading: const AppIcon(Icons.notifications_outlined),
+              title: const Text('Reminder'),
+              subtitle: const Text('Never posts money on its own.'),
+              onTap: () => pick(_AddChoice.reminder),
+            ),
+          ],
         ),
       ),
     );

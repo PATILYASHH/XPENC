@@ -1453,18 +1453,20 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
         ];
       case 4: // Calendar
         return [
+          if (ref.watch(calendarAwayFromTodayProvider)) ...[
+            _TonalIconButton(
+              tooltip: 'Today',
+              icon: const AppIcon(Icons.today_rounded),
+              onPressed: () =>
+                  ref.read(calendarGoToTodaySignalProvider.notifier).state++,
+            ),
+            const SizedBox(width: 4),
+          ],
           _TonalIconButton(
-            tooltip: 'Today',
-            icon: const AppIcon(Icons.today_rounded),
-            onPressed: () =>
-                ref.read(calendarGoToTodaySignalProvider.notifier).state++,
-          ),
-          const SizedBox(width: 4),
-          _TonalIconButton(
-            tooltip: 'New reminder',
+            tooltip: 'Add',
             icon: const AppIcon(Icons.add_rounded),
             onPressed: () =>
-                ref.read(calendarNewReminderSignalProvider.notifier).state++,
+                ref.read(calendarAddSignalProvider.notifier).state++,
           ),
           const SizedBox(width: 4),
         ];

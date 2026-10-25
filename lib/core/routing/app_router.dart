@@ -638,6 +638,10 @@ final appRouter = GoRouter(
           plannedCostId: int.tryParse(
             state.uri.queryParameters['plannedCost'] ?? '',
           ),
+          // The calendar's ➕ for a picked day, as yyyy-MM-dd.
+          initialDate: DateTime.tryParse(
+            state.uri.queryParameters['date'] ?? '',
+          ),
         );
       },
     ),

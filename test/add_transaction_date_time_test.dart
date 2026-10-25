@@ -69,6 +69,22 @@ void main() {
     },
   );
 
+  testWidgets('a day handed in by the calendar is the new entry\'s date', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      AddTransactionScreen(
+        initialType: TxType.income,
+        initialDate: DateTime(2026, 7, 8),
+      ),
+    );
+    expect(tester.takeException(), isNull);
+
+    expect(find.textContaining('8 Jul 2026, '), findsOneWidget);
+    await unmount(tester);
+  });
+
   testWidgets(
     'tapping the clock icon opens a time picker without touching the date',
     (tester) async {

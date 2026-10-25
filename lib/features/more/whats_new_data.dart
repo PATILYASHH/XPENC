@@ -33,6 +33,15 @@ const whatsNewEntries = <WhatsNewEntry>[
         'would.',
   ),
   WhatsNewEntry(
+    icon: Icons.calendar_month_rounded,
+    title: 'Add money from the Calendar',
+    location: 'Calendar → pick a day → ➕',
+    description:
+        'Money in, money out or a reminder, already dated to the day you '
+        'picked. Wandered off to another day? Today takes you straight '
+        'back.',
+  ),
+  WhatsNewEntry(
     icon: Icons.group_outlined,
     title: 'Connector friends in Persons',
     location: 'Persons → Add person → From Connector friends',

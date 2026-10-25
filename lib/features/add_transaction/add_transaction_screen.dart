@@ -97,6 +97,7 @@ class AddTransactionScreen extends ConsumerStatefulWidget {
     this.initialAccountId,
     this.initialToAccountId,
     this.plannedCostId,
+    this.initialDate,
     super.key,
   });
 
@@ -129,6 +130,11 @@ class AddTransactionScreen extends ConsumerStatefulWidget {
   /// the fields above once an existing transaction is loaded.
   final int? initialAccountId;
   final int? initialToAccountId;
+
+  /// Prefills the day — the calendar's ➕ for the day picked there. The
+  /// time stays the current time, editable as usual. Ignored like the
+  /// fields above once an existing transaction is loaded.
+  final DateTime? initialDate;
 
   @override
   ConsumerState<AddTransactionScreen> createState() =>
@@ -368,6 +374,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       }
       if (widget.initialAmount != null) {
         _mainAmountCtrl.setAmount(widget.initialAmount!);
+      }
+      if (widget.initialDate != null) {
+        _date = combineDateAndTime(widget.initialDate!, TimeOfDay.now());
       }
       _accountId = widget.initialAccountId;
       if (_type == TxType.transfer) _toAccountId = widget.initialToAccountId;
