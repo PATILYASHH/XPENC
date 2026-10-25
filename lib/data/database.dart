@@ -1335,59 +1335,73 @@ class AppDatabase extends _$AppDatabase {
         walletSourceAccountId: Value(null),
       ),
     );
-    await delete(budgetAlerts).go();
-    await delete(pendingTxns).go();
-    await delete(merchantRules).go();
-    await delete(reminders).go();
-    await delete(personEntryTags).go();
+    for (final table in ledgerTablesChildrenFirst) {
+      await delete(table).go();
+    }
+  }
+
+  /// The tables [_deleteLedger] empties, in the order it empties them.
+  ///
+  /// A list rather than a run of deletes so `clear_all_data_test.dart` can
+  /// hold it against SQLite's own foreign keys: every table must be here or
+  /// knowingly kept, and every table pointing at one here must come before
+  /// it. #175 was this drifting — 1.6.4 skipped loans, templates and group
+  /// expenses, so "Clear all data" died on `DELETE FROM categories`.
+  @visibleForTesting
+  List<TableInfo> get ledgerTablesChildrenFirst => [
+    budgetAlerts,
+    pendingTxns,
+    merchantRules,
+    reminders,
+    personEntryTags,
     // Shares point at person entries, transactions and expenses; expenses
     // and members point at groups, persons, accounts and categories.
-    await delete(groupExpenseShares).go();
-    await delete(groupExpenses).go();
-    await delete(groupMembers).go();
-    await delete(personEntries).go();
-    await delete(budgets).go();
+    groupExpenseShares,
+    groupExpenses,
+    groupMembers,
+    personEntries,
+    budgets,
     // Both reference transactions/categories, so they go before either.
-    await delete(transactionSplits).go();
-    await delete(transactionTags).go();
+    transactionSplits,
+    transactionTags,
     // References two transactions, so it goes before that delete too.
-    await delete(transactionLinks).go();
+    transactionLinks,
     // References accounts and categories, so it goes before both deletes.
-    await delete(allocations).go();
+    allocations,
     // Reference accounts, categories and tags, so before those deletes.
-    await delete(goalDetails).go();
-    await delete(creditCardDetails).go();
-    await delete(loanDetails).go();
-    await delete(transactionTemplateTags).go();
-    await delete(transactionTemplates).go();
-    await delete(categoryTemplateItems).go();
-    await delete(categoryTemplates).go();
-    await delete(modeAccounts).go();
-    await delete(modeCategories).go();
-    await delete(modeTags).go();
-    await delete(modeCategoryLimits).go();
-    await delete(modePlannedCosts).go();
-    await delete(transactions).go();
+    goalDetails,
+    creditCardDetails,
+    loanDetails,
+    transactionTemplateTags,
+    transactionTemplates,
+    categoryTemplateItems,
+    categoryTemplates,
+    modeAccounts,
+    modeCategories,
+    modeTags,
+    modeCategoryLimits,
+    modePlannedCosts,
+    transactions,
     // References recurringRules and tags, so it goes before both deletes.
-    await delete(recurringRuleTags).go();
+    recurringRuleTags,
     // References accounts/categories, and transactions.recurringRuleId
     // references it back — so it goes after that delete, before these.
-    await delete(recurringRules).go();
-    await delete(persons).go();
-    await delete(categories).go();
-    await delete(accounts).go();
+    recurringRules,
+    persons,
+    categories,
+    accounts,
     // References tags and tagGroups, so it goes before both deletes.
-    await delete(tagGroupTags).go();
-    await delete(tagGroups).go();
-    await delete(tags).go();
+    tagGroupTags,
+    tagGroups,
+    tags,
     // Items reference lists, so they go first.
-    await delete(shoppingItems).go();
-    await delete(shoppingLists).go();
+    shoppingItems,
+    shoppingLists,
     // Transactions, categories and tags point at modes; modes at groups.
-    await delete(modes).go();
-    await delete(groups).go();
-    await delete(currencyRates).go();
-  }
+    modes,
+    groups,
+    currencyRates,
+  ];
 
   // ── Balance mechanics ─────────────────────────────────────────────────────
 

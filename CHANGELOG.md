@@ -65,6 +65,10 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   lock screen takes exactly as many digits as your PIN has, and an import
   took that length from the other phone. Importing now keeps this phone's
   own PIN length.
+- **Clear all data stays fixed** (#175). On 1.6.4 it failed with a
+  foreign-key error on a phone with loans, templates or group expenses;
+  1.6.5 fixed that, and a test now checks the wipe against every table so
+  it can't come back. If it ever fails, it says nothing was deleted.
 
 ## [1.6.5] — 2026-10-23
 

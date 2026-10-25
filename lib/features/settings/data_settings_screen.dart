@@ -124,9 +124,15 @@ class DataSettingsScreen extends ConsumerWidget {
           ),
         );
     } catch (e) {
+      // The wipe is one transaction, so a failure rolls all of it back —
+      // say so, then the detail for a bug report (#175's was the clue).
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text("Couldn't clear data: $e")));
+        ..showSnackBar(
+          SnackBar(
+            content: Text("Couldn't clear data — nothing was deleted. $e"),
+          ),
+        );
     }
   }
 }
