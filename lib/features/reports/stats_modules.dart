@@ -12,6 +12,7 @@ import '../../data/currency_conversion.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import 'cash_flow_projection.dart';
 import 'chart_widgets.dart';
 import 'stats_sections.dart';
 import 'xpenc_score.dart';
@@ -403,9 +404,111 @@ class _CashFlowBody extends ConsumerWidget {
                     ),
               ],
             ),
+            _gap,
+            const SectionCaption("Where you're heading"),
+            const _ProjectionSection(),
           ],
         );
       },
+    );
+  }
+}
+
+String _signedOrZero(Money m) =>
+    m.isZero ? MoneyFormat.symbol(m) : MoneyFormat.signed(m);
+
+/// Money on hand, carried forward by auto rules and the usual month (#177).
+class _ProjectionSection extends ConsumerWidget {
+  const _ProjectionSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (ref.watch(recurringRulesProvider).isLoading) {
+      return const StatsSectionLoader(height: 220);
+    }
+    final theme = Theme.of(context);
+    final months = ref.watch(cashFlowHorizonProvider);
+    final p = ref.watch(cashFlowProjectionProvider);
+    final usual = p.usualMonthly;
+    final short = p.lowest.value.isNegative;
+    final rules = '${p.ruleCount} auto rule${p.ruleCount == 1 ? '' : 's'}';
+    final window = p.usualMonths == 1 ? 'month' : '${p.usualMonths} months';
+    final everyday = usual == null
+        ? 'and picks up your everyday spending once a full month of entries '
+              'is in'
+        : 'plus ${_signedOrZero(usual)} a month — your usual entries outside '
+              'rules, averaged over the last $window';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SegmentedButton<int>(
+          segments: const [
+            ButtonSegment(value: 3, label: Text('3 months')),
+            ButtonSegment(value: 6, label: Text('6 months')),
+            ButtonSegment(value: 12, label: Text('1 year')),
+          ],
+          selected: {months},
+          showSelectedIcon: false,
+          onSelectionChanged: (s) =>
+              ref.read(cashFlowHorizonProvider.notifier).state = s.first,
+        ),
+        const SizedBox(height: 12),
+        if (p.ruleCount == 0 && usual == null)
+          const _ListCard(
+            empty:
+                'Add auto rules for your salary and bills, or record a full '
+                'month of entries, to see where your money is heading.',
+            children: [],
+          )
+        else ...[
+          NetWorthLineChart(
+            points: [for (final s in p.steps) (month: s.date, value: s.value)],
+          ),
+          _tileGap,
+          _TilePair(
+            StatTile(
+              label: months == 12 ? 'In a year' : 'In $months months',
+              value: MoneyFormat.symbol(p.end),
+              sub: '${_signedOrZero(p.end - p.start)} from today',
+              color: p.end.isNegative ? AppColors.expense : null,
+            ),
+            StatTile(
+              label: short ? 'Runs short' : 'Lowest point',
+              value: MoneyFormat.symbol(p.lowest.value),
+              sub: p.lowest.date == p.steps.first.date
+                  ? 'Today'
+                  : DateFormat('d MMM yyyy').format(p.lowest.date),
+              color: short ? AppColors.expense : null,
+            ),
+          ),
+          _tileGap,
+          Text(
+            'Money on hand is cash, bank and prepaid, minus what cards owe. '
+            'It moves with your $rules on their dates, $everyday. '
+            'A guide, not a promise.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          _gap,
+          const SectionCaption('Ahead, month by month'),
+          _ListCard(
+            children: [
+              for (final (i, s) in p.steps.skip(1).indexed)
+                StandingRow(
+                  rank: i + 1,
+                  title: DateFormat('d MMM yyyy').format(s.date),
+                  subtitle:
+                      'Rules ${_signedOrZero(s.rules)} · usual '
+                      '${_signedOrZero(s.usual)}',
+                  value: MoneyFormat.symbol(s.value),
+                  valueColor: s.value.isNegative ? AppColors.expense : null,
+                ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 }

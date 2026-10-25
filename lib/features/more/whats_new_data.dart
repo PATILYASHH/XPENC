@@ -23,6 +23,16 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.trending_up_rounded,
+    title: "Where you're heading",
+    location: 'Stats → Cash flow',
+    description:
+        'Your money on hand 3, 6 or 12 months from now: auto rules on the '
+        'dates they post, plus your usual spending from the last 3 months. '
+        'See the lowest point too — and the day you’d run short, if you '
+        'would.',
+  ),
+  WhatsNewEntry(
     icon: Icons.group_outlined,
     title: 'Connector friends in Persons',
     location: 'Persons → Add person → From Connector friends',

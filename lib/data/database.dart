@@ -2883,7 +2883,7 @@ class AppDatabase extends _$AppDatabase {
   )..where((c) => c.accountId.equals(accountId))).go();
 
   /// The last real day of [year]/[month] if [day] overshoots it (e.g. the
-  /// 31st in a 30-day month) — the same snapping [_nextOccurrence] applies
+  /// 31st in a 30-day month) — the same snapping [nextOccurrence] applies
   /// to a monthly [RecurringRules] rule.
   static DateTime _snappedDayInMonth(int year, int month, int day) {
     var y = year;
@@ -5282,7 +5282,10 @@ class AppDatabase extends _$AppDatabase {
   /// for the 31st posts on Feb 28 and then still on Mar 31, and a Feb 29
   /// rule posts on Feb 28 in a non-leap year and still on Feb 29 the next
   /// leap year, never drifting to the 28th forever.
-  static DateTime _nextOccurrence(
+  ///
+  /// Public so the cash-flow projection (#177) steps a rule forward exactly
+  /// as it will really post.
+  static DateTime nextOccurrence(
     RecurringFrequency frequency,
     DateTime from, {
     int? dayOfMonth,
@@ -5468,7 +5471,7 @@ class AppDatabase extends _$AppDatabase {
         promoLeft: rule.promoOccurrencesLeft,
         tagIds: ruleTagIds,
       );
-      final next = _nextOccurrence(
+      final next = nextOccurrence(
         rule.frequency,
         rule.nextDueDate,
         dayOfMonth: rule.dayOfMonth,
@@ -5536,7 +5539,7 @@ class AppDatabase extends _$AppDatabase {
             promoLeft = result.promoLeft;
             if (result.posted) {
               posted++;
-              next = _nextOccurrence(
+              next = nextOccurrence(
                 rule.frequency,
                 next,
                 dayOfMonth: rule.dayOfMonth,

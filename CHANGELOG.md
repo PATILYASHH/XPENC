@@ -11,6 +11,13 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 ## [1.6.6] — beta
 
 ### Added
+- **Where you're heading** (Stats → Cash flow, #177): money on hand —
+  cash, bank and prepaid, minus what cards owe — carried 3, 6 or 12 months
+  forward. Auto rules count on the dates they'll really post (promo prices,
+  and an EMI stops once its loan is paid off), plus your usual month of
+  everything else, averaged over the last 3 full months, so groceries
+  that aren't rules still count. Shows where you'll be, the lowest point
+  (with the day you'd run short, if you would), and month by month.
 - **Backups from Connector come in by themselves** (Android, with Connector
   1.2.0). When Connector has pulled a newer backup from your other phone,
   XPENC takes it in as it opens — no Import from file, no "I've imported
