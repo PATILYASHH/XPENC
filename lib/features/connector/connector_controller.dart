@@ -11,9 +11,9 @@ import '../../core/connector/sync/github_backup_api.dart';
 import '../../core/routing/app_router.dart';
 import '../../data/providers.dart';
 
-/// The sign-in's result when this page load is its return — taken in
-/// `main` before the router reads the address (the token arrives in it).
-LoginResult? connectorLoginResult;
+/// The sign-in's return when this page load is one — taken (and wiped from
+/// the address) in `main`, before the router reads the address.
+LoginReturn? connectorLoginReturn;
 
 /// What the Connector page shows.
 class ConnectorView {
@@ -84,17 +84,44 @@ class ConnectorController extends Notifier<ConnectorView> {
       deviceName: platform.deviceName,
     );
     String? message;
-    final login = connectorLoginResult;
-    connectorLoginResult = null;
-    if (login?.token case final token?) {
-      _engine!.connect(token, session: login!.session);
-      message = 'GitHub connected.';
-    } else if (login?.error case final error?) {
-      message = "Couldn't connect GitHub: $error";
+    final login = connectorLoginReturn;
+    connectorLoginReturn = null;
+    switch (login) {
+      case LoginCode():
+        message = 'Finishing sign-in…';
+        Future.microtask(() => _finishLogin(platform, login));
+      case LoginFailed(:final error):
+        message = "Couldn't connect GitHub: $error";
+      case null:
+        break;
     }
     final state = platform.store.load();
     if (state.connected) _start();
-    return ConnectorView(available: true, state: state, message: message);
+    return ConnectorView(
+      available: true,
+      state: state,
+      busy: login is LoginCode,
+      message: message,
+    );
+  }
+
+  /// Trades the sign-in's one-time code for the tokens, then connects.
+  Future<void> _finishLogin(ConnectorPlatform platform, LoginCode code) async {
+    try {
+      final result = await platform.finishLogin(code);
+      _engine!.connect(result.token, session: result.session);
+      state = ConnectorView(
+        available: true,
+        state: _engine!.store.load(),
+        message: 'GitHub connected.',
+      );
+      _start();
+    } catch (e) {
+      state = state.copyWith(
+        busy: false,
+        message: "Couldn't connect GitHub: $e",
+      );
+    }
   }
 
   void _start() {

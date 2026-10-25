@@ -73,7 +73,8 @@ class ConnectorScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             if (!s.connected)
-              _Disconnected(onConnect: controller.connect)
+              // Busy: back from GitHub, the sign-in is being finished.
+              _Disconnected(onConnect: view.busy ? null : controller.connect)
             else ...[
               if (view.waiting case final remote?)
                 _WaitingCard(
@@ -225,7 +226,7 @@ String _when(DateTime t) => DateFormat('d MMM, h:mm a').format(t.toLocal());
 class _Disconnected extends StatelessWidget {
   const _Disconnected({required this.onConnect});
 
-  final VoidCallback onConnect;
+  final VoidCallback? onConnect;
 
   @override
   Widget build(BuildContext context) {

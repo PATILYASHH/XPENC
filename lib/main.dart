@@ -25,8 +25,8 @@ Future<void> main() async {
     const Duration(milliseconds: 600),
     onTimeout: () {},
   );
-  // XPENC web, back from Connector's GitHub sign-in: the token is in the
-  // address. Taken (and wiped from it) before the router reads the address.
-  connectorLoginResult = connectorPlatform?.takeLoginResult();
+  // XPENC web, back from Connector's GitHub sign-in with a one-time code in
+  // the address: taken (and wiped from it) before the router reads it.
+  connectorLoginReturn = connectorPlatform?.takeLoginReturn();
   runApp(const ProviderScope(child: XpencApp()));
 }

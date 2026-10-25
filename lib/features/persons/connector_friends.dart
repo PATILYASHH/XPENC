@@ -18,9 +18,8 @@ import '../connector/connector_controller.dart';
 final connectorFriendsSourceProvider = Provider<ConnectorFriendsSource?>((ref) {
   if (PlatformFeatures.connectorFriendsApp) return const AndroidFriendsSource();
   final platform = connectorPlatform;
-  final api = platform?.friends;
-  if (platform == null || api == null) return null;
-  return SessionFriendsSource(store: platform.store, api: api);
+  if (platform == null) return null;
+  return SessionFriendsSource(store: platform.store, api: platform.friends);
 });
 
 /// The current friends list. [FriendsHidden] means no friend features at
