@@ -11,6 +11,14 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 ## [1.6.6] — beta
 
 ### Added
+- **Backups from Connector come in by themselves** (Android, with Connector
+  1.2.0). When Connector has pulled a newer backup from your other phone,
+  XPENC takes it in as it opens — no Import from file, no "I've imported
+  it". It does so on its own only when this phone has nothing that backup
+  doesn't (its data is exactly what its last sync left); otherwise it asks
+  first, since taking it in would replace this phone's own changes. A copy
+  of this phone's data is saved before every such import. Still app to app
+  on the phone: XPENC asks for no internet permission.
 - **Tell Connector** (Android). Importing the backup the Connector app
   pulled from your other phone (Settings → Backup & Restore → **Import from
   file**, the file `xpenc_backup.json`) now ends with **Tell Connector**.

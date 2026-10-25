@@ -20,7 +20,10 @@ import 'core/widgets/money_text.dart';
 import 'data/modes_db.dart';
 import 'data/providers.dart';
 import 'core/connector/connector_platform.dart';
+import 'core/connector/inbox/connector_inbox.dart' show PendingBackup;
+import 'core/platform/platform_features.dart';
 import 'features/connector/connector_controller.dart';
+import 'features/connector/connector_inbox_runner.dart';
 import 'features/message_capture/parser/bank_message.dart';
 import 'features/message_capture/share_intake.dart';
 import 'features/security/lock_screen.dart';
@@ -70,6 +73,8 @@ class _XpencAppState extends ConsumerState<XpencApp>
     unawaited(ref.read(backupServiceProvider).ensureBackupFolderReady());
 
     await _gateOnboarding();
+    if (!mounted) return;
+    await _checkConnectorInbox();
     if (!mounted) return;
 
     final homeWidget = ref.read(homeWidgetServiceProvider);
@@ -158,9 +163,14 @@ class _XpencAppState extends ConsumerState<XpencApp>
     if (state == AppLifecycleState.resumed) {
       _maybeLockAfterTimeout();
       _pausedAt = null;
-      _runRecurring();
-      _scanMessages();
-      _runAutoBackup();
+      // A backup Connector pulled meanwhile goes in first, so recurring
+      // rules and the auto-backup work on the data that's current.
+      _checkConnectorInbox().whenComplete(() {
+        if (!mounted) return;
+        _runRecurring();
+        _scanMessages();
+        _runAutoBackup();
+      });
       // Restores the shortcut if the system cleared it under memory
       // pressure while `ongoing: true` normally keeps a swipe from doing so.
       ref.read(notificationServiceProvider).syncQuickAddNotification();
@@ -197,6 +207,59 @@ class _XpencAppState extends ConsumerState<XpencApp>
     if (DateTime.now().difference(pausedAt) >= Duration(minutes: minutes)) {
       setState(() => _locked = true);
     }
+  }
+
+  /// A backup "Not now" was said to, this session — not asked about again
+  /// until it changes or the app restarts.
+  String? _dismissedInboxSha;
+
+  /// Asked for while locked: asked once unlocked instead.
+  PendingBackup? _askWhenUnlocked;
+
+  /// Takes in a backup the Connector app pulled from another device — by
+  /// itself when nothing here can be lost, after asking otherwise (see
+  /// `ConnectorInboxRunner`). Android only; quiet when there's nothing.
+  Future<void> _checkConnectorInbox() async {
+    if (!PlatformFeatures.connectorHandoff) return;
+    try {
+      final settings = await ref.read(dbProvider).getSettings();
+      if (!settings.onboarded) return;
+      final runner = ref.read(connectorInboxRunnerProvider);
+      switch (await runner.check(dismissedSha: _dismissedInboxSha)) {
+        case InboxApplied(:final backup):
+          announceTakenIn(backup);
+        case InboxNeedsAnswer(:final backup):
+          if (_locked) {
+            _askWhenUnlocked = backup;
+          } else {
+            await _answerInbox(backup);
+          }
+        case InboxNothing():
+          break;
+      }
+    } catch (e) {
+      showAppSnackBar("Couldn't take in Connector's backup: $e");
+    }
+  }
+
+  Future<void> _answerInbox(PendingBackup backup) async {
+    if (!await askToTakeIn(backup)) {
+      _dismissedInboxSha = backup.sha;
+      return;
+    }
+    try {
+      await ref.read(connectorInboxRunnerProvider).apply(backup);
+      announceTakenIn(backup);
+    } catch (e) {
+      showAppSnackBar("Couldn't take in the backup: $e");
+    }
+  }
+
+  void _unlocked() {
+    setState(() => _locked = false);
+    final waiting = _askWhenUnlocked;
+    _askWhenUnlocked = null;
+    if (waiting != null) _answerInbox(waiting);
   }
 
   /// One-time move of pre-existing backups into the new durable folder, then
@@ -473,10 +536,8 @@ class _XpencAppState extends ConsumerState<XpencApp>
                                 child: HeroControllerScope.none(
                                   child: Navigator(
                                     onGenerateRoute: (_) => MaterialPageRoute(
-                                      builder: (_) => LockScreen(
-                                        onUnlocked: () =>
-                                            setState(() => _locked = false),
-                                      ),
+                                      builder: (_) =>
+                                          LockScreen(onUnlocked: _unlocked),
                                     ),
                                   ),
                                 ),

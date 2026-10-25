@@ -14,12 +14,12 @@ abstract interface class ConnectorFriendsSource {
 
 /// Android: the Connector app shares its friends list with XPENC — and only
 /// XPENC, checked by its signing certificate — through a ContentProvider
-/// (`CONECTR/android/.../FriendsProvider.kt`); `ConnectorFriendsChannel.kt`
+/// (`CONECTR/android/.../XpencProvider.kt`); `ConnectorChannel.kt`
 /// reads it. On the device, app to app: XPENC still has no internet access.
 class AndroidFriendsSource implements ConnectorFriendsSource {
   const AndroidFriendsSource();
 
-  static const _channel = MethodChannel('xpenc/connector_friends');
+  static const _channel = MethodChannel('xpenc/connector');
 
   @override
   Future<FriendsLookup> load() async {

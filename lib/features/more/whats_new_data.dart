@@ -34,13 +34,13 @@ const whatsNewEntries = <WhatsNewEntry>[
   ),
   WhatsNewEntry(
     icon: Icons.sync_alt_rounded,
-    title: 'Tell Connector',
-    location: 'Settings → Backup & Restore → Import from file',
+    title: 'Backups from Connector come in by themselves',
+    location: 'Just open XPENC',
     description:
-        'Use the Connector app to move backups between phones? After '
-        'importing the backup it pulled, one tap tells Connector — so this '
-        'phone keeps syncing without a trip back to Connector. XPENC still '
-        'never touches the internet.',
+        'Connector pulled a newer backup from your other phone? XPENC takes '
+        'it in as it opens — on its own when nothing here would be lost, '
+        'after asking when this phone has changes of its own. A copy is '
+        'saved first. XPENC still never touches the internet.',
   ),
   WhatsNewEntry(
     icon: Icons.lock_outline_rounded,

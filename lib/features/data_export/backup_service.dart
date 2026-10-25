@@ -5,6 +5,9 @@ import 'dart:typed_data';
 import 'package:media_store_plus/media_store_plus.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../core/connector/inbox/connector_inbox.dart'
+    show dataFingerprint;
+import '../../core/connector/inbox/sync_memory.dart';
 import '../../core/platform/outgoing_file.dart';
 import '../../core/platform/platform_features.dart';
 import '../../data/database.dart';
@@ -227,7 +230,22 @@ class BackupService {
       sizeBytes: utf8.encode(json).length,
       createdAt: now,
     );
+    await _rememberForConnector(utf8.encode(json), dump);
     return (await _db.backupRecordByName(saved.name))!;
+  }
+
+  /// Connector may upload this file and build this phone on it; XPENC
+  /// remembers what data it held, to know later whether taking in another
+  /// device's backup could lose anything (see `ConnectorInboxRunner`).
+  /// Best-effort: a failure here only means XPENC asks before importing.
+  Future<void> _rememberForConnector(
+    List<int> bytes,
+    Map<String, dynamic> dump,
+  ) async {
+    if (!PlatformFeatures.connectorHandoff) return;
+    try {
+      await connectorSyncMemory.recordWritten(bytes, dataFingerprint(dump));
+    } catch (_) {}
   }
 
   Future<List<BackupRecordRow>> listBackups() => _db.watchBackupRecords().first;

@@ -153,8 +153,9 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
-        <!-- The Connector app: its shared friends list (FriendsProvider) and
-             "Open Connector" — see ConnectorFriendsChannel.kt. -->
+        <!-- The Connector app: its XpencProvider (friends list, a pulled
+             backup to take in) and "Open Connector" — see
+             ConnectorChannel.kt. -->
         <package android:name="com.yash.xpenc.conectr"/>
     </queries>
 </manifest>

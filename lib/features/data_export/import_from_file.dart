@@ -9,6 +9,7 @@ import '../../core/connector/connector_handoff.dart';
 import '../../core/platform/platform_features.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
+import '../connector/connector_inbox_runner.dart';
 
 /// Import a backup file the app didn't necessarily write itself — any
 /// `.json` produced by "Everything (JSON)" on the Download Data screen or
@@ -112,7 +113,12 @@ Future<void> importDataFromFile(
           ),
         ),
       );
-    if (PlatformFeatures.connectorHandoff &&
+    // A Connector that shares its inbox is told directly; an older one
+    // only through its link, for the file it pulled.
+    final told = await reportImportToConnector(ref, bytes);
+    if (!context.mounted) return;
+    if (told == null &&
+        PlatformFeatures.connectorHandoff &&
         file.name == connectorPulledFileName) {
       await _offerConnectorHandoff(context, messenger, bytes);
     }
