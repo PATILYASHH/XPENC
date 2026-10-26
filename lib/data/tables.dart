@@ -180,6 +180,10 @@ enum TxIconBackground { category, direction, single }
 /// there.
 enum WeekStart { sunday, monday }
 
+/// What a Share sends: a styled image card (the default) or a structured
+/// PDF. The share screen opens on whichever was sent last.
+enum ShareFormat { image, pdf }
+
 /// Where a [Modes] row is in its life: set up but not started, ON (exactly
 /// one at a time — see [Settings.activeModeId]), or over. An ended mode can
 /// be started again.
@@ -1495,6 +1499,11 @@ class Settings extends Table {
   /// passbook (GitHub #150). Off by default — opt-in.
   BoolColumn get showRunningBalance =>
       boolean().withDefault(const Constant(false))();
+
+  /// What Share made last — the share screen opens on it (see
+  /// [ShareFormat]).
+  TextColumn get shareFormat =>
+      textEnum<ShareFormat>().withDefault(const Constant('image'))();
 
   @override
   Set<Column> get primaryKey => {id};

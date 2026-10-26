@@ -1332,6 +1332,12 @@ final weekStartProvider = Provider<WeekStart>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.weekStart ?? WeekStart.monday;
 });
 
+/// The format Share opens on — whatever was sent last (see [ShareFormat]).
+final shareFormatProvider = Provider<ShareFormat>((ref) {
+  return ref.watch(settingsProvider).valueOrNull?.shareFormat ??
+      ShareFormat.image;
+});
+
 /// Whether the bottom nav bar shows each item's small text label under its
 /// icon. On by default; off collapses the bar to icon-only.
 final showBottomNavLabelsProvider = Provider<bool>((ref) {

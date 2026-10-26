@@ -259,7 +259,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 89;
+  int get schemaVersion => 90;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -869,6 +869,10 @@ class AppDatabase extends _$AppDatabase {
         await _addColumnIfMissing(m, persons, persons.remoteFriendId);
         await _addColumnIfMissing(m, persons, persons.remoteUsername);
         await _createPersonsFriendIndex();
+      }
+      if (from < 90) {
+        // Share opens on the format sent last.
+        await _addColumnIfMissing(m, settings, settings.shareFormat);
       }
     },
     beforeOpen: (details) async {
@@ -6032,6 +6036,9 @@ class AppDatabase extends _$AppDatabase {
   Future<void> setShowRunningBalance(bool show) => update(
     settings,
   ).write(SettingsCompanion(showRunningBalance: Value(show)));
+
+  Future<void> setShareFormat(ShareFormat format) =>
+      update(settings).write(SettingsCompanion(shareFormat: Value(format)));
 
   /// Which day of the month Dashboard/Budgets/Stats treat as the start of a
   /// "month" — 1 for an ordinary calendar month, or a payday-anchored cycle

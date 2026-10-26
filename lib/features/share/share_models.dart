@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/currency.dart';
 import '../../core/group_split_math.dart';
 import '../../core/money.dart';
+import '../../core/payments/cashapp_launcher.dart';
+import '../../core/payments/paypal_launcher.dart';
+import '../../core/payments/revolut_launcher.dart';
+import '../../core/payments/upi_launcher.dart';
+import '../../core/payments/venmo_launcher.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -45,6 +51,138 @@ class ShareOwner {
     }
     return 'All settled';
   }
+}
+
+/// A scan-to-pay code on a shared statement: the user's own payment ID
+/// with what's owed filled in, so whoever it's sent to can settle up from
+/// the card itself.
+class PaymentQr {
+  const PaymentQr({
+    required this.method,
+    required this.id,
+    required this.link,
+    required this.amount,
+    required this.hint,
+    this.payTo,
+  });
+
+  /// "UPI", "PayPal"...
+  final String method;
+
+  /// The ID as the user typed it — shown under the code.
+  final String id;
+
+  /// What the code encodes: a `upi://pay` link, a paypal.me link...
+  final String link;
+  final Money amount;
+
+  /// How to scan it — "Scan with any UPI app".
+  final String hint;
+
+  /// The user's name, when set.
+  final String? payTo;
+
+  /// One per payment method that's on and has the user's own ID, UPI first.
+  /// Empty unless [owed] is positive — there's nothing to pay otherwise.
+  static List<PaymentQr> optionsFor(ProviderContainer ref, Money owed) {
+    if (!owed.isPositive) return const [];
+    String? own(String? v) => (v?.trim().isEmpty ?? true) ? null : v!.trim();
+    final name = own(ref.read(myUpiNameProvider));
+    const camera = 'Scan with your phone camera';
+    final upi = own(ref.read(myUpiIdProvider));
+    final paypal = own(ref.read(myPaypalProvider));
+    final venmo = own(ref.read(myVenmoProvider));
+    final cashapp = own(ref.read(myCashappProvider));
+    final revolut = own(ref.read(myRevolutProvider));
+    return [
+      if (upi != null && ref.read(upiEnabledProvider))
+        PaymentQr(
+          method: 'UPI',
+          id: upi,
+          link: UpiLauncher.buildUri(
+            action: UpiAction.pay,
+            payeeUpiId: upi,
+            payeeName: name ?? '',
+            amount: owed,
+            note: 'Settlement via XPENC',
+          ).toString(),
+          amount: owed,
+          hint: 'Scan with any UPI app',
+          payTo: name,
+        ),
+      if (paypal != null && ref.read(paypalEnabledProvider))
+        PaymentQr(
+          method: 'PayPal',
+          id: 'paypal.me/${PaypalLauncher.normalizeId(paypal)}',
+          link: PaypalLauncher.buildUri(
+            paypalId: paypal,
+            amount: owed,
+            currencyCode: ref.read(currencyProvider).code,
+          ).toString(),
+          amount: owed,
+          hint: camera,
+          payTo: name,
+        ),
+      if (venmo != null && ref.read(venmoEnabledProvider))
+        PaymentQr(
+          method: 'Venmo',
+          id: '@${VenmoLauncher.normalizeUsername(venmo)}',
+          link: VenmoLauncher.buildUri(
+            username: venmo,
+            amount: owed,
+          ).toString(),
+          amount: owed,
+          hint: camera,
+          payTo: name,
+        ),
+      if (cashapp != null && ref.read(cashappEnabledProvider))
+        PaymentQr(
+          method: 'Cash App',
+          id: CashAppLauncher.normalizeCashtag(cashapp),
+          link: CashAppLauncher.buildUri(
+            cashtag: cashapp,
+            amount: owed,
+          ).toString(),
+          amount: owed,
+          hint: camera,
+          payTo: name,
+        ),
+      if (revolut != null && ref.read(revolutEnabledProvider))
+        PaymentQr(
+          method: 'Revolut',
+          id: '@${RevolutLauncher.normalizeUsername(revolut)}',
+          link: RevolutLauncher.buildUri(
+            username: revolut,
+            amount: owed,
+          ).toString(),
+          amount: owed,
+          hint: camera,
+          payTo: name,
+        ),
+    ];
+  }
+}
+
+/// [phone] as WhatsApp's chat id: international digits, no `+`. Null when
+/// the country can't be told — WhatsApp then lets the user pick the chat,
+/// which beats opening a stranger's. A bare 10-digit number counts as
+/// Indian when the app runs in rupees.
+String? whatsappJid(String? phone, {required String currencyCode}) {
+  final raw = phone?.trim() ?? '';
+  if (raw.isEmpty) return null;
+  final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
+  final String full;
+  if (raw.startsWith('+')) {
+    full = digits;
+  } else if (digits.startsWith('00')) {
+    full = digits.substring(2);
+  } else {
+    final local = digits.replaceFirst(RegExp(r'^0+'), '');
+    if (currencyCode != 'INR' || local.length != 10) return null;
+    full = '91$local';
+  }
+  // E.164 caps a number at 15 digits; anything under 8 isn't one.
+  return full.length >= 8 && full.length <= 15 ? full : null;
 }
 
 /// A transaction, with every id already turned into the name it stands for.
@@ -257,6 +395,17 @@ class SharePeriod {
     );
   }
 
+  /// Dates the user picked — "3 Sep – 12 Oct", with the years where they
+  /// aren't this one's.
+  static SharePeriod custom(DateTimeRange r, [DateTime? now]) {
+    final year = (now ?? DateTime.now()).year;
+    final startYear = r.start.year != r.end.year || r.start.year != year;
+    final start = DateFormat(startYear ? 'd MMM yyyy' : 'd MMM').format(r.start);
+    final end = DateFormat(r.end.year != year ? 'd MMM yyyy' : 'd MMM')
+        .format(r.end);
+    return SharePeriod('$start – $end', r);
+  }
+
   bool contains(DateTime d) {
     final r = range;
     if (r == null) return true;
@@ -308,6 +457,19 @@ class PersonShare {
           if (groups[groupIds[e.id]] case final g?) e.id: g.name,
       },
     );
+  }
+
+  /// The message that goes with the file into their chat — first person,
+  /// since it comes from the user's own phone.
+  String message({PaymentQr? qr}) {
+    final amount = MoneyFormat.forCurrency(balance.abs, MoneyFormat.currency);
+    final where = balance.isPositive
+        ? 'you owe me $amount.'
+        : balance.isNegative
+        ? 'I owe you $amount.'
+        : "we're all settled.";
+    final pay = qr == null ? '' : ' Scan the QR to pay by ${qr.method}.';
+    return "Hi ${person.name}, here's where we stand: $where$pay";
   }
 
   /// `+` = this entry adds to what they owe me.

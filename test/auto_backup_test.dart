@@ -109,6 +109,7 @@ void main() {
       budgetingMode: BudgetingMode.budgets,
       rtaEnabled: false,
       showRunningBalance: false,
+      shareFormat: ShareFormat.image,
     );
 
     final now = DateTime(2026, 8, 5, 12);

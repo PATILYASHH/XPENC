@@ -11831,6 +11831,16 @@ class $SettingsTable extends Settings
     defaultValue: const Constant(false),
   );
   @override
+  late final GeneratedColumnWithTypeConverter<ShareFormat, String> shareFormat =
+      GeneratedColumn<String>(
+        'share_format',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('image'),
+      ).withConverter<ShareFormat>($SettingsTable.$convertershareFormat);
+  @override
   List<GeneratedColumn> get $columns => [
     id,
     currencyCode,
@@ -11915,6 +11925,7 @@ class $SettingsTable extends Settings
     weekStart,
     activeModeId,
     showRunningBalance,
+    shareFormat,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -12905,6 +12916,12 @@ class $SettingsTable extends Settings
         DriftSqlType.bool,
         data['${effectivePrefix}show_running_balance'],
       )!,
+      shareFormat: $SettingsTable.$convertershareFormat.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}share_format'],
+        )!,
+      ),
     );
   }
 
@@ -12950,6 +12967,8 @@ class $SettingsTable extends Settings
   );
   static JsonTypeConverter2<WeekStart, String, String> $converterweekStart =
       const EnumNameConverter<WeekStart>(WeekStart.values);
+  static JsonTypeConverter2<ShareFormat, String, String> $convertershareFormat =
+      const EnumNameConverter<ShareFormat>(ShareFormat.values);
 }
 
 class SettingRow extends DataClass implements Insertable<SettingRow> {
@@ -13341,6 +13360,10 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// Account history shows the balance after every entry, like a bank
   /// passbook (GitHub #150). Off by default — opt-in.
   final bool showRunningBalance;
+
+  /// What Share made last — the share screen opens on it (see
+  /// [ShareFormat]).
+  final ShareFormat shareFormat;
   const SettingRow({
     required this.id,
     required this.currencyCode,
@@ -13425,6 +13448,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     required this.weekStart,
     this.activeModeId,
     required this.showRunningBalance,
+    required this.shareFormat,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -13610,6 +13634,11 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       map['active_mode_id'] = Variable<int>(activeModeId);
     }
     map['show_running_balance'] = Variable<bool>(showRunningBalance);
+    {
+      map['share_format'] = Variable<String>(
+        $SettingsTable.$convertershareFormat.toSql(shareFormat),
+      );
+    }
     return map;
   }
 
@@ -13742,6 +13771,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ? const Value.absent()
           : Value(activeModeId),
       showRunningBalance: Value(showRunningBalance),
+      shareFormat: Value(shareFormat),
     );
   }
 
@@ -13897,6 +13927,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       ),
       activeModeId: serializer.fromJson<int?>(json['activeModeId']),
       showRunningBalance: serializer.fromJson<bool>(json['showRunningBalance']),
+      shareFormat: $SettingsTable.$convertershareFormat.fromJson(
+        serializer.fromJson<String>(json['shareFormat']),
+      ),
     );
   }
   @override
@@ -14028,6 +14061,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       ),
       'activeModeId': serializer.toJson<int?>(activeModeId),
       'showRunningBalance': serializer.toJson<bool>(showRunningBalance),
+      'shareFormat': serializer.toJson<String>(
+        $SettingsTable.$convertershareFormat.toJson(shareFormat),
+      ),
     };
   }
 
@@ -14115,6 +14151,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     WeekStart? weekStart,
     Value<int?> activeModeId = const Value.absent(),
     bool? showRunningBalance,
+    ShareFormat? shareFormat,
   }) => SettingRow(
     id: id ?? this.id,
     currencyCode: currencyCode ?? this.currencyCode,
@@ -14224,6 +14261,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     weekStart: weekStart ?? this.weekStart,
     activeModeId: activeModeId.present ? activeModeId.value : this.activeModeId,
     showRunningBalance: showRunningBalance ?? this.showRunningBalance,
+    shareFormat: shareFormat ?? this.shareFormat,
   );
   SettingRow copyWithCompanion(SettingsCompanion data) {
     return SettingRow(
@@ -14454,6 +14492,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       showRunningBalance: data.showRunningBalance.present
           ? data.showRunningBalance.value
           : this.showRunningBalance,
+      shareFormat: data.shareFormat.present
+          ? data.shareFormat.value
+          : this.shareFormat,
     );
   }
 
@@ -14546,7 +14587,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('contactsPermissionAsked: $contactsPermissionAsked, ')
           ..write('weekStart: $weekStart, ')
           ..write('activeModeId: $activeModeId, ')
-          ..write('showRunningBalance: $showRunningBalance')
+          ..write('showRunningBalance: $showRunningBalance, ')
+          ..write('shareFormat: $shareFormat')
           ..write(')'))
         .toString();
   }
@@ -14636,6 +14678,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     weekStart,
     activeModeId,
     showRunningBalance,
+    shareFormat,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -14726,7 +14769,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.contactsPermissionAsked == this.contactsPermissionAsked &&
           other.weekStart == this.weekStart &&
           other.activeModeId == this.activeModeId &&
-          other.showRunningBalance == this.showRunningBalance);
+          other.showRunningBalance == this.showRunningBalance &&
+          other.shareFormat == this.shareFormat);
 }
 
 class SettingsCompanion extends UpdateCompanion<SettingRow> {
@@ -14813,6 +14857,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<WeekStart> weekStart;
   final Value<int?> activeModeId;
   final Value<bool> showRunningBalance;
+  final Value<ShareFormat> shareFormat;
   const SettingsCompanion({
     this.id = const Value.absent(),
     this.currencyCode = const Value.absent(),
@@ -14897,6 +14942,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.weekStart = const Value.absent(),
     this.activeModeId = const Value.absent(),
     this.showRunningBalance = const Value.absent(),
+    this.shareFormat = const Value.absent(),
   });
   SettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -14982,6 +15028,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.weekStart = const Value.absent(),
     this.activeModeId = const Value.absent(),
     this.showRunningBalance = const Value.absent(),
+    this.shareFormat = const Value.absent(),
   });
   static Insertable<SettingRow> custom({
     Expression<int>? id,
@@ -15067,6 +15114,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<String>? weekStart,
     Expression<int>? activeModeId,
     Expression<bool>? showRunningBalance,
+    Expression<String>? shareFormat,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -15178,6 +15226,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       if (activeModeId != null) 'active_mode_id': activeModeId,
       if (showRunningBalance != null)
         'show_running_balance': showRunningBalance,
+      if (shareFormat != null) 'share_format': shareFormat,
     });
   }
 
@@ -15265,6 +15314,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<WeekStart>? weekStart,
     Value<int?>? activeModeId,
     Value<bool>? showRunningBalance,
+    Value<ShareFormat>? shareFormat,
   }) {
     return SettingsCompanion(
       id: id ?? this.id,
@@ -15365,6 +15415,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       weekStart: weekStart ?? this.weekStart,
       activeModeId: activeModeId ?? this.activeModeId,
       showRunningBalance: showRunningBalance ?? this.showRunningBalance,
+      shareFormat: shareFormat ?? this.shareFormat,
     );
   }
 
@@ -15678,6 +15729,11 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     if (showRunningBalance.present) {
       map['show_running_balance'] = Variable<bool>(showRunningBalance.value);
     }
+    if (shareFormat.present) {
+      map['share_format'] = Variable<String>(
+        $SettingsTable.$convertershareFormat.toSql(shareFormat.value),
+      );
+    }
     return map;
   }
 
@@ -15770,7 +15826,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('contactsPermissionAsked: $contactsPermissionAsked, ')
           ..write('weekStart: $weekStart, ')
           ..write('activeModeId: $activeModeId, ')
-          ..write('showRunningBalance: $showRunningBalance')
+          ..write('showRunningBalance: $showRunningBalance, ')
+          ..write('shareFormat: $shareFormat')
           ..write(')'))
         .toString();
   }
@@ -41867,6 +41924,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<WeekStart> weekStart,
       Value<int?> activeModeId,
       Value<bool> showRunningBalance,
+      Value<ShareFormat> shareFormat,
     });
 typedef $$SettingsTableUpdateCompanionBuilder =
     SettingsCompanion Function({
@@ -41953,6 +42011,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<WeekStart> weekStart,
       Value<int?> activeModeId,
       Value<bool> showRunningBalance,
+      Value<ShareFormat> shareFormat,
     });
 
 final class $$SettingsTableReferences
@@ -42420,6 +42479,12 @@ class $$SettingsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnWithTypeConverterFilters<ShareFormat, ShareFormat, String>
+  get shareFormat => $composableBuilder(
+    column: $table.shareFormat,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
   $$AccountsTableFilterComposer get quickAddAccountId {
     final $$AccountsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -42863,6 +42928,11 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get shareFormat => $composableBuilder(
+    column: $table.shareFormat,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$AccountsTableOrderingComposer get quickAddAccountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -43292,6 +43362,12 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumnWithTypeConverter<ShareFormat, String> get shareFormat =>
+      $composableBuilder(
+        column: $table.shareFormat,
+        builder: (column) => column,
+      );
+
   $$AccountsTableAnnotationComposer get quickAddAccountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -43431,6 +43507,7 @@ class $$SettingsTableTableManager
                 Value<WeekStart> weekStart = const Value.absent(),
                 Value<int?> activeModeId = const Value.absent(),
                 Value<bool> showRunningBalance = const Value.absent(),
+                Value<ShareFormat> shareFormat = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
                 currencyCode: currencyCode,
@@ -43515,6 +43592,7 @@ class $$SettingsTableTableManager
                 weekStart: weekStart,
                 activeModeId: activeModeId,
                 showRunningBalance: showRunningBalance,
+                shareFormat: shareFormat,
               ),
           createCompanionCallback:
               ({
@@ -43605,6 +43683,7 @@ class $$SettingsTableTableManager
                 Value<WeekStart> weekStart = const Value.absent(),
                 Value<int?> activeModeId = const Value.absent(),
                 Value<bool> showRunningBalance = const Value.absent(),
+                Value<ShareFormat> shareFormat = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
                 currencyCode: currencyCode,
@@ -43689,6 +43768,7 @@ class $$SettingsTableTableManager
                 weekStart: weekStart,
                 activeModeId: activeModeId,
                 showRunningBalance: showRunningBalance,
+                shareFormat: shareFormat,
               ),
           withReferenceMapper: (p0) => p0
               .map(

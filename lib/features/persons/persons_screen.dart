@@ -20,6 +20,7 @@ import 'delete_person_or_group.dart';
 import 'edit_person_sheet.dart';
 import 'group_member_picker_sheet.dart';
 import 'person_avatar.dart';
+import '../share/share_flows.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 
 /// Who owes you, who you owe — split into Individual (a single named
@@ -523,7 +524,8 @@ class _PersonTile extends ConsumerWidget {
     );
   }
 
-  /// Hold-to-act: a sheet offering Archive (reversible, hides them) or Delete
+  /// Hold-to-act: a sheet offering Share (their statement, straight to
+  /// WhatsApp or Messages), Archive (reversible, hides them) or Delete
   /// (permanent, takes their whole history with them).
   Future<void> _showActions(BuildContext context, WidgetRef ref) async {
     final theme = Theme.of(context);
@@ -536,10 +538,16 @@ class _PersonTile extends ConsumerWidget {
       context: context,
       title: person.name,
       optionCount:
-          (person.isSettled || balance.isZero ? 5 : 4) -
+          (person.isSettled || balance.isZero ? 6 : 5) -
           (contactsOn ? 0 : 1) +
           (friendsOn ? 1 : 0),
       options: (sheetContext) => [
+        AppListTile(
+          leading: const AppIcon(Icons.ios_share_rounded),
+          title: const Text('Share'),
+          subtitle: const Text('Their statement, to WhatsApp or Messages.'),
+          onTap: () => Navigator.of(sheetContext).pop(_PersonAction.share),
+        ),
         AppListTile(
           leading: const AppIcon(Icons.edit_outlined),
           title: const Text('Edit'),
@@ -607,7 +615,9 @@ class _PersonTile extends ConsumerWidget {
       ],
     );
     if (action == null || !context.mounted) return;
-    if (action == _PersonAction.edit) {
+    if (action == _PersonAction.share) {
+      await sharePerson(context, person);
+    } else if (action == _PersonAction.edit) {
       await showEditPersonSheet(context, ref, person);
     } else if (action == _PersonAction.linkContact) {
       await _linkContact(context, ref);
@@ -715,6 +725,7 @@ class _PersonTile extends ConsumerWidget {
 }
 
 enum _PersonAction {
+  share,
   edit,
   linkContact,
   linkFriend,
@@ -901,8 +912,14 @@ class _GroupTile extends ConsumerWidget {
     final action = await showActionSheet<_GroupAction>(
       context: context,
       title: group.name,
-      optionCount: group.isSettled || balance.isZero ? 3 : 2,
+      optionCount: group.isSettled || balance.isZero ? 4 : 3,
       options: (sheetContext) => [
+        AppListTile(
+          leading: const AppIcon(Icons.ios_share_rounded),
+          title: const Text('Share'),
+          subtitle: const Text('Its statement, to WhatsApp or Messages.'),
+          onTap: () => Navigator.of(sheetContext).pop(_GroupAction.share),
+        ),
         if (group.isSettled)
           AppListTile(
             leading: const AppIcon(Icons.undo_rounded),
@@ -938,7 +955,10 @@ class _GroupTile extends ConsumerWidget {
       ],
     );
     if (action == null || !context.mounted) return;
-    if (action == _GroupAction.settle || action == _GroupAction.unsettle) {
+    if (action == _GroupAction.share) {
+      await shareGroup(context, group);
+    } else if (action == _GroupAction.settle ||
+        action == _GroupAction.unsettle) {
       final db = ref.read(dbProvider);
       action == _GroupAction.settle
           ? await db.settleGroup(group.id)
@@ -998,7 +1018,7 @@ class _GroupTile extends ConsumerWidget {
       confirmDeleteGroup(context, ref, group);
 }
 
-enum _GroupAction { settle, unsettle, archive, remove }
+enum _GroupAction { share, settle, unsettle, archive, remove }
 
 /// Everything the user moved to Settled — from the prompt when a balance
 /// reached zero, or by hand from a row's long-press sheet. Unlike Archived

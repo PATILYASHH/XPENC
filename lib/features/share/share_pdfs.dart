@@ -207,11 +207,12 @@ Future<pw.ImageProvider?> _receiptImage(String? path) async {
 
 /// One person's ledger for [period]: an opening balance from everything
 /// before it, each entry with the running balance after it, and today's
-/// balance at the end (GitHub #128).
+/// balance at the end (GitHub #128) — with [qr], a code to pay it by.
 Future<Uint8List> buildPersonStatementPdf(
   PersonShare s,
-  SharePeriod period,
-) async {
+  SharePeriod period, {
+  PaymentQr? qr,
+}) async {
   final kit = await PdfKit.load();
   final p = s.person;
   final ledger = s.ledger(period);
@@ -318,6 +319,16 @@ Future<Uint8List> buildPersonStatementPdf(
           value: m(s.balance.abs),
           color: _balanceColor(s.balance),
         ),
+        if (qr != null)
+          kit.payQr(
+            link: qr.link,
+            amount: m(qr.amount),
+            method: qr.payTo == null
+                ? qr.method
+                : '${qr.method} · to ${qr.payTo}',
+            id: qr.id,
+            hint: qr.hint,
+          ),
       ],
     ),
   );

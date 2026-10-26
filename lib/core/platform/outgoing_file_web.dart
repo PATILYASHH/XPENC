@@ -5,7 +5,11 @@ import 'outgoing_file.dart';
 /// A browser download: the bytes as a Blob, clicked through a throwaway
 /// `<a download>`. Nothing leaves the machine — the file goes to the
 /// browser's own downloads.
-Future<void> deliver(OutgoingFile file, {required String subject}) async {
+Future<void> deliver(
+  OutgoingFile file, {
+  required String subject,
+  String? text,
+}) async {
   final blob = _Blob(
     <JSAny>[file.bytes.toJS].toJS,
     _BlobOptions(type: file.mimeType),
@@ -22,6 +26,17 @@ Future<void> deliver(OutgoingFile file, {required String subject}) async {
   await Future<void>.delayed(const Duration(seconds: 2));
   _revokeObjectUrl(url);
 }
+
+/// A browser has no apps to hand a file to — the download is the share.
+Future<Set<ShareApp>> availableApps() async => const {};
+
+Future<ShareAppResult> sendTo(
+  OutgoingFile file,
+  ShareApp app, {
+  String? text,
+  String? whatsappJid,
+  String? phone,
+}) async => ShareAppResult.failed;
 
 @JS('Blob')
 extension type _Blob._(JSObject _) implements JSObject {

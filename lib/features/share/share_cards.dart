@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/app_icons.dart';
 import '../../core/branding/app_info.dart';
@@ -568,6 +569,104 @@ class _MoreLine extends StatelessWidget {
   }
 }
 
+/// The ticket's last stub: a scan-to-pay code for what's owed, on its own
+/// white tile in either look — a code needs dark-on-light to scan.
+class _PayStub extends StatelessWidget {
+  const _PayStub(this.p, this.qr);
+
+  final _Palette p;
+  final PaymentQr qr;
+
+  @override
+  Widget build(BuildContext context) {
+    final payTo = qr.payTo;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 6, 20, 20),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: p.isDark ? null : Border.all(color: p.line),
+            ),
+            child: QrImageView(
+              data: qr.link,
+              size: 112,
+              padding: EdgeInsets.zero,
+              backgroundColor: Colors.white,
+              // Gapless: no hairline seams between modules at 3×.
+              gapless: true,
+              eyeStyle: const QrEyeStyle(
+                eyeShape: QrEyeShape.square,
+                color: Color(0xFF0E0E10),
+              ),
+              dataModuleStyle: const QrDataModuleStyle(
+                dataModuleShape: QrDataModuleShape.square,
+                color: Color(0xFF0E0E10),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'SCAN TO PAY',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                    color: p.faint,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    _money(qr.amount, MoneyFormat.currency),
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.4,
+                      color: AppColors.income,
+                      fontFeatures: _tabular,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  payTo == null ? qr.method : '${qr.method} · to $payTo',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  qr.id,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 12, color: p.muted),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  qr.hint,
+                  style: TextStyle(fontSize: 10.5, color: p.faint),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Empty extends StatelessWidget {
   const _Empty(this.p, this.text);
 
@@ -813,6 +912,7 @@ class PersonShareCard extends StatelessWidget {
     required this.data,
     required this.period,
     required this.tone,
+    this.qr,
     super.key,
   });
 
@@ -822,6 +922,9 @@ class PersonShareCard extends StatelessWidget {
   final PersonShare data;
   final SharePeriod period;
   final ShareCardTone tone;
+
+  /// A scan-to-pay stub at the foot of the ticket.
+  final PaymentQr? qr;
 
   @override
   Widget build(BuildContext context) {
@@ -939,6 +1042,7 @@ class PersonShareCard extends StatelessWidget {
               ],
             ),
           ),
+          if (qr case final qr?) ...[_Perforation(p), _PayStub(p, qr)],
         ],
       ),
     );

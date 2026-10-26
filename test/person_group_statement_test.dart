@@ -206,8 +206,8 @@ void main() {
   });
 
   group('share action is wired up on screen', () {
-    testWidgets('Person detail: Share offers PDF or image, and PDF asks for '
-        'a period', (tester) async {
+    testWidgets('Person detail: Share opens the share screen with its '
+        'periods, and slides over to the PDF', (tester) async {
       late int personId;
       await tester.runAsync(() async {
         personId = await db.addPerson('Ram');
@@ -223,20 +223,21 @@ void main() {
       expect(tester.takeException(), isNull);
 
       await tester.tap(find.byTooltip('Share'));
-      await tester.pumpAndSettle();
-      expect(find.text('PDF document'), findsOneWidget);
-      expect(find.text('Image'), findsOneWidget);
-
-      await tester.tap(find.text('PDF document'));
       // Loading the ledger is real async work against the database.
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 200)),
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Statement period'), findsOneWidget);
-      expect(find.text('All time'), findsOneWidget);
-      expect(find.text('This month'), findsOneWidget);
+      expect(find.text('Share image'), findsOneWidget);
+      for (final period in ['All time', 'This month', 'Last month']) {
+        expect(find.widgetWithText(ChoiceChip, period), findsOneWidget);
+      }
+      expect(find.text('Custom range'), findsOneWidget);
+
+      await tester.tap(find.text('PDF'));
+      await tester.pumpAndSettle();
+      expect(find.text('Share PDF'), findsOneWidget);
       expect(find.text('Custom range'), findsOneWidget);
       expect(tester.takeException(), isNull);
 

@@ -474,6 +474,61 @@ class PdfKit {
     ),
   );
 
+  /// A scan-to-pay block: the code for [link] beside what it pays. One
+  /// unbreakable box, so a page break never splits it.
+  pw.Widget payQr({
+    required String link,
+    required String amount,
+    required String method,
+    required String id,
+    required String hint,
+  }) => pw.Container(
+    margin: const pw.EdgeInsets.only(top: 12),
+    padding: const pw.EdgeInsets.all(12),
+    decoration: pw.BoxDecoration(
+      border: pw.Border.all(color: hairline, width: 0.8),
+      borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+    ),
+    child: pw.Row(
+      children: [
+        pw.BarcodeWidget(
+          barcode: pw.Barcode.qrCode(),
+          data: link,
+          width: 84,
+          height: 84,
+          color: ink,
+          // No caption: it would fall back to Courier, which has no ₹.
+          drawText: false,
+        ),
+        pw.SizedBox(width: 16),
+        pw.Expanded(
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            mainAxisSize: pw.MainAxisSize.min,
+            children: [
+              pw.Text(
+                'SCAN TO PAY',
+                style: style(
+                  size: 7,
+                  font: semiBold,
+                  color: muted,
+                  letterSpacing: 1,
+                ),
+              ),
+              pw.SizedBox(height: 4),
+              pw.Text(amount, style: style(size: 14, font: bold, color: income)),
+              pw.SizedBox(height: 3),
+              pw.Text(method, style: style(size: 9, font: semiBold)),
+              pw.Text(id, style: style(size: 8.5, color: muted)),
+              pw.SizedBox(height: 4),
+              pw.Text(hint, style: style(size: 7.5, color: faint)),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+
   pw.Widget emptyNote(String text) => pw.Container(
     padding: const pw.EdgeInsets.symmetric(vertical: 18),
     decoration: const pw.BoxDecoration(

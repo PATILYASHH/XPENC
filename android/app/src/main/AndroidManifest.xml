@@ -137,6 +137,18 @@
                 android:resource="@xml/month_summary_widget_info"/>
         </receiver>
 
+        <!-- Share → WhatsApp / Messages: the statement file handed straight
+             to that app — see ShareTargetsChannel.kt. -->
+        <provider
+            android:name=".ShareFileProvider"
+            android:authorities="${applicationId}.share_files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/share_file_paths"/>
+        </provider>
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
@@ -157,5 +169,13 @@
              backup to take in) and "Open Connector" — see
              ConnectorChannel.kt. -->
         <package android:name="com.yash.xpenc.conectr"/>
+        <!-- Share → WhatsApp / Messages (ShareTargetsChannel.kt): whether
+             WhatsApp is installed, and which app answers an smsto: link. -->
+        <package android:name="com.whatsapp"/>
+        <package android:name="com.whatsapp.w4b"/>
+        <intent>
+            <action android:name="android.intent.action.SENDTO"/>
+            <data android:scheme="smsto"/>
+        </intent>
     </queries>
 </manifest>

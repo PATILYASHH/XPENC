@@ -11,6 +11,21 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 ## [1.6.6] — beta
 
 ### Added
+- **Share, rebuilt — straight to WhatsApp or Messages.** Every Share (a
+  person, a group, a transaction, a trip) now opens one screen: a preview
+  of exactly what goes, an **Image ⇄ PDF** slider, the period (all time,
+  this month, last month or your own dates) and the card's look. Then
+  **WhatsApp** or **Messages** (Android) — the file goes straight in, into
+  that person's chat when their phone number is saved, with a short
+  message — or **More** for every other app. It opens on Image the first
+  time, then on whichever you sent last.
+- **Scan to pay on a statement.** When someone owes you, their image card
+  and PDF can carry a QR code of your own UPI ID (or PayPal, Venmo, Cash
+  App, Revolut) with the amount filled in — they scan it and pay. On by
+  default; switch it off on the share screen. Needs your ID in Settings →
+  Persons.
+- **Share from the Persons list.** Hold a person or a group: **Share** is
+  now first in the sheet.
 - **Where you're heading** (Stats → Cash flow, #177): money on hand —
   cash, bank and prepaid, minus what cards owe — carried 3, 6 or 12 months
   forward. Auto rules count on the dates they'll really post (promo prices,

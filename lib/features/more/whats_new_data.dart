@@ -23,6 +23,15 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.ios_share_rounded,
+    title: 'Share straight to WhatsApp',
+    location: 'Persons → hold a person → Share',
+    description:
+        'Slide between Image and PDF, pick the period, then send it straight '
+        'into their WhatsApp or Messages chat. When they owe you, a QR of '
+        'your UPI ID with the amount lets them scan and pay.',
+  ),
+  WhatsNewEntry(
     icon: Icons.trending_up_rounded,
     title: "Where you're heading",
     location: 'Stats → Cash flow',

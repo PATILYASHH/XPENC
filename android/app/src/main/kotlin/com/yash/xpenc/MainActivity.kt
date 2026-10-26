@@ -57,6 +57,11 @@ private const val SCREEN_SECURITY_CHANNEL = "xpenc/screen_security"
  * `xpenc/connector` lives in [ConnectorChannel]: on the device, it reads
  * the friends list the Connector app shares and a backup it pulled from
  * another device, and tells Connector when that backup was taken in.
+ *
+ * Share targets
+ * -------------
+ * `xpenc/share_targets` lives in [ShareTargetsChannel]: Share → WhatsApp /
+ * Messages hands the statement file straight to that app.
  */
 class MainActivity : FlutterFragmentActivity() {
     private val permissions = PermissionsChannel(this)
@@ -98,6 +103,8 @@ class MainActivity : FlutterFragmentActivity() {
         super.configureFlutterEngine(flutterEngine)
         permissions.attach(flutterEngine.dartExecutor.binaryMessenger)
         ConnectorChannel(applicationContext)
+            .attach(flutterEngine.dartExecutor.binaryMessenger)
+        ShareTargetsChannel(this)
             .attach(flutterEngine.dartExecutor.binaryMessenger)
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,

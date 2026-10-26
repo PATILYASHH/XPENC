@@ -16,7 +16,7 @@ import 'package:xpenc/features/share/share_models.dart';
 import 'package:xpenc/features/share/share_pdfs.dart';
 import 'package:xpenc/features/transactions/transaction_detail_screen.dart';
 
-/// Share → PDF or image, for a transaction, a person and a group.
+/// Share → image or PDF, for a transaction, a person and a group.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -221,8 +221,10 @@ void main() {
     }
   });
 
-  testWidgets('transaction detail: Share → Image opens a preview, Dark/Light '
-      'switches the card', (tester) async {
+  testWidgets('transaction detail: Share opens on the image preview, '
+      'Dark/Light switches the card, the slider swaps to the PDF', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -253,15 +255,19 @@ void main() {
 
     await tester.tap(find.byTooltip('Share'));
     await tester.pumpAndSettle();
-    expect(find.text('PDF document'), findsOneWidget);
-    await tester.tap(find.text('Image'));
-    await tester.pumpAndSettle();
 
+    // Image is the default — nothing has been sent yet.
     expect(find.text('Share image'), findsOneWidget);
     expect(find.text('+₹52,000.00'), findsOneWidget);
     expect(find.text('October salary'), findsOneWidget);
     await tester.tap(find.byTooltip('Light card'));
     await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('PDF'));
+    await tester.pumpAndSettle();
+    expect(find.text('Share PDF'), findsOneWidget);
+    expect(find.byTooltip('Light card'), findsNothing);
     expect(tester.takeException(), isNull);
 
     await tester.pumpWidget(const SizedBox.shrink());

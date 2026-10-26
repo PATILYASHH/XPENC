@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What ShareFileProvider (ShareTargetsChannel.kt) may hand out: only the
+     files Share writes for WhatsApp / Messages, never the rest of the cache. -->
+<paths>
+    <cache-path name="shared" path="shared/" />
+</paths>
