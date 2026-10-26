@@ -95,6 +95,7 @@ class PersonDetailScreen extends ConsumerWidget {
         slivers: [
           SliverAppBar(
             pinned: true,
+            flexibleSpace: const GlassScrollEdge(),
             title: Row(
               mainAxisSize: MainAxisSize.min,
               children: [

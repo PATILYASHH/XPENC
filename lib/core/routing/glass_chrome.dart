@@ -329,12 +329,15 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
+                      // Near-solid behind the status bar, where nothing
+                      // should read through the clock; easing off down the
+                      // capsule.
                       colors: [
-                        veil.withValues(alpha: 0.82),
-                        veil.withValues(alpha: 0.45),
+                        veil.withValues(alpha: 0.94),
+                        veil.withValues(alpha: 0.7),
                         veil.withValues(alpha: 0),
                       ],
-                      stops: const [0, 0.55, 1],
+                      stops: const [0, 0.5, 1],
                     ),
                   ),
                 ),
@@ -602,132 +605,160 @@ class _LiquidTabBarState extends State<_LiquidTabBar>
       (t) => t.branch == widget.currentBranch,
     );
     final accent = Theme.of(context).colorScheme.secondary;
+    final tone = AppSurface.of(context).tone;
     return RepaintBoundary(
       child: SafeArea(
         top: false,
         minimum: const EdgeInsets.only(bottom: 8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: kGlassBarSide),
-          child: AnimatedBuilder(
-            animation: Listenable.merge([_morph, GlassBarMorph.progress]),
-            builder: (context, _) {
-              final t = _morph.value;
-              final open = t.clamp(0.0, 1.0);
-              // A sheet grown out of the bar: the bar's glass hands over to
-              // the sheet's (fading out as that fades in), and the tabs and
-              // the ➕ clear away.
-              final sheet = GlassBarMorph.progress.value;
-              final handedOver = sheet != null;
-              final sheetOpen = (sheet ?? 0).clamp(0.0, 1.0);
-              final away = math.max(open, sheetOpen);
-              final ownGlass = handedOver
-                  ? 1 - Curves.easeIn.transform((sheetOpen / 0.3).clamp(0, 1))
-                  : 1.0;
-              final height =
-                  _LiquidTabBar.height +
-                  (_LiquidTabBar._panel - _LiquidTabBar.height) * t;
-              final tabsOut = Curves.easeOut.transform(
-                (away * 1.8).clamp(0.0, 1.0),
-              );
-              final panelIn = Curves.easeOut.transform(
-                ((open - 0.3) / 0.7).clamp(0.0, 1.0),
-              );
-              final body = Stack(
-                children: [
-                  // The ➕'s light on the capsule's near end.
-                  if (away < 1)
-                    Positioned.fill(
-                      child: IgnorePointer(
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: RadialGradient(
-                              center: const Alignment(1.05, 0.15),
-                              radius: 2.2,
-                              colors: [
-                                accent.withValues(alpha: 0.3 * (1 - away)),
-                                accent.withValues(alpha: 0),
-                              ],
+        // Centred at a phone-like width on a tablet, as the sheets that grow
+        // out of it are (see [glassTabCapsuleRect]).
+        child: Align(
+          heightFactor: 1,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: kGlassBarMaxWidth),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: kGlassBarSide),
+              child: AnimatedBuilder(
+                animation: Listenable.merge([_morph, GlassBarMorph.progress]),
+                builder: (context, _) {
+                  final t = _morph.value;
+                  final open = t.clamp(0.0, 1.0);
+                  // A sheet grown out of the bar: the bar's glass hands over to
+                  // the sheet's (fading out as that fades in), and the tabs and
+                  // the ➕ clear away.
+                  final sheet = GlassBarMorph.progress.value;
+                  final handedOver = sheet != null;
+                  final sheetOpen = (sheet ?? 0).clamp(0.0, 1.0);
+                  final away = math.max(open, sheetOpen);
+                  final ownGlass = handedOver
+                      ? 1 -
+                            Curves.easeIn.transform(
+                              (sheetOpen / 0.3).clamp(0, 1),
+                            )
+                      : 1.0;
+                  final height =
+                      _LiquidTabBar.height +
+                      (_LiquidTabBar._panel - _LiquidTabBar.height) * t;
+                  final tabsOut = Curves.easeOut.transform(
+                    (away * 1.8).clamp(0.0, 1.0),
+                  );
+                  final panelIn = Curves.easeOut.transform(
+                    ((open - 0.3) / 0.7).clamp(0.0, 1.0),
+                  );
+                  final body = Stack(
+                    children: [
+                      // The ➕'s light on the capsule's near end.
+                      if (away < 1)
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: RadialGradient(
+                                  center: const Alignment(1.05, 0.15),
+                                  radius: 2.2,
+                                  colors: [
+                                    accent.withValues(alpha: 0.3 * (1 - away)),
+                                    accent.withValues(alpha: 0),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                  if (tabsOut < 1)
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      height: _LiquidTabBar.height,
-                      child: Opacity(
-                        opacity: 1 - tabsOut,
-                        child: Transform.scale(
-                          scale: 1 - 0.18 * tabsOut,
-                          child: _tabs(context, selected),
-                        ),
-                      ),
-                    ),
-                  if (panelIn > 0)
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      top: 0,
-                      height: _LiquidTabBar._panel,
-                      child: Opacity(
-                        opacity: panelIn,
-                        child: Transform.translate(
-                          offset: Offset(0, 14 * (1 - panelIn)),
-                          child: const _GlassMonthPanel(),
-                        ),
-                      ),
-                    ),
-                ],
-              );
-              const addExtent = _LiquidTabBar.height + kGlassAddGap;
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: height,
-                      child: ownGlass <= 0
-                          ? body
-                          : Opacity(
-                              opacity: ownGlass,
-                              child: LiquidGlass(
-                                borderRadius: BorderRadius.circular(
-                                  32 - 4 * open,
-                                ),
-                                child: body,
-                              ),
+                      if (tabsOut < 1)
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          height: _LiquidTabBar.height,
+                          child: Opacity(
+                            opacity: 1 - tabsOut,
+                            child: Transform.scale(
+                              scale: 1 - 0.18 * tabsOut,
+                              child: _tabs(context, selected),
                             ),
-                    ),
-                  ),
-                  // The ➕ slides away while the bar is the picker or a sheet.
-                  ClipRect(
-                    child: SizedBox(
-                      width: addExtent * (1 - away),
-                      height: _LiquidTabBar.height,
-                      child: away >= 1
-                          ? null
-                          : OverflowBox(
-                              alignment: Alignment.centerRight,
-                              minWidth: addExtent,
-                              maxWidth: addExtent,
-                              child: Opacity(
-                                opacity: 1 - away,
-                                child: Padding(
-                                  padding: const EdgeInsets.only(
-                                    left: kGlassAddGap,
+                          ),
+                        ),
+                      if (panelIn > 0)
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          top: 0,
+                          height: _LiquidTabBar._panel,
+                          child: Opacity(
+                            opacity: panelIn,
+                            child: Transform.translate(
+                              offset: Offset(0, 14 * (1 - panelIn)),
+                              child: const _GlassMonthPanel(),
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                  const addExtent = _LiquidTabBar.height + kGlassAddGap;
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: height,
+                          child: ownGlass <= 0
+                              ? body
+                              : Opacity(
+                                  opacity: ownGlass,
+                                  // Opening into the picker, the clear lens of
+                                  // the bar thickens into a sheet's frost — the
+                                  // month grid is something to read, and through
+                                  // clear glass the page behind read through it.
+                                  child: LiquidGlass(
+                                    borderRadius: BorderRadius.circular(
+                                      32 - 4 * open,
+                                    ),
+                                    frost: Color.lerp(
+                                      tone.controlFrost,
+                                      tone.sheetFrost,
+                                      open,
+                                    ),
+                                    blur:
+                                        GlassStyle.controlBlur +
+                                        (24 - GlassStyle.controlBlur) * open,
+                                    refraction: open > 0.95
+                                        ? 0
+                                        : 18 * (1 - open),
+                                    light: (1 - open / 0.85).clamp(0.0, 1.0),
+                                    child: body,
                                   ),
-                                  child: widget.add,
                                 ),
-                              ),
-                            ),
-                    ),
-                  ),
-                ],
-              );
-            },
+                        ),
+                      ),
+                      // The ➕ slides away while the bar is the picker or a sheet.
+                      ClipRect(
+                        child: SizedBox(
+                          width: addExtent * (1 - away),
+                          height: _LiquidTabBar.height,
+                          child: away >= 1
+                              ? null
+                              : OverflowBox(
+                                  alignment: Alignment.centerRight,
+                                  minWidth: addExtent,
+                                  maxWidth: addExtent,
+                                  child: Opacity(
+                                    opacity: 1 - away,
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(
+                                        left: kGlassAddGap,
+                                      ),
+                                      child: widget.add,
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
           ),
         ),
       ),

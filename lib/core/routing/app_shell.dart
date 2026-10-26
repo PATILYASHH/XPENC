@@ -1218,7 +1218,7 @@ class _LiquidDropletState extends State<_LiquidDroplet>
   }
 }
 
-class _LiquidTab extends StatelessWidget {
+class _LiquidTab extends StatefulWidget {
   const _LiquidTab({
     required this.tab,
     required this.selected,
@@ -1232,7 +1232,22 @@ class _LiquidTab extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_LiquidTab> createState() => _LiquidTabState();
+}
+
+class _LiquidTabState extends State<_LiquidTab> {
+  /// A finger is on this tab: its glyph dips the moment it lands — before
+  /// the tap is even recognised — and springs back as it lifts.
+  bool _down = false;
+
+  void _setDown(bool v) {
+    if (_down != v) setState(() => _down = v);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final tab = widget.tab;
+    final selected = widget.selected;
     final theme = Theme.of(context);
     // On dark glass the system blue is lifted a step, or it sinks into
     // the droplet behind it.
@@ -1250,38 +1265,43 @@ class _LiquidTab extends StatelessWidget {
       selected: selected,
       button: true,
       label: tab.label,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            AnimatedScale(
-              scale: selected ? 1.06 : 1,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutCubic,
-              child: AppIcon(icon, size: 24, color: color),
-            ),
-            if (showLabel) ...[
-              const SizedBox(height: 3),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    tab.label,
-                    maxLines: 1,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: color,
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: -0.1,
+      child: Listener(
+        onPointerDown: (_) => _setDown(true),
+        onPointerUp: (_) => _setDown(false),
+        onPointerCancel: (_) => _setDown(false),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onTap,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedScale(
+                scale: _down ? 0.86 : (selected ? 1.06 : 1),
+                duration: Duration(milliseconds: _down ? 90 : 300),
+                curve: Curves.easeOutCubic,
+                child: AppIcon(icon, size: 24, color: color),
+              ),
+              if (widget.showLabel) ...[
+                const SizedBox(height: 3),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      tab.label,
+                      maxLines: 1,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: color,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.1,
+                      ),
                     ),
                   ),
                 ),
-              ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

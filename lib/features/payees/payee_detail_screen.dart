@@ -48,6 +48,7 @@ class PayeeDetailScreen extends ConsumerWidget {
         slivers: [
           SliverAppBar(
             pinned: true,
+            flexibleSpace: const GlassScrollEdge(),
             title: Text(person?.name ?? payee),
             actions: [GlassActionGroup(children: [
               if (pid == null)

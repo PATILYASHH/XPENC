@@ -49,6 +49,7 @@ class AccountsScreen extends ConsumerWidget {
           if (!embedded)
             SliverAppBar(
               pinned: true,
+              flexibleSpace: const GlassScrollEdge(),
               automaticallyImplyLeading: impliesBackArrow(context),
               title: const Text('Accounts'),
               actions: [

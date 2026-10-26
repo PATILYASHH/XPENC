@@ -398,6 +398,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           if (!widget.embedded)
             SliverAppBar(
               pinned: true,
+              flexibleSpace: const GlassScrollEdge(),
               title: glass && searchActive
                   ? GlassSearchField(
                       controller: _searchController,
@@ -797,7 +798,14 @@ class _SummaryStrip extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
+      // Under Glass the chips' frost band runs a lip past them, which would
+      // veil the card's top edge; it starts below that.
+      padding: EdgeInsets.fromLTRB(
+        20,
+        AppSurface.of(context).isGlass ? _FrostBand.lip + 4 : 4,
+        20,
+        4,
+      ),
       child: AppCard(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -933,45 +941,42 @@ class _DayHeader extends StatelessWidget {
       padding: desktop
           ? const EdgeInsets.fromLTRB(32, 22, 32, 6)
           : const EdgeInsets.fromLTRB(24, 20, 24, 8),
-      child: Row(
-        children: [
-          AppIcon(_icon, size: 15, color: cs.onSurfaceVariant),
-          const SizedBox(width: 8),
-          // A flexible label would hold half the row's room for itself; on
-          // a PC the total needs all of it to reach the amount column.
-          if (desktop)
+      child: LayoutBuilder(
+        builder: (context, box) => Row(
+          children: [
+            AppIcon(_icon, size: 15, color: cs.onSurfaceVariant),
+            const SizedBox(width: 8),
+            // Capped, not flexible: a flexible label holds its share of the
+            // row even when it's short, and the total — which needs the rest
+            // to reach the row's end, over the amounts below — falls short.
             ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 320),
+              constraints: BoxConstraints(
+                maxWidth: desktop ? 320 : box.maxWidth / 2,
+              ),
               child: label,
-            )
-          else
-            Flexible(child: label),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(999),
             ),
-            child: Text(
-              '$count',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: cs.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-                fontFeatures: kTabularFigures,
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                '$count',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: kTabularFigures,
+                ),
               ),
             ),
-          ),
-          if (desktop)
+            const SizedBox(width: 8),
             Expanded(
               child: Align(alignment: Alignment.centerRight, child: total),
-            )
-          else ...[
-            const Spacer(),
-            const SizedBox(width: 8),
-            Flexible(child: total),
+            ),
           ],
-        ],
+        ),
       ),
     );
   }

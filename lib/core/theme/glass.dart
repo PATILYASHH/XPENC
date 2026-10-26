@@ -60,6 +60,7 @@ class GlassTone {
     required this.thumb,
     required this.edge,
     required this.ambient,
+    this.ambientBlur = 18,
   });
 
   final Brightness brightness;
@@ -105,6 +106,9 @@ class GlassTone {
 
   /// Opacity of the ambient glow around cards.
   final double ambient;
+
+  /// How far that glow may spread (its largest blur sigma).
+  final double ambientBlur;
 
   bool get isDark => brightness == Brightness.dark;
 
@@ -203,6 +207,9 @@ class GlassTone {
     track: Color(0x3D787880),
     thumb: Color(0x4DFFFFFF),
     ambient: 0.10,
+    // On black there's no wallpaper light to spill, only a rim of it: a
+    // wide haze read as a grey band wherever a list's edge clipped it.
+    ambientBlur: 7,
     edge: Color(0x33FFFFFF),
   );
 }
@@ -678,13 +685,14 @@ class _RenderAmbientLight extends RenderProxyBox {
         _screen,
       );
       final side = size.shortestSide;
+      final spread = tone.ambientBlur;
       context.canvas.drawRRect(
-        shape.inflate((side * 0.03).clamp(1.0, 4.0)),
+        shape.inflate((side * 0.03).clamp(1.0, spread / 4.5)),
         Paint()
           ..color = glow.withValues(alpha: tone.ambient * 0.7)
           ..maskFilter = MaskFilter.blur(
             BlurStyle.normal,
-            (side * 0.14).clamp(7.0, 18.0),
+            (side * 0.14).clamp(math.min(7.0, spread), spread),
           ),
       );
     }
@@ -1170,19 +1178,24 @@ class _GlassButtonState extends State<GlassButton> {
     );
     // A gentle dip and one soft settle — no rubbery wobble to track.
     glass = AnimatedScale(
-      scale: _down ? 0.94 : 1,
+      scale: _down ? 0.95 : 1,
       duration: Duration(milliseconds: _down ? 110 : 320),
       curve: _down ? Curves.easeOutCubic : const Cubic(0.2, 1.25, 0.4, 1),
       child: glass,
     );
     final enabled = widget.onPressed != null || widget.onLongPress != null;
+    // The glass answers the finger the instant it lands, not once the tap
+    // has won its gesture arena (a press timeout later). Inside a scrolling
+    // row it waits for that, as iOS delays touches in a scroll view, so a
+    // swipe across the row doesn't flash every button it starts on.
+    final instant = enabled && Scrollable.maybeOf(context) == null;
     Widget result = Semantics(
       button: true,
       enabled: enabled,
       label: widget.semanticLabel ?? widget.tooltip,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTapDown: enabled ? (_) => _setDown(true) : null,
+        onTapDown: enabled && !instant ? (_) => _setDown(true) : null,
         onTapUp: enabled ? (_) => _setDown(false) : null,
         onTapCancel: () => _setDown(false),
         onTap: widget.onPressed,
@@ -1190,6 +1203,14 @@ class _GlassButtonState extends State<GlassButton> {
         child: glass,
       ),
     );
+    if (instant) {
+      result = Listener(
+        onPointerDown: (_) => _setDown(true),
+        onPointerUp: (_) => _setDown(false),
+        onPointerCancel: (_) => _setDown(false),
+        child: result,
+      );
+    }
     if (widget.tooltip != null) {
       result = Tooltip(message: widget.tooltip!, child: result);
     }

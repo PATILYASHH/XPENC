@@ -33,6 +33,15 @@ const whatsNewEntries = <WhatsNewEntry>[
         'would.',
   ),
   WhatsNewEntry(
+    icon: Icons.blur_on_rounded,
+    title: 'A more finished Glass',
+    location: 'Settings → General → Theme → Glass',
+    description:
+        'Buttons and tabs answer your touch instantly, sheets stretch and '
+        'spring back, the month picker frosts over, and lists fade softly '
+        'under the top bar. On a tablet the tab bar sits centred.',
+  ),
+  WhatsNewEntry(
     icon: Icons.calendar_month_rounded,
     title: 'Add money from the Calendar',
     location: 'Calendar → pick a day → ➕',

@@ -67,6 +67,19 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   screenshots in, reading screenshots, fingerprint unlock, the home widget,
   notifications, contacts and USSD pay — aren't there.
 
+### Changed
+- **Glass feels finished.** Buttons and tabs press in the instant your
+  finger lands. Sheets stretch when pulled up instead of stopping dead,
+  spring back at the speed you let go, and close with a quick flick down.
+  The month picker frosts over as the tab bar grows into it, so the page
+  behind no longer shows through the months. On pages with their own top
+  bar (Accounts, Settings and the rest), what scrolls up under the bar now
+  fades into it instead of showing through the title or ending on a hard
+  line. On a tablet the tab bar and its sheets sit centred instead of
+  stretching across the screen. The glow around cards no longer leaves
+  grey bands where a list cuts it off, and Transactions' summary card is
+  no longer half hidden under the filter chips.
+
 ### Security
 - **A backup no longer carries your lock.** Your PIN's hash, the recovery
   phrase's hash and the authenticator secret are left out of every backup
@@ -83,6 +96,12 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   foreign-key error on a phone with loans, templates or group expenses;
   1.6.5 fixed that, and a test now checks the wipe against every table so
   it can't come back. If it ever fails, it says nothing was deleted.
+- **A day's total sits at the end of its row again.** In Transactions the
+  total beside "Today" (and every other day) sat stranded mid-row; it's
+  back at the right, over the amounts below it.
+- **Dashboard account cards fit a larger font.** With the phone's text
+  size turned up, the cards' balances were cut off at the bottom; the row
+  now grows with the text.
 
 ## [1.6.5] — 2026-10-23
 

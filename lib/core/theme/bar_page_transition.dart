@@ -312,18 +312,8 @@ class _BarPageTransitionState extends State<BarPageTransition> {
     // Where the window starts: the top capsule it was opened from, the Glass
     // tab capsule (the ➕ and its gap lie beyond its right end), or a
     // bar-shaped capsule across the foot.
-    final barBottom = size.height - glassBarBottom(media);
     final top = spec.origin;
-    final from =
-        top ??
-        Rect.fromLTRB(
-          kGlassBarSide,
-          barBottom - kGlassBarHeight,
-          size.width -
-              kGlassBarSide -
-              (spec.fromBar ? kGlassBarHeight + kGlassAddGap : 0),
-          barBottom,
-        );
+    final from = top ?? glassTabCapsuleRect(media, withAdd: spec.fromBar);
     // The leading edge travels on the spring (a hair past at its peak) — up
     // out of a bar at the foot, down out of the top capsule — and the window
     // stretches out to the sides and its other edge along with it.

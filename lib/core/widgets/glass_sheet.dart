@@ -19,10 +19,33 @@ const double kGlassAddGap = 10;
 /// A sheet's inset from each side of the screen.
 const double kGlassSheetSide = 8;
 
+/// The widest the tab bar's row (capsule and ➕) and the sheets grown out of
+/// it may be. On a tablet both sit centred at this width, so a sheet still
+/// starts exactly where the bar is, instead of a capsule stretched across a
+/// screen whose sheets would have to jump in from a narrower one.
+const double kGlassBarMaxWidth = 640;
+
 /// The space under the bar (and under a sheet): the home indicator's, or 8 —
 /// what the bar's own `SafeArea(minimum: 8)` leaves, so the two line up.
 double glassBarBottom(MediaQueryData media) =>
     math.max(8.0, media.padding.bottom);
+
+/// Where the shell's tab capsule sits on screen — the ➕ and its gap lie
+/// beyond its right end — or, with [withAdd] false, the bar-shaped capsule
+/// a page with no tab bar grows its sheets and pages out of.
+Rect glassTabCapsuleRect(MediaQueryData media, {bool withAdd = true}) {
+  final size = media.size;
+  final row = math.min(size.width, kGlassBarMaxWidth);
+  final bottom = size.height - glassBarBottom(media);
+  return Rect.fromLTRB(
+    (size.width - row) / 2 + kGlassBarSide,
+    bottom - kGlassBarHeight,
+    (size.width + row) / 2 -
+        kGlassBarSide -
+        (withAdd ? kGlassBarHeight + kGlassAddGap : 0),
+    bottom,
+  );
+}
 
 /// One bar's hand-over to whatever grows out of it: while it's handed over,
 /// [progress] carries the morph (spring-eased, so it can overshoot 0…1 a
@@ -289,20 +312,30 @@ class _GlassSheetFrame extends StatefulWidget {
 
 class _GlassSheetFrameState extends State<_GlassSheetFrame>
     with SingleTickerProviderStateMixin {
-  /// How far the sheet has been dragged down, in logical pixels.
+  /// How far the sheet is drawn down (up, negative), in logical pixels.
   double _drag = 0;
+
+  /// How far the finger has actually gone; [_drag] follows it 1:1 downward
+  /// and with growing resistance upward.
+  double _pull = 0;
+
+  // Unbounded: it carries the sheet home on a spring, from wherever the
+  // finger let go and at the speed it was moving.
   late final AnimationController _settle;
+
+  /// Critically damped, ~0.3 s response: home without a bounce.
+  static final _home = SpringDescription.withDampingRatio(
+    mass: 1,
+    stiffness: 440,
+    ratio: 1,
+  );
 
   @override
   void initState() {
     super.initState();
-    _settle = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 260),
-    )..addListener(() => setState(() => _drag = _settleFrom * _settle.value));
+    _settle = AnimationController.unbounded(vsync: this)
+      ..addListener(() => setState(() => _drag = _pull = _settle.value));
   }
-
-  double _settleFrom = 0;
 
   @override
   void dispose() {
@@ -319,24 +352,38 @@ class _GlassSheetFrameState extends State<_GlassSheetFrame>
     Navigator.of(context).pop();
   }
 
+  /// Past the top there's nowhere to go, so the sheet gives less the further
+  /// it's pulled — a soft limit, not a wall (Apple's rubber-band curve).
+  static double _rubberBand(double overshoot) {
+    const dimension = 120.0, constant = 0.55;
+    return overshoot *
+        dimension *
+        constant /
+        (dimension + constant * overshoot);
+  }
+
   void _onDragUpdate(DragUpdateDetails details) {
     if (_closing) return;
     _settle.stop();
-    setState(() => _drag = math.max(0, _drag + details.delta.dy));
+    _pull += details.delta.dy;
+    setState(() => _drag = _pull >= 0 ? _pull : -_rubberBand(-_pull));
   }
 
   void _onDragEnd(DragEndDetails details, double height) {
     if (_closing) return;
     final velocity = details.primaryVelocity ?? 0;
-    if (velocity > 700 || _drag > math.min(160.0, height * 0.35)) {
+    // Where the flick was taking it, not just where it was let go: a short,
+    // quick pull closes as surely as a long, slow one.
+    final projected = _drag + velocity * 0.15;
+    if (velocity > 700 ||
+        (velocity >= 0 && projected > math.min(160.0, height * 0.35))) {
       _close();
       return;
     }
-    // Spring back up.
-    _settleFrom = _drag;
+    // Home again, carrying on at the finger's speed.
     _settle
-      ..value = 1
-      ..animateTo(0, curve: Curves.easeOutCubic);
+      ..value = _drag
+      ..animateWith(SpringSimulation(_home, _drag, 0, velocity));
   }
 
   bool _onExtent(DraggableScrollableNotification n) {
@@ -402,7 +449,10 @@ class _GlassSheetFrameState extends State<_GlassSheetFrame>
       child: Align(
         alignment: Alignment.bottomCenter,
         child: ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: maxHeight, maxWidth: 640),
+          constraints: BoxConstraints(
+            maxHeight: maxHeight,
+            maxWidth: kGlassBarMaxWidth,
+          ),
           child: Padding(
             padding: EdgeInsets.fromLTRB(
               kGlassSheetSide,

@@ -304,8 +304,121 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
       bottom: bottom,
       backgroundColor: backgroundColor,
       iconTheme: iconTheme,
+      flexibleSpace: AppSurface.of(context).isGlass
+          ? const GlassScrollEdge()
+          : null,
     );
   }
+}
+
+/// Glass's scroll edge, for a page's own top bar (an [AppBar]'s or
+/// [SliverAppBar]'s `flexibleSpace`; [AppTopBar] adds it itself). The bar is
+/// clear glass over the page, so once content scrolls up to it — under it,
+/// on a pinned [SliverAppBar] — a veil gathers behind the bar's title and
+/// buttons and runs a little way past its foot, so the content dissolves
+/// into the top of the screen instead of reading through the title or
+/// ending on a hard line. It follows the scroll offset, deepening over the
+/// first few points of scroll, rather than snapping on. Draws nothing
+/// outside Glass, or while the page sits at its top.
+class GlassScrollEdge extends StatefulWidget {
+  const GlassScrollEdge({super.key});
+
+  /// How far past the bar's foot the veil fades out.
+  static const double fade = 30;
+
+  @override
+  State<GlassScrollEdge> createState() => _GlassScrollEdgeState();
+}
+
+class _GlassScrollEdgeState extends State<GlassScrollEdge> {
+  ScrollNotificationObserverState? _observer;
+
+  /// 0 at the top of the page, 1 once there's content under the bar.
+  double _under = 0;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _observer?.removeListener(_onScroll);
+    _observer = ScrollNotificationObserver.maybeOf(context)
+      ?..addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _observer?.removeListener(_onScroll);
+    super.dispose();
+  }
+
+  // The same scrolls an AppBar counts as "scrolled under": the page's own
+  // vertical list, not a carousel or a list nested inside it.
+  void _onScroll(ScrollNotification n) {
+    if (n is! ScrollUpdateNotification ||
+        n.depth != 0 ||
+        n.metrics.axisDirection != AxisDirection.down) {
+      return;
+    }
+    final under = (n.metrics.extentBefore / 24).clamp(0.0, 1.0);
+    if (under != _under) setState(() => _under = under);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final surface = AppSurface.of(context);
+    if (!surface.isGlass || _under <= 0) return const SizedBox.expand();
+    return IgnorePointer(
+      child: CustomPaint(
+        size: Size.infinite,
+        painter: _ScrollEdgePainter(
+          strength: _under,
+          veil: surface.tone.isDark
+              ? const Color(0xFF000000)
+              : const Color(0xFFF4F5FA),
+        ),
+      ),
+    );
+  }
+}
+
+/// The veil: near-solid behind the status bar, still deep at the bar's
+/// foot, clear [GlassScrollEdge.fade] below it — painted past the bar's own
+/// box, over the top of the page (the bar paints after the page; nothing
+/// clips its flexible space).
+class _ScrollEdgePainter extends CustomPainter {
+  _ScrollEdgePainter({required this.strength, required this.veil});
+
+  final double strength;
+  final Color veil;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const fade = GlassScrollEdge.fade;
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height + fade);
+    // Eased below the foot, not a straight ramp, whose end reads as an edge
+    // of its own.
+    final foot = size.height / rect.height;
+    double below(double t) => foot + (1 - foot) * t;
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = ui.Gradient.linear(
+          rect.topCenter,
+          rect.bottomCenter,
+          [
+            veil.withValues(alpha: 0.96 * strength),
+            veil.withValues(alpha: 0.9 * strength),
+            veil.withValues(alpha: 0.5 * strength),
+            veil.withValues(alpha: 0.16 * strength),
+            veil.withValues(alpha: 0),
+          ],
+          [0, foot, below(0.35), below(0.7), 1],
+        ),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ScrollEdgePainter old) =>
+      old.strength != strength || old.veil != veil;
 }
 
 /// A search field that lives *in* a Glass top bar, taking the title's place:

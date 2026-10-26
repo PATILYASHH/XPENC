@@ -11,6 +11,7 @@ import '../../core/money.dart';
 import '../../core/security/nct.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/bar_page_transition.dart';
+import '../../core/theme/glass.dart';
 import '../../core/theme/theme_preset.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
@@ -1136,11 +1137,17 @@ class _AccountsStrip extends ConsumerWidget {
               _SectionHeader(title, trailing: seeAll),
               SizedBox(
                 // 16px padding top+bottom + icon(38) + name + balance needs
-                // ~116. 112 overflowed by 4px; leave headroom for text scale.
-                height: 126,
+                // ~116; the text's ~44 of it grows with the system font size
+                // (a fixed 126 overflowed at 130%), with headroom kept.
+                height: 82 + MediaQuery.textScalerOf(context).scale(44),
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
+                  // Glass cards glow past their edges; the row spans the
+                  // screen, so nothing it would clip needs clipping.
+                  clipBehavior: AppSurface.of(context).isGlass
+                      ? Clip.none
+                      : Clip.hardEdge,
                   itemCount: list.length,
                   separatorBuilder: (_, _) => const SizedBox(width: 12),
                   itemBuilder: (context, i) => _AccountCard(

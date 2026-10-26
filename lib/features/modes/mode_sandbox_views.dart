@@ -37,7 +37,11 @@ class _SandboxPage extends StatelessWidget {
         if (embedded)
           const TopBarInsetSliver()
         else
-          SliverAppBar(pinned: true, title: Text(title)),
+          SliverAppBar(
+            pinned: true,
+            flexibleSpace: const GlassScrollEdge(),
+            title: Text(title),
+          ),
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
           sliver: SliverList.list(children: children),
