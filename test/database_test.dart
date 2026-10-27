@@ -1816,6 +1816,29 @@ void main() {
       },
     );
 
+    test('a rule carries its note onto what it posts (GitHub #181)', () async {
+      final cash = await cashId();
+      final food = await expenseCategory('Food');
+      final today = DateTime(2026, 7, 1);
+      final ruleId = await db.addRecurringRule(
+        name: 'Rent',
+        kind: CategoryKind.expense,
+        amount: Money.fromRupees(1000),
+        accountId: cash,
+        categoryId: food,
+        note: 'Flat 4B',
+        frequency: RecurringFrequency.monthly,
+        startsOn: today,
+      );
+
+      await db.runDueRecurringRules(now: today);
+      await db.payRecurringRuleNow(ruleId, now: today);
+
+      final posted = await db.watchTransactions().first;
+      expect(posted, hasLength(2));
+      expect(posted.map((t) => t.note), everyElement('Flat 4B'));
+    });
+
     test('rejects a category whose kind does not match the rule', () async {
       final cash = await cashId();
       final food = await expenseCategory('Food');

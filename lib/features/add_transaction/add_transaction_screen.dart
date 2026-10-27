@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/app_icons.dart';
@@ -1766,6 +1767,52 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     );
   }
 
+  /// Editing an expense saved with "Change went elsewhere": the change is its
+  /// own transfer row (see `AppDatabase.addExpenseWithChange`), so instead of
+  /// the creation-only toggle, point at that leg — tap to edit it there.
+  /// Without this the change just seemed to vanish (GitHub #179). Null for
+  /// anything else, a loan payment's principal leg included.
+  Widget? _linkedChangeCard(Map<int, AccountRow> accountMap) {
+    if (!_isEditing || _type != TxType.expense) return null;
+    final legs =
+        ref
+            .watch(paymentGroupLegsProvider(widget.transactionId!))
+            .valueOrNull ??
+        const <TransactionRow>[];
+    TransactionRow? change;
+    for (final l in legs) {
+      if (l.id != widget.transactionId &&
+          l.type == TxType.transfer &&
+          accountMap[l.toAccountId]?.type != AccountType.loan) {
+        change = l;
+        break;
+      }
+    }
+    if (change == null) return null;
+    final theme = Theme.of(context);
+    final leg = change;
+    return AppCard(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: ListTile(
+        onTap: () => context.push('/add?id=${leg.id}'),
+        leading: AppIcon(
+          Icons.currency_exchange_rounded,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+        title: Text(
+          'Change ${MoneyFormat.symbol(leg.amount)} to '
+          '${accountMap[leg.toAccountId]?.name ?? '—'}',
+        ),
+        subtitle: const Text('Saved as its own transfer · tap to edit'),
+        trailing: AppIcon(
+          Icons.chevron_right_rounded,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+
   Widget _splitEditorCard(Map<int, CategoryRow> categoryMap) {
     final theme = Theme.of(context);
     final sum = _splitRows.fold(const Money.zero(), (s, r) => s + r.amount);
@@ -2560,6 +2607,12 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           if (accountMap[_accountId]?.type == AccountType.cash &&
               cashAccounts >= 2) {
             tiles.add(_changeToggleTile());
+            tiles.add(const SizedBox(height: 12));
+          }
+        } else {
+          final linkedChange = _linkedChangeCard(accountMap);
+          if (linkedChange != null) {
+            tiles.add(linkedChange);
             tiles.add(const SizedBox(height: 12));
           }
         }

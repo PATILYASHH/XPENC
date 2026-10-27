@@ -154,6 +154,7 @@ void main() {
       accountId: cash,
       toAccountId: loan,
       payee: 'HDFC Bank',
+      note: 'Loan a/c 0042',
       frequency: RecurringFrequency.monthly,
       startsOn: DateTime(2017, 1, 12),
     );
@@ -167,6 +168,9 @@ void main() {
     expect(interest.payee, 'HDFC Bank');
     expect(principal.payee, isNull);
     expect(interest.date, DateTime(2017, 1, 12));
+    // Both legs carry the rule's note (GitHub #181).
+    expect(interest.note, 'Loan a/c 0042');
+    expect(principal.note, 'Loan a/c 0042');
   });
 
   group('an auto-posted EMI interest leg is never uncategorised', () {

@@ -1916,7 +1916,38 @@ class _SpendByCategorySection extends ConsumerWidget {
                 id: -e.key,
               ),
         ]..sort((a, b) => b.value.compareTo(a.value));
-        if (slices.isEmpty) return const SizedBox.shrink();
+        // Turned on in Customize dashboard, so it stays put even with nothing
+        // spent — vanishing read as "won't add" (GitHub #180).
+        if (slices.isEmpty) {
+          final past = ref.watch(viewingPastPeriodProvider);
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _SectionHeader('Spending'),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: AppCard(
+                    margin: EdgeInsets.zero,
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Text(
+                        past
+                            ? 'Nothing was spent this month.'
+                            : 'Nothing spent yet this month. It fills in as '
+                                  'you add expenses.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
 
         final total = slices.fold(
           const Money.zero(),

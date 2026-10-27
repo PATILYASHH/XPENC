@@ -5391,6 +5391,7 @@ class AppDatabase extends _$AppDatabase {
             : null,
         transferCategoryId: rule.categoryId,
         date: date,
+        note: rule.note,
         payee: rule.payee,
         recurringRuleId: rule.id,
         tagIds: tagIds,
@@ -5409,6 +5410,8 @@ class AppDatabase extends _$AppDatabase {
         toAccountId: rule.toAccountId,
         categoryId: rule.categoryId,
         date: date,
+        // The rule's own note travels onto every occurrence (GitHub #181).
+        note: rule.note,
         payee: isGoalOrLoan ? null : rule.payee,
         recurringRuleId: rule.id,
         needsAmountReview: rule.isEstimate,
