@@ -14,6 +14,7 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'recurring_rule_sheet.dart';
+import 'skip_occurrence.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 
 /// Auto Expenses / Auto Income — transactions that post themselves on a
@@ -340,62 +341,70 @@ class _RuleTile extends ConsumerWidget {
     final action = await showAppSheet<_RuleAction>(
       context: context,
       showDragHandle: true,
+      // Sized to its actions, scrolling if a small screen can't fit them.
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  rule.name,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    rule.name,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
-            ),
-            AppListTile(
-              leading: const AppIcon(Icons.bolt_outlined),
-              title: const Text('Pay now'),
-              subtitle: Text(
-                rule.nextDueDate.isAfter(DateTime.now())
-                    ? "Pay it early, ahead of ${DateFormat('d MMM').format(rule.nextDueDate)} — "
-                          "posts today instead"
-                    : 'Posts today instead of waiting for the app to catch '
-                          'it up',
+              AppListTile(
+                leading: const AppIcon(Icons.bolt_outlined),
+                title: const Text('Pay now'),
+                subtitle: Text(
+                  rule.nextDueDate.isAfter(DateTime.now())
+                      ? "Pay it early, ahead of ${DateFormat('d MMM').format(rule.nextDueDate)} — "
+                            "posts today instead"
+                      : 'Posts today instead of waiting for the app to catch '
+                            'it up',
+                ),
+                onTap: () => Navigator.of(sheetContext).pop(_RuleAction.payNow),
               ),
-              onTap: () => Navigator.of(sheetContext).pop(_RuleAction.payNow),
-            ),
-            AppListTile(
-              leading: const AppIcon(Icons.pause_circle_outline),
-              title: const Text('Pause'),
-              subtitle: const Text(
-                'Move it to Archived auto rules until you restore it. '
-                'Nothing is deleted.',
+              SkipNextTile(
+                rule: rule,
+                onTap: () => Navigator.of(sheetContext).pop(_RuleAction.skip),
               ),
-              onTap: () => Navigator.of(sheetContext).pop(_RuleAction.pause),
-            ),
-            AppListTile(
-              leading: AppIcon(
-                Icons.delete_outline,
-                color: theme.colorScheme.error,
+              AppListTile(
+                leading: const AppIcon(Icons.pause_circle_outline),
+                title: const Text('Pause'),
+                subtitle: const Text(
+                  'Move it to Archived auto rules until you restore it. '
+                  'Nothing is deleted.',
+                ),
+                onTap: () => Navigator.of(sheetContext).pop(_RuleAction.pause),
               ),
-              title: Text(
-                'Delete',
-                style: TextStyle(color: theme.colorScheme.error),
+              AppListTile(
+                leading: AppIcon(
+                  Icons.delete_outline,
+                  color: theme.colorScheme.error,
+                ),
+                title: Text(
+                  'Delete',
+                  style: TextStyle(color: theme.colorScheme.error),
+                ),
+                subtitle: const Text(
+                  'Removes the rule. Past auto-posted transactions stay.',
+                ),
+                onTap: () => Navigator.of(sheetContext).pop(_RuleAction.delete),
               ),
-              subtitle: const Text(
-                'Removes the rule. Past auto-posted transactions stay.',
-              ),
-              onTap: () => Navigator.of(sheetContext).pop(_RuleAction.delete),
-            ),
-            const SizedBox(height: 8),
-          ],
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
       ),
     );
@@ -403,6 +412,8 @@ class _RuleTile extends ConsumerWidget {
     switch (action) {
       case _RuleAction.payNow:
         await _confirmPayNow(context, ref);
+      case _RuleAction.skip:
+        await skipNextOccurrence(ref, rule);
       case _RuleAction.pause:
         await ref.read(dbProvider).setRecurringActive(rule.id, false);
       case _RuleAction.delete:
@@ -478,4 +489,4 @@ class _RuleTile extends ConsumerWidget {
   }
 }
 
-enum _RuleAction { payNow, pause, delete }
+enum _RuleAction { payNow, skip, pause, delete }

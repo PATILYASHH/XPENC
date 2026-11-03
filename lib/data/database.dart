@@ -5498,6 +5498,51 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
+  /// Skips [ruleId]'s next occurrence without stopping the rule (GitHub
+  /// #184) — a gym month you're away for, a fee waived once, rent paid some
+  /// other way. Nothing posts; [RecurringRuleRow.nextDueDate] just steps
+  /// over one date to the one after, on the rule's own schedule, so the
+  /// cash-flow projection and the "coming up" alert move with it. A running
+  /// promo isn't spent by a skip: it still covers that many *paid*
+  /// occurrences.
+  ///
+  /// Returns the date skipped and the new next date, so the caller can say
+  /// so — and undo it with [unskipRecurringRuleOccurrence].
+  Future<({DateTime skipped, DateTime next})> skipRecurringRuleOccurrence(
+    int ruleId,
+  ) => transaction(() async {
+    final rule = await (select(
+      recurringRules,
+    )..where((r) => r.id.equals(ruleId))).getSingle();
+    final next = nextOccurrence(
+      rule.frequency,
+      rule.nextDueDate,
+      dayOfMonth: rule.dayOfMonth,
+      monthOfYear: rule.monthOfYear,
+    );
+    await (update(recurringRules)..where((r) => r.id.equals(ruleId))).write(
+      RecurringRulesCompanion(nextDueDate: Value(next)),
+    );
+    return (skipped: rule.nextDueDate, next: next);
+  });
+
+  /// Undoes [skipRecurringRuleOccurrence]: puts [skipped] back as the next
+  /// date — but only while the rule still sits on [next], the date the skip
+  /// moved it to. If anything has moved it since (it posted, was paid early,
+  /// was edited) the undo would rewind real history, so it does nothing and
+  /// returns false.
+  Future<bool> unskipRecurringRuleOccurrence(
+    int ruleId, {
+    required DateTime skipped,
+    required DateTime next,
+  }) async {
+    final changed =
+        await (update(recurringRules)
+              ..where((r) => r.id.equals(ruleId) & r.nextDueDate.equals(next)))
+            .write(RecurringRulesCompanion(nextDueDate: Value(skipped)));
+    return changed > 0;
+  }
+
   /// Posts every occurrence of every active rule whose [RecurringRuleRow.nextDueDate]
   /// has arrived, backfilling one occurrence at a time — each with its own
   /// correct historical date — until each rule's schedule is caught up to

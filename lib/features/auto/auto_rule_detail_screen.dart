@@ -13,6 +13,7 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'recurring_rule_sheet.dart';
+import 'skip_occurrence.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 
 /// One Auto rule: its schedule and posting details, plus the full history of
@@ -293,64 +294,75 @@ class AutoRuleDetailScreen extends ConsumerWidget {
     final action = await showAppSheet<_RuleDetailAction>(
       context: context,
       showDragHandle: true,
+      // Sized to its actions, scrolling if a small screen can't fit them.
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (sheetContext) => SafeArea(
         top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AppListTile(
-              leading: const AppIcon(Icons.bolt_outlined),
-              title: const Text('Pay now'),
-              subtitle: Text(
-                rule.nextDueDate.isAfter(DateTime.now())
-                    ? "Pay it early, ahead of ${DateFormat('d MMM').format(rule.nextDueDate)} — "
-                          "posts today instead"
-                    : 'Posts today instead of waiting for the app to catch '
-                          'it up',
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppListTile(
+                leading: const AppIcon(Icons.bolt_outlined),
+                title: const Text('Pay now'),
+                subtitle: Text(
+                  rule.nextDueDate.isAfter(DateTime.now())
+                      ? "Pay it early, ahead of ${DateFormat('d MMM').format(rule.nextDueDate)} — "
+                            "posts today instead"
+                      : 'Posts today instead of waiting for the app to catch '
+                            'it up',
+                ),
+                onTap: () =>
+                    Navigator.of(sheetContext).pop(_RuleDetailAction.payNow),
               ),
-              onTap: () =>
-                  Navigator.of(sheetContext).pop(_RuleDetailAction.payNow),
-            ),
-            AppListTile(
-              leading: AppIcon(
-                rule.isActive
-                    ? Icons.pause_circle_outline
-                    : Icons.play_circle_outline,
+              // A paused rule posts nothing, so there's nothing to skip.
+              if (rule.isActive)
+                SkipNextTile(
+                  rule: rule,
+                  onTap: () =>
+                      Navigator.of(sheetContext).pop(_RuleDetailAction.skip),
+                ),
+              AppListTile(
+                leading: AppIcon(
+                  rule.isActive
+                      ? Icons.pause_circle_outline
+                      : Icons.play_circle_outline,
+                ),
+                title: Text(rule.isActive ? 'Pause' : 'Resume'),
+                subtitle: Text(
+                  rule.isActive
+                      ? 'Move it to Archived auto rules until you restore it. '
+                            'Nothing is deleted.'
+                      : 'Make it active again — it resumes posting on '
+                            'schedule.',
+                ),
+                onTap: () => Navigator.of(sheetContext).pop(
+                  rule.isActive
+                      ? _RuleDetailAction.pause
+                      : _RuleDetailAction.resume,
+                ),
               ),
-              title: Text(rule.isActive ? 'Pause' : 'Resume'),
-              subtitle: Text(
-                rule.isActive
-                    ? 'Move it to Archived auto rules until you restore it. '
-                          'Nothing is deleted.'
-                    : 'Make it active again — it resumes posting on '
-                          'schedule.',
+              AppListTile(
+                leading: AppIcon(
+                  Icons.delete_outline,
+                  color: theme.colorScheme.error,
+                ),
+                title: Text(
+                  'Delete',
+                  style: TextStyle(color: theme.colorScheme.error),
+                ),
+                subtitle: const Text(
+                  'Removes the rule. Past auto-posted transactions stay.',
+                ),
+                onTap: () =>
+                    Navigator.of(sheetContext).pop(_RuleDetailAction.delete),
               ),
-              onTap: () => Navigator.of(sheetContext).pop(
-                rule.isActive
-                    ? _RuleDetailAction.pause
-                    : _RuleDetailAction.resume,
-              ),
-            ),
-            AppListTile(
-              leading: AppIcon(
-                Icons.delete_outline,
-                color: theme.colorScheme.error,
-              ),
-              title: Text(
-                'Delete',
-                style: TextStyle(color: theme.colorScheme.error),
-              ),
-              subtitle: const Text(
-                'Removes the rule. Past auto-posted transactions stay.',
-              ),
-              onTap: () =>
-                  Navigator.of(sheetContext).pop(_RuleDetailAction.delete),
-            ),
-            const SizedBox(height: 8),
-          ],
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
       ),
     );
@@ -358,6 +370,8 @@ class AutoRuleDetailScreen extends ConsumerWidget {
     switch (action) {
       case _RuleDetailAction.payNow:
         await _confirmPayNow(context, ref, rule);
+      case _RuleDetailAction.skip:
+        await skipNextOccurrence(ref, rule);
       case _RuleDetailAction.pause:
         await ref.read(dbProvider).setRecurringActive(rule.id, false);
         if (!context.mounted) return;
@@ -454,4 +468,4 @@ class AutoRuleDetailScreen extends ConsumerWidget {
   }
 }
 
-enum _RuleDetailAction { payNow, pause, resume, delete }
+enum _RuleDetailAction { payNow, skip, pause, resume, delete }

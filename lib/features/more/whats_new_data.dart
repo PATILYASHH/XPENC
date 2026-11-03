@@ -23,6 +23,14 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.skip_next_rounded,
+    title: 'Skip one payment',
+    location: 'More → Auto → hold a rule → Skip next',
+    description:
+        'Away for a month, or paid it another way? Skip the next date '
+        'only — nothing posts, and the rule carries on from the one after.',
+  ),
+  WhatsNewEntry(
     icon: Icons.ios_share_rounded,
     title: 'Share straight to WhatsApp',
     location: 'Persons → hold a person → Share',

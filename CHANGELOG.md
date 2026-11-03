@@ -11,6 +11,12 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 ## [1.6.6] — beta
 
 ### Added
+- **Skip one payment, keep the rule** (#184). An Auto rule's actions now
+  have **Skip next**: nothing posts on its next date and the rule carries
+  on from the one after — a gym month you're away for, a fee waived once,
+  rent paid some other way. The cash flow forecast and the "coming up"
+  alert move with it, a running promo price isn't used up by a skip, and
+  **Undo** puts the date back.
 - **Share, rebuilt — straight to WhatsApp or Messages.** Every Share (a
   person, a group, a transaction, a trip) now opens one screen: a preview
   of exactly what goes, an **Image ⇄ PDF** slider, the period (all time,
