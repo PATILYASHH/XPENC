@@ -21,6 +21,7 @@ import '../../data/database.dart';
 import '../../data/mode_providers.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../accounts/arrange_accounts_sheet.dart';
 import '../budgets/ready_to_assign_screen.dart';
 import '../message_capture/review_inbox_screen.dart';
 import '../persons/person_avatar.dart';
@@ -1183,6 +1184,7 @@ class _AccountRow extends StatelessWidget {
 
     return AppListTile(
       onTap: () => context.push('/account/${account.id}'),
+      onLongPress: () => showArrangeAccountsSheet(context),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       leading: Container(
         width: 34,
@@ -1247,6 +1249,7 @@ class _AccountCard extends StatelessWidget {
           child: InkWell(
             borderRadius: BorderRadius.circular(_cardRadius),
             onTap: () => context.push('/account/${account.id}'),
+            onLongPress: () => showArrangeAccountsSheet(context),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(

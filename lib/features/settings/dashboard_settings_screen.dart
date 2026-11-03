@@ -11,6 +11,7 @@ import '../../core/widgets/nav_bar_inset.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../accounts/arrange_accounts_sheet.dart';
 import '../dashboard/dashboard_layout.dart';
 import 'settings_common.dart';
 
@@ -361,6 +362,12 @@ class _AccountsStylePicker extends ConsumerWidget {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
+        ),
+        // Also a long press on any account on the Dashboard (#190).
+        TextButton.icon(
+          onPressed: () => showArrangeAccountsSheet(context),
+          icon: const AppIcon(Icons.swap_vert_rounded, size: 18),
+          label: const Text('Arrange accounts'),
         ),
       ],
     );

@@ -3551,10 +3551,15 @@ class AppDatabase extends _$AppDatabase {
 
   // ── Queries ───────────────────────────────────────────────────────────────
 
+  // Ordered as the user arranged them (#190); accounts never arranged all
+  // share order 0 and fall back to oldest first.
   Stream<List<AccountRow>> watchAccounts() =>
       (select(accounts)
             ..where((a) => a.isArchived.equals(false))
-            ..orderBy([(a) => OrderingTerm(expression: a.sortOrder)]))
+            ..orderBy([
+              (a) => OrderingTerm(expression: a.sortOrder),
+              (a) => OrderingTerm(expression: a.id),
+            ]))
           .watch();
 
   /// Accounts that actually hold money. Debit cards / UPI excluded.
@@ -3563,7 +3568,10 @@ class AppDatabase extends _$AppDatabase {
             ..where(
               (a) => a.isArchived.equals(false) & a.linkedAccountId.isNull(),
             )
-            ..orderBy([(a) => OrderingTerm(expression: a.sortOrder)]))
+            ..orderBy([
+              (a) => OrderingTerm(expression: a.sortOrder),
+              (a) => OrderingTerm(expression: a.id),
+            ]))
           .watch();
 
   /// Total money = Cash + Bank + Credit Card. Instruments never double-count.
@@ -3815,10 +3823,17 @@ class AppDatabase extends _$AppDatabase {
       // the shared pool automatically, including a new one; there's no
       // separate "turn on" step to remember.
       final envelopeByDefault = (await getSettings()).rtaEnabled;
+      // A new account joins the end of the order the user arranged (#190),
+      // not the front of it.
+      final last = accounts.sortOrder.max();
+      final lastOrder = await (selectOnly(
+        accounts,
+      )..addColumns([last])).map((r) => r.read(last)).getSingle();
       return into(accounts).insert(
         AccountsCompanion.insert(
           name: name,
           type: type,
+          sortOrder: Value((lastOrder ?? -1) + 1),
           cardKind: Value(cardKind),
           linkedAccountId: Value(linkedAccountId),
           bankName: Value(bankName),
@@ -3833,6 +3848,35 @@ class AppDatabase extends _$AppDatabase {
       );
     });
   }
+
+  /// Puts [orderedIds] in that order, for the Dashboard and Accounts
+  /// (#190). They may be only some of the accounts — the ones the Dashboard
+  /// shows, without the debit cards that mirror a bank — so the rest keep
+  /// their places: [orderedIds] fill the positions they held between them,
+  /// in the new order, and every account is then numbered afresh.
+  Future<void> reorderAccounts(List<int> orderedIds) => transaction(() async {
+    final all =
+        await (select(accounts)..orderBy([
+              (a) => OrderingTerm(expression: a.sortOrder),
+              (a) => OrderingTerm(expression: a.id),
+            ]))
+            .get();
+    final moving = orderedIds.toSet();
+    final next = orderedIds.iterator;
+    final order = [
+      for (final a in all)
+        if (moving.contains(a.id) && next.moveNext()) next.current else a.id,
+    ];
+    await batch((b) {
+      for (var i = 0; i < order.length; i++) {
+        b.update(
+          accounts,
+          AccountsCompanion(sortOrder: Value(i)),
+          where: (a) => a.id.equals(order[i]),
+        );
+      }
+    });
+  });
 
   /// GitHub #88 / #158 — the account fields offered for editing after
   /// creation: name, icon and colour. Purely how it looks — type, currency

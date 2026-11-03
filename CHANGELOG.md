@@ -11,6 +11,10 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 ## [1.6.6] — beta
 
 ### Added
+- **Arrange your accounts** (#190). Hold any account on the Dashboard
+  — or Settings → Customize dashboard → **Arrange accounts** — and drag
+  them into the order you want. The Dashboard and Accounts both follow it,
+  and a new account joins the end instead of jumping to the front.
 - **Skip one payment, keep the rule** (#184). An Auto rule's actions now
   have **Skip next**: nothing posts on its next date and the rule carries
   on from the one after — a gym month you're away for, a fee waived once,

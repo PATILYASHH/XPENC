@@ -23,6 +23,14 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.swap_vert_rounded,
+    title: 'Arrange your accounts',
+    location: 'Dashboard → hold an account',
+    description:
+        'Drag your accounts into the order you want. The Dashboard and '
+        'Accounts both follow it, and new accounts join the end.',
+  ),
+  WhatsNewEntry(
     icon: Icons.skip_next_rounded,
     title: 'Skip one payment',
     location: 'More → Auto → hold a rule → Skip next',
