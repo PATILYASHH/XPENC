@@ -6,6 +6,7 @@ import '../../core/app_icons.dart';
 import '../../core/currency.dart';
 import '../../core/layout/desktop.dart';
 import '../../core/money.dart';
+import '../../core/theme/app_colors.dart';
 import '../../core/widgets/amount_keypad_field.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
@@ -293,7 +294,9 @@ class _TotalMoneyCard extends ConsumerWidget {
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 18),
+              const _OwnOweRow(),
+              const SizedBox(height: 16),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -317,6 +320,69 @@ class _TotalMoneyCard extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// What Total money is made of (GitHub #183): what you own — every account
+/// in credit — beside what you owe — card bills, loans, anything in debt.
+/// The two always net to the total above them.
+class _OwnOweRow extends ConsumerWidget {
+  const _OwnOweRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final parts = ref.watch(assetsAndLiabilitiesProvider).valueOrNull;
+    if (parts == null) return const SizedBox.shrink();
+
+    Widget cell(String label, Money amount, Color color) => Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: cs.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 2),
+        // A lakh-sized figure shrinks rather than wrapping into its neighbour.
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: MoneyText(
+            amount,
+            color: color,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+
+    return Semantics(
+      container: true,
+      child: Row(
+        children: [
+          Expanded(child: cell('You own', parts.assets, cs.onSurface)),
+          Container(
+            width: 1,
+            height: 34,
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            color: cs.outlineVariant,
+          ),
+          Expanded(
+            child: cell(
+              'You owe',
+              parts.liabilities,
+              parts.liabilities.isPositive ? AppColors.expense : cs.onSurface,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -23,6 +23,14 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.account_balance_wallet_outlined,
+    title: 'What you own, what you owe',
+    location: 'More → Accounts',
+    description:
+        'Total money now shows its two halves: everything in credit, and '
+        'every card bill and loan you still owe.',
+  ),
+  WhatsNewEntry(
     icon: Icons.swap_vert_rounded,
     title: 'Arrange your accounts',
     location: 'Dashboard → hold an account',

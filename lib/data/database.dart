@@ -3590,17 +3590,42 @@ class AppDatabase extends _$AppDatabase {
         var total = const Money.zero();
         for (final a in rows) {
           if (!a.includeInNetWorth) continue;
-          if (a.currencyCode == null) {
-            total += a.currentBalance;
-            continue;
-          }
-          final rate = await latestRate(a.currencyCode!);
-          total += rate == null
-              ? a.currentBalance
-              : convertUsingRate(a.currentBalance, rate.rateToBaseMicros);
+          total += await _balanceInBase(a);
         }
         return total;
       });
+
+  /// [watchNetWorth] split in two (GitHub #183): what you own — every
+  /// account in credit — and what you owe — every one in debt, a card's
+  /// bill or a loan, as a positive amount. Split by each balance's sign,
+  /// not its account type, so an overpaid card counts as owned and an
+  /// overdrawn bank as owed. `assets - liabilities` is always the net worth,
+  /// with the same accounts left out of both.
+  Stream<({Money assets, Money liabilities})> watchAssetsAndLiabilities() =>
+      watchBalanceHoldingAccounts().asyncMap((rows) async {
+        var assets = const Money.zero();
+        var liabilities = const Money.zero();
+        for (final a in rows) {
+          if (!a.includeInNetWorth) continue;
+          final balance = await _balanceInBase(a);
+          if (balance.isNegative) {
+            liabilities -= balance;
+          } else {
+            assets += balance;
+          }
+        }
+        return (assets: assets, liabilities: liabilities);
+      });
+
+  /// [a]'s balance in the parent currency at today's rate — or as it is,
+  /// when no rate has been entered for its currency (see [watchNetWorth]).
+  Future<Money> _balanceInBase(AccountRow a) async {
+    if (a.currencyCode == null) return a.currentBalance;
+    final rate = await latestRate(a.currencyCode!);
+    return rate == null
+        ? a.currentBalance
+        : convertUsingRate(a.currentBalance, rate.rateToBaseMicros);
+  }
 
   /// Flips whether [id]'s balance counts toward [watchNetWorth] — the toggle
   /// behind Settings > Customize Dashboard.

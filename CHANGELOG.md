@@ -11,6 +11,11 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 ## [1.6.6] — beta
 
 ### Added
+- **What you own and what you owe** (#183). Accounts now splits Total
+  money in two: **You own** (every account in credit — cash, banks,
+  savings) and **You owe** (card bills, loans, anything in debt). They
+  always net to the total, and an account you've left out of Net worth is
+  left out of both.
 - **Arrange your accounts** (#190). Hold any account on the Dashboard
   — or Settings → Customize dashboard → **Arrange accounts** — and drag
   them into the order you want. The Dashboard and Accounts both follow it,

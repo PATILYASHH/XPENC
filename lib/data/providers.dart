@@ -58,6 +58,12 @@ final netWorthProvider = StreamProvider<Money>(
   (ref) => ref.watch(dbProvider).watchNetWorth(),
 );
 
+/// Net worth as what you own and what you owe (GitHub #183).
+final assetsAndLiabilitiesProvider =
+    StreamProvider<({Money assets, Money liabilities})>(
+      (ref) => ref.watch(dbProvider).watchAssetsAndLiabilities(),
+    );
+
 // ── Categories ──────────────────────────────────────────────────────────────
 
 final categoriesProvider =
