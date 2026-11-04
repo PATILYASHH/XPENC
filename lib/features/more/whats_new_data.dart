@@ -23,6 +23,14 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.autorenew_rounded,
+    title: 'Card bills that pay themselves',
+    location: 'A credit card → Pay it automatically',
+    description:
+        'On each due date, what’s left of the statement moves from the '
+        'account you pick — nothing if it’s already paid.',
+  ),
+  WhatsNewEntry(
     icon: Icons.credit_card_outlined,
     title: "Your card's statement, as it closed",
     location: 'A credit card → Track statement & due date',

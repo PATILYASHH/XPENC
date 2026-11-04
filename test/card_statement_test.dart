@@ -140,7 +140,12 @@ void main() {
       ProviderScope(
         overrides: [dbProvider.overrideWithValue(db)],
         child: MaterialApp(
-          home: Scaffold(body: CreditCardStatementSection(account: cardRow!)),
+          // A card's page scrolls; so does this.
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: CreditCardStatementSection(account: cardRow!),
+            ),
+          ),
         ),
       ),
     );

@@ -1038,6 +1038,14 @@ class RecurringRules extends Table {
   /// what actually landed.
   BoolColumn get isEstimate => boolean().withDefault(const Constant(false))();
 
+  /// A card-bill rule (GitHub #183): a transfer into a credit card that pays
+  /// whatever's left of the card's last statement on each date, not a fixed
+  /// [amount] — which then only holds the last bill paid, as an estimate for
+  /// the cash-flow projection. Set up from the card's page
+  /// (`AppDatabase.setCardAutoPay`), never in the rule sheet.
+  BoolColumn get payCardStatement =>
+      boolean().withDefault(const Constant(false))();
+
   /// The discounted per-occurrence price of a running promotion (see GitHub
   /// #82) — e.g. "€2.49 for the next 3 months" instead of the usual
   /// [amount]. Null whenever no promotion is active. Always null exactly

@@ -9,6 +9,7 @@ import '../../core/widgets/money_text.dart';
 import '../../data/card_statement.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
+import '../../data/tables.dart';
 
 /// Opt-in statement/due-date tracking for a credit card (GitHub #91) — off
 /// unless the user turns it on, same shape as [EnvelopeSection]'s own
@@ -52,6 +53,8 @@ class CreditCardStatementSection extends ConsumerWidget {
           if (detail != null) ...[
             const Divider(height: 1, indent: 16),
             _StatementSummary(account: account, detail: detail),
+            const Divider(height: 1, indent: 16),
+            _AutoPayTile(card: account),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               child: Align(
@@ -269,6 +272,151 @@ class _StatementSummary extends ConsumerWidget {
     if (daysLeft == 1) return 'tomorrow';
     return 'in $daysLeft days';
   }
+}
+
+/// Pay the statement by itself (GitHub #183): on each due date, what's
+/// left of it moves from the account picked here into the card. Behind the
+/// switch is an ordinary Auto rule ([AppDatabase.setCardAutoPay]), so it
+/// warns before it pays and can be skipped or paused from Auto.
+class _AutoPayTile extends ConsumerWidget {
+  const _AutoPayTile({required this.card});
+
+  final AccountRow card;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final rule = ref.watch(cardAutoPayRuleProvider(card.id)).valueOrNull;
+    final on = rule != null && rule.isActive;
+    final from = rule == null
+        ? null
+        : ref.watch(accountMapProvider)[rule.accountId]?.name;
+
+    Future<void> choose() async {
+      final picked = await _pickFundingAccount(context, ref, card: card);
+      if (picked == null || !context.mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      try {
+        await ref
+            .read(dbProvider)
+            .setCardAutoPay(cardId: card.id, fromAccountId: picked);
+        await ref
+            .read(notificationServiceProvider)
+            .syncRecurringNotifications();
+        await ref.read(notificationServiceProvider).syncCreditCardReminders();
+      } on ArgumentError catch (e) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(e.message?.toString() ?? "Couldn't set it")),
+        );
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppSwitchListTile(
+          title: const Text('Pay it automatically'),
+          subtitle: Text(
+            on
+                ? "From $from on each due date — what's left of the "
+                      'statement, nothing if it\'s paid.'
+                : "On each due date, what's left of the statement — from an "
+                      'account you choose.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+          value: on,
+          onChanged: (v) async {
+            if (v) {
+              // Back on with the account it had, or pick one.
+              final had = rule?.accountId;
+              if (had == null) return choose();
+              await ref
+                  .read(dbProvider)
+                  .setCardAutoPay(cardId: card.id, fromAccountId: had);
+            } else {
+              await ref
+                  .read(dbProvider)
+                  .setCardAutoPay(cardId: card.id, fromAccountId: null);
+            }
+            await ref
+                .read(notificationServiceProvider)
+                .syncRecurringNotifications();
+            await ref
+                .read(notificationServiceProvider)
+                .syncCreditCardReminders();
+          },
+        ),
+        if (on)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: choose,
+                child: const Text('Pay from another account'),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// An account that can pay a card's bill: cash, a bank, a prepaid balance.
+Future<int?> _pickFundingAccount(
+  BuildContext context,
+  WidgetRef ref, {
+  required AccountRow card,
+}) {
+  final accounts = [
+    for (final a in ref.read(accountsProvider).valueOrNull ?? const [])
+      if (a.id != card.id &&
+          a.linkedAccountId == null &&
+          (a.type == AccountType.cash ||
+              a.type == AccountType.bank ||
+              a.type == AccountType.prepaidBalance))
+        a,
+  ];
+  return showAppSheet<int>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (sheetContext) => SafeArea(
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+              child: Text(
+                'Pay ${card.name} from',
+                style: Theme.of(
+                  sheetContext,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ),
+            if (accounts.isEmpty)
+              const Padding(
+                padding: EdgeInsets.fromLTRB(24, 8, 24, 24),
+                child: Text('Add a bank or cash account to pay it from.'),
+              ),
+            for (final a in accounts)
+              AppListTile(
+                leading: const AppIcon(Icons.account_balance_outlined),
+                title: Text(a.name),
+                trailing: BalanceText(a.currentBalance),
+                onTap: () => Navigator.of(sheetContext).pop(a.id),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 typedef _CycleResult = ({int statementDay, int dueDay, int notifyDaysBefore});

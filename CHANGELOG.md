@@ -11,6 +11,12 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 ## [1.6.6] — beta
 
 ### Added
+- **A card bill that pays itself** (#183). On a credit card tracking its
+  statement, **Pay it automatically** moves what's left of the statement
+  from the account you pick into the card on each due date — nothing if
+  you've already paid it. It's an Auto rule, so it warns before it pays
+  and you can skip a month, pay early or pause it from Auto; the card's
+  own "pay by" reminder steps aside while it's on.
 - **A card's statement holds at its close** (#183). With statement
   tracking on, a credit card's page shows the last statement — what the
   card owed when it closed — what you've paid since, and what's **left to

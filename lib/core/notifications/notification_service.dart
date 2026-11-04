@@ -465,7 +465,11 @@ class NotificationService {
       final title = isExpense
           ? '${r.name}: auto-pay coming up'
           : '${r.name}: expected soon';
-      final body = isExpense
+      final body = r.payCardStatement
+          // A card bill's amount is the statement's, known only on the day.
+          ? "What's left of the statement will be paid from $accountName on "
+                '${_dayLabel(r.nextDueDate)}. Keep it ready.'
+          : isExpense
           ? '${MoneyFormat.symbol(r.amount)} will be auto-deducted from '
                 '$accountName on ${_dayLabel(r.nextDueDate)}. Keep that much ready.'
           : '${MoneyFormat.symbol(r.amount)} is expected in $accountName '
@@ -521,10 +525,17 @@ class NotificationService {
     if (!_ready) return;
     final settings = await _db.getSettings();
     final details = await _db.allCreditCardDetails();
+    // A card whose bill pays itself (#183) is warned about by that rule's
+    // own coming-up alert; "pay by" would tell the user to do it twice.
+    final paysItself = {
+      for (final r in await _db.watchRecurringRules().first)
+        if (r.payCardStatement && r.isActive) r.toAccountId,
+    };
 
     for (final d in details) {
       await _cancel(_creditCardReminderId(d.accountId));
       if (!settings.notificationsEnabled) continue;
+      if (paysItself.contains(d.accountId)) continue;
 
       final dueDate = AppDatabase.creditCardNextDueDate(
         today: DateTime.now(),

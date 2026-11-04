@@ -59,11 +59,19 @@ class AutoRuleDetailScreen extends ConsumerWidget {
       appBar: AppTopBar(
         title: Text(rule.name),
         actions: [
-          IconButton(
-            icon: const AppIcon(Icons.edit_outlined),
-            tooltip: 'Edit',
-            onPressed: () => showRecurringRuleSheet(context, existing: rule),
-          ),
+          // A card bill (#183) is set up on its card, not in the sheet.
+          if (rule.payCardStatement)
+            IconButton(
+              icon: const AppIcon(Icons.credit_card_outlined),
+              tooltip: 'Open the card',
+              onPressed: () => context.push('/account/${rule.toAccountId}'),
+            )
+          else
+            IconButton(
+              icon: const AppIcon(Icons.edit_outlined),
+              tooltip: 'Edit',
+              onPressed: () => showRecurringRuleSheet(context, existing: rule),
+            ),
           IconButton(
             icon: const AppIcon(Icons.more_vert_rounded),
             tooltip: 'More',
@@ -82,10 +90,12 @@ class AutoRuleDetailScreen extends ConsumerWidget {
                   _row(
                     context,
                     onPromo ? 'Promo amount' : 'Amount',
-                    MoneyText(
-                      onPromo ? rule.promoAmount! : rule.amount,
-                      color: color,
-                    ),
+                    rule.payCardStatement
+                        ? _plainValue(context, "What's left of the statement")
+                        : MoneyText(
+                            onPromo ? rule.promoAmount! : rule.amount,
+                            color: color,
+                          ),
                   ),
                   _divider(theme),
                   _row(
@@ -403,7 +413,7 @@ class AutoRuleDetailScreen extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         title: Text('Pay "${rule.name}" now?'),
         content: Text(
-          'Posts ${MoneyFormat.symbol(amount)}'
+          'Posts ${rule.payCardStatement ? "what's left of the statement" : MoneyFormat.symbol(amount)}'
           '${accountName != null ? ' from $accountName' : ''} today, '
           "instead of ${DateFormat('d MMM').format(rule.nextDueDate)}. "
           'The next one will still be due on schedule.',
@@ -421,11 +431,20 @@ class AutoRuleDetailScreen extends ConsumerWidget {
       ),
     );
     if (confirmed != true) return;
-    await ref.read(dbProvider).payRecurringRuleNow(rule.id);
+    final posted = await ref.read(dbProvider).payRecurringRuleNow(rule.id);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('"${rule.name}" posted')));
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            posted
+                ? '"${rule.name}" posted'
+                // A card bill that's already been paid (#183).
+                : 'Nothing left to pay on "${rule.name}"',
+          ),
+        ),
+      );
   }
 
   Future<void> _confirmDelete(

@@ -14,6 +14,7 @@ import '../core/security/unlock_method.dart';
 import '../features/message_capture/parser/bank_message.dart';
 import '../features/message_capture/parser/message_parser.dart';
 import 'currency_conversion.dart';
+import 'card_statement.dart';
 import 'category_template_file.dart';
 import 'tables.dart';
 
@@ -277,7 +278,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 91;
+  int get schemaVersion => 92;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -895,6 +896,14 @@ class AppDatabase extends _$AppDatabase {
       if (from < 91) {
         // A budget can alert at several levels (#186).
         await _addColumnIfMissing(m, budgets, budgets.alertLevels);
+      }
+      if (from < 92) {
+        // A card's bill can pay itself (#183).
+        await _addColumnIfMissing(
+          m,
+          recurringRules,
+          recurringRules.payCardStatement,
+        );
       }
     },
     beforeOpen: (details) async {
@@ -2900,13 +2909,150 @@ class AppDatabase extends _$AppDatabase {
         notifyDaysBefore: Value(notifyDaysBefore),
       ),
     );
+    // A bill that pays itself (#183) moves with the due day.
+    await (update(recurringRules)..where(
+          (r) =>
+              r.payCardStatement.equals(true) & r.toAccountId.equals(accountId),
+        ))
+        .write(
+          RecurringRulesCompanion(
+            dayOfMonth: Value(dueDay),
+            nextDueDate: Value(
+              creditCardNextDueDate(
+                today: DateTime.now(),
+                statementDay: statementDay,
+                dueDay: dueDay,
+              ),
+            ),
+            notifyDaysBefore: Value(notifyDaysBefore),
+          ),
+        );
   }
 
   /// Turns tracking back off — the card itself is untouched, only the
   /// cycle it was reporting against.
-  Future<void> deleteCreditCardDetails(int accountId) => (delete(
-    creditCardDetails,
-  )..where((c) => c.accountId.equals(accountId))).go();
+  Future<void> deleteCreditCardDetails(int accountId) => transaction(() async {
+    // Paying "the statement" means nothing without one.
+    await setCardAutoPay(cardId: accountId, fromAccountId: null);
+    await (delete(
+      creditCardDetails,
+    )..where((c) => c.accountId.equals(accountId))).go();
+  });
+
+  /// The rule that pays [cardId]'s statement by itself (GitHub #183), if
+  /// it has one — see [setCardAutoPay].
+  Stream<RecurringRuleRow?> watchCardAutoPayRule(int cardId) =>
+      (select(recurringRules)
+            ..where(
+              (r) =>
+                  r.payCardStatement.equals(true) &
+                  r.toAccountId.equals(cardId),
+            )
+            ..limit(1))
+          .watchSingleOrNull();
+
+  /// Pays [cardId]'s statement automatically from [fromAccountId] on each
+  /// due date (GitHub #183) — whatever's left of it then, nothing if it's
+  /// been paid — or stops, when [fromAccountId] is null.
+  ///
+  /// It's an Auto rule, a monthly transfer on the card's due day with
+  /// [RecurringRules.payCardStatement] set, so it warns before it pays and
+  /// can be skipped, paid early or paused like any other. The card must
+  /// track its statement cycle.
+  Future<void> setCardAutoPay({required int cardId, int? fromAccountId}) =>
+      transaction(() async {
+        final existing =
+            await (select(recurringRules)..where(
+                  (r) =>
+                      r.payCardStatement.equals(true) &
+                      r.toAccountId.equals(cardId),
+                ))
+                .get();
+        if (fromAccountId == null) {
+          for (final r in existing) {
+            await deleteRecurringRule(r.id);
+          }
+          return;
+        }
+        final detail = await (select(
+          creditCardDetails,
+        )..where((c) => c.accountId.equals(cardId))).getSingleOrNull();
+        if (detail == null) {
+          throw ArgumentError(
+            "Turn on the card's statement tracking first — that's when the "
+            'bill is due.',
+          );
+        }
+        await _validateTransferTarget(
+          accountId: fromAccountId,
+          toAccountId: cardId,
+          categoryId: null,
+        );
+        if (existing.isNotEmpty) {
+          await (update(
+            recurringRules,
+          )..where((r) => r.id.equals(existing.first.id))).write(
+            RecurringRulesCompanion(
+              accountId: Value(fromAccountId),
+              isActive: const Value(true),
+            ),
+          );
+          for (final r in existing.skip(1)) {
+            await deleteRecurringRule(r.id);
+          }
+          return;
+        }
+        final card = await (select(
+          accounts,
+        )..where((a) => a.id.equals(cardId))).getSingle();
+        final name = '${card.name} bill';
+        await into(recurringRules).insert(
+          RecurringRulesCompanion.insert(
+            name: name.length > 60 ? name.substring(0, 60) : name,
+            kind: CategoryKind.expense,
+            amount: await _cardLeftToPay(cardId, DateTime.now()),
+            accountId: fromAccountId,
+            toAccountId: Value(cardId),
+            frequency: RecurringFrequency.monthly,
+            dayOfMonth: Value(detail.dueDay),
+            nextDueDate: creditCardNextDueDate(
+              today: DateTime.now(),
+              statementDay: detail.statementDay,
+              dueDay: detail.dueDay,
+            ),
+            notifyDaysBefore: Value(detail.notifyDaysBefore),
+            payCardStatement: const Value(true),
+          ),
+        );
+      });
+
+  /// What's left of [cardId]'s statement as of [date] — its whole balance
+  /// owed, if it doesn't track a statement cycle.
+  Future<Money> _cardLeftToPay(int cardId, DateTime date) async {
+    final card = await (select(
+      accounts,
+    )..where((a) => a.id.equals(cardId))).getSingle();
+    final detail = await (select(
+      creditCardDetails,
+    )..where((c) => c.accountId.equals(cardId))).getSingleOrNull();
+    if (detail == null) {
+      return card.currentBalance.isNegative
+          ? -card.currentBalance
+          : const Money.zero();
+    }
+    final txs =
+        await (select(transactions)..where(
+              (t) => t.accountId.equals(cardId) | t.toAccountId.equals(cardId),
+            ))
+            .get();
+    return cardStatementOf(
+      card: card,
+      txs: txs,
+      today: date,
+      statementDay: detail.statementDay,
+      dueDay: detail.dueDay,
+    ).leftToPay;
+  }
 
   /// The last real day of [year]/[month] if [day] overshoots it (e.g. the
   /// 31st in a 30-day month) — the same snapping [nextOccurrence] applies
@@ -5456,7 +5602,24 @@ class AppDatabase extends _$AppDatabase {
   }) async {
     final onPromo = promoAmount != null && (promoLeft ?? 0) > 0;
     final isGoalOrLoan = rule.toAccountId != null;
-    final amount = onPromo ? promoAmount : rule.amount;
+    var amount = onPromo ? promoAmount : rule.amount;
+    // A card-bill rule (#183) pays what's left of the statement due on
+    // [date] — nothing at all when it's been paid — and keeps that as its
+    // amount, the estimate the cash-flow projection reads.
+    if (rule.payCardStatement && isGoalOrLoan) {
+      amount = await _cardLeftToPay(rule.toAccountId!, date);
+      if (!amount.isPositive) {
+        return (
+          promoAmount: promoAmount,
+          promoLeft: promoLeft,
+          posted: false,
+          loanCleared: false,
+        );
+      }
+      await (update(recurringRules)..where((r) => r.id.equals(rule.id))).write(
+        RecurringRulesCompanion(amount: Value(amount)),
+      );
+    }
 
     // A loan rule with a declared interest rate auto-splits into a real
     // interest expense plus the principal transfer — the same split
@@ -5573,9 +5736,12 @@ class AppDatabase extends _$AppDatabase {
   ///
   /// [now] exists so tests can pin "today" instead of racing the wall clock
   /// — real callers never pass it.
-  Future<void> payRecurringRuleNow(int ruleId, {DateTime? now}) async {
+  ///
+  /// Returns whether anything posted: a card bill with nothing left to pay
+  /// posts nothing and keeps its date.
+  Future<bool> payRecurringRuleNow(int ruleId, {DateTime? now}) async {
     final ruleTagIds = (await tagIdsForRecurringRule(ruleId)).toSet();
-    await transaction(() async {
+    return transaction(() async {
       final rule = await (select(
         recurringRules,
       )..where((r) => r.id.equals(ruleId))).getSingle();
@@ -5586,6 +5752,8 @@ class AppDatabase extends _$AppDatabase {
         promoLeft: rule.promoOccurrencesLeft,
         tagIds: ruleTagIds,
       );
+      // Nothing was owed (a card bill already paid): the next date stands.
+      if (!result.posted && !result.loanCleared) return false;
       final next = nextOccurrence(
         rule.frequency,
         rule.nextDueDate,
@@ -5603,6 +5771,7 @@ class AppDatabase extends _$AppDatabase {
               : const Value.absent(),
         ),
       );
+      return result.posted;
     });
   }
 
@@ -5697,19 +5866,19 @@ class AppDatabase extends _$AppDatabase {
             );
             promoAmount = result.promoAmount;
             promoLeft = result.promoLeft;
-            if (result.posted) {
-              posted++;
-              next = nextOccurrence(
-                rule.frequency,
-                next,
-                dayOfMonth: rule.dayOfMonth,
-                monthOfYear: rule.monthOfYear,
-              );
-            }
+            if (result.posted) posted++;
             if (result.loanCleared) {
               loanCleared = true;
               break;
             }
+            // Posted or not — a card bill already paid posts nothing — the
+            // date is done with.
+            next = nextOccurrence(
+              rule.frequency,
+              next,
+              dayOfMonth: rule.dayOfMonth,
+              monthOfYear: rule.monthOfYear,
+            );
           }
           await (update(
             recurringRules,

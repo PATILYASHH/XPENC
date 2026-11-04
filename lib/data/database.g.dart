@@ -4439,6 +4439,21 @@ class $RecurringRulesTable extends RecurringRules
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _payCardStatementMeta = const VerificationMeta(
+    'payCardStatement',
+  );
+  @override
+  late final GeneratedColumn<bool> payCardStatement = GeneratedColumn<bool>(
+    'pay_card_statement',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("pay_card_statement" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   late final GeneratedColumnWithTypeConverter<Money?, int> promoAmount =
       GeneratedColumn<int>(
@@ -4508,6 +4523,7 @@ class $RecurringRulesTable extends RecurringRules
     notifyDaysBefore,
     isActive,
     isEstimate,
+    payCardStatement,
     promoAmount,
     promoOccurrencesLeft,
     createdAt,
@@ -4622,6 +4638,15 @@ class $RecurringRulesTable extends RecurringRules
         isEstimate.isAcceptableOrUnknown(data['is_estimate']!, _isEstimateMeta),
       );
     }
+    if (data.containsKey('pay_card_statement')) {
+      context.handle(
+        _payCardStatementMeta,
+        payCardStatement.isAcceptableOrUnknown(
+          data['pay_card_statement']!,
+          _payCardStatementMeta,
+        ),
+      );
+    }
     if (data.containsKey('promo_occurrences_left')) {
       context.handle(
         _promoOccurrencesLeftMeta,
@@ -4724,6 +4749,10 @@ class $RecurringRulesTable extends RecurringRules
       isEstimate: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_estimate'],
+      )!,
+      payCardStatement: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}pay_card_statement'],
       )!,
       promoAmount: $RecurringRulesTable.$converterpromoAmountn.fromSql(
         attachedDatabase.typeMapping.read(
@@ -4838,6 +4867,13 @@ class RecurringRuleRow extends DataClass
   /// what actually landed.
   final bool isEstimate;
 
+  /// A card-bill rule (GitHub #183): a transfer into a credit card that pays
+  /// whatever's left of the card's last statement on each date, not a fixed
+  /// [amount] — which then only holds the last bill paid, as an estimate for
+  /// the cash-flow projection. Set up from the card's page
+  /// (`AppDatabase.setCardAutoPay`), never in the rule sheet.
+  final bool payCardStatement;
+
   /// The discounted per-occurrence price of a running promotion (see GitHub
   /// #82) — e.g. "€2.49 for the next 3 months" instead of the usual
   /// [amount]. Null whenever no promotion is active. Always null exactly
@@ -4877,6 +4913,7 @@ class RecurringRuleRow extends DataClass
     required this.notifyDaysBefore,
     required this.isActive,
     required this.isEstimate,
+    required this.payCardStatement,
     this.promoAmount,
     this.promoOccurrencesLeft,
     required this.createdAt,
@@ -4926,6 +4963,7 @@ class RecurringRuleRow extends DataClass
     map['notify_days_before'] = Variable<int>(notifyDaysBefore);
     map['is_active'] = Variable<bool>(isActive);
     map['is_estimate'] = Variable<bool>(isEstimate);
+    map['pay_card_statement'] = Variable<bool>(payCardStatement);
     if (!nullToAbsent || promoAmount != null) {
       map['promo_amount'] = Variable<int>(
         $RecurringRulesTable.$converterpromoAmountn.toSql(promoAmount),
@@ -4974,6 +5012,7 @@ class RecurringRuleRow extends DataClass
       notifyDaysBefore: Value(notifyDaysBefore),
       isActive: Value(isActive),
       isEstimate: Value(isEstimate),
+      payCardStatement: Value(payCardStatement),
       promoAmount: promoAmount == null && nullToAbsent
           ? const Value.absent()
           : Value(promoAmount),
@@ -5016,6 +5055,7 @@ class RecurringRuleRow extends DataClass
       notifyDaysBefore: serializer.fromJson<int>(json['notifyDaysBefore']),
       isActive: serializer.fromJson<bool>(json['isActive']),
       isEstimate: serializer.fromJson<bool>(json['isEstimate']),
+      payCardStatement: serializer.fromJson<bool>(json['payCardStatement']),
       promoAmount: serializer.fromJson<Money?>(json['promoAmount']),
       promoOccurrencesLeft: serializer.fromJson<int?>(
         json['promoOccurrencesLeft'],
@@ -5051,6 +5091,7 @@ class RecurringRuleRow extends DataClass
       'notifyDaysBefore': serializer.toJson<int>(notifyDaysBefore),
       'isActive': serializer.toJson<bool>(isActive),
       'isEstimate': serializer.toJson<bool>(isEstimate),
+      'payCardStatement': serializer.toJson<bool>(payCardStatement),
       'promoAmount': serializer.toJson<Money?>(promoAmount),
       'promoOccurrencesLeft': serializer.toJson<int?>(promoOccurrencesLeft),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -5076,6 +5117,7 @@ class RecurringRuleRow extends DataClass
     int? notifyDaysBefore,
     bool? isActive,
     bool? isEstimate,
+    bool? payCardStatement,
     Value<Money?> promoAmount = const Value.absent(),
     Value<int?> promoOccurrencesLeft = const Value.absent(),
     DateTime? createdAt,
@@ -5098,6 +5140,7 @@ class RecurringRuleRow extends DataClass
     notifyDaysBefore: notifyDaysBefore ?? this.notifyDaysBefore,
     isActive: isActive ?? this.isActive,
     isEstimate: isEstimate ?? this.isEstimate,
+    payCardStatement: payCardStatement ?? this.payCardStatement,
     promoAmount: promoAmount.present ? promoAmount.value : this.promoAmount,
     promoOccurrencesLeft: promoOccurrencesLeft.present
         ? promoOccurrencesLeft.value
@@ -5142,6 +5185,9 @@ class RecurringRuleRow extends DataClass
       isEstimate: data.isEstimate.present
           ? data.isEstimate.value
           : this.isEstimate,
+      payCardStatement: data.payCardStatement.present
+          ? data.payCardStatement.value
+          : this.payCardStatement,
       promoAmount: data.promoAmount.present
           ? data.promoAmount.value
           : this.promoAmount,
@@ -5177,6 +5223,7 @@ class RecurringRuleRow extends DataClass
           ..write('notifyDaysBefore: $notifyDaysBefore, ')
           ..write('isActive: $isActive, ')
           ..write('isEstimate: $isEstimate, ')
+          ..write('payCardStatement: $payCardStatement, ')
           ..write('promoAmount: $promoAmount, ')
           ..write('promoOccurrencesLeft: $promoOccurrencesLeft, ')
           ..write('createdAt: $createdAt, ')
@@ -5204,6 +5251,7 @@ class RecurringRuleRow extends DataClass
     notifyDaysBefore,
     isActive,
     isEstimate,
+    payCardStatement,
     promoAmount,
     promoOccurrencesLeft,
     createdAt,
@@ -5230,6 +5278,7 @@ class RecurringRuleRow extends DataClass
           other.notifyDaysBefore == this.notifyDaysBefore &&
           other.isActive == this.isActive &&
           other.isEstimate == this.isEstimate &&
+          other.payCardStatement == this.payCardStatement &&
           other.promoAmount == this.promoAmount &&
           other.promoOccurrencesLeft == this.promoOccurrencesLeft &&
           other.createdAt == this.createdAt &&
@@ -5254,6 +5303,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
   final Value<int> notifyDaysBefore;
   final Value<bool> isActive;
   final Value<bool> isEstimate;
+  final Value<bool> payCardStatement;
   final Value<Money?> promoAmount;
   final Value<int?> promoOccurrencesLeft;
   final Value<DateTime> createdAt;
@@ -5276,6 +5326,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     this.notifyDaysBefore = const Value.absent(),
     this.isActive = const Value.absent(),
     this.isEstimate = const Value.absent(),
+    this.payCardStatement = const Value.absent(),
     this.promoAmount = const Value.absent(),
     this.promoOccurrencesLeft = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -5299,6 +5350,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     this.notifyDaysBefore = const Value.absent(),
     this.isActive = const Value.absent(),
     this.isEstimate = const Value.absent(),
+    this.payCardStatement = const Value.absent(),
     this.promoAmount = const Value.absent(),
     this.promoOccurrencesLeft = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -5327,6 +5379,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     Expression<int>? notifyDaysBefore,
     Expression<bool>? isActive,
     Expression<bool>? isEstimate,
+    Expression<bool>? payCardStatement,
     Expression<int>? promoAmount,
     Expression<int>? promoOccurrencesLeft,
     Expression<DateTime>? createdAt,
@@ -5350,6 +5403,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
       if (notifyDaysBefore != null) 'notify_days_before': notifyDaysBefore,
       if (isActive != null) 'is_active': isActive,
       if (isEstimate != null) 'is_estimate': isEstimate,
+      if (payCardStatement != null) 'pay_card_statement': payCardStatement,
       if (promoAmount != null) 'promo_amount': promoAmount,
       if (promoOccurrencesLeft != null)
         'promo_occurrences_left': promoOccurrencesLeft,
@@ -5377,6 +5431,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     Value<int>? notifyDaysBefore,
     Value<bool>? isActive,
     Value<bool>? isEstimate,
+    Value<bool>? payCardStatement,
     Value<Money?>? promoAmount,
     Value<int?>? promoOccurrencesLeft,
     Value<DateTime>? createdAt,
@@ -5400,6 +5455,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
       notifyDaysBefore: notifyDaysBefore ?? this.notifyDaysBefore,
       isActive: isActive ?? this.isActive,
       isEstimate: isEstimate ?? this.isEstimate,
+      payCardStatement: payCardStatement ?? this.payCardStatement,
       promoAmount: promoAmount ?? this.promoAmount,
       promoOccurrencesLeft: promoOccurrencesLeft ?? this.promoOccurrencesLeft,
       createdAt: createdAt ?? this.createdAt,
@@ -5465,6 +5521,9 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
     if (isEstimate.present) {
       map['is_estimate'] = Variable<bool>(isEstimate.value);
     }
+    if (payCardStatement.present) {
+      map['pay_card_statement'] = Variable<bool>(payCardStatement.value);
+    }
     if (promoAmount.present) {
       map['promo_amount'] = Variable<int>(
         $RecurringRulesTable.$converterpromoAmountn.toSql(promoAmount.value),
@@ -5510,6 +5569,7 @@ class RecurringRulesCompanion extends UpdateCompanion<RecurringRuleRow> {
           ..write('notifyDaysBefore: $notifyDaysBefore, ')
           ..write('isActive: $isActive, ')
           ..write('isEstimate: $isEstimate, ')
+          ..write('payCardStatement: $payCardStatement, ')
           ..write('promoAmount: $promoAmount, ')
           ..write('promoOccurrencesLeft: $promoOccurrencesLeft, ')
           ..write('createdAt: $createdAt, ')
@@ -34706,6 +34766,7 @@ typedef $$RecurringRulesTableCreateCompanionBuilder =
       Value<int> notifyDaysBefore,
       Value<bool> isActive,
       Value<bool> isEstimate,
+      Value<bool> payCardStatement,
       Value<Money?> promoAmount,
       Value<int?> promoOccurrencesLeft,
       Value<DateTime> createdAt,
@@ -34730,6 +34791,7 @@ typedef $$RecurringRulesTableUpdateCompanionBuilder =
       Value<int> notifyDaysBefore,
       Value<bool> isActive,
       Value<bool> isEstimate,
+      Value<bool> payCardStatement,
       Value<Money?> promoAmount,
       Value<int?> promoOccurrencesLeft,
       Value<DateTime> createdAt,
@@ -34923,6 +34985,11 @@ class $$RecurringRulesTableFilterComposer
 
   ColumnFilters<bool> get isEstimate => $composableBuilder(
     column: $table.isEstimate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get payCardStatement => $composableBuilder(
+    column: $table.payCardStatement,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -35147,6 +35214,11 @@ class $$RecurringRulesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get payCardStatement => $composableBuilder(
+    column: $table.payCardStatement,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get promoAmount => $composableBuilder(
     column: $table.promoAmount,
     builder: (column) => ColumnOrderings(column),
@@ -35297,6 +35369,11 @@ class $$RecurringRulesTableAnnotationComposer
 
   GeneratedColumn<bool> get isEstimate => $composableBuilder(
     column: $table.isEstimate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get payCardStatement => $composableBuilder(
+    column: $table.payCardStatement,
     builder: (column) => column,
   );
 
@@ -35498,6 +35575,7 @@ class $$RecurringRulesTableTableManager
                 Value<int> notifyDaysBefore = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<bool> isEstimate = const Value.absent(),
+                Value<bool> payCardStatement = const Value.absent(),
                 Value<Money?> promoAmount = const Value.absent(),
                 Value<int?> promoOccurrencesLeft = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -35520,6 +35598,7 @@ class $$RecurringRulesTableTableManager
                 notifyDaysBefore: notifyDaysBefore,
                 isActive: isActive,
                 isEstimate: isEstimate,
+                payCardStatement: payCardStatement,
                 promoAmount: promoAmount,
                 promoOccurrencesLeft: promoOccurrencesLeft,
                 createdAt: createdAt,
@@ -35544,6 +35623,7 @@ class $$RecurringRulesTableTableManager
                 Value<int> notifyDaysBefore = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<bool> isEstimate = const Value.absent(),
+                Value<bool> payCardStatement = const Value.absent(),
                 Value<Money?> promoAmount = const Value.absent(),
                 Value<int?> promoOccurrencesLeft = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -35566,6 +35646,7 @@ class $$RecurringRulesTableTableManager
                 notifyDaysBefore: notifyDaysBefore,
                 isActive: isActive,
                 isEstimate: isEstimate,
+                payCardStatement: payCardStatement,
                 promoAmount: promoAmount,
                 promoOccurrencesLeft: promoOccurrencesLeft,
                 createdAt: createdAt,

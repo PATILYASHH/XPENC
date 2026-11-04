@@ -287,20 +287,29 @@ class _RuleTile extends ConsumerWidget {
           color: theme.colorScheme.onSurfaceVariant,
         ),
       ),
-      trailing: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 110),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerRight,
-          child: MoneyText(
-            _onPromo ? rule.promoAmount! : rule.amount,
-            color: color,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
+      // A card bill (#183) pays whatever the statement says, on the day.
+      trailing: rule.payCardStatement
+          ? Text(
+              'Statement',
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            )
+          : ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 110),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: MoneyText(
+                  _onPromo ? rule.promoAmount! : rule.amount,
+                  color: color,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             ),
-          ),
-        ),
-      ),
       onTap: () => context.push('/more/auto/rule/${rule.id}'),
       onLongPress: () => _showActions(context, ref),
     );
@@ -431,7 +440,7 @@ class _RuleTile extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         title: Text('Pay "${rule.name}" now?'),
         content: Text(
-          'Posts ${MoneyFormat.symbol(amount)}'
+          'Posts ${rule.payCardStatement ? "what's left of the statement" : MoneyFormat.symbol(amount)}'
           '${accountName != null ? ' from $accountName' : ''} today, '
           "instead of ${DateFormat('d MMM').format(rule.nextDueDate)}. "
           'The next one will still be due on schedule.',
@@ -449,11 +458,20 @@ class _RuleTile extends ConsumerWidget {
       ),
     );
     if (confirmed != true) return;
-    await ref.read(dbProvider).payRecurringRuleNow(rule.id);
+    final posted = await ref.read(dbProvider).payRecurringRuleNow(rule.id);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('"${rule.name}" posted')));
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            posted
+                ? '"${rule.name}" posted'
+                // A card bill that's already been paid (#183).
+                : 'Nothing left to pay on "${rule.name}"',
+          ),
+        ),
+      );
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {

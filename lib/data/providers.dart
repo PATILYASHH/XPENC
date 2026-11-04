@@ -1845,6 +1845,12 @@ final creditCardStatementPeriodProvider =
       );
     });
 
+/// The rule that pays a card's statement by itself (GitHub #183) — `null`
+/// when it doesn't have one.
+final cardAutoPayRuleProvider = StreamProvider.family<RecurringRuleRow?, int>(
+  (ref, cardId) => ref.watch(dbProvider).watchCardAutoPayRule(cardId),
+);
+
 /// A tracked card's last statement (GitHub #183) — `null` when the card
 /// isn't tracking a cycle, or until the ledger has loaded.
 final creditCardStatementProvider = Provider.family<CardStatement?, int>((
