@@ -23,6 +23,14 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.event_repeat_outlined,
+    title: 'Your month starts on payday',
+    location: 'Settings → Level & Budgeting → Budget cycle start day',
+    description:
+        'Any day up to the 31st, or the last working day of the month — '
+        'Dashboard, Budgets and Stats run payday to payday.',
+  ),
+  WhatsNewEntry(
     icon: Icons.dashboard_customize_outlined,
     title: 'Share category templates',
     location: 'Categories → Category templates',

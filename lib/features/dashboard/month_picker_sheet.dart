@@ -108,8 +108,8 @@ class _MonthPickerSheetState extends State<MonthPickerSheet> {
           if (widget.startDay != 1) ...[
             const SizedBox(height: 12),
             Text(
-              'Each month runs from the ${ordinalDay(widget.startDay)} '
-              '(your budget cycle).',
+              'Each month runs from '
+              '${budgetCycleStartPhrase(widget.startDay)} (your budget cycle).',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: cs.onSurfaceVariant,

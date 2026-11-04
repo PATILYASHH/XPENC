@@ -6198,12 +6198,12 @@ class AppDatabase extends _$AppDatabase {
 
   /// Which day of the month Dashboard/Budgets/Stats treat as the start of a
   /// "month" — 1 for an ordinary calendar month, or a payday-anchored cycle
-  /// otherwise (e.g. 15 for a 15th-to-14th cycle). Clamped to 1-28 so every
-  /// month can host every start day — no "the 31st doesn't exist in
-  /// February" edge case for [budgetPeriodFor] to handle.
+  /// otherwise (e.g. 15 for a 15th-to-14th cycle). Any day up to the 31st,
+  /// which a shorter month starts on its last day instead, or
+  /// [kLastWorkingDay] (GitHub #182) — see [budgetCycleStart].
   Future<void> setBudgetStartDay(int day) {
-    if (day < 1 || day > 28) {
-      throw ArgumentError('Pick a day between 1 and 28.');
+    if (day < kLastWorkingDay || day > 31) {
+      throw ArgumentError('Pick a day between 1 and 31.');
     }
     return update(
       settings,

@@ -6,6 +6,7 @@ import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../../data/database.dart';
+import '../budget_cycle.dart';
 import '../../data/modes_db.dart';
 import '../../data/tables.dart';
 import '../money.dart';
@@ -209,13 +210,15 @@ class NotificationService {
     // cannot show would silence it for the whole period.
     if (!_ready) return;
 
-    final now = DateTime.now();
-    final start = DateTime(now.year, now.month);
-    final end = DateTime(
-      now.year,
-      now.month + 1,
-    ).subtract(const Duration(milliseconds: 1));
-    final periodKey = AppDatabase.periodKeyOf(now);
+    // The budgets' own period — payday to payday on a custom cycle (#182),
+    // as Budgets shows it — not the calendar month. On the default cycle
+    // the two are the same month, under the same key.
+    final anchor = budgetPeriodAnchorFor(
+      DateTime.now(),
+      settings.budgetStartDay,
+    );
+    final (:start, :end) = budgetPeriodFor(anchor, settings.budgetStartDay);
+    final periodKey = AppDatabase.periodKeyOf(anchor);
 
     final budgets = await _db.watchBudgets().first;
     if (budgets.isEmpty) return;

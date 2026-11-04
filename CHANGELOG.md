@@ -11,6 +11,11 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 ## [1.6.6] — beta
 
 ### Added
+- **A month that starts on payday — any payday** (#182). Settings →
+  Level & Budgeting → **Budget cycle start day** now goes up to the 31st
+  (a shorter month starts on its last day) and has **Last working day**,
+  for a salary paid on the last Monday-to-Friday of the month. Dashboard,
+  Budgets and Stats all follow it.
 - **Share category templates as files** (#187). Categories → Category
   templates: **Share as file** on any saved template sends a small file
   with just the structure — names, colours, icons and which sit under
@@ -134,6 +139,10 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   or keep in the cloud.
 
 ### Fixed
+- **Budget alerts follow your budget cycle.** With a cycle that starts
+  on payday, the "almost used" and "overspent" alerts still counted the
+  calendar month, so they could disagree with what Budgets showed. They
+  now count the same period.
 - **Importing another phone's backup could make your PIN untypeable.** The
   lock screen takes exactly as many digits as your PIN has, and an import
   took that length from the other phone. Importing now keeps this phone's

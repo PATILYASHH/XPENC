@@ -63,10 +63,15 @@ class ModeBudgetingSettingsScreen extends ConsumerWidget {
                     leading: const AppIcon(Icons.event_repeat_outlined),
                     title: const Text('Budget cycle start day'),
                     subtitle: Text(
-                      budgetStartDay == 1
-                          ? '1st of the month — an ordinary calendar month'
-                          : '${ordinalDay(budgetStartDay)} of the month, '
-                                'e.g. a payday-anchored cycle',
+                      switch (budgetStartDay) {
+                        1 => '1st of the month — an ordinary calendar month',
+                        kLastWorkingDay =>
+                          'Last working day of the month — a payday-anchored '
+                              'cycle',
+                        _ =>
+                          '${ordinalDay(budgetStartDay)} of the month, '
+                              'e.g. a payday-anchored cycle',
+                      },
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
                       ),
