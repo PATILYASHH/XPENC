@@ -11,6 +11,12 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 ## [1.6.6] — beta
 
 ### Added
+- **Budget alerts at several levels** (#186). A budget's **Alert me at**
+  is now a set of levels — 50%, 75%, 80%, 90%, 100% or any other — and
+  each one alerts once a budget period, so you feel the spending climb.
+  One purchase that jumps past several alerts once, for the highest.
+  Going over the budget always alerts too. Budgets you already have keep
+  their one level until you change it.
 - **What you own and what you owe** (#183). Accounts now splits Total
   money in two: **You own** (every account in credit — cash, banks,
   savings) and **You owe** (card bills, loans, anything in debt). They

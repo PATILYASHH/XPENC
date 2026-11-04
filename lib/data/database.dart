@@ -229,6 +229,23 @@ String? _statementNote(TransactionRow t, String? personName) {
     TransactionTemplateTags,
   ],
 )
+/// The levels a budget alerts at (GitHub #186) — see [Budgets.alertLevels].
+extension BudgetAlertLevels on BudgetRow {
+  /// Ascending percents; a budget from before #186 has its one level.
+  List<int> get alertLevelsPct =>
+      parseBudgetAlertLevels(alertLevels) ?? [alertThresholdPct];
+}
+
+/// [Budgets.alertLevels] as numbers: null when not stored, dropping anything
+/// that isn't a percent from 1 to 100.
+List<int>? parseBudgetAlertLevels(String? stored) {
+  if (stored == null) return null;
+  return {
+    for (final part in stored.split(','))
+      if (int.tryParse(part.trim()) case final v? when v >= 1 && v <= 100) v,
+  }.toList()..sort();
+}
+
 class AppDatabase extends _$AppDatabase {
   // The SQLite filename, NOT a brand. It survived the rename to XPENC on
   // purpose: it is a persistence key no user ever sees, and renaming it would
@@ -259,7 +276,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 90;
+  int get schemaVersion => 91;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -873,6 +890,10 @@ class AppDatabase extends _$AppDatabase {
       if (from < 90) {
         // Share opens on the format sent last.
         await _addColumnIfMissing(m, settings, settings.shareFormat);
+      }
+      if (from < 91) {
+        // A budget can alert at several levels (#186).
+        await _addColumnIfMissing(m, budgets, budgets.alertLevels);
       }
     },
     beforeOpen: (details) async {
@@ -4400,8 +4421,18 @@ class AppDatabase extends _$AppDatabase {
     required Money amount,
     BudgetPeriod period = BudgetPeriod.monthly,
     int alertThresholdPct = 80,
+    List<int>? alertLevels,
     String? note,
   }) async {
+    // Several levels (#186) replace the one: kept sorted, 1–100, each once,
+    // with the lowest doubling as [alertThresholdPct]. None at all leaves
+    // only the over-budget alert, so "nearly used" waits for 100%.
+    final levels = alertLevels == null
+        ? null
+        : ({
+            for (final l in alertLevels)
+              if (l >= 1 && l <= 100) l,
+          }.toList()..sort());
     final category = await categoryById(categoryId);
     if (category == null) {
       throw ArgumentError('That category no longer exists.');
@@ -4450,7 +4481,14 @@ class AppDatabase extends _$AppDatabase {
       amount: amount,
       period: period,
       startDate: DateTime(DateTime.now().year, DateTime.now().month),
-      alertThresholdPct: Value(alertThresholdPct),
+      alertThresholdPct: Value(
+        levels == null
+            ? alertThresholdPct
+            : (levels.isEmpty ? 100 : levels.first),
+      ),
+      alertLevels: levels == null
+          ? const Value.absent()
+          : Value(levels.join(',')),
       note: Value(
         trimmedNote == null || trimmedNote.isEmpty ? null : trimmedNote,
       ),
@@ -7013,6 +7051,21 @@ class AppDatabase extends _$AppDatabase {
       return true;
     });
   }
+
+  /// Whether [claimBudgetAlert] has already claimed this alert.
+  Future<bool> hasBudgetAlert({
+    required int categoryId,
+    required String periodKey,
+    required AlertLevel level,
+  }) async =>
+      await (select(budgetAlerts)..where(
+            (a) =>
+                a.categoryId.equals(categoryId) &
+                a.periodKey.equals(periodKey) &
+                a.level.equalsValue(level),
+          ))
+          .getSingleOrNull() !=
+      null;
 
   /// Give back a claim whose notification could not be delivered, so the alert
   /// is not silenced for the rest of the period.

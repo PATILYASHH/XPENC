@@ -12,6 +12,32 @@ import '../money.dart';
 import '../platform/platform_features.dart';
 
 /// Local notifications only. Nothing leaves the device.
+/// Which of a budget's alert [levels] (ascending percents, GitHub #186) to
+/// act on now that [pct] of it is spent: the one to [fire] — the highest
+/// newly reached, so a purchase that jumps past several says so once — and
+/// the rest to [pass], marked as seen so they don't trail in after it. Past
+/// the budget (`pct > 1`) nothing fires: the overspent alert speaks for
+/// them all. [claimed] levels have fired already this period, and so has
+/// every level up to [legacyUpTo] — the one threshold an older build
+/// alerted at.
+({int? fire, List<int> pass}) budgetAlertStep({
+  required List<int> levels,
+  required double pct,
+  required Set<int> claimed,
+  int? legacyUpTo,
+}) {
+  final fresh = [
+    for (final l in levels)
+      if (pct >= l / 100 &&
+          !claimed.contains(l) &&
+          (legacyUpTo == null || l > legacyUpTo))
+        l,
+  ];
+  if (fresh.isEmpty) return (fire: null, pass: const []);
+  if (pct > 1.0) return (fire: null, pass: fresh);
+  return (fire: fresh.last, pass: fresh.sublist(0, fresh.length - 1));
+}
+
 class NotificationService {
   NotificationService(this._db);
 
@@ -214,18 +240,73 @@ class NotificationService {
               'You have spent ${MoneyFormat.symbol(spent)} of '
               '${MoneyFormat.symbol(b.amount)}.',
         );
-      } else if (pct >= b.alertThresholdPct / 100) {
-        await _fireOnce(
-          categoryId: b.categoryId,
-          periodKey: periodKey,
-          level: AlertLevel.threshold,
-          id: 200000 + b.categoryId,
-          title: '${category.name} budget almost used',
-          body:
-              '${(pct * 100).round()}% of ${MoneyFormat.symbol(b.amount)} spent.',
-        );
       }
+      await _checkLevels(
+        b,
+        category.name,
+        pct: pct,
+        spent: spent,
+        periodKey: periodKey,
+      );
     }
+  }
+
+  /// A budget's own alert levels (GitHub #186) — see [budgetAlertStep]
+  /// for which fire.
+  ///
+  /// Each level is claimed under its own key (`2026-11@50`). A claim under
+  /// the bare period key is the single "almost used" alert from before
+  /// levels existed, and stands for every level up to the old threshold —
+  /// so updating mid-month doesn't repeat an alert already seen.
+  Future<void> _checkLevels(
+    BudgetRow b,
+    String categoryName, {
+    required double pct,
+    required Money spent,
+    required String periodKey,
+  }) async {
+    String keyFor(int level) => '$periodKey@$level';
+    Future<bool> claimed(String key) => _db.hasBudgetAlert(
+      categoryId: b.categoryId,
+      periodKey: key,
+      level: AlertLevel.threshold,
+    );
+    final levels = b.alertLevelsPct;
+    if (!levels.any((l) => pct >= l / 100)) return;
+    final step = budgetAlertStep(
+      levels: levels,
+      pct: pct,
+      claimed: {
+        for (final l in levels)
+          if (await claimed(keyFor(l))) l,
+      },
+      legacyUpTo: await claimed(periodKey) ? b.alertThresholdPct : null,
+    );
+    for (final level in step.pass) {
+      await _db.claimBudgetAlert(
+        categoryId: b.categoryId,
+        periodKey: keyFor(level),
+        level: AlertLevel.threshold,
+      );
+    }
+    final top = step.fire;
+    if (top == null) return;
+    final usedUp = top >= 100;
+    await _fireOnce(
+      categoryId: b.categoryId,
+      periodKey: keyFor(top),
+      level: AlertLevel.threshold,
+      // One notification per budget, replaced as it climbs rather than
+      // piling up in the shade.
+      id: 200000 + b.categoryId,
+      title: usedUp
+          ? '$categoryName budget used up'
+          : '$categoryName budget $top% used',
+      body: usedUp
+          ? 'You have spent all ${MoneyFormat.symbol(b.amount)}.'
+          : 'You have spent ${MoneyFormat.symbol(spent)} of '
+                '${MoneyFormat.symbol(b.amount)} (${(pct * 100).round()}%).',
+    );
   }
 
   /// Claim the one-shot alert, show it, and **release the claim if the show
@@ -457,8 +538,7 @@ class NotificationService {
         await _plugin.zonedSchedule(
           id: _creditCardReminderId(d.accountId),
           title: '$cardName: payment due ${_dayLabel(dueDate)}',
-          body:
-              'Pay by ${_dayLabel(dueDate)} to avoid interest or a late fee.',
+          body: 'Pay by ${_dayLabel(dueDate)} to avoid interest or a late fee.',
           scheduledDate: tz.TZDateTime.from(fireAt, tz.local),
           notificationDetails: _details(_reminderChannel),
           androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,

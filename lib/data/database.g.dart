@@ -7164,6 +7164,17 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
     requiredDuringInsert: false,
     defaultValue: const Constant(80),
   );
+  static const VerificationMeta _alertLevelsMeta = const VerificationMeta(
+    'alertLevels',
+  );
+  @override
+  late final GeneratedColumn<String> alertLevels = GeneratedColumn<String>(
+    'alert_levels',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _isActiveMeta = const VerificationMeta(
     'isActive',
   );
@@ -7237,6 +7248,7 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
     period,
     startDate,
     alertThresholdPct,
+    alertLevels,
     isActive,
     note,
     overflowTargetCategoryId,
@@ -7280,6 +7292,15 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
         alertThresholdPct.isAcceptableOrUnknown(
           data['alert_threshold_pct']!,
           _alertThresholdPctMeta,
+        ),
+      );
+    }
+    if (data.containsKey('alert_levels')) {
+      context.handle(
+        _alertLevelsMeta,
+        alertLevels.isAcceptableOrUnknown(
+          data['alert_levels']!,
+          _alertLevelsMeta,
         ),
       );
     }
@@ -7363,6 +7384,10 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
         DriftSqlType.int,
         data['${effectivePrefix}alert_threshold_pct'],
       )!,
+      alertLevels: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}alert_levels'],
+      ),
       isActive: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_active'],
@@ -7403,6 +7428,14 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
   final BudgetPeriod period;
   final DateTime startDate;
   final int alertThresholdPct;
+
+  /// Every level this budget alerts at (GitHub #186), as ascending percents
+  /// — "50,80,100" — each firing once a period. Null for a budget saved
+  /// before there could be more than one: its one level is
+  /// [alertThresholdPct]. Empty: no early alerts, only going over. Read it
+  /// through `BudgetAlertLevels.alertLevelsPct`. [alertThresholdPct] is kept
+  /// at the lowest level, which "nearly used" displays key off.
+  final String? alertLevels;
   final bool isActive;
 
   /// Free-form context for this budget — why it's set the way it is, what
@@ -7435,6 +7468,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
     required this.period,
     required this.startDate,
     required this.alertThresholdPct,
+    this.alertLevels,
     required this.isActive,
     this.note,
     this.overflowTargetCategoryId,
@@ -7458,6 +7492,9 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
     }
     map['start_date'] = Variable<DateTime>(startDate);
     map['alert_threshold_pct'] = Variable<int>(alertThresholdPct);
+    if (!nullToAbsent || alertLevels != null) {
+      map['alert_levels'] = Variable<String>(alertLevels);
+    }
     map['is_active'] = Variable<bool>(isActive);
     if (!nullToAbsent || note != null) {
       map['note'] = Variable<String>(note);
@@ -7480,6 +7517,9 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
       period: Value(period),
       startDate: Value(startDate),
       alertThresholdPct: Value(alertThresholdPct),
+      alertLevels: alertLevels == null && nullToAbsent
+          ? const Value.absent()
+          : Value(alertLevels),
       isActive: Value(isActive),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       overflowTargetCategoryId: overflowTargetCategoryId == null && nullToAbsent
@@ -7504,6 +7544,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
       ),
       startDate: serializer.fromJson<DateTime>(json['startDate']),
       alertThresholdPct: serializer.fromJson<int>(json['alertThresholdPct']),
+      alertLevels: serializer.fromJson<String?>(json['alertLevels']),
       isActive: serializer.fromJson<bool>(json['isActive']),
       note: serializer.fromJson<String?>(json['note']),
       overflowTargetCategoryId: serializer.fromJson<int?>(
@@ -7525,6 +7566,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
       ),
       'startDate': serializer.toJson<DateTime>(startDate),
       'alertThresholdPct': serializer.toJson<int>(alertThresholdPct),
+      'alertLevels': serializer.toJson<String?>(alertLevels),
       'isActive': serializer.toJson<bool>(isActive),
       'note': serializer.toJson<String?>(note),
       'overflowTargetCategoryId': serializer.toJson<int?>(
@@ -7542,6 +7584,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
     BudgetPeriod? period,
     DateTime? startDate,
     int? alertThresholdPct,
+    Value<String?> alertLevels = const Value.absent(),
     bool? isActive,
     Value<String?> note = const Value.absent(),
     Value<int?> overflowTargetCategoryId = const Value.absent(),
@@ -7554,6 +7597,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
     period: period ?? this.period,
     startDate: startDate ?? this.startDate,
     alertThresholdPct: alertThresholdPct ?? this.alertThresholdPct,
+    alertLevels: alertLevels.present ? alertLevels.value : this.alertLevels,
     isActive: isActive ?? this.isActive,
     note: note.present ? note.value : this.note,
     overflowTargetCategoryId: overflowTargetCategoryId.present
@@ -7574,6 +7618,9 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
       alertThresholdPct: data.alertThresholdPct.present
           ? data.alertThresholdPct.value
           : this.alertThresholdPct,
+      alertLevels: data.alertLevels.present
+          ? data.alertLevels.value
+          : this.alertLevels,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
       note: data.note.present ? data.note.value : this.note,
       overflowTargetCategoryId: data.overflowTargetCategoryId.present
@@ -7597,6 +7644,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
           ..write('period: $period, ')
           ..write('startDate: $startDate, ')
           ..write('alertThresholdPct: $alertThresholdPct, ')
+          ..write('alertLevels: $alertLevels, ')
           ..write('isActive: $isActive, ')
           ..write('note: $note, ')
           ..write('overflowTargetCategoryId: $overflowTargetCategoryId, ')
@@ -7614,6 +7662,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
     period,
     startDate,
     alertThresholdPct,
+    alertLevels,
     isActive,
     note,
     overflowTargetCategoryId,
@@ -7630,6 +7679,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
           other.period == this.period &&
           other.startDate == this.startDate &&
           other.alertThresholdPct == this.alertThresholdPct &&
+          other.alertLevels == this.alertLevels &&
           other.isActive == this.isActive &&
           other.note == this.note &&
           other.overflowTargetCategoryId == this.overflowTargetCategoryId &&
@@ -7644,6 +7694,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
   final Value<BudgetPeriod> period;
   final Value<DateTime> startDate;
   final Value<int> alertThresholdPct;
+  final Value<String?> alertLevels;
   final Value<bool> isActive;
   final Value<String?> note;
   final Value<int?> overflowTargetCategoryId;
@@ -7656,6 +7707,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     this.period = const Value.absent(),
     this.startDate = const Value.absent(),
     this.alertThresholdPct = const Value.absent(),
+    this.alertLevels = const Value.absent(),
     this.isActive = const Value.absent(),
     this.note = const Value.absent(),
     this.overflowTargetCategoryId = const Value.absent(),
@@ -7669,6 +7721,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     required BudgetPeriod period,
     required DateTime startDate,
     this.alertThresholdPct = const Value.absent(),
+    this.alertLevels = const Value.absent(),
     this.isActive = const Value.absent(),
     this.note = const Value.absent(),
     this.overflowTargetCategoryId = const Value.absent(),
@@ -7685,6 +7738,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     Expression<String>? period,
     Expression<DateTime>? startDate,
     Expression<int>? alertThresholdPct,
+    Expression<String>? alertLevels,
     Expression<bool>? isActive,
     Expression<String>? note,
     Expression<int>? overflowTargetCategoryId,
@@ -7698,6 +7752,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
       if (period != null) 'period': period,
       if (startDate != null) 'start_date': startDate,
       if (alertThresholdPct != null) 'alert_threshold_pct': alertThresholdPct,
+      if (alertLevels != null) 'alert_levels': alertLevels,
       if (isActive != null) 'is_active': isActive,
       if (note != null) 'note': note,
       if (overflowTargetCategoryId != null)
@@ -7714,6 +7769,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     Value<BudgetPeriod>? period,
     Value<DateTime>? startDate,
     Value<int>? alertThresholdPct,
+    Value<String?>? alertLevels,
     Value<bool>? isActive,
     Value<String?>? note,
     Value<int?>? overflowTargetCategoryId,
@@ -7727,6 +7783,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
       period: period ?? this.period,
       startDate: startDate ?? this.startDate,
       alertThresholdPct: alertThresholdPct ?? this.alertThresholdPct,
+      alertLevels: alertLevels ?? this.alertLevels,
       isActive: isActive ?? this.isActive,
       note: note ?? this.note,
       overflowTargetCategoryId:
@@ -7761,6 +7818,9 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     if (alertThresholdPct.present) {
       map['alert_threshold_pct'] = Variable<int>(alertThresholdPct.value);
     }
+    if (alertLevels.present) {
+      map['alert_levels'] = Variable<String>(alertLevels.value);
+    }
     if (isActive.present) {
       map['is_active'] = Variable<bool>(isActive.value);
     }
@@ -7790,6 +7850,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
           ..write('period: $period, ')
           ..write('startDate: $startDate, ')
           ..write('alertThresholdPct: $alertThresholdPct, ')
+          ..write('alertLevels: $alertLevels, ')
           ..write('isActive: $isActive, ')
           ..write('note: $note, ')
           ..write('overflowTargetCategoryId: $overflowTargetCategoryId, ')
@@ -37671,6 +37732,7 @@ typedef $$BudgetsTableCreateCompanionBuilder =
       required BudgetPeriod period,
       required DateTime startDate,
       Value<int> alertThresholdPct,
+      Value<String?> alertLevels,
       Value<bool> isActive,
       Value<String?> note,
       Value<int?> overflowTargetCategoryId,
@@ -37685,6 +37747,7 @@ typedef $$BudgetsTableUpdateCompanionBuilder =
       Value<BudgetPeriod> period,
       Value<DateTime> startDate,
       Value<int> alertThresholdPct,
+      Value<String?> alertLevels,
       Value<bool> isActive,
       Value<String?> note,
       Value<int?> overflowTargetCategoryId,
@@ -37773,6 +37836,11 @@ class $$BudgetsTableFilterComposer
 
   ColumnFilters<int> get alertThresholdPct => $composableBuilder(
     column: $table.alertThresholdPct,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get alertLevels => $composableBuilder(
+    column: $table.alertLevels,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -37877,6 +37945,11 @@ class $$BudgetsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get alertLevels => $composableBuilder(
+    column: $table.alertLevels,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get isActive => $composableBuilder(
     column: $table.isActive,
     builder: (column) => ColumnOrderings(column),
@@ -37967,6 +38040,11 @@ class $$BudgetsTableAnnotationComposer
 
   GeneratedColumn<int> get alertThresholdPct => $composableBuilder(
     column: $table.alertThresholdPct,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get alertLevels => $composableBuilder(
+    column: $table.alertLevels,
     builder: (column) => column,
   );
 
@@ -38070,6 +38148,7 @@ class $$BudgetsTableTableManager
                 Value<BudgetPeriod> period = const Value.absent(),
                 Value<DateTime> startDate = const Value.absent(),
                 Value<int> alertThresholdPct = const Value.absent(),
+                Value<String?> alertLevels = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<int?> overflowTargetCategoryId = const Value.absent(),
@@ -38082,6 +38161,7 @@ class $$BudgetsTableTableManager
                 period: period,
                 startDate: startDate,
                 alertThresholdPct: alertThresholdPct,
+                alertLevels: alertLevels,
                 isActive: isActive,
                 note: note,
                 overflowTargetCategoryId: overflowTargetCategoryId,
@@ -38096,6 +38176,7 @@ class $$BudgetsTableTableManager
                 required BudgetPeriod period,
                 required DateTime startDate,
                 Value<int> alertThresholdPct = const Value.absent(),
+                Value<String?> alertLevels = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<int?> overflowTargetCategoryId = const Value.absent(),
@@ -38108,6 +38189,7 @@ class $$BudgetsTableTableManager
                 period: period,
                 startDate: startDate,
                 alertThresholdPct: alertThresholdPct,
+                alertLevels: alertLevels,
                 isActive: isActive,
                 note: note,
                 overflowTargetCategoryId: overflowTargetCategoryId,

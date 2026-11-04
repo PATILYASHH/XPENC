@@ -694,7 +694,9 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
   final _amountCtrl = AmountKeypadController();
   late final TextEditingController _noteCtrl;
   final _noteFocus = FocusNode();
-  late double _threshold;
+
+  /// The levels this budget alerts at (#186); see [Budgets.alertLevels].
+  late final Set<int> _levels;
   int? _overflowTarget;
   late bool _rolloverEnabled;
   late double _rolloverDecayPct;
@@ -705,9 +707,8 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
     final existing = widget.existing;
     if (existing != null) _amountCtrl.setAmount(existing.budget.amount);
     _noteCtrl = TextEditingController(text: existing?.budget.note ?? '');
-    _threshold = (existing?.budget.alertThresholdPct ?? 80)
-        .clamp(50, 95)
-        .toDouble();
+    _levels = {...?existing?.budget.alertLevelsPct};
+    if (existing == null) _levels.add(80);
     _overflowTarget = existing?.budget.overflowTargetCategoryId;
     _rolloverEnabled = existing?.budget.rolloverEnabled ?? false;
     _rolloverDecayPct = (existing?.budget.rolloverDecayPct ?? 100)
@@ -721,6 +722,45 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
     _noteCtrl.dispose();
     _noteFocus.dispose();
     super.dispose();
+  }
+
+  /// The alert levels offered as chips; "Other" adds any 1–100.
+  static const _commonLevels = [50, 75, 80, 90, 100];
+
+  Future<void> _addLevel() async {
+    final controller = TextEditingController();
+    final level = await showAppDialog<int>(
+      context: context,
+      builder: (ctx) {
+        void submit() {
+          final v = int.tryParse(controller.text.trim());
+          if (v != null && v >= 1 && v <= 100) Navigator.of(ctx).pop(v);
+        }
+
+        return AlertDialog(
+          title: const Text('Alert at'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              suffixText: '%',
+              hintText: '1–100',
+            ),
+            onSubmitted: (_) => submit(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(onPressed: submit, child: const Text('Add')),
+          ],
+        );
+      },
+    );
+    controller.dispose();
+    if (level != null && mounted) setState(() => _levels.add(level));
   }
 
   Future<void> _save() async {
@@ -737,7 +777,7 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
       await db.upsertBudget(
         categoryId: widget.category.id,
         amount: amount,
-        alertThresholdPct: _threshold.round(),
+        alertLevels: _levels.toList(),
         note: _noteCtrl.text,
       );
     } on ArgumentError catch (e) {
@@ -917,17 +957,40 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            'Alert me at ${_threshold.round()}%',
-            style: theme.textTheme.bodyMedium,
+          Text('Alert me at', style: theme.textTheme.bodyMedium),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              // The usual stops, and any other level this budget has.
+              for (final level in {
+                ..._commonLevels,
+                ..._levels,
+              }.toList()..sort())
+                FilterChip(
+                  label: Text('$level%'),
+                  selected: _levels.contains(level),
+                  onSelected: (on) => setState(
+                    () => on ? _levels.add(level) : _levels.remove(level),
+                  ),
+                ),
+              ActionChip(
+                avatar: const AppIcon(Icons.add_rounded, size: 18),
+                label: const Text('Other'),
+                onPressed: _addLevel,
+              ),
+            ],
           ),
-          Slider(
-            value: _threshold,
-            min: 50,
-            max: 95,
-            divisions: 9,
-            label: '${_threshold.round()}%',
-            onChanged: (v) => setState(() => _threshold = v),
+          const SizedBox(height: 6),
+          Text(
+            _levels.isEmpty
+                ? "No early alerts — you'll hear only if it goes over."
+                : 'Each one alerts once a budget period. Going over always '
+                      'alerts too.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
           ),
           if (hasBudget && ref.watch(appModeProvider) != AppMode.basic) ...[
             const SizedBox(height: 8),

@@ -23,6 +23,14 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.notifications_active_outlined,
+    title: 'Budget alerts at several levels',
+    location: 'Budgets → a budget → Alert me at',
+    description:
+        'Pick 50%, 80%, 100% — any levels you like. Each one alerts once a '
+        'period, so you feel the spending climb.',
+  ),
+  WhatsNewEntry(
     icon: Icons.account_balance_wallet_outlined,
     title: 'What you own, what you owe',
     location: 'More → Accounts',

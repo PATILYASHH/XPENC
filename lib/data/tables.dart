@@ -525,6 +525,14 @@ class Budgets extends Table {
   DateTimeColumn get startDate => dateTime()();
   IntColumn get alertThresholdPct =>
       integer().withDefault(const Constant(80))();
+
+  /// Every level this budget alerts at (GitHub #186), as ascending percents
+  /// — "50,80,100" — each firing once a period. Null for a budget saved
+  /// before there could be more than one: its one level is
+  /// [alertThresholdPct]. Empty: no early alerts, only going over. Read it
+  /// through `BudgetAlertLevels.alertLevelsPct`. [alertThresholdPct] is kept
+  /// at the lowest level, which "nearly used" displays key off.
+  TextColumn get alertLevels => text().nullable()();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
 
   /// Free-form context for this budget — why it's set the way it is, what
