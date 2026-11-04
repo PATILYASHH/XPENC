@@ -242,10 +242,12 @@ extension BudgetAlertLevels on BudgetRow {
 /// that isn't a percent from 1 to 100.
 List<int>? parseBudgetAlertLevels(String? stored) {
   if (stored == null) return null;
-  return {
-    for (final part in stored.split(','))
-      if (int.tryParse(part.trim()) case final v? when v >= 1 && v <= 100) v,
-  }.toList()..sort();
+  final levels = <int>{};
+  for (final part in stored.split(',')) {
+    final level = int.tryParse(part.trim());
+    if (level != null && level >= 1 && level <= 100) levels.add(level);
+  }
+  return levels.toList()..sort();
 }
 
 class AppDatabase extends _$AppDatabase {
