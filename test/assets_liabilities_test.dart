@@ -11,12 +11,10 @@ import 'package:xpenc/data/tables.dart';
 /// #183: Accounts splits Total money into what you own and what you owe.
 void main() {
   late AppDatabase db;
-  late int cash;
   late int food;
 
   setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
-    cash = (await db.watchAccounts().first).single.id;
     food = (await db.watchCategories(CategoryKind.expense).first).first.id;
   });
   tearDown(() => db.close());
