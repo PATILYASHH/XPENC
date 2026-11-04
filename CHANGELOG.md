@@ -11,6 +11,16 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 ## [1.6.6] — beta
 
 ### Added
+- **Share category templates as files** (#187). Categories → Category
+  templates: **Share as file** on any saved template sends a small file
+  with just the structure — names, colours, icons and which sit under
+  which; no amounts, no transactions. **Import from file** adds one
+  someone shared, and nothing changes until you switch to it.
+- **A ready-made 50/30/20 template** (#187): everything you spend in two
+  groups, Needs and Wants, with the last 20% going into Goals. Switching
+  to it moves your existing categories into the groups — Rent keeps its
+  history under Needs — rather than starting new ones beside them. Any
+  template now does this when a category's name matches one you have.
 - **Budget alerts at several levels** (#186). A budget's **Alert me at**
   is now a set of levels — 50%, 75%, 80%, 90%, 100% or any other — and
   each one alerts once a budget period, so you feel the spending climb.

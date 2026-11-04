@@ -23,6 +23,14 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.dashboard_customize_outlined,
+    title: 'Share category templates',
+    location: 'Categories → Category templates',
+    description:
+        'Send your category structure as a file, import one someone shared, '
+        'or start from the ready-made 50/30/20 — Needs and Wants.',
+  ),
+  WhatsNewEntry(
     icon: Icons.notifications_active_outlined,
     title: 'Budget alerts at several levels',
     location: 'Budgets → a budget → Alert me at',

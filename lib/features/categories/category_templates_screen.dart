@@ -1,16 +1,26 @@
+import 'dart:convert';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/platform/outgoing_file.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/error_view.dart';
+import '../../data/built_in_category_templates.dart';
+import '../../data/category_template_file.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../settings/settings_common.dart';
 
 /// Save the current category structure as a reusable template, and switch
 /// between saved templates (GitHub #101). Switching never touches a
 /// transaction — it only archives categories the target template doesn't
 /// have and (re)creates the ones it does, exactly like a manual archive.
+///
+/// Templates also travel as files (GitHub #187): share one, import one
+/// someone shared, or start from a ready-made one such as 50/30/20.
 class CategoryTemplatesScreen extends ConsumerWidget {
   const CategoryTemplatesScreen({super.key});
 
@@ -20,7 +30,16 @@ class CategoryTemplatesScreen extends ConsumerWidget {
     final templatesAsync = ref.watch(categoryTemplatesProvider);
 
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Category templates')),
+      appBar: AppTopBar(
+        title: const Text('Category templates'),
+        actions: [
+          IconButton(
+            tooltip: 'Import from file',
+            icon: const AppIcon(Icons.file_open_outlined),
+            onPressed: () => _importTemplate(context, ref),
+          ),
+        ],
+      ),
       body: templatesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => const Center(
@@ -78,6 +97,22 @@ class CategoryTemplatesScreen extends ConsumerWidget {
                   ],
                 ),
               ),
+            settingsSectionLabel(context, 'Ready-made'),
+            AppCard(
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                children: [
+                  for (
+                    var i = 0;
+                    i < kBuiltInCategoryTemplates.length;
+                    i++
+                  ) ...[
+                    if (i > 0) Divider(height: 1, indent: 60),
+                    _BuiltInTile(file: kBuiltInCategoryTemplates[i]),
+                  ],
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -130,6 +165,7 @@ class _TemplateTile extends ConsumerWidget {
       trailing: PopupMenuButton<_TemplateAction>(
         onSelected: (action) => switch (action) {
           _TemplateAction.apply => _applyTemplate(context, ref, template),
+          _TemplateAction.share => _shareTemplate(context, ref, template),
           _TemplateAction.rename => _renameTemplate(context, ref, template),
           _TemplateAction.delete => _deleteTemplate(context, ref, template),
         },
@@ -137,6 +173,10 @@ class _TemplateTile extends ConsumerWidget {
           PopupMenuItem(
             value: _TemplateAction.apply,
             child: Text('Switch to this template'),
+          ),
+          PopupMenuItem(
+            value: _TemplateAction.share,
+            child: Text('Share as file'),
           ),
           PopupMenuItem(value: _TemplateAction.rename, child: Text('Rename')),
           PopupMenuItem(value: _TemplateAction.delete, child: Text('Delete')),
@@ -147,7 +187,148 @@ class _TemplateTile extends ConsumerWidget {
   }
 }
 
-enum _TemplateAction { apply, rename, delete }
+enum _TemplateAction { apply, share, rename, delete }
+
+/// A ready-made template, added to the saved ones with a tap — nothing
+/// changes until the user switches to it.
+class _BuiltInTile extends ConsumerWidget {
+  const _BuiltInTile({required this.file});
+
+  final CategoryTemplateFile file;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    return AppListTile(
+      contentPadding: const EdgeInsets.only(left: 16, right: 8),
+      leading: CircleAvatar(
+        backgroundColor: theme.colorScheme.secondaryContainer,
+        child: AppIcon(
+          Icons.pie_chart_outline_rounded,
+          color: theme.colorScheme.onSecondaryContainer,
+        ),
+      ),
+      title: Text(
+        file.name,
+        style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+      ),
+      subtitle: file.description == null
+          ? null
+          : Text(
+              file.description!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+      trailing: TextButton(
+        onPressed: () => _addTemplateFile(context, ref, file),
+        child: const Text('Add'),
+      ),
+    );
+  }
+}
+
+/// Saves [file] as a template, and says so.
+Future<void> _addTemplateFile(
+  BuildContext context,
+  WidgetRef ref,
+  CategoryTemplateFile file,
+) async {
+  final messenger = ScaffoldMessenger.of(context);
+  await ref.read(dbProvider).importCategoryTemplate(file);
+  messenger
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      SnackBar(content: Text('Added "${file.name}" — tap it to switch to it')),
+    );
+}
+
+/// [template] as a file for the share sheet (a download on XPENC web):
+/// category names, colours, icons and nesting only.
+Future<void> _shareTemplate(
+  BuildContext context,
+  WidgetRef ref,
+  CategoryTemplateRow template,
+) async {
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    final file = await ref.read(dbProvider).exportCategoryTemplate(template.id);
+    await OutgoingFile(
+      name: file.fileName,
+      bytes: utf8.encode(file.encode()),
+      mimeType: 'application/json',
+    ).deliver(
+      subject: 'XPENC categories: ${template.name}',
+      text:
+          'My "${template.name}" categories for XPENC. Import it from '
+          'Categories → Category templates.',
+    );
+  } catch (e) {
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text("Couldn't share it: $e")));
+  }
+}
+
+/// A template file someone shared, added to the saved ones after a look at
+/// what's in it.
+Future<void> _importTemplate(BuildContext context, WidgetRef ref) async {
+  final messenger = ScaffoldMessenger.of(context);
+  void say(String message) => messenger
+    ..hideCurrentSnackBar()
+    ..showSnackBar(SnackBar(content: Text(message)));
+
+  final FilePickerResult? picked;
+  try {
+    // No extension filter: some Android file managers grey out `.json`
+    // under one. Decoding is the real check.
+    picked = await FilePicker.platform.pickFiles(withData: true);
+  } catch (e) {
+    say("Couldn't open a file: $e");
+    return;
+  }
+  final bytes = picked?.files.singleOrNull?.bytes;
+  if (picked == null) return; // cancelled
+  if (bytes == null) {
+    say("Couldn't read that file.");
+    return;
+  }
+  final CategoryTemplateFile file;
+  try {
+    file = CategoryTemplateFile.decode(utf8.decode(bytes));
+  } on FormatException catch (e) {
+    say(e.message);
+    return;
+  }
+  if (!context.mounted) return;
+
+  final count = file.categoryCount;
+  final add = await showAppDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text('Add "${file.name}"?'),
+      content: Text(
+        [
+          ?file.description,
+          '$count ${count == 1 ? 'category' : 'categories'}. Nothing changes '
+              'until you switch to it.',
+        ].join('\n\n'),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(dialogContext).pop(true),
+          child: const Text('Add'),
+        ),
+      ],
+    ),
+  );
+  if (add != true || !context.mounted) return;
+  await _addTemplateFile(context, ref, file);
+}
 
 Future<void> _saveCurrentAsTemplate(BuildContext context, WidgetRef ref) async {
   final name = await _promptForName(context, title: 'Save as template');

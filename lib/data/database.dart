@@ -14,6 +14,7 @@ import '../core/security/unlock_method.dart';
 import '../features/message_capture/parser/bank_message.dart';
 import '../features/message_capture/parser/message_parser.dart';
 import 'currency_conversion.dart';
+import 'category_template_file.dart';
 import 'tables.dart';
 
 part 'database.g.dart';
@@ -7399,6 +7400,58 @@ class AppDatabase extends _$AppDatabase {
     return templateId;
   });
 
+  /// Saves a shared [file] as a new template (GitHub #187) — nothing
+  /// changes until the user switches to it.
+  Future<int> importCategoryTemplate(CategoryTemplateFile file) =>
+      transaction(() async {
+        final templateId = await into(
+          categoryTemplates,
+        ).insert(CategoryTemplatesCompanion.insert(name: file.name));
+        var order = 0;
+        Future<void> add(CategoryKind kind, List<TemplateCategory> top) async {
+          for (final p in top) {
+            final parentItemId = await into(categoryTemplateItems).insert(
+              CategoryTemplateItemsCompanion.insert(
+                templateId: templateId,
+                name: p.name,
+                kind: kind,
+                colorValue: p.colorValue,
+                iconKey: p.iconKey,
+                sortOrder: Value(order++),
+              ),
+            );
+            for (final c in p.children) {
+              await into(categoryTemplateItems).insert(
+                CategoryTemplateItemsCompanion.insert(
+                  templateId: templateId,
+                  name: c.name,
+                  kind: kind,
+                  colorValue: c.colorValue,
+                  iconKey: c.iconKey,
+                  sortOrder: Value(order++),
+                  parentItemId: Value(parentItemId),
+                ),
+              );
+            }
+          }
+        }
+
+        await add(CategoryKind.income, file.income);
+        await add(CategoryKind.expense, file.expense);
+        return templateId;
+      });
+
+  /// [templateId] as a file to share — see [CategoryTemplateFile].
+  Future<CategoryTemplateFile> exportCategoryTemplate(int templateId) async {
+    final template = await (select(
+      categoryTemplates,
+    )..where((t) => t.id.equals(templateId))).getSingle();
+    final items = await (select(
+      categoryTemplateItems,
+    )..where((i) => i.templateId.equals(templateId))).get();
+    return CategoryTemplateFile.fromItems(template.name, items);
+  }
+
   Future<void> renameCategoryTemplate(int id, String name) =>
       (update(categoryTemplates)..where((t) => t.id.equals(id))).write(
         CategoryTemplatesCompanion(name: Value(name)),
@@ -7458,6 +7511,36 @@ class AppDatabase extends _$AppDatabase {
     }
     final active = all.where((c) => !c.isArchived).toList();
 
+    // An item with no exact match takes a category of the same kind and
+    // name wherever it sits now, and the switch moves it into place — a
+    // shared template that groups Rent under Needs takes the Rent you have,
+    // history and all, rather than archiving it and starting another
+    // (#187). Exact matches are reserved first, and an active category is
+    // preferred to an archived one.
+    final reserved = {
+      for (final i in items)
+        if (byKey[keyOf(i)] case final c?) c.id,
+    };
+    final byName = <String, List<CategoryRow>>{};
+    for (final c in [
+      ...all.where((c) => !c.isArchived),
+      ...all.where((c) => c.isArchived),
+    ]) {
+      if (reserved.contains(c.id)) continue;
+      byName
+          .putIfAbsent(
+            '${c.kind.name}|${c.name.trim().toLowerCase()}',
+            () => [],
+          )
+          .add(c);
+    }
+    CategoryRow? matchFor(CategoryTemplateItemRow i) {
+      final exact = byKey[keyOf(i)];
+      if (exact != null) return exact;
+      final pool = byName['${i.kind.name}|${i.name.trim().toLowerCase()}'];
+      return pool == null || pool.isEmpty ? null : pool.removeAt(0);
+    }
+
     final matchedIds = <int>{};
     final liveIdByItemId = <int, int>{};
 
@@ -7499,7 +7582,7 @@ class AppDatabase extends _$AppDatabase {
 
     // Parents first, so children below can resolve their live parent id.
     for (final item in items.where((i) => i.parentItemId == null)) {
-      final existing = byKey[keyOf(item)];
+      final existing = matchFor(item);
       if (existing != null) {
         liveIdByItemId[item.id] = existing.id;
         await reuse(existing, item, const Value(null));
@@ -7513,7 +7596,7 @@ class AppDatabase extends _$AppDatabase {
       }
     }
     for (final item in items.where((i) => i.parentItemId != null)) {
-      final existing = byKey[keyOf(item)];
+      final existing = matchFor(item);
       final liveParentId = liveIdByItemId[item.parentItemId];
       if (existing != null) {
         await reuse(existing, item, Value(liveParentId));
