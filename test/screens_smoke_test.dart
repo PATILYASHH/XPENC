@@ -715,8 +715,9 @@ void main() {
       await tester.pump();
       expect(tester.takeException(), isNull);
 
-      expect(find.text('Current statement period'), findsOneWidget);
-      expect(find.text('Payment due'), findsOneWidget);
+      // The last statement, and the next one building up (#183).
+      expect(find.textContaining('Statement, closed'), findsOneWidget);
+      expect(find.textContaining('Next statement so far'), findsOneWidget);
       expect(find.text('You currently owe'), findsOneWidget);
       await unmount(tester);
     },

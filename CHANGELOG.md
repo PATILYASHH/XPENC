@@ -11,6 +11,11 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 ## [1.6.6] — beta
 
 ### Added
+- **A card's statement holds at its close** (#183). With statement
+  tracking on, a credit card's page shows the last statement — what the
+  card owed when it closed — what you've paid since, and what's **left to
+  pay** by the due date. Purchases after the close go on the **next
+  statement**, shown building up, instead of raising what's due now.
 - **A month that starts on payday — any payday** (#182). Settings →
   Level & Budgeting → **Budget cycle start day** now goes up to the 31st
   (a shorter month starts on its last day) and has **Last working day**,

@@ -17,6 +17,7 @@ import '../features/message_capture/capture_service.dart';
 import '../features/message_capture/message_source.dart';
 import '../features/message_capture/share_intake.dart';
 import '../features/transactions/transaction_filters.dart';
+import 'card_statement.dart';
 import 'currency_conversion.dart';
 import 'database.dart';
 import 'mode_providers.dart';
@@ -1843,6 +1844,29 @@ final creditCardStatementPeriodProvider =
         statementDay: detail.statementDay,
       );
     });
+
+/// A tracked card's last statement (GitHub #183) — `null` when the card
+/// isn't tracking a cycle, or until the ledger has loaded.
+final creditCardStatementProvider = Provider.family<CardStatement?, int>((
+  ref,
+  accountId,
+) {
+  final detail = ref.watch(creditCardDetailsProvider(accountId)).valueOrNull;
+  final txs = ref.watch(allTransactionsProvider).valueOrNull;
+  final accounts = ref.watch(accountsProvider).valueOrNull;
+  if (detail == null || txs == null || accounts == null) return null;
+  for (final card in accounts) {
+    if (card.id != accountId) continue;
+    return cardStatementOf(
+      card: card,
+      txs: txs,
+      today: DateTime.now(),
+      statementDay: detail.statementDay,
+      dueDay: detail.dueDay,
+    );
+  }
+  return null;
+});
 
 LoanProgress _loanProgressOf(
   AccountRow account,

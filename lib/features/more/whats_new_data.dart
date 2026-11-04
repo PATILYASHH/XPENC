@@ -23,6 +23,14 @@ class WhatsNewEntry {
 
 const whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.credit_card_outlined,
+    title: "Your card's statement, as it closed",
+    location: 'A credit card → Track statement & due date',
+    description:
+        'See what the statement said, what you’ve paid since and what’s '
+        'left by the due date. New purchases build the next statement.',
+  ),
+  WhatsNewEntry(
     icon: Icons.event_repeat_outlined,
     title: 'Your month starts on payday',
     location: 'Settings → Level & Budgeting → Budget cycle start day',

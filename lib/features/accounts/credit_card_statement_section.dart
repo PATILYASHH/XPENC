@@ -2,19 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
+import '../../data/card_statement.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 
 /// Opt-in statement/due-date tracking for a credit card (GitHub #91) — off
 /// unless the user turns it on, same shape as [EnvelopeSection]'s own
-/// per-account toggle. "Amount due" is just the account's current
-/// (negative) balance — XPENC doesn't snapshot a frozen balance at each
-/// statement close, so this reads as "what you owe right now", not "what
-/// last month's statement said", which stays true even after a fresh
-/// purchase moves the number.
+/// per-account toggle. What's due is the last statement — the balance as
+/// it closed, less what's come in since — and purchases after the close
+/// show as the next statement building up (GitHub #183; see
+/// [CardStatement]), beside what you owe in all right now.
 class CreditCardStatementSection extends ConsumerWidget {
   const CreditCardStatementSection({required this.account, super.key});
 
@@ -126,31 +127,41 @@ class _StatementSummary extends ConsumerWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final period = ref.watch(creditCardStatementPeriodProvider(account.id))!;
-    final dueDate = ref.watch(creditCardNextDueDateProvider(account.id))!;
-    final daysLeft = dueDate
-        .difference(DateTime.now())
-        .inDays; // floor, "today" reads as 0
+    final statement = ref.watch(creditCardStatementProvider(account.id));
     final owed = account.currentBalance.abs;
+    final day = DateFormat('d MMM');
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _row(
-            theme,
-            'Current statement period',
-            '${DateFormat('d MMM').format(period.start)} – '
-                '${DateFormat('d MMM').format(period.end)}',
-          ),
-          const SizedBox(height: 12),
-          _row(
-            theme,
-            'Payment due',
-            '${DateFormat('d MMM yyyy').format(dueDate)}'
-                ' (${_dueInLabel(daysLeft)})',
-          ),
-          const SizedBox(height: 12),
+          if (statement != null) ...[
+            _amountRow(
+              theme,
+              'Statement, closed ${day.format(statement.closedOn)}',
+              statement.statement,
+            ),
+            if (statement.paidSince.isPositive) ...[
+              const SizedBox(height: 8),
+              _amountRow(
+                theme,
+                'Paid since',
+                statement.paidSince,
+                color: AppColors.income,
+              ),
+            ],
+            const SizedBox(height: 8),
+            _leftToPay(theme, statement),
+            const Divider(height: 28),
+            _amountRow(
+              theme,
+              'Next statement so far · '
+              '${day.format(period.start)} – ${day.format(period.end)}',
+              statement.spentSince,
+            ),
+            const SizedBox(height: 8),
+          ],
           Row(
             children: [
               Expanded(
@@ -175,21 +186,79 @@ class _StatementSummary extends ConsumerWidget {
     );
   }
 
-  /// Label above, value below — never a side-by-side [Row], since the due
-  /// date's value ("18 Sep 2026 (in 12 days)") is easily long enough to
-  /// collide with its own label on a narrow phone.
-  Widget _row(ThemeData theme, String label, String value) {
-    return Column(
+  /// The line that matters: what's left of the statement and by when — or
+  /// that it's paid.
+  Widget _leftToPay(ThemeData theme, CardStatement statement) {
+    final cs = theme.colorScheme;
+    if (statement.statement.isZero) {
+      return Text(
+        'Nothing was due on it',
+        style: theme.textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+      );
+    }
+    final left = statement.leftToPay;
+    if (left.isZero) {
+      return Row(
+        children: [
+          AppIcon(
+            Icons.check_circle_rounded,
+            size: 18,
+            color: AppColors.income,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'Paid in full',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: AppColors.income,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      );
+    }
+    final today = DateTime.now();
+    final daysLeft = statement.dueOn
+        .difference(DateTime(today.year, today.month, today.day))
+        .inDays;
+    return _amountRow(
+      theme,
+      'Left to pay · due ${DateFormat('d MMM').format(statement.dueOn)} '
+      '(${_dueInLabel(daysLeft)})',
+      left,
+      bold: true,
+    );
+  }
+
+  /// A label and its amount on one line — the label wraps first.
+  Widget _amountRow(
+    ThemeData theme,
+    String label,
+    Money amount, {
+    Color? color,
+    bool bold = false,
+  }) {
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+        Expanded(
+          child: Text(
+            label,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: bold
+                  ? theme.colorScheme.onSurface
+                  : theme.colorScheme.onSurfaceVariant,
+              fontWeight: bold ? FontWeight.w600 : null,
+            ),
           ),
         ),
-        const SizedBox(height: 2),
-        Text(value, style: theme.textTheme.bodyMedium),
+        const SizedBox(width: 12),
+        MoneyText(
+          amount,
+          color: color ?? (bold ? AppColors.expense : null),
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: bold ? FontWeight.w700 : FontWeight.w600,
+          ),
+        ),
       ],
     );
   }
