@@ -132,6 +132,13 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   drift_dev: 2.31.0
   build_runner: ^2.15.1
+  # Pinned to the version pubspec.lock already resolves. drift_dev 2.31 can't
+  # read the table argument of `references(Table, #id)` under analyzer 10.2:
+  # it warns "This parameter should be a simple class name" and generates the
+  # columns with NO foreign key — the build still succeeds. Found while
+  # building FITNS on the same stack; `flutter pub upgrade` would otherwise
+  # pull 10.2 in here too.
+  analyzer: 10.0.1
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
