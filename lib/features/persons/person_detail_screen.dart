@@ -13,6 +13,7 @@ import '../../core/payments/revolut_launcher.dart';
 import '../../core/payments/upi_launcher.dart';
 import '../../core/payments/venmo_launcher.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/bar_page_transition.dart';
 import '../../core/widgets/amount_keypad_field.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/group_tag.dart';
@@ -330,7 +331,7 @@ class _PayeeTxRow extends StatelessWidget {
           top: isFirst ? const Radius.circular(16) : Radius.zero,
           bottom: isLast ? const Radius.circular(16) : Radius.zero,
         ),
-        onTap: () => context.push('/transaction/${tx.id}'),
+        onTap: () => pushZoom(context, '/transaction/${tx.id}'),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           child: Row(

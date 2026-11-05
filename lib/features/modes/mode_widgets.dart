@@ -7,6 +7,7 @@ import '../../core/app_icons.dart';
 import '../../core/money.dart';
 import '../../core/security/nct.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/bar_page_transition.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/money_text.dart';
@@ -581,7 +582,7 @@ class ModeTxRow extends ConsumerWidget {
       active: tx.isNct,
       child: AppListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        onTap: () => context.push('/transaction/${tx.id}'),
+        onTap: () => pushZoom(context, '/transaction/${tx.id}'),
         leading: CircleAvatar(
           backgroundColor: accent.withValues(alpha: 0.14),
           child: transactionRowIcon(
@@ -971,7 +972,7 @@ class ModeAccountsCard extends ConsumerWidget {
           for (final (i, e) in entries.indexed) ...[
             if (i > 0) Divider(height: 1, indent: 60, color: cs.outline),
             AppListTile(
-              onTap: () => context.push('/account/${e.key}'),
+              onTap: () => pushZoom(context, '/account/${e.key}'),
               leading: CircleAvatar(
                 backgroundColor: Color(
                   accounts[e.key]?.colorValue ?? cs.primary.toARGB32(),

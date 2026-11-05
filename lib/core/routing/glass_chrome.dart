@@ -715,13 +715,13 @@ class _LiquidTabBarState extends State<_LiquidTabBar>
                                       32 - 4 * open,
                                     ),
                                     frost: Color.lerp(
-                                      tone.controlFrost,
+                                      tone.barFrost,
                                       tone.sheetFrost,
                                       open,
                                     ),
                                     blur:
-                                        GlassStyle.controlBlur +
-                                        (24 - GlassStyle.controlBlur) * open,
+                                        GlassStyle.barBlur +
+                                        (24 - GlassStyle.barBlur) * open,
                                     refraction: open > 0.95
                                         ? 0
                                         : 18 * (1 - open),

@@ -12,6 +12,7 @@ import '../../core/layout/desktop.dart';
 import '../../core/money.dart';
 import '../../core/security/nct.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/bar_page_transition.dart';
 import '../../core/theme/glass.dart';
 import '../../core/widgets/action_sheet.dart';
 import '../../core/widgets/app_surfaces.dart';
@@ -1275,7 +1276,7 @@ class _TxCard extends StatelessWidget {
             child: NctVeil(
               active: tx.isNct,
               child: InkWell(
-                onTap: () => context.push('/transaction/${tx.id}'),
+                onTap: () => pushZoom(context, '/transaction/${tx.id}'),
                 // An NCT row's hold is its peek (see NctVeil); its quick
                 // actions are on its detail page.
                 onLongPress: tx.isNct
@@ -1459,7 +1460,7 @@ extension on _TxCard {
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
             hoverColor: cs.onSurface.withValues(alpha: 0.05),
-            onTap: () => context.push('/transaction/${tx.id}'),
+            onTap: () => pushZoom(context, '/transaction/${tx.id}'),
             onSecondaryTap: tx.isNct ? null : quickActions,
             onLongPress: tx.isNct ? null : quickActions,
             child: Container(

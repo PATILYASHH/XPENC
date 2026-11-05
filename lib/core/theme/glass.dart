@@ -30,6 +30,12 @@ class GlassStyle {
   /// recognisable, and the lens needs that detail to bend.
   static const double controlBlur = 3.5;
 
+  /// The tab bar: whole rows of coloured icons and amounts slide under it,
+  /// and at [controlBlur] they read as smudges behind the tabs. Diffused
+  /// enough to stay calm, still clear enough for the lens to bend — iOS 27's
+  /// own fix for busy content under glass.
+  static const double barBlur = 9;
+
   /// Blur behind an open dialog — the page frosts over.
   static const double barrierBlur = 12;
 }
@@ -61,7 +67,8 @@ class GlassTone {
     required this.edge,
     required this.ambient,
     this.ambientBlur = 18,
-  });
+    Color? barFrost,
+  }) : _barFrost = barFrost;
 
   final Brightness brightness;
 
@@ -109,6 +116,12 @@ class GlassTone {
 
   /// How far that glow may spread (its largest blur sigma).
   final double ambientBlur;
+
+  /// The tab bar's frost: whole lists slide under it, so where content is
+  /// busy it smokes over what passes beneath instead of showing it as
+  /// coloured blots. Defaults to [controlFrost].
+  Color get barFrost => _barFrost ?? controlFrost;
+  final Color? _barFrost;
 
   bool get isDark => brightness == Brightness.dark;
 
@@ -206,11 +219,14 @@ class GlassTone {
     switchOff: Color(0x52787880),
     track: Color(0x3D787880),
     thumb: Color(0x4DFFFFFF),
-    ambient: 0.10,
-    // On black there's no wallpaper light to spill, only a rim of it: a
-    // wide haze read as a grey band wherever a list's edge clipped it.
+    // On black there's no wallpaper light to spill: any glow is a grey haze
+    // that blurs every card's edge. Cards stand on their own top-lit rim.
+    ambient: 0,
     ambientBlur: 7,
     edge: Color(0x33FFFFFF),
+    // Smoked glass: icons and amounts scrolling under the bar fade to a
+    // hint of their colour, and the tabs stay the brightest thing on it.
+    barFrost: Color(0xA62C2C2E),
   );
 }
 
@@ -583,8 +599,10 @@ class GlassPane extends StatelessWidget {
         gradient: frost != null
             ? null
             : LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+                // Lit from above, like the rim: the slab is brightest where
+                // the light enters it.
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
                 colors: [tone.frostHigh, tone.frostLow],
               ),
       ),
@@ -602,11 +620,12 @@ class GlassPane extends StatelessWidget {
         borderRadius,
         strength: 0.85 * tone.rimStrength,
         continuous: true,
+        topLit: true,
       ),
       child: pane,
     );
     pane = ClipRSuperellipse(borderRadius: borderRadius, child: pane);
-    if (!shadow) return pane;
+    if (!shadow || tone.ambient <= 0) return pane;
     return _AmbientLight(
       backdrop: surface.backdrop ?? GlassBackdrop.fallback,
       radius: borderRadius,
@@ -742,62 +761,39 @@ class GlassIconTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final radius = BorderRadius.circular(extent * 0.28);
     final hsl = HSLColor.fromColor(color);
+    // Today's iOS tile: a flat colour with the faintest fall of light — no
+    // gloss sheen, no coloured glow under it (both read as a decade old).
     final top = hsl
-        .withLightness((hsl.lightness + 0.12).clamp(0.0, 0.92))
+        .withLightness((hsl.lightness + 0.06).clamp(0.0, 0.9))
         .toColor();
     final bottom = hsl
-        .withLightness((hsl.lightness - 0.08).clamp(0.05, 1.0))
+        .withLightness((hsl.lightness - 0.05).clamp(0.05, 1.0))
         .toColor();
     return SizedBox.square(
       dimension: extent,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: radius,
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.35),
-              blurRadius: extent * 0.28,
-              offset: Offset(0, extent * 0.06),
-            ),
-          ],
-        ),
-        child: ClipRSuperellipse(
-          borderRadius: radius,
-          child: CustomPaint(
-            foregroundPainter: GlassRimPainter(
-              radius,
-              strength: 0.45,
-              continuous: true,
-            ),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [top, color, bottom],
-                  stops: const [0, 0.55, 1],
-                ),
+      child: ClipRSuperellipse(
+        borderRadius: radius,
+        child: CustomPaint(
+          foregroundPainter: GlassRimPainter(
+            radius,
+            strength: 0.22,
+            continuous: true,
+            topLit: true,
+          ),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [top, bottom],
               ),
-              child: DecoratedBox(
-                // The gloss: a soft sheen across the top half.
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.center,
-                    colors: [Color(0x40FFFFFF), Color(0x00FFFFFF)],
-                  ),
-                ),
-                child: Center(
-                  child: IconTheme.merge(
-                    data: IconThemeData(
-                      color: Colors.white,
-                      size: extent * 0.56,
-                    ),
-                    child: DefaultTextStyle.merge(
-                      style: TextStyle(fontSize: extent * 0.52),
-                      child: child,
-                    ),
-                  ),
+            ),
+            child: Center(
+              child: IconTheme.merge(
+                data: IconThemeData(color: Colors.white, size: extent * 0.56),
+                child: DefaultTextStyle.merge(
+                  style: TextStyle(fontSize: extent * 0.52),
+                  child: child,
                 ),
               ),
             ),
@@ -1245,9 +1241,19 @@ class GlassNavGlyph extends StatelessWidget {
 }
 
 /// The rim of a glass pane: bright where light would catch it (top-left),
-/// fading along the sides, catching again at the bottom-right.
+/// all but gone along the sides, catching again at the bottom-right — light
+/// on two corners, not an outline drawn all the way round.
+///
+/// [topLit] is the content-pane rim: light enters along the top edge and
+/// fades within the first few points, with only a faint hairline below — a
+/// lit slab rather than a framed box.
 class GlassRimPainter extends CustomPainter {
-  GlassRimPainter(this.radius, {this.strength = 1, this.continuous = false});
+  GlassRimPainter(
+    this.radius, {
+    this.strength = 1,
+    this.continuous = false,
+    this.topLit = false,
+  });
 
   /// `null` = a capsule.
   final BorderRadius? radius;
@@ -1255,25 +1261,56 @@ class GlassRimPainter extends CustomPainter {
 
   /// iOS continuous (squircle) corners rather than circular ones.
   final bool continuous;
+  final bool topLit;
 
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
     final inner = rect.deflate(0.5);
+    final Shader shader;
+    if (topLit) {
+      // The light band is a fixed depth, not a fraction of the pane, so a
+      // tall card and a short row catch the same sliver of light.
+      final lit = (28 / math.max(size.height, 1)).clamp(0.0, 0.5);
+      shader = ui.Gradient.linear(
+        rect.topCenter,
+        rect.bottomCenter,
+        [
+          Colors.white.withValues(alpha: 0.85 * strength),
+          Colors.white.withValues(alpha: 0.16 * strength),
+          Colors.white.withValues(alpha: 0.08 * strength),
+          Colors.white.withValues(alpha: 0.14 * strength),
+        ],
+        [0, lit, 1 - lit * 0.5, 1],
+      );
+    } else {
+      // Swept round the centre, so the light sits on the *corners* whatever
+      // the shape: a capsule's rounded ends catch it, its long sides barely
+      // do. A straight corner-to-corner gradient lit half of every wide pill
+      // and read as an outline. Angles run clockwise from 3 o'clock.
+      shader = ui.Gradient.sweep(
+        rect.center,
+        [
+          for (final a in const [
+            0.22, // right
+            0.6, // bottom-right
+            0.05, // bottom
+            0.05, // bottom-left
+            0.3, // left
+            0.95, // top-left — where the light comes from
+            0.28, // top
+            0.08, // top-right
+            0.22, // right again
+          ])
+            Colors.white.withValues(alpha: a * strength),
+        ],
+        const [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1],
+      );
+    }
     final paint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.1
-      ..shader = ui.Gradient.linear(
-        rect.topLeft,
-        rect.bottomRight,
-        [
-          Colors.white.withValues(alpha: 0.95 * strength),
-          Colors.white.withValues(alpha: 0.18 * strength),
-          Colors.white.withValues(alpha: 0.12 * strength),
-          Colors.white.withValues(alpha: 0.7 * strength),
-        ],
-        const [0, 0.38, 0.62, 1],
-      );
+      ..strokeWidth = 1
+      ..shader = shader;
     final r = _resolve(radius, size);
     if (continuous) {
       canvas.drawRSuperellipse(r.toRSuperellipse(inner), paint);
@@ -1286,7 +1323,8 @@ class GlassRimPainter extends CustomPainter {
   bool shouldRepaint(GlassRimPainter old) =>
       old.radius != radius ||
       old.strength != strength ||
-      old.continuous != continuous;
+      old.continuous != continuous ||
+      old.topLit != topLit;
 }
 
 /// A soft drop shadow drawn only *outside* the pane — under translucent

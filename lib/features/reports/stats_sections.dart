@@ -7,6 +7,7 @@ import '../../core/budget_cycle.dart';
 import '../../core/money.dart';
 import '../../core/security/nct.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/bar_page_transition.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/error_view.dart';
 import '../../data/database.dart';
@@ -727,7 +728,7 @@ class TransactionStandings extends ConsumerWidget {
                   valueColor: t.type == TxType.income
                       ? AppColors.income
                       : AppColors.expense,
-                  onTap: () => context.push('/transaction/${t.id}'),
+                  onTap: () => pushZoom(context, '/transaction/${t.id}'),
                 ),
               ),
           ],

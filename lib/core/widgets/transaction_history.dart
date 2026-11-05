@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/theme/bar_page_transition.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
@@ -270,7 +270,7 @@ class HistoryRow extends StatelessWidget {
       active: tx.isNct,
       child: AppListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        onTap: () => context.push('/transaction/${tx.id}'),
+        onTap: () => pushZoom(context, '/transaction/${tx.id}'),
         leading: CircleAvatar(
           backgroundColor: accent.withValues(alpha: 0.15),
           child: transactionRowIcon(

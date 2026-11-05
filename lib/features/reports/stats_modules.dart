@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../core/money.dart';
 import '../../core/security/nct.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/bar_page_transition.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/error_view.dart';
 import '../../data/currency_conversion.dart';
@@ -696,7 +697,7 @@ class _IncomeBody extends ConsumerWidget {
                       subtitle: DateFormat('d MMM yyyy').format(t.date),
                       value: MoneyFormat.signed(t.baseAmount),
                       valueColor: AppColors.income,
-                      onTap: () => context.push('/transaction/${t.id}'),
+                      onTap: () => pushZoom(context, '/transaction/${t.id}'),
                     ),
                   ),
               ],
@@ -794,7 +795,7 @@ class _NetWorthBody extends ConsumerWidget {
                     value: MoneyFormat.symbol(b),
                     valueColor: b.isNegative ? AppColors.expense : null,
                     dotColor: Color(a.colorValue),
-                    onTap: () => context.push('/account/${a.id}'),
+                    onTap: () => pushZoom(context, '/account/${a.id}'),
                   ),
               ],
             ),
@@ -960,7 +961,7 @@ class _DebtBody extends ConsumerWidget {
                     value: MoneyFormat.symbol(owed),
                     valueColor: AppColors.expense,
                     dotColor: Color(a.colorValue),
-                    onTap: () => context.push('/account/${a.id}'),
+                    onTap: () => pushZoom(context, '/account/${a.id}'),
                   ),
               ],
             ),
@@ -1031,7 +1032,7 @@ class _PeopleBody extends ConsumerWidget {
               valueColor: color,
               barFraction: max == 0 ? 0 : e.value.abs.paise / max,
               barColor: color,
-              onTap: () => context.push('/person/${e.key}'),
+              onTap: () => pushZoom(context, '/person/${e.key}'),
             ),
         ],
       );

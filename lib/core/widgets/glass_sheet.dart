@@ -170,6 +170,26 @@ class GlassPageSpring extends Curve {
       SpringSimulation(_spring, 0, 1, 0).x(t * seconds);
 }
 
+/// The spring a page zooms out of a card or row on (`pushZoom`). Opened tens
+/// of times a day, so quicker than [GlassPageSpring] — still near-critically
+/// damped: the page arrives and settles, it doesn't bounce.
+class GlassZoomSpring extends Curve {
+  const GlassZoomSpring();
+
+  static final _spring = SpringDescription.withDampingRatio(
+    mass: 1,
+    stiffness: 300,
+    ratio: 0.92,
+  );
+
+  /// Long enough for the spring to come to rest (it's within 0.3% by then).
+  static const double seconds = 0.5;
+
+  @override
+  double transformInternal(double t) =>
+      SpringSimulation(_spring, 0, 1, 0).x(t * seconds);
+}
+
 /// Pushes [builder]'s content as a Glass sheet — see [showAppSheet], which
 /// calls this under Glass. Always on the root navigator, so the sheet sits
 /// above the tab bar it grows out of rather than under it.

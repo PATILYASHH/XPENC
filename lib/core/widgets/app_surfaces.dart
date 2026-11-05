@@ -3,10 +3,12 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../app_icons.dart';
 import '../layout/desktop.dart';
 import '../theme/glass.dart';
+import '../theme/zoom_origin.dart';
 import 'glass_sheet.dart';
 import 'nav_bar_inset.dart';
 
@@ -36,32 +38,36 @@ class AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cardTheme = Theme.of(context).cardTheme;
+    final resolved = shape ?? cardTheme.shape;
+    final radius = resolved is RoundedRectangleBorder
+        ? resolved.borderRadius.resolve(Directionality.of(context))
+        : BorderRadius.circular(AppSurface.of(context).isGlass ? 26 : 12);
+
     if (!AppSurface.of(context).isGlass) {
       return Card(
         margin: margin,
         clipBehavior: clipBehavior,
         shape: shape,
         color: color,
-        child: child,
+        // Inside the card's margin, so a page zooms out of the card itself.
+        child: ZoomSource(radius: radius.topLeft.x, child: child),
       );
     }
-
-    final cardTheme = Theme.of(context).cardTheme;
-    final resolved = shape ?? cardTheme.shape;
-    final radius = resolved is RoundedRectangleBorder
-        ? resolved.borderRadius.resolve(Directionality.of(context))
-        : BorderRadius.circular(26);
 
     return Semantics(
       container: true,
       child: Padding(
         padding: margin ?? cardTheme.margin ?? EdgeInsets.zero,
-        child: GlassPane(
-          borderRadius: radius,
-          tint: color,
-          // A transparent Material so ink splashes from the card's
-          // InkWells/ListTiles still have somewhere to draw, as on a Card.
-          child: Material(type: MaterialType.transparency, child: child),
+        child: ZoomSource(
+          radius: radius.topLeft.x,
+          child: GlassPane(
+            borderRadius: radius,
+            tint: color,
+            // A transparent Material so ink splashes from the card's
+            // InkWells/ListTiles still have somewhere to draw, as on a Card.
+            child: Material(type: MaterialType.transparency, child: child),
+          ),
         ),
       ),
     );
@@ -181,20 +187,25 @@ class AppListTile extends StatelessWidget {
   final bool isThreeLine;
   final bool enabled;
 
+  // A row is a zoom source of its own: a page opened from a row in a grouped
+  // card grows out of that row, not the whole card.
   @override
-  Widget build(BuildContext context) => ListTile(
-    leading: glassLeadingTile(context, leading),
-    title: title,
-    subtitle: subtitle,
-    trailing: trailing,
-    onTap: onTap,
-    onLongPress: onLongPress,
-    contentPadding: contentPadding,
-    selected: selected,
-    shape: shape,
-    dense: dense,
-    isThreeLine: isThreeLine,
-    enabled: enabled,
+  Widget build(BuildContext context) => ZoomSource(
+    radius: 0,
+    child: ListTile(
+      leading: glassLeadingTile(context, leading),
+      title: title,
+      subtitle: subtitle,
+      trailing: trailing,
+      onTap: onTap,
+      onLongPress: onLongPress,
+      contentPadding: contentPadding,
+      selected: selected,
+      shape: shape,
+      dense: dense,
+      isThreeLine: isThreeLine,
+      enabled: enabled,
+    ),
   );
 }
 
@@ -221,7 +232,14 @@ class AppSwitchListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SwitchListTile(
     value: value,
-    onChanged: onChanged,
+    // A light tick as the switch flips — on the same frame as the thumb
+    // starts to move, so the two read as one event.
+    onChanged: onChanged == null
+        ? null
+        : (v) {
+            HapticFeedback.selectionClick();
+            onChanged!(v);
+          },
     title: title,
     subtitle: subtitle,
     secondary: glassLeadingTile(context, secondary),
@@ -646,12 +664,18 @@ class _GlassDialogRoute<T> extends DialogRoute<T> {
       _BlurIn(animation: animation!, child: super.buildModalBarrier());
 
   @override
-  Duration get transitionDuration => const Duration(milliseconds: 320);
+  Duration get transitionDuration => const Duration(milliseconds: 280);
 
   @override
-  Duration get reverseTransitionDuration => const Duration(milliseconds: 180);
+  Duration get reverseTransitionDuration => const Duration(milliseconds: 160);
 
-  // iOS's alert: swells in from a touch smaller and settles, fades out.
+  // iOS's alert: materialises — settles down from a touch larger as it
+  // fades in, with no overshoot (nothing was thrown, so nothing bounces),
+  // while the page behind frosts over. It leaves the way it came, fading
+  // and easing back a hair, quickly. Strong ease-out both ways: the motion
+  // is front-loaded onto the frames the eye is on.
+  static const _easeOut = Cubic(0.23, 1, 0.32, 1);
+
   @override
   Widget buildTransitions(
     BuildContext context,
@@ -659,15 +683,18 @@ class _GlassDialogRoute<T> extends DialogRoute<T> {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    final scale = CurvedAnimation(
+    final curved = CurvedAnimation(
       parent: animation,
-      curve: const Cubic(0.2, 1.2, 0.4, 1),
-      reverseCurve: Curves.easeInCubic,
+      curve: _easeOut,
+      reverseCurve: _easeOut.flipped,
     );
+    if (MediaQuery.disableAnimationsOf(context)) {
+      return FadeTransition(opacity: curved, child: child);
+    }
     return FadeTransition(
-      opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+      opacity: curved,
       child: ScaleTransition(
-        scale: Tween<double>(begin: 0.9, end: 1).animate(scale),
+        scale: Tween<double>(begin: 1.06, end: 1).animate(curved),
         child: child,
       ),
     );
@@ -718,6 +745,20 @@ final Map<IconData, (IconData, double)> _glassGlyphs = {
   Icons.add: (CupertinoIcons.add, 1),
   Icons.add_circle_outline_rounded: (CupertinoIcons.add_circled, 1),
   Icons.remove_rounded: (CupertinoIcons.minus, 1),
+  Icons.visibility_off_outlined: (CupertinoIcons.eye_slash, 1),
+  Icons.shopping_cart_outlined: (CupertinoIcons.cart, 1),
+  Icons.attach_money_rounded: (CupertinoIcons.money_dollar, 0.95),
+  Icons.paid_outlined: (CupertinoIcons.money_dollar_circle, 1),
+  Icons.sync_rounded: (CupertinoIcons.arrow_2_circlepath, 0.95),
+  Icons.verified_outlined: (CupertinoIcons.checkmark_seal, 1),
+  Icons.apps_rounded: (CupertinoIcons.square_grid_2x2, 0.92),
+  Icons.add_a_photo_outlined: (CupertinoIcons.camera, 0.95),
+  Icons.all_inclusive_rounded: (CupertinoIcons.infinite, 1),
+  Icons.shuffle_rounded: (CupertinoIcons.shuffle, 0.95),
+  Icons.stop_circle_outlined: (CupertinoIcons.stop_circle, 1),
+  Icons.auto_awesome_outlined: (CupertinoIcons.sparkles, 1),
+  Icons.system_update_alt_rounded: (CupertinoIcons.tray_arrow_down, 0.95),
+  Icons.upload_file_outlined: (CupertinoIcons.arrow_up_doc, 0.95),
   Icons.check_rounded: (CupertinoIcons.checkmark_alt, 1),
   Icons.check_circle_rounded: (CupertinoIcons.checkmark_circle_fill, 1),
   Icons.check_circle_outline_rounded: (CupertinoIcons.checkmark_circle, 1),

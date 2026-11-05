@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/money.dart';
+import '../../core/theme/bar_page_transition.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/nav_bar_inset.dart';
@@ -133,7 +134,7 @@ class ModeDetailScreen extends ConsumerWidget {
                       label: accounts[e.key]?.name ?? 'Account',
                       amount: e.value,
                       total: summary.spent,
-                      onTap: () => context.push('/account/${e.key}'),
+                      onTap: () => pushZoom(context, '/account/${e.key}'),
                     ),
                   ],
                 ],

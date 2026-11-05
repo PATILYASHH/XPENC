@@ -519,7 +519,7 @@ class _PersonTile extends ConsumerWidget {
           ),
         ],
       ),
-      onTap: () => context.push('/person/${person.id}'),
+      onTap: () => pushZoom(context, '/person/${person.id}'),
       onLongPress: () => _showActions(context, ref),
     );
   }

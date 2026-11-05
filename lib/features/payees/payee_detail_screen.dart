@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../core/money.dart';
 import '../../core/security/nct.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/bar_page_transition.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/money_text.dart';
@@ -84,7 +85,7 @@ class PayeeDetailScreen extends ConsumerWidget {
                       ),
                     )
                   : FilledButton.tonalIcon(
-                      onPressed: () => context.push('/person/$pid'),
+                      onPressed: () => pushZoom(context, '/person/$pid'),
                       icon: person == null
                           ? const AppIcon(Icons.person_outline_rounded)
                           : PersonAvatar(
@@ -333,7 +334,7 @@ class _TxRow extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
         ),
-        onTap: () => context.push('/transaction/${tx.id}'),
+        onTap: () => pushZoom(context, '/transaction/${tx.id}'),
       ),
     );
   }

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../core/app_icons.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/bar_page_transition.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/module_shortcuts.dart';
 import '../../core/widgets/custom_icon_badge.dart';
@@ -333,7 +333,7 @@ class _AccountRow extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: AppListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        onTap: () => context.push('/account/${account.id}'),
+        onTap: () => pushZoom(context, '/account/${account.id}'),
         leading: Container(
           width: 44,
           height: 44,

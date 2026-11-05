@@ -7,6 +7,7 @@ import '../../core/currency.dart';
 import '../../core/layout/desktop.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/bar_page_transition.dart';
 import '../../core/widgets/amount_keypad_field.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
@@ -457,7 +458,7 @@ class _AccountTile extends ConsumerWidget {
       ),
       subtitle: subtitle,
       trailing: trailing,
-      onTap: () => context.push('/account/${account.id}'),
+      onTap: () => pushZoom(context, '/account/${account.id}'),
       onLongPress: () => _showActions(context, ref),
     );
   }

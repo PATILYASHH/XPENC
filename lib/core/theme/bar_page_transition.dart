@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../widgets/glass_sheet.dart';
 import 'glass.dart';
+import 'zoom_origin.dart';
 
 /// Pages that open as the tab bar transforming into them — the same motion
 /// as the month picker and every sheet: the bar's capsule grows up on its
@@ -31,18 +32,27 @@ class PageFromBar {
   static const duration = Duration(milliseconds: 720);
   static const reverseDuration = Duration(milliseconds: 560);
 
+  /// [GlassZoomSpring]'s time to rest, and a quicker way back into the card.
+  static const zoomDuration = Duration(milliseconds: 500);
+  static const zoomReverseDuration = Duration(milliseconds: 380);
+
   /// Whether the next pushed page will grow out of the bar.
   static bool get pending => _pending != null;
+
+  /// Whether the next pushed page zooms out of a card or row.
+  static bool get pendingZoom => _pending?.zoom != null;
 
   /// Records that the next pushed page grows out of the tab bar under
   /// [context] — the Glass capsule when [context] is in the shell, otherwise
   /// a bar along the foot of the screen — or, given [from], out of the top
-  /// bar's capsule at that rect (global coordinates).
-  static void record(BuildContext context, {Rect? from}) {
+  /// bar's capsule at that rect (global coordinates); or, given [zoom], out
+  /// of that card or row.
+  static void record(BuildContext context, {Rect? from, ZoomFrom? zoom}) {
     final spec = _pending = BarPageSpec._(
-      fromBar: from == null && GlassBarScope.of(context),
+      fromBar: from == null && zoom == null && GlassBarScope.of(context),
       glass: AppSurface.of(context).isGlass,
       origin: from,
+      zoom: zoom,
     );
     // Unclaimed for a few frames — the push it was meant for never built a
     // route — it's dropped, so it can't hijack some later push.
@@ -107,6 +117,7 @@ class BarPageSpec {
     required this.fromBar,
     required this.glass,
     this.origin,
+    this.zoom,
   });
 
   /// Whether this page grows out of (and hands over) the shell's tab bar.
@@ -118,6 +129,9 @@ class BarPageSpec {
   /// The top capsule this page grows down out of (handing it over as it
   /// goes), in global coordinates; `null` for a bar at the foot.
   final Rect? origin;
+
+  /// The card or row this page zooms out of (see [pushZoom]).
+  final ZoomFrom? zoom;
 }
 
 /// Opens [location] as the tab bar transforming into it.
@@ -126,6 +140,19 @@ Future<T?> pushFromBar<T extends Object?>(
   String location,
 ) {
   PageFromBar.record(context);
+  return context.push<T>(location);
+}
+
+/// Opens [location] zooming out of the card or row just tapped — the page
+/// swells from its exact shape to the screen, and Back shrinks it home
+/// again, the way iOS opens a detail from its cell. With no card under the
+/// touch (a keyboard or screen-reader activation), or with animations
+/// turned off in the system, it's a plain push.
+Future<T?> pushZoom<T extends Object?>(BuildContext context, String location) {
+  final from = MediaQuery.disableAnimationsOf(context)
+      ? null
+      : ZoomOrigin.lastTouched();
+  if (from != null) PageFromBar.record(context, zoom: from);
   return context.push<T>(location);
 }
 
@@ -182,11 +209,16 @@ class BarMorphTransitionsBuilder extends PageTransitionsBuilder {
 
   // Read when the route is created — just after the morph was recorded.
   @override
-  Duration get transitionDuration =>
-      PageFromBar.pending ? PageFromBar.duration : inner.transitionDuration;
+  Duration get transitionDuration => PageFromBar.pendingZoom
+      ? PageFromBar.zoomDuration
+      : PageFromBar.pending
+      ? PageFromBar.duration
+      : inner.transitionDuration;
 
   @override
-  Duration get reverseTransitionDuration => PageFromBar.pending
+  Duration get reverseTransitionDuration => PageFromBar.pendingZoom
+      ? PageFromBar.zoomReverseDuration
+      : PageFromBar.pending
       ? PageFromBar.reverseDuration
       : inner.reverseTransitionDuration;
 
@@ -245,10 +277,13 @@ class _BarPageTransitionState extends State<BarPageTransition> {
   }
 
   void _listen(Animation<double> animation) {
+    final Curve spring = widget.spec.zoom != null
+        ? const GlassZoomSpring()
+        : const GlassPageSpring();
     _morph = CurvedAnimation(
       parent: animation,
-      curve: const GlassPageSpring(),
-      reverseCurve: const GlassPageSpring().flipped,
+      curve: spring,
+      reverseCurve: spring.flipped,
     );
     animation
       ..addListener(_tick)
@@ -303,6 +338,8 @@ class _BarPageTransitionState extends State<BarPageTransition> {
   @override
   Widget build(BuildContext context) {
     final spec = widget.spec;
+    final zoom = spec.zoom;
+    if (zoom != null) return _zoom(context, zoom);
     final settled = widget.animation.isCompleted;
     final t = _morph.value;
     final open = t.clamp(0.0, 1.0);
@@ -360,6 +397,93 @@ class _BarPageTransitionState extends State<BarPageTransition> {
           ),
         ),
       ],
+    );
+  }
+
+  /// The page zooming out of a card or row: a window in the card's own
+  /// material swells from the card's exact rect and corners to the screen,
+  /// and the page — drawn at full size, scaled to the window's width — fades
+  /// in inside it, so the card visibly *becomes* the page. Run backwards on
+  /// Back, the page shrinks home into the card it came from. One tree shape
+  /// for every frame (see [BarPageTransition]).
+  Widget _zoom(BuildContext context, ZoomFrom from) {
+    final settled = widget.animation.isCompleted;
+    final t = _morph.value;
+    final open = t.clamp(0.0, 1.0);
+    final size = MediaQuery.sizeOf(context);
+    final rect = Rect.lerp(from.rect, Offset.zero & size, t)!;
+    final corner = from.radius * (1 - open);
+    final scale = rect.width / size.width;
+    // The card's face hands over to the page's early, so the window never
+    // reads as an empty card stretching.
+    final reveal = Curves.easeOut.transform(((open - 0.05) / 0.45).clamp(0, 1));
+    final window = Curves.easeOut.transform((1 - open / 0.9).clamp(0.0, 1.0));
+
+    return Stack(
+      children: [
+        Positioned.fromRect(
+          rect: rect,
+          child: settled
+              ? const SizedBox.shrink()
+              : _zoomWindow(context, corner, window),
+        ),
+        Positioned.fill(
+          child: ClipRRect(
+            clipper: _WindowClipper(rect, corner),
+            clipBehavior: settled ? Clip.none : Clip.antiAlias,
+            child: Opacity(
+              opacity: settled ? 1 : reveal,
+              child: Transform(
+                transform: settled
+                    ? Matrix4.identity()
+                    : (Matrix4.translationValues(rect.left, rect.top, 0)
+                        ..scaleByDouble(scale, scale, 1, 1)),
+                child: widget.child,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// The zoom's window: the page's own ground — solid, since a Glass page is
+  /// see-through and the list behind would show through it — wearing the
+  /// card's material at first, which fades as the window becomes the page
+  /// ([card] 1 → 0).
+  Widget _zoomWindow(BuildContext context, double corner, double card) {
+    final radius = BorderRadius.circular(corner);
+    final theme = Theme.of(context);
+    final surface = AppSurface.of(context);
+    final ground = widget.spec.glass
+        ? surface.backdrop?.base ?? theme.scaffoldBackgroundColor
+        : theme.scaffoldBackgroundColor;
+    final face = widget.spec.glass
+        ? GlassPane(
+            borderRadius: radius,
+            shadow: false,
+            child: const SizedBox.expand(),
+          )
+        : DecoratedBox(
+            decoration: BoxDecoration(
+              color:
+                  theme.cardTheme.color ??
+                  theme.colorScheme.surfaceContainerLow,
+              borderRadius: radius,
+            ),
+          );
+    // Clear on the very first frames, so the tap lands on the real card
+    // (content and all) rather than a blank one; solid within ~60 ms. Run
+    // backwards, the page lands *on* the card and hands back to it.
+    final solid = Curves.easeOut.transform(
+      (_morph.value.clamp(0.0, 1.0) / 0.12).clamp(0.0, 1.0),
+    );
+    return Opacity(
+      opacity: solid,
+      child: DecoratedBox(
+        decoration: BoxDecoration(color: ground, borderRadius: radius),
+        child: Opacity(opacity: card, child: face),
+      ),
     );
   }
 

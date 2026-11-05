@@ -7,6 +7,7 @@ import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/platform/stored_images.dart';
 import '../../core/security/nct.dart';
+import '../../core/theme/bar_page_transition.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/error_view.dart';
@@ -520,7 +521,7 @@ class _PaymentGroupBanner extends ConsumerWidget {
                 for (final leg in others) ...[
                   const SizedBox(height: 8),
                   InkWell(
-                    onTap: () => context.push('/transaction/${leg.id}'),
+                    onTap: () => pushZoom(context, '/transaction/${leg.id}'),
                     child: Row(
                       children: [
                         Expanded(
@@ -721,7 +722,7 @@ class _LinkedTxRow extends StatelessWidget {
           child: NctVeil(
             active: linked.isNct,
             child: InkWell(
-              onTap: () => context.push('/transaction/${linked.id}'),
+              onTap: () => pushZoom(context, '/transaction/${linked.id}'),
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Row(

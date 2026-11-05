@@ -743,15 +743,26 @@ class _MoneyMetricChip extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 3),
         padding: const EdgeInsets.symmetric(vertical: 8),
         alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: active ? color.withValues(alpha: 0.14) : Colors.transparent,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: active
-                ? color.withValues(alpha: 0.40)
-                : theme.colorScheme.outline,
-          ),
-        ),
+        // Glass draws pills with fills, not strokes: an outlined capsule on
+        // a glass card reads as a box drawn on the glass.
+        decoration: AppSurface.of(context).isGlass
+            ? BoxDecoration(
+                color: active
+                    ? color.withValues(alpha: 0.2)
+                    : theme.colorScheme.onSurface.withValues(alpha: 0.07),
+                borderRadius: BorderRadius.circular(999),
+              )
+            : BoxDecoration(
+                color: active
+                    ? color.withValues(alpha: 0.14)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: active
+                      ? color.withValues(alpha: 0.40)
+                      : theme.colorScheme.outline,
+                ),
+              ),
         child: Text(
           label,
           maxLines: 1,
@@ -849,7 +860,10 @@ class _DeltaChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.28)),
+        // Glass: fill only (see [_MoneyMetricChip]).
+        border: AppSurface.of(context).isGlass
+            ? null
+            : Border.all(color: color.withValues(alpha: 0.28)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -976,11 +990,17 @@ class _MetricTile extends StatelessWidget {
     final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.07),
-        border: Border.all(color: color.withValues(alpha: 0.24)),
-        borderRadius: BorderRadius.circular(16),
-      ),
+      // Glass: a tinted well with no stroke (see [_MoneyMetricChip]).
+      decoration: AppSurface.of(context).isGlass
+          ? BoxDecoration(
+              color: color.withValues(alpha: 0.11),
+              borderRadius: BorderRadius.circular(16),
+            )
+          : BoxDecoration(
+              color: color.withValues(alpha: 0.07),
+              border: Border.all(color: color.withValues(alpha: 0.24)),
+              borderRadius: BorderRadius.circular(16),
+            ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1183,7 +1203,7 @@ class _AccountRow extends StatelessWidget {
     final color = Color(account.colorValue);
 
     return AppListTile(
-      onTap: () => context.push('/account/${account.id}'),
+      onTap: () => pushZoom(context, '/account/${account.id}'),
       onLongPress: () => showArrangeAccountsSheet(context),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       leading: Container(
@@ -1248,7 +1268,7 @@ class _AccountCard extends StatelessWidget {
           ),
           child: InkWell(
             borderRadius: BorderRadius.circular(_cardRadius),
-            onTap: () => context.push('/account/${account.id}'),
+            onTap: () => pushZoom(context, '/account/${account.id}'),
             onLongPress: () => showArrangeAccountsSheet(context),
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -1554,7 +1574,7 @@ class _PersonDuesTile extends StatelessWidget {
         : Icons.north_east_rounded;
 
     return AppListTile(
-      onTap: () => context.push('/person/${person.id}'),
+      onTap: () => pushZoom(context, '/person/${person.id}'),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       // Their contact photo when they have one, else their initials.
       leading: PersonAvatar(
@@ -2139,7 +2159,7 @@ class _TxRow extends StatelessWidget {
     return NctVeil(
       active: tx.isNct,
       child: AppListTile(
-        onTap: () => context.push('/transaction/${tx.id}'),
+        onTap: () => pushZoom(context, '/transaction/${tx.id}'),
         shape: const RoundedRectangleBorder(),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         leading: Container(

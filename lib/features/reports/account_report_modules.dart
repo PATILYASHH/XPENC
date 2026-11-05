@@ -7,6 +7,7 @@ import '../../core/app_icons.dart';
 import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/bar_page_transition.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/error_view.dart';
@@ -464,7 +465,7 @@ class _BalancesBody extends ConsumerWidget {
                       value: _inAccountCurrency(a.currentBalance, a),
                       valueColor: AppColors.expense,
                       dotColor: Color(a.colorValue),
-                      onTap: () => context.push('/account/${a.id}'),
+                      onTap: () => pushZoom(context, '/account/${a.id}'),
                     ),
                 ],
               ),
@@ -556,7 +557,7 @@ class _ActivityBody extends ConsumerWidget {
                     barFraction: _fraction(a.volume, maxVolume),
                     onTap: accounts[a.accountId] == null
                         ? null
-                        : () => context.push('/account/${a.accountId}'),
+                        : () => pushZoom(context, '/account/${a.accountId}'),
                   ),
               ],
             ),
@@ -790,7 +791,7 @@ class _TransfersBody extends ConsumerWidget {
                       dotColor: accounts[e.key] == null
                           ? null
                           : Color(accounts[e.key]!.colorValue),
-                      onTap: () => context.push('/account/${e.key}'),
+                      onTap: () => pushZoom(context, '/account/${e.key}'),
                     ),
                 ],
               ),
@@ -885,7 +886,7 @@ class _PaymentMethodsBody extends ConsumerWidget {
                     barColor: AppColors.expense,
                     onTap: accounts[m.accountId] == null
                         ? null
-                        : () => context.push('/account/${m.accountId}'),
+                        : () => pushZoom(context, '/account/${m.accountId}'),
                   ),
               ],
             ),
@@ -1046,7 +1047,7 @@ class _CardRow extends ConsumerWidget {
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.push('/account/${card.id}'),
+        onTap: () => pushZoom(context, '/account/${card.id}'),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -1171,7 +1172,7 @@ class _HealthBody extends ConsumerWidget {
                     subtitle: accountTypeLabel(a),
                     value: _lastUsedLabel(last[a.id]),
                     dotColor: Color(a.colorValue),
-                    onTap: () => context.push('/account/${a.id}'),
+                    onTap: () => pushZoom(context, '/account/${a.id}'),
                   ),
               ],
             ),
@@ -1245,7 +1246,7 @@ class _HealthRow extends StatelessWidget {
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.push('/account/${account.id}'),
+        onTap: () => pushZoom(context, '/account/${account.id}'),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/bar_page_transition.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
@@ -430,7 +431,7 @@ class _MemberRow extends ConsumerWidget {
           fontWeight: FontWeight.w600,
         ),
       ),
-      onTap: () => context.push('/person/${person.id}'),
+      onTap: () => pushZoom(context, '/person/${person.id}'),
     );
   }
 }

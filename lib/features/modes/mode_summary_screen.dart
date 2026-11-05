@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/bar_page_transition.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/nav_bar_inset.dart';
@@ -169,7 +170,7 @@ class ModeSummaryScreen extends ConsumerWidget {
                       builder: (context) {
                         final bal = balances[p.id] ?? const Money.zero();
                         return AppListTile(
-                          onTap: () => context.push('/person/${p.id}'),
+                          onTap: () => pushZoom(context, '/person/${p.id}'),
                           leading: PersonAvatar(
                             name: p.name,
                             photoPath: p.photoPath,
