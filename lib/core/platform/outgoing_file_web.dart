@@ -28,11 +28,17 @@ Future<void> deliver(
 }
 
 /// A browser has no apps to hand a file to — the download is the share.
-Future<Set<ShareApp>> availableApps() async => const {};
+bool get canShareToApps => false;
+
+Future<ShareTargets> shareTargets() async => ShareTargets.none;
+
+Future<void> pinShareTargets(List<String>? ids) async {}
+
+Future<ShareTargetIcon?> shareTargetIcon(String id, int size) async => null;
 
 Future<ShareAppResult> sendTo(
   OutgoingFile file,
-  ShareApp app, {
+  ShareTarget target, {
   String? text,
   String? whatsappJid,
   String? phone,

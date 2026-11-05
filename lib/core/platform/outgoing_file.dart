@@ -4,9 +4,96 @@ import 'outgoing_file_io.dart'
     if (dart.library.js_interop) 'outgoing_file_web.dart'
     as impl;
 
-/// A messaging app a share can go to straight, skipping the share sheet —
-/// on Android, when it's installed.
-enum ShareApp { whatsapp, messages }
+/// What a [ShareTarget] is to the share screen: WhatsApp and the messages
+/// app wear their own marks and open the recipient's chat; any other app
+/// wears its own icon.
+enum ShareTargetKind { whatsapp, messages, app }
+
+/// One app a share can go to straight, skipping the share sheet — one
+/// entry of the phone's share sheet (Android only): WhatsApp's chat
+/// picker, Gmail, Drive's "Save to Drive".
+@immutable
+class ShareTarget {
+  const ShareTarget({
+    required this.id,
+    required this.label,
+    this.appLabel,
+    this.kind = ShareTargetKind.app,
+    this.takesImage = true,
+    this.takesPdf = true,
+  });
+
+  /// `package/activity`.
+  final String id;
+  final String label;
+
+  /// The app's name, where the entry has one of its own ("Save to Drive").
+  final String? appLabel;
+  final ShareTargetKind kind;
+  final bool takesImage;
+  final bool takesPdf;
+
+  bool takes(String mimeType) =>
+      mimeType == 'application/pdf' ? takesPdf : takesImage;
+
+  /// Takes it, or — the messages app — sends the text when it can't.
+  bool canSend(String mimeType) =>
+      kind == ShareTargetKind.messages || takes(mimeType);
+
+  @override
+  bool operator ==(Object other) => other is ShareTarget && other.id == id;
+
+  @override
+  int get hashCode => id.hashCode;
+}
+
+/// The phone's share targets, and the ones on the share screen's row.
+@immutable
+class ShareTargets {
+  const ShareTargets({
+    required this.all,
+    required this.pinnedIds,
+    this.customized = false,
+  });
+
+  static const none = ShareTargets(all: [], pinnedIds: []);
+
+  /// How many fit on the row beside More.
+  static const maxPinned = 4;
+
+  final List<ShareTarget> all;
+
+  /// In row order. Until [customized], WhatsApp and the messages app.
+  final List<String> pinnedIds;
+  final bool customized;
+
+  /// The pinned ones still installed, in order.
+  List<ShareTarget> get pinned {
+    final byId = {for (final t in all) t.id: t};
+    return [for (final id in pinnedIds) ?byId[id]];
+  }
+
+  /// Everything not on the row.
+  List<ShareTarget> get unpinned {
+    final ids = pinnedIds.toSet();
+    return [
+      for (final t in all)
+        if (!ids.contains(t.id)) t,
+    ];
+  }
+
+  ShareTargets withPinned(List<String> ids) =>
+      ShareTargets(all: all, pinnedIds: ids, customized: true);
+}
+
+/// A share target's icon. [adaptive]: drawn full-bleed, to be masked round;
+/// otherwise the app's own shape on a transparent square.
+class ShareTargetIcon {
+  const ShareTargetIcon(this.png, {required this.adaptive});
+
+  final Uint8List png;
+  final bool adaptive;
+}
 
 /// How [OutgoingFile.sendTo] went. [textOnly]: the messages app wouldn't
 /// take the file, so only the message text went.
@@ -31,14 +118,24 @@ class OutgoingFile {
   @visibleForTesting
   static Future<void> Function(OutgoingFile file, String subject)? debugDeliver;
 
-  /// For tests: which [ShareApp]s the phone has, and a stand-in for
+  /// For tests: the phone's share targets ([pinShareTargets] edits them in
+  /// place; a reset goes back to the ones set here), and a stand-in for
   /// handing a file to one.
   @visibleForTesting
-  static Set<ShareApp>? debugApps;
+  static ShareTargets? get debugTargets => _debugTargets;
+  @visibleForTesting
+  static set debugTargets(ShareTargets? targets) {
+    _debugTargets = targets;
+    _debugDefaults = targets;
+  }
+
+  static ShareTargets? _debugTargets;
+  static ShareTargets? _debugDefaults;
+
   @visibleForTesting
   static Future<ShareAppResult> Function(
     OutgoingFile file,
-    ShareApp app,
+    ShareTarget target,
     String? text,
   )?
   debugSendTo;
@@ -49,23 +146,50 @@ class OutgoingFile {
       debugDeliver?.call(this, subject) ??
       impl.deliver(this, subject: subject, text: text);
 
-  /// The [ShareApp]s this device can send to straight — none off Android.
-  static Future<Set<ShareApp>> availableApps() =>
-      debugApps != null ? Future.value(debugApps) : impl.availableApps();
+  /// Whether this device can send to an app straight — Android. Elsewhere
+  /// the system share sheet (or a download) is the only way.
+  static bool get canShareToApps =>
+      _debugTargets != null || impl.canShareToApps;
 
-  /// Straight into [app], with [text] as the message: into the chat of
+  /// The apps that take a shared file, and the ones on the share screen.
+  static Future<ShareTargets> shareTargets() =>
+      _debugTargets != null ? Future.value(_debugTargets) : impl.shareTargets();
+
+  /// Keeps [ids] on the share screen, in order, on this phone; null goes
+  /// back to WhatsApp and the messages app.
+  static Future<void> pinShareTargets(List<String>? ids) async {
+    final debug = _debugTargets;
+    if (debug != null) {
+      _debugTargets = ids == null ? _debugDefaults : debug.withPinned(ids);
+      return;
+    }
+    await impl.pinShareTargets(ids);
+  }
+
+  static final _icons = <String, Future<ShareTargetIcon?>>{};
+
+  /// [id]'s icon, [size] px square — fetched once per run.
+  static Future<ShareTargetIcon?> shareTargetIcon(String id, {int size = 192}) {
+    if (_debugTargets != null) return Future.value();
+    return _icons.putIfAbsent(
+      '$id@$size',
+      () => impl.shareTargetIcon(id, size),
+    );
+  }
+
+  /// Straight into [target], with [text] as the message: into the chat of
   /// [whatsappJid] (international digits, no `+`) on WhatsApp, addressed to
-  /// [phone] in Messages. The user still taps Send there.
+  /// [phone] in the messages app. The user still taps Send there.
   Future<ShareAppResult> sendTo(
-    ShareApp app, {
+    ShareTarget target, {
     String? text,
     String? whatsappJid,
     String? phone,
   }) =>
-      debugSendTo?.call(this, app, text) ??
+      debugSendTo?.call(this, target, text) ??
       impl.sendTo(
         this,
-        app,
+        target,
         text: text,
         whatsappJid: whatsappJid,
         phone: phone,

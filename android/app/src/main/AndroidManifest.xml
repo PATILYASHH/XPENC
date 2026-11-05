@@ -169,8 +169,13 @@
              backup to take in) and "Open Connector" — see
              ConnectorChannel.kt. -->
         <package android:name="com.yash.xpenc.conectr"/>
-        <!-- Share → WhatsApp / Messages (ShareTargetsChannel.kt): whether
-             WhatsApp is installed, and which app answers an smsto: link. -->
+        <!-- Share's app row (ShareTargetsChannel.kt): the apps that take a
+             shared file, whether WhatsApp is installed, and which app
+             answers an smsto: link. -->
+        <intent>
+            <action android:name="android.intent.action.SEND"/>
+            <data android:mimeType="*/*"/>
+        </intent>
         <package android:name="com.whatsapp"/>
         <package android:name="com.whatsapp.w4b"/>
         <intent>

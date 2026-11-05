@@ -1,4 +1,5 @@
 import 'package:drift/native.dart';
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,6 +13,40 @@ import 'package:xpenc/features/share/share_cards.dart';
 import 'package:xpenc/features/share/share_flows.dart';
 import 'package:xpenc/features/share/share_models.dart';
 import 'package:xpenc/features/share/share_pdfs.dart';
+import 'package:xpenc/features/share/share_screen.dart';
+
+const _whatsappId = 'com.whatsapp/com.whatsapp.contact.picker.ContactPicker';
+const _messagesId =
+    'com.google.android.apps.messaging/'
+    'com.google.android.apps.messaging.ui.conversationlist.ShareIntentActivity';
+const _gmailId =
+    'com.google.android.gm/com.google.android.gm.ComposeActivityGmailExternal';
+const _instagramId =
+    'com.instagram.android/com.instagram.share.handleractivity.ShareHandlerActivity';
+
+const _whatsapp = ShareTarget(
+  id: _whatsappId,
+  label: 'WhatsApp',
+  kind: ShareTargetKind.whatsapp,
+);
+const _messages = ShareTarget(
+  id: _messagesId,
+  label: 'Messages',
+  kind: ShareTargetKind.messages,
+  takesPdf: false,
+);
+const _gmail = ShareTarget(id: _gmailId, label: 'Gmail');
+const _instagram = ShareTarget(
+  id: _instagramId,
+  label: 'Instagram',
+  takesPdf: false,
+);
+
+/// A phone with only WhatsApp and Messages to share to, both on the row.
+const _defaults = ShareTargets(
+  all: [_messages, _whatsapp],
+  pinnedIds: [_whatsappId, _messagesId],
+);
 
 /// The share screen: Image ⇄ PDF (opening on the last one sent), a
 /// scan-to-pay QR for what a person owes, and WhatsApp / Messages straight.
@@ -24,7 +59,7 @@ void main() {
 
   setUp(() => db = AppDatabase(NativeDatabase.memory()));
   tearDown(() async {
-    OutgoingFile.debugApps = null;
+    OutgoingFile.debugTargets = null;
     OutgoingFile.debugSendTo = null;
     OutgoingFile.debugDeliver = null;
     await db.close();
@@ -270,6 +305,14 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
     }
 
+    /// Through the preview's cross-fade: its clock starts on the first
+    /// frame after the switch, the old one leaves on the frame after it ends.
+    Future<void> crossFade(WidgetTester tester) async {
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
+    }
+
     Future<void> unmount(WidgetTester tester) async {
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump(Duration.zero);
@@ -280,31 +323,34 @@ void main() {
       final ram = (await tester.runAsync(
         () => ramOwes500(phone: '98765 43210'),
       ))!;
-      OutgoingFile.debugApps = {ShareApp.whatsapp, ShareApp.messages};
-      final sent = <(OutgoingFile, ShareApp, String?)>[];
-      OutgoingFile.debugSendTo = (file, app, text) async {
-        sent.add((file, app, text));
+      OutgoingFile.debugTargets = _defaults;
+      final sent = <(OutgoingFile, ShareTarget, String?)>[];
+      OutgoingFile.debugSendTo = (file, target, text) async {
+        sent.add((file, target, text));
         return ShareAppResult.sent;
       };
 
       await openShare(tester, ram);
       expect(find.text('SCAN TO PAY'), findsOneWidget);
-      expect(find.text('Payment QR'), findsOneWidget);
-      expect(find.text('UPI · yash@okhdfc'), findsOneWidget);
+      expect(find.text('UPI QR'), findsOneWidget);
       expect(find.text('WhatsApp'), findsOneWidget);
       expect(find.text('Messages'), findsOneWidget);
       expect(find.text('More'), findsOneWidget);
 
-      // QR off: the stub leaves the card.
-      await tester.tap(find.byType(Switch));
+      // One payment method: the pill just turns the QR off and on.
+      await tester.ensureVisible(find.text('UPI QR'));
+      await tester.tap(find.text('UPI QR'));
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.text('SCAN TO PAY'), findsNothing);
-      await tester.tap(find.byType(Switch));
+      await tester.tap(find.text('No QR'));
       await tester.pump(const Duration(milliseconds: 300));
 
+      // The PDF's page preview carries the same QR.
       await tester.tap(find.text('PDF'));
-      await tester.pump(const Duration(milliseconds: 400));
-      expect(find.text('Scan-to-pay QR · UPI'), findsOneWidget);
+      await crossFade(tester);
+      expect(find.text('SCAN TO PAY'), findsOneWidget);
+      expect(find.text('UPI · yash@okhdfc'), findsOneWidget);
+      expect(find.text('Dark'), findsNothing);
 
       await tester.tap(find.text('WhatsApp'));
       await tester.runAsync(
@@ -314,8 +360,8 @@ void main() {
       expect(tester.takeException(), isNull);
 
       expect(sent, hasLength(1));
-      final (file, app, text) = sent.single;
-      expect(app, ShareApp.whatsapp);
+      final (file, target, text) = sent.single;
+      expect(target.kind, ShareTargetKind.whatsapp);
       expect(file.mimeType, 'application/pdf');
       expect(file.name, endsWith('.pdf'));
       expect(text, contains('you owe me ₹500.00'));
@@ -338,16 +384,16 @@ void main() {
       await openShare(tester, ram);
       expect(find.text('Share PDF'), findsOneWidget);
       expect(find.text('WhatsApp'), findsNothing);
-      expect(find.text('SCAN TO PAY'), findsNothing);
+      expect(find.text('PDF · A4 · All time'), findsOneWidget);
 
       await tester.tap(find.text('Image'));
-      await tester.pump(const Duration(milliseconds: 400));
+      await crossFade(tester);
       expect(find.text('Share image'), findsOneWidget);
       expect(find.text('SCAN TO PAY'), findsOneWidget);
       await unmount(tester);
     });
 
-    testWidgets('no UPI ID yet: a hint where the QR switch would be', (
+    testWidgets('no UPI ID yet: a hint where the QR pill would be', (
       tester,
     ) async {
       final ram = (await tester.runAsync(() async {
@@ -356,8 +402,142 @@ void main() {
         return id;
       }))!;
       await openShare(tester, ram);
-      expect(find.text('Payment QR'), findsNothing);
+      expect(find.text('UPI QR'), findsNothing);
+      expect(find.text('No QR'), findsNothing);
       expect(find.textContaining('Add your UPI ID'), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets('switching Image ⇄ PDF moves nothing: the slider, the pills '
+        'and the app row stay put', (tester) async {
+      final ram = (await tester.runAsync(ramOwes500))!;
+      OutgoingFile.debugTargets = _defaults;
+      await openShare(tester, ram);
+      // Past the page's own way in.
+      await tester.pump(const Duration(seconds: 1));
+
+      // One size on every phone, its labels in the middle of it.
+      final slider = tester.getRect(find.byType(ShareFormatSlider));
+      expect(slider.width, moreOrLessEquals(232));
+      expect(slider.height, moreOrLessEquals(40));
+      for (final label in ['Image', 'PDF']) {
+        expect(
+          tester.getCenter(find.text(label)).dy,
+          moreOrLessEquals(slider.center.dy, epsilon: 1),
+        );
+      }
+
+      Map<String, Rect> layout() => {
+        'slider': tester.getRect(find.byType(ShareFormatSlider)),
+        'period': tester.getRect(find.byIcon(CupertinoIcons.calendar)),
+        'qr': tester.getRect(find.byIcon(CupertinoIcons.qrcode)),
+        for (final t in ['WhatsApp', 'Messages', 'More'])
+          t: tester.getRect(find.text(t)),
+      };
+      final onImage = layout();
+      final look = tester.getRect(find.byIcon(CupertinoIcons.moon_fill));
+
+      await tester.tap(find.text('PDF'));
+      await crossFade(tester);
+      expect(layout(), onImage);
+      // The look pill stays in its slot, greyed out: a PDF is always light.
+      expect(find.text('Dark'), findsNothing);
+      expect(
+        tester.getRect(find.byIcon(CupertinoIcons.sun_max_fill)).topLeft,
+        look.topLeft,
+      );
+
+      await tester.tap(find.text('Image'));
+      await crossFade(tester);
+      expect(layout(), onImage);
+      expect(find.text('Dark'), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets('the app row is the user\'s: long-press swaps WhatsApp for '
+        'Gmail, Add puts Instagram on, an app that takes no PDF dims, and '
+        'the default comes back', (tester) async {
+      final ram = (await tester.runAsync(ramOwes500))!;
+      OutgoingFile.debugTargets = const ShareTargets(
+        all: [_gmail, _instagram, _messages, _whatsapp],
+        pinnedIds: [_whatsappId, _messagesId],
+      );
+      final sent = <ShareTarget>[];
+      OutgoingFile.debugSendTo = (file, target, text) async {
+        sent.add(target);
+        return ShareAppResult.sent;
+      };
+      Future<void> sheet() async {
+        for (var i = 0; i < 4; i++) {
+          await tester.pump(const Duration(milliseconds: 150));
+        }
+      }
+
+      List<String> pinned() => OutgoingFile.debugTargets!.pinnedIds;
+
+      await openShare(tester, ram);
+      expect(find.text('Add'), findsOneWidget);
+
+      // Swap: WhatsApp's own slot becomes Gmail's.
+      await tester.longPress(find.text('WhatsApp'));
+      await sheet();
+      expect(find.text('Remove from Share'), findsOneWidget);
+      expect(find.text('Move right'), findsOneWidget);
+      expect(find.text('Move left'), findsNothing);
+      await tester.tap(find.text('Gmail'));
+      await sheet();
+      expect(pinned(), [_gmailId, _messagesId]);
+      expect(find.text('WhatsApp'), findsNothing);
+      expect(
+        tester.getCenter(find.text('Gmail')).dx,
+        lessThan(tester.getCenter(find.text('Messages')).dx),
+      );
+
+      // Add: one more, at the end.
+      await tester.tap(find.text('Add'));
+      await sheet();
+      await tester.tap(find.text('Instagram'));
+      await sheet();
+      expect(pinned(), [_gmailId, _messagesId, _instagramId]);
+
+      // Instagram takes no PDF: dimmed, and a tap says so instead of
+      // sending.
+      await tester.tap(find.text('PDF'));
+      await crossFade(tester);
+      await tester.tap(find.text('Instagram'));
+      await tester.pump();
+      expect(find.textContaining("Instagram doesn't take a PDF"), findsOne);
+      expect(sent, isEmpty);
+      ScaffoldMessenger.of(
+        tester.element(find.text('More')),
+      ).hideCurrentSnackBar();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      await tester.tap(find.text('Gmail'));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 400)),
+      );
+      await tester.pump();
+      expect(sent.single.id, _gmailId);
+
+      // Move, then back to the default row.
+      await tester.longPress(find.text('Instagram'));
+      await sheet();
+      await tester.tap(find.text('Move left'));
+      await sheet();
+      expect(pinned(), [_gmailId, _instagramId, _messagesId]);
+
+      await tester.longPress(find.text('Gmail'));
+      await sheet();
+      await tester.tap(find.text('Back to the default apps'));
+      await sheet();
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await tester.pump();
+      expect(pinned(), [_whatsappId, _messagesId]);
+      expect(find.text('WhatsApp'), findsOneWidget);
+      expect(find.text('Gmail'), findsNothing);
       await unmount(tester);
     });
   });

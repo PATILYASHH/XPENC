@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:drift/native.dart';
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -230,15 +231,21 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Share image'), findsOneWidget);
+
+      // The period pill opens every period, plus a custom range.
+      await tester.tap(find.byIcon(CupertinoIcons.calendar));
+      await tester.pumpAndSettle();
       for (final period in ['All time', 'This month', 'Last month']) {
-        expect(find.widgetWithText(ChoiceChip, period), findsOneWidget);
+        expect(find.widgetWithText(MenuItemButton, period), findsOneWidget);
       }
-      expect(find.text('Custom range'), findsOneWidget);
+      expect(find.text('Custom range…'), findsOneWidget);
+      await tester.tap(find.widgetWithText(MenuItemButton, 'Last month'));
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('PDF'));
       await tester.pumpAndSettle();
       expect(find.text('Share PDF'), findsOneWidget);
-      expect(find.text('Custom range'), findsOneWidget);
+      expect(find.text('PDF · A4 · Last month'), findsOneWidget);
       expect(tester.takeException(), isNull);
 
       await tester.pumpWidget(const SizedBox.shrink());
@@ -272,7 +279,9 @@ void main() {
       expect(tester.takeException(), isNull);
 
       // Switching the period re-renders the card in place.
-      await tester.tap(find.text('This month'));
+      await tester.tap(find.byIcon(CupertinoIcons.calendar));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(MenuItemButton, 'This month'));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
 
