@@ -20,6 +20,7 @@ import 'delete_person_or_group.dart';
 import 'edit_person_sheet.dart';
 import 'group_member_picker_sheet.dart';
 import 'person_avatar.dart';
+import 'shared_entries.dart';
 import '../share/share_flows.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 
@@ -275,6 +276,8 @@ class _IndividualTab extends ConsumerWidget {
           child: SizedBox(height: MediaQuery.paddingOf(context).top),
         ),
         SliverToBoxAdapter(child: _TotalsHeader(totals: totals)),
+        // Friends' entries waiting for an answer — not inside a trip.
+        if (mode == null) const SliverToBoxAdapter(child: SharedInboxCard()),
         personsAsync.when(
           loading: () => const SliverToBoxAdapter(
             child: Padding(

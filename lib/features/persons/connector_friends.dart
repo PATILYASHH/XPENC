@@ -12,6 +12,7 @@ import '../../core/widgets/app_surfaces.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../connector/connector_controller.dart';
+import 'shared_entries.dart';
 
 /// Where Connector friends come from here, if anywhere: the Connector app on
 /// Android, the built-in Connector on XPENC web (built with an anon key).
@@ -108,6 +109,17 @@ Future<void> linkPersonToFriend(
       ..showSnackBar(
         SnackBar(content: Text('${person.name} is @${friend.username}')),
       );
+    // A balance from before linking: offer to start sharing from it.
+    final db = ref.read(dbProvider);
+    final balance = await db.watchPersonBalance(person.id).first;
+    final linked = await db.personById(person.id);
+    if (!balance.isZero &&
+        linked != null &&
+        context.mounted &&
+        ref.read(sharedBridgeProvider) != null &&
+        (ref.read(sharedEntriesProvider).valueOrNull?.ready ?? false)) {
+      await confirmShareOpening(context, ref, linked, balance);
+    }
   } on FriendAlreadyLinked catch (e) {
     messenger
       ..hideCurrentSnackBar()
@@ -310,8 +322,9 @@ class _FriendPickerSheet extends ConsumerWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'Linking only remembers who they are on Connector, here. '
-              'Nothing is sent.',
+              'Linking remembers who they are on Connector. Nothing is sent '
+              'unless you share an entry with them — then it goes through '
+              'the Connector app, and they accept it in their XPENC.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: cs.onSurfaceVariant,
               ),

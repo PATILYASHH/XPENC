@@ -24,11 +24,13 @@ import '../../data/modes_db.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../accounts/envelope_outflow.dart';
+import '../../core/connector/shared/shared_snapshot.dart';
 import 'connector_friends.dart';
 import 'delete_person_or_group.dart';
 import 'edit_person_sheet.dart';
 import 'payment_action_row.dart';
 import 'person_avatar.dart';
+import 'shared_entries.dart';
 import '../share/share_flows.dart';
 import '../tags/tag_picker_sheet.dart';
 import '../../core/widgets/nav_bar_inset.dart';
@@ -142,6 +144,15 @@ class PersonDetailScreen extends ConsumerWidget {
           SliverToBoxAdapter(child: _BalanceHero(balance: balance)),
           SliverToBoxAdapter(child: ConnectorFriendBadge(person: person)),
           SliverToBoxAdapter(
+            child: SharedFriendCard(
+              person: person,
+              balance:
+                  (ref.watch(personBalancesProvider).valueOrNull ??
+                      const <int, Money>{})[person.id] ??
+                  const Money.zero(),
+            ),
+          ),
+          SliverToBoxAdapter(
             child: _ActionButtons(person: person, balance: balance),
           ),
           SliverToBoxAdapter(
@@ -200,7 +211,11 @@ class PersonDetailScreen extends ConsumerWidget {
                     final accountName = entry.accountId == null
                         ? null
                         : accountMap[entry.accountId]?.name;
-                    return _EntryRow(entry: entry, accountName: accountName);
+                    return _EntryRow(
+                      entry: entry,
+                      accountName: accountName,
+                      friendUsername: person.remoteUsername,
+                    );
                   },
                 ),
               );
@@ -666,10 +681,17 @@ String _joinWithAnd(List<String> parts) {
 /// One ledger row. The leading icon shows which way *cash* moved:
 /// theyOwe = money left you (up, red) · iOwe = money came to you (down, green).
 class _EntryRow extends ConsumerWidget {
-  const _EntryRow({required this.entry, required this.accountName});
+  const _EntryRow({
+    required this.entry,
+    required this.accountName,
+    this.friendUsername,
+  });
 
   final PersonEntryRow entry;
   final String? accountName;
+
+  /// The linked friend's Connector username, for a shared entry's label.
+  final String? friendUsername;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -706,6 +728,7 @@ class _EntryRow extends ConsumerWidget {
       dateStr,
       ?accountName,
       if (categoryName != null) 'Repaid · $categoryName',
+      ?sharedLabel(entry, friendUsername),
     ].join(' · ');
 
     return Slidable(
@@ -778,10 +801,38 @@ class _EntryRow extends ConsumerWidget {
 
   Future<void> _delete(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
+    final status = SharedStatus.of(entry.sharedStatus);
+    // Agreed by both sides: deleting it here would leave the two ledgers
+    // different, with no way for the friend to know.
+    if (status != null && status.locked) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              'Agreed with @${friendUsername ?? 'your friend'} — add a '
+              'correcting entry instead.',
+            ),
+          ),
+        );
+      return;
+    }
     await ref.read(dbProvider).deletePersonEntry(entry.id);
+    if (status != null) {
+      await ref.read(sharedEntriesProvider.notifier).shareDelete(entry);
+    }
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Entry deleted')));
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            status == null
+                ? 'Entry deleted'
+                : 'Entry deleted — and taken back from '
+                      '@${friendUsername ?? 'your friend'}',
+          ),
+        ),
+      );
   }
 }
 
@@ -879,6 +930,10 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
   /// The entry's tags (GitHub #168). Null while an existing entry's are
   /// still loading — saving then keeps whatever it already has.
   Set<int>? _tagIds;
+
+  /// Send a new entry to the person's Connector friend too. On by default
+  /// for a linked person; only offered where there's a Connector.
+  bool _share = true;
   bool _accountInitialised = false;
   String? _amountError;
   bool _saving = false;
@@ -1008,12 +1063,46 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
       }
     }
 
+    // Agreed with the friend: only what's this phone's own (account, tags,
+    // category) may change.
+    final existing = widget.existing;
+    final sharedStatus = SharedStatus.of(existing?.sharedStatus);
+    final agreedFieldsChanged =
+        existing != null &&
+        (amount != existing.amount ||
+            !DateUtils.isSameDay(_date, existing.date) ||
+            _dueDate != existing.dueDate ||
+            (note.isEmpty ? null : note) != existing.note);
+    if (sharedStatus != null && sharedStatus.locked && agreedFieldsChanged) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Agreed with your friend — amount, date and note can\'t '
+              'change. Add a correcting entry instead.',
+            ),
+          ),
+        );
+      return;
+    }
+    final person = _person();
+    final shareNew =
+        !_isEdit && _share && _canShare(person) && !widget.isRepayment;
+    final reshare =
+        sharedStatus != null &&
+        !sharedStatus.locked &&
+        (agreedFieldsChanged ||
+            sharedStatus == SharedStatus.failed ||
+            sharedStatus == SharedStatus.rejected);
+
     setState(() {
       _amountError = null;
       _saving = true;
     });
     try {
       final db = ref.read(dbProvider);
+      final shared = ref.read(sharedEntriesProvider.notifier);
       if (_isEdit) {
         await db.updatePersonEntry(
           id: widget.existing!.id,
@@ -1026,8 +1115,19 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
           categoryId: widget.isRepayment ? _repaymentCategoryId : null,
           tagIds: _tagIds,
         );
+        if (reshare && person != null) {
+          await shared.shareEdit(
+            existing!,
+            person,
+            direction: widget.direction,
+            amount: amount,
+            date: _date,
+            dueDate: _dueDate,
+            note: note.isEmpty ? null : note,
+          );
+        }
       } else {
-        await db.addPersonEntry(
+        final entryId = await db.addPersonEntry(
           personId: widget.personId,
           direction: widget.direction,
           amount: amount,
@@ -1040,6 +1140,17 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
           // Lending on a trip is part of the trip.
           modeId: await db.activeModeId(),
         );
+        if (shareNew && person != null) {
+          await shared.shareNew(
+            entryId: entryId,
+            person: person,
+            direction: widget.direction,
+            amount: amount,
+            date: _date,
+            dueDate: _dueDate,
+            note: note.isEmpty ? null : note,
+          );
+        }
       }
       // Written only after the entry itself is safely saved — a failed save
       // must never leave a stray allocation behind with nothing to account
@@ -1075,6 +1186,83 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text('Could not save: $error')));
     }
+  }
+
+  PersonRow? _person() {
+    for (final p in [
+      ...?ref.read(personsProvider).valueOrNull,
+      ...?ref.read(archivedPersonsProvider).valueOrNull,
+    ]) {
+      if (p.id == widget.personId) return p;
+    }
+    return null;
+  }
+
+  /// A linked person, a Connector to send through, signed in.
+  bool _canShare(PersonRow? person) =>
+      person?.remoteFriendId != null &&
+      ref.read(sharedBridgeProvider) != null &&
+      (ref.read(sharedEntriesProvider).valueOrNull?.ready ?? false);
+
+  /// The share switch for a new entry, or where a shared one stands.
+  Widget _sharingField(ThemeData theme) {
+    ref.watch(sharedEntriesProvider);
+    final person = _person();
+    final who = '@${person?.remoteUsername ?? 'your friend'}';
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    final existing = widget.existing;
+    if (existing == null) {
+      if (!_canShare(person) || widget.isRepayment) {
+        return const SizedBox.shrink();
+      }
+      return SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        value: _share,
+        onChanged: (on) => setState(() => _share = on),
+        title: Text('Share with $who'),
+        subtitle: Text(
+          _share
+              ? 'They accept it in their XPENC, and it counts the same on '
+                    'both sides. Sent through Connector.'
+              : 'Only on this phone.',
+        ),
+      );
+    }
+    final status = SharedStatus.of(existing.sharedStatus);
+    if (status == null) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          switch (status) {
+            SharedStatus.accepted || SharedStatus.received =>
+              'Agreed with $who. Amount, date and note can\'t change — only '
+                  'the account and tags, which are yours alone.',
+            SharedStatus.rejected =>
+              '$who rejected this. Fix it and save to send it again — or '
+                  'keep it on this phone only.',
+            SharedStatus.failed =>
+              "Couldn't share this with $who. Save to try again.",
+            SharedStatus.sending => 'On its way to $who.',
+            SharedStatus.pending => 'Waiting for $who to accept it.',
+          },
+          style: muted,
+        ),
+        if (status == SharedStatus.rejected || status == SharedStatus.failed)
+          TextButton(
+            onPressed: () async {
+              final navigator = Navigator.of(context);
+              await ref
+                  .read(sharedEntriesProvider.notifier)
+                  .keepAsMine(existing);
+              navigator.pop();
+            },
+            child: const Text('Keep it on this phone only'),
+          ),
+      ],
+    );
   }
 
   /// "Tags", styled like the note field above it; tapping opens the same
@@ -1299,6 +1487,8 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
                   onChanged: (id) => setState(() => _repaymentCategoryId = id),
                 ),
               ],
+              const SizedBox(height: 14),
+              _sharingField(theme),
               const SizedBox(height: 18),
               FilledButton(
                 style: FilledButton.styleFrom(

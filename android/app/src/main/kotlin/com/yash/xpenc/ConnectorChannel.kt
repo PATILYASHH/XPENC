@@ -3,14 +3,17 @@ package com.yash.xpenc
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.database.ContentObserver
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import io.flutter.plugin.common.BinaryMessenger
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 
 private const val CHANNEL = "xpenc/connector"
+private const val CHANGES = "xpenc/connector/changes"
 private const val CONNECTOR_PACKAGE = "com.yash.xpenc.conectr"
 
 // The Connector app's XpencProvider. (The authority's name predates the
@@ -25,6 +28,10 @@ private const val AUTHORITY = "com.yash.xpenc.conectr.friends"
  * - `load`: the friends list, so a person can be linked to a friend.
  * - `inbox` / `readPending` / `confirmImport`: a backup Connector pulled from
  *   another device, taken in without Import from file, and Connector told.
+ * - `shared` / `sharedOp` / `sharedSync`: entries shared with Connector
+ *   friends — what Connector last saw, queueing an add / edit / delete /
+ *   answer, and asking it to sync now. `xpenc/connector/changes` fires when
+ *   any of it (or the friends list) changes, while XPENC listens.
  * - `open`: opens Connector.
  *
  * App to app on the device — XPENC still has no INTERNET permission. Dart
@@ -39,6 +46,11 @@ class ConnectorChannel(private val context: Context) {
             when (call.method) {
                 "load" -> result.success(loadFriends())
                 "open" -> result.success(open())
+                "shared" -> result.success(shared())
+                "sharedOp" -> result.success(
+                    callOk("sharedOp", call.arguments as? String),
+                )
+                "sharedSync" -> result.success(callOk("sharedSync"))
                 "inbox" -> result.success(inbox())
                 "readPending" -> readPending(result)
                 "confirmImport" -> result.success(
@@ -49,6 +61,62 @@ class ConnectorChannel(private val context: Context) {
                 )
                 else -> result.notImplemented()
             }
+        }
+        EventChannel(messenger, CHANGES).setStreamHandler(object : EventChannel.StreamHandler {
+            private var observer: ContentObserver? = null
+
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
+                if (!installed() || !providerIsConnector()) return
+                val watcher = object : ContentObserver(main) {
+                    override fun onChange(selfChange: Boolean) {
+                        events.success(null)
+                    }
+                }
+                try {
+                    context.contentResolver.registerContentObserver(
+                        Uri.parse("content://$AUTHORITY"),
+                        true,
+                        watcher,
+                    )
+                    observer = watcher
+                } catch (e: SecurityException) {
+                    // Nothing to watch; XPENC still reads on resume.
+                }
+            }
+
+            override fun onCancel(arguments: Any?) {
+                observer?.let { context.contentResolver.unregisterContentObserver(it) }
+                observer = null
+            }
+        })
+    }
+
+    /** Connector's shared entries and its queue; `installed: false` without it. */
+    private fun shared(): Map<String, Any?> {
+        if (!installed()) return mapOf("installed" to false)
+        if (!providerIsConnector()) return mapOf("installed" to true, "outdated" to true)
+        val reply = try {
+            call("shared")
+        } catch (e: SecurityException) {
+            return mapOf("installed" to true, "refused" to true)
+        } catch (e: RuntimeException) {
+            return mapOf("installed" to true, "outdated" to true)
+        }
+        // A Connector from before shared entries answers null.
+        if (reply == null) return mapOf("installed" to true, "outdated" to true)
+        return mapOf(
+            "installed" to true,
+            "json" to reply.getString("json"),
+            "outbox" to reply.getString("outbox"),
+        )
+    }
+
+    private fun callOk(method: String, arg: String? = null): Boolean {
+        if (!installed() || !providerIsConnector()) return false
+        return try {
+            call(method, arg)?.getBoolean("ok") ?: false
+        } catch (e: RuntimeException) {
+            false
         }
     }
 

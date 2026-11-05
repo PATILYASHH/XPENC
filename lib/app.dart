@@ -26,6 +26,7 @@ import 'features/connector/connector_controller.dart';
 import 'features/connector/connector_inbox_runner.dart';
 import 'features/message_capture/parser/bank_message.dart';
 import 'features/message_capture/share_intake.dart';
+import 'features/persons/shared_entries.dart';
 import 'features/security/lock_screen.dart';
 
 class XpencApp extends ConsumerStatefulWidget {
@@ -76,6 +77,15 @@ class _XpencAppState extends ConsumerState<XpencApp>
     if (!mounted) return;
     await _checkConnectorInbox();
     if (!mounted) return;
+    // After the inbox: a backup taken in may have brought shared entries
+    // the merge should see. Quiet when there's no Connector.
+    if (PlatformFeatures.connectorFriendsApp) {
+      ref
+          .read(sharedEntriesProvider.notifier)
+          .onResume()
+          .catchError((Object _) {})
+          .ignore();
+    }
 
     final homeWidget = ref.read(homeWidgetServiceProvider);
     homeWidget.init();
@@ -171,6 +181,15 @@ class _XpencAppState extends ConsumerState<XpencApp>
         _scanMessages();
         _runAutoBackup();
       });
+      // Entries friends shared (and answers to this phone's), through
+      // Connector — read again, and Connector asked for a fresh round.
+      if (PlatformFeatures.connectorFriendsApp) {
+        ref
+            .read(sharedEntriesProvider.notifier)
+            .onResume()
+            .catchError((Object _) {})
+            .ignore();
+      }
       // Restores the shortcut if the system cleared it under memory
       // pressure while `ongoing: true` normally keeps a swipe from doing so.
       ref.read(notificationServiceProvider).syncQuickAddNotification();

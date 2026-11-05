@@ -78,8 +78,19 @@ people. Disconnect at any time; your data in the browser and on GitHub stays.
 **Connector friends.** On Android, if the separate Connector app is installed,
 XPENC can read the list of your Connector friends from it, on the phone, to
 link a person to a friend. The link — the friend's Connector id and username —
-is stored only in XPENC (and in its backups). XPENC still has no internet
-permission and sends Connector nothing.
+is stored only in XPENC (and in its backups). Linking sends nothing.
+
+**Entries shared with a friend.** For a linked person, you can choose to share
+an entry (on by default when adding one; the switch is on the entry). Only
+then does it leave the phone: XPENC hands it to the Connector app, on the
+phone, and Connector stores it on its server (Supabase) where only you and that
+friend can read it — the amount, currency, date, due date, note and which of
+you owes. The friend accepts or rejects it in their XPENC; once accepted it
+counts the same on both sides and can't be changed, only corrected with a new
+entry. The account money moved through, categories, tags and everything else
+stay on your phone. Unfriending deletes your shared entries from the server;
+both of you keep them as ordinary entries. XPENC still has no internet
+permission — Connector does the sending.
 
 ## Backups and exports
 

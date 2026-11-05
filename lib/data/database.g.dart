@@ -8067,6 +8067,50 @@ class $PersonEntriesTable extends PersonEntries
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _sharedRefMeta = const VerificationMeta(
+    'sharedRef',
+  );
+  @override
+  late final GeneratedColumn<String> sharedRef = GeneratedColumn<String>(
+    'shared_ref',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _remoteEntryIdMeta = const VerificationMeta(
+    'remoteEntryId',
+  );
+  @override
+  late final GeneratedColumn<String> remoteEntryId = GeneratedColumn<String>(
+    'remote_entry_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sharedStatusMeta = const VerificationMeta(
+    'sharedStatus',
+  );
+  @override
+  late final GeneratedColumn<String> sharedStatus = GeneratedColumn<String>(
+    'shared_status',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sharedAccountMeta = const VerificationMeta(
+    'sharedAccount',
+  );
+  @override
+  late final GeneratedColumn<String> sharedAccount = GeneratedColumn<String>(
+    'shared_account',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -8081,6 +8125,10 @@ class $PersonEntriesTable extends PersonEntries
     categoryId,
     modeId,
     createdAt,
+    sharedRef,
+    remoteEntryId,
+    sharedStatus,
+    sharedAccount,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -8158,6 +8206,30 @@ class $PersonEntriesTable extends PersonEntries
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
+    if (data.containsKey('shared_ref')) {
+      context.handle(
+        _sharedRefMeta,
+        sharedRef.isAcceptableOrUnknown(data['shared_ref']!, _sharedRefMeta),
+      );
+    }
+    if (data.containsKey('remote_entry_id')) {
+      context.handle(
+        _remoteEntryIdMeta,
+        remoteEntryId.isAcceptableOrUnknown(data['remote_entry_id']!, _remoteEntryIdMeta),
+      );
+    }
+    if (data.containsKey('shared_status')) {
+      context.handle(
+        _sharedStatusMeta,
+        sharedStatus.isAcceptableOrUnknown(data['shared_status']!, _sharedStatusMeta),
+      );
+    }
+    if (data.containsKey('shared_account')) {
+      context.handle(
+        _sharedAccountMeta,
+        sharedAccount.isAcceptableOrUnknown(data['shared_account']!, _sharedAccountMeta),
+      );
+    }
     return context;
   }
 
@@ -8219,6 +8291,22 @@ class $PersonEntriesTable extends PersonEntries
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      sharedRef: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}shared_ref'],
+      ),
+      remoteEntryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}remote_entry_id'],
+      ),
+      sharedStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}shared_status'],
+      ),
+      sharedAccount: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}shared_account'],
+      ),
     );
   }
 
@@ -8262,6 +8350,10 @@ class PersonEntryRow extends DataClass implements Insertable<PersonEntryRow> {
   /// balance counts only these; everywhere else they count like any other.
   final int? modeId;
   final DateTime createdAt;
+  final String? sharedRef;
+  final String? remoteEntryId;
+  final String? sharedStatus;
+  final String? sharedAccount;
   const PersonEntryRow({
     required this.id,
     required this.personId,
@@ -8275,6 +8367,10 @@ class PersonEntryRow extends DataClass implements Insertable<PersonEntryRow> {
     this.categoryId,
     this.modeId,
     required this.createdAt,
+    this.sharedRef,
+    this.remoteEntryId,
+    this.sharedStatus,
+    this.sharedAccount,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -8311,6 +8407,18 @@ class PersonEntryRow extends DataClass implements Insertable<PersonEntryRow> {
       map['mode_id'] = Variable<int>(modeId);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || sharedRef != null) {
+      map['shared_ref'] = Variable<String>(sharedRef);
+    }
+    if (!nullToAbsent || remoteEntryId != null) {
+      map['remote_entry_id'] = Variable<String>(remoteEntryId);
+    }
+    if (!nullToAbsent || sharedStatus != null) {
+      map['shared_status'] = Variable<String>(sharedStatus);
+    }
+    if (!nullToAbsent || sharedAccount != null) {
+      map['shared_account'] = Variable<String>(sharedAccount);
+    }
     return map;
   }
 
@@ -8338,6 +8446,18 @@ class PersonEntryRow extends DataClass implements Insertable<PersonEntryRow> {
           ? const Value.absent()
           : Value(modeId),
       createdAt: Value(createdAt),
+      sharedRef: sharedRef == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sharedRef),
+      remoteEntryId: remoteEntryId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remoteEntryId),
+      sharedStatus: sharedStatus == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sharedStatus),
+      sharedAccount: sharedAccount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sharedAccount),
     );
   }
 
@@ -8361,6 +8481,10 @@ class PersonEntryRow extends DataClass implements Insertable<PersonEntryRow> {
       categoryId: serializer.fromJson<int?>(json['categoryId']),
       modeId: serializer.fromJson<int?>(json['modeId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      sharedRef: serializer.fromJson<String?>(json['sharedRef']),
+      remoteEntryId: serializer.fromJson<String?>(json['remoteEntryId']),
+      sharedStatus: serializer.fromJson<String?>(json['sharedStatus']),
+      sharedAccount: serializer.fromJson<String?>(json['sharedAccount']),
     );
   }
   @override
@@ -8381,6 +8505,10 @@ class PersonEntryRow extends DataClass implements Insertable<PersonEntryRow> {
       'categoryId': serializer.toJson<int?>(categoryId),
       'modeId': serializer.toJson<int?>(modeId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'sharedRef': serializer.toJson<String?>(sharedRef),
+      'remoteEntryId': serializer.toJson<String?>(remoteEntryId),
+      'sharedStatus': serializer.toJson<String?>(sharedStatus),
+      'sharedAccount': serializer.toJson<String?>(sharedAccount),
     };
   }
 
@@ -8397,6 +8525,10 @@ class PersonEntryRow extends DataClass implements Insertable<PersonEntryRow> {
     Value<int?> categoryId = const Value.absent(),
     Value<int?> modeId = const Value.absent(),
     DateTime? createdAt,
+    Value<String?> sharedRef = const Value.absent(),
+    Value<String?> remoteEntryId = const Value.absent(),
+    Value<String?> sharedStatus = const Value.absent(),
+    Value<String?> sharedAccount = const Value.absent(),
   }) => PersonEntryRow(
     id: id ?? this.id,
     personId: personId ?? this.personId,
@@ -8412,6 +8544,10 @@ class PersonEntryRow extends DataClass implements Insertable<PersonEntryRow> {
     categoryId: categoryId.present ? categoryId.value : this.categoryId,
     modeId: modeId.present ? modeId.value : this.modeId,
     createdAt: createdAt ?? this.createdAt,
+    sharedRef: sharedRef.present ? sharedRef.value : this.sharedRef,
+    remoteEntryId: remoteEntryId.present ? remoteEntryId.value : this.remoteEntryId,
+    sharedStatus: sharedStatus.present ? sharedStatus.value : this.sharedStatus,
+    sharedAccount: sharedAccount.present ? sharedAccount.value : this.sharedAccount,
   );
   PersonEntryRow copyWithCompanion(PersonEntriesCompanion data) {
     return PersonEntryRow(
@@ -8431,6 +8567,10 @@ class PersonEntryRow extends DataClass implements Insertable<PersonEntryRow> {
           : this.categoryId,
       modeId: data.modeId.present ? data.modeId.value : this.modeId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      sharedRef: data.sharedRef.present ? data.sharedRef.value : this.sharedRef,
+      remoteEntryId: data.remoteEntryId.present ? data.remoteEntryId.value : this.remoteEntryId,
+      sharedStatus: data.sharedStatus.present ? data.sharedStatus.value : this.sharedStatus,
+      sharedAccount: data.sharedAccount.present ? data.sharedAccount.value : this.sharedAccount,
     );
   }
 
@@ -8448,7 +8588,11 @@ class PersonEntryRow extends DataClass implements Insertable<PersonEntryRow> {
           ..write('transactionId: $transactionId, ')
           ..write('categoryId: $categoryId, ')
           ..write('modeId: $modeId, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('sharedRef: $sharedRef, ')
+          ..write('remoteEntryId: $remoteEntryId, ')
+          ..write('sharedStatus: $sharedStatus, ')
+          ..write('sharedAccount: $sharedAccount')
           ..write(')'))
         .toString();
   }
@@ -8467,6 +8611,10 @@ class PersonEntryRow extends DataClass implements Insertable<PersonEntryRow> {
     categoryId,
     modeId,
     createdAt,
+    sharedRef,
+    remoteEntryId,
+    sharedStatus,
+    sharedAccount,
   );
   @override
   bool operator ==(Object other) =>
@@ -8483,7 +8631,11 @@ class PersonEntryRow extends DataClass implements Insertable<PersonEntryRow> {
           other.transactionId == this.transactionId &&
           other.categoryId == this.categoryId &&
           other.modeId == this.modeId &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.sharedRef == this.sharedRef &&
+          other.remoteEntryId == this.remoteEntryId &&
+          other.sharedStatus == this.sharedStatus &&
+          other.sharedAccount == this.sharedAccount);
 }
 
 class PersonEntriesCompanion extends UpdateCompanion<PersonEntryRow> {
@@ -8499,6 +8651,10 @@ class PersonEntriesCompanion extends UpdateCompanion<PersonEntryRow> {
   final Value<int?> categoryId;
   final Value<int?> modeId;
   final Value<DateTime> createdAt;
+  final Value<String?> sharedRef;
+  final Value<String?> remoteEntryId;
+  final Value<String?> sharedStatus;
+  final Value<String?> sharedAccount;
   const PersonEntriesCompanion({
     this.id = const Value.absent(),
     this.personId = const Value.absent(),
@@ -8512,6 +8668,10 @@ class PersonEntriesCompanion extends UpdateCompanion<PersonEntryRow> {
     this.categoryId = const Value.absent(),
     this.modeId = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.sharedRef = const Value.absent(),
+    this.remoteEntryId = const Value.absent(),
+    this.sharedStatus = const Value.absent(),
+    this.sharedAccount = const Value.absent(),
   });
   PersonEntriesCompanion.insert({
     this.id = const Value.absent(),
@@ -8526,6 +8686,10 @@ class PersonEntriesCompanion extends UpdateCompanion<PersonEntryRow> {
     this.categoryId = const Value.absent(),
     this.modeId = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.sharedRef = const Value.absent(),
+    this.remoteEntryId = const Value.absent(),
+    this.sharedStatus = const Value.absent(),
+    this.sharedAccount = const Value.absent(),
   }) : personId = Value(personId),
        direction = Value(direction),
        amount = Value(amount),
@@ -8543,6 +8707,10 @@ class PersonEntriesCompanion extends UpdateCompanion<PersonEntryRow> {
     Expression<int>? categoryId,
     Expression<int>? modeId,
     Expression<DateTime>? createdAt,
+    Expression<String>? sharedRef,
+    Expression<String>? remoteEntryId,
+    Expression<String>? sharedStatus,
+    Expression<String>? sharedAccount,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -8557,6 +8725,10 @@ class PersonEntriesCompanion extends UpdateCompanion<PersonEntryRow> {
       if (categoryId != null) 'category_id': categoryId,
       if (modeId != null) 'mode_id': modeId,
       if (createdAt != null) 'created_at': createdAt,
+      if (sharedRef != null) 'shared_ref': sharedRef,
+      if (remoteEntryId != null) 'remote_entry_id': remoteEntryId,
+      if (sharedStatus != null) 'shared_status': sharedStatus,
+      if (sharedAccount != null) 'shared_account': sharedAccount,
     });
   }
 
@@ -8573,6 +8745,10 @@ class PersonEntriesCompanion extends UpdateCompanion<PersonEntryRow> {
     Value<int?>? categoryId,
     Value<int?>? modeId,
     Value<DateTime>? createdAt,
+    Value<String?>? sharedRef,
+    Value<String?>? remoteEntryId,
+    Value<String?>? sharedStatus,
+    Value<String?>? sharedAccount,
   }) {
     return PersonEntriesCompanion(
       id: id ?? this.id,
@@ -8587,6 +8763,10 @@ class PersonEntriesCompanion extends UpdateCompanion<PersonEntryRow> {
       categoryId: categoryId ?? this.categoryId,
       modeId: modeId ?? this.modeId,
       createdAt: createdAt ?? this.createdAt,
+      sharedRef: sharedRef ?? this.sharedRef,
+      remoteEntryId: remoteEntryId ?? this.remoteEntryId,
+      sharedStatus: sharedStatus ?? this.sharedStatus,
+      sharedAccount: sharedAccount ?? this.sharedAccount,
     );
   }
 
@@ -8633,6 +8813,18 @@ class PersonEntriesCompanion extends UpdateCompanion<PersonEntryRow> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (sharedRef.present) {
+      map['shared_ref'] = Variable<String>(sharedRef.value);
+    }
+    if (remoteEntryId.present) {
+      map['remote_entry_id'] = Variable<String>(remoteEntryId.value);
+    }
+    if (sharedStatus.present) {
+      map['shared_status'] = Variable<String>(sharedStatus.value);
+    }
+    if (sharedAccount.present) {
+      map['shared_account'] = Variable<String>(sharedAccount.value);
+    }
     return map;
   }
 
@@ -8650,7 +8842,11 @@ class PersonEntriesCompanion extends UpdateCompanion<PersonEntryRow> {
           ..write('transactionId: $transactionId, ')
           ..write('categoryId: $categoryId, ')
           ..write('modeId: $modeId, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('sharedRef: $sharedRef, ')
+          ..write('remoteEntryId: $remoteEntryId, ')
+          ..write('sharedStatus: $sharedStatus, ')
+          ..write('sharedAccount: $sharedAccount')
           ..write(')'))
         .toString();
   }

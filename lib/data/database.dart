@@ -3,6 +3,8 @@ import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import '../core/budget_cycle.dart';
+import '../core/connector/shared/shared_merge.dart';
+import '../core/connector/shared/shared_snapshot.dart';
 import '../core/currency.dart';
 import '../core/group_split_math.dart';
 import '../core/loan_amortization.dart';
@@ -280,13 +282,14 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 92;
+  int get schemaVersion => 93;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
       await _createPersonsFriendIndex();
+      await _createSharedEntryIndexes();
       await _seed();
       await _seedSenderRules();
     },
@@ -907,6 +910,22 @@ class AppDatabase extends _$AppDatabase {
           recurringRules.payCardStatement,
         );
       }
+      if (from < 93) {
+        // An entry can be shared with a linked Connector friend.
+        await _addColumnIfMissing(m, personEntries, personEntries.sharedRef);
+        await _addColumnIfMissing(
+          m,
+          personEntries,
+          personEntries.remoteEntryId,
+        );
+        await _addColumnIfMissing(m, personEntries, personEntries.sharedStatus);
+        await _addColumnIfMissing(
+          m,
+          personEntries,
+          personEntries.sharedAccount,
+        );
+        await _createSharedEntryIndexes();
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -939,6 +958,19 @@ class AppDatabase extends _$AppDatabase {
     'CREATE UNIQUE INDEX IF NOT EXISTS persons_remote_friend_id '
     'ON persons (remote_friend_id)',
   );
+
+  /// One local entry per shared one, either way round. Plain indexes for
+  /// the same reason as [_createPersonsFriendIndex].
+  Future<void> _createSharedEntryIndexes() async {
+    await customStatement(
+      'CREATE UNIQUE INDEX IF NOT EXISTS person_entries_shared_ref '
+      'ON person_entries (shared_ref)',
+    );
+    await customStatement(
+      'CREATE UNIQUE INDEX IF NOT EXISTS person_entries_remote_entry_id '
+      'ON person_entries (remote_entry_id)',
+    );
+  }
 
   /// True if [table] already has a column named [column].
   ///
@@ -4414,6 +4446,142 @@ class AppDatabase extends _$AppDatabase {
       ),
     );
   });
+
+  // ── Shared with Connector friends ─────────────────────────────────────
+  // The sharing fields of `PersonEntries` (see tables.dart) and what the
+  // merge with Connector's snapshot does to them (`planSharedMerge`).
+
+  /// Every entry with sharing fields — what the merge looks at.
+  Future<List<LocalShared>> sharedEntriesForMerge() async {
+    final rows = await (select(
+      personEntries,
+    )..where((e) => e.sharedStatus.isNotNull())).get();
+    return [
+      for (final r in rows)
+        if (SharedStatus.of(r.sharedStatus) case final status?)
+          LocalShared(
+            entryId: r.id,
+            personId: r.personId,
+            sharedRef: r.sharedRef,
+            remoteEntryId: r.remoteEntryId,
+            status: status,
+            account: r.sharedAccount,
+          ),
+    ];
+  }
+
+  /// Linked persons — archived ones too — by Connector friend id.
+  Future<Map<String, int>> personsByFriendId() async {
+    final rows = await (select(
+      persons,
+    )..where((p) => p.remoteFriendId.isNotNull())).get();
+    return {for (final p in rows) p.remoteFriendId!: p.id};
+  }
+
+  /// An entry made here is on its way to its person's friend: it gets its
+  /// [sharedRef] — the name Connector and the server know it by.
+  Future<void> markEntrySharing(
+    int entryId, {
+    required String sharedRef,
+    String? account,
+  }) => (update(personEntries)..where((e) => e.id.equals(entryId))).write(
+    PersonEntriesCompanion(
+      sharedRef: Value(sharedRef),
+      sharedStatus: Value(SharedStatus.sending.name),
+      sharedAccount: Value(account),
+    ),
+  );
+
+  Future<void> setEntrySharedStatus(int entryId, SharedStatus status) =>
+      (update(personEntries)..where((e) => e.id.equals(entryId))).write(
+        PersonEntriesCompanion(sharedStatus: Value(status.name)),
+      );
+
+  /// Back to an ordinary entry of this phone's own — nothing else changes.
+  Future<void> unshareEntry(int entryId) =>
+      (update(personEntries)..where((e) => e.id.equals(entryId))).write(
+        const PersonEntriesCompanion(
+          sharedRef: Value(null),
+          remoteEntryId: Value(null),
+          sharedStatus: Value(null),
+          sharedAccount: Value(null),
+        ),
+      );
+
+  /// Applies [plan] in one transaction. [account]: the Connector account
+  /// the snapshot is from — what newly recorded entries are shared under.
+  ///
+  /// A friend's accepted entry becomes an ordinary entry on their person —
+  /// no money moved here, so no account — counted like any other from now
+  /// on. An accepted *opening* balance sets the balance to what was agreed:
+  /// recorded as the difference from what this phone already had, so their
+  /// history here stays as it was.
+  Future<void> applySharedPlan(
+    List<SharedAction> plan, {
+    required String account,
+  }) {
+    if (plan.isEmpty) return Future.value();
+    return transaction(() async {
+      final touched = <int>{};
+      for (final action in plan) {
+        switch (action) {
+          case SetShared(:final entryId, :final status, :final remoteEntryId):
+            await (update(
+              personEntries,
+            )..where((e) => e.id.equals(entryId))).write(
+              PersonEntriesCompanion(
+                sharedStatus: Value(status.name),
+                remoteEntryId: remoteEntryId == null
+                    ? const Value.absent()
+                    : Value(remoteEntryId),
+                sharedAccount: Value(account),
+              ),
+            );
+          case Unshare(:final entryId):
+            await unshareEntry(entryId);
+          case Receive(:final personId, :final entry):
+            final agreed = Money(
+              entry.theyOwe ? entry.amountMinor : -entry.amountMinor,
+            );
+            final amount = entry.isOpening
+                ? agreed - await _personBalance(personId)
+                : agreed;
+            final person = await personById(personId);
+            final who = person?.remoteUsername == null
+                ? 'them'
+                : '@${person!.remoteUsername}';
+            final note = entry.note?.trim();
+            await into(personEntries).insert(
+              PersonEntriesCompanion.insert(
+                personId: personId,
+                direction: amount.isNegative
+                    ? PersonDirection.iOwe
+                    : PersonDirection.theyOwe,
+                // Zero for an opening that matched already: kept anyway,
+                // as the record of what was agreed.
+                amount: amount.abs,
+                date: entry.date,
+                dueDate: Value(entry.dueDate),
+                note: Value(
+                  note != null && note.isNotEmpty
+                      ? note
+                      : entry.isOpening
+                      ? 'Opening balance agreed with $who'
+                      : null,
+                ),
+                remoteEntryId: Value(entry.id),
+                sharedStatus: Value(SharedStatus.received.name),
+                sharedAccount: Value(account),
+              ),
+            );
+            touched.add(personId);
+        }
+      }
+      for (final personId in touched) {
+        await _syncSettledPerson(personId);
+      }
+    });
+  }
 
   Future<void> unlinkPersonFriend(int id) =>
       (update(persons)..where((p) => p.id.equals(id))).write(

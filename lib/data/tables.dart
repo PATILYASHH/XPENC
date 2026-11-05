@@ -691,6 +691,33 @@ class PersonEntries extends Table {
   IntColumn get modeId => integer().nullable().references(Modes, #id)();
 
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  // ── Shared with a Connector friend ────────────────────────────────────
+  // Set only on entries with a linked person (`Persons.remoteFriendId`)
+  // that went through Connector — see `lib/core/connector/shared/`. Every
+  // other entry leaves all four null and behaves exactly as before.
+
+  /// This phone's own id for an entry it shared (the server's `client_ref`):
+  /// how edits and deletes name it, and how the server's copy is matched
+  /// back to it. Unique where set (`person_entries_shared_ref`).
+  TextColumn get sharedRef => text().nullable()();
+
+  /// The server's id for the entry, once known. Unique where set
+  /// (`person_entries_remote_entry_id`). An entry a friend shared and this
+  /// phone accepted has this and no [sharedRef].
+  TextColumn get remoteEntryId => text().nullable()();
+
+  /// Where it stands with the friend — `SharedStatus`'s names: sending,
+  /// pending, accepted, rejected, failed (all for an entry made here), or
+  /// received (a friend's, accepted here). Accepted and received entries
+  /// are the same on both sides, so their amount, date, direction and note
+  /// can't change any more.
+  TextColumn get sharedStatus => text().nullable()();
+
+  /// The Connector account it was shared under. A different account
+  /// signed in on Connector later doesn't see it — which mustn't read as
+  /// "unfriended".
+  TextColumn get sharedAccount => text().nullable()();
 }
 
 @DataClassName('GroupRow')
