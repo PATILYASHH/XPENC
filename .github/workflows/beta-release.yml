@@ -86,7 +86,7 @@ jobs:
       # and will never collide with (or fall below) a real release's build
       # number, so it's a safe, always-increasing override.
       - name: Build release APKs
-        run: flutter build apk --release --split-per-abi --build-number=${{ github.run_number }}
+        run: flutter build apk --release --split-per-abi --build-number=${{ github.run_number }} --dart-define=XPENC_DIST=github
 
       - name: Rename to beta asset names
         run: |
@@ -178,7 +178,7 @@ jobs:
 
       # Same always-increasing build number as the Android beta above.
       - name: Build
-        run: flutter build ios --release --no-codesign --build-number=${{ github.run_number }}
+        run: flutter build ios --release --no-codesign --build-number=${{ github.run_number }} --dart-define=XPENC_DIST=github
 
       # An .ipa is just Payload/Runner.app, zipped.
       - name: Package IPA

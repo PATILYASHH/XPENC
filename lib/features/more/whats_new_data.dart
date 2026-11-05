@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/platform/distribution.dart';
+
 /// One line item on the What's New screen — what shipped, where to find it,
 /// and what it actually does. Updated by hand alongside CHANGELOG.md each
 /// release; there's no automated link between the two (see CHANGELOG.md for
@@ -11,6 +13,7 @@ class WhatsNewEntry {
     required this.title,
     required this.location,
     required this.description,
+    this.aboutConectr = false,
   });
 
   final IconData icon;
@@ -19,9 +22,19 @@ class WhatsNewEntry {
   /// Where to find it, e.g. "Persons → tap a person".
   final String location;
   final String description;
+
+  /// News of a feature that works with the CONECTR app — left out of
+  /// builds that mustn't promote it ([Distribution.promotesConectr]).
+  final bool aboutConectr;
 }
 
-const whatsNewEntries = <WhatsNewEntry>[
+/// This version's entries, as this build may show them.
+List<WhatsNewEntry> get whatsNewEntries => [
+  for (final e in _whatsNewEntries)
+    if (!e.aboutConectr || Distribution.promotesConectr) e,
+];
+
+const _whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
     icon: Icons.autorenew_rounded,
     title: 'Card bills that pay themselves',
@@ -132,6 +145,7 @@ const whatsNewEntries = <WhatsNewEntry>[
         'already here to link them. They show as @username. On a phone it '
         'reads the list the Connector app shares — XPENC still never goes '
         'online.',
+    aboutConectr: true,
   ),
   WhatsNewEntry(
     icon: Icons.sync_alt_rounded,
@@ -142,6 +156,7 @@ const whatsNewEntries = <WhatsNewEntry>[
         'it in as it opens — on its own when nothing here would be lost, '
         'after asking when this phone has changes of its own. A copy is '
         'saved first. XPENC still never touches the internet.',
+    aboutConectr: true,
   ),
   WhatsNewEntry(
     icon: Icons.lock_outline_rounded,

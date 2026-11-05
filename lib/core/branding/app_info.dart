@@ -79,6 +79,12 @@ class AppInfo {
 
   static const copyright = '© 2026 Yash Patil';
 
+  // ── ExoSynk Labs ───────────────────────────────────────────────────────────
+  /// The ExoSynk team's apps — XPENC, CONECTR, FITNS. Spelt as their page
+  /// spells it.
+  static const labsName = 'ExoSynk Labs';
+  static const labsUrl = 'https://exosynk.com/exosynk-labs';
+
   // ── Community ──────────────────────────────────────────────────────────────
   static const instagramHandle = 'xpenc.in';
   static const instagramUrl = 'https://www.instagram.com/xpenc.in/';

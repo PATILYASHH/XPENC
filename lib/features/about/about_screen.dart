@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/branding/app_info.dart';
 import '../../core/branding/brand_mark.dart';
 import '../../core/widgets/app_surfaces.dart';
+import '../../core/widgets/open_link.dart';
 
 /// Who made this, which build you are looking at, and where the source lives.
 class AboutScreen extends StatelessWidget {
@@ -246,6 +246,8 @@ class AboutScreen extends StatelessWidget {
             ),
 
             const SizedBox(height: 32),
+            const Center(child: _PoweredByTag()),
+            const SizedBox(height: 14),
             Center(
               child: Text(
                 AppInfo.copyright,
@@ -279,6 +281,68 @@ class AboutScreen extends StatelessWidget {
           color: theme.colorScheme.onSurfaceVariant,
           fontWeight: FontWeight.w700,
           letterSpacing: 1.1,
+        ),
+      ),
+    );
+  }
+}
+
+/// "Powered by ExoSynk Labs" — the team behind XPENC; opens their page.
+class _PoweredByTag extends StatelessWidget {
+  const _PoweredByTag();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final style = theme.textTheme.labelMedium?.copyWith(
+      color: cs.onSurfaceVariant,
+    );
+    return Semantics(
+      link: true,
+      label: 'Powered by ${AppInfo.labsName}',
+      excludeSemantics: true,
+      child: Material(
+        color: cs.surfaceContainerHighest,
+        shape: const StadiumBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => openLink(context, AppInfo.labsUrl),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 8, 12, 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AppIcon(Icons.bolt_rounded, size: 15, color: cs.onSurface),
+                const SizedBox(width: 6),
+                // Wraps rather than overflows at a large text size.
+                Flexible(
+                  child: Text.rich(
+                    TextSpan(
+                      text: 'Powered by ',
+                      children: [
+                        TextSpan(
+                          text: AppInfo.labsName,
+                          style: TextStyle(
+                            color: cs.onSurface,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    textAlign: TextAlign.center,
+                    style: style,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                AppIcon(
+                  Icons.open_in_new_rounded,
+                  size: 13,
+                  color: cs.onSurfaceVariant,
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -321,41 +385,12 @@ class _VersionPill extends StatelessWidget {
   }
 }
 
-Future<bool> _tryLaunch(String url) async {
-  try {
-    return await launchUrl(
-      Uri.parse(url),
-      mode: LaunchMode.externalApplication,
-    );
-  } catch (_) {
-    return false;
-  }
-}
-
-/// Opens [url] in a browser. If no handler exists — a stripped device, a test
-/// harness — [copyValue] (default [url]) goes to the clipboard instead of the
-/// tap doing nothing.
-Future<void> _openUrl(
-  BuildContext context,
-  String url, {
-  String? copyValue,
-}) async {
-  final messenger = ScaffoldMessenger.of(context);
-  if (await _tryLaunch(url)) return;
-
-  final fallback = copyValue ?? url;
-  await Clipboard.setData(ClipboardData(text: fallback));
-  messenger
-    ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text('Copied — $fallback')));
-}
-
 /// The Play Store app when it's installed (`market://`), the web listing
 /// otherwise — F-Droid-only phones often have no Play Store at all.
 Future<void> _openPlayStore(BuildContext context) async {
-  if (await _tryLaunch(AppInfo.playStoreMarketUrl)) return;
+  if (await tryLaunchUrl(AppInfo.playStoreMarketUrl)) return;
   if (!context.mounted) return;
-  await _openUrl(context, AppInfo.playStoreUrl);
+  await openLink(context, AppInfo.playStoreUrl);
 }
 
 /// The system share sheet with the Play Store link — WhatsApp, Instagram,
@@ -483,7 +518,7 @@ class _LinkTile extends StatelessWidget {
         size: 18,
         color: cs.onSurfaceVariant,
       ),
-      onTap: onTap ?? () => _openUrl(context, url!, copyValue: copyValue),
+      onTap: onTap ?? () => openLink(context, url!, copyValue: copyValue),
     );
   }
 }

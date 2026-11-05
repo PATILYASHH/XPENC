@@ -86,7 +86,9 @@ jobs:
         run: flutter test
 
       - name: Build release APKs
-        run: flutter build apk --release --split-per-abi
+        # XPENC_DIST: lib/core/platform/distribution.dart. F-Droid's own
+        # build passes none, and must keep passing none.
+        run: flutter build apk --release --split-per-abi --dart-define=XPENC_DIST=github
 
       - name: Rename to stable asset names
         run: |

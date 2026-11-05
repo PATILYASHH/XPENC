@@ -8,6 +8,7 @@
 [![CI](https://github.com/PATILYASHH/XPENC/actions/workflows/ci.yml/badge.svg)](https://github.com/PATILYASHH/XPENC/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-white?labelColor=black)](LICENSE)
 [![Downloads](https://img.shields.io/github/downloads/PATILYASHH/XPENC/total?color=white&labelColor=black)](https://github.com/PATILYASHH/XPENC/releases)
+[![Powered by ExoSynk Labs](https://img.shields.io/badge/powered%20by-ExoSynk%20Labs-white?labelColor=black)](https://github.com/ExoSynkLabs)
 
 ### Offline-first personal finance for Android.
 Income, expenses, transfers, budgets and dues — all on-device. Nothing is ever uploaded.
@@ -58,6 +59,12 @@ Or grab an APK from [Releases](https://github.com/PATILYASHH/XPENC/releases/late
 
 Everything lives in the app's private on-device SQLite database. No SMS permission, no server, no analytics. [PRIVACY.md](PRIVACY.md) · [xpenc.in/privacy](https://xpenc.in/privacy) · [SECURITY.md](SECURITY.md)
 
+## CONECTR — backup & sync
+
+**CONECTR** is XPENC's optional companion app for Android. It saves the backup file XPENC already makes to a **private repo in your own GitHub account**, and brings it back on your other phones. XPENC itself still uploads nothing — CONECTR only moves the backup you already have, to a place you own.
+
+**[⬇️ Get CONECTR](https://exosynk.com/exosynk-labs#conectr)**
+
 ## Contributing
 
 Contributions are welcome — the highest-impact one is [adding an SMS template for your bank](../../issues/new?template=bank_support.yml).
@@ -77,6 +84,8 @@ Can't sponsor? A ⭐, a bug report, or [a bank SMS template](../../issues/new?te
 <div align="center">
 
 **[MIT](LICENSE) © 2026 Yash Patil** — GitHub [@PATILYASHH](https://github.com/PATILYASHH) · LinkedIn [in/patilyasshh](https://www.linkedin.com/in/patilyasshh/)
+
+Powered by **[ExoSynk Labs](https://github.com/ExoSynkLabs)** · [exosynk.com](https://exosynk.com) · [More from us](https://exosynk.com/exosynk-labs)
 
 <sub>If XPENC keeps your money honest, a ⭐ keeps the project alive.</sub>
 

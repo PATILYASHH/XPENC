@@ -20,7 +20,16 @@ and the [fastlane metadata spec](https://f-droid.org/docs/All_About_Descriptions
 | Tagged releases | ✅ `v*` tags, automated by `.github/workflows/release.yml` |
 | Unique application id | ✅ `com.yash.xpenc` |
 
-No anti-features apply (no NonFreeNet, no NonFreeDep, no Ads, no Tracking).
+No anti-features apply (no NonFreeNet, no NonFreeDep, no NonFreeAdd, no Ads, no Tracking).
+
+**Keep the recipe free of `--dart-define=XPENC_DIST`.** CONECTR (XPENC's
+backup & sync companion) isn't open source, so nothing in F-Droid's build may
+point people at it — that would earn NonFreeAdd. Builds that may (Play, the
+GitHub APKs, iOS, web) pass `--dart-define=XPENC_DIST=play|github`; F-Droid's
+passes nothing, and *unset* is what hides it (`lib/core/platform/distribution.dart`).
+What works with CONECTR once the user has it installed (Connector friends,
+backups coming in, "Tell Connector") stays — it only answers an app they
+already have, and none of it shows without one.
 
 ## What lives where
 

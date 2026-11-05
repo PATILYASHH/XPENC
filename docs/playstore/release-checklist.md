@@ -103,9 +103,12 @@ android {
 - [ ] Build the Play artifact (AAB is mandatory on Play; APKs remain for GitHub):
 
 ```sh
-flutter build appbundle --release
+flutter build appbundle --release --dart-define=XPENC_DIST=play
 # → build/app/outputs/bundle/release/app-release.aab
 ```
+
+  `XPENC_DIST=play` lets the build show CONECTR (Settings → More from us, What's
+  new). Left off, the AAB still works — it just hides CONECTR, like F-Droid's.
 
 - [ ] Target API check: new apps and updates must target **API 35 today, API 36 from
   31 Aug 2026** ([policy](https://support.google.com/googleplay/android-developer/answer/11926878)).

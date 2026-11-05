@@ -16,9 +16,10 @@
 # Usage: bash tool/build_web.sh
 set -euo pipefail
 
-defines=()
+# XPENC_DIST: lib/core/platform/distribution.dart.
+defines=(--dart-define=XPENC_DIST=github)
 if [ -f tool/web/connector.local.json ]; then
-  defines=(--dart-define-from-file=tool/web/connector.local.json)
+  defines+=(--dart-define-from-file=tool/web/connector.local.json)
 else
   echo "No tool/web/connector.local.json: building without Connector." >&2
 fi

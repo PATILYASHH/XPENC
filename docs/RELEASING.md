@@ -23,12 +23,12 @@ bump version → commit → tag vX.Y.Z → push tag
         └─► GitHub Actions (.github/workflows/release.yml)
                 ├─ tag == pubspec version?   (hard gate)
                 ├─ flutter analyze + test    (116+ tests)
-                ├─ flutter build apk --release --split-per-abi
+                ├─ flutter build apk --release --split-per-abi --dart-define=XPENC_DIST=github
                 ├─ tool/verify_apk.sh        (libsqlite3.so gate — never skip)
                 └─ GitHub Release: xpenc-arm64-v8a.apk · xpenc-armeabi-v7a.apk
                                    · xpenc-x86_64.apk · SHA256SUMS.txt
         └─► then .github/workflows/release-ios.yml (macOS, only if the above went green)
-                ├─ flutter build ios --release --no-codesign
+                ├─ flutter build ios --release --no-codesign --dart-define=XPENC_DIST=github
                 ├─ tool/altstore_source.py   (version + permissions read off the build)
                 └─ adds to the same Release: xpenc-ios.ipa · xpenc-altsource.json
                                              (+ its line in SHA256SUMS.txt)

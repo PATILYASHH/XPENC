@@ -56,7 +56,7 @@ jobs:
         run: flutter pub get --enforce-lockfile
 
       - name: Build
-        run: flutter build ios --release --no-codesign
+        run: flutter build ios --release --no-codesign --dart-define=XPENC_DIST=github
 
       # An .ipa is just Payload/Runner.app, zipped.
       - name: Package IPA
