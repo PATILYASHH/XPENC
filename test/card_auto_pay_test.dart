@@ -81,7 +81,8 @@ void main() {
     expect(r.frequency, RecurringFrequency.monthly);
     expect(r.dayOfMonth, 5);
     expect(r.nextDueDate.day, 5);
-    expect(r.nextDueDate.isBefore(DateTime.now()), isFalse);
+    // Today counts: on the due day itself the bill is due today.
+    expect(r.nextDueDate.isBefore(DateUtils.dateOnly(DateTime.now())), isFalse);
   });
 
   test('on the due date it pays what\'s left of the statement', () async {

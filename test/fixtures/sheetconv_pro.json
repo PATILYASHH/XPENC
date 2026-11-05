@@ -1,0 +1,416 @@
+{
+  "formatVersion": 1,
+  "schemaVersion": 77,
+  "exportedAt": "2026-09-30T10:49:10.000",
+  "generator": "xpenc.in/sheetconv",
+  "accounts": [
+    {
+      "id": 1,
+      "name": "Cash",
+      "type": "cash",
+      "color_value": 4282090230,
+      "icon_key": "cash",
+      "opening_balance": 0,
+      "current_balance": 50000,
+      "is_archived": false,
+      "sort_order": 0,
+      "created_at": "2026-09-30T10:49:10.000"
+    },
+    {
+      "id": 2,
+      "name": "SBI",
+      "type": "bank",
+      "color_value": 4294538006,
+      "icon_key": "bank",
+      "opening_balance": 1000000,
+      "current_balance": 3330000,
+      "is_archived": false,
+      "sort_order": 1,
+      "created_at": "2026-09-30T10:49:10.000"
+    }
+  ],
+  "currencyRates": [],
+  "categories": [
+    {
+      "id": 1,
+      "name": "Salary",
+      "kind": "income",
+      "color_value": 4279673674,
+      "icon_key": "salary",
+      "is_archived": false,
+      "sort_order": 0,
+      "parent_id": null
+    },
+    {
+      "id": 2,
+      "name": "Profit",
+      "kind": "income",
+      "color_value": 4279150057,
+      "icon_key": "profit",
+      "is_archived": false,
+      "sort_order": 1,
+      "parent_id": null
+    },
+    {
+      "id": 3,
+      "name": "Gift",
+      "kind": "income",
+      "color_value": 4289222135,
+      "icon_key": "gift",
+      "is_archived": false,
+      "sort_order": 2,
+      "parent_id": null
+    },
+    {
+      "id": 4,
+      "name": "Cash",
+      "kind": "income",
+      "color_value": 4280468830,
+      "icon_key": "cash",
+      "is_archived": false,
+      "sort_order": 3,
+      "parent_id": null
+    },
+    {
+      "id": 5,
+      "name": "Interest",
+      "kind": "income",
+      "color_value": 4279548070,
+      "icon_key": "interest",
+      "is_archived": false,
+      "sort_order": 4,
+      "parent_id": null
+    },
+    {
+      "id": 6,
+      "name": "Refund",
+      "kind": "income",
+      "color_value": 4284773515,
+      "icon_key": "refund",
+      "is_archived": false,
+      "sort_order": 5,
+      "parent_id": null
+    },
+    {
+      "id": 7,
+      "name": "Rent",
+      "kind": "expense",
+      "color_value": 4292617766,
+      "icon_key": "rent",
+      "is_archived": false,
+      "sort_order": 0,
+      "parent_id": null
+    },
+    {
+      "id": 8,
+      "name": "Food",
+      "kind": "expense",
+      "color_value": 4294538006,
+      "icon_key": "food",
+      "is_archived": false,
+      "sort_order": 1,
+      "parent_id": null
+    },
+    {
+      "id": 9,
+      "name": "Groceries",
+      "kind": "expense",
+      "color_value": 4286893078,
+      "icon_key": "groceries",
+      "is_archived": false,
+      "sort_order": 2,
+      "parent_id": null
+    },
+    {
+      "id": 10,
+      "name": "Transport",
+      "kind": "expense",
+      "color_value": 4282090230,
+      "icon_key": "transport",
+      "is_archived": false,
+      "sort_order": 3,
+      "parent_id": null
+    },
+    {
+      "id": 11,
+      "name": "Bills",
+      "kind": "expense",
+      "color_value": 4287323382,
+      "icon_key": "bills",
+      "is_archived": false,
+      "sort_order": 4,
+      "parent_id": null
+    },
+    {
+      "id": 12,
+      "name": "Shopping",
+      "kind": "expense",
+      "color_value": 4293675161,
+      "icon_key": "shopping",
+      "is_archived": false,
+      "sort_order": 5,
+      "parent_id": null
+    },
+    {
+      "id": 13,
+      "name": "Health",
+      "kind": "expense",
+      "color_value": 4293870660,
+      "icon_key": "health",
+      "is_archived": false,
+      "sort_order": 6,
+      "parent_id": null
+    },
+    {
+      "id": 14,
+      "name": "Entertainment",
+      "kind": "expense",
+      "color_value": 4278630100,
+      "icon_key": "entertainment",
+      "is_archived": false,
+      "sort_order": 7,
+      "parent_id": null
+    },
+    {
+      "id": 15,
+      "name": "EMI",
+      "kind": "expense",
+      "color_value": 4286083436,
+      "icon_key": "emi",
+      "is_archived": false,
+      "sort_order": 8,
+      "parent_id": null
+    },
+    {
+      "id": 16,
+      "name": "Freelance",
+      "kind": "income",
+      "color_value": 4282090230,
+      "icon_key": "profit",
+      "is_archived": false,
+      "sort_order": 6,
+      "parent_id": null
+    },
+    {
+      "id": 17,
+      "name": "Dining",
+      "kind": "expense",
+      "color_value": 4294538006,
+      "icon_key": "food",
+      "is_archived": false,
+      "sort_order": 9,
+      "parent_id": 8
+    }
+  ],
+  "recurringRules": [],
+  "transactions": [
+    {
+      "type": "income",
+      "amount": 2500000,
+      "account_id": 2,
+      "to_account_id": null,
+      "category_id": 16,
+      "person_id": null,
+      "date": "2026-09-05T12:00:00.000",
+      "note": "Logo project",
+      "payee": null,
+      "id": 1,
+      "created_at": "2026-09-30T10:49:10.000",
+      "updated_at": "2026-09-30T10:49:10.000"
+    },
+    {
+      "type": "personOut",
+      "amount": 200000,
+      "account_id": 2,
+      "to_account_id": null,
+      "category_id": null,
+      "person_id": 1,
+      "date": "2026-09-06T12:00:00.000",
+      "note": "Gave to Rahul",
+      "payee": null,
+      "id": 2,
+      "created_at": "2026-09-30T10:49:10.000",
+      "updated_at": "2026-09-30T10:49:10.000"
+    },
+    {
+      "type": "personIn",
+      "amount": 50000,
+      "account_id": 1,
+      "to_account_id": null,
+      "category_id": null,
+      "person_id": 2,
+      "date": "2026-09-07T12:00:00.000",
+      "note": "Lunch money",
+      "payee": null,
+      "id": 3,
+      "created_at": "2026-09-30T10:49:10.000",
+      "updated_at": "2026-09-30T10:49:10.000"
+    },
+    {
+      "type": "personIn",
+      "amount": 150000,
+      "account_id": 2,
+      "to_account_id": null,
+      "category_id": null,
+      "person_id": 1,
+      "date": "2026-09-20T12:00:00.000",
+      "note": "Received from Rahul",
+      "payee": null,
+      "id": 4,
+      "created_at": "2026-09-30T10:49:10.000",
+      "updated_at": "2026-09-30T10:49:10.000"
+    },
+    {
+      "type": "expense",
+      "amount": 120000,
+      "account_id": 2,
+      "to_account_id": null,
+      "category_id": 17,
+      "person_id": null,
+      "date": "2026-09-21T12:00:00.000",
+      "note": null,
+      "payee": null,
+      "id": 5,
+      "created_at": "2026-09-30T10:49:10.000",
+      "updated_at": "2026-09-30T10:49:10.000"
+    }
+  ],
+  "budgets": [],
+  "persons": [
+    {
+      "id": 1,
+      "name": "Rahul",
+      "is_archived": false,
+      "is_settled": false,
+      "created_at": "2026-09-30T10:49:10.000"
+    },
+    {
+      "id": 2,
+      "name": "Priya",
+      "is_archived": false,
+      "is_settled": false,
+      "created_at": "2026-09-30T10:49:10.000"
+    }
+  ],
+  "personEntries": [
+    {
+      "id": 1,
+      "person_id": 1,
+      "direction": "theyOwe",
+      "amount": 200000,
+      "date": "2026-09-06T12:00:00.000",
+      "note": null,
+      "account_id": 2,
+      "transaction_id": 2,
+      "created_at": "2026-09-30T10:49:10.000"
+    },
+    {
+      "id": 2,
+      "person_id": 2,
+      "direction": "iOwe",
+      "amount": 50000,
+      "date": "2026-09-07T12:00:00.000",
+      "note": "Lunch money",
+      "account_id": 1,
+      "transaction_id": 3,
+      "created_at": "2026-09-30T10:49:10.000"
+    },
+    {
+      "id": 3,
+      "person_id": 1,
+      "direction": "iOwe",
+      "amount": 150000,
+      "date": "2026-09-20T12:00:00.000",
+      "note": null,
+      "account_id": 2,
+      "transaction_id": 4,
+      "created_at": "2026-09-30T10:49:10.000"
+    }
+  ],
+  "reminders": [],
+  "merchantRules": [],
+  "senderRules": [
+    {
+      "id": 1,
+      "sender_pattern": "IPPB",
+      "bank_name": "India Post Payments Bank",
+      "enabled": true
+    },
+    {
+      "id": 2,
+      "sender_pattern": "IPPBNK",
+      "bank_name": "India Post Payments Bank",
+      "enabled": true
+    },
+    {
+      "id": 3,
+      "sender_pattern": "YESBNK",
+      "bank_name": "Yes Bank",
+      "enabled": true
+    },
+    {
+      "id": 4,
+      "sender_pattern": "HDFCBK",
+      "bank_name": "HDFC Bank",
+      "enabled": true
+    },
+    {
+      "id": 5,
+      "sender_pattern": "ICICIB",
+      "bank_name": "ICICI Bank",
+      "enabled": true
+    },
+    {
+      "id": 6,
+      "sender_pattern": "SBIINB",
+      "bank_name": "State Bank of India",
+      "enabled": true
+    },
+    {
+      "id": 7,
+      "sender_pattern": "SBIUPI",
+      "bank_name": "State Bank of India",
+      "enabled": true
+    },
+    {
+      "id": 8,
+      "sender_pattern": "AXISBK",
+      "bank_name": "Axis Bank",
+      "enabled": true
+    },
+    {
+      "id": 9,
+      "sender_pattern": "KOTAKB",
+      "bank_name": "Kotak Mahindra Bank",
+      "enabled": true
+    },
+    {
+      "id": 10,
+      "sender_pattern": "PNBSMS",
+      "bank_name": "Punjab National Bank",
+      "enabled": true
+    }
+  ],
+  "tags": [],
+  "transactionTags": [],
+  "recurringRuleTags": [],
+  "tagGroups": [],
+  "tagGroupTags": [],
+  "transactionSplits": [],
+  "transactionLinks": [],
+  "goalDetails": [],
+  "creditCardDetails": [],
+  "allocations": [],
+  "shoppingLists": [],
+  "shoppingItems": [],
+  "pendingTxns": [],
+  "budgetAlerts": [],
+  "settings": [
+    {
+      "id": 1,
+      "currency_code": "INR",
+      "onboarded": true,
+      "app_mode": "pro"
+    }
+  ]
+}
