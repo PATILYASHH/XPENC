@@ -52,6 +52,10 @@ class AppInfo {
   /// The project website — features, downloads, FAQ.
   static const websiteUrl = 'https://xpenc.in';
 
+  /// Every category template from the XPENC-Templates repo, previewed and
+  /// ready to download for Import from file (GitHub #187).
+  static const templatesUrl = '$websiteUrl/templates';
+
   /// New issue with a template picker (bug / feature / bank support).
   static const issuesUrl = '$repoUrl/issues/new/choose';
 

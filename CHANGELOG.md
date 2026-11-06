@@ -37,6 +37,11 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   to it moves your existing categories into the groups — Rent keeps its
   history under Needs — rather than starting new ones beside them. Any
   template now does this when a category's name matches one you have.
+- **More templates on xpenc.in** (#187). Category templates links to
+  [xpenc.in/templates](https://xpenc.in/templates), which previews every
+  template in the [XPENC-Templates](https://github.com/PATILYASHH/XPENC-Templates)
+  repo (Student, Family Household and ones shared by the community) and
+  downloads them for **Import from file**.
 - **Budget alerts at several levels** (#186). A budget's **Alert me at**
   is now a set of levels — 50%, 75%, 80%, 90%, 100% or any other — and
   each one alerts once a budget period, so you feel the spending climb.

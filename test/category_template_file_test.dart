@@ -210,6 +210,22 @@ void main() {
       await unmount(tester);
     });
 
+    testWidgets('More templates opens xpenc.in/templates', (tester) async {
+      await pump(tester);
+      await tester.drag(find.byType(ListView), const Offset(0, -600));
+      await tester.pump();
+      await tester.tap(find.text('More templates on xpenc.in'));
+      for (var i = 0; i < 4; i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 50)),
+        );
+        await tester.pump(const Duration(milliseconds: 150));
+      }
+      // No browser in a test, so openLink falls back to copying the link.
+      expect(find.text('Copied — https://xpenc.in/templates'), findsOneWidget);
+      await unmount(tester);
+    });
+
     testWidgets('Share as file hands over the template\'s JSON', (
       tester,
     ) async {

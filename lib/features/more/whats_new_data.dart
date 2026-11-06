@@ -65,7 +65,8 @@ const _whatsNewEntries = <WhatsNewEntry>[
     location: 'Categories → Category templates',
     description:
         'Send your category structure as a file, import one someone shared, '
-        'or start from the ready-made 50/30/20 — Needs and Wants.',
+        'or start from the ready-made 50/30/20 — Needs and Wants. More '
+        'templates, from the community too, are on xpenc.in/templates.',
   ),
   WhatsNewEntry(
     icon: Icons.notifications_active_outlined,

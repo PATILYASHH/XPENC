@@ -4,9 +4,11 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/branding/app_info.dart';
 import '../../core/platform/outgoing_file.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/error_view.dart';
+import '../../core/widgets/open_link.dart';
 import '../../data/built_in_category_templates.dart';
 import '../../data/category_template_file.dart';
 import '../../data/database.dart';
@@ -49,7 +51,12 @@ class CategoryTemplatesScreen extends ConsumerWidget {
           ),
         ),
         data: (templates) => ListView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 96).plusNavBar(context),
+          padding: const EdgeInsets.fromLTRB(
+            20,
+            16,
+            20,
+            96,
+          ).plusNavBar(context),
           children: [
             Text(
               'A template is a saved snapshot of your category and '
@@ -110,6 +117,8 @@ class CategoryTemplatesScreen extends ConsumerWidget {
                     if (i > 0) Divider(height: 1, indent: 60),
                     _BuiltInTile(file: kBuiltInCategoryTemplates[i]),
                   ],
+                  const Divider(height: 1, indent: 60),
+                  const _MoreTemplatesTile(),
                 ],
               ),
             ),
@@ -224,6 +233,45 @@ class _BuiltInTile extends ConsumerWidget {
         onPressed: () => _addTemplateFile(context, ref, file),
         child: const Text('Add'),
       ),
+    );
+  }
+}
+
+/// Opens xpenc.in/templates: every template in the XPENC-Templates repo,
+/// community ones included, to preview and download. XPENC itself never goes
+/// online, so the file comes back in through Import from file.
+class _MoreTemplatesTile extends StatelessWidget {
+  const _MoreTemplatesTile();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AppListTile(
+      contentPadding: const EdgeInsets.only(left: 16, right: 16),
+      leading: CircleAvatar(
+        backgroundColor: theme.colorScheme.secondaryContainer,
+        child: AppIcon(
+          Icons.travel_explore_outlined,
+          color: theme.colorScheme.onSecondaryContainer,
+        ),
+      ),
+      title: Text(
+        'More templates on xpenc.in',
+        style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+      ),
+      subtitle: Text(
+        'Student, Family Household and ones shared by the community. '
+        'Download one, then use Import from file.',
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+      trailing: AppIcon(
+        Icons.open_in_new_rounded,
+        size: 20,
+        color: theme.colorScheme.onSurfaceVariant,
+      ),
+      onTap: () => openLink(context, AppInfo.templatesUrl),
     );
   }
 }
