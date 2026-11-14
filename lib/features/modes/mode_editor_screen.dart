@@ -17,6 +17,7 @@ import '../accounts/account_look_fields.dart';
 import '../settings/currency_picker_sheet.dart';
 import 'mode_modules.dart';
 import 'mode_widgets.dart';
+import '../../core/l10n/l10n.dart';
 
 /// The bottom-bar destinations a mode can put in its two slots — the same
 /// ids `Settings.bottomNavSlots` uses (see `AppShell`).
@@ -209,7 +210,7 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
     final raw = c.text.trim();
     if (raw.isEmpty) return null;
     final m = Money.tryParse(raw);
-    if (m == null) throw ArgumentError("The $label isn't a number.");
+    if (m == null) throw ArgumentError(tr("The {0} isn't a number.", [label]));
     return m;
   }
 
@@ -242,7 +243,7 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
     final budget = rawBudget.isEmpty ? null : Money.tryParse(rawBudget);
     if (rawBudget.isNotEmpty && budget == null) {
       messenger.showSnackBar(
-        const SnackBar(content: Text("That budget isn't a number")),
+        const SnackBar(content: Tr("That budget isn't a number")),
       );
       return;
     }
@@ -255,10 +256,10 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
     final allocations = <int, Money>{};
     final limits = <int, Money>{};
     try {
-      daily = _moneyOf(_daily, 'daily limit');
-      perSpend = _moneyOf(_perSpend, 'per-spend limit');
+      daily = _moneyOf(_daily, tr('daily limit'));
+      perSpend = _moneyOf(_perSpend, tr('per-spend limit'));
       walletAmount = _wallet && _walletMade == null
-          ? _moneyOf(_walletAmount, 'wallet amount')
+          ? _moneyOf(_walletAmount, tr('wallet amount'))
           : null;
       for (final id in _accountIds) {
         final c = _allocations[id];
@@ -266,7 +267,7 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
         if (m != null) allocations[id] = m;
       }
       for (final e in _limits.entries) {
-        final m = _moneyOf(e.value, 'category limit');
+        final m = _moneyOf(e.value, tr('category limit'));
         if (m != null) limits[e.key] = m;
       }
     } on ArgumentError catch (e) {
@@ -378,7 +379,7 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
       }
     } on ArgumentError catch (e) {
       messenger.showSnackBar(
-        SnackBar(content: Text(e.message?.toString() ?? 'Could not save')),
+        SnackBar(content: Text(e.message?.toString() ?? tr('Could not save'))),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -394,19 +395,19 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
     final start = await showAppDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Start ${mode.name} now?'),
-        content: const Text(
+        title: Text(tr('Start {0} now?', [mode.name])),
+        content: const Tr(
           'While it is ON, everything you add joins it and the app shows '
           'only what you picked for it.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Later'),
+            child: const Tr('Later'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Start now'),
+            child: const Tr('Start now'),
           ),
         ],
       ),
@@ -426,8 +427,8 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
 
   Future<void> _addCategory() async {
     final result = await _askName(
-      title: 'New category for this mode',
-      hint: 'e.g. Beach shacks',
+      title: tr('New category for this mode'),
+      hint: tr('e.g. Beach shacks'),
       withIcon: true,
     );
     if (result == null) return;
@@ -438,8 +439,8 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
 
   Future<void> _addTag() async {
     final result = await _askName(
-      title: 'New tag for this mode',
-      hint: 'e.g. Goa',
+      title: tr('New tag for this mode'),
+      hint: tr('e.g. Goa'),
       withIcon: false,
     );
     if (result == null) return;
@@ -449,7 +450,7 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
     if (taken || _newTags.any((t) => t.name == result.name)) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('There is already a tag called ${result.name}')),
+        SnackBar(content: Text(tr('There is already a tag called {0}', [result.name]))),
       );
       return;
     }
@@ -472,7 +473,7 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
             children: [
               if (withIcon) ...[
                 IconButton.filledTonal(
-                  tooltip: 'Icon',
+                  tooltip: tr('Icon'),
                   onPressed: () async {
                     final picked = await showIconPickerSheet(
                       context,
@@ -501,11 +502,11 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: const Tr('Cancel'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Add'),
+              child: const Tr('Add'),
             ),
           ],
         ),
@@ -572,7 +573,7 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setLocal) => AlertDialog(
-          title: Text(draft == null ? 'Planned cost' : 'Edit planned cost'),
+          title: Text(draft == null ? tr('Planned cost') : tr('Edit planned cost')),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -581,9 +582,9 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
                 autofocus: draft == null,
                 maxLength: 60,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                  labelText: 'What',
-                  hintText: 'Hotel, tickets…',
+                decoration: InputDecoration(
+                  labelText: tr('What'),
+                  hintText: tr('Hotel, tickets…'),
                   counterText: '',
                 ),
               ),
@@ -593,7 +594,7 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
                   decimal: true,
                 ),
                 decoration: InputDecoration(
-                  labelText: 'Amount',
+                  labelText: tr('Amount'),
                   prefixText: '${MoneyFormat.currency.symbol} ',
                 ),
               ),
@@ -602,7 +603,7 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
                 alignment: Alignment.centerLeft,
                 child: ActionChip(
                   avatar: const AppIcon(Icons.category_outlined, size: 18),
-                  label: Text(cats[categoryId]?.name ?? 'Category (optional)'),
+                  label: Text(cats[categoryId]?.name ?? tr('Category (optional)')),
                   onPressed: () async {
                     final picked = await _pickCategory();
                     if (picked != null) setLocal(() => categoryId = picked);
@@ -615,7 +616,7 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
             if (index != null)
               TextButton(
                 onPressed: () => Navigator.of(context).pop(null),
-                child: const Text('Cancel'),
+                child: const Tr('Cancel'),
               ),
             if (index != null)
               TextButton(
@@ -626,16 +627,16 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
                   });
                   Navigator.of(context).pop(false);
                 },
-                child: const Text('Remove'),
+                child: const Tr('Remove'),
               )
             else
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Cancel'),
+                child: const Tr('Cancel'),
               ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Done'),
+              child: const Tr('Done'),
             ),
           ],
         ),
@@ -648,7 +649,7 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
     if (ok != true || !mounted) return;
     if (text.isEmpty || money == null || !money.isPositive) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Give it a name and an amount')),
+        const SnackBar(content: Tr('Give it a name and an amount')),
       );
       return;
     }
@@ -688,7 +689,7 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
     final cs = theme.colorScheme;
     if (!_loaded) {
       return Scaffold(
-        appBar: AppTopBar(title: const Text('Edit mode')),
+        appBar: AppTopBar(title: const Tr('Edit mode')),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
@@ -736,11 +737,11 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
 
     return Scaffold(
       appBar: AppTopBar(
-        title: Text(_isNew ? 'New mode' : 'Edit mode'),
+        title: Text(_isNew ? tr('New mode') : tr('Edit mode')),
         actions: [
           TextButton(
             onPressed: _saving ? null : _save,
-            child: const Text('Save'),
+            child: const Tr('Save'),
           ),
         ],
       ),
@@ -777,9 +778,9 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
                   controller: _name,
                   maxLength: 40,
                   textCapitalization: TextCapitalization.sentences,
-                  decoration: const InputDecoration(
-                    labelText: 'Name',
-                    hintText: 'Goa trip',
+                  decoration: InputDecoration(
+                    labelText: tr('Name'),
+                    hintText: tr('Goa trip'),
                     counterText: '',
                   ),
                 ),
@@ -795,8 +796,8 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
           // ── When and how much ─────────────────────────────────────────
           modeSectionLabel(theme, 'WHEN'),
           hint(
-            'Optional. With dates it switches itself on on the first day and '
-            'off after the last.',
+            tr('Optional. With dates it switches itself on on the first day and '
+            'off after the last.'),
           ),
           AppCard(
             margin: EdgeInsets.zero,
@@ -805,14 +806,14 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
               children: [
                 AppListTile(
                   leading: const AppIcon(Icons.flight_takeoff_rounded),
-                  title: const Text('Starts'),
+                  title: const Tr('Starts'),
                   subtitle: Text(
-                    _start == null ? 'When you start it' : day.format(_start!),
+                    _start == null ? tr('When you start it') : day.format(_start!),
                   ),
                   trailing: _start == null
                       ? null
                       : IconButton(
-                          tooltip: 'Clear',
+                          tooltip: tr('Clear'),
                           icon: const AppIcon(Icons.close_rounded),
                           onPressed: () => setState(() => _start = null),
                         ),
@@ -828,14 +829,14 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
                 Divider(height: 1, indent: 60, color: cs.outline),
                 AppListTile(
                   leading: const AppIcon(Icons.flight_land_rounded),
-                  title: const Text('Ends'),
+                  title: const Tr('Ends'),
                   subtitle: Text(
-                    _end == null ? 'When you end it' : day.format(_end!),
+                    _end == null ? tr('When you end it') : day.format(_end!),
                   ),
                   trailing: _end == null
                       ? null
                       : IconButton(
-                          tooltip: 'Clear',
+                          tooltip: tr('Clear'),
                           icon: const AppIcon(Icons.close_rounded),
                           onPressed: () => setState(() => _end = null),
                         ),
@@ -855,24 +856,24 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
               FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
             ],
             decoration: InputDecoration(
-              labelText: 'Total to spend (optional)',
+              labelText: tr('Total to spend (optional)'),
               prefixText: '${MoneyFormat.currency.symbol} ',
             ),
           ),
           hint(
-            'Left empty, the budget is what you allocate from your accounts '
-            'below.',
+            tr('Left empty, the budget is what you allocate from your accounts '
+            'below.'),
           ),
           modeSectionLabel(theme, 'LIMITS'),
           hint(
-            'Going over one asks before saving — it never stops you. Alerts '
-            'at 80% and 100%.',
+            tr('Going over one asks before saving — it never stops you. Alerts '
+            'at 80% and 100%.'),
           ),
           Row(
             children: [
-              Expanded(child: _moneyField(_daily, 'Per day')),
+              Expanded(child: _moneyField(_daily, tr('Per day'))),
               const SizedBox(width: 12),
-              Expanded(child: _moneyField(_perSpend, 'Per spend')),
+              Expanded(child: _moneyField(_perSpend, tr('Per spend'))),
             ],
           ),
           const SizedBox(height: 12),
@@ -890,14 +891,14 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      cats[e.key]?.name ?? 'Category',
+                      cats[e.key]?.name ?? tr('Category'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  SizedBox(width: 130, child: _moneyField(e.value, 'Limit')),
+                  SizedBox(width: 130, child: _moneyField(e.value, tr('Limit'))),
                   IconButton(
-                    tooltip: 'Remove',
+                    tooltip: tr('Remove'),
                     icon: const AppIcon(Icons.close_rounded),
                     onPressed: () => setState(() {
                       _limits.remove(e.key)?.dispose();
@@ -910,7 +911,7 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
             alignment: Alignment.centerLeft,
             child: ActionChip(
               avatar: const AppIcon(Icons.add_rounded, size: 18),
-              label: const Text('Limit a category'),
+              label: const Tr('Limit a category'),
               onPressed: _addLimit,
             ),
           ),
@@ -920,17 +921,17 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
             clipBehavior: Clip.antiAlias,
             child: AppListTile(
               leading: const AppIcon(Icons.public_rounded),
-              title: const Text('Spending in'),
+              title: const Tr('Spending in'),
               subtitle: Text(
                 currency == null
-                    ? 'Your home currency'
-                    : '${currency.code} · ${currency.name} — '
-                          'new spends note the amount in it',
+                    ? tr('Your home currency')
+                    : tr('{0} · {1} — '
+                          'new spends note the amount in it', [currency.code, currency.name]),
               ),
               trailing: currency == null
                   ? const AppIcon(Icons.chevron_right_rounded)
                   : IconButton(
-                      tooltip: 'Home currency',
+                      tooltip: tr('Home currency'),
                       icon: const AppIcon(Icons.close_rounded),
                       onPressed: () => setState(() => _currencyCode = null),
                     ),
@@ -952,8 +953,8 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
           // ── Limits ────────────────────────────────────────────────────
           modeSectionLabel(theme, 'PEOPLE'),
           hint(
-            "Who's with you. Inside the mode, Persons shows only them, "
-            'starting from zero — and Add can split a bill with them.',
+            tr("Who's with you. Inside the mode, Persons shows only them, "
+            'starting from zero — and Add can split a bill with them.'),
           ),
           _chips([
             for (final p in persons)
@@ -965,18 +966,18 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
                 ),
               ),
             if (persons.isEmpty)
-              Text(
+              Tr(
                 'Add people in Persons first.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: cs.onSurfaceVariant,
                 ),
               ),
           ]),
-          modeSectionLabel(theme, 'PAYS WITH'),
+          modeSectionLabel(theme, tr('PAYS WITH')),
           hint(
-            'Only these accounts are offered while it is ON (none = any). Set '
+            tr('Only these accounts are offered while it is ON (none = any). Set '
             "how much of each is for the trip: while it's ON the account "
-            "shows what's left of that, after it the real balance.",
+            "shows what's left of that, after it the real balance."),
           ),
           _chips([
             for (final a in accounts)
@@ -1007,19 +1008,19 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
                       width: 150,
                       child: _moneyField(
                         _allocCtrl(a.id),
-                        'For the trip',
-                        hint: 'All of it',
+                        tr('For the trip'),
+                        hint: tr('All of it'),
                       ),
                     ),
                   ],
                 ),
               ),
-          modeSectionLabel(theme, 'TRIP WALLET'),
+          modeSectionLabel(theme, tr('TRIP WALLET')),
           if (_walletMade != null)
             hint(
-              'Made when it started: '
-              '${accounts.where((a) => a.id == _walletMade).firstOrNull?.name ?? 'the wallet'}. '
-              'Its leftover goes back from the summary.',
+              tr('Made when it started: '
+              '{0}. '
+              'Its leftover goes back from the summary.', [accounts.where((a) => a.id == _walletMade).firstOrNull?.name ?? tr('the wallet')]),
             )
           else ...[
             AppCard(
@@ -1028,8 +1029,8 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
               child: AppSwitchListTile(
                 value: _wallet,
                 onChanged: (v) => setState(() => _wallet = v),
-                title: const Text('Fill a trip wallet when it starts'),
-                subtitle: const Text(
+                title: const Tr('Fill a trip wallet when it starts'),
+                subtitle: const Tr(
                   'A cash account for the trip — what is left goes back at '
                   'the end',
                 ),
@@ -1037,14 +1038,14 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
             ),
             if (_wallet) ...[
               const SizedBox(height: 12),
-              _moneyField(_walletAmount, 'Amount'),
+              _moneyField(_walletAmount, tr('Amount')),
               const SizedBox(height: 12),
               DropdownButtonFormField<int>(
                 initialValue: accounts.any((a) => a.id == _walletSourceId)
                     ? _walletSourceId
                     : null,
                 isExpanded: true,
-                decoration: const InputDecoration(labelText: 'From'),
+                decoration: InputDecoration(labelText: tr('From')),
                 items: [
                   for (final a in accounts)
                     DropdownMenuItem(value: a.id, child: Text(a.name)),
@@ -1053,10 +1054,10 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
               ),
             ],
           ],
-          modeSectionLabel(theme, 'PLANNED COSTS'),
+          modeSectionLabel(theme, tr('PLANNED COSTS')),
           hint(
-            'Known costs (the hotel, the tickets) — counted against the '
-            'budget before you pay them.',
+            tr('Known costs (the hotel, the tickets) — counted against the '
+            'budget before you pay them.'),
           ),
           if (_planned.isNotEmpty)
             AppCard(
@@ -1087,14 +1088,14 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
             alignment: Alignment.centerLeft,
             child: ActionChip(
               avatar: const AppIcon(Icons.add_rounded, size: 18),
-              label: const Text('Add a planned cost'),
+              label: const Tr('Add a planned cost'),
               onPressed: _editPlanned,
             ),
           ),
           modeSectionLabel(theme, 'CATEGORIES'),
           hint(
-            'Only these are offered while it is ON (with their '
-            'subcategories). None = all. Its own categories always are.',
+            tr('Only these are offered while it is ON (with their '
+            'subcategories). None = all. Its own categories always are.'),
           ),
           _chips([
             for (final c in everydayCats)
@@ -1123,12 +1124,12 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
               ),
             ActionChip(
               avatar: const AppIcon(Icons.add_rounded, size: 18),
-              label: const Text('New category for this mode'),
+              label: const Tr('New category for this mode'),
               onPressed: _addCategory,
             ),
           ]),
-          modeSectionLabel(theme, 'AUTO-TAGS'),
-          hint('Put on everything added while it is ON — removable each time.'),
+          modeSectionLabel(theme, tr('AUTO-TAGS')),
+          hint(tr('Put on everything added while it is ON — removable each time.')),
           _chips([
             for (final t in [...ownTags, ...everydayTags])
               FilterChip(
@@ -1148,19 +1149,19 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
               ),
             ActionChip(
               avatar: const AppIcon(Icons.add_rounded, size: 18),
-              label: const Text('New tag for this mode'),
+              label: const Tr('New tag for this mode'),
               onPressed: _addTag,
             ),
           ]),
 
           // ── Focus ─────────────────────────────────────────────────────
-          modeSectionLabel(theme, 'WHILE IT IS ON'),
-          hint('The two tabs beside ➕, and the modules in More.'),
+          modeSectionLabel(theme, tr('WHILE IT IS ON')),
+          hint(tr('The two tabs beside ➕, and the modules in More.')),
           Row(
             children: [
               Expanded(
                 child: _slotField(
-                  'Left tab',
+                  tr('Left tab'),
                   _slotLeft,
                   (v) => setState(() {
                     _slotLeft = v;
@@ -1178,7 +1179,7 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: _slotField(
-                  'Right tab',
+                  tr('Right tab'),
                   _slotRight,
                   (v) => setState(() {
                     _slotRight = v;
@@ -1207,23 +1208,23 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
                 ),
               ),
           ]),
-          if (_modules.isEmpty) hint('Nothing ticked shows every module.'),
+          if (_modules.isEmpty) hint(tr('Nothing ticked shows every module.')),
 
           // ── Group ─────────────────────────────────────────────────────
           if (groups.isNotEmpty) ...[
             modeSectionLabel(theme, 'GROUP'),
             hint(
-              "A linked group's expenses always join this mode, and its "
-              'members are the people above.',
+              tr("A linked group's expenses always join this mode, and its "
+              'members are the people above.'),
             ),
             DropdownButtonFormField<int?>(
               initialValue: groups.any((g) => g.id == _groupId)
                   ? _groupId
                   : null,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Linked group'),
+              decoration: InputDecoration(labelText: tr('Linked group')),
               items: [
-                const DropdownMenuItem(value: null, child: Text('None')),
+                const DropdownMenuItem(value: null, child: Tr('None')),
                 for (final g in groups)
                   DropdownMenuItem(value: g.id, child: Text(g.name)),
               ],
@@ -1233,7 +1234,7 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
           const SizedBox(height: 24),
           FilledButton(
             onPressed: _saving ? null : _save,
-            child: Text(_isNew ? 'Create mode' : 'Save'),
+            child: Text(_isNew ? tr('Create mode') : tr('Save')),
           ),
         ],
       ),
@@ -1252,7 +1253,7 @@ class _ModeEditorScreenState extends ConsumerState<ModeEditorScreen> {
     isExpanded: true,
     decoration: InputDecoration(labelText: label),
     items: [
-      const DropdownMenuItem(value: null, child: Text('Everyday')),
+      const DropdownMenuItem(value: null, child: Tr('Everyday')),
       for (final e in modeNavSlotChoices.entries)
         DropdownMenuItem(value: e.key, child: Text(e.value)),
     ],

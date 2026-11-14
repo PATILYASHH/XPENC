@@ -7,6 +7,7 @@ import '../../core/widgets/nav_bar_inset.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Categories hidden via **Archive** on the Categories screen (GitHub #162).
 /// Restore brings one back to the pickers; Delete removes one for good, but
@@ -21,11 +22,11 @@ class ArchivedCategoriesScreen extends ConsumerWidget {
     final active = ref.watch(categoryMapProvider);
 
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Archived categories')),
+      appBar: AppTopBar(title: const Tr('Archived categories')),
       body: archivedAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => Center(
-          child: Text(
+          child: Tr(
             "Couldn't load archived categories.",
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -44,7 +45,7 @@ class ArchivedCategoriesScreen extends ConsumerWidget {
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                   const SizedBox(height: 16),
-                  Text(
+                  Tr(
                     'No archived categories.',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium?.copyWith(
@@ -102,7 +103,7 @@ class ArchivedCategoriesScreen extends ConsumerWidget {
       Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
         child: Text(
-          (kind == CategoryKind.expense ? 'Money out' : 'Money in')
+          (kind == CategoryKind.expense ? tr('Money out') : tr('Money in'))
               .toUpperCase(),
           style: theme.textTheme.labelSmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
@@ -147,9 +148,11 @@ class _ArchivedCategoryTile extends ConsumerWidget {
 
     final String subtitle;
     if (archivedChildren > 0) {
-      subtitle =
-          '$archivedChildren '
-          '${archivedChildren == 1 ? 'subcategory' : 'subcategories'}';
+      subtitle = plural(
+        archivedChildren,
+        '1 subcategory',
+        '{0} subcategories',
+      );
     } else if (parent != null && !isChild) {
       subtitle = 'Under ${parent!.name}';
     } else {
@@ -189,12 +192,12 @@ class _ArchivedCategoryTile extends ConsumerWidget {
         children: [
           TextButton.icon(
             icon: const AppIcon(Icons.unarchive_outlined, size: 18),
-            label: const Text('Restore'),
+            label: const Tr('Restore'),
             onPressed: () => _restore(context, ref),
           ),
           IconButton(
             icon: AppIcon(Icons.delete_outline, color: theme.colorScheme.error),
-            tooltip: 'Delete',
+            tooltip: tr('Delete'),
             visualDensity: VisualDensity.compact,
             onPressed: () => _confirmDelete(context, ref),
           ),
@@ -208,9 +211,9 @@ class _ArchivedCategoryTile extends ConsumerWidget {
     await ref.read(dbProvider).unarchiveCategory(category.id);
     final String message;
     if (archivedChildren > 0) {
-      message = '"${category.name}" and its subcategories restored';
+      message = tr('"{0}" and its subcategories restored', [category.name]);
     } else if (parent != null && parent!.isArchived) {
-      message = '"${category.name}" restored, with "${parent!.name}"';
+      message = tr('"{0}" restored, with "{1}"', [category.name, parent!.name]);
     } else {
       message = '"${category.name}" restored';
     }
@@ -227,8 +230,8 @@ class _ArchivedCategoryTile extends ConsumerWidget {
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Delete "${category.name}"?'),
-        content: const Text(
+        title: Text(tr('Delete "{0}"?', [category.name])),
+        content: const Tr(
           "This permanently deletes the category — it can't be undone. It "
           'only works if nothing has ever used it; otherwise it stays '
           'archived.',
@@ -236,14 +239,14 @@ class _ArchivedCategoryTile extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(ctx).colorScheme.error,
             ),
-            child: const Text('Delete'),
+            child: const Tr('Delete'),
           ),
         ],
       ),
@@ -255,9 +258,9 @@ class _ArchivedCategoryTile extends ConsumerWidget {
       await ref.read(dbProvider).deleteCategory(category.id);
       message = '"${category.name}" deleted';
     } on ArgumentError catch (e) {
-      message = e.message?.toString() ?? "Can't delete this category";
+      message = e.message?.toString() ?? tr("Can't delete this category");
     } catch (_) {
-      message = "Can't delete this category — something still uses it.";
+      message = tr("Can't delete this category — something still uses it.");
     }
     messenger
       ..hideCurrentSnackBar()

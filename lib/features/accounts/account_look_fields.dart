@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/app_icons.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/icon_picker_sheet.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Preset colours for an account. Plain ints — colour here is decorative,
 /// not a money-direction signal.
@@ -113,7 +114,7 @@ class AccountIconField extends StatelessWidget {
             ),
             const SizedBox(width: 14),
             Expanded(
-              child: Text(
+              child: Tr(
                 'Tap to change',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,

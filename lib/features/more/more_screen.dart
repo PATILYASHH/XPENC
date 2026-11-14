@@ -14,6 +14,7 @@ import '../calculators/calculator_kind.dart';
 import '../modes/mode_modules.dart';
 import '../modes/mode_widgets.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Hub page. Grouped, not a flat dump. Every tile navigates to a real route.
 class MoreScreen extends ConsumerWidget {
@@ -30,8 +31,8 @@ class MoreScreen extends ConsumerWidget {
     final progress = ref.watch(budgetProgressProvider);
     final overCount = progress.where((p) => p.overspent).length;
     final budgetSubtitle = overCount > 0
-        ? '$overCount over budget'
-        : '${progress.length} active';
+        ? tr('{0} over budget', [overCount])
+        : tr('{0} active', [progress.length]);
     final budgetSubtitleColor = overCount > 0
         ? AppColors.expense
         : cs.onSurfaceVariant;
@@ -45,8 +46,8 @@ class MoreScreen extends ConsumerWidget {
     final rules = ref.watch(recurringRulesProvider).valueOrNull ?? const [];
     final activeRuleCount = rules.where((r) => r.isActive).length;
     final autoSubtitle = activeRuleCount == 0
-        ? 'Automate a fixed payment or money in'
-        : '$activeRuleCount active';
+        ? tr('Automate a fixed payment or money in')
+        : tr('{0} active', [activeRuleCount]);
 
     // While a mode (a trip) is the focus, More shows only the modules it
     // picked — Modes, Settings and the app's own pages always stay.
@@ -56,44 +57,44 @@ class MoreScreen extends ConsumerWidget {
     final shown = focused == null ? null : modeModuleKeys(focused);
 
     final allGroups = <_Group>[
-      _Group('Money', [
+      _Group(tr('Money'), [
         _Item(
           Icons.luggage_outlined,
-          'Modes',
+          tr('Modes'),
           route: '/more/modes',
           subtitle: active != null
-              ? '${active.name} is ON'
+              ? tr('{0} is ON', [active.name])
               : modeCount == 0
-              ? 'Trips and events, each in focus'
-              : '$modeCount ${modeCount == 1 ? 'mode' : 'modes'}',
+              ? tr('Trips and events, each in focus')
+              : plural(modeCount, '1 mode', '{0} modes'),
         ),
         _Item(
           Icons.account_balance_wallet_outlined,
-          'Accounts',
+          tr('Accounts'),
           route: '/more/accounts',
           module: 'accounts',
           subtitle: netWorth == null
-              ? 'Manage where your money is'
-              : 'Total money: ${MoneyFormat.compact(netWorth)}',
+              ? tr('Manage where your money is')
+              : tr('Total money: {0}', [MoneyFormat.compact(netWorth)]),
         ),
         _Item(
           Icons.receipt_long_outlined,
-          'Transactions',
+          tr('Transactions'),
           route: '/more/transactions',
-          subtitle: 'Every transaction, searchable and filterable',
+          subtitle: tr('Every transaction, searchable and filterable'),
           module: 'transactions',
         ),
         _Item(
           Icons.people_alt_outlined,
-          'Persons',
+          tr('Persons'),
           route: '/more/persons',
-          subtitle: 'Who owes you, who you owe',
+          subtitle: tr('Who owes you, who you owe'),
           module: 'persons',
         ),
         if (appMode != AppMode.basic)
           _Item(
             Icons.donut_large_rounded,
-            'Budgets',
+            tr('Budgets'),
             route: '/more/budgets',
             subtitle: budgetSubtitle,
             subtitleColor: budgetSubtitleColor,
@@ -102,66 +103,66 @@ class MoreScreen extends ConsumerWidget {
         if (appMode == AppMode.pro && rtaEnabled)
           _Item(
             Icons.savings_outlined,
-            'Ready to Assign',
+            tr('Ready to Assign'),
             route: '/more/ready-to-assign',
             module: 'budgets',
             subtitle:
-                '${MoneyFormat.compact(ref.watch(readyToAssignProvider))} '
-                'unassigned',
+                tr('{0} '
+                'unassigned', [MoneyFormat.compact(ref.watch(readyToAssignProvider))]),
           ),
         _Item(
           Icons.autorenew_rounded,
-          'Auto',
+          tr('Auto'),
           route: '/more/auto',
           subtitle: autoSubtitle,
           module: 'auto',
         ),
         _Item(
           Icons.storefront_outlined,
-          'Payees',
+          tr('Payees'),
           route: '/more/payees',
-          subtitle: 'Who you pay, and how much',
+          subtitle: tr('Who you pay, and how much'),
           module: 'payees',
         ),
         _Item(
           Icons.savings_outlined,
-          'Goals & Loans',
+          tr('Goals & Loans'),
           route: '/more/goals',
-          subtitle: 'Savings goals and loans in one place',
+          subtitle: tr('Savings goals and loans in one place'),
           module: 'goals',
         ),
         _Item(
           Icons.checklist_outlined,
-          'Shopping List',
+          tr('Shopping List'),
           route: '/more/shopping',
-          subtitle: 'Plan what to buy',
+          subtitle: tr('Plan what to buy'),
           module: 'shopping',
         ),
       ]),
-      _Group('Insights', [
+      _Group(tr('Insights'), [
         _Item(
           Icons.calendar_month_outlined,
-          'Calendar & Reminders',
+          tr('Calendar & Reminders'),
           route: '/more/calendar',
-          subtitle: 'Day-wise in/out · planned payments',
+          subtitle: tr('Day-wise in/out · planned payments'),
           module: 'calendar',
         ),
         _Item(
           Icons.insights_outlined,
-          'Stats',
+          tr('Stats'),
           route: '/more/stats',
-          subtitle: 'Trends and deeper analytics',
+          subtitle: tr('Trends and deeper analytics'),
           module: 'stats',
         ),
         _Item(
           Icons.account_balance_outlined,
-          'Account Reports',
+          tr('Account Reports'),
           route: '/more/account-reports',
-          subtitle: 'Per-account breakdown',
+          subtitle: tr('Per-account breakdown'),
           module: 'reports',
         ),
       ]),
-      _Group('Calculators', beta: true, [
+      _Group(tr('Calculators'), beta: true, [
         for (final kind in CalculatorKind.values)
           _Item(
             kind.icon,
@@ -171,60 +172,60 @@ class MoreScreen extends ConsumerWidget {
             module: 'calculators',
           ),
       ]),
-      _Group('Data', [
+      _Group(tr('Data'), [
         _Item(
           Icons.download_outlined,
-          'Download Data',
+          tr('Download Data'),
           route: '/more/export',
-          subtitle: 'Export CSV / JSON',
+          subtitle: tr('Export CSV / JSON'),
           module: 'data',
         ),
         _Item(
           Icons.backup_outlined,
-          'Backup & Restore',
+          tr('Backup & Restore'),
           route: '/more/backup',
-          subtitle: 'Back up, import & move to a new phone',
+          subtitle: tr('Back up, import & move to a new phone'),
           module: 'data',
         ),
       ]),
-      _Group('Setup', [
+      _Group(tr('Setup'), [
         _Item(
           Icons.category_outlined,
-          'Categories',
+          tr('Categories'),
           route: '/more/categories',
-          subtitle: 'Money in & out categories',
+          subtitle: tr('Money in & out categories'),
           module: 'setup',
         ),
         _Item(
           Icons.sell_outlined,
-          'Tags',
+          tr('Tags'),
           route: '/more/tags',
-          subtitle: 'Label transactions, cutting across category',
+          subtitle: tr('Label transactions, cutting across category'),
           module: 'setup',
         ),
         _Item(
           Icons.settings_outlined,
-          'Settings',
+          tr('Settings'),
           route: '/more/settings',
-          subtitle: 'Currency · theme · notifications',
+          subtitle: tr('Currency · theme · notifications'),
         ),
         _Item(
           Icons.auto_awesome_outlined,
-          "What's new",
+          tr("What's new"),
           route: '/more/whats-new',
-          subtitle: 'See what shipped in ${AppInfo.version}',
+          subtitle: tr('See what shipped in {0}', [AppInfo.version]),
         ),
         _Item(
           Icons.menu_book_outlined,
-          'Guide',
+          tr('Guide'),
           route: '/more/guide',
-          subtitle: 'Every feature explained, plus Basic/Medium/Pro',
+          subtitle: tr('Every feature explained, plus Basic/Medium/Pro'),
         ),
         _Item(
           Icons.info_outline_rounded,
           'About ${AppInfo.name}',
           route: '/more/about',
-          subtitle: 'Version ${AppInfo.version} · Yash Patil',
+          subtitle: tr('Version {0} · Yash Patil', [AppInfo.version]),
         ),
       ]),
     ];
@@ -257,7 +258,7 @@ class MoreScreen extends ConsumerWidget {
                   child: AppListTile(
                     leading: ModeBadge(focused),
                     title: Text(focused.name),
-                    subtitle: const Text(
+                    subtitle: const Tr(
                       'Showing what this mode needs · Full app shows it all',
                     ),
                     trailing: const AppIcon(Icons.chevron_right_rounded),

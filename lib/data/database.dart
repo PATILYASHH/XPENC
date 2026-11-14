@@ -19,6 +19,7 @@ import 'currency_conversion.dart';
 import 'card_statement.dart';
 import 'category_template_file.dart';
 import 'tables.dart';
+import '../core/l10n/l10n.dart';
 
 part 'database.g.dart';
 
@@ -282,7 +283,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 93;
+  int get schemaVersion => 95;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -926,6 +927,15 @@ class AppDatabase extends _$AppDatabase {
         );
         await _createSharedEntryIndexes();
       }
+      if (from < 94) {
+        // An account can hide its Transfer in / out shortcuts (#199).
+        await _addColumnIfMissing(m, accounts, accounts.showTransferIn);
+        await _addColumnIfMissing(m, accounts, accounts.showTransferOut);
+      }
+      if (from < 95) {
+        // The interface language (#191); null follows the phone.
+        await _addColumnIfMissing(m, settings, settings.languageCode);
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -1525,15 +1535,15 @@ class AppDatabase extends _$AppDatabase {
     if (code == null && amount == null) return;
     if (code == null || amount == null) {
       throw ArgumentError(
-        'A foreign amount needs a currency, and a foreign currency needs an '
-        'amount.',
+        tr('A foreign amount needs a currency, and a foreign currency needs an '
+        'amount.'),
       );
     }
     if (!amount.isPositive) {
-      throw ArgumentError('Foreign amount must be positive.');
+      throw ArgumentError(tr('Foreign amount must be positive.'));
     }
     if (currencyForCode(code).code != code) {
-      throw ArgumentError('Unknown currency code: $code.');
+      throw ArgumentError(tr('Unknown currency code: {0}.', [code]));
     }
   }
 
@@ -1561,8 +1571,8 @@ class AppDatabase extends _$AppDatabase {
     if (!amountValid) {
       throw ArgumentError(
         type.isIncomeOrExpense
-            ? 'Amount cannot be negative; direction comes from type.'
-            : 'Amount must be positive; direction comes from type.',
+            ? tr('Amount cannot be negative; direction comes from type.')
+            : tr('Amount must be positive; direction comes from type.'),
       );
     }
     // Goals and loans are not spendable accounts — they are only ever funded
@@ -1576,7 +1586,7 @@ class AppDatabase extends _$AppDatabase {
       )..where((a) => a.id.equals(accountId))).getSingleOrNull();
       if (account?.type == AccountType.loan) {
         throw ArgumentError(
-          'A goal or loan account is not spendable — transfer funds instead.',
+          tr('A goal or loan account is not spendable — transfer funds instead.'),
         );
       }
       if (account?.type == AccountType.goal) {
@@ -1587,10 +1597,10 @@ class AppDatabase extends _$AppDatabase {
         if (!allowed) {
           throw ArgumentError(
             type.isIncomeOrExpense
-                ? 'Turn on "Show in Money in / out" on this goal to use it '
-                      'here — or transfer funds instead.'
-                : 'A goal or loan account is not spendable — transfer funds '
-                      'instead.',
+                ? tr('Turn on "Show in Money in / out" on this goal to use it '
+                      'here — or transfer funds instead.')
+                : tr('A goal or loan account is not spendable — transfer funds '
+                      'instead.'),
           );
         }
       }
@@ -1600,25 +1610,25 @@ class AppDatabase extends _$AppDatabase {
     // a label: balances come from PersonEntries, so it never counts toward
     // owe/due.
     if (!type.isPersonMovement && !type.isIncomeOrExpense && personId != null) {
-      throw ArgumentError('Only a person movement or payee names a person.');
+      throw ArgumentError(tr('Only a person movement or payee names a person.'));
     }
     if (!type.isIncomeOrExpense && payee != null) {
-      throw ArgumentError('Only money in or money out can have a payee.');
+      throw ArgumentError(tr('Only money in or money out can have a payee.'));
     }
     if (!type.isIncomeOrExpense &&
         type != TxType.transfer &&
         recurringRuleId != null) {
       throw ArgumentError(
-        'Only money in, money out or a transfer can come from a rule.',
+        tr('Only money in, money out or a transfer can come from a rule.'),
       );
     }
     switch (type) {
       case TxType.transfer:
         if (toAccountId == null) {
-          throw ArgumentError('A transfer needs a destination account.');
+          throw ArgumentError(tr('A transfer needs a destination account.'));
         }
         if (toAccountId == accountId) {
-          throw ArgumentError('Cannot transfer to the same account.');
+          throw ArgumentError(tr('Cannot transfer to the same account.'));
         }
         if (categoryId != null) {
           final from = await (select(
@@ -1633,33 +1643,33 @@ class AppDatabase extends _$AppDatabase {
           }.any((t) => t == AccountType.goal || t == AccountType.loan);
           if (!touchesGoalOrLoan) {
             throw ArgumentError(
-              'Only a goal or loan contribution can carry a category.',
+              tr('Only a goal or loan contribution can carry a category.'),
             );
           }
         }
       case TxType.personOut:
       case TxType.personIn:
         if (personId == null) {
-          throw ArgumentError('A person movement must name the person.');
+          throw ArgumentError(tr('A person movement must name the person.'));
         }
         if (categoryId != null) {
           throw ArgumentError(
-            'Lending is not spending — a person movement carries no category.',
+            tr('Lending is not spending — a person movement carries no category.'),
           );
         }
         if (toAccountId != null) {
-          throw ArgumentError('Only transfers have a destination account.');
+          throw ArgumentError(tr('Only transfers have a destination account.'));
         }
       case TxType.income:
       case TxType.expense:
         if (toAccountId != null) {
-          throw ArgumentError('Only transfers have a destination account.');
+          throw ArgumentError(tr('Only transfers have a destination account.'));
         }
       case TxType.correctionIn:
       case TxType.correctionOut:
         if (categoryId != null || personId != null || toAccountId != null) {
           throw ArgumentError(
-            'A balance correction only names its account and amount.',
+            tr('A balance correction only names its account and amount.'),
           );
         }
     }
@@ -1695,8 +1705,8 @@ class AppDatabase extends _$AppDatabase {
     final rate = await latestRate(code, asOf: date);
     if (rate == null) {
       throw ArgumentError(
-        'No exchange rate set for $code yet — add one in Settings > '
-        'Currency before posting this transaction.',
+        tr('No exchange rate set for {0} yet — add one in Settings > '
+        'Currency before posting this transaction.', [code]),
       );
     }
     return (code, rate.rateToBaseMicros);
@@ -1815,7 +1825,7 @@ class AppDatabase extends _$AppDatabase {
     int? modeId,
   }) async {
     if (legs.length < 2) {
-      throw ArgumentError('A split payment needs at least two accounts.');
+      throw ArgumentError(tr('A split payment needs at least two accounts.'));
     }
     for (final leg in legs) {
       await _validateTx(
@@ -1898,7 +1908,7 @@ class AppDatabase extends _$AppDatabase {
     int? modeId,
   }) async {
     if (changeAccountId == accountId) {
-      throw ArgumentError('Change must go to a different account.');
+      throw ArgumentError(tr('Change must go to a different account.'));
     }
     await _validateTx(
       type: TxType.expense,
@@ -2002,7 +2012,7 @@ class AppDatabase extends _$AppDatabase {
   /// error, since the picker has no way to know a link already exists.
   Future<void> addTransactionLink(int aId, int bId) async {
     if (aId == bId) {
-      throw ArgumentError('A transaction cannot be linked to itself.');
+      throw ArgumentError(tr('A transaction cannot be linked to itself.'));
     }
     final lo = aId < bId ? aId : bId;
     final hi = aId < bId ? bId : aId;
@@ -2037,7 +2047,7 @@ class AppDatabase extends _$AppDatabase {
       )..where((e) => e.transactionId.equals(id))).getSingleOrNull();
       if (owner != null) {
         throw ArgumentError(
-          'This belongs to a person. Delete it from their page instead.',
+          tr('This belongs to a person. Delete it from their page instead.'),
         );
       }
 
@@ -2168,7 +2178,7 @@ class AppDatabase extends _$AppDatabase {
   Future<void> renamePayee({required String from, required String to}) {
     final trimmed = to.trim();
     if (trimmed.isEmpty) {
-      throw ArgumentError('Payee name cannot be empty.');
+      throw ArgumentError(tr('Payee name cannot be empty.'));
     }
     return (update(transactions)..where((t) => t.payee.equals(from))).write(
       TransactionsCompanion(payee: Value(trimmed)),
@@ -2434,18 +2444,18 @@ class AppDatabase extends _$AppDatabase {
     int? modeId,
   }) async {
     final row = await transactionById(transactionId);
-    if (row == null) throw ArgumentError('Transaction not found.');
+    if (row == null) throw ArgumentError(tr('Transaction not found.'));
 
     final isPersonLinked =
         row.type.isPersonMovement ||
         (row.type.isIncomeOrExpense && await isPersonLinkedTransaction(row.id));
     if (isPersonLinked) {
-      throw ArgumentError("This can't be turned into a template.");
+      throw ArgumentError(tr("This can't be turned into a template."));
     }
     final splits = await splitsForTransaction(transactionId);
     if (splits.isNotEmpty) {
       throw ArgumentError(
-        "A split transaction can't be turned into a template yet.",
+        tr("A split transaction can't be turned into a template yet."),
       );
     }
 
@@ -2506,7 +2516,7 @@ class AppDatabase extends _$AppDatabase {
     String? notes,
   }) {
     if (!targetAmount.isPositive) {
-      throw ArgumentError('Target amount must be greater than zero.');
+      throw ArgumentError(tr('Target amount must be greater than zero.'));
     }
     return transaction(() async {
       final accountId = await into(accounts).insert(
@@ -2544,7 +2554,7 @@ class AppDatabase extends _$AppDatabase {
     String? notes,
   }) {
     if (!targetAmount.isPositive) {
-      throw ArgumentError('Target amount must be greater than zero.');
+      throw ArgumentError(tr('Target amount must be greater than zero.'));
     }
     return transaction(() async {
       await (update(accounts)..where((a) => a.id.equals(accountId))).write(
@@ -2623,7 +2633,7 @@ class AppDatabase extends _$AppDatabase {
     DateTime? autoPayStartsOn,
   }) {
     if (!principal.isPositive) {
-      throw ArgumentError('Principal must be greater than zero.');
+      throw ArgumentError(tr('Principal must be greater than zero.'));
     }
     final negative = Money.fromPaise(-principal.paise);
     final resolvedEmi = _resolvedEmi(
@@ -2633,7 +2643,7 @@ class AppDatabase extends _$AppDatabase {
       tenureMonths: tenureMonths,
     );
     if (autoPayFromAccountId != null && resolvedEmi == null) {
-      throw ArgumentError('Enter the monthly EMI to set up auto-pay.');
+      throw ArgumentError(tr('Enter the monthly EMI to set up auto-pay.'));
     }
     return transaction(() async {
       final accountId = await into(accounts).insert(
@@ -2741,16 +2751,16 @@ class AppDatabase extends _$AppDatabase {
     String? note,
   }) async {
     if (!amount.isPositive) {
-      throw ArgumentError('Enter an amount greater than zero.');
+      throw ArgumentError(tr('Enter an amount greater than zero.'));
     }
     final interest = (interestAmount != null && interestAmount.isPositive)
         ? interestAmount
         : null;
     if (interest != null && interest.paise > amount.paise) {
-      throw ArgumentError('Interest cannot be more than the total payment.');
+      throw ArgumentError(tr('Interest cannot be more than the total payment.'));
     }
     if (interest != null && interestCategoryId == null) {
-      throw ArgumentError('Pick a category for the interest portion.');
+      throw ArgumentError(tr('Pick a category for the interest portion.'));
     }
     final principal = interest == null
         ? amount
@@ -2925,7 +2935,7 @@ class AppDatabase extends _$AppDatabase {
     int notifyDaysBefore = 3,
   }) async {
     if (statementDay < 1 || statementDay > 31 || dueDay < 1 || dueDay > 31) {
-      throw ArgumentError('Pick a day between 1 and 31.');
+      throw ArgumentError(tr('Pick a day between 1 and 31.'));
     }
     final account = await (select(
       accounts,
@@ -2933,7 +2943,7 @@ class AppDatabase extends _$AppDatabase {
     if (account == null ||
         account.type != AccountType.card ||
         account.cardKind != CardKind.credit) {
-      throw ArgumentError('Only a credit card can track a statement cycle.');
+      throw ArgumentError(tr('Only a credit card can track a statement cycle.'));
     }
     await into(creditCardDetails).insertOnConflictUpdate(
       CreditCardDetailsCompanion.insert(
@@ -3013,8 +3023,8 @@ class AppDatabase extends _$AppDatabase {
         )..where((c) => c.accountId.equals(cardId))).getSingleOrNull();
         if (detail == null) {
           throw ArgumentError(
-            "Turn on the card's statement tracking first — that's when the "
-            'bill is due.',
+            tr("Turn on the card's statement tracking first — that's when the "
+            'bill is due.'),
           );
         }
         await _validateTransferTarget(
@@ -3170,14 +3180,14 @@ class AppDatabase extends _$AppDatabase {
     required Money openingBalance,
   }) {
     if (openingBalance.isNegative) {
-      throw ArgumentError('Starting amount cannot be negative.');
+      throw ArgumentError(tr('Starting amount cannot be negative.'));
     }
     return transaction(() async {
       final account = await (select(
         accounts,
       )..where((a) => a.id.equals(accountId))).getSingleOrNull();
       if (account == null || account.type != AccountType.goal) {
-        throw ArgumentError('This account is not a goal.');
+        throw ArgumentError(tr('This account is not a goal.'));
       }
       await (update(accounts)..where((a) => a.id.equals(accountId))).write(
         AccountsCompanion(openingBalance: Value(openingBalance)),
@@ -3304,14 +3314,14 @@ class AppDatabase extends _$AppDatabase {
     int? modeId,
   }) {
     if (!amount.isPositive) {
-      throw ArgumentError('Amount must be positive.');
+      throw ArgumentError(tr('Amount must be positive.'));
     }
     if (categoryId != null) {
       if (direction != PersonDirection.iOwe) {
-        throw ArgumentError('Only a repayment can be counted as money in.');
+        throw ArgumentError(tr('Only a repayment can be counted as money in.'));
       }
       if (accountId == null) {
-        throw ArgumentError('A repayment counted as money in must move money.');
+        throw ArgumentError(tr('A repayment counted as money in must move money.'));
       }
     }
     return transaction(() async {
@@ -3402,14 +3412,14 @@ class AppDatabase extends _$AppDatabase {
     Set<int>? tagIds,
   }) {
     if (!amount.isPositive) {
-      throw ArgumentError('Amount must be positive.');
+      throw ArgumentError(tr('Amount must be positive.'));
     }
     if (categoryId != null) {
       if (direction != PersonDirection.iOwe) {
-        throw ArgumentError('Only a repayment can be counted as money in.');
+        throw ArgumentError(tr('Only a repayment can be counted as money in.'));
       }
       if (accountId == null) {
-        throw ArgumentError('A repayment counted as money in must move money.');
+        throw ArgumentError(tr('A repayment counted as money in must move money.'));
       }
     }
     return transaction(() async {
@@ -3720,10 +3730,10 @@ class AppDatabase extends _$AppDatabase {
     required DateTime effectiveAt,
   }) {
     if (rateToBaseMicros <= 0) {
-      throw ArgumentError('Rate must be positive.');
+      throw ArgumentError(tr('Rate must be positive.'));
     }
     if (currencyForCode(currencyCode).code != currencyCode) {
-      throw ArgumentError('Unknown currency code: $currencyCode.');
+      throw ArgumentError(tr('Unknown currency code: {0}.', [currencyCode]));
     }
     return into(currencyRates).insert(
       CurrencyRatesCompanion.insert(
@@ -3828,6 +3838,21 @@ class AppDatabase extends _$AppDatabase {
         ? a.currentBalance
         : convertUsingRate(a.currentBalance, rate.rateToBaseMicros);
   }
+
+  /// Shows or hides the Transfer in / Transfer out shortcuts on [id]'s page
+  /// (GitHub #199) — e.g. a vending machine's prepaid balance can be topped
+  /// up but never moved anywhere else.
+  Future<void> setAccountTransferShortcuts(
+    int id, {
+    required bool transferIn,
+    required bool transferOut,
+  }) =>
+      (update(accounts)..where((a) => a.id.equals(id))).write(
+        AccountsCompanion(
+          showTransferIn: Value(transferIn),
+          showTransferOut: Value(transferOut),
+        ),
+      );
 
   /// Flips whether [id]'s balance counts toward [watchNetWorth] — the toggle
   /// behind Settings > Customize Dashboard.
@@ -3984,8 +4009,8 @@ class AppDatabase extends _$AppDatabase {
         final sum = splits.fold(const Money.zero(), (s, e) => s + e.amount);
         if (sum != tx.amount) {
           throw ArgumentError(
-            'Split amounts (${sum.paise}) must add up to the transaction '
-            'total (${tx.amount.paise}).',
+            tr('Split amounts ({0}) must add up to the transaction '
+            'total ({1}).', [sum.paise, tx.amount.paise]),
           );
         }
       }
@@ -4027,11 +4052,11 @@ class AppDatabase extends _$AppDatabase {
     String? currencyCode,
   }) {
     if (type == AccountType.card && cardKind == null) {
-      throw ArgumentError('A card must be credit or debit.');
+      throw ArgumentError(tr('A card must be credit or debit.'));
     }
     if (cardKind == CardKind.debit && linkedAccountId == null) {
       throw ArgumentError(
-        'A debit card must be linked to the bank account it draws from.',
+        tr('A debit card must be linked to the bank account it draws from.'),
       );
     }
     // An instrument (debit card) holds no balance, and no currency, of its
@@ -4042,7 +4067,7 @@ class AppDatabase extends _$AppDatabase {
     final resolvedCurrencyCode = linkedAccountId == null ? currencyCode : null;
     if (resolvedCurrencyCode != null &&
         currencyForCode(resolvedCurrencyCode).code != resolvedCurrencyCode) {
-      throw ArgumentError('Unknown currency code: $resolvedCurrencyCode.');
+      throw ArgumentError(tr('Unknown currency code: {0}.', [resolvedCurrencyCode]));
     }
 
     return transaction(() async {
@@ -4119,7 +4144,7 @@ class AppDatabase extends _$AppDatabase {
   }) {
     final trimmed = name.trim();
     if (trimmed.isEmpty) {
-      throw ArgumentError('Give the account a name.');
+      throw ArgumentError(tr('Give the account a name.'));
     }
     return (update(accounts)..where((a) => a.id.equals(id))).write(
       AccountsCompanion(
@@ -4149,19 +4174,19 @@ class AppDatabase extends _$AppDatabase {
   Future<void> setAccountCurrency(int id, String? currencyCode) async {
     if (currencyCode != null &&
         currencyForCode(currencyCode).code != currencyCode) {
-      throw ArgumentError('Unknown currency code: $currencyCode.');
+      throw ArgumentError(tr('Unknown currency code: {0}.', [currencyCode]));
     }
     final account = await (select(
       accounts,
     )..where((a) => a.id.equals(id))).getSingle();
     if (account.linkedAccountId != null) {
       throw ArgumentError(
-        "A linked card always uses its bank account's currency.",
+        tr("A linked card always uses its bank account's currency."),
       );
     }
     if (await countTransactionsForAccount(id) > 0) {
       throw ArgumentError(
-        'This account already has transactions — its currency is locked.',
+        tr('This account already has transactions — its currency is locked.'),
       );
     }
     await (update(accounts)..where((a) => a.id.equals(id))).write(
@@ -4186,10 +4211,10 @@ class AppDatabase extends _$AppDatabase {
         accounts,
       )..where((a) => a.id.equals(accountId))).getSingleOrNull();
       if (account == null || account.type == AccountType.goal) {
-        throw ArgumentError('This account cannot be corrected here.');
+        throw ArgumentError(tr('This account cannot be corrected here.'));
       }
       if (account.linkedAccountId != null) {
-        throw ArgumentError('This card holds no balance of its own.');
+        throw ArgumentError(tr('This card holds no balance of its own.'));
       }
       await (update(accounts)..where((a) => a.id.equals(accountId))).write(
         AccountsCompanion(openingBalance: Value(openingBalance)),
@@ -4215,10 +4240,10 @@ class AppDatabase extends _$AppDatabase {
     final account = await (select(
       accounts,
     )..where((a) => a.id.equals(accountId))).getSingleOrNull();
-    if (account == null) throw ArgumentError('Account not found.');
+    if (account == null) throw ArgumentError(tr('Account not found.'));
     if (account.linkedAccountId != null) {
       throw ArgumentError(
-        'This card holds no balance of its own — correct its bank instead.',
+        tr('This card holds no balance of its own — correct its bank instead.'),
       );
     }
     final diff = actualBalance - account.currentBalance;
@@ -4274,41 +4299,41 @@ class AppDatabase extends _$AppDatabase {
     )..where((a) => a.linkedAccountId.equals(id))).getSingleOrNull();
     if (linkedCard != null) {
       throw ArgumentError(
-        '"${linkedCard.name}" draws from this account. Remove that card '
-        'first.',
+        tr('"{0}" draws from this account. Remove that card '
+        'first.', [linkedCard.name]),
       );
     }
     if (await countTransactionsForAccount(id) > 0) {
       throw ArgumentError(
-        'This account has transaction history — archive it instead.',
+        tr('This account has transaction history — archive it instead.'),
       );
     }
     final reminder = await (select(
       reminders,
     )..where((r) => r.accountId.equals(id))).getSingleOrNull();
     if (reminder != null) {
-      throw ArgumentError('A reminder still points at this account.');
+      throw ArgumentError(tr('A reminder still points at this account.'));
     }
     final rule = await (select(
       merchantRules,
     )..where((r) => r.accountId.equals(id))).getSingleOrNull();
     if (rule != null) {
-      throw ArgumentError('A merchant rule still points at this account.');
+      throw ArgumentError(tr('A merchant rule still points at this account.'));
     }
     final recurring = await (select(
       recurringRules,
     )..where((r) => r.accountId.equals(id))).getSingleOrNull();
     if (recurring != null) {
       throw ArgumentError(
-        '"${recurring.name}" auto-posts from this account. Delete that rule '
-        'first.',
+        tr('"{0}" auto-posts from this account. Delete that rule '
+        'first.', [recurring.name]),
       );
     }
     final settingsRow = await getSettings();
     if (settingsRow.quickAddAccountId == id) {
       throw ArgumentError(
-        'The quick-add notification still posts to this account. Change '
-        'that in Settings first.',
+        tr('The quick-add notification still posts to this account. Change '
+        'that in Settings first.'),
       );
     }
     final template =
@@ -4317,8 +4342,8 @@ class AppDatabase extends _$AppDatabase {
             .getSingleOrNull();
     if (template != null) {
       throw ArgumentError(
-        '"${template.name}" template still points at this account. Delete '
-        'that template first.',
+        tr('"{0}" template still points at this account. Delete '
+        'that template first.', [template.name]),
       );
     }
     return transaction(() async {
@@ -4752,7 +4777,7 @@ class AppDatabase extends _$AppDatabase {
           }.toList()..sort());
     final category = await categoryById(categoryId);
     if (category == null) {
-      throw ArgumentError('That category no longer exists.');
+      throw ArgumentError(tr('That category no longer exists.'));
     }
     if (category.parentId != null) {
       final parentBudget =
@@ -4761,8 +4786,8 @@ class AppDatabase extends _$AppDatabase {
               .getSingleOrNull();
       if (parentBudget != null && amount > parentBudget.amount) {
         throw ArgumentError(
-          "A subcategory's budget can't be more than its parent's "
-          '(${MoneyFormat.symbol(parentBudget.amount)}).',
+          tr("A subcategory's budget can't be more than its parent's "
+          '({0}).', [MoneyFormat.symbol(parentBudget.amount)]),
         );
       }
     } else {
@@ -4783,9 +4808,9 @@ class AppDatabase extends _$AppDatabase {
               (c) => c.id == childBudget.categoryId,
             );
             throw ArgumentError(
-              '${childCategory.name} is already budgeted '
-              '${MoneyFormat.symbol(childBudget.amount)} — lower that first, '
-              'or set this to at least that much.',
+              tr('{0} is already budgeted '
+              '{1} — lower that first, '
+              'or set this to at least that much.', [childCategory.name, MoneyFormat.symbol(childBudget.amount)]),
             );
           }
         }
@@ -4846,22 +4871,22 @@ class AppDatabase extends _$AppDatabase {
       budgets,
     )..where((b) => b.categoryId.equals(categoryId))).getSingleOrNull();
     if (existing == null) {
-      throw ArgumentError('Set a budget for this category first.');
+      throw ArgumentError(tr('Set a budget for this category first.'));
     }
     if (targetCategoryId != null) {
       if (targetCategoryId == categoryId) {
-        throw ArgumentError("A category can't overflow into itself.");
+        throw ArgumentError(tr("A category can't overflow into itself."));
       }
       final category = await categoryById(categoryId);
       final target = await categoryById(targetCategoryId);
       if (category == null || target == null) {
-        throw ArgumentError('That category no longer exists.');
+        throw ArgumentError(tr('That category no longer exists.'));
       }
       if (target.parentId == categoryId ||
           category.parentId == targetCategoryId) {
         throw ArgumentError(
-          "A category can't overflow into its own parent or child — the "
-          'budget roll-up already combines them.',
+          tr("A category can't overflow into its own parent or child — the "
+          'budget roll-up already combines them.'),
         );
       }
       var cursor = targetCategoryId;
@@ -4874,8 +4899,8 @@ class AppDatabase extends _$AppDatabase {
         if (next?.overflowTargetCategoryId == null) break;
         if (next!.overflowTargetCategoryId == categoryId) {
           throw ArgumentError(
-            'That would create a loop — the target category already '
-            'overflows (directly or indirectly) back into this one.',
+            tr('That would create a loop — the target category already '
+            'overflows (directly or indirectly) back into this one.'),
           );
         }
         cursor = next.overflowTargetCategoryId!;
@@ -4902,7 +4927,7 @@ class AppDatabase extends _$AppDatabase {
       budgets,
     )..where((b) => b.categoryId.equals(categoryId))).getSingleOrNull();
     if (existing == null) {
-      throw ArgumentError('Set a budget for this category first.');
+      throw ArgumentError(tr('Set a budget for this category first.'));
     }
     await (update(
       budgets,
@@ -4994,13 +5019,13 @@ class AppDatabase extends _$AppDatabase {
     String? note,
   }) async {
     if (amount.isZero) {
-      throw ArgumentError('Amount must not be zero.');
+      throw ArgumentError(tr('Amount must not be zero.'));
     }
     final account = await (select(
       accounts,
     )..where((a) => a.id.equals(accountId))).getSingleOrNull();
     if (account == null || !account.envelopeMode) {
-      throw ArgumentError('Envelope Mode is off for this account.');
+      throw ArgumentError(tr('Envelope Mode is off for this account.'));
     }
     return into(allocations).insert(
       AllocationsCompanion.insert(
@@ -5026,10 +5051,10 @@ class AppDatabase extends _$AppDatabase {
     String? note,
   }) async {
     if (!amount.isPositive) {
-      throw ArgumentError('Amount must be greater than zero.');
+      throw ArgumentError(tr('Amount must be greater than zero.'));
     }
     if (fromCategoryId == toCategoryId) {
-      throw ArgumentError('Pick two different categories.');
+      throw ArgumentError(tr('Pick two different categories.'));
     }
     final when = date ?? DateTime.now();
     await transaction(() async {
@@ -5203,7 +5228,7 @@ class AppDatabase extends _$AppDatabase {
     Map<int?, Money>? manualAmounts,
   }) async {
     if (!amount.isPositive) {
-      throw ArgumentError('Amount must be greater than zero.');
+      throw ArgumentError(tr('Amount must be greater than zero.'));
     }
 
     final orderedParticipants = participantIds.toList();
@@ -5244,7 +5269,7 @@ class AppDatabase extends _$AppDatabase {
             // My own share: real spending, not a debt.
             if (accountId == null || categoryId == null) {
               throw ArgumentError(
-                'Pick an account and category for your own share.',
+                tr('Pick an account and category for your own share.'),
               );
             }
             txId = await addTransaction(
@@ -5396,45 +5421,45 @@ class AppDatabase extends _$AppDatabase {
     Money? foreignAmount,
   }) {
     if (!amount.isPositive) {
-      throw ArgumentError('Amount must be positive.');
+      throw ArgumentError(tr('Amount must be positive.'));
     }
     _validateForeignCurrency(foreignCurrencyCode, foreignAmount);
     if (category != null && category.kind != kind) {
       throw ArgumentError(
-        'That is a ${category.kind == CategoryKind.income ? 'money-in' : 'money-out'} '
-        'category — pick one that matches.',
+        tr('That is a {0} '
+        'category — pick one that matches.', [category.kind == CategoryKind.income ? 'money-in' : 'money-out']),
       );
     }
     if (frequency == RecurringFrequency.monthly) {
       if (dayOfMonth == null || dayOfMonth < 1 || dayOfMonth > 31) {
-        throw ArgumentError('A monthly rule needs a day of the month (1–31).');
+        throw ArgumentError(tr('A monthly rule needs a day of the month (1–31).'));
       }
       if (monthOfYear != null) {
-        throw ArgumentError('Only a yearly rule pins a month.');
+        throw ArgumentError(tr('Only a yearly rule pins a month.'));
       }
     } else if (frequency == RecurringFrequency.yearly) {
       if (dayOfMonth == null || dayOfMonth < 1 || dayOfMonth > 31) {
-        throw ArgumentError('A yearly rule needs a day of the month (1–31).');
+        throw ArgumentError(tr('A yearly rule needs a day of the month (1–31).'));
       }
       if (monthOfYear == null || monthOfYear < 1 || monthOfYear > 12) {
-        throw ArgumentError('A yearly rule needs a month.');
+        throw ArgumentError(tr('A yearly rule needs a month.'));
       }
     } else if (dayOfMonth != null || monthOfYear != null) {
       throw ArgumentError(
-        'Only a monthly or yearly rule pins a day of the month.',
+        tr('Only a monthly or yearly rule pins a day of the month.'),
       );
     }
     if (promoAmount != null) {
       // Zero is valid — a free trial period, not just a discount (GitHub
       // #87: e.g. a service free for the first N months).
       if (promoAmount.isNegative) {
-        throw ArgumentError('Promo amount cannot be negative.');
+        throw ArgumentError(tr('Promo amount cannot be negative.'));
       }
       if (promoOccurrences == null || promoOccurrences < 1) {
-        throw ArgumentError('A promotion needs at least 1 occurrence.');
+        throw ArgumentError(tr('A promotion needs at least 1 occurrence.'));
       }
     } else if (promoOccurrences != null) {
-      throw ArgumentError('A promotion needs a promo amount.');
+      throw ArgumentError(tr('A promotion needs a promo amount.'));
     }
   }
 
@@ -5452,17 +5477,17 @@ class AppDatabase extends _$AppDatabase {
     required int? categoryId,
   }) async {
     if (accountId == toAccountId) {
-      throw ArgumentError('The source and destination must be different.');
+      throw ArgumentError(tr('The source and destination must be different.'));
     }
     final to = await (select(
       accounts,
     )..where((a) => a.id.equals(toAccountId))).getSingleOrNull();
     if (to == null || to.isArchived) {
-      throw ArgumentError('Choose where the money goes.');
+      throw ArgumentError(tr('Choose where the money goes.'));
     }
     if (to.linkedAccountId != null) {
       throw ArgumentError(
-        '"${to.name}" draws from its bank — send the money to the bank.',
+        tr('"{0}" draws from its bank — send the money to the bank.', [to.name]),
       );
     }
     final from = await (select(
@@ -5471,13 +5496,13 @@ class AppDatabase extends _$AppDatabase {
     if (from == null ||
         from.type == AccountType.goal ||
         from.type == AccountType.loan) {
-      throw ArgumentError('Choose a spendable account to fund it from.');
+      throw ArgumentError(tr('Choose a spendable account to fund it from.'));
     }
     if (categoryId != null &&
         to.type != AccountType.goal &&
         to.type != AccountType.loan) {
       throw ArgumentError(
-        'A transfer between your own accounts has no category.',
+        tr('A transfer between your own accounts has no category.'),
       );
     }
     // Throws a user-facing "add a rate" when one is missing.
@@ -5514,11 +5539,11 @@ class AppDatabase extends _$AppDatabase {
       );
     } else {
       if (categoryId == null) {
-        throw ArgumentError('Choose a category.');
+        throw ArgumentError(tr('Choose a category.'));
       }
       category = await categoryById(categoryId);
       if (category == null) {
-        throw ArgumentError('That category no longer exists.');
+        throw ArgumentError(tr('That category no longer exists.'));
       }
     }
     final dayOfMonth =
@@ -5599,11 +5624,11 @@ class AppDatabase extends _$AppDatabase {
       );
     } else {
       if (categoryId == null) {
-        throw ArgumentError('Choose a category.');
+        throw ArgumentError(tr('Choose a category.'));
       }
       category = await categoryById(categoryId);
       if (category == null) {
-        throw ArgumentError('That category no longer exists.');
+        throw ArgumentError(tr('That category no longer exists.'));
       }
     }
     final dayOfMonth =
@@ -6235,10 +6260,10 @@ class AppDatabase extends _$AppDatabase {
         pendingTxns,
       )..where((t) => t.id.equals(pendingId))).getSingle();
       if (p.parsedAmount == null || p.parsedDirection == null) {
-        throw ArgumentError('This message has no amount or direction to post.');
+        throw ArgumentError(tr('This message has no amount or direction to post.'));
       }
       if (p.createdTransactionId != null) {
-        throw ArgumentError('This card was already posted.');
+        throw ArgumentError(tr('This card was already posted.'));
       }
 
       final resolvedPayee = payee ?? p.parsedMerchant;
@@ -6542,7 +6567,7 @@ class AppDatabase extends _$AppDatabase {
   /// [kLastWorkingDay] (GitHub #182) — see [budgetCycleStart].
   Future<void> setBudgetStartDay(int day) {
     if (day < kLastWorkingDay || day > 31) {
-      throw ArgumentError('Pick a day between 1 and 31.');
+      throw ArgumentError(tr('Pick a day between 1 and 31.'));
     }
     return update(
       settings,
@@ -6906,12 +6931,12 @@ class AppDatabase extends _$AppDatabase {
   }) {
     final s = symbol.trim();
     final n = name.trim();
-    if (s.isEmpty) throw ArgumentError('Give it a symbol, like ¤ or Tk.');
-    if (s.length > 8) throw ArgumentError('Keep the symbol to 8 characters.');
-    if (n.isEmpty) throw ArgumentError('Give it a name.');
-    if (n.length > 40) throw ArgumentError('Keep the name to 40 characters.');
+    if (s.isEmpty) throw ArgumentError(tr('Give it a symbol, like ¤ or Tk.'));
+    if (s.length > 8) throw ArgumentError(tr('Keep the symbol to 8 characters.'));
+    if (n.isEmpty) throw ArgumentError(tr('Give it a name.'));
+    if (n.length > 40) throw ArgumentError(tr('Keep the name to 40 characters.'));
     if (decimalDigits < 0 || decimalDigits > 3) {
-      throw ArgumentError('Decimal places must be 0 to 3.');
+      throw ArgumentError(tr('Decimal places must be 0 to 3.'));
     }
     return (symbol: s, name: n);
   }
@@ -6926,10 +6951,10 @@ class AppDatabase extends _$AppDatabase {
   }) async {
     final c = code.trim().toUpperCase();
     if (!RegExp(r'^[A-Z]{3}$').hasMatch(c)) {
-      throw ArgumentError('The code is three letters, like XYZ.');
+      throw ArgumentError(tr('The code is three letters, like XYZ.'));
     }
     if (isBuiltInCurrency(c)) {
-      throw ArgumentError('$c is already in the list — pick it from there.');
+      throw ArgumentError(tr('{0} is already in the list — pick it from there.', [c]));
     }
     final fields = _checkCustomCurrency(
       symbol: symbol,
@@ -6940,7 +6965,7 @@ class AppDatabase extends _$AppDatabase {
       customCurrencies,
     )..where((r) => r.code.equals(c))).getSingleOrNull();
     if (existing != null) {
-      throw ArgumentError('You already made $c.');
+      throw ArgumentError(tr('You already made {0}.', [c]));
     }
     await into(customCurrencies).insert(
       CustomCurrenciesCompanion.insert(
@@ -6981,7 +7006,7 @@ class AppDatabase extends _$AppDatabase {
   /// still does. Its exchange rates go with it.
   Future<void> deleteCustomCurrency(String code) => transaction(() async {
     if ((await getSettings()).currencyCode == code) {
-      throw ArgumentError("It's your parent currency. Pick another one first.");
+      throw ArgumentError(tr("It's your parent currency. Pick another one first."));
     }
     final account =
         await (select(accounts)
@@ -6989,7 +7014,7 @@ class AppDatabase extends _$AppDatabase {
               ..limit(1))
             .getSingleOrNull();
     if (account != null) {
-      throw ArgumentError('"${account.name}" is in $code.');
+      throw ArgumentError(tr('"{0}" is in {1}.', [account.name, code]));
     }
     final tx =
         await (select(transactions)
@@ -7001,14 +7026,14 @@ class AppDatabase extends _$AppDatabase {
               )
               ..limit(1))
             .getSingleOrNull();
-    if (tx != null) throw ArgumentError('Transactions use $code.');
+    if (tx != null) throw ArgumentError(tr('Transactions use {0}.', [code]));
     final rule =
         await (select(recurringRules)
               ..where((r) => r.foreignCurrencyCode.equals(code))
               ..limit(1))
             .getSingleOrNull();
     if (rule != null) {
-      throw ArgumentError('"${rule.name}" uses $code.');
+      throw ArgumentError(tr('"{0}" uses {1}.', [rule.name, code]));
     }
     await (delete(
       currencyRates,
@@ -7044,6 +7069,11 @@ class AppDatabase extends _$AppDatabase {
   Future<void> setFontFamily(String? name) =>
       update(settings).write(SettingsCompanion(fontFamily: Value(name)));
 
+  /// Sets the interface language (GitHub #191) — an `AppLanguage.code`, or
+  /// null to follow the phone's own language.
+  Future<void> setLanguageCode(String? code) =>
+      update(settings).write(SettingsCompanion(languageCode: Value(code)));
+
   /// The 7 destinations a configurable bottom-nav slot can hold — Dashboard
   /// and More are pinned and deliberately excluded (see GitHub #70's design
   /// spec, "Non-goals").
@@ -7060,10 +7090,10 @@ class AppDatabase extends _$AppDatabase {
   Future<void> setBottomNavSlots(String left, String right) async {
     if (!bottomNavCatalogIds.contains(left) ||
         !bottomNavCatalogIds.contains(right)) {
-      throw ArgumentError('Unknown bottom-nav item.');
+      throw ArgumentError(tr('Unknown bottom-nav item.'));
     }
     if (left == right) {
-      throw ArgumentError('The two bottom-nav slots must be different.');
+      throw ArgumentError(tr('The two bottom-nav slots must be different.'));
     }
     await update(
       settings,
@@ -7077,11 +7107,11 @@ class AppDatabase extends _$AppDatabase {
     final valid = RegExp(r'^-?[a-zA-Z]+$');
     final ids = encoded.isEmpty ? const <String>[] : encoded.split(',');
     if (ids.any((id) => !valid.hasMatch(id))) {
-      throw ArgumentError('Unknown dashboard widget.');
+      throw ArgumentError(tr('Unknown dashboard widget.'));
     }
     final bare = [for (final id in ids) id.replaceFirst('-', '')];
     if (bare.toSet().length != bare.length) {
-      throw ArgumentError('The same dashboard widget is listed twice.');
+      throw ArgumentError(tr('The same dashboard widget is listed twice.'));
     }
     await update(
       settings,
@@ -7130,15 +7160,15 @@ class AppDatabase extends _$AppDatabase {
   /// here; an id that doesn't resolve just shows as an empty slot.
   Future<void> setHoldMenuSlots(List<String> ids) async {
     if (ids.length != 8) {
-      throw ArgumentError('The hold menu needs exactly 8 slots.');
+      throw ArgumentError(tr('The hold menu needs exactly 8 slots.'));
     }
     final filled = ids.where((id) => id.isNotEmpty).toList();
     if (filled.toSet().length != filled.length) {
-      throw ArgumentError('The same quick action is in two slots.');
+      throw ArgumentError(tr('The same quick action is in two slots.'));
     }
     final valid = RegExp(r'^([a-z0-9-]+|template:\d+)$');
     if (filled.any((id) => !valid.hasMatch(id))) {
-      throw ArgumentError('Unknown hold-menu item.');
+      throw ArgumentError(tr('Unknown hold-menu item.'));
     }
     await update(
       settings,
@@ -7212,16 +7242,16 @@ class AppDatabase extends _$AppDatabase {
     if (frequency == AutoBackupFrequency.custom &&
         customDays <= 0 &&
         customHours <= 0) {
-      throw ArgumentError('Set a custom interval of at least 1 hour.');
+      throw ArgumentError(tr('Set a custom interval of at least 1 hour.'));
     }
     if (frequency == AutoBackupFrequency.onChange && cooldownMinutes < 0) {
-      throw ArgumentError('The cooldown cannot be negative.');
+      throw ArgumentError(tr('The cooldown cannot be negative.'));
     }
     if (retentionDays < 0) {
-      throw ArgumentError('Retention days cannot be negative.');
+      throw ArgumentError(tr('Retention days cannot be negative.'));
     }
     if (retentionMode == BackupRetentionMode.count && retentionCount < 1) {
-      throw ArgumentError('Keep at least 1 backup.');
+      throw ArgumentError(tr('Keep at least 1 backup.'));
     }
     final interval = autoBackupInterval(
       frequency: frequency,
@@ -7233,7 +7263,7 @@ class AppDatabase extends _$AppDatabase {
         retentionDays != 0 &&
         Duration(days: retentionDays) < interval) {
       throw ArgumentError(
-        "Keep-backups-for can't be shorter than how often backups run.",
+        tr("Keep-backups-for can't be shorter than how often backups run."),
       );
     }
     await update(settings).write(
@@ -7464,17 +7494,17 @@ class AppDatabase extends _$AppDatabase {
     if (parentId.present && parentId.value != null) {
       final target = parentId.value!;
       if (target == id) {
-        throw ArgumentError("A category can't be its own parent.");
+        throw ArgumentError(tr("A category can't be its own parent."));
       }
       final self = await categoryById(id);
-      if (self == null) throw ArgumentError('That category no longer exists.');
+      if (self == null) throw ArgumentError(tr('That category no longer exists.'));
       await _assertValidParent(target, self.kind);
       // Two levels only: a category that already has children can't itself
       // become a child, or the tree would grow a third tier.
       if (await countChildCategories(id) > 0) {
         throw ArgumentError(
-          'This category has subcategories, so it must stay top-level. '
-          'Move or remove its subcategories first.',
+          tr('This category has subcategories, so it must stay top-level. '
+          'Move or remove its subcategories first.'),
         );
       }
     }
@@ -7496,16 +7526,16 @@ class AppDatabase extends _$AppDatabase {
   Future<void> _assertValidParent(int parentId, CategoryKind kind) async {
     final parent = await categoryById(parentId);
     if (parent == null || parent.isArchived) {
-      throw ArgumentError('That parent category is unavailable.');
+      throw ArgumentError(tr('That parent category is unavailable.'));
     }
     if (parent.kind != kind) {
       throw ArgumentError(
-        'A subcategory must match its parent — both money in or both money out.',
+        tr('A subcategory must match its parent — both money in or both money out.'),
       );
     }
     if (parent.parentId != null) {
       throw ArgumentError(
-        "You can't nest under a subcategory. Pick a top-level category.",
+        tr("You can't nest under a subcategory. Pick a top-level category."),
       );
     }
   }
@@ -7570,7 +7600,7 @@ class AppDatabase extends _$AppDatabase {
     final self = await categoryById(id);
     if (self == null) return;
     if (!self.isArchived) {
-      throw ArgumentError('Archive this category before deleting it.');
+      throw ArgumentError(tr('Archive this category before deleting it.'));
     }
     final child =
         await (select(categories)
@@ -7579,8 +7609,8 @@ class AppDatabase extends _$AppDatabase {
             .getSingleOrNull();
     if (child != null) {
       throw ArgumentError(
-        'It still has subcategories (like "${child.name}"). Delete those '
-        'first.',
+        tr('It still has subcategories (like "{0}"). Delete those '
+        'first.', [child.name]),
       );
     }
     final reason = await _categoryInUseReason(id);
@@ -7820,7 +7850,7 @@ class AppDatabase extends _$AppDatabase {
       categoryTemplateItems,
     )..where((i) => i.templateId.equals(templateId))).get();
     if (items.isEmpty) {
-      throw ArgumentError('This template has no categories to switch to.');
+      throw ArgumentError(tr('This template has no categories to switch to.'));
     }
     final itemsById = {for (final i in items) i.id: i};
     String keyOf(CategoryTemplateItemRow i) {
@@ -8160,7 +8190,7 @@ class AppDatabase extends _$AppDatabase {
   }) async {
     final category = await categoryById(categoryId);
     if (category == null) {
-      throw ArgumentError('That category no longer exists.');
+      throw ArgumentError(tr('That category no longer exists.'));
     }
     final period = budgetPeriodFor(month, startDay);
     final start = period.start;
@@ -8457,11 +8487,11 @@ class AppDatabase extends _$AppDatabase {
     final version = data['formatVersion'];
     if (version is! int || version > backupFormatVersion) {
       throw ArgumentError(
-        'This backup was made by a newer version of the app.',
+        tr('This backup was made by a newer version of the app.'),
       );
     }
     if (data['accounts'] is! List || data['transactions'] is! List) {
-      throw ArgumentError('This file is not an XPENC backup.');
+      throw ArgumentError(tr('This file is not an XPENC backup.'));
     }
 
     List<Map<String, Object?>> rows(String key) =>

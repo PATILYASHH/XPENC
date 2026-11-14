@@ -9,6 +9,7 @@ import '../../data/database.dart';
 import '../../data/mode_providers.dart';
 import '../../data/providers.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// The ➕ button's entry point (GitHub #125): "start from scratch" or pick a
 /// saved template to prefill from. Only ever called when
@@ -71,7 +72,7 @@ class _AddChoiceSheet extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: Text(
+                child: Tr(
                   'New transaction',
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
@@ -81,8 +82,8 @@ class _AddChoiceSheet extends ConsumerWidget {
             ),
             AppListTile(
               leading: const AppIcon(Icons.add_circle_outline_rounded),
-              title: const Text('Start from scratch'),
-              subtitle: const Text('A blank transaction.'),
+              title: const Tr('Start from scratch'),
+              subtitle: const Tr('A blank transaction.'),
               onTap: () =>
                   Navigator.of(context).pop(const _AddChoiceResult.blank()),
             ),
@@ -111,7 +112,7 @@ class _AddChoiceSheet extends ConsumerWidget {
                   subtitle: Text(_subtitle(t, categoryMap)),
                   trailing: IconButton(
                     icon: const AppIcon(Icons.delete_outline_rounded),
-                    tooltip: 'Delete template',
+                    tooltip: tr('Delete template'),
                     onPressed: () => _confirmDelete(context, ref, t),
                   ),
                   onTap: () => Navigator.of(
@@ -140,19 +141,19 @@ class _AddChoiceSheet extends ConsumerWidget {
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text('Delete "${t.name}"?'),
-        content: const Text(
+        title: Text(tr('Delete "{0}"?', [t.name])),
+        content: const Tr(
           "This only removes the template — transactions already made from "
           "it are untouched.",
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete'),
+            child: const Tr('Delete'),
           ),
         ],
       ),

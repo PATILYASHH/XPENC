@@ -7,6 +7,7 @@ import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Which widget the "Date range" section shows — a plain range picker, or a
 /// week-at-a-time stepper (GitHub #121). Local to the sheet: neither
@@ -151,11 +152,11 @@ class _TransactionFiltersSheetState
               child: Row(
                 children: [
                   Expanded(
-                    child: Text('Filters', style: theme.textTheme.titleLarge),
+                    child: Tr('Filters', style: theme.textTheme.titleLarge),
                   ),
                   TextButton(
                     onPressed: _clearAll,
-                    child: const Text('Clear all'),
+                    child: const Tr('Clear all'),
                   ),
                 ],
               ),
@@ -166,7 +167,7 @@ class _TransactionFiltersSheetState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _sectionLabel(theme, 'Date range'),
+                    _sectionLabel(theme, tr('Date range')),
                     const SizedBox(height: 10),
                     SizedBox(
                       width: double.infinity,
@@ -174,11 +175,11 @@ class _TransactionFiltersSheetState
                         segments: const [
                           ButtonSegment(
                             value: _DateFilterMode.custom,
-                            label: Text('Custom range'),
+                            label: Tr('Custom range'),
                           ),
                           ButtonSegment(
                             value: _DateFilterMode.week,
-                            label: Text('Week'),
+                            label: Tr('Week'),
                           ),
                         ],
                         selected: {_dateMode},
@@ -193,7 +194,7 @@ class _TransactionFiltersSheetState
                         icon: const AppIcon(Icons.event_outlined, size: 18),
                         label: Text(
                           _dateRange == null
-                              ? 'Any time'
+                              ? tr('Any time')
                               : '${DateFormat('d MMM yyyy').format(_dateRange!.start)} '
                                     '– ${DateFormat('d MMM yyyy').format(_dateRange!.end)}',
                         ),
@@ -205,7 +206,7 @@ class _TransactionFiltersSheetState
                             visualDensity: VisualDensity.compact,
                             onPressed: () => _stepWeek(-1),
                             icon: const AppIcon(Icons.chevron_left_rounded),
-                            tooltip: 'Previous week',
+                            tooltip: tr('Previous week'),
                           ),
                           Expanded(
                             child: Text(
@@ -220,7 +221,7 @@ class _TransactionFiltersSheetState
                             visualDensity: VisualDensity.compact,
                             onPressed: () => _stepWeek(1),
                             icon: const AppIcon(Icons.chevron_right_rounded),
-                            tooltip: 'Next week',
+                            tooltip: tr('Next week'),
                           ),
                         ],
                       ),
@@ -232,12 +233,12 @@ class _TransactionFiltersSheetState
                             _dateRange = null;
                             _dateMode = _DateFilterMode.custom;
                           }),
-                          child: const Text('Clear date range'),
+                          child: const Tr('Clear date range'),
                         ),
                       ),
                     if (accounts.isNotEmpty) ...[
                       const SizedBox(height: 16),
-                      _sectionLabel(theme, 'Account'),
+                      _sectionLabel(theme, tr('Account')),
                       const SizedBox(height: 10),
                       Wrap(
                         spacing: 8,
@@ -260,7 +261,7 @@ class _TransactionFiltersSheetState
                     ],
                     if (categories.isNotEmpty) ...[
                       const SizedBox(height: 16),
-                      _sectionLabel(theme, 'Category'),
+                      _sectionLabel(theme, tr('Category')),
                       const SizedBox(height: 10),
                       Wrap(
                         spacing: 8,
@@ -284,7 +285,7 @@ class _TransactionFiltersSheetState
                     ],
                     if (tags.isNotEmpty) ...[
                       const SizedBox(height: 16),
-                      _sectionLabel(theme, 'Tag'),
+                      _sectionLabel(theme, tr('Tag')),
                       const SizedBox(height: 10),
                       Wrap(
                         spacing: 8,
@@ -317,7 +318,7 @@ class _TransactionFiltersSheetState
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
               child: FilledButton(
                 onPressed: _apply,
-                child: const Text('Apply'),
+                child: const Tr('Apply'),
               ),
             ),
           ],

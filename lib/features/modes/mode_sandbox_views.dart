@@ -14,6 +14,7 @@ import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../reports/chart_widgets.dart';
 import 'mode_widgets.dart';
+import '../../core/l10n/l10n.dart';
 
 /// The everyday screens' stand-ins while a mode (a trip) is the focus — its
 /// sandbox: nothing from outside the mode shows.
@@ -73,7 +74,7 @@ class ModeAccountsView extends ConsumerWidget {
       (a, b) => a + b.balance,
     );
     return _SandboxPage(
-      title: 'Accounts',
+      title: tr('Accounts'),
       embedded: embedded,
       children: [
         AppCard(
@@ -84,7 +85,7 @@ class ModeAccountsView extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'For ${mode.name}',
+                  tr('For {0}', [mode.name]),
                   style: theme.textTheme.labelLarge?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -101,7 +102,7 @@ class ModeAccountsView extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
+                Tr(
                   'Real balances come back when the mode is off.',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
@@ -130,15 +131,15 @@ class ModeBudgetsView extends ConsumerWidget {
     final theme = Theme.of(context);
     final limits = ref.watch(modeCategoryLimitsProvider(mode.id));
     return _SandboxPage(
-      title: 'Budgets',
+      title: tr('Budgets'),
       embedded: embedded,
       children: [
         ModeLeftToSpendCard(mode: mode),
-        modeSectionLabel(theme, 'CATEGORY LIMITS'),
+        modeSectionLabel(theme, tr('CATEGORY LIMITS')),
         if (limits.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Text(
+            child: Tr(
               'No category limits — add them in the mode’s editor.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -152,7 +153,7 @@ class ModeBudgetsView extends ConsumerWidget {
         OutlinedButton.icon(
           onPressed: () => context.push('/mode/${mode.id}/edit'),
           icon: const AppIcon(Icons.tune_rounded),
-          label: const Text('Change limits'),
+          label: const Tr('Change limits'),
         ),
       ],
     );
@@ -190,7 +191,7 @@ class ModeStatsView extends ConsumerWidget {
       ..sort((a, b) => b.value.paise.compareTo(a.value.paise));
 
     return _SandboxPage(
-      title: 'Stats',
+      title: tr('Stats'),
       embedded: embedded,
       children: [
         ModeSpendCard(
@@ -199,7 +200,7 @@ class ModeStatsView extends ConsumerWidget {
           currencyNote: mode.currencyCode,
         ),
         if (byCategory.isNotEmpty) ...[
-          modeSectionLabel(theme, 'BY CATEGORY'),
+          modeSectionLabel(theme, tr('BY CATEGORY')),
           AppCard(
             margin: EdgeInsets.zero,
             child: Padding(
@@ -208,7 +209,7 @@ class ModeStatsView extends ConsumerWidget {
                 slices: [
                   for (final e in byCategory)
                     (
-                      label: cats[e.key]?.name ?? 'Uncategorised',
+                      label: cats[e.key]?.name ?? tr('Uncategorised'),
                       value: e.value,
                       color: cats[e.key] != null
                           ? Color(cats[e.key]!.colorValue)
@@ -222,7 +223,7 @@ class ModeStatsView extends ConsumerWidget {
           ),
         ],
         if (days.isNotEmpty) ...[
-          modeSectionLabel(theme, 'DAY BY DAY'),
+          modeSectionLabel(theme, tr('DAY BY DAY')),
           AppCard(
             margin: EdgeInsets.zero,
             child: Padding(
@@ -270,7 +271,7 @@ class ModeStatsView extends ConsumerWidget {
           ),
         ],
         if (byAccount.isNotEmpty) ...[
-          modeSectionLabel(theme, 'BY ACCOUNT'),
+          modeSectionLabel(theme, tr('BY ACCOUNT')),
           AppCard(
             margin: EdgeInsets.zero,
             clipBehavior: Clip.antiAlias,
@@ -282,7 +283,7 @@ class ModeStatsView extends ConsumerWidget {
                     iconKey: accounts[e.key]?.iconKey ?? 'bank',
                     colorValue:
                         accounts[e.key]?.colorValue ?? cs.primary.toARGB32(),
-                    label: accounts[e.key]?.name ?? 'Account',
+                    label: accounts[e.key]?.name ?? tr('Account'),
                     amount: e.value,
                     total: summary.spent,
                   ),
@@ -295,7 +296,7 @@ class ModeStatsView extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 24),
             child: Text(
-              'Nothing spent in ${mode.name} yet.',
+              tr('Nothing spent in {0} yet.', [mode.name]),
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: cs.onSurfaceVariant,

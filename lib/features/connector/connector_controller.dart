@@ -10,6 +10,7 @@ import '../../core/connector/sync/connector_state.dart';
 import '../../core/connector/sync/github_backup_api.dart';
 import '../../core/routing/app_router.dart';
 import '../../data/providers.dart';
+import '../../core/l10n/l10n.dart';
 
 /// The sign-in's return when this page load is one — taken (and wiped from
 /// the address) in `main`, before the router reads the address.
@@ -88,10 +89,10 @@ class ConnectorController extends Notifier<ConnectorView> {
     connectorLoginReturn = null;
     switch (login) {
       case LoginCode():
-        message = 'Finishing sign-in…';
+        message = tr('Finishing sign-in…');
         Future.microtask(() => _finishLogin(platform, login));
       case LoginFailed(:final error):
-        message = "Couldn't connect GitHub: $error";
+        message = tr("Couldn't connect GitHub: {0}", [error]);
       case null:
         break;
     }
@@ -113,13 +114,13 @@ class ConnectorController extends Notifier<ConnectorView> {
       state = ConnectorView(
         available: true,
         state: _engine!.store.load(),
-        message: 'GitHub connected.',
+        message: tr('GitHub connected.'),
       );
       _start();
     } catch (e) {
       state = state.copyWith(
         busy: false,
-        message: "Couldn't connect GitHub: $e",
+        message: tr("Couldn't connect GitHub: {0}", [e]),
       );
     }
   }
@@ -161,7 +162,7 @@ class ConnectorController extends Notifier<ConnectorView> {
     state = ConnectorView(
       available: true,
       state: ConnectorState(),
-      message: 'Disconnected. Nothing leaves this browser now.',
+      message: tr('Disconnected. Nothing leaves this browser now.'),
     );
   }
 
@@ -180,25 +181,25 @@ class ConnectorController extends Notifier<ConnectorView> {
     try {
       switch (await engine.sync()) {
         case Uploaded():
-          message = 'Backed up to GitHub.';
+          message = tr('Backed up to GitHub.');
         case UpToDate():
-          message = quiet ? null : 'Everything is up to date.';
+          message = quiet ? null : tr('Everything is up to date.');
         case RemoteWaiting(:final remote, :final alreadyDismissed):
           waiting = remote;
           if (quiet && !alreadyDismissed) _announce(remote);
       }
     } on GithubConflict {
-      message = 'Another device uploaded at the same moment. Trying again.';
+      message = tr('Another device uploaded at the same moment. Trying again.');
       _settle?.cancel();
       _settle = Timer(_afterChange, () => syncNow(quiet: true));
     } on GithubApiException catch (e) {
       message = e.statusCode == 401
-          ? 'GitHub access was revoked or has expired. Connect GitHub again.'
-          : 'GitHub error: ${e.message}';
+          ? tr('GitHub access was revoked or has expired. Connect GitHub again.')
+          : tr('GitHub error: {0}', [e.message]);
       _recordProblem(engine, message);
     } catch (_) {
       // Offline, mostly: tried again on the next change or check.
-      message = quiet ? null : "Couldn't reach GitHub. Check your connection.";
+      message = quiet ? null : tr("Couldn't reach GitHub. Check your connection.");
     } finally {
       state = ConnectorView(
         available: true,
@@ -212,20 +213,20 @@ class ConnectorController extends Notifier<ConnectorView> {
   /// "Use it": this browser takes [remote]'s backup and carries on from it.
   Future<void> useRemote(RemoteBackup remote) => _act(
     () => _engine!.importRemote(remote),
-    done: 'This browser now has the backup from ${_from(remote)}.',
+    done: tr('This browser now has the backup from {0}.', [_from(remote)]),
   );
 
   /// "Keep this browser's": uploads over [remote] — the user's call.
   Future<void> keepThisBrowser(RemoteBackup remote) => _act(
     () => _engine!.overwriteRemote(remote),
-    done: "Backed up this browser's data over the one from ${_from(remote)}.",
+    done: tr("Backed up this browser's data over the one from {0}.", [_from(remote)]),
   );
 
   void notNow(RemoteBackup remote) {
     _engine?.dismiss(remote);
     state = state.copyWith(
       state: _engine?.store.load(),
-      message: 'Uploads from this browser wait until you choose.',
+      message: tr('Uploads from this browser wait until you choose.'),
     );
   }
 
@@ -248,9 +249,9 @@ class ConnectorController extends Notifier<ConnectorView> {
         busy: false,
         state: _engine!.store.load(),
         message: e is GithubConflict
-            ? 'Another device uploaded meanwhile — nothing was overwritten. '
-                  'Sync again to see it.'
-            : 'That didn\'t work: $e',
+            ? tr('Another device uploaded meanwhile — nothing was overwritten. '
+                  'Sync again to see it.')
+            : tr('That didn\'t work: {0}', [e]),
       );
     }
   }
@@ -259,9 +260,9 @@ class ConnectorController extends Notifier<ConnectorView> {
       engine.store.save(engine.store.load()..problem = problem);
 
   void _announce(RemoteBackup remote) => showAppSnackBar(
-    'A newer backup from ${_from(remote)} is on GitHub.',
+    tr('A newer backup from {0} is on GitHub.', [_from(remote)]),
     action: SnackBarAction(
-      label: 'Review',
+      label: tr('Review'),
       onPressed: () => appRouter.push('/more/settings/connector'),
     ),
   );

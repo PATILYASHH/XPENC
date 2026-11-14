@@ -6,6 +6,7 @@ import '../../core/routing/app_router.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
+import '../../core/l10n/l10n.dart';
 
 /// "Skip next" in an Auto rule's actions (GitHub #184): the rule stays on
 /// and steps over one date — a gym month you're away for, a fee waived
@@ -27,10 +28,10 @@ class SkipNextTile extends StatelessWidget {
     );
     return AppListTile(
       leading: const AppIcon(Icons.skip_next_rounded),
-      title: const Text('Skip next'),
+      title: const Tr('Skip next'),
       subtitle: Text(
-        'Skips ${_day(rule.nextDueDate)} only — nothing posts, and the rule '
-        'carries on from ${_day(after)}',
+        tr('Skips {0} only — nothing posts, and the rule '
+        'carries on from {1}', [_day(rule.nextDueDate), _day(after)]),
       ),
       onTap: onTap,
     );
@@ -46,9 +47,9 @@ Future<void> skipNextOccurrence(WidgetRef ref, RecurringRuleRow rule) async {
   final skip = await db.skipRecurringRuleOccurrence(rule.id);
   await notifications.syncRecurringNotifications();
   showAppSnackBar(
-    '"${rule.name}" skips ${_day(skip.skipped)} — next on ${_day(skip.next)}',
+    tr('"{0}" skips {1} — next on {2}', [rule.name, _day(skip.skipped), _day(skip.next)]),
     action: SnackBarAction(
-      label: 'Undo',
+      label: tr('Undo'),
       onPressed: () async {
         final undone = await db.unskipRecurringRuleOccurrence(
           rule.id,

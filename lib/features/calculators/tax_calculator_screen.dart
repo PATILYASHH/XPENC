@@ -7,6 +7,7 @@ import 'calculator_screen.dart' show formatInr;
 import '../../core/widgets/app_surfaces.dart';
 import 'calculator_widgets.dart';
 import 'world_tax_bodies.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Income tax by country. India compares its two regimes; every other
 /// country renders a [TaxSummaryView]. Opens on the country matching the
@@ -26,14 +27,14 @@ class _TaxCalculatorScreenState extends State<TaxCalculatorScreen> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     return CalculatorScaffold(
-      title: 'Income Tax',
+      title: tr('Income Tax'),
       footnote: _country.footnote,
       children: [
         DropdownButtonFormField<TaxCountry>(
           initialValue: _country,
           isExpanded: true,
-          decoration: const InputDecoration(
-            labelText: 'Country',
+          decoration: InputDecoration(
+            labelText: tr('Country'),
             border: OutlineInputBorder(),
           ),
           items: [
@@ -64,7 +65,7 @@ class _TaxCalculatorScreenState extends State<TaxCalculatorScreen> {
               AppIcon(Icons.public_rounded, size: 18, color: cs.onSurfaceVariant),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(
+                child: Tr(
                   'More countries will be added over time. Missing yours? '
                   'Tell us via About → Feedback & suggestions.',
                   style: theme.textTheme.bodySmall?.copyWith(
@@ -126,13 +127,13 @@ class _IndiaTaxBodyState extends State<_IndiaTaxBody> with CalculatorFormMixin {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const CalcHeading('Income (yearly)'),
-        CalcField(controller: _salary, label: 'Salary / pension', prefix: '₹ '),
+        CalcHeading(tr('Income (yearly)')),
+        CalcField(controller: _salary, label: tr('Salary / pension'), prefix: '₹ '),
         CalcField(
           controller: _other,
-          label: 'Other income',
+          label: tr('Other income'),
           prefix: '₹ ',
-          helper: 'Interest, rent, freelance, etc.',
+          helper: tr('Interest, rent, freelance, etc.'),
         ),
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
@@ -141,7 +142,7 @@ class _IndiaTaxBodyState extends State<_IndiaTaxBody> with CalculatorFormMixin {
             runSpacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text('Age', style: theme.textTheme.bodyMedium),
+              Tr('Age', style: theme.textTheme.bodyMedium),
               for (final a in TaxpayerAge.values)
                 ChoiceChip(
                   label: Text(a.label),
@@ -156,75 +157,75 @@ class _IndiaTaxBodyState extends State<_IndiaTaxBody> with CalculatorFormMixin {
         const SizedBox(height: 8),
         Text(
           diff.isZero
-              ? 'Both regimes cost the same.'
+              ? tr('Both regimes cost the same.')
               : diff.isNegative
-              ? 'New regime saves you ${formatInr(-diff)}'
-              : 'Old regime saves you ${formatInr(diff)}',
+              ? tr('New regime saves you {0}', [formatInr(-diff)])
+              : tr('Old regime saves you {0}', [formatInr(diff)]),
           style: theme.textTheme.bodyMedium?.copyWith(
             color: diff.isZero ? cs.onSurfaceVariant : AppColors.income,
             fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: 16),
-        const CalcHeading('Old regime deductions'),
+        CalcHeading(tr('Old regime deductions')),
         CalcField(
           controller: _sec80c,
-          label: '80C (PF, ELSS, LIC, PPF…)',
+          label: tr('80C (PF, ELSS, LIC, PPF…)'),
           prefix: '₹ ',
-          helper: 'Up to ₹1,50,000',
+          helper: tr('Up to ₹1,50,000'),
         ),
         CalcField(
           controller: _sec80d,
-          label: '80D (health insurance)',
+          label: tr('80D (health insurance)'),
           prefix: '₹ ',
         ),
-        CalcField(controller: _hra, label: 'HRA exemption', prefix: '₹ '),
+        CalcField(controller: _hra, label: tr('HRA exemption'), prefix: '₹ '),
         CalcField(
           controller: _homeLoan,
-          label: 'Home loan interest (24b)',
+          label: tr('Home loan interest (24b)'),
           prefix: '₹ ',
-          helper: 'Up to ₹2,00,000 for a self-occupied home',
+          helper: tr('Up to ₹2,00,000 for a self-occupied home'),
         ),
         CalcField(
           controller: _nps,
-          label: 'NPS 80CCD(1B)',
+          label: tr('NPS 80CCD(1B)'),
           prefix: '₹ ',
-          helper: 'Up to ₹50,000',
+          helper: tr('Up to ₹50,000'),
         ),
         CalcField(
           controller: _otherDed,
-          label: 'Other deductions',
+          label: tr('Other deductions'),
           prefix: '₹ ',
-          helper: '80E, 80G, 80TTA, professional tax…',
+          helper: tr('80E, 80G, 80TTA, professional tax…'),
         ),
         const SizedBox(height: 8),
-        const CalcHeading('Breakdown'),
+        CalcHeading(tr('Breakdown')),
         CalcModeToggle(
           value: _shown,
-          options: const {
-            TaxRegime.newRegime: 'New regime',
-            TaxRegime.oldRegime: 'Old regime',
+          options: {
+            TaxRegime.newRegime: tr('New regime'),
+            TaxRegime.oldRegime: tr('Old regime'),
           },
           onChanged: (r) => setState(() => _shown = r),
         ),
         CalcBreakdownCard(
           rows: [
-            CalcRow('Gross income', formatInr(shown.grossIncome)),
-            CalcRow('Deductions', '− ${formatInr(shown.deductions)}'),
-            CalcRow('Taxable income', formatInr(shown.taxableIncome)),
-            CalcRow('Tax on slabs', formatInr(shown.slabTax)),
+            CalcRow(tr('Gross income'), formatInr(shown.grossIncome)),
+            CalcRow(tr('Deductions'), '− ${formatInr(shown.deductions)}'),
+            CalcRow(tr('Taxable income'), formatInr(shown.taxableIncome)),
+            CalcRow(tr('Tax on slabs'), formatInr(shown.slabTax)),
             if (shown.rebate.isPositive)
-              CalcRow('Rebate 87A', '− ${formatInr(shown.rebate)}'),
+              CalcRow(tr('Rebate 87A'), '− ${formatInr(shown.rebate)}'),
             if (shown.surcharge.isPositive)
-              CalcRow('Surcharge', formatInr(shown.surcharge)),
-            CalcRow('Health & education cess (4%)', formatInr(shown.cess)),
-            CalcRow('Total tax', formatInr(shown.totalTax), bold: true),
+              CalcRow(tr('Surcharge'), formatInr(shown.surcharge)),
+            CalcRow(tr('Health & education cess (4%)'), formatInr(shown.cess)),
+            CalcRow(tr('Total tax'), formatInr(shown.totalTax), bold: true),
             CalcRow(
-              'Per month',
+              tr('Per month'),
               formatInr(Money.fromPaise((shown.totalTax.paise / 12).round())),
             ),
             CalcRow(
-              'Effective rate',
+              tr('Effective rate'),
               '${shown.effectiveRatePct.toStringAsFixed(1)}%',
             ),
           ],
@@ -249,11 +250,11 @@ class _RegimeCompare extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
-            child: _RegimeTile('New regime', newTax.totalTax, best: newBetter),
+            child: _RegimeTile(tr('New regime'), newTax.totalTax, best: newBetter),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: _RegimeTile('Old regime', oldTax.totalTax, best: !newBetter),
+            child: _RegimeTile(tr('Old regime'), oldTax.totalTax, best: !newBetter),
           ),
         ],
       ),
@@ -308,7 +309,7 @@ class _RegimeTile extends StatelessWidget {
             ),
             if (best) ...[
               const SizedBox(height: 4),
-              Text(
+              Tr(
                 'Lower tax',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: AppColors.income,

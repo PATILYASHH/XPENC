@@ -242,7 +242,7 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
     final trailing = index == 2
         ? _TonalIconButton(
             key: const ValueKey('settled'),
-            tooltip: 'Settled',
+            tooltip: tr('Settled'),
             icon: const AppIcon(Icons.task_alt_rounded),
             onPressed: () => _pushFromTop(context, '/persons/settled'),
           )
@@ -250,7 +250,7 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
         ? const SizedBox.shrink(key: ValueKey('none'))
         : _TonalIconButton(
             key: const ValueKey('inbox'),
-            tooltip: 'Review Inbox',
+            tooltip: tr('Review Inbox'),
             icon: const AppIcon(Icons.inbox_outlined),
             onPressed: () => _pushFromTop(context, '/inbox'),
           );
@@ -506,7 +506,7 @@ class _GlassTxSearchState extends ConsumerState<_GlassTxSearch> {
         padding: const EdgeInsets.only(left: 6),
         child: GlassSearchField(
           controller: _controller,
-          hint: 'Search transactions',
+          hint: tr('Search transactions'),
           onChanged: (v) => ref.read(txSearchQueryProvider.notifier).state = v,
         ),
       ),
@@ -840,7 +840,7 @@ class _GlassMonthPanelState extends ConsumerState<_GlassMonthPanel> {
             children: [
               chevron(
                 Icons.chevron_left_rounded,
-                'Previous year',
+                tr('Previous year'),
                 () => setState(() => _year--),
               ),
               Expanded(
@@ -866,7 +866,7 @@ class _GlassMonthPanelState extends ConsumerState<_GlassMonthPanel> {
               ),
               chevron(
                 Icons.chevron_right_rounded,
-                'Next year',
+                tr('Next year'),
                 canGoForward ? () => setState(() => _year++) : null,
               ),
             ],
@@ -897,7 +897,7 @@ class _GlassMonthPanelState extends ConsumerState<_GlassMonthPanel> {
             child: TextButton.icon(
               onPressed: selected == current ? null : () => _pick(current),
               icon: const AppIcon(Icons.today_rounded, size: 18),
-              label: const Text('This month'),
+              label: const Tr('This month'),
             ),
           ),
         ],

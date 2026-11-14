@@ -12,6 +12,7 @@ import '../branding/brand_mark.dart';
 import '../connector/connector_platform.dart';
 import '../routing/app_router.dart';
 import '../widgets/app_surfaces.dart';
+import '../../core/l10n/l10n.dart';
 
 /// XPENC on a PC-sized screen — XPENC web in a desktop browser, mostly.
 ///
@@ -175,14 +176,15 @@ class _DesktopFrameState extends State<DesktopFrame> {
 class _Destination {
   const _Destination(
     this.icon,
-    this.label,
+    String label,
     this.route, {
     this.also = const [],
     this.module,
-  });
+  }) : _label = label;
 
   final IconData icon;
-  final String label;
+  final String _label;
+  String get label => tr(_label);
   final String route;
   final List<String> also;
 
@@ -219,138 +221,138 @@ List<_Section> _sections(WidgetRef ref) {
   final rta = mode == AppMode.pro && ref.watch(rtaEnabledProvider);
   final sections = [
     _Section(null, [
-      const _Destination(
+      _Destination(
         Icons.pie_chart_outline_rounded,
-        'Dashboard',
+        tr('Dashboard'),
         '/dashboard',
       ),
-      const _Destination(
+      _Destination(
         Icons.receipt_long_outlined,
-        'Transactions',
+        tr('Transactions'),
         '/transactions',
         also: ['/more/transactions', '/transaction/', '/inbox', '/add'],
         module: 'transactions',
       ),
-      const _Destination(
+      _Destination(
         Icons.people_alt_outlined,
-        'Persons',
+        tr('Persons'),
         '/persons',
         also: ['/more/persons', '/person/', '/persons/', '/group/'],
         module: 'persons',
       ),
       if (mode != AppMode.basic)
-        const _Destination(
+        _Destination(
           Icons.account_balance_wallet_outlined,
-          'Accounts',
+          tr('Accounts'),
           '/more/accounts',
           also: ['/accounts', '/account/'],
           module: 'accounts',
         ),
-      const _Destination(
+      _Destination(
         Icons.luggage_outlined,
-        'Modes',
+        tr('Modes'),
         '/more/modes',
         also: ['/mode/'],
       ),
       if (mode != AppMode.basic)
-        const _Destination(
+        _Destination(
           Icons.donut_large_rounded,
-          'Budgets',
+          tr('Budgets'),
           '/more/budgets',
           also: ['/budgets'],
           module: 'budgets',
         ),
       if (rta)
-        const _Destination(
+        _Destination(
           Icons.savings_outlined,
-          'Ready to Assign',
+          tr('Ready to Assign'),
           '/more/ready-to-assign',
           module: 'budgets',
         ),
-      const _Destination(
+      _Destination(
         Icons.autorenew_rounded,
-        'Auto',
+        tr('Auto'),
         '/more/auto',
         module: 'auto',
       ),
     ]),
-    const _Section('Plan', [
+    _Section(tr('Plan'), [
       _Destination(
         Icons.calendar_month_outlined,
-        'Calendar',
+        tr('Calendar'),
         '/calendar',
         also: ['/more/calendar'],
         module: 'calendar',
       ),
       _Destination(
         Icons.savings_outlined,
-        'Goals & Loans',
+        tr('Goals & Loans'),
         '/more/goals',
         module: 'goals',
       ),
       _Destination(
         Icons.checklist_outlined,
-        'Shopping List',
+        tr('Shopping List'),
         '/more/shopping',
         module: 'shopping',
       ),
       _Destination(
         Icons.storefront_outlined,
-        'Payees',
+        tr('Payees'),
         '/more/payees',
         also: ['/payees'],
         module: 'payees',
       ),
     ]),
-    const _Section('Insights', [
+    _Section(tr('Insights'), [
       _Destination(
         Icons.insights_outlined,
-        'Stats',
+        tr('Stats'),
         '/more/stats',
         also: ['/stats'],
         module: 'stats',
       ),
       _Destination(
         Icons.account_balance_outlined,
-        'Account Reports',
+        tr('Account Reports'),
         '/more/account-reports',
         module: 'reports',
       ),
     ]),
-    _Section('Calculators', [
+    _Section(tr('Calculators'), [
       for (final kind in CalculatorKind.values)
         _Destination(kind.icon, kind.label, kind.route, module: 'calculators'),
     ]),
-    _Section('Data', [
-      const _Destination(
+    _Section(tr('Data'), [
+      _Destination(
         Icons.backup_outlined,
-        'Backup & Restore',
+        tr('Backup & Restore'),
         '/more/backup',
         module: 'data',
       ),
       if (connectorPlatform != null) _connector,
-      const _Destination(
+      _Destination(
         Icons.download_outlined,
-        'Download Data',
+        tr('Download Data'),
         '/more/export',
         also: ['/import-csv'],
         module: 'data',
       ),
     ]),
-    const _Section('Setup', [
+    _Section(tr('Setup'), [
       _Destination(
         Icons.category_outlined,
-        'Categories',
+        tr('Categories'),
         '/more/categories',
         module: 'setup',
       ),
-      _Destination(Icons.sell_outlined, 'Tags', '/more/tags', module: 'setup'),
+      _Destination(Icons.sell_outlined, tr('Tags'), '/more/tags', module: 'setup'),
       _Destination(
         Icons.auto_awesome_outlined,
-        "What's new",
+        tr("What's new"),
         '/more/whats-new',
       ),
-      _Destination(Icons.menu_book_outlined, 'Guide', '/more/guide'),
+      _Destination(Icons.menu_book_outlined, tr('Guide'), '/more/guide'),
     ]),
   ];
   // While a mode (a trip) is the focus, only the modules it picked — the

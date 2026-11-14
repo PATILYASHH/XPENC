@@ -8,6 +8,7 @@ import '../../data/providers.dart';
 import 'contact_import.dart';
 import 'person_avatar.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Bottom sheet: pick a group's members — used both when creating a group
 /// and when editing an existing one's membership. Returns the chosen person
@@ -54,15 +55,15 @@ class _GroupMemberPickerSheetState
     try {
       contact = await pickContact(ref.read(dbProvider));
     } on ContactsAccessOff {
-      if (mounted) setState(() => _notice = contactsAccessOffMessage);
+      if (mounted) setState(() => _notice = tr(contactsAccessOffMessage));
       return;
     } on PlatformException {
-      setState(() => _notice = "Couldn't open contacts.");
+      setState(() => _notice = tr("Couldn't open contacts."));
       return;
     }
     if (contact == null || !mounted) return;
     if (contact.name == null) {
-      setState(() => _notice = 'That contact has no name to use.');
+      setState(() => _notice = tr('That contact has no name to use.'));
       return;
     }
 
@@ -84,8 +85,8 @@ class _GroupMemberPickerSheetState
       setState(() {
         _selected.add(existing.id);
         _notice = existing.isArchived
-            ? '${existing.name} is archived; adding them brings them back.'
-            : '${existing.name} is already in your people; selected.';
+            ? tr('{0} is archived; adding them brings them back.', [existing.name])
+            : tr('{0} is already in your people; selected.', [existing.name]);
       });
       return;
     }
@@ -135,11 +136,11 @@ class _GroupMemberPickerSheetState
               child: Row(
                 children: [
                   Expanded(
-                    child: Text('Members', style: theme.textTheme.titleLarge),
+                    child: Tr('Members', style: theme.textTheme.titleLarge),
                   ),
                   TextButton(
                     onPressed: _saving ? null : _done,
-                    child: const Text('Done'),
+                    child: const Tr('Done'),
                   ),
                 ],
               ),
@@ -166,7 +167,7 @@ class _GroupMemberPickerSheetState
                             OutlinedButton.icon(
                               onPressed: () => _addFromContacts(everyone),
                               icon: const AppIcon(Icons.contacts_outlined),
-                              label: const Text('Add from contacts'),
+                              label: const Tr('Add from contacts'),
                             ),
                           if (_notice != null) ...[
                             const SizedBox(height: 8),
@@ -178,7 +179,7 @@ class _GroupMemberPickerSheetState
                             ),
                           ],
                           if (_newFromContacts.isNotEmpty) ...[
-                            _label(theme, 'New from contacts'),
+                            _label(theme, tr('New from contacts')),
                             Wrap(
                               spacing: 10,
                               runSpacing: 10,
@@ -200,9 +201,9 @@ class _GroupMemberPickerSheetState
                               ],
                             ),
                           ],
-                          _label(theme, 'People'),
+                          _label(theme, tr('People')),
                           if (active.isEmpty)
-                            Text(
+                            Tr(
                               'No people yet: add someone from your contacts '
                               'above.',
                               style: theme.textTheme.bodyMedium?.copyWith(
@@ -212,8 +213,8 @@ class _GroupMemberPickerSheetState
                           else
                             _chips(active),
                           if (archived.isNotEmpty) ...[
-                            _label(theme, 'Archived'),
-                            Text(
+                            _label(theme, tr('Archived')),
+                            Tr(
                               'Adding someone archived moves them back to '
                               'your Individual list.',
                               style: theme.textTheme.bodySmall?.copyWith(

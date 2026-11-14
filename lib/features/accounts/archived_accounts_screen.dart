@@ -7,6 +7,7 @@ import '../../core/widgets/custom_icon_badge.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Accounts hidden via **Archive** on the Accounts screen. Restoring one here
 /// is the only way back — archiving never deletes anything, so this list is
@@ -20,11 +21,11 @@ class ArchivedAccountsScreen extends ConsumerWidget {
     final archivedAsync = ref.watch(archivedAccountsProvider);
 
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Archived accounts')),
+      appBar: AppTopBar(title: const Tr('Archived accounts')),
       body: archivedAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => Center(
-          child: Text(
+          child: Tr(
             "Couldn't load archived accounts.",
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -43,7 +44,7 @@ class ArchivedAccountsScreen extends ConsumerWidget {
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                   const SizedBox(height: 16),
-                  Text(
+                  Tr(
                     'No archived accounts.',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium?.copyWith(
@@ -93,7 +94,7 @@ class _ArchivedAccountTile extends ConsumerWidget {
         account.name,
         style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
       ),
-      subtitle: Text(
+      subtitle: Tr(
         'Archived',
         style: theme.textTheme.bodySmall?.copyWith(
           color: theme.colorScheme.onSurfaceVariant,
@@ -101,14 +102,14 @@ class _ArchivedAccountTile extends ConsumerWidget {
       ),
       trailing: TextButton.icon(
         icon: const AppIcon(Icons.unarchive_outlined, size: 18),
-        label: const Text('Restore'),
+        label: const Tr('Restore'),
         onPressed: () async {
           final messenger = ScaffoldMessenger.of(context);
           await ref.read(dbProvider).unarchiveAccount(account.id);
           messenger
             ..hideCurrentSnackBar()
             ..showSnackBar(
-              SnackBar(content: Text('"${account.name}" restored')),
+              SnackBar(content: Text(tr('"{0}" restored', [account.name]))),
             );
         },
       ),

@@ -23,6 +23,7 @@ import 'person_avatar.dart';
 import 'shared_entries.dart';
 import '../share/share_flows.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Who owes you, who you owe — split into Individual (a single named
 /// contact, unchanged from before groups existed), Group (shared expenses
@@ -69,21 +70,21 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
       controller: controller,
       autofocus: true,
       textCapitalization: TextCapitalization.words,
-      decoration: const InputDecoration(
-        labelText: 'Name',
-        hintText: 'e.g. Goa Trip, Flatmates',
+      decoration: InputDecoration(
+        labelText: tr('Name'),
+        hintText: tr('e.g. Goa Trip, Flatmates'),
       ),
       onSubmitted: (value) => Navigator.of(dialogContext).pop(value.trim()),
     );
     List<Widget> actions(BuildContext dialogContext) => [
       TextButton(
         onPressed: () => Navigator.of(dialogContext).pop(),
-        child: const Text('Cancel'),
+        child: const Tr('Cancel'),
       ),
       FilledButton(
         onPressed: () =>
             Navigator.of(dialogContext).pop(controller.text.trim()),
-        child: const Text('Next'),
+        child: const Tr('Next'),
       ),
     ];
     final theme = Theme.of(context);
@@ -96,7 +97,7 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
             theme.colorScheme.secondary,
         icon: const AppIcon(Icons.group_add_rounded),
         builder: (dialogContext) => MorphDialogBody(
-          title: const Text('New group'),
+          title: const Tr('New group'),
           content: field(dialogContext),
           actions: actions(dialogContext),
         ),
@@ -105,7 +106,7 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
       name = await showAppDialog<String>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('New group'),
+          title: const Tr('New group'),
           content: field(dialogContext),
           actions: actions(dialogContext),
         ),
@@ -148,26 +149,26 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
       appBar: widget.embedded
           ? null
           : AppTopBar(
-              title: const Text('Persons'),
+              title: const Tr('Persons'),
               // Under Glass, Archived and Settled grow out of the bar's
               // capsule (the button's own context finds it).
               actions: [
                 Builder(
                   builder: (button) => IconButton(
-                    tooltip: 'Archived',
+                    tooltip: tr('Archived'),
                     icon: const AppIcon(Icons.inventory_2_outlined),
                     onPressed: () =>
                         pushFromTopBar<void>(button, '/persons/archived'),
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Add person',
+                  tooltip: tr('Add person'),
                   icon: const AppIcon(Icons.person_add_alt_1_outlined),
                   onPressed: () => showAddPersonDialog(context, ref),
                 ),
                 Builder(
                   builder: (button) => IconButton(
-                    tooltip: 'Settled',
+                    tooltip: tr('Settled'),
                     icon: const AppIcon(Icons.task_alt_rounded),
                     onPressed: () =>
                         pushFromTopBar<void>(button, '/persons/settled'),
@@ -188,9 +189,9 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
               children: [
                 TabBar(
                   controller: _tabController,
-                  tabs: const [
-                    Tab(text: 'Individual'),
-                    Tab(text: 'Group'),
+                  tabs: [
+                    Tab(text: tr('Individual')),
+                    Tab(text: tr('Group')),
                   ],
                 ),
                 Expanded(
@@ -207,7 +208,7 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
             ? MorphDialogSource(
                 child: Builder(
                   builder: (button) => FloatingActionButton(
-                    tooltip: 'New group',
+                    tooltip: tr('New group'),
                     onPressed: () => _createGroup(context, ref, button: button),
                     // Glass: not a second ➕ stacked on the shell's own.
                     child: AppIcon(
@@ -220,7 +221,7 @@ class _PersonsScreenState extends ConsumerState<PersonsScreen>
               )
             : _tabController.index == 0 && ussdPayEnabled
             ? FloatingActionButton(
-                tooltip: 'Pay without internet',
+                tooltip: tr('Pay without internet'),
                 onPressed: () => context.push('/persons/ussd-pay'),
                 child: const AppIcon(Icons.send_rounded),
               )
@@ -289,7 +290,7 @@ class _IndividualTab extends ConsumerWidget {
             child: Padding(
               padding: const EdgeInsets.all(40),
               child: Center(
-                child: Text(
+                child: Tr(
                   "Couldn't load people",
                   style: TextStyle(color: theme.colorScheme.error),
                 ),
@@ -302,8 +303,8 @@ class _IndividualTab extends ConsumerWidget {
                 child: _EmptyNote(
                   icon: Icons.group_add_outlined,
                   text:
-                      'No one on ${mode.name} yet — add people in its '
-                      'editor.',
+                      tr('No one on {0} yet — add people in its '
+                      'editor.', [mode.name]),
                 ),
               );
             }
@@ -316,10 +317,10 @@ class _IndividualTab extends ConsumerWidget {
                 if (mode != null || !p.isSettled) p,
             ];
             if (persons.isEmpty) {
-              return const SliverToBoxAdapter(
+              return SliverToBoxAdapter(
                 child: _EmptyNote(
                   icon: Icons.check_circle_outline_rounded,
-                  text: 'Everyone is settled — see Settled in the top bar.',
+                  text: tr('Everyone is settled — see Settled in the top bar.'),
                 ),
               );
             }
@@ -384,7 +385,7 @@ class _TotalsHeader extends StatelessWidget {
               Expanded(
                 child: _totalColumn(
                   theme,
-                  "You'll get",
+                  tr("You'll get"),
                   totals.youGet,
                   AppColors.income,
                   Icons.south_west_rounded,
@@ -394,7 +395,7 @@ class _TotalsHeader extends StatelessWidget {
               Expanded(
                 child: _totalColumn(
                   theme,
-                  "You'll pay",
+                  tr("You'll pay"),
                   totals.youPay,
                   AppColors.expense,
                   Icons.north_east_rounded,
@@ -465,12 +466,12 @@ class _PersonTile extends ConsumerWidget {
     if (balance.isPositive) {
       shown = balance;
       color = AppColors.income;
-      status = 'Owes you';
+      status = tr('Owes you');
       statusIcon = Icons.south_west_rounded;
     } else if (balance.isNegative) {
       shown = balance.abs;
       color = AppColors.expense;
-      status = 'You owe';
+      status = tr('You owe');
       statusIcon = Icons.north_east_rounded;
     } else {
       shown = balance;
@@ -547,22 +548,22 @@ class _PersonTile extends ConsumerWidget {
       options: (sheetContext) => [
         AppListTile(
           leading: const AppIcon(Icons.ios_share_rounded),
-          title: const Text('Share'),
-          subtitle: const Text('Their statement, to WhatsApp or Messages.'),
+          title: const Tr('Share'),
+          subtitle: const Tr('Their statement, to WhatsApp or Messages.'),
           onTap: () => Navigator.of(sheetContext).pop(_PersonAction.share),
         ),
         AppListTile(
           leading: const AppIcon(Icons.edit_outlined),
-          title: const Text('Edit'),
-          subtitle: const Text('Name, UPI ID, phone and more.'),
+          title: const Tr('Edit'),
+          subtitle: const Tr('Name, UPI ID, phone and more.'),
           onTap: () => Navigator.of(sheetContext).pop(_PersonAction.edit),
         ),
         // GitHub #167: hidden while contacts access is off.
         if (contactsOn)
           AppListTile(
             leading: const AppIcon(Icons.contacts_outlined),
-            title: const Text('Link contact'),
-            subtitle: const Text('Import their photo and phone number.'),
+            title: const Tr('Link contact'),
+            subtitle: const Tr('Import their photo and phone number.'),
             onTap: () =>
                 Navigator.of(sheetContext).pop(_PersonAction.linkContact),
           ),
@@ -570,37 +571,37 @@ class _PersonTile extends ConsumerWidget {
           linked
               ? AppListTile(
                   leading: const AppIcon(Icons.link_off_rounded),
-                  title: Text('Unlink @${person.remoteUsername}'),
-                  subtitle: const Text('Stop tying them to Connector.'),
+                  title: Text(tr('Unlink @{0}', [person.remoteUsername])),
+                  subtitle: const Tr('Stop tying them to Connector.'),
                   onTap: () => Navigator.of(
                     sheetContext,
                   ).pop(_PersonAction.unlinkFriend),
                 )
               : AppListTile(
                   leading: const AppIcon(Icons.group_outlined),
-                  title: const Text('Link Connector friend'),
-                  subtitle: const Text('Who they are on Connector.'),
+                  title: const Tr('Link Connector friend'),
+                  subtitle: const Tr('Who they are on Connector.'),
                   onTap: () =>
                       Navigator.of(sheetContext).pop(_PersonAction.linkFriend),
                 ),
         if (person.isSettled)
           AppListTile(
             leading: const AppIcon(Icons.undo_rounded),
-            title: const Text('Move out of Settled'),
-            subtitle: const Text('Back to the Individual list.'),
+            title: const Tr('Move out of Settled'),
+            subtitle: const Tr('Back to the Individual list.'),
             onTap: () => Navigator.of(sheetContext).pop(_PersonAction.unsettle),
           )
         else if (balance.isZero)
           AppListTile(
             leading: const AppIcon(Icons.check_circle_outline_rounded),
-            title: const Text('Move to Settled'),
-            subtitle: const Text('Balance is zero. History stays intact.'),
+            title: const Tr('Move to Settled'),
+            subtitle: const Tr('Balance is zero. History stays intact.'),
             onTap: () => Navigator.of(sheetContext).pop(_PersonAction.settle),
           ),
         AppListTile(
           leading: const AppIcon(Icons.archive_outlined),
-          title: const Text('Archive'),
-          subtitle: const Text('Hide them. History stays intact.'),
+          title: const Tr('Archive'),
+          subtitle: const Tr('Hide them. History stays intact.'),
           onTap: () => Navigator.of(sheetContext).pop(_PersonAction.archive),
         ),
         AppListTile(
@@ -608,11 +609,11 @@ class _PersonTile extends ConsumerWidget {
             Icons.delete_outline,
             color: theme.colorScheme.error,
           ),
-          title: Text(
+          title: Tr(
             'Delete',
             style: TextStyle(color: theme.colorScheme.error),
           ),
-          subtitle: const Text('Permanently, with all their history.'),
+          subtitle: const Tr('Permanently, with all their history.'),
           onTap: () => Navigator.of(sheetContext).pop(_PersonAction.remove),
         ),
       ],
@@ -641,8 +642,8 @@ class _PersonTile extends ConsumerWidget {
           SnackBar(
             content: Text(
               action == _PersonAction.settle
-                  ? 'Moved to Settled'
-                  : 'Moved back to Individual',
+                  ? tr('Moved to Settled')
+                  : tr('Moved back to Individual'),
             ),
           ),
         );
@@ -665,15 +666,15 @@ class _PersonTile extends ConsumerWidget {
     try {
       contact = await pickContact(ref.read(dbProvider));
     } on ContactsAccessOff {
-      say(contactsAccessOffMessage);
+      say(tr(contactsAccessOffMessage));
       return;
     } on PlatformException {
-      say("Couldn't open contacts.");
+      say(tr("Couldn't open contacts."));
       return;
     }
     if (contact == null) return;
     if (contact.phone == null && contact.photoPath == null) {
-      say('That contact has no photo or phone number to import.');
+      say(tr('That contact has no photo or phone number to import.'));
       return;
     }
     await ref
@@ -685,8 +686,8 @@ class _PersonTile extends ConsumerWidget {
         );
     say(
       contact.photoPath != null
-          ? 'Linked: photo imported for ${person.name}'
-          : 'Linked: phone number imported for ${person.name}',
+          ? tr('Linked: photo imported for {0}', [person.name])
+          : tr('Linked: phone number imported for {0}', [person.name]),
     );
   }
 
@@ -694,22 +695,22 @@ class _PersonTile extends ConsumerWidget {
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Archive person?'),
+        title: const Tr('Archive person?'),
         content: Text(
-          '"${person.name}" will be hidden from your people. '
-          'Their history stays intact.',
+          tr('"{0}" will be hidden from your people. '
+          'Their history stays intact.', [person.name]),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(ctx).colorScheme.error,
             ),
-            child: const Text('Archive'),
+            child: const Tr('Archive'),
           ),
         ],
       ),
@@ -720,7 +721,7 @@ class _PersonTile extends ConsumerWidget {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Person archived')));
+      ..showSnackBar(const SnackBar(content: Tr('Person archived')));
   }
 
   Future<void> _confirmRemove(BuildContext context, WidgetRef ref) =>
@@ -766,7 +767,7 @@ class _GroupTab extends ConsumerWidget {
     return groupsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, _) => Center(
-        child: Text(
+        child: Tr(
           "Couldn't load groups",
           style: TextStyle(color: theme.colorScheme.error),
         ),
@@ -787,9 +788,9 @@ class _GroupTab extends ConsumerWidget {
         if (groups.isEmpty) {
           return Padding(
             padding: EdgeInsets.only(top: top),
-            child: const _EmptyNote(
+            child: _EmptyNote(
               icon: Icons.check_circle_outline_rounded,
-              text: 'Every group is settled — see Settled in the top bar.',
+              text: tr('Every group is settled — see Settled in the top bar.'),
             ),
           );
         }
@@ -852,11 +853,11 @@ class _GroupTile extends ConsumerWidget {
     if (balance.isPositive) {
       shown = balance;
       color = AppColors.income;
-      status = 'Owed to you';
+      status = tr('Owed to you');
     } else if (balance.isNegative) {
       shown = balance.abs;
       color = AppColors.expense;
-      status = 'You owe';
+      status = tr('You owe');
     } else {
       shown = balance;
       color = theme.colorScheme.onSurfaceVariant;
@@ -879,8 +880,8 @@ class _GroupTile extends ConsumerWidget {
       subtitle: Text(
         members == null
             ? status
-            : '$status · ${members.length} '
-                  '${members.length == 1 ? 'member' : 'members'}',
+            : '$status · '
+                  '${plural(members.length, '1 member', '{0} members')}',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: theme.textTheme.bodySmall?.copyWith(color: color),
@@ -919,28 +920,28 @@ class _GroupTile extends ConsumerWidget {
       options: (sheetContext) => [
         AppListTile(
           leading: const AppIcon(Icons.ios_share_rounded),
-          title: const Text('Share'),
-          subtitle: const Text('Its statement, to WhatsApp or Messages.'),
+          title: const Tr('Share'),
+          subtitle: const Tr('Its statement, to WhatsApp or Messages.'),
           onTap: () => Navigator.of(sheetContext).pop(_GroupAction.share),
         ),
         if (group.isSettled)
           AppListTile(
             leading: const AppIcon(Icons.undo_rounded),
-            title: const Text('Move out of Settled'),
-            subtitle: const Text('Back to the Group list.'),
+            title: const Tr('Move out of Settled'),
+            subtitle: const Tr('Back to the Group list.'),
             onTap: () => Navigator.of(sheetContext).pop(_GroupAction.unsettle),
           )
         else if (balance.isZero)
           AppListTile(
             leading: const AppIcon(Icons.check_circle_outline_rounded),
-            title: const Text('Move to Settled'),
-            subtitle: const Text('Balance is zero. History stays intact.'),
+            title: const Tr('Move to Settled'),
+            subtitle: const Tr('Balance is zero. History stays intact.'),
             onTap: () => Navigator.of(sheetContext).pop(_GroupAction.settle),
           ),
         AppListTile(
           leading: const AppIcon(Icons.archive_outlined),
-          title: const Text('Archive'),
-          subtitle: const Text('Hide it. Expense history stays intact.'),
+          title: const Tr('Archive'),
+          subtitle: const Tr('Hide it. Expense history stays intact.'),
           onTap: () => Navigator.of(sheetContext).pop(_GroupAction.archive),
         ),
         AppListTile(
@@ -948,11 +949,11 @@ class _GroupTile extends ConsumerWidget {
             Icons.delete_outline,
             color: theme.colorScheme.error,
           ),
-          title: Text(
+          title: Tr(
             'Delete',
             style: TextStyle(color: theme.colorScheme.error),
           ),
-          subtitle: const Text('Permanently, with all its expenses.'),
+          subtitle: const Tr('Permanently, with all its expenses.'),
           onTap: () => Navigator.of(sheetContext).pop(_GroupAction.remove),
         ),
       ],
@@ -973,8 +974,8 @@ class _GroupTile extends ConsumerWidget {
           SnackBar(
             content: Text(
               action == _GroupAction.settle
-                  ? 'Moved to Settled'
-                  : 'Moved back to Group',
+                  ? tr('Moved to Settled')
+                  : tr('Moved back to Group'),
             ),
           ),
         );
@@ -989,21 +990,21 @@ class _GroupTile extends ConsumerWidget {
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Archive group?'),
+        title: const Tr('Archive group?'),
         content: Text(
-          '"${group.name}" will be hidden. Its expense history stays intact.',
+          tr('"{0}" will be hidden. Its expense history stays intact.', [group.name]),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(ctx).colorScheme.error,
             ),
-            child: const Text('Archive'),
+            child: const Tr('Archive'),
           ),
         ],
       ),
@@ -1014,7 +1015,7 @@ class _GroupTile extends ConsumerWidget {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Group archived')));
+      ..showSnackBar(const SnackBar(content: Tr('Group archived')));
   }
 
   Future<void> _confirmRemove(BuildContext context, WidgetRef ref) =>
@@ -1047,12 +1048,12 @@ class SettledScreen extends ConsumerWidget {
 
     if (people.isEmpty && groups.isEmpty) {
       return Scaffold(
-        appBar: AppTopBar(title: const Text('Settled')),
-        body: const _EmptyNote(
+        appBar: AppTopBar(title: const Tr('Settled')),
+        body: _EmptyNote(
           icon: Icons.check_circle_outline_rounded,
           text:
-              'Nobody here yet. When a balance reaches zero you can move '
-              'the person or group here.',
+              tr('Nobody here yet. When a balance reaches zero you can move '
+              'the person or group here.'),
         ),
       );
     }
@@ -1090,12 +1091,12 @@ class SettledScreen extends ConsumerWidget {
     );
 
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Settled')),
+      appBar: AppTopBar(title: const Tr('Settled')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 32).plusNavBar(context),
         children: [
           if (people.isNotEmpty)
-            section('Individual', [
+            section(tr('Individual'), [
               for (final p in people)
                 _PersonTile(
                   person: p,
@@ -1103,7 +1104,7 @@ class SettledScreen extends ConsumerWidget {
                 ),
             ]),
           if (groups.isNotEmpty)
-            section('Group', [for (final g in groups) _GroupTile(group: g)]),
+            section(tr('Group'), [for (final g in groups) _GroupTile(group: g)]),
         ],
       ),
     );
@@ -1154,7 +1155,7 @@ class _EmptyGroups extends StatelessWidget {
             color: theme.colorScheme.onSurfaceVariant,
           ),
           const SizedBox(height: 16),
-          Text(
+          Tr(
             'No groups yet — tap + to split a shared expense across '
             'several people.',
             textAlign: TextAlign.center,
@@ -1184,7 +1185,7 @@ class _EmptyPersons extends StatelessWidget {
             color: theme.colorScheme.onSurfaceVariant,
           ),
           const SizedBox(height: 16),
-          Text(
+          Tr(
             'No people yet — add someone you lent to or borrowed from.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
@@ -1205,7 +1206,7 @@ class _FooterCaption extends StatelessWidget {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(28, 16, 28, 32),
-      child: Text(
+      child: Tr(
         "Money you lend isn't spending — it's still yours, just held by "
         'someone else.',
         textAlign: TextAlign.center,

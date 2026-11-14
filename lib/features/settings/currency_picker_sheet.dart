@@ -6,6 +6,7 @@ import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 import 'custom_currency_sheet.dart';
+import '../../core/l10n/l10n.dart';
 
 /// A searchable list of every currency the app knows — the person's own
 /// custom ones first — plus a way to make one it doesn't. Picking one writes
@@ -126,7 +127,7 @@ class _CurrencyPickerSheetState extends ConsumerState<CurrencyPickerSheet> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-              child: Text('Currency', style: theme.textTheme.titleLarge),
+              child: Tr('Currency', style: theme.textTheme.titleLarge),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -135,7 +136,7 @@ class _CurrencyPickerSheetState extends ConsumerState<CurrencyPickerSheet> {
                 autofocus: true,
                 decoration: InputDecoration(
                   prefixIcon: const AppIcon(Icons.search),
-                  hintText: 'Search name, code or symbol',
+                  hintText: tr('Search name, code or symbol'),
                   filled: true,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -152,8 +153,8 @@ class _CurrencyPickerSheetState extends ConsumerState<CurrencyPickerSheet> {
                 width: 40,
                 child: Center(child: AppIcon(Icons.add_circle_outline_rounded)),
               ),
-              title: const Text('Create a custom currency'),
-              subtitle: const Text('For one that isn’t listed'),
+              title: const Tr('Create a custom currency'),
+              subtitle: const Tr('For one that isn’t listed'),
               onTap: _createCustom,
             ),
             Flexible(
@@ -161,7 +162,7 @@ class _CurrencyPickerSheetState extends ConsumerState<CurrencyPickerSheet> {
                   ? Padding(
                       padding: const EdgeInsets.all(32),
                       child: Text(
-                        'No currency matches "$_query".',
+                        tr('No currency matches "{0}".', [_query]),
                         textAlign: TextAlign.center,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
@@ -189,7 +190,7 @@ class _CurrencyPickerSheetState extends ConsumerState<CurrencyPickerSheet> {
                           title: Text(c.name),
                           subtitle: Text(
                             customCodes.contains(c.code)
-                                ? '${c.code} · Custom'
+                                ? tr('{0} · Custom', [c.code])
                                 : c.code,
                           ),
                           trailing: isSelected

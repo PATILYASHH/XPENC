@@ -10,6 +10,7 @@ import '../money.dart';
 import '../theme/app_colors.dart';
 import '../theme/glass.dart';
 import 'app_surfaces.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Broadcasts the active currency down the tree so every [MoneyText] rebuilds
 /// the instant it changes — even a screen kept alive in the background. The
@@ -78,7 +79,7 @@ class AmountVisibilityToggle extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final hidden = ref.watch(hideAmountsProvider);
     return IconButton(
-      tooltip: hidden ? 'Show amounts' : 'Hide amounts',
+      tooltip: hidden ? tr('Show amounts') : tr('Hide amounts'),
       iconSize: size,
       visualDensity: VisualDensity.compact,
       padding: EdgeInsets.zero,
@@ -152,12 +153,12 @@ IconData iconForTxType(TxType type) => switch (type) {
 /// What to call a transaction that has no category. [personName] names the
 /// counterparty when there is one — "Gave to Asha" beats "Gave to person".
 String labelForTxType(TxType type, {String? personName}) => switch (type) {
-      TxType.transfer => 'Transfer',
-      TxType.personOut => 'Gave to ${personName ?? 'person'}',
-      TxType.personIn => 'Received from ${personName ?? 'person'}',
-      TxType.income => 'Money in',
-      TxType.expense => 'Money out',
-      TxType.correctionIn || TxType.correctionOut => 'Correction',
+      TxType.transfer => tr('Transfer'),
+      TxType.personOut => tr('Gave to {0}', [personName ?? 'person']),
+      TxType.personIn => tr('Received from {0}', [personName ?? 'person']),
+      TxType.income => tr('Money in'),
+      TxType.expense => tr('Money out'),
+      TxType.correctionIn || TxType.correctionOut => tr('Correction'),
     };
 
 /// Renders an amount with tabular figures so columns line up.
@@ -211,7 +212,7 @@ class MoneyText extends StatelessWidget {
       // the figure doesn't.
       final sigma = (textStyle?.fontSize ?? 16) * 0.32;
       return Semantics(
-        label: 'Amount hidden',
+        label: tr('Amount hidden'),
         child: ExcludeSemantics(
           child: ImageFiltered(
             imageFilter: ui.ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),

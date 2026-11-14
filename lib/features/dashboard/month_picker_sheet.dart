@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../core/budget_cycle.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Opens the month picker and returns the chosen period anchor (day 1 of its
 /// month, same shape `selectedMonthProvider` stores), or null if dismissed.
@@ -72,7 +73,7 @@ class _MonthPickerSheetState extends State<MonthPickerSheet> {
           Row(
             children: [
               IconButton(
-                tooltip: 'Previous year',
+                tooltip: tr('Previous year'),
                 icon: const AppIcon(Icons.chevron_left_rounded),
                 onPressed: () => setState(() => _year--),
               ),
@@ -86,7 +87,7 @@ class _MonthPickerSheetState extends State<MonthPickerSheet> {
                 ),
               ),
               IconButton(
-                tooltip: 'Next year',
+                tooltip: tr('Next year'),
                 icon: const AppIcon(Icons.chevron_right_rounded),
                 onPressed: canGoForward ? () => setState(() => _year++) : null,
               ),
@@ -108,8 +109,8 @@ class _MonthPickerSheetState extends State<MonthPickerSheet> {
           if (widget.startDay != 1) ...[
             const SizedBox(height: 12),
             Text(
-              'Each month runs from '
-              '${budgetCycleStartPhrase(widget.startDay)} (your budget cycle).',
+              tr('Each month runs from '
+              '{0} (your budget cycle).', [budgetCycleStartPhrase(widget.startDay)]),
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: cs.onSurfaceVariant,
@@ -122,7 +123,7 @@ class _MonthPickerSheetState extends State<MonthPickerSheet> {
                 ? null
                 : () => Navigator.of(context).pop(widget.current),
             icon: const AppIcon(Icons.today_rounded),
-            label: const Text('This month'),
+            label: const Tr('This month'),
           ),
         ],
       ),

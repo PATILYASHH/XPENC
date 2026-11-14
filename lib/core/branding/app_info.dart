@@ -56,6 +56,9 @@ class AppInfo {
   /// ready to download for Import from file (GitHub #187).
   static const templatesUrl = '$websiteUrl/templates';
 
+  /// Language packs to import from Settings → Language (GitHub #191).
+  static const languagesUrl = '$websiteUrl/languages';
+
   /// New issue with a template picker (bug / feature / bank support).
   static const issuesUrl = '$repoUrl/issues/new/choose';
 

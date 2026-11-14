@@ -8,6 +8,7 @@ import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import '../persons/contact_import.dart';
 import 'settings_common.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Every permission XPENC holds or could ask for, and every one it never
 /// asks for. Turning a permission on shows Android's own dialog; turning one
@@ -58,20 +59,20 @@ class _PermissionsSettingsScreenState
       if (after == PermissionState.blocked) {
         if (!mounted) return;
         final go = await _confirm(
-          title: 'Allow in system settings',
+          title: tr('Allow in system settings'),
           body:
-              'Android won\'t ask again for ${p.title.toLowerCase()}. '
-              'Open XPENC\'s settings page to allow it there.',
+              tr('Android won\'t ask again for {0}. '
+              'Open XPENC\'s settings page to allow it there.', [p.title.toLowerCase()]),
         );
         if (go) await AppPermissions.openSettings(p);
       }
     } else {
       final go = await _confirm(
-        title: 'Turn off in system settings',
+        title: tr('Turn off in system settings'),
         body:
-            'Android only lets you remove a permission from system '
+            tr('Android only lets you remove a permission from system '
             'settings. Turning one off there restarts XPENC — your data '
-            'is not affected.',
+            'is not affected.'),
       );
       if (go) await AppPermissions.openSettings(p);
     }
@@ -87,11 +88,11 @@ class _PermissionsSettingsScreenState
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Open settings'),
+            child: const Tr('Open settings'),
           ),
         ],
       ),
@@ -109,7 +110,7 @@ class _PermissionsSettingsScreenState
     );
 
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Permissions')),
+      appBar: AppTopBar(title: const Tr('Permissions')),
       body: ListView(
         // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
         padding: EdgeInsets.fromLTRB(
@@ -119,13 +120,13 @@ class _PermissionsSettingsScreenState
           32 + MediaQuery.of(context).padding.bottom,
         ),
         children: [
-          Text(
+          Tr(
             'Everything here is optional. A feature that needs a permission '
             'asks the first time you use it, and works without it where it '
             'can.',
             style: muted?.copyWith(height: 1.5),
           ),
-          settingsSectionLabel(context, 'You choose'),
+          settingsSectionLabel(context, tr('You choose')),
           AppCard(
             child: Column(
               children: [
@@ -140,48 +141,48 @@ class _PermissionsSettingsScreenState
               ],
             ),
           ),
-          settingsSectionLabel(context, 'Granted at install'),
+          settingsSectionLabel(context, tr('Granted at install')),
           AppCard(
             child: Column(
               children: [
-                const _InfoTile(
+                _InfoTile(
                   icon: Icons.restart_alt_rounded,
-                  title: 'Run at startup',
+                  title: tr('Run at startup'),
                   subtitle:
-                      'Re-schedules your reminders after the phone restarts',
+                      tr('Re-schedules your reminders after the phone restarts'),
                 ),
                 Divider(height: 1, color: cs.outline),
-                const _InfoTile(
+                _InfoTile(
                   icon: Icons.fingerprint_rounded,
-                  title: 'Biometrics',
+                  title: tr('Biometrics'),
                   subtitle:
-                      'Fingerprint or face unlock, only if you turn on Biometric unlock',
+                      tr('Fingerprint or face unlock, only if you turn on Biometric unlock'),
                 ),
               ],
             ),
           ),
-          settingsSectionLabel(context, 'Never requested'),
+          settingsSectionLabel(context, tr('Never requested')),
           AppCard(
             child: Column(
               children: [
-                const _InfoTile(
+                _InfoTile(
                   icon: Icons.wifi_off_rounded,
-                  title: 'Internet',
-                  subtitle: 'XPENC cannot connect to the internet — your '
-                      'data never leaves this device',
+                  title: tr('Internet'),
+                  subtitle: tr('XPENC cannot connect to the internet — your '
+                      'data never leaves this device'),
                 ),
                 Divider(height: 1, color: cs.outline),
-                const _InfoTile(
+                _InfoTile(
                   icon: Icons.sms_outlined,
                   title: 'SMS',
-                  subtitle: 'Bank messages come in only when you share one '
-                      'to XPENC',
+                  subtitle: tr('Bank messages come in only when you share one '
+                      'to XPENC'),
                 ),
                 Divider(height: 1, color: cs.outline),
-                const _InfoTile(
+                _InfoTile(
                   icon: Icons.location_off_outlined,
-                  title: 'Location, microphone, phone',
-                  subtitle: 'Not used for anything',
+                  title: tr('Location, microphone, phone'),
+                  subtitle: tr('Not used for anything'),
                 ),
               ],
             ),
@@ -190,7 +191,7 @@ class _PermissionsSettingsScreenState
           OutlinedButton.icon(
             onPressed: () => AppPermissions.openSettings(),
             icon: const AppIcon(Icons.open_in_new_rounded, size: 18),
-            label: const Text('Open system app settings'),
+            label: const Tr('Open system app settings'),
           ),
         ],
       ),

@@ -1,0 +1,123 @@
+{
+ "format": "xpenc-language-index",
+ "version": 1,
+ "minAppVersion": "1.6.6",
+ "strings": 3056,
+ "languages": [
+  {
+   "code": "en",
+   "englishName": "English",
+   "nativeName": "English",
+   "builtIn": true,
+   "coverage": 100
+  },
+  {
+   "code": "hi",
+   "englishName": "Hindi",
+   "nativeName": "हिन्दी",
+   "builtIn": true,
+   "coverage": 99
+  },
+  {
+   "code": "de",
+   "englishName": "German",
+   "nativeName": "Deutsch",
+   "builtIn": true,
+   "coverage": 99
+  },
+  {
+   "code": "ja",
+   "englishName": "Japanese",
+   "nativeName": "日本語",
+   "builtIn": true,
+   "coverage": 99
+  },
+  {
+   "code": "ru",
+   "englishName": "Russian",
+   "nativeName": "Русский",
+   "builtIn": true,
+   "coverage": 99
+  },
+  {
+   "code": "bn",
+   "englishName": "Bengali",
+   "nativeName": "বাংলা",
+   "builtIn": false,
+   "coverage": 99,
+   "strings": 3030,
+   "file": "packs/xpenc-language-bn.json",
+   "bytes": 424487
+  },
+  {
+   "code": "fr",
+   "englishName": "French",
+   "nativeName": "Français",
+   "builtIn": false,
+   "coverage": 3,
+   "strings": 113,
+   "file": "packs/xpenc-language-fr.json",
+   "bytes": 6359
+  },
+  {
+   "code": "it",
+   "englishName": "Italian",
+   "nativeName": "Italiano",
+   "builtIn": false,
+   "coverage": 3,
+   "strings": 118,
+   "file": "packs/xpenc-language-it.json",
+   "bytes": 6242
+  },
+  {
+   "code": "mr",
+   "englishName": "Marathi",
+   "nativeName": "मराठी",
+   "builtIn": false,
+   "coverage": 3,
+   "strings": 120,
+   "file": "packs/xpenc-language-mr.json",
+   "bytes": 9420
+  },
+  {
+   "code": "pt",
+   "englishName": "Portuguese",
+   "nativeName": "Português",
+   "builtIn": false,
+   "coverage": 3,
+   "strings": 118,
+   "file": "packs/xpenc-language-pt.json",
+   "bytes": 6237
+  },
+  {
+   "code": "es",
+   "englishName": "Spanish",
+   "nativeName": "Español",
+   "builtIn": false,
+   "coverage": 3,
+   "strings": 118,
+   "file": "packs/xpenc-language-es.json",
+   "bytes": 6251
+  },
+  {
+   "code": "ta",
+   "englishName": "Tamil",
+   "nativeName": "தமிழ்",
+   "builtIn": false,
+   "coverage": 3,
+   "strings": 120,
+   "file": "packs/xpenc-language-ta.json",
+   "bytes": 11388
+  },
+  {
+   "code": "te",
+   "englishName": "Telugu",
+   "nativeName": "తెలుగు",
+   "builtIn": false,
+   "coverage": 3,
+   "strings": 120,
+   "file": "packs/xpenc-language-te.json",
+   "bytes": 10257
+  }
+ ]
+}

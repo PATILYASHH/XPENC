@@ -6,6 +6,7 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import 'person_avatar.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// People and groups hidden via **Archive** — only ever by hand (the
 /// Persons long-press sheet, a group's menu, or "Archive" on the settled
@@ -20,11 +21,11 @@ class ArchivedPersonsScreen extends StatelessWidget {
       length: 2,
       child: Scaffold(
         appBar: AppTopBar(
-          title: const Text('Archived'),
-          bottom: const TabBar(
+          title: const Tr('Archived'),
+          bottom: TabBar(
             tabs: [
-              Tab(text: 'Individual'),
-              Tab(text: 'Group'),
+              Tab(text: tr('Individual')),
+              Tab(text: tr('Group')),
             ],
           ),
         ),
@@ -45,9 +46,9 @@ class _ArchivedPeople extends ConsumerWidget {
         .watch(archivedPersonsProvider)
         .when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, _) => const _Message("Couldn't load archived people."),
+          error: (_, _) => _Message(tr("Couldn't load archived people.")),
           data: (people) {
-            if (people.isEmpty) return const _Message('No archived people.');
+            if (people.isEmpty) return _Message(tr('No archived people.'));
             return ListView.separated(
               padding: const EdgeInsets.symmetric(
                 vertical: 8,
@@ -71,9 +72,9 @@ class _ArchivedGroups extends ConsumerWidget {
         .watch(archivedGroupsProvider)
         .when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, _) => const _Message("Couldn't load archived groups."),
+          error: (_, _) => _Message(tr("Couldn't load archived groups.")),
           data: (groups) {
-            if (groups.isEmpty) return const _Message('No archived groups.');
+            if (groups.isEmpty) return _Message(tr('No archived groups.'));
             return ListView.separated(
               padding: const EdgeInsets.symmetric(
                 vertical: 8,
@@ -176,7 +177,7 @@ class _ArchivedTile extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
       ),
-      subtitle: Text(
+      subtitle: Tr(
         'Archived',
         style: theme.textTheme.bodySmall?.copyWith(
           color: theme.colorScheme.onSurfaceVariant,
@@ -184,13 +185,13 @@ class _ArchivedTile extends StatelessWidget {
       ),
       trailing: TextButton.icon(
         icon: const AppIcon(Icons.unarchive_outlined, size: 18),
-        label: const Text('Restore'),
+        label: const Tr('Restore'),
         onPressed: () async {
           final messenger = ScaffoldMessenger.of(context);
           await onRestore();
           messenger
             ..hideCurrentSnackBar()
-            ..showSnackBar(SnackBar(content: Text('"$name" restored')));
+            ..showSnackBar(SnackBar(content: Text(tr('"{0}" restored', [name]))));
         },
       ),
     );

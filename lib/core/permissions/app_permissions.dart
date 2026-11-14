@@ -1,4 +1,5 @@
 import 'package:flutter/services.dart';
+import '../../core/l10n/l10n.dart';
 
 /// A runtime permission XPENC asks for, and why — what Settings > Permissions
 /// lists. Each one is optional: the feature that needs it degrades, nothing
@@ -24,13 +25,15 @@ enum AppPermission {
 
   const AppPermission({
     required this.androidName,
-    required this.title,
-    required this.reason,
-  });
+    required String title,
+    required String reason,
+  }) : _title = title, _reason = reason;
 
   final String androidName;
-  final String title;
-  final String reason;
+  final String _title;
+  String get title => tr(_title);
+  final String _reason;
+  String get reason => tr(_reason);
 }
 
 enum PermissionState {

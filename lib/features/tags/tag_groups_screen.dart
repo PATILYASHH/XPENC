@@ -7,6 +7,7 @@ import '../../core/widgets/error_view.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Preset colours for a group. Same palette as a plain tag's — this is
 /// decorative only, not a money-direction signal.
@@ -34,13 +35,13 @@ class TagGroupsScreen extends ConsumerWidget {
     final tagsByGroup = ref.watch(tagGroupTagsByGroupProvider);
 
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Tag groups')),
+      appBar: AppTopBar(title: const Tr('Tag groups')),
       body: groupsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => const Center(
+        error: (_, _) => Center(
           child: Padding(
             padding: EdgeInsets.all(24),
-            child: InlineErrorView(message: "Couldn't load tag groups"),
+            child: InlineErrorView(message: tr("Couldn't load tag groups")),
           ),
         ),
         data: (groups) {
@@ -70,7 +71,7 @@ class TagGroupsScreen extends ConsumerWidget {
                   ),
                 ),
               const SizedBox(height: 20),
-              Text(
+              Tr(
                 'Picking a group from the tag picker selects every tag in it '
                 'at once. Deleting a group never touches the tags themselves '
                 'or anything already tagged.',
@@ -84,7 +85,7 @@ class TagGroupsScreen extends ConsumerWidget {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        tooltip: 'New group',
+        tooltip: tr('New group'),
         onPressed: () => _openGroupEditor(context),
         child: const AppIcon(Icons.add),
       ),
@@ -109,7 +110,7 @@ class _EmptyGroups extends StatelessWidget {
             color: theme.colorScheme.onSurfaceVariant,
           ),
           const SizedBox(height: 16),
-          Text(
+          Tr(
             'No tag groups yet — tap + to bundle a few tags together.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
@@ -133,7 +134,7 @@ class _GroupTile extends ConsumerWidget {
     final theme = Theme.of(context);
     final color = Color(group.colorValue);
     final subtitle = tags.isEmpty
-        ? 'No tags yet'
+        ? tr('No tags yet')
         : tags.map((t) => t.name).join(', ');
 
     return AppListTile(
@@ -165,7 +166,7 @@ class _GroupTile extends ConsumerWidget {
       onTap: () => _openGroupEditor(context, existing: group),
       trailing: IconButton(
         icon: AppIcon(Icons.delete_outline, color: theme.colorScheme.error),
-        tooltip: 'Delete',
+        tooltip: tr('Delete'),
         visualDensity: VisualDensity.compact,
         onPressed: () => _confirmDelete(context, ref, group),
       ),
@@ -182,22 +183,22 @@ Future<void> _confirmDelete(
   final confirmed = await showAppDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: Text('Delete "${group.name}"?'),
-      content: const Text(
+      title: Text(tr('Delete "{0}"?', [group.name])),
+      content: const Tr(
         'The tags in this group, and anything already tagged with them, '
         'are left exactly as they are.',
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Cancel'),
+          child: const Tr('Cancel'),
         ),
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(true),
           style: TextButton.styleFrom(
             foregroundColor: Theme.of(dialogContext).colorScheme.error,
           ),
-          child: const Text('Delete'),
+          child: const Tr('Delete'),
         ),
       ],
     ),
@@ -207,7 +208,7 @@ Future<void> _confirmDelete(
   await ref.read(dbProvider).deleteTagGroup(group.id);
   messenger
     ..hideCurrentSnackBar()
-    ..showSnackBar(const SnackBar(content: Text('Tag group deleted')));
+    ..showSnackBar(const SnackBar(content: Tr('Tag group deleted')));
 }
 
 Future<void> _openGroupEditor(BuildContext context, {TagGroupRow? existing}) {
@@ -277,7 +278,7 @@ class _GroupEditorSheetState extends ConsumerState<_GroupEditorSheet> {
   Future<void> _save() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      _showError('Give the group a name.');
+      _showError(tr('Give the group a name.'));
       return;
     }
 
@@ -301,7 +302,7 @@ class _GroupEditorSheetState extends ConsumerState<_GroupEditorSheet> {
     } catch (_) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      _showError('Could not save the group — that name may already be used.');
+      _showError(tr('Could not save the group — that name may already be used.'));
     }
   }
 
@@ -331,7 +332,7 @@ class _GroupEditorSheetState extends ConsumerState<_GroupEditorSheet> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                _isEdit ? 'Edit group' : 'New group',
+                _isEdit ? tr('Edit group') : tr('New group'),
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
@@ -342,9 +343,9 @@ class _GroupEditorSheetState extends ConsumerState<_GroupEditorSheet> {
                 autofocus: !_isEdit,
                 textCapitalization: TextCapitalization.words,
                 maxLength: 30,
-                decoration: const InputDecoration(
-                  labelText: 'Name',
-                  hintText: 'e.g. Work trip, Tax deductible',
+                decoration: InputDecoration(
+                  labelText: tr('Name'),
+                  hintText: tr('e.g. Work trip, Tax deductible'),
                   counterText: '',
                 ),
               ),
@@ -385,12 +386,12 @@ class _GroupEditorSheetState extends ConsumerState<_GroupEditorSheet> {
                     child: Center(child: CircularProgressIndicator()),
                   ),
                   error: (e, _) => Text(
-                    'Could not load tags.\n$e',
+                    tr('Could not load tags.\n{0}', [e]),
                     style: theme.textTheme.bodyMedium,
                   ),
                   data: (tags) {
                     if (tags.isEmpty) {
-                      return Text(
+                      return Tr(
                         'No tags yet — add one from More → Tags first.',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
@@ -430,7 +431,7 @@ class _GroupEditorSheetState extends ConsumerState<_GroupEditorSheet> {
                         width: 22,
                         child: CircularProgressIndicator(strokeWidth: 2.4),
                       )
-                    : const Text('Save'),
+                    : const Tr('Save'),
               ),
             ],
           ),

@@ -10,6 +10,7 @@ import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// "Who owes whom" for one group: every member against every other, not
 /// just me against each of them like [GroupDetailScreen].
@@ -41,7 +42,7 @@ class GroupBalancesScreen extends ConsumerWidget {
     final personMap = ref.watch(personMapProvider);
 
     String nameOf(int? id) =>
-        id == null ? 'You' : personMap[id]?.name ?? 'Someone';
+        id == null ? tr('You') : personMap[id]?.name ?? tr('Someone');
 
     // Me first, then members in group order, then anyone who has left the
     // group but still has a balance in it.
@@ -57,7 +58,7 @@ class GroupBalancesScreen extends ConsumerWidget {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Who owes whom'),
+            const Tr('Who owes whom'),
             if (group != null)
               Text(
                 group.name,
@@ -79,7 +80,7 @@ class GroupBalancesScreen extends ConsumerWidget {
               ).plusNavBar(context),
               children: [
                 const _Note(),
-                const _SectionLabel('NET BALANCES'),
+                _SectionLabel(tr('NET BALANCES')),
                 _CardList(
                   children: [
                     for (final id in people)
@@ -96,12 +97,12 @@ class GroupBalancesScreen extends ConsumerWidget {
                       ),
                   ],
                 ),
-                const _SectionLabel(
-                  'SETTLE UP',
-                  hint: 'Fewest payments that clear everything',
+                _SectionLabel(
+                  tr('SETTLE UP'),
+                  hint: tr('Fewest payments that clear everything'),
                 ),
                 if (plan.isEmpty)
-                  const _Empty("Everyone's settled up.")
+                  _Empty(tr("Everyone's settled up."))
                 else
                   _CardList(
                     children: [
@@ -113,12 +114,12 @@ class GroupBalancesScreen extends ConsumerWidget {
                         ),
                     ],
                   ),
-                const _SectionLabel(
-                  'ALL DEBTS',
-                  hint: 'Tap one to see the expenses behind it',
+                _SectionLabel(
+                  tr('ALL DEBTS'),
+                  hint: tr('Tap one to see the expenses behind it'),
                 ),
                 if (debts.isEmpty)
-                  const _Empty('No one owes anyone.')
+                  _Empty(tr('No one owes anyone.'))
                 else
                   _CardList(
                     children: [
@@ -176,7 +177,7 @@ void _showPersonSheet(
               ),
               const SizedBox(height: 12),
               if (theirs.isEmpty)
-                const _Empty('Settled with everyone.')
+                _Empty(tr('Settled with everyone.'))
               else
                 _CardList(
                   children: [
@@ -262,7 +263,7 @@ class _PairSheet extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
           children: [
             Text(
-              '${nameOf(a)} owes ${nameOf(b)}',
+              tr('{0} owes {1}', [nameOf(a), nameOf(b)]),
               style: theme.textTheme.titleMedium?.copyWith(
                 color: cs.onSurfaceVariant,
               ),
@@ -277,9 +278,9 @@ class _PairSheet extends ConsumerWidget {
             if (involvesMe) ...[
               const SizedBox(height: 6),
               Text(
-                'Includes any repayments recorded on '
-                "${nameOf(a ?? b)}'s page, so it can be less than the "
-                'expenses below add up to.',
+                tr('Includes any repayments recorded on '
+                "{0}'s page, so it can be less than the "
+                'expenses below add up to.', [nameOf(a ?? b)]),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: cs.onSurfaceVariant,
                 ),
@@ -287,7 +288,7 @@ class _PairSheet extends ConsumerWidget {
             ],
             const SizedBox(height: 16),
             if (lines.isEmpty)
-              const _Empty('No expenses between these two.')
+              _Empty(tr('No expenses between these two.'))
             else
               _CardList(
                 children: [
@@ -297,13 +298,13 @@ class _PairSheet extends ConsumerWidget {
                       title: Text(
                         l.expense.note?.isNotEmpty == true
                             ? l.expense.note!
-                            : 'Group expense',
+                            : tr('Group expense'),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       subtitle: Text(
-                        '${DateFormat('d MMM yyyy').format(l.expense.date)}'
-                        ' · Paid by ${nameOf(l.expense.payerId)}',
+                        tr('{0}'
+                        ' · Paid by {1}', [DateFormat('d MMM yyyy').format(l.expense.date), nameOf(l.expense.payerId)]),
                       ),
                       trailing: MoneyText(
                         l.signed,
@@ -345,7 +346,7 @@ class _Note extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(
+            child: Tr(
               'Your own balances include your repayments. Balances between '
               "other members are for reference — settle-ups between them "
               "can't be recorded yet.",
@@ -463,10 +464,10 @@ class _NetRow extends StatelessWidget {
       title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(
         amount.isPositive
-            ? 'Gets back'
+            ? tr('Gets back')
             : amount.isNegative
-            ? 'Owes'
-            : 'Settled',
+            ? tr('Owes')
+            : tr('Settled'),
         style: theme.textTheme.bodySmall?.copyWith(color: color),
       ),
       trailing: MoneyText(

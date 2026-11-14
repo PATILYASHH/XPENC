@@ -16,6 +16,7 @@ import '../../data/mode_providers.dart';
 import '../../data/modes_db.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../../core/l10n/l10n.dart';
 
 /// A mode's icon on its colour, in a circle.
 class ModeBadge extends StatelessWidget {
@@ -106,9 +107,9 @@ String modeStatusLine(ModeRow mode, DateTime now) {
       final day = modeDayNumber(mode, now);
       return ['ON', if (day != null) 'Day $day', ?range].join(' · ');
     case ModeStatus.planned:
-      return range == null ? 'Not started' : 'Planned · $range';
+      return range == null ? tr('Not started') : tr('Planned · {0}', [range]);
     case ModeStatus.ended:
-      return range == null ? 'Ended' : 'Ended · $range';
+      return range == null ? tr('Ended') : tr('Ended · {0}', [range]);
   }
 }
 
@@ -124,18 +125,18 @@ Future<void> startModeWithConfirm(
     final ok = await showAppDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Start ${mode.name}?'),
+        title: Text(tr('Start {0}?', [mode.name])),
         content: Text(
-          '${active.name} is ON. Only one mode runs at a time, so it ends.',
+          tr('{0} is ON. Only one mode runs at a time, so it ends.', [active.name]),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Start'),
+            child: const Tr('Start'),
           ),
         ],
       ),
@@ -151,19 +152,19 @@ Future<bool> confirmEndMode(BuildContext context, ModeRow mode) async =>
     await showAppDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('End ${mode.name}?'),
-        content: const Text(
+        title: Text(tr('End {0}?', [mode.name])),
+        content: const Tr(
           'New spends stop joining it and the app goes back to everyday. '
           'You can start it again any time.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('End'),
+            child: const Tr('End'),
           ),
         ],
       ),
@@ -220,10 +221,10 @@ class ModeOrb extends ConsumerWidget {
     final fullApp = ref.watch(modeFullAppProvider);
     final color = Color(mode.colorValue);
     return Tooltip(
-      message: fullApp ? '${mode.name} is ON' : mode.name,
+      message: fullApp ? tr('{0} is ON', [mode.name]) : mode.name,
       child: Semantics(
         button: true,
-        label: '${mode.name} mode',
+        label: tr('{0} mode', [mode.name]),
         child: GestureDetector(
           key: const ValueKey('modeOrb'),
           onTap: () => showModeOrbSheet(context, mode),
@@ -287,7 +288,7 @@ Future<void> showModeOrbSheet(BuildContext context, ModeRow mode) async {
             ),
             subtitle: Text(
               [
-                fullApp ? 'ON · showing the full app' : 'ON',
+                fullApp ? tr('ON · showing the full app') : 'ON',
                 if (day != null) 'Day $day',
               ].join(' · '),
             ),
@@ -295,26 +296,26 @@ Future<void> showModeOrbSheet(BuildContext context, ModeRow mode) async {
           const Divider(height: 1),
           AppListTile(
             leading: const AppIcon(Icons.open_in_new_rounded),
-            title: Text('Open ${mode.name}'),
-            subtitle: const Text('Its page — spent, people, every transaction'),
+            title: Text(tr('Open {0}', [mode.name])),
+            subtitle: const Tr('Its page — spent, people, every transaction'),
             onTap: () => Navigator.of(context).pop(_OrbAction.open),
           ),
           AppListTile(
             leading: AppIcon(
               fullApp ? Icons.filter_center_focus_rounded : Icons.apps_rounded,
             ),
-            title: Text(fullApp ? 'Back to ${mode.name}' : 'Full app'),
+            title: Text(fullApp ? tr('Back to {0}', [mode.name]) : tr('Full app')),
             subtitle: Text(
               fullApp
-                  ? 'Show only the mode again'
-                  : 'Everything, for now — the mode stays ON',
+                  ? tr('Show only the mode again')
+                  : tr('Everything, for now — the mode stays ON'),
             ),
             onTap: () => Navigator.of(context).pop(_OrbAction.toggle),
           ),
           AppListTile(
             leading: const AppIcon(Icons.stop_circle_outlined),
-            title: Text('End ${mode.name}'),
-            subtitle: const Text('See its summary'),
+            title: Text(tr('End {0}', [mode.name])),
+            subtitle: const Tr('See its summary'),
             onTap: () => Navigator.of(context).pop(_OrbAction.end),
           ),
           const SizedBox(height: 12),
@@ -372,7 +373,7 @@ class ModeSpendCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            Tr(
               'Spent',
               style: theme.textTheme.labelLarge?.copyWith(
                 color: cs.onSurfaceVariant,
@@ -404,10 +405,10 @@ class ModeSpendCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 over
-                    ? 'Over the ${MoneyFormat.symbol(budget)} budget by '
-                          '${MoneyFormat.symbol(summary.spent - budget)}'
-                    : '${MoneyFormat.symbol(budget - summary.spent)} left of '
-                          '${MoneyFormat.symbol(budget)}',
+                    ? tr('Over the {0} budget by '
+                          '{1}', [MoneyFormat.symbol(budget), MoneyFormat.symbol(summary.spent - budget)])
+                    : tr('{0} left of '
+                          '{1}', [MoneyFormat.symbol(budget - summary.spent), MoneyFormat.symbol(budget)]),
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: over ? AppColors.expense : cs.onSurfaceVariant,
                   fontWeight: over ? FontWeight.w600 : null,
@@ -419,11 +420,11 @@ class ModeSpendCard extends StatelessWidget {
               spacing: 18,
               runSpacing: 8,
               children: [
-                _Fact(label: 'Per day', value: MoneyFormat.symbol(perDay)),
-                _Fact(label: 'Days', value: '$days'),
-                _Fact(label: 'Spends', value: '${summary.count}'),
+                _Fact(label: tr('Per day'), value: MoneyFormat.symbol(perDay)),
+                _Fact(label: tr('Days'), value: '$days'),
+                _Fact(label: tr('Spends'), value: '${summary.count}'),
                 if (currencyNote != null)
-                  _Fact(label: 'Currency', value: currencyNote!),
+                  _Fact(label: tr('Currency'), value: currencyNote!),
               ],
             ),
           ],
@@ -558,12 +559,12 @@ class ModeTxRow extends ConsumerWidget {
     final title = (payee != null && payee.isNotEmpty)
         ? payee
         : tx.type.isPersonMovement
-        ? (persons[tx.personId]?.name ?? 'Person')
+        ? (persons[tx.personId]?.name ?? tr('Person'))
         : isTransfer
         ? 'Transfer'
         : (note != null && note.isNotEmpty)
         ? note
-        : (category?.name ?? 'Uncategorised');
+        : (category?.name ?? tr('Uncategorised'));
     final subtitle = [
       DateFormat('d MMM').format(tx.date),
       if (category != null && title != category.name) category.name,
@@ -645,7 +646,7 @@ Future<bool> pickModeForTransaction(
   final modes = ref.read(modesProvider).valueOrNull ?? const [];
   if (modes.isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('No modes yet — make one in More → Modes')),
+      const SnackBar(content: Tr('No modes yet — make one in More → Modes')),
     );
     return false;
   }
@@ -665,7 +666,7 @@ Future<bool> pickModeForTransaction(
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-              child: Text(
+              child: Tr(
                 'Add to a mode',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
@@ -743,7 +744,7 @@ class ModePlannedCostsCard extends ConsumerWidget {
               ),
               subtitle: Text(
                 [
-                  c.transactionId != null ? 'Paid' : 'Tap to pay',
+                  c.transactionId != null ? 'Paid' : tr('Tap to pay'),
                   ?cats[c.categoryId]?.name,
                 ].join(' · '),
                 style: theme.textTheme.bodySmall?.copyWith(
@@ -810,10 +811,10 @@ class ModeLeftToSpendCard extends ConsumerWidget {
             const SizedBox(height: 14),
             Text(
               left == null
-                  ? 'Spent'
+                  ? tr('Spent')
                   : over
-                  ? 'Over budget by'
-                  : 'Left to spend',
+                  ? tr('Over budget by')
+                  : tr('Left to spend'),
               style: theme.textTheme.labelLarge?.copyWith(
                 color: cs.onSurfaceVariant,
               ),
@@ -844,10 +845,10 @@ class ModeLeftToSpendCard extends ConsumerWidget {
               const SizedBox(height: 8),
               Text(
                 [
-                  '${MoneyFormat.symbol(b.spent)} spent',
+                  tr('{0} spent', [MoneyFormat.symbol(b.spent)]),
                   if (b.planned.isPositive)
-                    '${MoneyFormat.symbol(b.planned)} planned',
-                  'of ${MoneyFormat.symbol(budget)}',
+                    tr('{0} planned', [MoneyFormat.symbol(b.planned)]),
+                  tr('of {0}', [MoneyFormat.symbol(budget)]),
                 ].join(' · '),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: cs.onSurfaceVariant,
@@ -855,7 +856,7 @@ class ModeLeftToSpendCard extends ConsumerWidget {
               ),
             ] else ...[
               const SizedBox(height: 6),
-              Text(
+              Tr(
                 'Set a budget (or account allocations) to see what’s left.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: cs.onSurfaceVariant,
@@ -916,7 +917,7 @@ class ModeLimitsCard extends ConsumerWidget {
                     ),
                   ),
                   title: Text(
-                    cat?.name ?? 'Category',
+                    cat?.name ?? tr('Category'),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -934,8 +935,8 @@ class ModeLimitsCard extends ConsumerWidget {
                   ),
                   trailing: Text(
                     over
-                        ? '${MoneyFormat.compact(l.spent - l.limit)} over'
-                        : '${MoneyFormat.compact(l.limit - l.spent)} left',
+                        ? tr('{0} over', [MoneyFormat.compact(l.spent - l.limit)])
+                        : tr('{0} left', [MoneyFormat.compact(l.limit - l.spent)]),
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w600,
                       color: over ? AppColors.expense : null,
@@ -986,14 +987,14 @@ class ModeAccountsCard extends ConsumerWidget {
                 ),
               ),
               title: Text(
-                accounts[e.key]?.name ?? 'Account',
+                accounts[e.key]?.name ?? tr('Account'),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               subtitle: Text(
                 e.value.allocation == null
-                    ? 'Real balance'
-                    : 'Of ${MoneyFormat.symbol(e.value.allocation!)} for the trip',
+                    ? tr('Real balance')
+                    : tr('Of {0} for the trip', [MoneyFormat.symbol(e.value.allocation!)]),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: cs.onSurfaceVariant,
                 ),

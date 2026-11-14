@@ -11,6 +11,31 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 ## [1.6.6] — beta
 
 ### Added
+- **XPENC in your language** (#191). Settings → **Language**: English,
+  हिन्दी (Hindi), Deutsch (German), 日本語 (Japanese) and Русский (Russian)
+  are built in. XPENC follows the phone's language until you pick one, and
+  switches instantly. Dates, month names and weekdays follow too. PDFs and
+  CSV exports stay in English.
+- **Language packs** (#191). Settings → General → Language → **More
+  languages** opens [xpenc.in/languages](https://xpenc.in/languages):
+  download a pack, open it and choose XPENC, and the whole app switches to
+  that language at once, with an Undo. **Import language pack** does the
+  same from a file already on the phone (the way on iPhone). The first
+  pack is **বাংলা (Bengali)**, and the page has a form to ask for your
+  own language. A pack can
+  update a built-in language too, and can be removed again. Packs live on
+  this device only. Opening an XPENC backup or category template this way
+  points to the screen that imports it.
+- **Yearly Auto rules** (#197). A rule can now repeat **Yearly**, on the
+  day and month it starts — for an annual subscription or insurance. A
+  rule started on 29 Feb posts on 28 Feb in other years.
+- **Goals as pockets** (#196). A goal's **Add funds** and **Withdraw** now
+  reach your other goals and your loans too, not only everyday accounts:
+  move money from one pocket to another, or pay a loan from one. A loan's
+  **Make a payment** can come from a goal.
+- **Hide Transfer in / Transfer out** (#199). Edit account → **Shortcuts
+  on its page** turns either button off — e.g. Transfer out on a prepaid
+  balance that can only be spent, never moved.
 - **A card bill that pays itself** (#183). On a credit card tracking its
   statement, **Pay it automatically** moves what's left of the statement
   from the account you pick into the card on each due date — nothing if
@@ -135,6 +160,12 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   notifications, contacts and USSD pay — aren't there.
 
 ### Changed
+- **A foreign amount uses your saved rate** (#195). With a rate saved in
+  Settings → Currencies, typing what something cost in that currency now
+  fills in the amount in yours. Type over it if the card charged a
+  different amount; the line underneath shows the rate that works out to.
+  With no rate saved, it says so instead of leaving the amount untouched
+  without a word.
 - **Glass feels finished.** Buttons and tabs press in the instant your
   finger lands. Sheets stretch when pulled up instead of stopping dead,
   spring back at the speed you let go, and close with a quick flick down.
@@ -155,6 +186,11 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   or keep in the cloud.
 
 ### Fixed
+- **The Dashboard's Spending chart answers every tap** (#192). After the
+  first tap, only a thin strip down the middle of the donut responded, so
+  smaller slices couldn't be picked and the label kept flicking back. Any
+  slice now shows its name and amount, a thin one gets a wider target,
+  and a scroll that starts on the chart no longer flashes a label.
 - **Budget alerts follow your budget cycle.** With a cycle that starts
   on payday, the "almost used" and "overspent" alerts still counted the
   calendar month, so they could disagree with what Budgets showed. They

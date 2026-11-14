@@ -1,0 +1,16 @@
+# path:line — see wrap_strings.dart _forced
+lib/features/accounts/account_detail_screen.dart:328
+lib/features/accounts/account_detail_screen.dart:505
+lib/features/add_transaction/add_transaction_screen.dart:2299
+lib/features/add_transaction/add_transaction_screen.dart:2617
+lib/features/add_transaction/add_transaction_screen.dart:2627
+lib/features/add_transaction/add_transaction_screen.dart:2650
+lib/features/categories/category_detail_screen.dart:234
+lib/features/reports/account_report_modules.dart:307
+lib/features/reports/stats_modules.dart:1169
+lib/features/reports/stats_sections.dart:489
+lib/features/reports/xpenc_score.dart:502
+lib/features/reports/xpenc_score.dart:516
+lib/features/savings/loan_detail_screen.dart:655
+lib/features/savings/loan_detail_screen.dart:656
+lib/features/savings/loan_insights.dart:513

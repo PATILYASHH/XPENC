@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/budget_cycle.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Picks which day of the month Dashboard/Budgets/Stats treat as the start
 /// of a "month" — 1 for an ordinary calendar month, or a payday-anchored
@@ -44,14 +45,14 @@ class BudgetStartDaySheet extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
+          Tr(
             'Budget cycle start day',
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 8),
-          Text(
+          Tr(
             'Dashboard, Budgets and Stats will treat this day as the start '
             'of a "month" — pick the 1st for an ordinary calendar month, or '
             'e.g. your payday if you\'d rather track spending payday-to-'
@@ -117,14 +118,14 @@ class _LastWorkingDayOption extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    Tr(
                       'Last working day',
                       style: theme.textTheme.bodyLarge?.copyWith(
                         color: fg,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    Text(
+                    Tr(
                       'The last Monday to Friday of each month',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: selected

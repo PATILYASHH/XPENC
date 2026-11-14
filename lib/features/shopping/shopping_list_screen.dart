@@ -9,6 +9,7 @@ import '../../core/widgets/app_surfaces.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// One shopping list's items — not linked to the ledger. Checking an item
 /// off just marks it bought; logging the actual expense (if any) happens
@@ -34,7 +35,7 @@ class ShoppingListScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppTopBar(
-        title: Text(list?.name ?? 'Shopping List'),
+        title: Text(list?.name ?? tr('Shopping List')),
         actions: [
           if (list case final currentList?)
             PopupMenuButton<_ListAction>(
@@ -45,11 +46,11 @@ class ShoppingListScreen extends ConsumerWidget {
               itemBuilder: (_) => const [
                 PopupMenuItem(
                   value: _ListAction.rename,
-                  child: Text('Rename list'),
+                  child: Tr('Rename list'),
                 ),
                 PopupMenuItem(
                   value: _ListAction.delete,
-                  child: Text('Delete list'),
+                  child: Tr('Delete list'),
                 ),
               ],
             ),
@@ -57,7 +58,7 @@ class ShoppingListScreen extends ConsumerWidget {
             data: (items) => items.any((i) => i.isChecked)
                 ? IconButton(
                     icon: const AppIcon(Icons.delete_sweep_outlined),
-                    tooltip: 'Clear checked items',
+                    tooltip: tr('Clear checked items'),
                     onPressed: () =>
                         ref.read(dbProvider).clearCheckedShoppingItems(listId),
                   )
@@ -69,7 +70,7 @@ class ShoppingListScreen extends ConsumerWidget {
       body: itemsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => Center(
-          child: Text(
+          child: Tr(
             "Couldn't load this list.",
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -88,7 +89,7 @@ class ShoppingListScreen extends ConsumerWidget {
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                   const SizedBox(height: 16),
-                  Text(
+                  Tr(
                     'Nothing here yet — tap + to add something.',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium?.copyWith(
@@ -122,7 +123,7 @@ class ShoppingListScreen extends ConsumerWidget {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
+                          Tr(
                             'Estimated total',
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
@@ -160,7 +161,7 @@ class ShoppingListScreen extends ConsumerWidget {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        tooltip: 'Add item',
+        tooltip: tr('Add item'),
         onPressed: () => _openItemEditor(context, listId),
         child: const AppIcon(Icons.add),
       ),
@@ -176,7 +177,7 @@ class ShoppingListScreen extends ConsumerWidget {
     final newName = await showAppDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Rename list'),
+        title: const Tr('Rename list'),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -188,11 +189,11 @@ class ShoppingListScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(controller.text),
-            child: const Text('Save'),
+            child: const Tr('Save'),
           ),
         ],
       ),
@@ -220,19 +221,19 @@ class ShoppingListScreen extends ConsumerWidget {
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text('Delete "${list.name}"?'),
-        content: const Text('This removes the list and everything on it.'),
+        title: Text(tr('Delete "{0}"?', [list.name])),
+        content: const Tr('This removes the list and everything on it.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(dialogContext).colorScheme.error,
             ),
-            child: const Text('Delete'),
+            child: const Tr('Delete'),
           ),
         ],
       ),
@@ -265,7 +266,7 @@ class _ShoppingItemTile extends ConsumerWidget {
             backgroundColor: AppColors.expense,
             foregroundColor: Colors.white,
             icon: Icons.delete_outline,
-            label: 'Delete',
+            label: tr('Delete'),
           ),
         ],
       ),
@@ -362,7 +363,7 @@ class _ItemEditorSheetState extends ConsumerState<_ItemEditorSheet> {
   Future<void> _save() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      _showError('Give the item a name.');
+      _showError(tr('Give the item a name.'));
       return;
     }
     final amount = Money.tryParse(_amountController.text);
@@ -388,7 +389,7 @@ class _ItemEditorSheetState extends ConsumerState<_ItemEditorSheet> {
     } catch (_) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      _showError('Could not save the item.');
+      _showError(tr('Could not save the item.'));
     }
   }
 
@@ -411,7 +412,7 @@ class _ItemEditorSheetState extends ConsumerState<_ItemEditorSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              _isEdit ? 'Edit item' : 'New item',
+              _isEdit ? tr('Edit item') : tr('New item'),
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
@@ -423,9 +424,9 @@ class _ItemEditorSheetState extends ConsumerState<_ItemEditorSheet> {
               autofocus: !_isEdit,
               textCapitalization: TextCapitalization.sentences,
               maxLength: 120,
-              decoration: const InputDecoration(
-                labelText: 'Item',
-                hintText: 'e.g. Milk, New shoes',
+              decoration: InputDecoration(
+                labelText: tr('Item'),
+                hintText: tr('e.g. Milk, New shoes'),
                 counterText: '',
               ),
               onSubmitted: (_) => _save(),
@@ -433,7 +434,7 @@ class _ItemEditorSheetState extends ConsumerState<_ItemEditorSheet> {
             const SizedBox(height: 16),
             AmountKeypadField(
               controller: _amountController,
-              label: 'Estimated price (optional)',
+              label: tr('Estimated price (optional)'),
               hintText: '0.00',
               yieldTo: [_nameFocus],
             ),
@@ -446,7 +447,7 @@ class _ItemEditorSheetState extends ConsumerState<_ItemEditorSheet> {
                       width: 22,
                       child: CircularProgressIndicator(strokeWidth: 2.4),
                     )
-                  : const Text('Save'),
+                  : const Tr('Save'),
             ),
           ],
         ),

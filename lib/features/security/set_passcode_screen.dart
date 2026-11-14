@@ -5,6 +5,7 @@ import '../../core/security/pin_pad.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import 'lock_screen_keypad.dart';
+import '../../core/l10n/l10n.dart';
 
 const _pinLengthOptions = [4, 5, 6];
 
@@ -47,9 +48,9 @@ class _SetPasscodeScreenState extends ConsumerState<SetPasscodeScreen> {
   }
 
   String get _title => switch (_step) {
-    _Step.verifyCurrent => 'Enter current PIN',
-    _Step.enterNew => 'Set a new PIN',
-    _Step.confirmNew => 'Confirm PIN',
+    _Step.verifyCurrent => tr('Enter current PIN'),
+    _Step.enterNew => tr('Set a new PIN'),
+    _Step.confirmNew => tr('Confirm PIN'),
   };
 
   int get _pinLength => _step == _Step.verifyCurrent
@@ -100,7 +101,7 @@ class _SetPasscodeScreenState extends ConsumerState<SetPasscodeScreen> {
           Navigator.of(context).pop();
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
-            ..showSnackBar(const SnackBar(content: Text('Passcode removed')));
+            ..showSnackBar(const SnackBar(content: Tr('Passcode removed')));
           return;
         }
         setState(() {
@@ -136,7 +137,7 @@ class _SetPasscodeScreenState extends ConsumerState<SetPasscodeScreen> {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
-          ..showSnackBar(const SnackBar(content: Text('Passcode set')));
+          ..showSnackBar(const SnackBar(content: Tr('Passcode set')));
     }
   }
 
@@ -145,7 +146,7 @@ class _SetPasscodeScreenState extends ConsumerState<SetPasscodeScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Passcode')),
+      appBar: AppTopBar(title: const Tr('Passcode')),
       body: SafeArea(
         child: Column(
           children: [
@@ -160,8 +161,8 @@ class _SetPasscodeScreenState extends ConsumerState<SetPasscodeScreen> {
             if (_error)
               Text(
                 _step == _Step.enterNew
-                    ? "PINs didn't match — try again"
-                    : 'Wrong PIN',
+                    ? tr("PINs didn't match — try again")
+                    : tr('Wrong PIN'),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.error,
                 ),
@@ -175,7 +176,7 @@ class _SetPasscodeScreenState extends ConsumerState<SetPasscodeScreen> {
                 child: SegmentedButton<int>(
                   segments: [
                     for (final n in _pinLengthOptions)
-                      ButtonSegment(value: n, label: Text('$n digits')),
+                      ButtonSegment(value: n, label: Text(tr('{0} digits', [n]))),
                   ],
                   selected: {_newPinLength},
                   showSelectedIcon: false,

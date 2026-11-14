@@ -14,6 +14,7 @@ import '../../data/database.dart';
 import 'app_folder_backups.dart';
 import 'report_pdf.dart';
 import 'statement_pdf.dart';
+import '../../core/l10n/l10n.dart';
 
 /// The public folder every backup lives in: `Download/BACKUP XPENC`. Not the
 /// app's own (sandboxed, uninstall-wiped) storage — see [BackupService]'s
@@ -181,7 +182,7 @@ class BackupService {
         name: fileName,
         bytes: bytes,
         mimeType: 'application/json',
-      ).deliver(subject: 'XPENC backup');
+      ).deliver(subject: tr('XPENC backup'));
       // The record is all "Last backup" needs; there's no file to point at.
       await _db.upsertBackupRecord(
         fileName: fileName,
@@ -254,13 +255,13 @@ class BackupService {
   /// every MediaStore read needs, since it never hands back a real
   /// filesystem path.
   Future<File> _readToTemp(BackupRecordRow record) async {
-    if (_browser) throw ArgumentError(browserRestoreHint);
+    if (_browser) throw ArgumentError(tr(browserRestoreHint));
     final folder = _appFolder;
     if (folder != null) {
       // A copy, not the file itself — callers delete what this returns.
       final source = await folder.file(record.fileName);
       if (!await source.exists()) {
-        throw ArgumentError('That backup no longer exists on this device.');
+        throw ArgumentError(tr('That backup no longer exists on this device.'));
       }
       final tempDir = await getTemporaryDirectory();
       return source.copy('${tempDir.path}/${record.fileName}');
@@ -289,7 +290,7 @@ class BackupService {
           .catchError((_) => false);
     }
     if (!ok || !await tempFile.exists()) {
-      throw ArgumentError('That backup no longer exists on this device.');
+      throw ArgumentError(tr('That backup no longer exists on this device.'));
     }
     return tempFile;
   }
@@ -324,10 +325,10 @@ class BackupService {
     try {
       decoded = jsonDecode(content);
     } on FormatException {
-      throw ArgumentError('That file is not valid JSON.');
+      throw ArgumentError(tr('That file is not valid JSON.'));
     }
     if (decoded is! Map<String, dynamic>) {
-      throw ArgumentError('That file is not an XPENC backup.');
+      throw ArgumentError(tr('That file is not an XPENC backup.'));
     }
     await _db.importAll(decoded);
   }
@@ -342,7 +343,7 @@ class BackupService {
           bytes: await tempFile.readAsBytes(),
           mimeType: 'application/json',
         ),
-        subject: 'XPENC backup',
+        subject: tr('XPENC backup'),
       );
     } finally {
       await tempFile.delete().catchError((_) => tempFile);
@@ -627,5 +628,5 @@ class BackupService {
   /// Hands the file to the system share sheet so it can leave the app only
   /// when the user explicitly chooses to send it — on the web, downloads it.
   Future<void> share(OutgoingFile file, {String? subject}) =>
-      file.deliver(subject: subject ?? 'XPENC export');
+      file.deliver(subject: subject ?? tr('XPENC export'));
 }

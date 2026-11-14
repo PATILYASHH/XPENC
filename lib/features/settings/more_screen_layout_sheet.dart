@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../../core/l10n/l10n.dart';
 
 /// How the More hub lays out its items — one column of rows, or two cards
 /// per row.
@@ -11,15 +12,15 @@ class MoreScreenLayoutSheet extends ConsumerWidget {
   const MoreScreenLayoutSheet({super.key});
 
   static String label(MoreScreenViewMode mode) => switch (mode) {
-    MoreScreenViewMode.list => 'List',
-    MoreScreenViewMode.cards => 'Cards',
+    MoreScreenViewMode.list => tr('List'),
+    MoreScreenViewMode.cards => tr('Cards'),
   };
 
   static String _description(MoreScreenViewMode mode) => switch (mode) {
-    MoreScreenViewMode.list => 'One row per item, with its subtitle — '
-        "XPENC's original look.",
-    MoreScreenViewMode.cards => 'Two cards per row, more compact and '
-        'visual.',
+    MoreScreenViewMode.list => tr('One row per item, with its subtitle — '
+        "XPENC's original look."),
+    MoreScreenViewMode.cards => tr('Two cards per row, more compact and '
+        'visual.'),
   };
 
   static IconData _icon(MoreScreenViewMode mode) => switch (mode) {
@@ -52,11 +53,11 @@ class MoreScreenLayoutSheet extends ConsumerWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
-            child: Text('More screen layout', style: theme.textTheme.titleLarge),
+            child: Tr('More screen layout', style: theme.textTheme.titleLarge),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-            child: Text(
+            child: Tr(
               'How the More hub shows Accounts, Budgets, Auto and the rest.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: cs.onSurfaceVariant,

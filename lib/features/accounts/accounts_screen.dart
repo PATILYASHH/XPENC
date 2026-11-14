@@ -22,6 +22,7 @@ import 'add_account_sheet.dart';
 import 'edit_account_sheet.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 import '../modes/mode_sandbox_views.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Total money + per-account balances, grouped Cash · Bank · Cards.
 ///
@@ -53,22 +54,22 @@ class AccountsScreen extends ConsumerWidget {
               pinned: true,
               flexibleSpace: const GlassScrollEdge(),
               automaticallyImplyLeading: impliesBackArrow(context),
-              title: const Text('Accounts'),
+              title: const Tr('Accounts'),
               actions: [
                 GlassActionGroup(
                   children: [
                     IconButton(
-                      tooltip: 'Statement',
+                      tooltip: tr('Statement'),
                       icon: const AppIcon(Icons.picture_as_pdf_outlined),
                       onPressed: () => _downloadCombinedStatement(context, ref),
                     ),
                     IconButton(
-                      tooltip: 'Archived accounts',
+                      tooltip: tr('Archived accounts'),
                       icon: const AppIcon(Icons.inventory_2_outlined),
                       onPressed: () => context.push('/more/accounts/archived'),
                     ),
                     IconButton(
-                      tooltip: 'Add account',
+                      tooltip: tr('Add account'),
                       icon: const AppIcon(Icons.add_rounded),
                       onPressed: () => showAddAccountSheet(context),
                     ),
@@ -79,31 +80,31 @@ class AccountsScreen extends ConsumerWidget {
           const SliverToBoxAdapter(child: _TotalMoneyCard()),
           SliverToBoxAdapter(
             child: ModuleShortcuts([
-              const ModuleShortcut(
+              ModuleShortcut(
                 Icons.currency_exchange_rounded,
-                'Currency',
+                tr('Currency'),
                 '/more/settings/currency',
               ),
               // The tab has no top-bar button for it; the page does.
               if (embedded)
-                const ModuleShortcut(
+                ModuleShortcut(
                   Icons.inventory_2_outlined,
-                  'Archived',
+                  tr('Archived'),
                   '/more/accounts/archived',
                 ),
-              const ModuleShortcut(
+              ModuleShortcut(
                 Icons.account_balance_outlined,
-                'Account reports',
+                tr('Account reports'),
                 '/more/account-reports',
               ),
-              const ModuleShortcut(
+              ModuleShortcut(
                 Icons.savings_outlined,
-                'Goals & Loans',
+                tr('Goals & Loans'),
                 '/more/goals',
               ),
-              const ModuleShortcut(
+              ModuleShortcut(
                 Icons.tune_rounded,
-                'Counted in total',
+                tr('Counted in total'),
                 '/more/settings/dashboard',
               ),
             ]),
@@ -122,7 +123,7 @@ class AccountsScreen extends ConsumerWidget {
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.all(32),
-                  child: Text(
+                  child: Tr(
                     'Could not load your accounts.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -149,23 +150,23 @@ class AccountsScreen extends ConsumerWidget {
     final service = ref.read(backupServiceProvider);
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Generating statement...')));
+      ..showSnackBar(const SnackBar(content: Tr('Generating statement...')));
     try {
       final file = await service.writeCombinedStatementPdf(
         start: range.start,
         end: range.end,
       );
-      await service.share(file, subject: 'Combined statement');
+      await service.share(file, subject: tr('Combined statement'));
       if (!context.mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text('Exported ${file.name}')));
+        ..showSnackBar(SnackBar(content: Text(tr('Exported {0}', [file.name]))));
     } catch (e) {
       if (!context.mounted) return;
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          SnackBar(content: Text("Couldn't generate statement: $e")),
+          SnackBar(content: Text(tr("Couldn't generate statement: {0}", [e]))),
         );
     }
   }
@@ -194,11 +195,11 @@ class AccountsScreen extends ConsumerWidget {
         ..add(_sectionCard(context, ref, rows, accountMap));
     }
 
-    addGroup('Cash', cash);
-    addGroup('Bank', banks);
-    addGroup('Cards', cards);
-    addGroup('Pay later', payLater);
-    addGroup('Prepaid Balance', prepaidBalance);
+    addGroup(tr('Cash'), cash);
+    addGroup(tr('Bank'), banks);
+    addGroup(tr('Cards'), cards);
+    addGroup(tr('Pay later'), payLater);
+    addGroup(tr('Prepaid Balance'), prepaidBalance);
     return out;
   }
 
@@ -270,7 +271,7 @@ class _TotalMoneyCard extends ConsumerWidget {
             children: [
               Row(
                 children: [
-                  Text(
+                  Tr(
                     'Total money',
                     style: theme.textTheme.labelMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
@@ -289,7 +290,7 @@ class _TotalMoneyCard extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
+              Tr(
                 'Cash + Bank + Cards',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
@@ -308,7 +309,7 @@ class _TotalMoneyCard extends ConsumerWidget {
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
+                    child: Tr(
                       'Debit cards draw from their bank and are not counted twice.',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
@@ -369,7 +370,7 @@ class _OwnOweRow extends ConsumerWidget {
       container: true,
       child: Row(
         children: [
-          Expanded(child: cell('You own', parts.assets, cs.onSurface)),
+          Expanded(child: cell(tr('You own'), parts.assets, cs.onSurface)),
           Container(
             width: 1,
             height: 34,
@@ -378,7 +379,7 @@ class _OwnOweRow extends ConsumerWidget {
           ),
           Expanded(
             child: cell(
-              'You owe',
+              tr('You owe'),
               parts.liabilities,
               parts.liabilities.isPositive ? AppColors.expense : cs.onSurface,
             ),
@@ -417,12 +418,12 @@ class _AccountTile extends ConsumerWidget {
 
     if (_isDebitCard) {
       final bank = accountMap[account.linkedAccountId];
-      subtitle = _subtitle(theme, 'Draws from ${bank?.name ?? 'bank'}');
+      subtitle = _subtitle(theme, tr('Draws from {0}', [bank?.name ?? 'bank']));
       trailing = _LinkedChip();
     } else if (_owesLikeCredit) {
       subtitle = _subtitle(
         theme,
-        account.currentBalance.isNegative ? 'Outstanding' : 'Paid off',
+        account.currentBalance.isNegative ? tr('Outstanding') : tr('Paid off'),
       );
       trailing = BalanceText(
         account.currentBalance,
@@ -514,8 +515,8 @@ class _AccountTile extends ConsumerWidget {
             ),
             AppListTile(
               leading: const AppIcon(Icons.edit_outlined),
-              title: const Text('Edit'),
-              subtitle: const Text('Name, colour and icon'),
+              title: const Tr('Edit'),
+              subtitle: const Tr('Name, colour and icon'),
               onTap: () => Navigator.of(sheetContext).pop(_AccountAction.edit),
             ),
             // A debit card/UPI instrument holds no balance of its own (see
@@ -523,11 +524,11 @@ class _AccountTile extends ConsumerWidget {
             if (account.linkedAccountId == null)
               AppListTile(
                 leading: const AppIcon(Icons.savings_outlined),
-                title: const Text('Minimum balance'),
+                title: const Tr('Minimum balance'),
                 subtitle: Text(
                   account.minimumBalance == null
-                      ? 'Get a note when spending takes this below a floor'
-                      : 'Currently ${MoneyFormat.symbol(account.minimumBalance!)}',
+                      ? tr('Get a note when spending takes this below a floor')
+                      : tr('Currently {0}', [MoneyFormat.symbol(account.minimumBalance!)]),
                 ),
                 onTap: () => Navigator.of(
                   sheetContext,
@@ -535,8 +536,8 @@ class _AccountTile extends ConsumerWidget {
               ),
             AppListTile(
               leading: const AppIcon(Icons.archive_outlined),
-              title: const Text('Archive'),
-              subtitle: const Text('Hide it. History stays intact.'),
+              title: const Tr('Archive'),
+              subtitle: const Tr('Hide it. History stays intact.'),
               onTap: () =>
                   Navigator.of(sheetContext).pop(_AccountAction.archive),
             ),
@@ -545,11 +546,11 @@ class _AccountTile extends ConsumerWidget {
                 Icons.delete_outline,
                 color: theme.colorScheme.error,
               ),
-              title: Text(
+              title: Tr(
                 'Remove',
                 style: TextStyle(color: theme.colorScheme.error),
               ),
-              subtitle: const Text('Delete permanently — only if unused.'),
+              subtitle: const Tr('Delete permanently — only if unused.'),
               onTap: () =>
                   Navigator.of(sheetContext).pop(_AccountAction.remove),
             ),
@@ -592,8 +593,8 @@ class _AccountTile extends ConsumerWidget {
         SnackBar(
           content: Text(
             result.value == null
-                ? 'Minimum balance cleared'
-                : 'Minimum balance updated',
+                ? tr('Minimum balance cleared')
+                : tr('Minimum balance updated'),
           ),
         ),
       );
@@ -603,22 +604,22 @@ class _AccountTile extends ConsumerWidget {
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Archive account?'),
+        title: const Tr('Archive account?'),
         content: Text(
-          '"${account.name}" will be hidden from your accounts. '
-          'Its history stays intact.',
+          tr('"{0}" will be hidden from your accounts. '
+          'Its history stays intact.', [account.name]),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(ctx).colorScheme.error,
             ),
-            child: const Text('Archive'),
+            child: const Tr('Archive'),
           ),
         ],
       ),
@@ -629,7 +630,7 @@ class _AccountTile extends ConsumerWidget {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Account archived')));
+      ..showSnackBar(const SnackBar(content: Tr('Account archived')));
   }
 
   /// Unlike archiving, this can't be undone — [AppDatabase.deleteAccount]
@@ -639,8 +640,8 @@ class _AccountTile extends ConsumerWidget {
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Remove "${account.name}"?'),
-        content: const Text(
+        title: Text(tr('Remove "{0}"?', [account.name])),
+        content: const Tr(
           "This permanently deletes the account — it can't be undone. It "
           'only works if the account has no transaction history; otherwise '
           'archive it instead.',
@@ -648,14 +649,14 @@ class _AccountTile extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(ctx).colorScheme.error,
             ),
-            child: const Text('Remove'),
+            child: const Tr('Remove'),
           ),
         ],
       ),
@@ -671,7 +672,7 @@ class _AccountTile extends ConsumerWidget {
         ..hideCurrentSnackBar()
         ..showSnackBar(
           SnackBar(
-            content: Text(e.message?.toString() ?? "Can't remove this account"),
+            content: Text(e.message?.toString() ?? tr("Can't remove this account")),
           ),
         );
       return;
@@ -683,9 +684,9 @@ class _AccountTile extends ConsumerWidget {
         SnackBar(
           content: Text(
             rtaAutoDisabled
-                ? 'Account removed. Ready to Assign turned off — no '
-                      'accounts left in the pool.'
-                : 'Account removed',
+                ? tr('Account removed. Ready to Assign turned off — no '
+                      'accounts left in the pool.')
+                : tr('Account removed'),
           ),
         ),
       );
@@ -731,19 +732,19 @@ class _MinimumBalanceDialogState extends State<_MinimumBalanceDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Minimum balance'),
+      title: const Tr('Minimum balance'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          const Tr(
             "A note when spending would take this account's balance below "
             'the amount you set here. Nothing is ever blocked.',
           ),
           const SizedBox(height: 16),
           AmountKeypadField(
             controller: _controller,
-            label: 'Minimum balance',
+            label: tr('Minimum balance'),
             autofocus: true,
             yieldTo: const [],
           ),
@@ -755,11 +756,11 @@ class _MinimumBalanceDialogState extends State<_MinimumBalanceDialog> {
             onPressed: () => Navigator.of(
               context,
             ).pop(const _MinimumBalanceResult(null)),
-            child: const Text('Clear'),
+            child: const Tr('Clear'),
           ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: const Tr('Cancel'),
         ),
         FilledButton(
           onPressed: () {
@@ -768,13 +769,13 @@ class _MinimumBalanceDialogState extends State<_MinimumBalanceDialog> {
               ScaffoldMessenger.of(context)
                 ..hideCurrentSnackBar()
                 ..showSnackBar(
-                  const SnackBar(content: Text('Enter an amount above zero.')),
+                  const SnackBar(content: Tr('Enter an amount above zero.')),
                 );
               return;
             }
             Navigator.of(context).pop(_MinimumBalanceResult(parsed));
           },
-          child: const Text('Save'),
+          child: const Tr('Save'),
         ),
       ],
     );
@@ -787,7 +788,7 @@ class _LinkedChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Chip(
-      label: const Text('Linked'),
+      label: const Tr('Linked'),
       labelStyle: theme.textTheme.labelSmall?.copyWith(
         color: theme.colorScheme.onSurfaceVariant,
         fontWeight: FontWeight.w600,

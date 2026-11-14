@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Every widget the Dashboard can show, in the built-in order. The ones up
 /// to [recent] are the original dashboard and start on; the ones after it
@@ -33,42 +34,42 @@ extension DashboardWidgetX on DashboardWidget {
   bool get onByDefault => index <= DashboardWidget.recent.index;
 
   String get title => switch (this) {
-    DashboardWidget.detected => 'Detected transactions',
-    DashboardWidget.totalMoney => 'Total money',
-    DashboardWidget.thisMonth => 'Money in & out',
-    DashboardWidget.accounts => 'Accounts',
-    DashboardWidget.readyToAssign => 'Ready to Assign',
-    DashboardWidget.people => 'People',
-    DashboardWidget.upcoming => 'Upcoming',
-    DashboardWidget.budgets => 'Budgets',
-    DashboardWidget.spending => 'Spending',
-    DashboardWidget.recent => 'Recent transactions',
-    DashboardWidget.cashFlow => 'Cash flow',
-    DashboardWidget.goals => 'Savings goals',
-    DashboardWidget.loans => 'Loans',
-    DashboardWidget.shortcuts => 'Shortcuts',
-    DashboardWidget.groups => 'Groups',
-    DashboardWidget.shopping => 'Shopping lists',
+    DashboardWidget.detected => tr('Detected transactions'),
+    DashboardWidget.totalMoney => tr('Total money'),
+    DashboardWidget.thisMonth => tr('Money in & out'),
+    DashboardWidget.accounts => tr('Accounts'),
+    DashboardWidget.readyToAssign => tr('Ready to Assign'),
+    DashboardWidget.people => tr('People'),
+    DashboardWidget.upcoming => tr('Upcoming'),
+    DashboardWidget.budgets => tr('Budgets'),
+    DashboardWidget.spending => tr('Spending'),
+    DashboardWidget.recent => tr('Recent transactions'),
+    DashboardWidget.cashFlow => tr('Cash flow'),
+    DashboardWidget.goals => tr('Savings goals'),
+    DashboardWidget.loans => tr('Loans'),
+    DashboardWidget.shortcuts => tr('Shortcuts'),
+    DashboardWidget.groups => tr('Groups'),
+    DashboardWidget.shopping => tr('Shopping lists'),
   };
 
   String get description => switch (this) {
-    DashboardWidget.detected => 'Bank messages waiting for review',
+    DashboardWidget.detected => tr('Bank messages waiting for review'),
     DashboardWidget.totalMoney =>
-      'Net worth, where the month began, and its trend',
-    DashboardWidget.thisMonth => 'What came in and went out this month',
-    DashboardWidget.accounts => 'Every account and its balance',
-    DashboardWidget.readyToAssign => 'Money not yet given a job',
-    DashboardWidget.people => "Who owes you, and who you owe",
-    DashboardWidget.upcoming => 'Reminders and Auto rules due soon',
-    DashboardWidget.budgets => 'How full each budget is',
-    DashboardWidget.spending => 'Where the month’s money went',
-    DashboardWidget.recent => 'Your latest transactions',
-    DashboardWidget.cashFlow => 'Six months of money in against money out',
-    DashboardWidget.goals => 'How close each goal is',
-    DashboardWidget.loans => 'What’s left to repay on each loan',
-    DashboardWidget.shortcuts => 'Your Quick Actions, one tap away',
-    DashboardWidget.groups => 'Where each shared group stands',
-    DashboardWidget.shopping => 'Lists with items still to buy',
+      tr('Net worth, where the month began, and its trend'),
+    DashboardWidget.thisMonth => tr('What came in and went out this month'),
+    DashboardWidget.accounts => tr('Every account and its balance'),
+    DashboardWidget.readyToAssign => tr('Money not yet given a job'),
+    DashboardWidget.people => tr("Who owes you, and who you owe"),
+    DashboardWidget.upcoming => tr('Reminders and Auto rules due soon'),
+    DashboardWidget.budgets => tr('How full each budget is'),
+    DashboardWidget.spending => tr('Where the month’s money went'),
+    DashboardWidget.recent => tr('Your latest transactions'),
+    DashboardWidget.cashFlow => tr('Six months of money in against money out'),
+    DashboardWidget.goals => tr('How close each goal is'),
+    DashboardWidget.loans => tr('What’s left to repay on each loan'),
+    DashboardWidget.shortcuts => tr('Your Quick Actions, one tap away'),
+    DashboardWidget.groups => tr('Where each shared group stands'),
+    DashboardWidget.shopping => tr('Lists with items still to buy'),
   };
 
   IconData get icon => switch (this) {
@@ -97,9 +98,9 @@ extension DashboardWidgetX on DashboardWidget {
         DashboardWidget.totalMoney ||
         DashboardWidget.accounts ||
         DashboardWidget.budgets when mode == AppMode.basic =>
-          'Not shown in Basic mode',
+          tr('Not shown in Basic mode'),
         DashboardWidget.readyToAssign when mode != AppMode.pro || !rtaOn =>
-          'Shows in Pro mode with Ready to Assign on',
+          tr('Shows in Pro mode with Ready to Assign on'),
         _ => null,
       };
 }

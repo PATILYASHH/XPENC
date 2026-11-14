@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/widgets/amount_keypad_field.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 enum _IdKind { upiId, phone }
 
@@ -52,8 +53,8 @@ class _UssdPayScreenState extends State<UssdPayScreen> {
           SnackBar(
             content: Text(
               _idKind == _IdKind.upiId
-                  ? 'Enter a UPI ID first.'
-                  : 'Enter a phone number first.',
+                  ? tr('Enter a UPI ID first.')
+                  : tr('Enter a phone number first.'),
             ),
           ),
         );
@@ -63,7 +64,7 @@ class _UssdPayScreenState extends State<UssdPayScreen> {
     if (!mounted) return;
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Copied')));
+      ..showSnackBar(const SnackBar(content: Tr('Copied')));
   }
 
   /// Copies the ID first — same as tapping "Copy ID" separately — so the
@@ -81,8 +82,8 @@ class _UssdPayScreenState extends State<UssdPayScreen> {
           SnackBar(
             content: Text(
               _idKind == _IdKind.upiId
-                  ? 'Enter who you paid first.'
-                  : 'Enter their phone number first.',
+                  ? tr('Enter who you paid first.')
+                  : tr('Enter their phone number first.'),
             ),
           ),
         );
@@ -102,7 +103,7 @@ class _UssdPayScreenState extends State<UssdPayScreen> {
     if (opened || !mounted) return;
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text("Couldn't open the dialer")));
+      ..showSnackBar(const SnackBar(content: Tr("Couldn't open the dialer")));
   }
 
   void _logPayment() {
@@ -113,8 +114,8 @@ class _UssdPayScreenState extends State<UssdPayScreen> {
           SnackBar(
             content: Text(
               _idKind == _IdKind.upiId
-                  ? 'Enter who you paid first.'
-                  : 'Enter their phone number first.',
+                  ? tr('Enter who you paid first.')
+                  : tr('Enter their phone number first.'),
             ),
           ),
         );
@@ -124,7 +125,7 @@ class _UssdPayScreenState extends State<UssdPayScreen> {
     final query = {
       'type': 'expense',
       'payee': _id,
-      'note': 'Paid via *99# (offline UPI)',
+      'note': tr('Paid via *99# (offline UPI)'),
       if (amount.isPositive) 'amount': amount.rupees.toStringAsFixed(2),
     };
     context.push(Uri(path: '/add', queryParameters: query).toString());
@@ -136,14 +137,14 @@ class _UssdPayScreenState extends State<UssdPayScreen> {
     final cs = theme.colorScheme;
 
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Pay without internet (Beta)')),
+      appBar: AppTopBar(title: const Tr('Pay without internet (Beta)')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 24).plusNavBar(context),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
+              Tr(
                 'Who are you paying?',
                 style: theme.textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.w700,
@@ -152,10 +153,10 @@ class _UssdPayScreenState extends State<UssdPayScreen> {
               const SizedBox(height: 10),
               SegmentedButton<_IdKind>(
                 segments: const [
-                  ButtonSegment(value: _IdKind.upiId, label: Text('UPI ID')),
+                  ButtonSegment(value: _IdKind.upiId, label: Tr('UPI ID')),
                   ButtonSegment(
                     value: _IdKind.phone,
-                    label: Text('Phone number'),
+                    label: Tr('Phone number'),
                   ),
                 ],
                 selected: {_idKind},
@@ -174,18 +175,18 @@ class _UssdPayScreenState extends State<UssdPayScreen> {
                     : TextInputType.emailAddress,
                 decoration: InputDecoration(
                   labelText: _idKind == _IdKind.upiId
-                      ? 'UPI ID'
-                      : 'Phone number',
+                      ? tr('UPI ID')
+                      : tr('Phone number'),
                   hintText: _idKind == _IdKind.upiId
-                      ? 'e.g. shop@okhdfcbank'
+                      ? tr('e.g. shop@okhdfcbank')
                       : 'e.g. 98765 43210',
                 ),
               ),
               const SizedBox(height: 16),
               AmountKeypadField(
                 controller: _amountController,
-                label: 'Amount',
-                hintText: 'Optional — fills it in when you log this later',
+                label: tr('Amount'),
+                hintText: tr('Optional — fills it in when you log this later'),
                 yieldTo: [_idFocus],
                 displayKey: const Key('amountDisplay'),
               ),
@@ -197,14 +198,14 @@ class _UssdPayScreenState extends State<UssdPayScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      Tr(
                         'How to pay',
                         style: theme.textTheme.labelLarge?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Text(
+                      Tr(
                         '1. Tap Dial *99# below — it copies the ID above and '
                         'opens the dialer in one go.\n'
                         '2. Your phone\'s own USSD menu takes over from here '
@@ -228,7 +229,7 @@ class _UssdPayScreenState extends State<UssdPayScreen> {
                     child: OutlinedButton.icon(
                       onPressed: _copyId,
                       icon: const AppIcon(Icons.copy_rounded),
-                      label: const Text('Copy ID'),
+                      label: const Tr('Copy ID'),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -236,7 +237,7 @@ class _UssdPayScreenState extends State<UssdPayScreen> {
                     child: OutlinedButton.icon(
                       onPressed: _logPayment,
                       icon: const AppIcon(Icons.check_circle_outline_rounded),
-                      label: const Text('Log payment'),
+                      label: const Tr('Log payment'),
                     ),
                   ),
                 ],
@@ -246,7 +247,7 @@ class _UssdPayScreenState extends State<UssdPayScreen> {
               FilledButton.icon(
                 onPressed: _dial,
                 icon: const AppIcon(Icons.send_rounded),
-                label: const Text('Dial *99#'),
+                label: const Tr('Dial *99#'),
               ),
             ],
           ),

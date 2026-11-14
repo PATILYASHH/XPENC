@@ -1,0 +1,596 @@
+@es
+0	{0} ha terminado
+1	Resumen
+2	No se pudo importar la copia de Connector: {0}
+3	No se pudo importar la copia: {0}
+4	Ya está en tu bandeja de revisión
+5	No se encontró ninguna transacción en ese mensaje{0}
+6	Ver texto
+7	 — parece un código OTP.
+8	 — parece publicidad.
+9	 — no hay transacción, solo un saldo.
+10	 — el pago fue rechazado.
+11	 — no se encontró ningún importe.
+12	Capturas de pantalla permitidas
+13	No se pudieron abrir tus datos
+14	La app no pudo abrir su base de datos, así que no se puede mostrar nada. Tus datos guardados no se han perdido.
+15	el último día laborable
+16	el {0}
+17	Se necesita al menos un participante.
+18	Los porcentajes son obligatorios en un reparto por porcentaje.
+19	Los porcentajes deben sumar 100 %.
+20	Los importes son obligatorios en un reparto manual.
+21	Los importes deben sumar exactamente el total.
+22	Semana {0}, {1} · {2}
+23	Panel
+24	Transacciones
+25	Personas
+26	Cuentas
+27	Modos
+28	Presupuestos
+29	Listo para asignar
+31	Plan
+32	Calendario
+33	Metas y préstamos
+34	Lista de compras
+35	Beneficiarios
+36	Análisis
+37	Estadísticas
+38	Informes de cuentas
+39	Calculadoras
+40	Datos
+41	Copia de seguridad y restauración
+42	Descargar datos
+43	Configuración
+44	Categorías
+45	Etiquetas
+46	Novedades
+47	Guía
+48	Gasto excedido en {0}
+49	Has gastado {0} de {1}.
+50	Presupuesto de {0} agotado
+51	Presupuesto de {0} usado al {1} %
+52	Has gastado todo {0}.
+53	Has gastado {0} de {1} ({2} %).
+54	Vence {0}{1}. No se ha registrado nada: confírmalo en la app.
+55	{0} transacciones detectadas
+56	Abre la app para revisarlas y categorizarlas.
+57	{0}: pago automático próximo
+58	{0}: llegará pronto
+59	Lo que queda del extracto se pagará desde {0} el {1}. Tenlo listo.
+60	Se descontarán {0} de {1} el {2}. Ten ese importe disponible.
+61	Se espera {0} en {1} el {2}.
+62	{0}: pago vence el {1}
+63	Paga antes del {0} para evitar intereses o recargos.
+64	{0} transacciones automáticas registradas
+65	Abre Auto para revisar lo registrado.
+66	Registra los gastos de hoy
+67	Un minuto ahora es mejor que reconstruirlo de memoria después.
+68	Añadir rápido
+69	Responde con un importe para registrar un gasto o un ingreso.
+70	Añadir gasto
+71	Importe
+72	Añadir ingreso
+73	No se pudo leer eso como importe: no se añadió nada.
+74	No hay cuenta donde registrarlo: no se añadió nada.
+75	{0} de {1} añadido a {2}.
+76	Gastos
+77	Ingresos
+78	No se pudo guardar: no se añadió nada.
+79	Nueva transacción
+80	Perfil y ajustes
+81	Añadir
+82	Saldado
+83	Bandeja de revisión
+84	Acerca de {0}
+85	Archivado
+86	Añadir persona
+87	Hoy
+88	Cambiar mes
+89	Filtros
+90	Cerrar búsqueda
+91	Buscar
+92	Buscar transacciones
+93	Año anterior
+94	Año siguiente
+95	Este mes
+96	Plantillas
+97	Escribe las {0} palabras, separadas por espacios
+98	palabra1 palabra2 palabra3 …
+99	Transacción oculta. Mantén pulsado para verla.
+100	Oculta · mantén pulsado para ver
+101	Pegar código
+102	Aceptar
+103	Cancelar
+104	Cerrar
+105	Continuar
+106	Guardar
+107	Copiar
+108	Cortar
+109	Pegar
+110	Seleccionar todo
+111	Atrás
+112	Eliminar
+113	Más
+114	Mostrar menú
+115	Mes siguiente
+116	Mes anterior
+117	Seleccionar fecha
+118	Seleccionar rango
+119	Introducir fecha
+@fr
+0	{0} est terminé
+1	Résumé
+2	Impossible d'importer la sauvegarde de Connector : {0}
+3	Impossible d'importer la sauvegarde : {0}
+4	Déjà dans votre boîte de révision
+5	Aucune transaction trouvée dans ce message{0}
+6	Voir le texte
+7	 — ressemble à un code OTP.
+8	 — ressemble à une publicité.
+9	 — pas de transaction, juste un solde.
+10	 — le paiement a été refusé.
+11	 — aucun montant trouvé.
+12	Captures d'écran autorisées
+13	Impossible d'ouvrir vos données
+14	L'app n'a pas pu ouvrir sa base de données, rien ne peut donc être affiché. Vos données enregistrées ne sont pas perdues.
+15	le dernier jour ouvré
+16	le {0}
+17	Il faut au moins un participant.
+18	Les pourcentages sont requis pour un partage en pourcentage.
+19	Les pourcentages doivent totaliser 100 %.
+20	Les montants sont requis pour un partage manuel.
+21	Les montants doivent totaliser exactement le total.
+22	Semaine {0}, {1} · {2}
+23	Tableau de bord
+24	Transactions
+25	Personnes
+26	Comptes
+27	Modes
+28	Budgets
+29	Prêt à attribuer
+31	Plan
+32	Calendrier
+33	Objectifs et prêts
+34	Liste de courses
+35	Bénéficiaires
+36	Analyses
+37	Statistiques
+38	Rapports de comptes
+39	Calculatrices
+40	Données
+41	Sauvegarde et restauration
+42	Télécharger les données
+43	Configuration
+44	Catégories
+45	Étiquettes
+46	Nouveautés
+47	Guide
+48	Dépassement sur {0}
+49	Vous avez dépensé {0} sur {1}.
+50	Budget {0} épuisé
+51	Budget {0} utilisé à {1} %
+52	Vous avez dépensé tout {0}.
+53	Vous avez dépensé {0} sur {1} ({2} %).
+54	Échéance {0}{1}. Rien n'a été enregistré — confirmez-le dans l'app.
+55	{0} transactions détectées
+56	Ouvrez l'app pour les vérifier et les classer.
+57	{0} : prélèvement automatique à venir
+58	{0} : bientôt attendu
+59	Le reste du relevé sera payé depuis {0} le {1}. Prévoyez-le.
+60	{0} sera prélevé sur {1} le {2}. Prévoyez ce montant.
+61	{0} est attendu sur {1} le {2}.
+62	{0} : paiement dû le {1}
+63	Payez avant le {0} pour éviter intérêts ou frais de retard.
+64	{0} transactions automatiques enregistrées
+65	Ouvrez Auto pour vérifier ce qui a été enregistré.
+66	Notez les dépenses du jour
+67	Une minute maintenant vaut mieux que tout reconstituer de mémoire plus tard.
+68	Ajout rapide
+69	Répondez avec un montant pour noter une dépense ou une entrée.
+70	Ajouter une dépense
+71	Montant
+72	Ajouter une entrée
+73	Impossible de lire ce montant — rien n'a été ajouté.
+74	Aucun compte où l'enregistrer — rien n'a été ajouté.
+75	{0} sur {1} ajouté à {2}.
+76	Dépenses
+77	Entrées
+78	Impossible d'enregistrer — rien n'a été ajouté.
+79	Nouvelle transaction
+80	Profil et paramètres
+81	Ajouter
+82	Réglé
+83	Boîte de révision
+84	À propos de {0}
+85	Archivé
+86	Ajouter une personne
+87	Aujourd'hui
+88	Changer de mois
+89	Filtres
+90	Fermer la recherche
+91	Rechercher
+92	Rechercher des transactions
+93	Année précédente
+94	Année suivante
+95	Ce mois-ci
+96	Modèles
+97	Saisissez les {0} mots, séparés par des espaces
+98	mot1 mot2 mot3 …
+99	Transaction masquée. Appuyez longuement pour l'afficher.
+100	Masquée · appui long pour voir
+101	Coller le code
+103	Annuler
+104	Fermer
+105	Continuer
+106	Enregistrer
+107	Copier
+108	Couper
+109	Coller
+110	Tout sélectionner
+111	Retour
+112	Supprimer
+113	Plus
+114	Afficher le menu
+115	Mois suivant
+116	Mois précédent
+117	Choisir une date
+118	Choisir une période
+119	Saisir une date
+@de
+0	{0} ist beendet
+1	Übersicht
+2	Connector-Backup konnte nicht übernommen werden: {0}
+3	Backup konnte nicht übernommen werden: {0}
+4	Bereits in deinem Prüf-Posteingang
+5	In dieser Nachricht wurde keine Buchung gefunden{0}
+6	Text ansehen
+7	 — sieht nach einem Einmalcode aus.
+8	 — sieht nach Werbung aus.
+9	 — keine Buchung, nur ein Kontostand.
+10	 — die Zahlung wurde abgelehnt.
+11	 — kein Betrag gefunden.
+12	Screenshots erlaubt
+13	Deine Daten konnten nicht geöffnet werden
+14	Die App konnte ihre Datenbank nicht öffnen, daher kann nichts angezeigt werden. Deine gespeicherten Daten sind nicht verloren.
+15	der letzte Werktag
+16	der {0}.
+17	Mindestens eine Person wird benötigt.
+18	Für eine Aufteilung nach Prozent sind Prozentsätze nötig.
+19	Die Prozentsätze müssen zusammen 100 % ergeben.
+20	Für eine manuelle Aufteilung sind Beträge nötig.
+21	Die Beträge müssen genau die Summe ergeben.
+22	Woche {0}, {1} · {2}
+23	Übersicht
+24	Buchungen
+25	Personen
+26	Konten
+27	Modi
+28	Budgets
+29	Zuzuweisen
+31	Plan
+32	Kalender
+33	Ziele & Kredite
+34	Einkaufsliste
+35	Empfänger
+36	Einblicke
+37	Statistik
+38	Kontoberichte
+39	Rechner
+40	Daten
+41	Sichern & Wiederherstellen
+42	Daten herunterladen
+43	Einrichtung
+44	Kategorien
+45	Tags
+46	Neuigkeiten
+47	Anleitung
+48	{0} überzogen
+49	Du hast {0} von {1} ausgegeben.
+50	Budget {0} aufgebraucht
+51	Budget {0} zu {1} % genutzt
+52	Du hast {0} komplett ausgegeben.
+53	Du hast {0} von {1} ausgegeben ({2} %).
+54	Fällig {0}{1}. Es wurde nichts gebucht — bestätige es in der App.
+55	{0} Buchungen erkannt
+56	Öffne die App, um sie zu prüfen und einzuordnen.
+57	{0}: automatische Zahlung steht bevor
+58	{0}: bald erwartet
+59	Der Rest der Abrechnung wird am {1} von {0} bezahlt. Halte den Betrag bereit.
+60	{0} wird am {2} von {1} abgebucht. Halte so viel bereit.
+61	{0} wird am {2} auf {1} erwartet.
+62	{0}: Zahlung fällig am {1}
+63	Zahle bis {0}, um Zinsen oder Mahngebühren zu vermeiden.
+64	{0} automatische Buchungen erstellt
+65	Öffne Auto, um zu prüfen, was gebucht wurde.
+66	Trag die heutigen Ausgaben ein
+67	Eine Minute jetzt ist besser, als es später aus dem Gedächtnis zu rekonstruieren.
+68	Schnell hinzufügen
+69	Antworte mit einem Betrag, um eine Ausgabe oder Einnahme einzutragen.
+70	Ausgabe hinzufügen
+71	Betrag
+72	Einnahme hinzufügen
+73	Das konnte nicht als Betrag gelesen werden — nichts hinzugefügt.
+74	Kein Konto zum Buchen — nichts hinzugefügt.
+75	{0} von {1} zu {2} hinzugefügt.
+76	Ausgaben
+77	Einnahmen
+78	Konnte nicht gespeichert werden — nichts hinzugefügt.
+79	Neue Buchung
+80	Profil & Einstellungen
+81	Hinzufügen
+82	Beglichen
+83	Prüf-Posteingang
+84	Über {0}
+85	Archiviert
+86	Person hinzufügen
+87	Heute
+88	Monat wechseln
+89	Filter
+90	Suche schließen
+91	Suchen
+92	Buchungen durchsuchen
+93	Vorheriges Jahr
+94	Nächstes Jahr
+95	Dieser Monat
+96	Vorlagen
+97	Gib alle {0} Wörter ein, getrennt durch Leerzeichen
+98	wort1 wort2 wort3 …
+99	Verborgene Buchung. Gedrückt halten zum Anzeigen.
+100	Verborgen · zum Ansehen halten
+101	Code einfügen
+103	Abbrechen
+104	Schließen
+105	Weiter
+106	Speichern
+107	Kopieren
+108	Ausschneiden
+109	Einfügen
+110	Alles auswählen
+111	Zurück
+112	Löschen
+113	Mehr
+114	Menü anzeigen
+115	Nächster Monat
+116	Vorheriger Monat
+117	Datum auswählen
+118	Zeitraum auswählen
+119	Datum eingeben
+@it
+0	{0} è terminato
+1	Riepilogo
+2	Impossibile importare il backup di Connector: {0}
+3	Impossibile importare il backup: {0}
+4	Già nella tua posta da rivedere
+5	Nessuna transazione trovata in quel messaggio{0}
+6	Vedi testo
+7	 — sembra un codice OTP.
+8	 — sembra pubblicità.
+9	 — nessuna transazione, solo un saldo.
+10	 — il pagamento è stato rifiutato.
+11	 — nessun importo trovato.
+12	Screenshot consentiti
+13	Impossibile aprire i tuoi dati
+14	L'app non è riuscita ad aprire il database, quindi non si può mostrare nulla. I tuoi dati salvati non sono persi.
+15	l'ultimo giorno lavorativo
+16	il {0}
+17	Serve almeno un partecipante.
+18	Le percentuali sono obbligatorie per una divisione in percentuale.
+19	Le percentuali devono sommare al 100%.
+20	Gli importi sono obbligatori per una divisione manuale.
+21	Gli importi devono sommare esattamente al totale.
+22	Settimana {0}, {1} · {2}
+23	Pannello
+24	Transazioni
+25	Persone
+26	Conti
+27	Modalità
+28	Budget
+29	Da assegnare
+31	Piano
+32	Calendario
+33	Obiettivi e prestiti
+34	Lista della spesa
+35	Beneficiari
+36	Analisi
+37	Statistiche
+38	Report dei conti
+39	Calcolatori
+40	Dati
+41	Backup e ripristino
+42	Scarica i dati
+43	Configurazione
+44	Categorie
+45	Etichette
+46	Novità
+47	Guida
+48	Sforato su {0}
+49	Hai speso {0} di {1}.
+50	Budget {0} esaurito
+51	Budget {0} usato al {1}%
+52	Hai speso tutto {0}.
+53	Hai speso {0} di {1} ({2}%).
+54	Scadenza {0}{1}. Non è stato registrato nulla: confermalo nell'app.
+55	{0} transazioni rilevate
+56	Apri l'app per rivederle e categorizzarle.
+57	{0}: pagamento automatico in arrivo
+58	{0}: in arrivo a breve
+59	Il resto dell'estratto conto sarà pagato da {0} il {1}. Tienilo pronto.
+60	{0} sarà addebitato da {1} il {2}. Tieni pronta la somma.
+61	{0} è atteso su {1} il {2}.
+62	{0}: pagamento in scadenza il {1}
+63	Paga entro il {0} per evitare interessi o penali.
+64	{0} transazioni automatiche registrate
+65	Apri Auto per rivedere ciò che è stato registrato.
+66	Registra le spese di oggi
+67	Un minuto ora è meglio che ricostruire tutto a memoria dopo.
+68	Aggiunta rapida
+69	Rispondi con un importo per registrare un'uscita o un'entrata.
+70	Aggiungi uscita
+71	Importo
+72	Aggiungi entrata
+73	Non è stato possibile leggere l'importo: nulla è stato aggiunto.
+74	Nessun conto su cui registrare: nulla è stato aggiunto.
+75	{0} di {1} aggiunto a {2}.
+76	Uscite
+77	Entrate
+78	Impossibile salvare: nulla è stato aggiunto.
+79	Nuova transazione
+80	Profilo e impostazioni
+81	Aggiungi
+82	Saldato
+83	Posta da rivedere
+84	Informazioni su {0}
+85	Archiviato
+86	Aggiungi persona
+87	Oggi
+88	Cambia mese
+89	Filtri
+90	Chiudi ricerca
+91	Cerca
+92	Cerca transazioni
+93	Anno precedente
+94	Anno successivo
+95	Questo mese
+96	Modelli
+97	Inserisci tutte le {0} parole, separate da spazi
+98	parola1 parola2 parola3 …
+99	Transazione nascosta. Tieni premuto per vederla.
+100	Nascosta · tieni premuto per vedere
+101	Incolla codice
+103	Annulla
+104	Chiudi
+105	Continua
+106	Salva
+107	Copia
+108	Taglia
+109	Incolla
+110	Seleziona tutto
+111	Indietro
+112	Elimina
+113	Altro
+114	Mostra menu
+115	Mese successivo
+116	Mese precedente
+117	Seleziona data
+118	Seleziona intervallo
+119	Inserisci data
+@pt
+0	{0} terminou
+1	Resumo
+2	Não foi possível importar o backup do Connector: {0}
+3	Não foi possível importar o backup: {0}
+4	Já está na sua caixa de revisão
+5	Nenhuma transação encontrada nessa mensagem{0}
+6	Ver texto
+7	 — parece um código OTP.
+8	 — parece promocional.
+9	 — sem transação, apenas um saldo.
+10	 — o pagamento foi recusado.
+11	 — nenhum valor encontrado.
+12	Capturas de tela permitidas
+13	Não foi possível abrir seus dados
+14	O app não conseguiu abrir o banco de dados, então nada pode ser exibido. Seus dados salvos não foram perdidos.
+15	o último dia útil
+16	o dia {0}
+17	É preciso pelo menos um participante.
+18	As porcentagens são obrigatórias numa divisão por porcentagem.
+19	As porcentagens devem somar 100%.
+20	Os valores são obrigatórios numa divisão manual.
+21	Os valores devem somar exatamente o total.
+22	Semana {0}, {1} · {2}
+23	Painel
+24	Transações
+25	Pessoas
+26	Contas
+27	Modos
+28	Orçamentos
+29	Pronto para atribuir
+31	Plano
+32	Calendário
+33	Metas e empréstimos
+34	Lista de compras
+35	Beneficiários
+36	Análises
+37	Estatísticas
+38	Relatórios de contas
+39	Calculadoras
+40	Dados
+41	Backup e restauração
+42	Baixar dados
+43	Configuração
+44	Categorias
+45	Etiquetas
+46	Novidades
+47	Guia
+48	Orçamento estourado em {0}
+49	Você gastou {0} de {1}.
+50	Orçamento de {0} esgotado
+51	Orçamento de {0} {1}% usado
+52	Você gastou todo o {0}.
+53	Você gastou {0} de {1} ({2}%).
+54	Vence {0}{1}. Nada foi lançado — confirme no app.
+55	{0} transações detectadas
+56	Abra o app para revisar e categorizar.
+57	{0}: pagamento automático chegando
+58	{0}: previsto em breve
+59	O restante da fatura será pago de {0} em {1}. Deixe o valor pronto.
+60	{0} será debitado de {1} em {2}. Deixe esse valor disponível.
+61	{0} é esperado em {1} em {2}.
+62	{0}: pagamento vence em {1}
+63	Pague até {0} para evitar juros ou multa.
+64	{0} transações automáticas lançadas
+65	Abra Auto para revisar o que foi lançado.
+66	Registre os gastos de hoje
+67	Um minuto agora é melhor do que reconstruir tudo de memória depois.
+68	Adição rápida
+69	Responda com um valor para registrar uma saída ou entrada.
+70	Adicionar saída
+71	Valor
+72	Adicionar entrada
+73	Não foi possível ler isso como valor — nada foi adicionado.
+74	Nenhuma conta para lançar — nada foi adicionado.
+75	{0} de {1} adicionado a {2}.
+76	Saídas
+77	Entradas
+78	Não foi possível salvar — nada foi adicionado.
+79	Nova transação
+80	Perfil e configurações
+81	Adicionar
+82	Quitado
+83	Caixa de revisão
+84	Sobre o {0}
+85	Arquivado
+86	Adicionar pessoa
+87	Hoje
+88	Mudar mês
+89	Filtros
+90	Fechar busca
+91	Buscar
+92	Buscar transações
+93	Ano anterior
+94	Próximo ano
+95	Este mês
+96	Modelos
+97	Digite as {0} palavras, separadas por espaços
+98	palavra1 palavra2 palavra3 …
+99	Transação oculta. Toque e segure para ver.
+100	Oculta · segure para ver
+101	Colar código
+103	Cancelar
+104	Fechar
+105	Continuar
+106	Salvar
+107	Copiar
+108	Recortar
+109	Colar
+110	Selecionar tudo
+111	Voltar
+112	Excluir
+113	Mais
+114	Mostrar menu
+115	Próximo mês
+116	Mês anterior
+117	Selecionar data
+118	Selecionar período
+119	Inserir data

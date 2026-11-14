@@ -3,15 +3,17 @@ import 'package:flutter/material.dart';
 import '../theme/bar_page_transition.dart';
 import '../theme/glass.dart';
 import 'app_surfaces.dart';
+import '../../core/l10n/l10n.dart';
 
 /// A page a module links to directly — Currency from Accounts, Categories
 /// from Budgets — so a related feature is a tap away rather than a trip
 /// back through More.
 class ModuleShortcut {
-  const ModuleShortcut(this.icon, this.label, this.route);
+  const ModuleShortcut(this.icon, String label, this.route) : _label = label;
 
   final IconData icon;
-  final String label;
+  final String _label;
+  String get label => tr(_label);
 
   /// Pushed (as a page growing out of the bar, like More's own tiles).
   final String route;
@@ -40,7 +42,7 @@ class ModuleShortcuts extends StatelessWidget {
     final glass = AppSurface.of(context).isGlass;
     return Semantics(
       container: true,
-      label: 'Shortcuts',
+      label: tr('Shortcuts'),
       // A tab embedded in the shell may have no Material of its own above
       // it; the chips need one.
       child: Material(

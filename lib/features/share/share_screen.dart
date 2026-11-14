@@ -19,6 +19,7 @@ import '../../data/tables.dart';
 import 'share_app_glyphs.dart';
 import 'share_cards.dart';
 import 'share_models.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Every Share — a transaction, a person, a group, a mode — lands here. Top
 /// to bottom: an Image ⇄ PDF slider (opening on whichever was sent last),
@@ -171,7 +172,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
   /// Straight into [target], or — null — the system share sheet.
   Future<void> _send(ShareTarget? target) async {
     final messenger = ScaffoldMessenger.of(context);
-    final what = _isImage ? 'image' : 'PDF';
+    final what = _isImage ? tr('image') : 'PDF';
     final qr = _qr;
     final text = widget.message?.call(qr) ?? widget.subject;
     setState(() => _sending = target?.id ?? _more);
@@ -199,8 +200,8 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
               ..showSnackBar(
                 SnackBar(
                   content: Text(
-                    "${target.label} can't attach a $what, so only the text "
-                    'went. Use More to send the file.',
+                    tr("{0} can't attach a {1}, so only the text "
+                    'went. Use More to send the file.', [target.label, what]),
                   ),
                 ),
               );
@@ -214,7 +215,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          SnackBar(content: Text("Couldn't create the $what: $e")),
+          SnackBar(content: Text(tr("Couldn't create the {0}: {1}", [what, e]))),
         );
     } finally {
       if (mounted) setState(() => _sending = null);
@@ -229,14 +230,16 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
 
   /// A tap on an app that won't take what's chosen.
   void _cantTake(ShareTarget target) {
-    final (what, other) = _isImage ? ('an image', 'PDF') : ('a PDF', 'Image');
+    final (what, other) = _isImage
+        ? (tr('an image'), 'PDF')
+        : (tr('a PDF'), tr('Image'));
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
           content: Text(
-            "${target.label} doesn't take $what. Switch to $other, or use "
-            'More.',
+            tr("{0} doesn't take {1}. Switch to {2}, or use "
+            'More.', [target.label, what, other]),
           ),
         ),
       );
@@ -283,18 +286,18 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
           if (index > 0)
             ListTile(
               leading: const Icon(CupertinoIcons.arrow_left),
-              title: const Text('Move left'),
+              title: const Tr('Move left'),
               onTap: () => Navigator.pop(sheet, moved(index - 1)),
             ),
           if (index < ids.length - 1)
             ListTile(
               leading: const Icon(CupertinoIcons.arrow_right),
-              title: const Text('Move right'),
+              title: const Tr('Move right'),
               onTap: () => Navigator.pop(sheet, moved(index + 1)),
             ),
           ListTile(
             leading: Icon(CupertinoIcons.minus_circle, color: destructive),
-            title: Text(
+            title: Tr(
               'Remove from Share',
               style: TextStyle(color: destructive),
             ),
@@ -302,7 +305,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
           ),
           if (targets.customized) _resetTile(sheet),
           if (others.isNotEmpty) ...[
-            const _SheetHeading('Replace with'),
+            _SheetHeading(tr('Replace with')),
             for (final t in others)
               _AppTile(
                 target: t,
@@ -323,12 +326,12 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
     _applyEdit(
       showActionSheet<Object>(
         context: context,
-        title: 'Add to Share',
+        title: tr('Add to Share'),
         optionCount: others.length + 2,
         options: (sheet) => [
-          const _SheetNote(
-            'Shown on every Share, up to ${ShareTargets.maxPinned}. '
-            'Long-press one there to move, swap or remove it.',
+          _SheetNote(
+            tr('Shown on every Share, up to {0}. '
+            'Long-press one there to move, swap or remove it.', [ShareTargets.maxPinned]),
           ),
           for (final t in others)
             _AppTile(
@@ -343,8 +346,8 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
 
   Widget _resetTile(BuildContext sheet) => ListTile(
     leading: const Icon(CupertinoIcons.arrow_counterclockwise),
-    title: const Text('Back to the default apps'),
-    subtitle: const Text('WhatsApp and Messages'),
+    title: const Tr('Back to the default apps'),
+    subtitle: const Tr('WhatsApp and Messages'),
     onTap: () => Navigator.pop(sheet, _PinEdit.reset),
   );
 
@@ -441,12 +444,12 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
       if (widget.payments.isNotEmpty) _qrPill(),
       _OptionPill(
         icon: darkCard ? CupertinoIcons.moon_fill : CupertinoIcons.sun_max_fill,
-        label: darkCard ? 'Dark' : 'Light',
+        label: darkCard ? tr('Dark') : tr('Light'),
         tooltip: !_isImage
-            ? 'A PDF is always light'
+            ? tr('A PDF is always light')
             : darkCard
-            ? 'Light card'
-            : 'Dark card',
+            ? tr('Light card')
+            : tr('Dark card'),
         onTap: _isImage
             ? () => setState(
                 () =>
@@ -515,7 +518,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
         MenuItemButton(
           leadingIcon: const Icon(CupertinoIcons.calendar, size: 18),
           onPressed: _pickCustom,
-          child: const Text('Custom range…'),
+          child: const Tr('Custom range…'),
         ),
       ],
       builder: (context, controller, _) => _OptionPill(
@@ -529,13 +532,13 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
 
   Widget _qrPill() {
     final qr = _qr;
-    final label = qr == null ? 'No QR' : '${qr.method} QR';
+    final label = qr == null ? tr('No QR') : '${qr.method} QR';
     if (widget.payments.length == 1) {
       return _OptionPill(
         icon: CupertinoIcons.qrcode,
         label: label,
         active: qr != null,
-        tooltip: qr == null ? 'Add a scan-to-pay QR' : 'Remove the QR',
+        tooltip: qr == null ? tr('Add a scan-to-pay QR') : tr('Remove the QR'),
         onTap: () => setState(() => _withQr = !_withQr),
       );
     }
@@ -556,7 +559,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
         MenuItemButton(
           leadingIcon: _MenuCheck(!_withQr),
           onPressed: () => setState(() => _withQr = false),
-          child: const Text('No QR'),
+          child: const Tr('No QR'),
         ),
       ],
       builder: (context, controller, _) => _OptionPill(
@@ -594,7 +597,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
     if (!OutgoingFile.canShareToApps ||
         (targets != null && targets.all.isEmpty)) {
       return _PrimaryShareButton(
-        label: _isImage ? 'Share image' : 'Share PDF',
+        label: _isImage ? tr('Share image') : tr('Share PDF'),
         busy: busy,
         onPressed: busy ? null : () => _send(null),
       );
@@ -633,7 +636,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
             if (canAdd)
               slot(
                 _ShareTarget(
-                  label: 'Add',
+                  label: tr('Add'),
                   extent: extent,
                   disc: _AddDisc(extent: extent),
                   enabled: !busy,
@@ -642,7 +645,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
               ),
             slot(
               _ShareTarget(
-                label: 'More',
+                label: tr('More'),
                 extent: extent,
                 disc: _MoreDisc(extent: extent),
                 busy: _sending == _more,
@@ -817,7 +820,7 @@ class _ShareTargetState extends State<_ShareTarget> {
       label: widget.label,
       onTap: enabled ? widget.onTap : null,
       onLongPress: onLongPress,
-      onLongPressHint: onLongPress == null ? null : 'Change',
+      onLongPressHint: onLongPress == null ? null : tr('Change'),
       excludeSemantics: true,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -1060,8 +1063,8 @@ class _AppTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final only = switch ((target.takesImage, target.takesPdf)) {
-      (true, false) => 'Images only',
-      (false, true) => 'PDFs only',
+      (true, false) => tr('Images only'),
+      (false, true) => tr('PDFs only'),
       _ => null,
     };
     final subtitle = [?target.appLabel, ?only].join(' · ');
@@ -1292,7 +1295,7 @@ class _PdfPreview extends StatelessWidget {
             ),
             const SizedBox(height: 3),
             Text(
-              period ?? 'Every detail',
+              period ?? tr('Every detail'),
               style: const TextStyle(fontSize: 8.5, color: _muted),
             ),
             const SizedBox(height: 12),
@@ -1361,7 +1364,7 @@ class _PdfPreview extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          const Tr(
                             'SCAN TO PAY',
                             style: TextStyle(
                               fontSize: 6.5,

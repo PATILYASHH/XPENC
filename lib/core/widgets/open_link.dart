@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Opens [url] outside the app; false when nothing could.
 Future<bool> tryLaunchUrl(String url) async {
@@ -29,5 +30,5 @@ Future<void> openLink(
   await Clipboard.setData(ClipboardData(text: fallback));
   messenger
     ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text('Copied — $fallback')));
+    ..showSnackBar(SnackBar(content: Text(tr('Copied — {0}', [fallback]))));
 }

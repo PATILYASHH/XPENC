@@ -19,6 +19,7 @@ import 'stats_sections.dart';
 import 'xpenc_score.dart';
 import 'xpenc_score_provider.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// The Stats hub's categories. Each opens its own [StatsModuleScreen] at
 /// `/more/stats/<name>`, and has a tile on the hub with one live headline.
@@ -36,15 +37,15 @@ enum StatsModule {
 
 extension StatsModuleX on StatsModule {
   String get title => switch (this) {
-    StatsModule.cashFlow => 'Cash flow',
-    StatsModule.spending => 'Spending',
-    StatsModule.income => 'Money in',
-    StatsModule.netWorth => 'Net worth',
-    StatsModule.debt => 'Loans & debt',
-    StatsModule.people => 'People',
-    StatsModule.savings => 'Savings & goals',
-    StatsModule.budgets => 'Budgets',
-    StatsModule.recurring => 'Recurring',
+    StatsModule.cashFlow => tr('Cash flow'),
+    StatsModule.spending => tr('Spending'),
+    StatsModule.income => tr('Money in'),
+    StatsModule.netWorth => tr('Net worth'),
+    StatsModule.debt => tr('Loans & debt'),
+    StatsModule.people => tr('People'),
+    StatsModule.savings => tr('Savings & goals'),
+    StatsModule.budgets => tr('Budgets'),
+    StatsModule.recurring => tr('Recurring'),
   };
 
   IconData get icon => switch (this) {
@@ -65,13 +66,13 @@ extension StatsModuleX on StatsModule {
 // ── Shared helpers ──────────────────────────────────────────────────────────
 
 String _accountTypeLabel(AccountType t) => switch (t) {
-  AccountType.cash => 'Cash',
-  AccountType.bank => 'Bank',
-  AccountType.card => 'Cards',
-  AccountType.payLater => 'Pay later',
-  AccountType.prepaidBalance => 'Prepaid',
-  AccountType.goal => 'Savings goals',
-  AccountType.loan => 'Loans',
+  AccountType.cash => tr('Cash'),
+  AccountType.bank => tr('Bank'),
+  AccountType.card => tr('Cards'),
+  AccountType.payLater => tr('Pay later'),
+  AccountType.prepaidBalance => tr('Prepaid'),
+  AccountType.goal => tr('Savings goals'),
+  AccountType.loan => tr('Loans'),
 };
 
 Money _baseBalance(AccountRow a, Map<String, int> rates) {
@@ -129,7 +130,7 @@ class _ListCard extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Text(
-            empty ?? 'Not enough data yet.',
+            empty ?? tr('Not enough data yet.'),
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -221,41 +222,41 @@ class StatsModuleTile extends ConsumerWidget {
     final month = ref.watch(monthTotalsProvider).valueOrNull;
     switch (module) {
       case StatsModule.cashFlow:
-        if (month == null) return ('—', 'Net this month', null);
+        if (month == null) return ('—', tr('Net this month'), null);
         final net = month.income - month.expense;
         return (
           net.isZero ? MoneyFormat.compact(net) : MoneyFormat.signed(net),
-          'Net this month',
+          tr('Net this month'),
           net.isNegative ? AppColors.expense : AppColors.income,
         );
       case StatsModule.spending:
         return (
           month == null ? '—' : MoneyFormat.compact(month.expense),
-          'Spent this month',
+          tr('Spent this month'),
           null,
         );
       case StatsModule.income:
         return (
           month == null ? '—' : MoneyFormat.compact(month.income),
-          'Earned this month',
+          tr('Earned this month'),
           null,
         );
       case StatsModule.netWorth:
         final nw = ref.watch(netWorthProvider).valueOrNull;
-        return (nw == null ? '—' : MoneyFormat.compact(nw), 'Today', null);
+        return (nw == null ? '—' : MoneyFormat.compact(nw), tr('Today'), null);
       case StatsModule.debt:
         final debt = ref.watch(debtSnapshotProvider).total;
         return (
           MoneyFormat.compact(debt),
-          debt.isZero ? 'Debt-free' : 'Total owed',
+          debt.isZero ? tr('Debt-free') : tr('Total owed'),
           debt.isZero ? AppColors.income : null,
         );
       case StatsModule.people:
         final t = ref.watch(personTotalsProvider);
         return (
           MoneyFormat.compact(t.youGet - t.youPay),
-          'Get ${MoneyFormat.compact(t.youGet)} · Pay '
-              '${MoneyFormat.compact(t.youPay)}',
+          tr('Get {0} · Pay '
+              '{1}', [MoneyFormat.compact(t.youGet), MoneyFormat.compact(t.youPay)]),
           null,
         );
       case StatsModule.savings:
@@ -264,8 +265,8 @@ class StatsModuleTile extends ConsumerWidget {
         return (
           MoneyFormat.compact(saved),
           goals.isEmpty
-              ? 'No goals yet'
-              : '${goals.length} goal${goals.length == 1 ? '' : 's'}',
+              ? tr('No goals yet')
+              : plural(goals.length, '1 goal', '{0} goals'),
           null,
         );
       case StatsModule.budgets:
@@ -273,12 +274,12 @@ class StatsModuleTile extends ConsumerWidget {
         final ok = budgets.where((b) => !b.overspent).length;
         return (
           budgets.isEmpty ? '—' : '$ok / ${budgets.length}',
-          budgets.isEmpty ? 'No budgets set' : 'On track',
+          budgets.isEmpty ? tr('No budgets set') : tr('On track'),
           null,
         );
       case StatsModule.recurring:
         final r = ref.watch(recurringSummaryProvider);
-        return (MoneyFormat.compact(r.monthlyOut), 'Committed a month', null);
+        return (MoneyFormat.compact(r.monthlyOut), tr('Committed a month'), null);
     }
   }
 }
@@ -360,22 +361,22 @@ class _CashFlowBody extends ConsumerWidget {
 
         return _ModuleList(
           children: [
-            const SectionCaption('This month'),
+            SectionCaption(tr('This month')),
             const ThisMonthSection(),
             _gap,
-            const SectionCaption('Last 6 months'),
+            SectionCaption(tr('Last 6 months')),
             _TilePair(
               StatTile(
-                label: 'Net saved',
+                label: tr('Net saved'),
                 value: net.isZero
                     ? MoneyFormat.symbol(net)
                     : MoneyFormat.signed(net),
                 color: net.isNegative ? AppColors.expense : AppColors.income,
               ),
               StatTile(
-                label: 'Savings rate',
+                label: tr('Savings rate'),
                 value: rate == null ? '—' : _pct(rate),
-                sub: 'Of money in kept',
+                sub: tr('Of money in kept'),
                 color: rate == null
                     ? null
                     : rate < 0
@@ -386,7 +387,7 @@ class _CashFlowBody extends ConsumerWidget {
             _tileGap,
             const IncomeExpenseSection(),
             _gap,
-            const SectionCaption('Month by month'),
+            SectionCaption(tr('Month by month')),
             _ListCard(
               children: [
                 for (final (i, m) in months.reversed.indexed)
@@ -395,9 +396,9 @@ class _CashFlowBody extends ConsumerWidget {
                       rank: i + 1,
                       title: DateFormat('MMMM yyyy').format(m.month),
                       subtitle: m.income.isPositive
-                          ? 'Kept ${_pct((m.income - m.expense).paise / m.income.paise)} '
-                                'of ${MoneyFormat.compact(m.income)}'
-                          : 'No money in recorded',
+                          ? tr('Kept {0} '
+                                'of {1}', [_pct((m.income - m.expense).paise / m.income.paise), MoneyFormat.compact(m.income)])
+                          : tr('No money in recorded'),
                       value: MoneyFormat.signed(m.income - m.expense),
                       valueColor: (m.income - m.expense).isNegative
                           ? AppColors.expense
@@ -406,7 +407,7 @@ class _CashFlowBody extends ConsumerWidget {
               ],
             ),
             _gap,
-            const SectionCaption("Where you're heading"),
+            SectionCaption(tr("Where you're heading")),
             const _ProjectionSection(),
           ],
         );
@@ -432,22 +433,29 @@ class _ProjectionSection extends ConsumerWidget {
     final p = ref.watch(cashFlowProjectionProvider);
     final usual = p.usualMonthly;
     final short = p.lowest.value.isNegative;
-    final rules = '${p.ruleCount} auto rule${p.ruleCount == 1 ? '' : 's'}';
-    final window = p.usualMonths == 1 ? 'month' : '${p.usualMonths} months';
-    final everyday = usual == null
-        ? 'and picks up your everyday spending once a full month of entries '
-              'is in'
-        : 'plus ${_signedOrZero(usual)} a month — your usual entries outside '
-              'rules, averaged over the last $window';
+    final rules = plural(p.ruleCount, 'your 1 auto rule', 'your {0} auto rules');
+    final window = p.usualMonths == 1
+        ? tr('the last month')
+        : tr('the last {0} months', [p.usualMonths]);
+    // Whole sentences, so each language can order its own clauses.
+    final explainer = usual == null
+        ? tr('Money on hand is cash, bank and prepaid, minus what cards owe. '
+              'It moves with {0} on their dates, and picks up your everyday '
+              'spending once a full month of entries is in. '
+              'A guide, not a promise.', [rules])
+        : tr('Money on hand is cash, bank and prepaid, minus what cards owe. '
+              'It moves with {0} on their dates, plus {1} a month — your '
+              'usual entries outside rules, averaged over {2}. '
+              'A guide, not a promise.', [rules, _signedOrZero(usual), window]);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SegmentedButton<int>(
           segments: const [
-            ButtonSegment(value: 3, label: Text('3 months')),
-            ButtonSegment(value: 6, label: Text('6 months')),
-            ButtonSegment(value: 12, label: Text('1 year')),
+            ButtonSegment(value: 3, label: Tr('3 months')),
+            ButtonSegment(value: 6, label: Tr('6 months')),
+            ButtonSegment(value: 12, label: Tr('1 year')),
           ],
           selected: {months},
           showSelectedIcon: false,
@@ -456,10 +464,10 @@ class _ProjectionSection extends ConsumerWidget {
         ),
         const SizedBox(height: 12),
         if (p.ruleCount == 0 && usual == null)
-          const _ListCard(
+          _ListCard(
             empty:
-                'Add auto rules for your salary and bills, or record a full '
-                'month of entries, to see where your money is heading.',
+                tr('Add auto rules for your salary and bills, or record a full '
+                'month of entries, to see where your money is heading.'),
             children: [],
           )
         else ...[
@@ -469,31 +477,29 @@ class _ProjectionSection extends ConsumerWidget {
           _tileGap,
           _TilePair(
             StatTile(
-              label: months == 12 ? 'In a year' : 'In $months months',
+              label: months == 12 ? tr('In a year') : tr('In {0} months', [months]),
               value: MoneyFormat.symbol(p.end),
-              sub: '${_signedOrZero(p.end - p.start)} from today',
+              sub: tr('{0} from today', [_signedOrZero(p.end - p.start)]),
               color: p.end.isNegative ? AppColors.expense : null,
             ),
             StatTile(
-              label: short ? 'Runs short' : 'Lowest point',
+              label: short ? tr('Runs short') : tr('Lowest point'),
               value: MoneyFormat.symbol(p.lowest.value),
               sub: p.lowest.date == p.steps.first.date
-                  ? 'Today'
+                  ? tr('Today')
                   : DateFormat('d MMM yyyy').format(p.lowest.date),
               color: short ? AppColors.expense : null,
             ),
           ),
           _tileGap,
           Text(
-            'Money on hand is cash, bank and prepaid, minus what cards owe. '
-            'It moves with your $rules on their dates, $everyday. '
-            'A guide, not a promise.',
+            explainer,
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
           _gap,
-          const SectionCaption('Ahead, month by month'),
+          SectionCaption(tr('Ahead, month by month')),
           _ListCard(
             children: [
               for (final (i, s) in p.steps.skip(1).indexed)
@@ -501,8 +507,8 @@ class _ProjectionSection extends ConsumerWidget {
                   rank: i + 1,
                   title: DateFormat('d MMM yyyy').format(s.date),
                   subtitle:
-                      'Rules ${_signedOrZero(s.rules)} · usual '
-                      '${_signedOrZero(s.usual)}',
+                      tr('Rules {0} · usual '
+                      '{1}', [_signedOrZero(s.rules), _signedOrZero(s.usual)]),
                   value: MoneyFormat.symbol(s.value),
                   valueColor: s.value.isNegative ? AppColors.expense : null,
                 ),
@@ -544,7 +550,7 @@ class SpendingModuleBody extends ConsumerWidget {
               : DateTime(month.year, month.month + delta),
         ),
         _gap,
-        const SectionCaption('Spending by category'),
+        SectionCaption(tr('Spending by category')),
         CategoryDetailToggle(
           showSubcategories: showSubcategories,
           onChanged: (v) =>
@@ -557,10 +563,10 @@ class SpendingModuleBody extends ConsumerWidget {
           showSubcategories: showSubcategories,
         ),
         _gap,
-        const SectionCaption('Highlights'),
+        SectionCaption(tr('Highlights')),
         HighlightsSection(month: month, showYear: showYear),
         _gap,
-        const SectionCaption('Standings'),
+        SectionCaption(tr('Standings')),
         StandingsControls(
           metric: ref.watch(statsStandingsMetricProvider),
           ascending: ref.watch(statsStandingsAscendingProvider),
@@ -652,38 +658,38 @@ class _IncomeBody extends ConsumerWidget {
           children: [
             _TilePair(
               StatTile(
-                label: 'This month',
+                label: tr('This month'),
                 value: thisMonth == null
                     ? '—'
                     : MoneyFormat.symbol(thisMonth.income),
                 color: AppColors.income,
               ),
               StatTile(
-                label: 'Monthly average',
+                label: tr('Monthly average'),
                 value: MoneyFormat.symbol(Money(total.paise ~/ 6)),
-                sub: 'Last 6 months',
+                sub: tr('Last 6 months'),
               ),
             ),
             _tileGap,
             _TilePair(
               StatTile(
-                label: 'Consistency',
+                label: tr('Consistency'),
                 value: '$monthsWithIncome / 6',
-                sub: 'Months with money in',
+                sub: tr('Months with money in'),
               ),
               StatTile(
-                label: 'Top source share',
+                label: tr('Top source share'),
                 value: topShare == null ? '—' : _pct(topShare),
                 sub: topShare != null && topShare > 0.8
-                    ? 'Highly concentrated'
-                    : 'Of 6-month money in',
+                    ? tr('Highly concentrated')
+                    : tr('Of 6-month money in'),
               ),
             ),
             _gap,
-            const SectionCaption('Sources · last 6 months'),
+            SectionCaption(tr('Sources · last 6 months')),
             CategoryPieChart(slices: slices),
             _gap,
-            const SectionCaption('Largest money-in entries'),
+            SectionCaption(tr('Largest money-in entries')),
             _ListCard(
               children: [
                 for (final (i, t) in biggest.take(kStandingsLimit).indexed)
@@ -693,7 +699,7 @@ class _IncomeBody extends ConsumerWidget {
                       rank: i + 1,
                       title: (t.payee?.isNotEmpty ?? false)
                           ? t.payee!
-                          : categories[t.categoryId]?.name ?? 'Uncategorised',
+                          : categories[t.categoryId]?.name ?? tr('Uncategorised'),
                       subtitle: DateFormat('d MMM yyyy').format(t.date),
                       value: MoneyFormat.signed(t.baseAmount),
                       valueColor: AppColors.income,
@@ -746,28 +752,28 @@ class _NetWorthBody extends ConsumerWidget {
         return _ModuleList(
           children: [
             StatTile(
-              label: 'Net worth',
+              label: tr('Net worth'),
               value: netWorth == null ? '—' : MoneyFormat.symbol(netWorth),
-              sub: 'Everything you own minus everything you owe',
+              sub: tr('Everything you own minus everything you owe'),
             ),
             _tileGap,
             _TilePair(
               StatTile(
-                label: 'Assets',
+                label: tr('Assets'),
                 value: MoneyFormat.symbol(assets),
                 color: AppColors.income,
               ),
               StatTile(
-                label: 'Liabilities',
+                label: tr('Liabilities'),
                 value: MoneyFormat.symbol(liabilities),
                 color: liabilities.isZero ? null : AppColors.expense,
               ),
             ),
             _gap,
-            const SectionCaption('Trend · 12 months'),
+            SectionCaption(tr('Trend · 12 months')),
             const NetWorthSection(months: 12),
             _gap,
-            const SectionCaption('By account type'),
+            SectionCaption(tr('By account type')),
             _ListCard(
               children: [
                 for (final (i, e) in typeRows.indexed)
@@ -784,7 +790,7 @@ class _NetWorthBody extends ConsumerWidget {
               ],
             ),
             _gap,
-            const SectionCaption('Accounts'),
+            SectionCaption(tr('Accounts')),
             _ListCard(
               children: [
                 for (final (i, (a, b)) in counted.indexed)
@@ -867,23 +873,23 @@ class _DebtBody extends ConsumerWidget {
           children: [
             _TilePair(
               StatTile(
-                label: 'Total owed',
+                label: tr('Total owed'),
                 value: MoneyFormat.symbol(debt.total),
                 color: debt.total.isZero ? AppColors.income : AppColors.expense,
-                sub: debt.total.isZero ? 'Debt-free' : null,
+                sub: debt.total.isZero ? tr('Debt-free') : null,
               ),
               StatTile(
-                label: 'Per month',
+                label: tr('Per month'),
                 value: MoneyFormat.symbol(debt.monthlyObligations),
-                sub: 'EMIs + dues',
+                sub: tr('EMIs + dues'),
               ),
             ),
             _tileGap,
             _TilePair(
               StatTile(
-                label: 'Debt vs money in',
+                label: tr('Debt vs money in'),
                 value: dti == null ? '—' : _pct(dti),
-                sub: 'Healthy: under 20%',
+                sub: tr('Healthy: under 20%'),
                 color: dti == null
                     ? null
                     : dti <= 0.2
@@ -893,26 +899,26 @@ class _DebtBody extends ConsumerWidget {
                     : null,
               ),
               StatTile(
-                label: 'Interest paid',
+                label: tr('Interest paid'),
                 value: MoneyFormat.symbol(interestPaid),
-                sub: 'On loans, to date',
+                sub: tr('On loans, to date'),
               ),
             ),
             _gap,
-            const SectionCaption('Breakdown'),
+            SectionCaption(tr('Breakdown')),
             _ListCard(
-              empty: 'Nothing owed.',
+              empty: tr('Nothing owed.'),
               children: [
                 for (final (i, row) in [
                   ('Loans', debt.loans),
-                  ('Credit cards & pay later', debt.revolving),
-                  ('Owed to people', debt.people),
+                  (tr('Credit cards & pay later'), debt.revolving),
+                  (tr('Owed to people'), debt.people),
                 ].where((r) => r.$2.isPositive).indexed)
                   StandingRow(
                     rank: i + 1,
                     title: row.$1,
                     subtitle: debt.total.isPositive
-                        ? '${_pct(row.$2.paise / debt.total.paise)} of total'
+                        ? tr('{0} of total', [_pct(row.$2.paise / debt.total.paise)])
                         : null,
                     value: MoneyFormat.symbol(row.$2),
                     barFraction: debt.total.isPositive
@@ -923,23 +929,23 @@ class _DebtBody extends ConsumerWidget {
               ],
             ),
             _gap,
-            const SectionCaption('Total owed · 12 months'),
+            SectionCaption(tr('Total owed · 12 months')),
             NetWorthLineChart(
               points: [for (final p in trend) (month: p.month, value: p.total)],
             ),
             _gap,
-            const SectionCaption('Loans'),
+            SectionCaption(tr('Loans')),
             _ListCard(
-              empty: 'No loans. Add one from Goals & Loans.',
+              empty: tr('No loans. Add one from Goals & Loans.'),
               children: [
                 for (final (i, l) in loans.indexed)
                   StandingRow(
                     rank: i + 1,
                     title: l.account.name,
                     subtitle: l.outstanding.isZero
-                        ? 'Paid off'
-                        : '${_pct(l.fraction)} repaid'
-                              '${l.emi == null ? '' : ' · EMI ${MoneyFormat.compact(l.emi!)}'}',
+                        ? tr('Paid off')
+                        : tr('{0} repaid'
+                              '{1}', [_pct(l.fraction), l.emi == null ? '' : ' · EMI ${MoneyFormat.compact(l.emi!)}']),
                     value: MoneyFormat.symbol(l.outstanding),
                     barFraction: l.fraction,
                     barColor: AppColors.income,
@@ -949,9 +955,9 @@ class _DebtBody extends ConsumerWidget {
               ],
             ),
             _gap,
-            const SectionCaption('Credit cards & pay later'),
+            SectionCaption(tr('Credit cards & pay later')),
             _ListCard(
-              empty: 'Nothing outstanding.',
+              empty: tr('Nothing outstanding.'),
               children: [
                 for (final (i, (a, owed)) in revolving.indexed)
                   StandingRow(
@@ -1026,8 +1032,8 @@ class _PeopleBody extends ConsumerWidget {
               title: people[e.key]!.name,
               subtitle: overdueDue[e.key] == null
                   ? null
-                  : 'Overdue since '
-                        '${DateFormat('d MMM').format(overdueDue[e.key]!)}',
+                  : tr('Overdue since '
+                        '{0}', [DateFormat('d MMM').format(overdueDue[e.key]!)]),
               value: MoneyFormat.symbol(e.value.abs),
               valueColor: color,
               barFraction: max == 0 ? 0 : e.value.abs.paise / max,
@@ -1043,44 +1049,44 @@ class _PeopleBody extends ConsumerWidget {
       children: [
         _TilePair(
           StatTile(
-            label: "You'll get",
+            label: tr("You'll get"),
             value: MoneyFormat.symbol(totals.youGet),
             color: AppColors.income,
-            sub: '${oweYou.length} people',
+            sub: tr('{0} people', [oweYou.length]),
           ),
           StatTile(
-            label: "You'll pay",
+            label: tr("You'll pay"),
             value: MoneyFormat.symbol(totals.youPay),
             color: AppColors.expense,
-            sub: '${youOwe.length} people',
+            sub: tr('{0} people', [youOwe.length]),
           ),
         ),
         _tileGap,
         _TilePair(
           StatTile(
-            label: 'Net',
+            label: tr('Net'),
             value: net.isZero
                 ? MoneyFormat.symbol(net)
                 : MoneyFormat.signed(net),
             color: net.isNegative ? AppColors.expense : AppColors.income,
           ),
           StatTile(
-            label: 'Overdue',
+            label: tr('Overdue'),
             value: '${overdueDue.length}',
-            sub: 'Past their due date',
+            sub: tr('Past their due date'),
             color: overdueDue.isEmpty ? null : AppColors.expense,
           ),
         ),
         _gap,
-        const SectionCaption('Owe you'),
-        ranking(oweYou, AppColors.income, 'Nobody owes you anything.'),
+        SectionCaption(tr('Owe you')),
+        ranking(oweYou, AppColors.income, tr('Nobody owes you anything.')),
         _gap,
-        const SectionCaption('You owe'),
-        ranking(youOwe, AppColors.expense, "You don't owe anyone."),
+        SectionCaption(tr('You owe')),
+        ranking(youOwe, AppColors.expense, tr("You don't owe anyone.")),
         _gap,
-        const SectionCaption('Groups'),
+        SectionCaption(tr('Groups')),
         _ListCard(
-          empty: 'No groups yet.',
+          empty: tr('No groups yet.'),
           children: [
             for (final (i, g) in groups.indexed)
               _GroupRow(rank: i + 1, group: g),
@@ -1104,10 +1110,10 @@ class _GroupRow extends ConsumerWidget {
       rank: rank,
       title: group.name,
       subtitle: balance.isZero
-          ? 'Settled'
+          ? tr('Settled')
           : balance.isPositive
-          ? 'Members owe you'
-          : 'You owe members',
+          ? tr('Members owe you')
+          : tr('You owe members'),
       value: MoneyFormat.symbol(balance.abs),
       valueColor: balance.isZero
           ? null
@@ -1147,27 +1153,27 @@ class _SavingsBody extends ConsumerWidget {
           children: [
             _TilePair(
               StatTile(
-                label: 'Saved in goals',
+                label: tr('Saved in goals'),
                 value: MoneyFormat.symbol(saved),
                 color: AppColors.income,
                 sub: target.isPositive
-                    ? '${_pct(saved.paise / target.paise)} of '
-                          '${MoneyFormat.compact(target)}'
+                    ? tr('{0} of '
+                          '{1}', [_pct(saved.paise / target.paise), MoneyFormat.compact(target)])
                     : null,
               ),
               StatTile(
-                label: 'Goals reached',
+                label: tr('Goals reached'),
                 value: '$reached / ${goals.length}',
               ),
             ),
             _tileGap,
             StatTile(
-              label: 'Emergency runway',
+              label: tr('Emergency runway'),
               value: runway == null
                   ? '—'
-                  : '${runway.toStringAsFixed(1)} months',
+                  : tr('{0} months', [runway.toStringAsFixed(1)]),
               sub:
-                  '${MoneyFormat.compact(input.liquid)} liquid · aim for 6 months',
+                  tr('{0} liquid · aim for 6 months', [MoneyFormat.compact(input.liquid)]),
               color: runway == null
                   ? null
                   : runway >= 6
@@ -1177,22 +1183,22 @@ class _SavingsBody extends ConsumerWidget {
                   : null,
             ),
             _gap,
-            const SectionCaption('Goal balances · 12 months'),
+            SectionCaption(tr('Goal balances · 12 months')),
             NetWorthLineChart(points: trend),
             _gap,
-            const SectionCaption('Goals'),
+            SectionCaption(tr('Goals')),
             _ListCard(
-              empty: 'No savings goals yet. Create one from Goals & Loans.',
+              empty: tr('No savings goals yet. Create one from Goals & Loans.'),
               children: [
                 for (final (i, g) in goals.indexed)
                   StandingRow(
                     rank: i + 1,
                     title: g.account.name,
                     subtitle: g.reached
-                        ? 'Reached'
-                        : '${_pct(g.fraction)} of '
-                              '${MoneyFormat.compact(g.detail.targetAmount)}'
-                              '${g.detail.targetDate == null ? '' : ' · by ${DateFormat('MMM yyyy').format(g.detail.targetDate!)}'}',
+                        ? tr('Reached')
+                        : tr('{0} of '
+                              '{1}'
+                              '{2}', [_pct(g.fraction), MoneyFormat.compact(g.detail.targetAmount), g.detail.targetDate == null ? '' : ' · by ${DateFormat('MMM yyyy').format(g.detail.targetDate!)}']),
                     value: MoneyFormat.symbol(g.saved),
                     dotColor: Color(g.account.colorValue),
                     barFraction: g.fraction,
@@ -1239,12 +1245,12 @@ class _BudgetsBody extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             _TilePair(
-              StatTile(label: 'Budgeted', value: MoneyFormat.symbol(limit)),
+              StatTile(label: tr('Budgeted'), value: MoneyFormat.symbol(limit)),
               StatTile(
-                label: 'Spent',
+                label: tr('Spent'),
                 value: MoneyFormat.symbol(spent),
                 sub: limit.isPositive
-                    ? '${_pct(spent.paise / limit.paise)} used'
+                    ? tr('{0} used', [_pct(spent.paise / limit.paise)])
                     : null,
                 color: spent > limit ? AppColors.expense : null,
               ),
@@ -1252,29 +1258,29 @@ class _BudgetsBody extends ConsumerWidget {
             _tileGap,
             _TilePair(
               StatTile(
-                label: 'On track',
+                label: tr('On track'),
                 value: '${budgets.length - over - near}',
                 color: AppColors.income,
               ),
               StatTile(
-                label: 'Near / over',
+                label: tr('Near / over'),
                 value: '$near / $over',
                 color: over > 0 ? AppColors.expense : null,
               ),
             ),
             _gap,
-            const SectionCaption('Every budget'),
+            SectionCaption(tr('Every budget')),
             _ListCard(
-              empty: 'No budgets set for this period.',
+              empty: tr('No budgets set for this period.'),
               children: [
                 for (final (i, b) in budgets.indexed)
                   StandingRow(
                     rank: i + 1,
                     title: b.category.name,
                     subtitle:
-                        '${MoneyFormat.compact(b.spent)} of '
-                        '${MoneyFormat.compact(b.effectiveAmount)}'
-                        '${b.overspent ? ' · over' : ''}',
+                        tr('{0} of '
+                        '{1}'
+                        '{2}', [MoneyFormat.compact(b.spent), MoneyFormat.compact(b.effectiveAmount), b.overspent ? ' · ${tr('over budget')}' : '']),
                     value: _pct(b.fraction),
                     valueColor: b.overspent ? AppColors.expense : null,
                     dotColor: Color(b.category.colorValue),
@@ -1349,48 +1355,48 @@ class _RecurringBody extends ConsumerWidget {
         : null;
 
     String freq(RecurringFrequency f) => switch (f) {
-      RecurringFrequency.daily => 'Daily',
-      RecurringFrequency.weekly => 'Weekly',
-      RecurringFrequency.biweekly => 'Every 2 weeks',
-      RecurringFrequency.monthly => 'Monthly',
-      RecurringFrequency.yearly => 'Yearly',
+      RecurringFrequency.daily => tr('Daily'),
+      RecurringFrequency.weekly => tr('Weekly'),
+      RecurringFrequency.biweekly => tr('Every 2 weeks'),
+      RecurringFrequency.monthly => tr('Monthly'),
+      RecurringFrequency.yearly => tr('Yearly'),
     };
 
     return _ModuleList(
       children: [
         _TilePair(
           StatTile(
-            label: 'Out per month',
+            label: tr('Out per month'),
             value: MoneyFormat.symbol(summary.monthlyOut),
             color: AppColors.expense,
           ),
           StatTile(
-            label: 'In per month',
+            label: tr('In per month'),
             value: MoneyFormat.symbol(summary.monthlyIn),
             color: AppColors.income,
           ),
         ),
         _tileGap,
         StatTile(
-          label: 'Money in already committed',
+          label: tr('Money in already committed'),
           value: committed == null ? '—' : _pct(committed),
-          sub: 'Recurring outflow vs. average monthly money in',
+          sub: tr('Recurring outflow vs. average monthly money in'),
           color: committed != null && committed > 0.5
               ? AppColors.expense
               : null,
         ),
         _gap,
-        const SectionCaption('Biggest commitments'),
+        SectionCaption(tr('Biggest commitments')),
         _ListCard(
-          empty: 'No active recurring payments.',
+          empty: tr('No active recurring payments.'),
           children: [
             for (final (i, r) in summary.rules.indexed)
               StandingRow(
                 rank: i + 1,
                 title: r.rule.name,
                 subtitle:
-                    '${freq(r.rule.frequency)} · next '
-                    '${DateFormat('d MMM').format(r.rule.nextDueDate)}',
+                    tr('{0} · next '
+                    '{1}', [freq(r.rule.frequency), DateFormat('d MMM').format(r.rule.nextDueDate)]),
                 value: '${MoneyFormat.compact(r.monthly)}/mo',
                 valueColor:
                     r.rule.kind == CategoryKind.income &&

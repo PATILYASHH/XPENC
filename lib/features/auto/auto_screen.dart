@@ -16,6 +16,7 @@ import '../../data/tables.dart';
 import 'recurring_rule_sheet.dart';
 import 'skip_occurrence.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Auto Expenses / Auto Income — transactions that post themselves on a
 /// schedule, with no confirmation step. A rule whose amount varies (e.g. a
@@ -36,17 +37,17 @@ class AutoScreen extends ConsumerWidget {
             pinned: true,
             flexibleSpace: const GlassScrollEdge(),
             automaticallyImplyLeading: impliesBackArrow(context),
-            title: const Text('Auto'),
+            title: const Tr('Auto'),
             actions: [
               GlassActionGroup(
                 children: [
                   IconButton(
-                    tooltip: 'Archived auto rules',
+                    tooltip: tr('Archived auto rules'),
                     icon: const AppIcon(Icons.inventory_2_outlined),
                     onPressed: () => context.push('/more/auto/archived'),
                   ),
                   IconButton(
-                    tooltip: 'New auto rule',
+                    tooltip: tr('New auto rule'),
                     icon: const AppIcon(Icons.add_rounded),
                     onPressed: () => showRecurringRuleSheet(context),
                   ),
@@ -56,20 +57,20 @@ class AutoScreen extends ConsumerWidget {
           ),
           SliverToBoxAdapter(
             child: ModuleShortcuts([
-              const ModuleShortcut(
+              ModuleShortcut(
                 Icons.calendar_month_outlined,
-                'Calendar',
+                tr('Calendar'),
                 '/more/calendar',
               ),
-              const ModuleShortcut(
+              ModuleShortcut(
                 Icons.savings_outlined,
-                'Goals & Loans',
+                tr('Goals & Loans'),
                 '/more/goals',
               ),
               if (PlatformFeatures.notifications)
-                const ModuleShortcut(
+                ModuleShortcut(
                   Icons.notifications_outlined,
-                  'Notifications',
+                  tr('Notifications'),
                   '/more/settings/notifications',
                 ),
             ]),
@@ -84,7 +85,7 @@ class AutoScreen extends ConsumerWidget {
             error: (_, _) => SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(32),
-                child: Text(
+                child: Tr(
                   'Could not load your auto rules.',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
@@ -114,15 +115,15 @@ class AutoScreen extends ConsumerWidget {
               return SliverList.list(
                 children: [
                   if (expenses.isNotEmpty) ...[
-                    _sectionHeader(theme, 'Money out'),
+                    _sectionHeader(theme, tr('Money out')),
                     _section(context, theme, expenses),
                   ],
                   if (income.isNotEmpty) ...[
-                    _sectionHeader(theme, 'Money in'),
+                    _sectionHeader(theme, tr('Money in')),
                     _section(context, theme, income),
                   ],
                   if (transfers.isNotEmpty) ...[
-                    _sectionHeader(theme, 'Transfers'),
+                    _sectionHeader(theme, tr('Transfers')),
                     _section(context, theme, transfers),
                   ],
                 ],
@@ -179,7 +180,7 @@ class AutoScreen extends ConsumerWidget {
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
                 title: Text(
-                  '$pausedCount paused',
+                  tr('{0} paused', [pausedCount]),
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -220,7 +221,7 @@ class _EmptyAuto extends StatelessWidget {
             color: theme.colorScheme.onSurfaceVariant,
           ),
           const SizedBox(height: 16),
-          Text(
+          Tr(
             'Nothing set up yet — tap + to automate a fixed payment like '
             'rent or a subscription, money in like salary, or a fixed '
             'contribution toward a goal or loan payment.',
@@ -277,10 +278,10 @@ class _RuleTile extends ConsumerWidget {
         style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
       ),
       subtitle: Text(
-        '${_frequencyLabel(rule)} · Next ${DateFormat('d MMM').format(rule.nextDueDate)}'
-        '${destination != null ? ' · ${source?.name ?? '—'} → ${destination.name}' : ''}'
-        '${rule.isEstimate ? ' · Estimate' : ''}'
-        '${_onPromo ? ' · Promo ×${rule.promoOccurrencesLeft}' : ''}',
+        tr('{0} · Next {1}'
+        '{2}'
+        '{3}'
+        '{4}', [_frequencyLabel(rule), DateFormat('d MMM').format(rule.nextDueDate), destination != null ? ' · ${source?.name ?? '—'} → ${destination.name}' : '', rule.isEstimate ? ' · ${tr('Estimate')}' : '', _onPromo ? ' · ${tr('Promo')} ×${rule.promoOccurrencesLeft}' : '']),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: theme.textTheme.bodySmall?.copyWith(
@@ -289,7 +290,7 @@ class _RuleTile extends ConsumerWidget {
       ),
       // A card bill (#183) pays whatever the statement says, on the day.
       trailing: rule.payCardStatement
-          ? Text(
+          ? Tr(
               'Statement',
               style: theme.textTheme.titleSmall?.copyWith(
                 color: color,
@@ -318,20 +319,22 @@ class _RuleTile extends ConsumerWidget {
   static String _frequencyLabel(RecurringRuleRow r) {
     switch (r.frequency) {
       case RecurringFrequency.daily:
-        return 'Daily';
+        return tr('Daily');
       case RecurringFrequency.weekly:
-        return 'Weekly';
+        return tr('Weekly');
       case RecurringFrequency.biweekly:
-        return 'Every 2 weeks';
+        return tr('Every 2 weeks');
       case RecurringFrequency.monthly:
-        return 'Monthly on the ${r.dayOfMonth}${_ordinalSuffix(r.dayOfMonth ?? 1)}';
+        return tr('Monthly on the {0}{1}', [r.dayOfMonth, _ordinalSuffix(r.dayOfMonth ?? 1)]);
       case RecurringFrequency.yearly:
         final month = DateFormat.MMMM().format(DateTime(2000, r.monthOfYear ?? 1));
-        return 'Yearly on $month ${r.dayOfMonth}${_ordinalSuffix(r.dayOfMonth ?? 1)}';
+        return tr('Yearly on {0} {1}{2}', [month, r.dayOfMonth, _ordinalSuffix(r.dayOfMonth ?? 1)]);
     }
   }
 
   static String _ordinalSuffix(int day) {
+    // English only; other languages write the plain number.
+    if (L10n.code != 'en') return '';
     if (day >= 11 && day <= 13) return 'th';
     switch (day % 10) {
       case 1:
@@ -374,13 +377,13 @@ class _RuleTile extends ConsumerWidget {
               ),
               AppListTile(
                 leading: const AppIcon(Icons.bolt_outlined),
-                title: const Text('Pay now'),
+                title: const Tr('Pay now'),
                 subtitle: Text(
                   rule.nextDueDate.isAfter(DateTime.now())
-                      ? "Pay it early, ahead of ${DateFormat('d MMM').format(rule.nextDueDate)} — "
-                            "posts today instead"
-                      : 'Posts today instead of waiting for the app to catch '
-                            'it up',
+                      ? tr("Pay it early, ahead of {0} — "
+                            "posts today instead", [DateFormat('d MMM').format(rule.nextDueDate)])
+                      : tr('Posts today instead of waiting for the app to catch '
+                            'it up'),
                 ),
                 onTap: () => Navigator.of(sheetContext).pop(_RuleAction.payNow),
               ),
@@ -390,8 +393,8 @@ class _RuleTile extends ConsumerWidget {
               ),
               AppListTile(
                 leading: const AppIcon(Icons.pause_circle_outline),
-                title: const Text('Pause'),
-                subtitle: const Text(
+                title: const Tr('Pause'),
+                subtitle: const Tr(
                   'Move it to Archived auto rules until you restore it. '
                   'Nothing is deleted.',
                 ),
@@ -402,11 +405,11 @@ class _RuleTile extends ConsumerWidget {
                   Icons.delete_outline,
                   color: theme.colorScheme.error,
                 ),
-                title: Text(
+                title: Tr(
                   'Delete',
                   style: TextStyle(color: theme.colorScheme.error),
                 ),
-                subtitle: const Text(
+                subtitle: const Tr(
                   'Removes the rule. Past auto-posted transactions stay.',
                 ),
                 onTap: () => Navigator.of(sheetContext).pop(_RuleAction.delete),
@@ -438,21 +441,21 @@ class _RuleTile extends ConsumerWidget {
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Pay "${rule.name}" now?'),
+        title: Text(tr('Pay "{0}" now?', [rule.name])),
         content: Text(
-          'Posts ${rule.payCardStatement ? "what's left of the statement" : MoneyFormat.symbol(amount)}'
-          '${accountName != null ? ' from $accountName' : ''} today, '
-          "instead of ${DateFormat('d MMM').format(rule.nextDueDate)}. "
-          'The next one will still be due on schedule.',
+          tr('Posts {0}'
+          '{1} today, '
+          "instead of {2}. "
+          'The next one will still be due on schedule.', [rule.payCardStatement ? tr("what's left of the statement") : MoneyFormat.symbol(amount), accountName != null ? tr(' from {0}', [accountName]) : '', DateFormat('d MMM').format(rule.nextDueDate)]),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Pay now'),
+            child: const Tr('Pay now'),
           ),
         ],
       ),
@@ -466,9 +469,9 @@ class _RuleTile extends ConsumerWidget {
         SnackBar(
           content: Text(
             posted
-                ? '"${rule.name}" posted'
+                ? tr('"{0}" posted', [rule.name])
                 // A card bill that's already been paid (#183).
-                : 'Nothing left to pay on "${rule.name}"',
+                : tr('Nothing left to pay on "{0}"', [rule.name]),
           ),
         ),
       );
@@ -478,22 +481,22 @@ class _RuleTile extends ConsumerWidget {
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Delete "${rule.name}"?'),
-        content: const Text(
+        title: Text(tr('Delete "{0}"?', [rule.name])),
+        content: const Tr(
           "Its transactions already posted stay in your ledger — only the "
           "rule itself, and future auto-posting, goes away.",
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(ctx).colorScheme.error,
             ),
-            child: const Text('Delete'),
+            child: const Tr('Delete'),
           ),
         ],
       ),
@@ -503,7 +506,7 @@ class _RuleTile extends ConsumerWidget {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Rule deleted')));
+      ..showSnackBar(const SnackBar(content: Tr('Rule deleted')));
   }
 }
 

@@ -13,6 +13,7 @@ import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'csv_import.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Preset colours assigned round-robin to categories the importer creates
 /// on the fly — same palette `CategoriesScreen` offers by hand.
@@ -89,7 +90,9 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
       if (!mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text("Couldn't open a file: $e")));
+        ..showSnackBar(
+          SnackBar(content: Text(tr("Couldn't open a file: {0}", [e]))),
+        );
       return;
     }
     if (picked == null || picked.files.isEmpty) return;
@@ -102,15 +105,13 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
       } else if (file.path != null) {
         content = await File(file.path!).readAsString();
       } else {
-        throw const FormatException('empty selection');
+        throw FormatException(tr('empty selection'));
       }
     } catch (_) {
       if (!mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(content: Text("Couldn't read that file.")),
-        );
+        ..showSnackBar(const SnackBar(content: Tr("Couldn't read that file.")));
       return;
     }
 
@@ -121,7 +122,7 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
         ..hideCurrentSnackBar()
         ..showSnackBar(
           const SnackBar(
-            content: Text('That file has no data rows below the header.'),
+            content: Tr('That file has no data rows below the header.'),
           ),
         );
       return;
@@ -239,7 +240,7 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
     final summary = _summary;
 
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Import CSV')),
+      appBar: AppTopBar(title: const Tr('Import CSV')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32).plusNavBar(context),
         children: [
@@ -327,7 +328,7 @@ class _PickFileCard extends StatelessWidget {
               color: theme.colorScheme.onSurfaceVariant,
             ),
             const SizedBox(height: 16),
-            Text(
+            Tr(
               'Pick a bank-exported .csv statement. Most banks\' formats '
               '(a signed Amount column, or separate Withdrawal/Deposit '
               "columns) are detected automatically — you'll get a chance to "
@@ -341,7 +342,7 @@ class _PickFileCard extends StatelessWidget {
             FilledButton.icon(
               onPressed: busy ? null : onPick,
               icon: const AppIcon(Icons.file_open_outlined),
-              label: const Text('Choose CSV file'),
+              label: const Tr('Choose CSV file'),
             ),
           ],
         ),
@@ -428,23 +429,21 @@ class _MappingForm extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    '$fileName · $rowCount rows',
+                    tr('{0} · {1} rows', [fileName, rowCount]),
                     style: theme.textTheme.titleSmall,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 TextButton(
                   onPressed: busy ? null : onPickDifferentFile,
-                  child: const Text('Change file'),
+                  child: const Tr('Change file'),
                 ),
               ],
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<int>(
               initialValue: accountId,
-              decoration: const InputDecoration(
-                labelText: 'Import into account',
-              ),
+              decoration: InputDecoration(labelText: tr('Import into account')),
               items: [
                 for (final a in accounts)
                   DropdownMenuItem(value: a.id, child: Text(a.name)),
@@ -452,10 +451,10 @@ class _MappingForm extends StatelessWidget {
               onChanged: busy ? null : onAccountChanged,
             ),
             const SizedBox(height: 20),
-            Text('Columns', style: theme.textTheme.labelLarge),
+            Tr('Columns', style: theme.textTheme.labelLarge),
             const SizedBox(height: 8),
             _ColumnDropdown(
-              label: 'Date',
+              label: tr('Date'),
               headers: headers,
               value: dateColumn,
               allowNone: false,
@@ -463,7 +462,7 @@ class _MappingForm extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             _ColumnDropdown(
-              label: 'Note / description (optional)',
+              label: tr('Note / description (optional)'),
               headers: headers,
               value: noteColumn,
               allowNone: true,
@@ -471,14 +470,14 @@ class _MappingForm extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             _ColumnDropdown(
-              label: 'Category (optional)',
+              label: tr('Category (optional)'),
               headers: headers,
               value: categoryColumn,
               allowNone: true,
               onChanged: busy ? null : onCategoryColumnChanged,
             ),
             const SizedBox(height: 4),
-            Text(
+            Tr(
               "Matched against your existing categories by name — anything "
               "that doesn't match is created automatically.",
               style: theme.textTheme.bodySmall?.copyWith(
@@ -488,8 +487,8 @@ class _MappingForm extends StatelessWidget {
             const SizedBox(height: 16),
             SegmentedButton<bool>(
               segments: const [
-                ButtonSegment(value: false, label: Text('Signed amount')),
-                ButtonSegment(value: true, label: Text('Debit & credit')),
+                ButtonSegment(value: false, label: Tr('Signed amount')),
+                ButtonSegment(value: true, label: Tr('Debit & credit')),
               ],
               selected: {twoColumnMode},
               showSelectedIcon: false,
@@ -500,7 +499,7 @@ class _MappingForm extends StatelessWidget {
             const SizedBox(height: 12),
             if (twoColumnMode) ...[
               _ColumnDropdown(
-                label: 'Debit / withdrawal',
+                label: tr('Debit / withdrawal'),
                 headers: headers,
                 value: debitColumn,
                 allowNone: true,
@@ -508,7 +507,7 @@ class _MappingForm extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               _ColumnDropdown(
-                label: 'Credit / deposit',
+                label: tr('Credit / deposit'),
                 headers: headers,
                 value: creditColumn,
                 allowNone: true,
@@ -516,7 +515,7 @@ class _MappingForm extends StatelessWidget {
               ),
             ] else
               _ColumnDropdown(
-                label: 'Amount (negative = money out, positive = money in)',
+                label: tr('Amount (negative = money out, positive = money in)'),
                 headers: headers,
                 value: amountColumn,
                 allowNone: false,
@@ -524,7 +523,7 @@ class _MappingForm extends StatelessWidget {
               ),
             if (previewRows.isNotEmpty) ...[
               const SizedBox(height: 20),
-              Text('Preview', style: theme.textTheme.labelLarge),
+              Tr('Preview', style: theme.textTheme.labelLarge),
               const SizedBox(height: 8),
               AppCard(
                 child: Column(
@@ -546,7 +545,7 @@ class _MappingForm extends StatelessWidget {
                       width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : Text('Import $rowCount rows'),
+                  : Text(tr('Import {0} rows', [rowCount])),
             ),
           ],
         );
@@ -576,7 +575,7 @@ class _ColumnDropdown extends StatelessWidget {
       initialValue: value,
       decoration: InputDecoration(labelText: label),
       items: [
-        if (allowNone) const DropdownMenuItem(value: null, child: Text('None')),
+        if (allowNone) const DropdownMenuItem(value: null, child: Tr('None')),
         for (var i = 0; i < headers.length; i++)
           DropdownMenuItem(value: i, child: Text('${headers[i]}')),
       ],
@@ -607,7 +606,7 @@ class _PreviewRow extends StatelessWidget {
       ),
       title: Text(
         row.date == null
-            ? 'Unrecognised date'
+            ? tr('Unrecognised date')
             : row.date!.toIso8601String().split('T').first,
       ),
       subtitle: subtitle.isEmpty ? null : Text(subtitle),
@@ -648,16 +647,25 @@ class _SummaryCard extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              '${summary.imported} transaction'
-              '${summary.imported == 1 ? '' : 's'} imported from $fileName',
+              tr(
+                '{0} transaction'
+                '{1} imported from {2}',
+                [summary.imported, summary.imported == 1 ? '' : 's', fileName],
+              ),
               style: theme.textTheme.titleMedium,
             ),
             if (summary.categoriesCreated > 0) ...[
               const SizedBox(height: 8),
               Text(
-                '${summary.categoriesCreated} new categor'
-                '${summary.categoriesCreated == 1 ? 'y' : 'ies'} created from '
-                "the file's category column.",
+                tr(
+                  '{0} new categor'
+                  '{1} created from '
+                  "the file's category column.",
+                  [
+                    summary.categoriesCreated,
+                    summary.categoriesCreated == 1 ? 'y' : 'ies',
+                  ],
+                ),
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -666,11 +674,12 @@ class _SummaryCard extends StatelessWidget {
             if (summary.skipped > 0) ...[
               const SizedBox(height: 8),
               Text(
-                '${summary.skipped} row${summary.skipped == 1 ? '' : 's'} '
-                'skipped'
-                '${summary.skippedNoDate > 0 ? ' — ${summary.skippedNoDate} with no readable date' : ''}'
-                '${summary.skippedNoAmount > 0 ? ' — ${summary.skippedNoAmount} with no readable amount' : ''}'
-                '${summary.skippedOther > 0 ? ' — ${summary.skippedOther} rejected' : ''}.',
+                '${[
+                  summary.skipped == 1 ? tr('1 row skipped') : tr('{0} rows skipped', [summary.skipped]),
+                  if (summary.skippedNoDate > 0) tr('{0} with no readable date', [summary.skippedNoDate]),
+                  if (summary.skippedNoAmount > 0) tr('{0} with no readable amount', [summary.skippedNoAmount]),
+                  if (summary.skippedOther > 0) tr('{0} rejected', [summary.skippedOther]),
+                ].join(' — ')}.',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -679,7 +688,7 @@ class _SummaryCard extends StatelessWidget {
             const SizedBox(height: 20),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Done'),
+              child: const Tr('Done'),
             ),
           ],
         ),

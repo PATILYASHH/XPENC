@@ -13,6 +13,7 @@ import '../../data/mode_providers.dart';
 import '../../data/providers.dart';
 import '../persons/person_avatar.dart';
 import 'mode_widgets.dart';
+import '../../core/l10n/l10n.dart';
 
 /// The Dashboard while a mode (a trip) is the focus — nothing but the mode,
 /// organised around its money: what's left to spend first, then today and
@@ -66,7 +67,7 @@ class ModeHome extends ConsumerWidget {
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 24),
                     child: Text(
-                      'Tap ➕ — everything you add joins ${mode.name}.',
+                      tr('Tap ➕ — everything you add joins {0}.', [mode.name]),
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
@@ -78,7 +79,7 @@ class ModeHome extends ConsumerWidget {
                   if (txs.length > 8)
                     TextButton(
                       onPressed: () => context.push('/mode/${mode.id}'),
-                      child: Text('All ${txs.length} transactions'),
+                      child: Text(tr('All {0} transactions', [txs.length])),
                     ),
                 ],
               ],
@@ -108,7 +109,7 @@ class _TodayRow extends ConsumerWidget {
       children: [
         Expanded(
           child: _Stat(
-            label: daily == null ? 'Today' : 'Today of ${_s(daily)}',
+            label: daily == null ? tr('Today') : tr('Today of {0}', [_s(daily)]),
             value: _s(b.today),
             warn: overToday,
           ),
@@ -118,13 +119,13 @@ class _TodayRow extends ConsumerWidget {
           child: b.perDayLeft != null
               ? _Stat(
                   label: b.daysLeft == 1
-                      ? 'For the last day'
-                      : 'Per day · ${b.daysLeft} days',
+                      ? tr('For the last day')
+                      : tr('Per day · {0} days', [b.daysLeft]),
                   value: _s(b.perDayLeft!),
                   warn: b.perDayLeft!.isNegative,
                 )
               : _Stat(
-                  label: 'Per day so far',
+                  label: tr('Per day so far'),
                   value: _s(
                     Money(
                       b.spent.paise ~/ modeDaysElapsed(mode, DateTime.now()),
@@ -135,7 +136,7 @@ class _TodayRow extends ConsumerWidget {
         const SizedBox(width: 10),
         Expanded(
           child: _Stat(
-            label: b.daysLeft != null ? 'Days left' : 'Day',
+            label: b.daysLeft != null ? tr('Days left') : tr('Day'),
             value: '${b.daysLeft ?? day ?? '—'}',
           ),
         ),
@@ -206,7 +207,7 @@ class _WhereItWent extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        modeSectionLabel(theme, 'WHERE IT WENT'),
+        modeSectionLabel(theme, tr('WHERE IT WENT')),
         AppCard(
           margin: EdgeInsets.zero,
           clipBehavior: Clip.antiAlias,
@@ -224,7 +225,7 @@ class _WhereItWent extends ConsumerWidget {
                   colorValue:
                       categories[e.key]?.colorValue ??
                       theme.colorScheme.onSurfaceVariant.toARGB32(),
-                  label: categories[e.key]?.name ?? 'Uncategorised',
+                  label: categories[e.key]?.name ?? tr('Uncategorised'),
                   amount: e.value,
                   total: summary.spent,
                 ),
@@ -274,10 +275,10 @@ class _PeopleCard extends ConsumerWidget {
                   ),
                   subtitle: Text(
                     bal.isZero
-                        ? 'Even on this trip'
+                        ? tr('Even on this trip')
                         : bal.isPositive
-                        ? 'Owes you'
-                        : 'You owe',
+                        ? tr('Owes you')
+                        : tr('You owe'),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: cs.onSurfaceVariant,
                     ),

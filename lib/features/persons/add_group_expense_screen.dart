@@ -9,6 +9,7 @@ import '../../core/widgets/app_surfaces.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Logs a shared expense across a group's members — equal, percentage, or
 /// manual split. Every number shown here is computed by the same
@@ -73,7 +74,7 @@ class _AddGroupExpenseScreenState
   ];
 
   String _nameFor(int? id, List<PersonRow> members) {
-    if (id == null) return 'You';
+    if (id == null) return tr('You');
     return members.firstWhere((m) => m.id == id).name;
   }
 
@@ -136,13 +137,13 @@ class _AddGroupExpenseScreenState
   Future<void> _save(List<PersonRow> members) async {
     final amount = Money.tryParse(_amountController.text);
     if (amount == null || !amount.isPositive) {
-      setState(() => _amountError = 'Enter an amount greater than zero');
+      setState(() => _amountError = tr('Enter an amount greater than zero'));
       return;
     }
     if (_participantIds.isEmpty) {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(const SnackBar(content: Text('Pick at least one participant')));
+        ..showSnackBar(const SnackBar(content: Tr('Pick at least one participant')));
       return;
     }
     if (_payerId == null &&
@@ -152,7 +153,7 @@ class _AddGroupExpenseScreenState
         ..hideCurrentSnackBar()
         ..showSnackBar(
           const SnackBar(
-            content: Text('Pick an account and category for your own share'),
+            content: Tr('Pick an account and category for your own share'),
           ),
         );
       return;
@@ -205,14 +206,14 @@ class _AddGroupExpenseScreenState
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          SnackBar(content: Text(e.message?.toString() ?? 'Could not save')),
+          SnackBar(content: Text(e.message?.toString() ?? tr('Could not save'))),
         );
       return;
     }
     navigator.pop();
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Expense added')));
+      ..showSnackBar(const SnackBar(content: Tr('Expense added')));
   }
 
   @override
@@ -220,10 +221,10 @@ class _AddGroupExpenseScreenState
     final membersAsync = ref.watch(groupMembersProvider(widget.groupId));
 
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Add group expense')),
+      appBar: AppTopBar(title: const Tr('Add group expense')),
       body: membersAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text("Couldn't load members.\n$e")),
+        error: (e, _) => Center(child: Text(tr("Couldn't load members.\n{0}", [e]))),
         data: (members) {
           if (!_participantsInitialized) {
             _participantIds = _allIdsInOrder(members).toSet();
@@ -254,7 +255,7 @@ class _AddGroupExpenseScreenState
         children: [
           AmountKeypadField(
             controller: _amountController,
-            label: 'Amount',
+            label: tr('Amount'),
             autofocus: true,
             group: _amountGroup,
             yieldTo: [_noteFocus],
@@ -275,19 +276,19 @@ class _AddGroupExpenseScreenState
           DropdownButtonFormField<int?>(
             initialValue: _payerId,
             isExpanded: true,
-            decoration: const InputDecoration(
-              labelText: 'Paid by',
+            decoration: InputDecoration(
+              labelText: tr('Paid by'),
               border: OutlineInputBorder(),
             ),
             items: [
-              const DropdownMenuItem<int?>(value: null, child: Text('You')),
+              const DropdownMenuItem<int?>(value: null, child: Tr('You')),
               for (final m in members)
                 DropdownMenuItem<int?>(value: m.id, child: Text(m.name)),
             ],
             onChanged: (v) => setState(() => _payerId = v),
           ),
           const SizedBox(height: 20),
-          Text('Participants', style: theme.textTheme.titleSmall),
+          Tr('Participants', style: theme.textTheme.titleSmall),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -308,21 +309,21 @@ class _AddGroupExpenseScreenState
             ],
           ),
           const SizedBox(height: 20),
-          Text('Split', style: theme.textTheme.titleSmall),
+          Tr('Split', style: theme.textTheme.titleSmall),
           const SizedBox(height: 8),
           SegmentedButton<GroupSplitMethod>(
             segments: const [
               ButtonSegment(
                 value: GroupSplitMethod.equal,
-                label: Text('Equal'),
+                label: Tr('Equal'),
               ),
               ButtonSegment(
                 value: GroupSplitMethod.percentage,
-                label: Text('Percent'),
+                label: Tr('Percent'),
               ),
               ButtonSegment(
                 value: GroupSplitMethod.manual,
-                label: Text('Manual'),
+                label: Tr('Manual'),
               ),
             ],
             selected: {_splitMethod},
@@ -330,7 +331,7 @@ class _AddGroupExpenseScreenState
           ),
           const SizedBox(height: 16),
           if (_participantIds.isEmpty)
-            Text(
+            Tr(
               'Pick at least one participant.',
               style: theme.textTheme.bodyMedium?.copyWith(color: cs.error),
             )
@@ -350,8 +351,8 @@ class _AddGroupExpenseScreenState
             controller: _noteController,
             focusNode: _noteFocus,
             textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(
-              labelText: 'Note (optional)',
+            decoration: InputDecoration(
+              labelText: tr('Note (optional)'),
               border: OutlineInputBorder(),
             ),
           ),
@@ -373,7 +374,7 @@ class _AddGroupExpenseScreenState
                     width: 22,
                     child: CircularProgressIndicator(strokeWidth: 2.4),
                   )
-                : const Text('Save expense'),
+                : const Tr('Save expense'),
           ),
         ],
       ),
@@ -430,7 +431,7 @@ class _AddGroupExpenseScreenState
               ),
             ),
           _RunningTotal(
-            label: 'Total',
+            label: tr('Total'),
             value: '${totalBp.toStringAsFixed(2)}%',
             matches: (totalBp - 100).abs() <= 0.5,
           ),
@@ -458,7 +459,7 @@ class _AddGroupExpenseScreenState
               ),
             ),
           _RunningTotal(
-            label: 'Total',
+            label: tr('Total'),
             value: MoneyFormat.symbol(totalEntered),
             matches: amount != null && totalEntered == amount,
           ),
@@ -501,7 +502,7 @@ class _ShareRow extends StatelessWidget {
               children: [
                 Text(label, style: theme.textTheme.bodyMedium),
                 if (!tracked)
-                  Text(
+                  Tr(
                     'Not tracked — shown for reference only',
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: cs.onSurfaceVariant,
@@ -580,13 +581,13 @@ class _AccountAndCategoryFields extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Your share', style: Theme.of(context).textTheme.titleSmall),
+        Tr('Your share', style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 8),
         DropdownButtonFormField<int?>(
           initialValue: accountId,
           isExpanded: true,
-          decoration: const InputDecoration(
-            labelText: 'Account',
+          decoration: InputDecoration(
+            labelText: tr('Account'),
             border: OutlineInputBorder(),
           ),
           items: [
@@ -599,8 +600,8 @@ class _AccountAndCategoryFields extends ConsumerWidget {
         DropdownButtonFormField<int?>(
           initialValue: categoryId,
           isExpanded: true,
-          decoration: const InputDecoration(
-            labelText: 'Category',
+          decoration: InputDecoration(
+            labelText: tr('Category'),
             border: OutlineInputBorder(),
           ),
           items: [

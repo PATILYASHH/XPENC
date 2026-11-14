@@ -6,6 +6,7 @@ import '../app_icons.dart';
 import 'app_surfaces.dart';
 import 'custom_icon_badge.dart';
 import 'nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Opens the icon picker and resolves to the chosen key, or `null` if the
 /// sheet was dismissed without a pick. [accentColor] tints the selected tile
@@ -76,7 +77,7 @@ Future<String?> showEmojiInputSheet(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
+          Tr(
             'Emoji',
             style: Theme.of(
               sheetContext,
@@ -97,7 +98,7 @@ Future<String?> showEmojiInputSheet(
           FilledButton(
             onPressed: () =>
                 Navigator.of(sheetContext).pop(controller.text.trim()),
-            child: const Text('Done'),
+            child: const Tr('Done'),
           ),
         ],
       ),
@@ -210,7 +211,7 @@ class _IconPickerSheetState extends ConsumerState<_IconPickerSheet> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-              child: Text('Icon', style: theme.textTheme.titleLarge),
+              child: Tr('Icon', style: theme.textTheme.titleLarge),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -220,7 +221,7 @@ class _IconPickerSheetState extends ConsumerState<_IconPickerSheet> {
                 autofocus: false,
                 decoration: InputDecoration(
                   prefixIcon: const AppIcon(Icons.search),
-                  hintText: 'Search icons',
+                  hintText: tr('Search icons'),
                   filled: true,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -237,7 +238,7 @@ class _IconPickerSheetState extends ConsumerState<_IconPickerSheet> {
                   ? Padding(
                       padding: const EdgeInsets.all(32),
                       child: Text(
-                        'No icon matches "$_query".',
+                        tr('No icon matches "{0}".', [_query]),
                         textAlign: TextAlign.center,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
@@ -250,7 +251,7 @@ class _IconPickerSheetState extends ConsumerState<_IconPickerSheet> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (showEmoji) ...[
-                            _sectionLabel(theme, 'Emoji'),
+                            _sectionLabel(theme, tr('Emoji')),
                             const SizedBox(height: 10),
                             Wrap(
                               spacing: 12,
@@ -264,7 +265,7 @@ class _IconPickerSheetState extends ConsumerState<_IconPickerSheet> {
                             const SizedBox(height: 20),
                           ],
                           if (frequent.isNotEmpty) ...[
-                            _sectionLabel(theme, 'Frequently used'),
+                            _sectionLabel(theme, tr('Frequently used')),
                             const SizedBox(height: 10),
                             Wrap(
                               spacing: 12,
@@ -278,7 +279,7 @@ class _IconPickerSheetState extends ConsumerState<_IconPickerSheet> {
                           ],
                           _sectionLabel(
                             theme,
-                            _query.isEmpty ? 'All icons' : 'Results',
+                            _query.isEmpty ? tr('All icons') : tr('Results'),
                           ),
                           const SizedBox(height: 10),
                           Wrap(
@@ -334,7 +335,7 @@ class _IconPickerSheetState extends ConsumerState<_IconPickerSheet> {
 
   Widget _addEmojiTile(ThemeData theme) {
     return Tooltip(
-      message: 'Type an emoji',
+      message: tr('Type an emoji'),
       child: GestureDetector(
         key: const Key('iconPickerAddEmoji'),
         onTap: _typeEmoji,

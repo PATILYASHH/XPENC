@@ -7,6 +7,7 @@ import '../../core/widgets/custom_icon_badge.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Preset colours for a shopping list. Its own decorative colour, same idea
 /// as a tag's — not a money-direction signal.
@@ -34,11 +35,11 @@ class ShoppingListsScreen extends ConsumerWidget {
     final summaries = ref.watch(shoppingListSummaryProvider);
 
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Shopping Lists')),
+      appBar: AppTopBar(title: const Tr('Shopping Lists')),
       body: listsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => Center(
-          child: Text(
+          child: Tr(
             "Couldn't load your shopping lists.",
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -57,7 +58,7 @@ class ShoppingListsScreen extends ConsumerWidget {
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                   const SizedBox(height: 16),
-                  Text(
+                  Tr(
                     'No shopping lists yet — tap + to start one.',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium?.copyWith(
@@ -79,7 +80,7 @@ class ShoppingListsScreen extends ConsumerWidget {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        tooltip: 'New list',
+        tooltip: tr('New list'),
         onPressed: () => _openListEditor(context),
         child: const AppIcon(Icons.add),
       ),
@@ -136,7 +137,7 @@ class _ShoppingListTile extends ConsumerWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      total == 0 ? 'Empty' : '$checked of $total bought',
+                      total == 0 ? tr('Empty') : tr('{0} of {1} bought', [checked, total]),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
@@ -146,7 +147,7 @@ class _ShoppingListTile extends ConsumerWidget {
               ),
               IconButton(
                 icon: const AppIcon(Icons.edit_outlined),
-                tooltip: 'Edit list',
+                tooltip: tr('Edit list'),
                 visualDensity: VisualDensity.compact,
                 onPressed: () => _openListEditor(context, existing: list),
               ),
@@ -155,7 +156,7 @@ class _ShoppingListTile extends ConsumerWidget {
                   Icons.delete_outline,
                   color: theme.colorScheme.error,
                 ),
-                tooltip: 'Delete list',
+                tooltip: tr('Delete list'),
                 visualDensity: VisualDensity.compact,
                 onPressed: () => _confirmDeleteList(context, ref, list),
               ),
@@ -176,19 +177,19 @@ Future<void> _confirmDeleteList(
   final confirmed = await showAppDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: Text('Delete "${list.name}"?'),
-      content: const Text('This removes the list and everything on it.'),
+      title: Text(tr('Delete "{0}"?', [list.name])),
+      content: const Tr('This removes the list and everything on it.'),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Cancel'),
+          child: const Tr('Cancel'),
         ),
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(true),
           style: TextButton.styleFrom(
             foregroundColor: Theme.of(dialogContext).colorScheme.error,
           ),
-          child: const Text('Delete'),
+          child: const Tr('Delete'),
         ),
       ],
     ),
@@ -198,7 +199,7 @@ Future<void> _confirmDeleteList(
   await ref.read(dbProvider).deleteShoppingList(list.id);
   messenger
     ..hideCurrentSnackBar()
-    ..showSnackBar(const SnackBar(content: Text('List deleted')));
+    ..showSnackBar(const SnackBar(content: Tr('List deleted')));
 }
 
 Future<void> _openListEditor(
@@ -255,7 +256,7 @@ class _ListEditorSheetState extends ConsumerState<_ListEditorSheet> {
   Future<void> _save() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      _showError('Give the list a name.');
+      _showError(tr('Give the list a name.'));
       return;
     }
 
@@ -276,7 +277,7 @@ class _ListEditorSheetState extends ConsumerState<_ListEditorSheet> {
     } catch (_) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      _showError('Could not save the list.');
+      _showError(tr('Could not save the list.'));
     }
   }
 
@@ -299,7 +300,7 @@ class _ListEditorSheetState extends ConsumerState<_ListEditorSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              _isEdit ? 'Edit list' : 'New list',
+              _isEdit ? tr('Edit list') : tr('New list'),
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
@@ -310,9 +311,9 @@ class _ListEditorSheetState extends ConsumerState<_ListEditorSheet> {
               autofocus: !_isEdit,
               textCapitalization: TextCapitalization.words,
               maxLength: 60,
-              decoration: const InputDecoration(
-                labelText: 'List name',
-                hintText: 'e.g. Weekly groceries, Diwali',
+              decoration: InputDecoration(
+                labelText: tr('List name'),
+                hintText: tr('e.g. Weekly groceries, Diwali'),
                 counterText: '',
               ),
               onSubmitted: (_) => _save(),
@@ -341,7 +342,7 @@ class _ListEditorSheetState extends ConsumerState<_ListEditorSheet> {
                       width: 22,
                       child: CircularProgressIndicator(strokeWidth: 2.4),
                     )
-                  : const Text('Save'),
+                  : const Tr('Save'),
             ),
           ],
         ),

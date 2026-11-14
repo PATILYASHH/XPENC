@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'app_surfaces.dart';
+import '../../core/l10n/l10n.dart';
 
 /// This month / Last month / a custom range picked via the platform's
 /// built-in range picker — the same choice sheet every statement download
@@ -37,7 +38,7 @@ Future<({DateTimeRange? range})?> _pick(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Text(
+              child: Tr(
                 'Statement period',
                 style: Theme.of(
                   sheetContext,
@@ -48,23 +49,23 @@ Future<({DateTimeRange? range})?> _pick(
           if (offerAllTime)
             AppListTile(
               leading: const AppIcon(Icons.all_inclusive_rounded),
-              title: const Text('All time'),
-              subtitle: const Text('Every entry, from the very first'),
+              title: const Tr('All time'),
+              subtitle: const Tr('Every entry, from the very first'),
               onTap: () => Navigator.of(sheetContext).pop('all'),
             ),
           AppListTile(
             leading: const AppIcon(Icons.calendar_today_outlined),
-            title: const Text('This month'),
+            title: const Tr('This month'),
             onTap: () => Navigator.of(sheetContext).pop('this'),
           ),
           AppListTile(
             leading: const AppIcon(Icons.calendar_view_month_outlined),
-            title: const Text('Last month'),
+            title: const Tr('Last month'),
             onTap: () => Navigator.of(sheetContext).pop('last'),
           ),
           AppListTile(
             leading: const AppIcon(Icons.date_range_outlined),
-            title: const Text('Custom range'),
+            title: const Tr('Custom range'),
             onTap: () => Navigator.of(sheetContext).pop('custom'),
           ),
           const SizedBox(height: 8),

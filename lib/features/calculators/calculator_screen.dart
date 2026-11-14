@@ -8,6 +8,7 @@ import 'calculator_kind.dart';
 import 'calculator_widgets.dart';
 import 'loan_calculator_screen.dart';
 import 'tax_calculator_screen.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Route target for `/more/calculators/<kind>`.
 class CalculatorScreen extends StatelessWidget {
@@ -70,32 +71,32 @@ class _DepositCalculatorScreenState extends State<DepositCalculatorScreen>
           );
 
     return CalculatorScaffold(
-      title: 'FD & RD',
+      title: tr('FD & RD'),
       children: [
         CalcModeToggle(
           value: _mode,
-          options: const {
-            _DepositMode.fd: 'Fixed deposit',
-            _DepositMode.rd: 'Recurring deposit',
+          options: {
+            _DepositMode.fd: tr('Fixed deposit'),
+            _DepositMode.rd: tr('Recurring deposit'),
           },
           onChanged: (m) => setState(() => _mode = m),
         ),
         CalcField(
           controller: _amount,
-          label: isFd ? 'Deposit amount' : 'Monthly deposit',
+          label: isFd ? tr('Deposit amount') : tr('Monthly deposit'),
           prefix: MoneyFormat.inputPrefix,
         ),
-        CalcField(controller: _rate, label: 'Interest rate', suffix: '% p.a.'),
+        CalcField(controller: _rate, label: tr('Interest rate'), suffix: '% p.a.'),
         CalcFieldPair(
           CalcField(
             controller: _years,
-            label: 'Years',
+            label: tr('Years'),
             suffix: 'yrs',
             decimal: false,
           ),
           CalcField(
             controller: _months,
-            label: 'Months',
+            label: tr('Months'),
             suffix: 'mo',
             decimal: false,
           ),
@@ -119,22 +120,22 @@ class _DepositCalculatorScreenState extends State<DepositCalculatorScreen>
         else
           const SizedBox(height: 4),
         CalcResultCard(
-          label: 'Maturity value',
+          label: tr('Maturity value'),
           value: result.maturity,
           format: MoneyFormat.symbol,
-          sub: months <= 0 ? 'Enter a tenure' : 'After ${_tenure(months)}',
+          sub: months <= 0 ? tr('Enter a tenure') : 'After ${_tenure(months)}',
           parts: [
             CalcPart(
-              isFd ? 'Deposit' : 'Total deposited',
+              isFd ? tr('Deposit') : tr('Total deposited'),
               result.invested,
               cs.primary,
             ),
-            CalcPart('Interest earned', result.returns, AppColors.income),
+            CalcPart(tr('Interest earned'), result.returns, AppColors.income),
           ],
         ),
         if (!isFd) ...[
           const SizedBox(height: 12),
-          Text(
+          Tr(
             'Compounded quarterly, the way banks and the post office '
             'calculate RD interest.',
             style: Theme.of(
@@ -151,8 +152,8 @@ String _tenure(int months) {
   final y = months ~/ 12;
   final m = months % 12;
   return [
-    if (y > 0) '$y year${y == 1 ? '' : 's'}',
-    if (m > 0) '$m month${m == 1 ? '' : 's'}',
+    if (y > 0) tr('{0} year{1}', [y, y == 1 ? '' : 's']),
+    if (m > 0) tr('{0} month{1}', [m, m == 1 ? '' : 's']),
   ].join(' ');
 }
 
@@ -194,15 +195,15 @@ class _SipCalculatorScreenState extends State<SipCalculatorScreen>
           );
 
     return CalculatorScaffold(
-      title: 'SIP & Lumpsum',
+      title: tr('SIP & Lumpsum'),
       footnote:
-          'Market returns are not guaranteed. This assumes the same return '
-          'every year, which real funds never deliver.',
+          tr('Market returns are not guaranteed. This assumes the same return '
+          'every year, which real funds never deliver.'),
       children: [
         CalcModeToggle(
           value: _mode,
-          options: const {
-            _InvestMode.sip: 'Monthly SIP',
+          options: {
+            _InvestMode.sip: tr('Monthly SIP'),
             _InvestMode.lumpsum: 'Lumpsum',
           },
           onChanged: (m) => setState(() => _mode = m),
@@ -210,24 +211,24 @@ class _SipCalculatorScreenState extends State<SipCalculatorScreen>
         if (isSip)
           CalcField(
             controller: _amount,
-            label: 'Monthly investment',
+            label: tr('Monthly investment'),
             prefix: MoneyFormat.inputPrefix,
           )
         else
           CalcField(
             controller: _lumpsum,
-            label: 'One-time investment',
+            label: tr('One-time investment'),
             prefix: MoneyFormat.inputPrefix,
           ),
         CalcFieldPair(
           CalcField(
             controller: _rate,
-            label: 'Expected return',
+            label: tr('Expected return'),
             suffix: '% p.a.',
           ),
           CalcField(
             controller: _years,
-            label: 'Period',
+            label: tr('Period'),
             suffix: 'yrs',
             decimal: false,
           ),
@@ -235,18 +236,18 @@ class _SipCalculatorScreenState extends State<SipCalculatorScreen>
         if (isSip)
           CalcField(
             controller: _stepUp,
-            label: 'Yearly step-up (optional)',
+            label: tr('Yearly step-up (optional)'),
             suffix: '%',
-            helper: 'Raise your SIP by this much every year',
+            helper: tr('Raise your SIP by this much every year'),
           ),
         const SizedBox(height: 4),
         CalcResultCard(
-          label: 'Estimated value',
+          label: tr('Estimated value'),
           value: result.maturity,
           format: MoneyFormat.symbol,
           parts: [
-            CalcPart('Invested', result.invested, cs.primary),
-            CalcPart('Estimated returns', result.returns, AppColors.income),
+            CalcPart(tr('Invested'), result.invested, cs.primary),
+            CalcPart(tr('Estimated returns'), result.returns, AppColors.income),
           ],
         ),
       ],
@@ -285,41 +286,41 @@ class _PpfCalculatorScreenState extends State<PpfCalculatorScreen>
     return CalculatorScaffold(
       title: 'PPF',
       footnote:
-          'Estimates only. The PPF rate is set by the government every '
-          'quarter; this assumes today\'s rate for the whole period.',
+          tr('Estimates only. The PPF rate is set by the government every '
+          'quarter; this assumes today\'s rate for the whole period.'),
       children: [
         CalcField(
           controller: _deposit,
-          label: 'Yearly deposit',
+          label: tr('Yearly deposit'),
           prefix: '₹ ',
           helper: overLimit
-              ? 'PPF allows at most ${formatInr(kPpfYearlyLimit)} a year'
-              : 'Minimum ₹500, maximum ${formatInr(kPpfYearlyLimit)}',
+              ? tr('PPF allows at most {0} a year', [formatInr(kPpfYearlyLimit)])
+              : tr('Minimum ₹500, maximum {0}', [formatInr(kPpfYearlyLimit)]),
         ),
         CalcFieldPair(
-          CalcField(controller: _rate, label: 'Interest rate', suffix: '%'),
+          CalcField(controller: _rate, label: tr('Interest rate'), suffix: '%'),
           CalcField(
             controller: _years,
-            label: 'Period',
+            label: tr('Period'),
             suffix: 'yrs',
             decimal: false,
-            helper: '15, then +5 blocks',
+            helper: tr('15, then +5 blocks'),
           ),
         ),
         const SizedBox(height: 4),
         CalcResultCard(
-          label: 'Maturity value',
+          label: tr('Maturity value'),
           value: ppf.result.maturity,
           format: formatInr,
-          sub: 'Tax-free at maturity (EEE)',
+          sub: tr('Tax-free at maturity (EEE)'),
           parts: [
-            CalcPart('Total deposited', ppf.result.invested, cs.primary),
-            CalcPart('Interest earned', ppf.result.returns, AppColors.income),
+            CalcPart(tr('Total deposited'), ppf.result.invested, cs.primary),
+            CalcPart(tr('Interest earned'), ppf.result.returns, AppColors.income),
           ],
         ),
         if (ppf.yearEndBalances.isNotEmpty) ...[
           const SizedBox(height: 20),
-          Text(
+          Tr(
             'Year-end balance',
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w700,
@@ -371,15 +372,15 @@ class _GstCalculatorScreenState extends State<GstCalculatorScreen>
       children: [
         CalcModeToggle(
           value: _inclusive,
-          options: const {false: 'Add GST', true: 'Remove GST'},
+          options: {false: tr('Add GST'), true: tr('Remove GST')},
           onChanged: (v) => setState(() => _inclusive = v),
         ),
         CalcField(
           controller: _amount,
-          label: _inclusive ? 'Price including GST' : 'Price before GST',
+          label: _inclusive ? tr('Price including GST') : tr('Price before GST'),
           prefix: '₹ ',
         ),
-        CalcField(controller: _rate, label: 'GST rate', suffix: '%'),
+        CalcField(controller: _rate, label: tr('GST rate'), suffix: '%'),
         Padding(
           padding: const EdgeInsets.only(bottom: 16),
           child: Wrap(
@@ -396,11 +397,11 @@ class _GstCalculatorScreenState extends State<GstCalculatorScreen>
           ),
         ),
         CalcResultCard(
-          label: _inclusive ? 'Price before GST' : 'Total price',
+          label: _inclusive ? tr('Price before GST') : tr('Total price'),
           value: _inclusive ? gst.base : gst.total,
           format: formatInr,
           parts: [
-            CalcPart('Base price', gst.base, cs.primary),
+            CalcPart(tr('Base price'), gst.base, cs.primary),
             CalcPart('GST', gst.tax, AppColors.expense),
           ],
         ),
@@ -409,7 +410,7 @@ class _GstCalculatorScreenState extends State<GstCalculatorScreen>
           rows: [
             CalcRow('CGST (${_trim(rate / 2)}%)', formatInr(half)),
             CalcRow('SGST (${_trim(rate / 2)}%)', formatInr(gst.tax - half)),
-            CalcRow('IGST (${_trim(rate)}%) · inter-state', formatInr(gst.tax)),
+            CalcRow(tr('IGST ({0}%) · inter-state', [_trim(rate)]), formatInr(gst.tax)),
           ],
         ),
       ],

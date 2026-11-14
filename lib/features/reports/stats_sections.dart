@@ -15,6 +15,7 @@ import '../../data/mode_providers.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'chart_widgets.dart';
+import '../../core/l10n/l10n.dart';
 
 /// A mode's (trip's) spending in a category breakdown: one slice of its
 /// own, in its colour, keyed by the negated mode id so a tap can tell it
@@ -92,7 +93,7 @@ class NotEnoughDataText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Text(
+    return Tr(
       'Not enough data yet.',
       style: theme.textTheme.bodyMedium?.copyWith(
         color: theme.colorScheme.onSurfaceVariant,
@@ -127,7 +128,7 @@ class ThisMonthSection extends ConsumerWidget {
               children: [
                 Expanded(
                   child: StatTile(
-                    label: 'Money in',
+                    label: tr('Money in'),
                     value: MoneyFormat.symbol(totals.income),
                     color: AppColors.income,
                   ),
@@ -135,7 +136,7 @@ class ThisMonthSection extends ConsumerWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: StatTile(
-                    label: 'Money out',
+                    label: tr('Money out'),
                     value: MoneyFormat.symbol(totals.expense),
                     color: AppColors.expense,
                   ),
@@ -144,12 +145,12 @@ class ThisMonthSection extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             StatTile(
-              label: 'Net',
+              label: tr('Net'),
               value: net.isZero
                   ? MoneyFormat.symbol(net)
                   : MoneyFormat.signed(net),
               color: netColor,
-              sub: 'Money in − money out',
+              sub: tr('Money in − money out'),
             ),
           ],
         );
@@ -214,8 +215,8 @@ class PeriodToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     return SegmentedButton<bool>(
       segments: const [
-        ButtonSegment(value: false, label: Text('Month')),
-        ButtonSegment(value: true, label: Text('Year')),
+        ButtonSegment(value: false, label: Tr('Month')),
+        ButtonSegment(value: true, label: Tr('Year')),
       ],
       selected: {showYear},
       showSelectedIcon: false,
@@ -240,8 +241,8 @@ class CategoryDetailToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     return SegmentedButton<bool>(
       segments: const [
-        ButtonSegment(value: false, label: Text('Main categories')),
-        ButtonSegment(value: true, label: Text('Subcategories')),
+        ButtonSegment(value: false, label: Tr('Main categories')),
+        ButtonSegment(value: true, label: Tr('Subcategories')),
       ],
       selected: {showSubcategories},
       showSelectedIcon: false,
@@ -271,7 +272,7 @@ class PeriodStepper extends StatelessWidget {
       children: [
         IconButton(
           icon: const AppIcon(Icons.chevron_left_rounded),
-          tooltip: showYear ? 'Previous year' : 'Previous month',
+          tooltip: showYear ? tr('Previous year') : tr('Previous month'),
           onPressed: () => onShift(-1),
         ),
         Expanded(
@@ -300,7 +301,7 @@ class PeriodStepper extends StatelessWidget {
         ),
         IconButton(
           icon: const AppIcon(Icons.chevron_right_rounded),
-          tooltip: showYear ? 'Next year' : 'Next month',
+          tooltip: showYear ? tr('Next year') : tr('Next month'),
           onPressed: () => onShift(1),
         ),
       ],
@@ -476,16 +477,16 @@ class HighlightsSection extends ConsumerWidget {
         final biggestCategoryLabel = biggest == null
             ? ''
             : biggest.categoryId != null
-            ? (categories[biggest.categoryId]?.name ?? 'Uncategorised')
+            ? (categories[biggest.categoryId]?.name ?? tr('Uncategorised'))
             : (splitsByTx[biggest.id]?.isNotEmpty ?? false)
-            ? 'Split'
-            : 'Uncategorised';
+            ? tr('Split')
+            : tr('Uncategorised');
         final biggestValue = biggest == null
             ? '—'
             : '${MoneyFormat.symbol(biggest.amount)} · $biggestCategoryLabel';
         final topValue = topId == null
             ? '—'
-            : '${categories[topId]?.name ?? 'Uncategorised'}'
+            : '${categories[topId]?.name ?? tr('Uncategorised')}'
                   ' · ${MoneyFormat.symbol(topAmount)}';
 
         return HighlightsCard(
@@ -493,16 +494,16 @@ class HighlightsSection extends ConsumerWidget {
             NctVeil(
               active: biggest?.isNct ?? false,
               child: HighlightRow(
-                label: 'Largest money out',
+                label: tr('Largest money out'),
                 value: biggestValue,
               ),
             ),
             HighlightRow(
-              label: 'Average daily spend',
+              label: tr('Average daily spend'),
               value: MoneyFormat.symbol(avgDaily),
             ),
-            HighlightRow(label: 'Transactions', value: '${periodTxs.length}'),
-            HighlightRow(label: 'Top category', value: topValue),
+            HighlightRow(label: tr('Transactions'), value: '${periodTxs.length}'),
+            HighlightRow(label: tr('Top category'), value: topValue),
           ],
         );
       },
@@ -601,11 +602,11 @@ class StandingsControls extends StatelessWidget {
             segments: const [
               ButtonSegment(
                 value: StandingsMetric.transactions,
-                label: Text('Transactions'),
+                label: Tr('Transactions'),
               ),
               ButtonSegment(
                 value: StandingsMetric.categories,
-                label: Text('Categories'),
+                label: Tr('Categories'),
               ),
             ],
             selected: {metric},
@@ -620,7 +621,7 @@ class StandingsControls extends StatelessWidget {
                 ? Icons.arrow_upward_rounded
                 : Icons.arrow_downward_rounded,
           ),
-          tooltip: ascending ? 'Lowest first' : 'Highest first',
+          tooltip: ascending ? tr('Lowest first') : tr('Highest first'),
           onPressed: onToggleAscending,
         ),
       ],
@@ -706,11 +707,11 @@ class TransactionStandings extends ConsumerWidget {
 
         String labelOf(TransactionRow t) {
           if (t.categoryId != null) {
-            return categories[t.categoryId]?.name ?? 'Uncategorised';
+            return categories[t.categoryId]?.name ?? tr('Uncategorised');
           }
           return (splitsByTx[t.id]?.isNotEmpty ?? false)
-              ? 'Split'
-              : 'Uncategorised';
+              ? tr('Split')
+              : tr('Uncategorised');
         }
 
         return StandingsCard(
@@ -818,7 +819,7 @@ class CategoryStandings extends ConsumerWidget {
               title: e.label,
               subtitle: total.paise == 0
                   ? null
-                  : '${(e.value.paise / total.paise * 100).toStringAsFixed(1)}% of total',
+                  : tr('{0}% of total', [(e.value.paise / total.paise * 100).toStringAsFixed(1)]),
               value: MoneyFormat.symbol(e.value),
               dotColor: e.color,
               barFraction: maxValue == 0 ? 0 : e.value.paise / maxValue,

@@ -11,11 +11,12 @@ import '../../data/tables.dart';
 import 'backup_service.dart';
 import 'import_from_file.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 String _sizeLabel(int bytes) {
   if (bytes < 1024) return '$bytes B';
-  if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-  return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  if (bytes < 1024 * 1024) return tr('{0} KB', [(bytes / 1024).toStringAsFixed(1)]);
+  return tr('{0} MB', [(bytes / (1024 * 1024)).toStringAsFixed(1)]);
 }
 
 /// On-device backups: make a full snapshot, restore an old one, schedule
@@ -59,12 +60,12 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
       if (!mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(const SnackBar(content: Text('Backup created')));
+        ..showSnackBar(const SnackBar(content: Tr('Backup created')));
     } catch (e) {
       if (!mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text("Couldn't back up: $e")));
+        ..showSnackBar(SnackBar(content: Text(tr("Couldn't back up: {0}", [e]))));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -87,12 +88,12 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
           SnackBar(
             content: Text(
               found == null
-                  ? 'Cancelled'
+                  ? tr('Cancelled')
                   : found == 0
                   ? PlatformFeatures.durableBackupFolder
-                        ? 'No backups found in Download/$backupAppFolder'
-                        : 'No backups found on this iPhone'
-                  : 'Found $found backup${found == 1 ? '' : 's'}',
+                        ? tr('No backups found in Download/{0}', [backupAppFolder])
+                        : tr('No backups found on this iPhone')
+                  : tr('Found {0} backup{1}', [found, found == 1 ? '' : 's']),
             ),
           ),
         );
@@ -100,7 +101,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
       if (!mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text("Couldn't check: $e")));
+        ..showSnackBar(SnackBar(content: Text(tr("Couldn't check: {0}", [e]))));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -124,8 +125,8 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Restore this backup?'),
-        content: const Text(
+        title: const Tr('Restore this backup?'),
+        content: const Tr(
           'This replaces ALL current data — every account, transaction, budget '
           'and person — with the contents of this backup. This cannot be '
           'undone.',
@@ -133,14 +134,14 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           TextButton(
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(dialogContext).colorScheme.error,
             ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Replace everything'),
+            child: const Tr('Replace everything'),
           ),
         ],
       ),
@@ -159,7 +160,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
         ..hideCurrentSnackBar()
         ..showSnackBar(
           const SnackBar(
-            content: Text(
+            content: Tr(
               'Restored. A safety copy of your previous data was saved.',
             ),
           ),
@@ -169,14 +170,14 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          SnackBar(content: Text('${e.message} Nothing was changed.')),
+          SnackBar(content: Text(tr('{0} Nothing was changed.', [e.message]))),
         );
     } catch (e) {
       if (!mounted) return;
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          SnackBar(content: Text("Couldn't restore: $e Nothing was changed.")),
+          SnackBar(content: Text(tr("Couldn't restore: {0} Nothing was changed.", [e]))),
         );
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -187,19 +188,19 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete this backup?'),
-        content: Text('${b.fileName} will be removed from this phone.'),
+        title: const Tr('Delete this backup?'),
+        content: Text(tr('{0} will be removed from this phone.', [b.fileName])),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           TextButton(
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(dialogContext).colorScheme.error,
             ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete'),
+            child: const Tr('Delete'),
           ),
         ],
       ),
@@ -213,12 +214,12 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
       if (!mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(const SnackBar(content: Text('Backup deleted')));
+        ..showSnackBar(const SnackBar(content: Tr('Backup deleted')));
     } catch (e) {
       if (!mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text("Couldn't delete: $e")));
+        ..showSnackBar(SnackBar(content: Text(tr("Couldn't delete: {0}", [e]))));
     }
   }
 
@@ -229,22 +230,22 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text('Delete ${targets.length} backups?'),
+        title: Text(tr('Delete {0} backups?', [targets.length])),
         content: Text(
-          '${targets.length} backup${targets.length == 1 ? '' : 's'} will be '
-          'removed from this phone.',
+          tr('{0} backup{1} will be '
+          'removed from this phone.', [targets.length, targets.length == 1 ? '' : 's']),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           TextButton(
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(dialogContext).colorScheme.error,
             ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete'),
+            child: const Tr('Delete'),
           ),
         ],
       ),
@@ -273,9 +274,9 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
         SnackBar(
           content: Text(
             failures == 0
-                ? '${targets.length} backup${targets.length == 1 ? '' : 's'} '
-                      'deleted'
-                : '${targets.length - failures} deleted, $failures failed',
+                ? tr('{0} backup{1} '
+                      'deleted', [targets.length, targets.length == 1 ? '' : 's'])
+                : tr('{0} deleted, {1} failed', [targets.length - failures, failures]),
           ),
         ),
       );
@@ -290,7 +291,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
       if (!mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text("Couldn't share: $e")));
+        ..showSnackBar(SnackBar(content: Text(tr("Couldn't share: {0}", [e]))));
     }
   }
 
@@ -306,7 +307,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
     final web = PlatformFeatures.isWeb;
 
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Backup & Restore')),
+      appBar: AppTopBar(title: const Tr('Backup & Restore')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32).plusNavBar(context),
         children: [
@@ -325,32 +326,32 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const AppIcon(Icons.backup_outlined),
-                    label: const Text('Back up now'),
+                    label: const Tr('Back up now'),
                   ),
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
                     onPressed: _busy ? null : _importFromFile,
                     icon: const AppIcon(Icons.file_open_outlined),
-                    label: const Text('Import from file'),
+                    label: const Tr('Import from file'),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     web
-                        ? 'Back up now downloads the backup file. Your data '
+                        ? tr('Back up now downloads the backup file. Your data '
                               'lives in this browser, and clearing its site '
                               'data deletes it — keep the downloaded files '
                               'somewhere safe. To restore one, or to bring in '
-                              'a phone backup, use Import from file.'
+                              'a phone backup, use Import from file.')
                         : PlatformFeatures.durableBackupFolder
-                        ? 'Backups live in Download/$backupAppFolder on this '
+                        ? tr('Backups live in Download/{0} on this '
                               'phone — visible in any file manager, and kept '
                               'even if XPENC itself is uninstalled. Moving to a '
                               'new phone? Send that folder across, or export a '
-                              'file here and use Import on the new phone.'
-                        : 'Backups are kept inside XPENC on this iPhone, so '
+                              'file here and use Import on the new phone.', [backupAppFolder])
+                        : tr('Backups are kept inside XPENC on this iPhone, so '
                               'deleting the app deletes them too. Keep a copy '
                               'somewhere safe — Share one to Files or iCloud '
-                              'Drive — and use Import on a new phone.',
+                              'Drive — and use Import on a new phone.'),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: cs.onSurfaceVariant,
                       height: 1.4,
@@ -362,7 +363,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
           ),
           if (!web) ...[
             const SizedBox(height: 24),
-            Text(
+            Tr(
               'Automatic backups',
               style: theme.textTheme.titleSmall?.copyWith(
                 color: cs.onSurfaceVariant,
@@ -381,7 +382,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
                       : Icons.schedule_outlined,
                   color: autoBackup.enabled ? cs.primary : cs.onSurfaceVariant,
                 ),
-                title: const Text('Automatic backups'),
+                title: const Tr('Automatic backups'),
                 subtitle: Text(
                   _autoBackupSummary(autoBackup),
                   style: theme.textTheme.bodySmall?.copyWith(
@@ -399,10 +400,10 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
               Expanded(
                 child: Text(
                   _selecting
-                      ? '${_selected.length} selected'
+                      ? tr('{0} selected', [_selected.length])
                       : web
-                      ? 'Downloaded backups'
-                      : 'Backups',
+                      ? tr('Downloaded backups')
+                      : tr('Backups'),
                   style: theme.textTheme.titleSmall?.copyWith(
                     color: cs.onSurfaceVariant,
                   ),
@@ -413,7 +414,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
                   onPressed: _busy
                       ? null
                       : () => setState(() => _selected.clear()),
-                  child: const Text('Cancel'),
+                  child: const Tr('Cancel'),
                 ),
                 TextButton.icon(
                   onPressed: _busy
@@ -422,14 +423,14 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
                           backupsAsync.valueOrNull ?? const [],
                         ),
                   icon: const AppIcon(Icons.delete_outline, size: 18),
-                  label: const Text('Delete'),
+                  label: const Tr('Delete'),
                   style: TextButton.styleFrom(foregroundColor: cs.error),
                 ),
               ] else if (!web) ...[
                 TextButton.icon(
                   onPressed: _busy ? null : _findExistingBackups,
                   icon: const AppIcon(Icons.search_rounded, size: 18),
-                  label: const Text('Find existing'),
+                  label: const Tr('Find existing'),
                 ),
               ],
             ],
@@ -440,16 +441,16 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
               child: Center(child: CircularProgressIndicator()),
             ),
             error: (_, _) =>
-                const InlineErrorView(message: "Couldn't load backups"),
+                InlineErrorView(message: tr("Couldn't load backups")),
             data: (backups) {
               if (backups.isEmpty) {
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 24),
                   child: Text(
                     web
-                        ? 'No backups downloaded yet.'
-                        : 'No backups yet. If you reinstalled and had backups '
-                              'before, tap "Find existing" above.',
+                        ? tr('No backups downloaded yet.')
+                        : tr('No backups yet. If you reinstalled and had backups '
+                              'before, tap "Find existing" above.'),
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: cs.onSurfaceVariant,
@@ -480,25 +481,25 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
   }
 
   String _autoBackupSummary(AutoBackupSettings s) {
-    if (!s.enabled) return 'Off';
+    if (!s.enabled) return tr('Off');
     final freq = switch (s.frequency) {
-      AutoBackupFrequency.daily => 'Daily',
-      AutoBackupFrequency.monthly => 'Monthly',
+      AutoBackupFrequency.daily => tr('Daily'),
+      AutoBackupFrequency.monthly => tr('Monthly'),
       AutoBackupFrequency.custom =>
-        'Every ${_intervalLabel(s.customDays, s.customHours)}',
+        tr('Every {0}', [_intervalLabel(s.customDays, s.customHours)]),
       AutoBackupFrequency.onChange =>
         s.cooldownMinutes <= 0
-            ? 'On every change'
-            : 'On change, ${s.cooldownMinutes} min apart',
+            ? tr('On every change')
+            : tr('On change, {0} min apart', [s.cooldownMinutes]),
     };
     final keep = switch (s.retentionMode) {
       BackupRetentionMode.count =>
         s.retentionCount <= 0
-            ? 'keep count not set'
-            : 'last ${s.retentionCount} kept',
+            ? tr('keep count not set')
+            : tr('last {0} kept', [s.retentionCount]),
       BackupRetentionMode.days => s.retentionDays == 0
-          ? 'kept forever'
-          : 'kept for ${_daysLabel(s.retentionDays)}',
+          ? tr('kept forever')
+          : tr('kept for {0}', [_daysLabel(s.retentionDays)]),
     };
     return '$freq · $keep';
   }
@@ -508,19 +509,19 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
       if (days > 0) '$days day${days == 1 ? '' : 's'}',
       if (hours > 0) '$hours hour${hours == 1 ? '' : 's'}',
     ];
-    return parts.isEmpty ? '0 hours' : parts.join(' ');
+    return parts.isEmpty ? tr('0 hours') : parts.join(' ');
   }
 
   static String _daysLabel(int days) {
     if (days % 365 == 0 && days >= 365) {
       final y = days ~/ 365;
-      return '$y year${y == 1 ? '' : 's'}';
+      return tr('{0} year{1}', [y, y == 1 ? '' : 's']);
     }
     if (days % 30 == 0 && days >= 30) {
       final m = days ~/ 30;
-      return '$m month${m == 1 ? '' : 's'}';
+      return tr('{0} month{1}', [m, m == 1 ? '' : 's']);
     }
-    return '$days day${days == 1 ? '' : 's'}';
+    return tr('{0} day{1}', [days, days == 1 ? '' : 's']);
   }
 
   void _openAutoBackupSheet(BuildContext context, AutoBackupSettings current) {
@@ -633,14 +634,14 @@ class _BackupTile extends StatelessWidget {
                     if (!downloadOnly) ...[
                       const PopupMenuItem(
                         value: 'restore',
-                        child: Text('Restore'),
+                        child: Tr('Restore'),
                       ),
-                      const PopupMenuItem(value: 'share', child: Text('Share')),
+                      const PopupMenuItem(value: 'share', child: Tr('Share')),
                     ],
                     PopupMenuItem(
                       value: 'delete',
                       child: Text(
-                        downloadOnly ? 'Remove from list' : 'Delete',
+                        downloadOnly ? tr('Remove from list') : tr('Delete'),
                         style: TextStyle(color: cs.error),
                       ),
                     ),
@@ -758,7 +759,7 @@ class _AutoBackupSettingsSheetState
         ..showSnackBar(
           SnackBar(
             content: Text(
-              _enabled ? 'Automatic backups on' : 'Automatic backups off',
+              _enabled ? tr('Automatic backups on') : tr('Automatic backups off'),
             ),
           ),
         );
@@ -769,7 +770,7 @@ class _AutoBackupSettingsSheetState
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      messenger.showSnackBar(SnackBar(content: Text("Couldn't save: $e")));
+      messenger.showSnackBar(SnackBar(content: Text(tr("Couldn't save: {0}", [e]))));
     }
   }
 
@@ -792,7 +793,7 @@ class _AutoBackupSettingsSheetState
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
+            Tr(
               'Automatic backups',
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w700,
@@ -801,11 +802,11 @@ class _AutoBackupSettingsSheetState
             const SizedBox(height: 4),
             Text(
               PlatformFeatures.durableBackupFolder
-                  ? 'Backs up on its own, no need to tap "Back up now" — '
-                        'saved to Download/$backupAppFolder just like a manual '
-                        'backup.'
-                  : 'Backs up on its own, no need to tap "Back up now" — '
-                        'kept on this iPhone just like a manual backup.',
+                  ? tr('Backs up on its own, no need to tap "Back up now" — '
+                        'saved to Download/{0} just like a manual '
+                        'backup.', [backupAppFolder])
+                  : tr('Backs up on its own, no need to tap "Back up now" — '
+                        'kept on this iPhone just like a manual backup.'),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: cs.onSurfaceVariant,
               ),
@@ -813,13 +814,13 @@ class _AutoBackupSettingsSheetState
             const SizedBox(height: 8),
             AppSwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Back up automatically'),
+              title: const Tr('Back up automatically'),
               value: _enabled,
               onChanged: (v) => setState(() => _enabled = v),
             ),
             if (_enabled) ...[
               const SizedBox(height: 8),
-              _label(theme, 'HOW OFTEN'),
+              _label(theme, tr('HOW OFTEN')),
               const SizedBox(height: 10),
               SizedBox(
                 width: double.infinity,
@@ -827,19 +828,19 @@ class _AutoBackupSettingsSheetState
                   segments: const [
                     ButtonSegment(
                       value: AutoBackupFrequency.daily,
-                      label: Text('Daily'),
+                      label: Tr('Daily'),
                     ),
                     ButtonSegment(
                       value: AutoBackupFrequency.monthly,
-                      label: Text('Monthly'),
+                      label: Tr('Monthly'),
                     ),
                     ButtonSegment(
                       value: AutoBackupFrequency.custom,
-                      label: Text('Custom'),
+                      label: Tr('Custom'),
                     ),
                     ButtonSegment(
                       value: AutoBackupFrequency.onChange,
-                      label: Text('On change'),
+                      label: Tr('On change'),
                     ),
                   ],
                   selected: {_frequency},
@@ -853,8 +854,8 @@ class _AutoBackupSettingsSheetState
                 TextField(
                   controller: _cooldownCtrl,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Minutes between backups',
+                  decoration: InputDecoration(
+                    labelText: tr('Minutes between backups'),
                   ),
                   onChanged: (_) => setState(() {}),
                 ),
@@ -862,14 +863,14 @@ class _AutoBackupSettingsSheetState
                 Text(
                   _cooldownValid
                       ? (_cooldownMinutes <= 0
-                            ? 'Backs up after every add, edit or delete. '
+                            ? tr('Backs up after every add, edit or delete. '
                                   'Several changes made quickly still count '
-                                  'as one backup.'
-                            : 'Several changes within $_cooldownMinutes '
-                                  'minute${_cooldownMinutes == 1 ? '' : 's'} '
+                                  'as one backup.')
+                            : tr('Several changes within {0} '
+                                  'minute{1} '
                                   'of each other count as one backup, taken '
-                                  'once that window passes.')
-                      : 'Enter 0 or more minutes.',
+                                  'once that window passes.', [_cooldownMinutes, _cooldownMinutes == 1 ? '' : 's']))
+                      : tr('Enter 0 or more minutes.'),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: _cooldownValid ? cs.onSurfaceVariant : cs.error,
                   ),
@@ -883,7 +884,7 @@ class _AutoBackupSettingsSheetState
                       child: TextField(
                         controller: _daysCtrl,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Days'),
+                        decoration: InputDecoration(labelText: tr('Days')),
                         onChanged: (_) => setState(() {}),
                       ),
                     ),
@@ -892,7 +893,7 @@ class _AutoBackupSettingsSheetState
                       child: TextField(
                         controller: _hoursCtrl,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Hours'),
+                        decoration: InputDecoration(labelText: tr('Hours')),
                         onChanged: (_) => setState(() {}),
                       ),
                     ),
@@ -901,9 +902,9 @@ class _AutoBackupSettingsSheetState
                 const SizedBox(height: 6),
                 Text(
                   _customIntervalValid
-                      ? 'Leave Days at 0 for an hours-only interval — e.g. '
-                            '0 days, 12 hours backs up twice a day.'
-                      : 'Set at least one of Days or Hours above zero.',
+                      ? tr('Leave Days at 0 for an hours-only interval — e.g. '
+                            '0 days, 12 hours backs up twice a day.')
+                      : tr('Set at least one of Days or Hours above zero.'),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: _customIntervalValid
                         ? cs.onSurfaceVariant
@@ -912,7 +913,7 @@ class _AutoBackupSettingsSheetState
                 ),
               ],
               const SizedBox(height: 20),
-              _label(theme, 'KEEP BACKUPS BY'),
+              _label(theme, tr('KEEP BACKUPS BY')),
               const SizedBox(height: 10),
               SizedBox(
                 width: double.infinity,
@@ -920,11 +921,11 @@ class _AutoBackupSettingsSheetState
                   segments: const [
                     ButtonSegment(
                       value: BackupRetentionMode.days,
-                      label: Text('Time'),
+                      label: Tr('Time'),
                     ),
                     ButtonSegment(
                       value: BackupRetentionMode.count,
-                      label: Text('Count'),
+                      label: Tr('Count'),
                     ),
                   ],
                   selected: {_retentionMode},
@@ -951,7 +952,7 @@ class _AutoBackupSettingsSheetState
                 ),
                 if (!_retentionAllowed(_retentionDays)) ...[
                   const SizedBox(height: 8),
-                  Text(
+                  Tr(
                     "That's shorter than how often backups run — pick a "
                     'longer window, or backups could be deleted before the '
                     'next one is made.',
@@ -967,7 +968,7 @@ class _AutoBackupSettingsSheetState
                   children: [
                     for (final n in _countPresets)
                       ChoiceChip(
-                        label: Text('Last $n'),
+                        label: Text(tr('Last {0}', [n])),
                         selected: _retentionCount == n,
                         onSelected: (_) => setState(
                           () => _retentionCountCtrl.text = '$n',
@@ -979,18 +980,18 @@ class _AutoBackupSettingsSheetState
                 TextField(
                   controller: _retentionCountCtrl,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Number of backups to keep',
+                  decoration: InputDecoration(
+                    labelText: tr('Number of backups to keep'),
                   ),
                   onChanged: (_) => setState(() {}),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   _retentionCountValid
-                      ? 'Each new automatic backup deletes the oldest one '
+                      ? tr('Each new automatic backup deletes the oldest one '
                             "once there are more than this many. Doesn't "
-                            'affect manual backups you delete yourself.'
-                      : 'Enter how many backups to keep (at least 1).',
+                            'affect manual backups you delete yourself.')
+                      : tr('Enter how many backups to keep (at least 1).'),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: _retentionCountValid ? cs.onSurfaceVariant : cs.error,
                   ),
@@ -1018,7 +1019,7 @@ class _AutoBackupSettingsSheetState
                         color: Colors.white,
                       ),
                     )
-                  : const Text('Save'),
+                  : const Tr('Save'),
             ),
           ],
         ),

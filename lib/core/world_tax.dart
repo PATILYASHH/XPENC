@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'l10n/l10n.dart';
 import 'money.dart';
 
 /// Income tax outside India, for More → Calculators → Income Tax. Each
@@ -14,9 +15,12 @@ import 'money.dart';
 /// One line of a [TaxSummary]: a tax (counted in the total) or an
 /// informational row like a deduction or allowance (not counted).
 class TaxLine {
-  const TaxLine(this.label, this.amount, {this.isTax = true});
+  const TaxLine(this._label, this.amount, {this.isTax = true});
 
-  final String label;
+  final String _label;
+
+  /// In the app's language (GitHub #191).
+  String get label => tr(_label);
   final Money amount;
   final bool isTax;
 }

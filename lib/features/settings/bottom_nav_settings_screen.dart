@@ -7,6 +7,7 @@ import '../../core/routing/app_shell.dart'
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart' show AppMode;
+import '../../core/l10n/l10n.dart';
 
 /// Pick which of the 7 catalog destinations occupy the two configurable
 /// bottom-nav slots flanking the ➕ button — GitHub #70. Dashboard and More
@@ -46,7 +47,7 @@ class BottomNavSettingsScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Customize bottom nav')),
+      appBar: AppTopBar(title: const Tr('Customize bottom nav')),
       body: ListView(
         // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
         padding: EdgeInsets.fromLTRB(
@@ -56,7 +57,7 @@ class BottomNavSettingsScreen extends ConsumerWidget {
           32 + MediaQuery.of(context).padding.bottom,
         ),
         children: [
-          Text(
+          Tr(
             'Dashboard and More always stay put. Pick what goes in the two '
             'slots next to the ➕ button.',
             style: theme.textTheme.bodyMedium?.copyWith(
@@ -64,7 +65,7 @@ class BottomNavSettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 20),
-          _PinnedRow(label: 'Dashboard'),
+          _PinnedRow(label: tr('Dashboard')),
           const SizedBox(height: 8),
           _SlotTile(
             label: bottomNavCatalogLabels[leftId]!,
@@ -78,13 +79,13 @@ class BottomNavSettingsScreen extends ConsumerWidget {
             onTap: () => pick(false),
           ),
           const SizedBox(height: 8),
-          _PinnedRow(label: 'More'),
+          _PinnedRow(label: tr('More')),
           const SizedBox(height: 20),
           AppCard(
             margin: EdgeInsets.zero,
             child: AppSwitchListTile(
-              title: const Text('Show labels'),
-              subtitle: const Text(
+              title: const Tr('Show labels'),
+              subtitle: const Tr(
                 'Show each item\'s text under its icon. Off keeps icons only.',
               ),
               value: showLabels,
@@ -92,7 +93,7 @@ class BottomNavSettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 20),
-          _sectionLabel(context, 'Bottom spacing'),
+          _sectionLabel(context, tr('Bottom spacing')),
           AppCard(
             margin: EdgeInsets.zero,
             child: Padding(
@@ -100,7 +101,7 @@ class BottomNavSettingsScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  Tr(
                     'On some phones the on-screen back/home buttons sit over '
                     'the bottom nav bar or the PIN unlock keypad. Raise this '
                     'if either looks cut off or hard to tap.',
@@ -112,14 +113,14 @@ class BottomNavSettingsScreen extends ConsumerWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
+                      Tr(
                         'Extra space',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                       Text(
-                        extraBottomInset == 0 ? 'Off' : '${extraBottomInset}px',
+                        extraBottomInset == 0 ? tr('Off') : '${extraBottomInset}px',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
@@ -132,7 +133,7 @@ class BottomNavSettingsScreen extends ConsumerWidget {
                     max: 40,
                     divisions: 10,
                     label: extraBottomInset == 0
-                        ? 'Off'
+                        ? tr('Off')
                         : '${extraBottomInset}px',
                     onChanged: (v) =>
                         ref.read(dbProvider).setExtraBottomInset(v.round()),
@@ -182,7 +183,7 @@ class _PinnedRow extends StatelessWidget {
           const SizedBox(width: 10),
           Text(label, style: TextStyle(color: cs.onSurfaceVariant)),
           const Spacer(),
-          Text(
+          Tr(
             'Fixed',
             style: TextStyle(
               color: cs.onSurfaceVariant,
@@ -227,7 +228,7 @@ class _SlotTile extends StatelessWidget {
         title: Text(label),
         trailing: const AppIcon(Icons.chevron_right_rounded),
         onTap: onTap,
-        subtitle: Text(
+        subtitle: Tr(
           'Tap to change',
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,

@@ -15,6 +15,7 @@ import 'delete_person_or_group.dart';
 import 'group_member_picker_sheet.dart';
 import '../share/share_flows.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// One group's members and shared-expense history. Balances shown here
 /// (the group's aggregate and each member's figure) come from this group's
@@ -34,8 +35,8 @@ class GroupDetailScreen extends ConsumerWidget {
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (error, _) => Scaffold(
-        appBar: AppTopBar(title: const Text('Group')),
-        body: const Center(child: Text('Something went wrong')),
+        appBar: AppTopBar(title: const Tr('Group')),
+        body: const Center(child: Tr('Something went wrong')),
       ),
       data: (groups) {
         GroupRow? group;
@@ -47,8 +48,8 @@ class GroupDetailScreen extends ConsumerWidget {
         }
         if (group == null) {
           return Scaffold(
-            appBar: AppTopBar(title: const Text('Group')),
-            body: const Center(child: Text('Group not found')),
+            appBar: AppTopBar(title: const Tr('Group')),
+            body: const Center(child: Tr('Group not found')),
           );
         }
         return _buildScaffold(context, ref, group);
@@ -69,17 +70,17 @@ class GroupDetailScreen extends ConsumerWidget {
         title: Text(group.name),
         actions: [
           IconButton(
-            tooltip: 'Who owes whom',
+            tooltip: tr('Who owes whom'),
             icon: const AppIcon(Icons.open_in_full_rounded),
             onPressed: () => context.push('/group/${group.id}/balances'),
           ),
           IconButton(
-            tooltip: 'Share',
+            tooltip: tr('Share'),
             icon: const AppIcon(Icons.ios_share_rounded),
             onPressed: () => shareGroup(context, group),
           ),
           IconButton(
-            tooltip: 'Edit group',
+            tooltip: tr('Edit group'),
             icon: const AppIcon(Icons.edit_outlined),
             onPressed: () => _showEditGroupDialog(context, ref, group),
           ),
@@ -88,11 +89,11 @@ class GroupDetailScreen extends ConsumerWidget {
             itemBuilder: (context) => const [
               PopupMenuItem(
                 value: _GroupMenuAction.archive,
-                child: Text('Archive'),
+                child: Tr('Archive'),
               ),
               PopupMenuItem(
                 value: _GroupMenuAction.remove,
-                child: Text('Delete'),
+                child: Tr('Delete'),
               ),
             ],
           ),
@@ -101,7 +102,7 @@ class GroupDetailScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/group/${group.id}/add-expense'),
         icon: const AppIcon(Icons.add_rounded),
-        label: const Text('Add expense'),
+        label: const Tr('Add expense'),
       ),
       body: CustomScrollView(
         slivers: [
@@ -129,7 +130,7 @@ class GroupDetailScreen extends ConsumerWidget {
                   TextButton.icon(
                     onPressed: () => _editMembers(context, ref, group),
                     icon: const AppIcon(Icons.edit_outlined, size: 16),
-                    label: const Text('Edit'),
+                    label: const Tr('Edit'),
                   ),
                 ],
               ),
@@ -146,7 +147,7 @@ class GroupDetailScreen extends ConsumerWidget {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                child: Text(
+                child: Tr(
                   'No members yet — tap Edit to add some.',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: cs.onSurfaceVariant,
@@ -175,7 +176,7 @@ class GroupDetailScreen extends ConsumerWidget {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 14, 24, 6),
-              child: Text(
+              child: Tr(
                 'EXPENSE HISTORY',
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: cs.onSurfaceVariant,
@@ -196,7 +197,7 @@ class GroupDetailScreen extends ConsumerWidget {
               child: Padding(
                 padding: const EdgeInsets.all(32),
                 child: Center(
-                  child: Text(
+                  child: Tr(
                     "Couldn't load history",
                     style: TextStyle(color: cs.error),
                   ),
@@ -208,7 +209,7 @@ class GroupDetailScreen extends ConsumerWidget {
                 return const SliverToBoxAdapter(
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(20, 8, 20, 96),
-                    child: Center(child: Text('No expenses yet.')),
+                    child: Center(child: Tr('No expenses yet.')),
                   ),
                 );
               }
@@ -219,8 +220,8 @@ class GroupDetailScreen extends ConsumerWidget {
                   itemBuilder: (context, i) => _ExpenseRow(
                     expense: expenses[i],
                     payerName: expenses[i].payerId == null
-                        ? 'You'
-                        : personMap[expenses[i].payerId]?.name ?? 'Someone',
+                        ? tr('You')
+                        : personMap[expenses[i].payerId]?.name ?? tr('Someone'),
                   ),
                 ),
               );
@@ -260,7 +261,7 @@ class GroupDetailScreen extends ConsumerWidget {
     final saved = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Edit group'),
+        title: const Tr('Edit group'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -268,23 +269,23 @@ class GroupDetailScreen extends ConsumerWidget {
               controller: nameController,
               autofocus: true,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(labelText: 'Name'),
+              decoration: InputDecoration(labelText: tr('Name')),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: noteController,
-              decoration: const InputDecoration(labelText: 'Note (optional)'),
+              decoration: InputDecoration(labelText: tr('Note (optional)')),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Save'),
+            child: const Tr('Save'),
           ),
         ],
       ),
@@ -340,11 +341,11 @@ class _GroupBalanceHero extends StatelessWidget {
     if (balance.isPositive) {
       shown = balance;
       color = AppColors.income;
-      label = 'Owed to you';
+      label = tr('Owed to you');
     } else if (balance.isNegative) {
       shown = balance.abs;
       color = AppColors.expense;
-      label = 'You owe';
+      label = tr('You owe');
     } else {
       shown = balance;
       color = theme.colorScheme.onSurfaceVariant;
@@ -376,7 +377,7 @@ class _GroupBalanceHero extends StatelessWidget {
               TextButton.icon(
                 onPressed: onSeeAll,
                 icon: const AppIcon(Icons.open_in_full_rounded, size: 16),
-                label: const Text('Who owes whom'),
+                label: const Tr('Who owes whom'),
               ),
             ],
           ),
@@ -418,10 +419,10 @@ class _MemberRow extends ConsumerWidget {
       title: Text(person.name, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(
         balance.isPositive
-            ? 'Owes you'
+            ? tr('Owes you')
             : balance.isNegative
-            ? 'You owe'
-            : 'Settled',
+            ? tr('You owe')
+            : tr('Settled'),
         style: theme.textTheme.bodySmall?.copyWith(color: color),
       ),
       trailing: MoneyText(
@@ -463,12 +464,12 @@ class _ExpenseRow extends ConsumerWidget {
       child: AppListTile(
         leading: AppIcon(_splitIcon, color: cs.onSurfaceVariant),
         title: Text(
-          expense.note?.isNotEmpty == true ? expense.note! : 'Group expense',
+          expense.note?.isNotEmpty == true ? expense.note! : tr('Group expense'),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
         subtitle: Text(
-          '${DateFormat('d MMM yyyy').format(expense.date)} · Paid by $payerName',
+          tr('{0} · Paid by {1}', [DateFormat('d MMM yyyy').format(expense.date), payerName]),
         ),
         trailing: MoneyText(
           expense.amount,
@@ -485,22 +486,22 @@ class _ExpenseRow extends ConsumerWidget {
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete this expense?'),
-        content: const Text(
+        title: const Tr('Delete this expense?'),
+        content: const Tr(
           "This reverses every share it created — anyone owed money for it "
           "won't be anymore. This can't be undone.",
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(ctx).colorScheme.error,
             ),
-            child: const Text('Delete'),
+            child: const Tr('Delete'),
           ),
         ],
       ),
@@ -511,6 +512,6 @@ class _ExpenseRow extends ConsumerWidget {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Expense deleted')));
+      ..showSnackBar(const SnackBar(content: Tr('Expense deleted')));
   }
 }

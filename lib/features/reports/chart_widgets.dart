@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_surfaces.dart';
+import '../../core/l10n/l10n.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The single charting layer. Stats and Account Reports both build on these —
@@ -30,7 +31,7 @@ class _NoData extends StatelessWidget {
     return SizedBox(
       height: height,
       child: Center(
-        child: Text(
+        child: Tr(
           'No data yet',
           style: theme.textTheme.bodyMedium
               ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
@@ -70,7 +71,79 @@ class CategoryPieChart extends StatefulWidget {
 }
 
 class _CategoryPieChartState extends State<CategoryPieChart> {
+  // The donut's geometry, shared by the painter and the hit-test below so
+  // the two can never disagree about where a wedge is.
+  static const _height = 220.0;
+  static const _holeRadius = 46.0;
+  static const _ringWidth = 60.0;
+  static const _ringWidthTouched = 68.0;
+
+  /// Where the first wedge starts, clockwise from 3 o'clock (fl_chart's
+  /// zero) — spelt out because [_indexAt] has to match it.
+  static const _startDegrees = 0.0;
+
+  /// The narrowest a wedge's tap target gets. A 4% wedge is only ~14° of
+  /// arc — a few pixels wide at the hole — so on its own it was almost
+  /// impossible to hit with a finger (GitHub #192).
+  static const _minHitDegrees = 20.0;
+
+  /// How far past the ring's inner and outer edge a tap still counts.
+  static const _ringSlop = 14.0;
+
   int _touchedIndex = -1;
+
+  /// Which wedge [local] (relative to the chart's 220-high box of [size])
+  /// lands on, or -1 for the hole or outside the ring.
+  ///
+  /// Replaces fl_chart's own touch handling (GitHub #192), which picked a
+  /// wedge on finger-down — before it was known to be a tap, so a scroll
+  /// that started on the chart flashed a label — and only counted a hit
+  /// inside a wedge's exact painted outline, gaps excluded. This is plain
+  /// angle math against the settled layout, run once the tap is over, the
+  /// way [BudgetRadialChart] does it.
+  static int _indexAt(Offset local, Size size, List<int> paise) {
+    final total = paise.fold<int>(0, (sum, p) => sum + p);
+    if (total <= 0) return -1;
+
+    final delta = local - size.center(Offset.zero);
+    final r = delta.distance;
+    if (r < _holeRadius - _ringSlop ||
+        r > _holeRadius + _ringWidthTouched + _ringSlop) {
+      return -1;
+    }
+    if (paise.length == 1) return 0;
+
+    // Degrees clockwise from where the first wedge starts, 0 ≤ a < 360.
+    var a = math.atan2(delta.dy, delta.dx) * 180 / math.pi - _startDegrees;
+    a %= 360;
+    if (a < 0) a += 360;
+
+    // A thin wedge claims at least [_minHitDegrees] around its middle; if
+    // several thin ones crowd together, the nearest middle wins.
+    var start = 0.0;
+    var thin = -1;
+    var thinDistance = double.infinity;
+    var containing = -1;
+    for (var i = 0; i < paise.length; i++) {
+      final sweep = paise[i] / total * 360;
+      if (containing == -1 && a < start + sweep) containing = i;
+      if (sweep < _minHitDegrees) {
+        var d = (a - (start + sweep / 2)).abs();
+        if (d > 180) d = 360 - d;
+        if (d <= _minHitDegrees / 2 && d < thinDistance) {
+          thin = i;
+          thinDistance = d;
+        }
+      }
+      start += sweep;
+    }
+    if (thin != -1) return thin;
+    return containing == -1 ? paise.length - 1 : containing;
+  }
+
+  void _touch(int index) {
+    if (index != _touchedIndex) setState(() => _touchedIndex = index);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,6 +164,7 @@ class _CategoryPieChartState extends State<CategoryPieChart> {
       data.addAll(positive);
     }
     final total = data.fold<int>(0, (sum, d) => sum + d.value.paise);
+    final paise = [for (final d in data) d.value.paise];
 
     final touched = _touchedIndex >= 0 && _touchedIndex < data.length
         ? data[_touchedIndex]
@@ -104,40 +178,61 @@ class _CategoryPieChartState extends State<CategoryPieChart> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Full width, always. Left to the Column's loose width, the Stack
+          // below sized itself to its widest non-positioned child — nothing
+          // at first (so full width), but the 84px centre label once a
+          // wedge was picked. The donut still painted full size, yet only
+          // an 84px strip down the middle could be tapped from then on, so
+          // the side wedges stopped responding (GitHub #192).
           SizedBox(
-            height: 220,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Positioned.fill(
-                  child: PieChart(
-                    PieChartData(
-                      centerSpaceRadius: 46,
-                      sectionsSpace: 2,
-                      pieTouchData: PieTouchData(
-                        touchCallback: (event, response) {
-                          final index =
-                              response?.touchedSection?.touchedSectionIndex ??
-                              -1;
-                          if (index == _touchedIndex) return;
-                          setState(() => _touchedIndex = index);
-                        },
-                      ),
-                      sections: [
-                        for (var i = 0; i < data.length; i++)
-                          PieChartSectionData(
-                            value: data[i].value.paise / 100,
-                            color: data[i].color,
-                            radius: i == _touchedIndex ? 68 : 60,
-                            showTitle: false,
+            width: double.infinity,
+            height: _height,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final size = Size(constraints.maxWidth, _height);
+                return MouseRegion(
+                  onHover: (e) =>
+                      _touch(_indexAt(e.localPosition, size, paise)),
+                  onExit: (_) => _touch(-1),
+                  // Tap-up only (not down, not pan): a scroll that starts on
+                  // the chart stays a scroll, and the wedge is chosen once,
+                  // where the finger actually lifted.
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapUp: (d) =>
+                        _touch(_indexAt(d.localPosition, size, paise)),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Positioned.fill(
+                          child: PieChart(
+                            PieChartData(
+                              centerSpaceRadius: _holeRadius,
+                              sectionsSpace: 2,
+                              startDegreeOffset: _startDegrees,
+                              // Hit-testing is ours — see [_indexAt].
+                              pieTouchData: PieTouchData(enabled: false),
+                              sections: [
+                                for (var i = 0; i < data.length; i++)
+                                  PieChartSectionData(
+                                    value: data[i].value.paise / 100,
+                                    color: data[i].color,
+                                    radius: i == _touchedIndex
+                                        ? _ringWidthTouched
+                                        : _ringWidth,
+                                    showTitle: false,
+                                  ),
+                              ],
+                            ),
                           ),
+                        ),
+                        if (touched != null)
+                          IgnorePointer(child: _CenterLabel(slice: touched)),
                       ],
                     ),
                   ),
-                ),
-                if (touched != null)
-                  IgnorePointer(child: _CenterLabel(slice: touched)),
-              ],
+                );
+              },
             ),
           ),
           if (widget.showLegend) ...[
@@ -349,7 +444,7 @@ class _BudgetRadialChartState extends State<BudgetRadialChart> {
       }
       // Folded into "Other": a single funding color can't represent several
       // categories at once, so this tail always falls back to its own grey.
-      data.add(_BudgetSlice('Other', restBudget, restSpent, Colors.grey));
+      data.add(_BudgetSlice(tr('Other'), restBudget, restSpent, Colors.grey));
     } else {
       for (final s in positive) {
         data.add(
@@ -569,7 +664,7 @@ class _BudgetCenterLabel extends StatelessWidget {
           ),
           if (slice.overspent) ...[
             const SizedBox(height: 2),
-            Text(
+            Tr(
               'Over budget',
               style: theme.textTheme.labelSmall?.copyWith(
                 color: AppColors.expense,
@@ -656,14 +751,14 @@ class IncomeExpenseBarChart extends StatelessWidget {
                       const TextStyle(),
                   children: [
                     TextSpan(
-                      text: 'In  ${MoneyFormat.compact(m.income)}\n',
+                      text: tr('In  {0}\n', [MoneyFormat.compact(m.income)]),
                       style: TextStyle(
                         color: AppColors.income,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     TextSpan(
-                      text: 'Out ${MoneyFormat.compact(m.expense)}',
+                      text: tr('Out {0}', [MoneyFormat.compact(m.expense)]),
                       style: TextStyle(
                         color: AppColors.expense,
                         fontWeight: FontWeight.w600,

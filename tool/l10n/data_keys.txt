@@ -1,0 +1,312 @@
+# English text held in constants and translated where it is shown —
+# see extract_catalog.dart. One per line; a backslash-n is a line break.
+Money, tracked honestly.
+Offline-first personal finance. Your ledger, budgets and dues live on this device — nothing is ever uploaded.
+Monthly
+Quarterly
+Half-yearly
+Yearly
+Connector
+Settings
+Notifications
+Bill and due-date reminders, quick add from the notification shade
+Camera
+Take a photo of a receipt from Add transaction
+Contacts
+Pick a person from your contacts, with their phone number and photo. Without it, XPENC never opens your contacts
+Dashboard
+More
+Transactions
+Persons
+Calendar
+Budgets
+Accounts
+Stats
+Payees
+Up-right
+Down-right
+Down-left
+Up-left
+Add money out
+Add
+Add money in
+Auto
+Goals & Loans
+Shopping List
+Account Reports
+Categories
+Tags
+Backup
+Download Data
+Calculators
+Couldn't load
+No transactions yet.
+FD & RD
+Fixed & recurring deposit maturity
+Loan EMI
+EMI, interest & schedule
+Income Tax
+India, US, UK & Germany
+SIP & Lumpsum
+Mutual fund growth
+Public Provident Fund maturity
+Add or remove GST
+Estimates only. Your bank, fund house or tax filing may round or compound differently.
+India
+United States
+United Kingdom
+Germany
+A browser can't open a backup it downloaded. Use Import from file and pick it from your downloads.
+Just transactions, and people you owe or are owed by. No accounts, no balances, no budgets, no net worth — for tracking spending without setting up a full ledger.
+Medium (default)
+Everything in Basic, plus accounts (cash, bank, cards, loans, goals), account balances, net worth, and category budgets. The full app, minus envelope-style budgeting.
+Everything in Medium, plus Ready to Assign — every account's money pools into one figure you assign to categories before spending it, classic envelope budgeting — and budget Rollover (carry unspent budget forward) and Overflow (redirect one category's overspend to another).
+Money
+Every place your money actually lives: cash, bank accounts, debit/credit cards, prepaid balances, and multi-currency accounts. Each can carry an optional minimum-balance floor that flags — never blocks — a transaction that would take it below that line. Its page shows its whole history, with an optional running balance after every entry, like a passbook.
+Add one from the + button on the Accounts screen. Pick a type, a colour/icon, an opening balance, and (for a non-home currency) which currency it's in — that's locked in once the first transaction posts. On its page, Transfer in / Transfer out start a transfer with it already filled in — keep cash at home as its own Cash account and withdraw from it into your wallet like an ATM. Hold an account → Edit to change its name, colour and icon.
+Correct a balance
+When an account shows the wrong amount — say ₹100 in cash but your wallet has ₹75 — enter what you really have and the difference is saved as one "Correction" transaction. No made-up payment, and your history stays as it was.
+Open the account and tap the pencil next to its balance. Corrections never count as money in or out, but each one in the last 30 days lowers the XPENC Score's Tracking habit — logging as you go keeps balances right on their own. Delete a correction to undo it.
+Every money-in, money-out, transfer and lending movement you've logged, searchable and filterable by date, ISO week, account, or "linked" status.
+Log one from the ➕ on any main screen. Long-press an existing one for Duplicate / Edit / Delete, or open it and tap the refresh icon to turn it into a recurring Auto rule pre-filled with its details.
+Modes
+A trip, a wedding, a festival — an event you switch ON. While it is ON everything you add joins it, tagged and limited the way you set it up, and the app shows only the modules it needs. Outside it, it is one card in Transactions and one slice in Stats, and budgets leave it out.
+More → Modes → New mode, from Trip or Blank. Pick dates (it then starts and ends itself), a budget, the accounts and categories it may use, auto-tags, its own categories and tags, the tabs and modules to show, a linked group and a currency. On Add, switch "Part of …" off to keep one spend out. "Full app" in the bar over the tabs steps out without ending it. A transaction’s page moves it in or out of a mode. While ON the app is a sandbox: the home leads with what’s left to spend, every screen shows only the mode, Persons shows its people from zero, and each account what you allocated to it. Set limits (per day, per spend, per category), planned costs and a trip wallet in the editor; split bills with the mode’s people on Add; the switch off shows the summary to share.
+Tracks who owes you and who you owe, kept separate from your own accounts — lending someone money isn't spending, and being repaid isn't money in.
+Open a person to log a lend/borrow entry (with tags, if you like) or a repayment, and share their whole ledger as a PDF. Edit gives them a photo from your gallery. Hold a person for Edit, Link contact, Move to Settled, Archive or Delete (delete takes their whole history and puts the money back). Settings → Payment Support can turn on paying a person offline through the *99# USSD menu when there's no data signal.
+Groups & Who owes whom
+Split a shared expense across several people at once. Each group shows its overall balance, every member's net share, and the fewest payments that settle everyone up.
+On the Group tab tap + to name a group and pick members. Open it to add expenses and see Who owes whom. Hold a group to Settle, Archive or Delete it.
+Settled
+People and groups whose balance is zero and that you've moved out of the way. They stay full, live rows — same history — and come back to their list on their own once money is owed again.
+When a balance hits zero XPENC asks: Move to Settled, Archive, or Keep here. You can also hold a zero-balance row → Move to Settled, and hold a settled row → Move out of Settled.
+A spending limit per category, tracked against what's actually been spent this period — Medium and Pro only, Basic has no concept of a budget at all.
+Set one from a category's budget field. Pro adds Rollover (carry unspent budget into the next period) and Overflow (redirect one category's overspend into another) as optional per-budget settings.
+Ready to Assign
+Pro-only envelope budgeting: instead of a limit sitting on each category independently, every on-budget account's money pools into one "Ready to Assign" figure that you distribute across categories before it's spent.
+Turn it on in Settings → Budgeting once you're on Pro. The More hub then shows a Ready to Assign tile with how much is still unassigned.
+Auto (recurring rules)
+Rules that post themselves on schedule instead of you logging them by hand: a fixed payment or money in, or a transfer between your own accounts — bank to cash, a credit card bill, into a savings goal, or an EMI into a loan.
+New rule → Money out, Money in or Transfer, with a frequency (daily/weekly/biweekly/monthly/yearly), an optional promo price for the first few occurrences, and reminders before it's due. "Pay early" posts it today instead of waiting for the due date.
+Every name typed into a transaction's payee field, grouped automatically — there's no separate payee list to maintain.
+Type a payee while logging money in or out and it shows up here on its own, with its net flow (paid vs. received) and a link back to its full transaction history.
+Savings goals track progress toward a target amount, optionally auto-funded from an account. Loans track what you owe — and, once you tell it the interest rate, tenure and start date, XPENC computes the EMI itself, splits every payment into interest vs. principal automatically (a plain payment or a recurring EMI, either way), and shows how much paying extra actually saves you in interest. A goal can also work like a pocket of your bank account: turn on "Show in Money in / out" on its page to pay or receive straight from it.
+Add a goal or loan from the + on the Goals & Loans tab. For a loan, fill in the rate/tenure/start date to unlock the full tracking — leave them blank for a plain balance-only loan. "Make a payment" lets you backdate the date/time and shows the interest/principal/extra breakdown as you type.
+Plan purchases before you make them — named lists (e.g. "Groceries") with items you check off, kept separate from your actual transactions until you decide to log them.
+Create a list, add items, tick them off as you shop.
+Tools
+Quick actions ring
+Eight shortcuts one gesture away: hold the ➕ and a ring opens mid-screen with ✕ (cancel) in the centre.
+Keep holding and slide toward a shortcut, then let go. Choose what sits in each slot — any screen, a calculator, Add money in/out or a saved transaction template — in Settings → Quick Actions.
+Calculators (Beta)
+FD & RD, Loan EMI (year-wise schedule, prepayment savings), SIP & Lumpsum with yearly step-up, PPF, GST, and Income Tax for India (new vs old regime), the US, the UK and Germany.
+Pick a calculator and type — results update live. For Income Tax, choose the country first. Nothing is saved to your ledger.
+Insights
+Calendar & Reminders
+A day-by-day view of what came in and went out, plus upcoming recurring payments so nothing catches you off guard.
+Tap any day to see that day's transactions.
+Trends over time, spending-by-category charts, and Standings — a ranked top-transactions/top-categories list for the period.
+Switch periods from the top of the screen; tap any category slice or Standings row to jump into its own detail.
+A money-first view across every account: total money, money in and out this month or year, and seven reports — Balances, Activity per account, Balance history, Transfers between accounts, Payment methods, Cards & pay later, and Account health (accounts below zero, under their minimum, or sitting idle).
+Switch Month/Year and step through periods at the top, then tap a report tile. Tap any account row to open its own statement.
+Data
+Exports your whole ledger to CSV or JSON — for a spreadsheet, a backup you keep yourself, or moving your data elsewhere.
+Pick a format and share/save the resulting file.
+Backup & Restore
+Manual backups plus scheduled auto-backups, with a choice of retention rule (keep the last N, or a time window). Restoring replaces the current ledger with a backup's contents — the safety net for switching phones or undoing a mistake.
+Back up any time from this screen; auto-backups run on their own schedule once turned on. Long-press to batch-select several backups to delete at once.
+Setup
+Money in and out categories, each with its own icon and colour, picked from a searchable icon sheet. Tap one to see how much went to it — this month, this year or all time — split by subcategory, with every transaction behind the figure.
+Save your whole category structure as a named template and switch between saved templates any time — switching never touches a transaction. The archive button lists archived categories to restore, or to delete one nothing has ever used.
+Labels that cut across categories — a tag isn't tied to money in or out, so it can mark anything that shares a context (e.g. "Trip to Goa").
+Tag groups bundle tags that always go together (e.g. "Work trip" = Travel + Meals) so you pick the whole set at once from the tag picker.
+Currency (including ones you create), theme, your own colours for money in, out, transfers and people, the day the week starts, security (PIN, master password, and/or an authenticator app — any combination you turn on unlocks the app), notifications, permissions such as contacts, the app level (Basic/Medium/Pro), budget cycle start day, and which tabs show in the bottom nav.
+Everything here takes effect immediately, no save button.
+Download & Backup
+Categories & Tags
+Trip
+Travel spends, split with friends, abroad or at home
+Blank
+A wedding, a festival, a move — set it up your way
+Yearly Auto rules
+For an annual subscription or insurance — it repeats on the day and month it starts.
+Foreign amounts use your rate
+With a rate saved in Settings → Currencies, typing what it cost there fills in the amount here.
+Goals as pockets
+Move money between goals, or pay a loan from one. Hide Transfer in / out on any account from Edit account.
+Card bills that pay themselves
+On each due date, what’s left of the statement moves from the account you pick — nothing if it’s already paid.
+Your card's statement, as it closed
+See what the statement said, what you’ve paid since and what’s left by the due date. New purchases build the next statement.
+Your month starts on payday
+Any day up to the 31st, or the last working day of the month — Dashboard, Budgets and Stats run payday to payday.
+Share category templates
+Send your category structure as a file, import one someone shared, or start from the ready-made 50/30/20 — Needs and Wants. More templates, from the community too, are on xpenc.in/templates.
+Budget alerts at several levels
+Pick 50%, 80%, 100% — any levels you like. Each one alerts once a period, so you feel the spending climb.
+What you own, what you owe
+Total money now shows its two halves: everything in credit, and every card bill and loan you still owe.
+Arrange your accounts
+Drag your accounts into the order you want. The Dashboard and Accounts both follow it, and new accounts join the end.
+Skip one payment
+Away for a month, or paid it another way? Skip the next date only — nothing posts, and the rule carries on from the one after.
+Share straight to WhatsApp
+Slide between Image and PDF, pick the period, then send it straight into their WhatsApp or Messages chat. When they owe you, a QR of your UPI ID with the amount lets them scan and pay.
+Where you're heading
+Your money on hand 3, 6 or 12 months from now: auto rules on the dates they post, plus your usual spending from the last 3 months. See the lowest point too — and the day you’d run short, if you would.
+A more finished Glass
+Buttons and tabs answer your touch instantly, sheets stretch and spring back, the month picker frosts over, and lists fade softly under the top bar. On a tablet the tab bar sits centred.
+Add money from the Calendar
+Money in, money out or a reminder, already dated to the day you picked. Wandered off to another day? Today takes you straight back.
+Connector friends in Persons
+Add a person straight from your Connector friends, or hold someone already here to link them. They show as @username. On a phone it reads the list the Connector app shares — XPENC still never goes online.
+Backups from Connector come in by themselves
+Connector pulled a newer backup from your other phone? XPENC takes it in as it opens — on its own when nothing here would be lost, after asking when this phone has changes of its own. A copy is saved first. XPENC still never touches the internet.
+Your lock stays yours
+Backups no longer hold your PIN, recovery phrase or authenticator secret, and importing another phone’s backup keeps this phone’s own PIN length — so your PIN always still types.
+XPENC on a computer
+A preview of XPENC in your browser — offline, your data stays in that browser. Bring a phone backup over with Import from file, or turn on Connector there (Settings → Connector) to keep it in sync with your phones.
+A mode is now its own little app
+Switch a trip ON and the app is the trip: the home shows what’s left to spend and how much a day, Persons shows only the people with you (starting from zero), each account shows what you gave the trip, and limits ask before you go over. Split bills with your people, plan costs up front, fill a trip wallet — and share the summary at the end.
+Modes: a trip, in focus
+Set up a trip — dates, budget, the accounts and categories it uses, tags for every spend — and switch it ON. Everything you add joins it, and the app shows only what the trip needs. Afterwards it’s one line in Transactions that opens into the whole story.
+A page for every category
+How much went to it this month, this year or all time — split by subcategory for a parent — with every transaction behind the figure.
+Pay straight from a savings goal
+Turn it on and the goal works like a pocket of your bank account: pick it for money in or money out, and its balance moves with them. Off by default — a goal stays transfer-only until you say so.
+Transfer in / out from an account
+One tap starts a transfer with that account already filled in. Keep cash at home as its own account and withdraw from it into your wallet like an ATM — Add account → Cash suggests Cash at home (V-ATM).
+Running balance
+Every entry shows the balance right after it, like a bank passbook — the same figure your statement PDF prints. Off by default.
+Auto transfers
+Move money on a schedule between your own accounts — bank to cash, a card bill, into a goal or towards a loan. It replaces G&L; goal and loan rules work as before.
+Tags on money lent and borrowed
+Tag an entry like any transaction — each one shows its tags on the person’s page, and when the money moved through an account, its transaction carries them too, so it turns up when you filter by tag.
+Make your own currency
+For a currency XPENC doesn’t list: a three-letter code, a symbol, a name and its decimal places. It works like any other — as your parent currency, an account’s own, or with an exchange rate.
+Start the week on Sunday or Monday
+The Calendar tab and every date picker follow it. Monday is the default.
+Contacts stay closed when access is off
+Say no to contacts access, or turn it off, and every “from contacts” button goes away — XPENC never opens your address book without it. Turn it back on here and they return.
+Money in and Money out
+Income and Expense are now Money in and Money out — a refund or a meal voucher isn’t income, and not every payment is an expense. Your data and backups don’t change.
+Pick your own colours
+Choose the colour for money in, money out, transfers and people — from the swatches or any hex colour. Transaction icons can follow their category, the money colour, or one colour for all.
+All your accounts in one card
+Pick One card to see every account and its balance at a glance, with nothing to swipe. Slider keeps the row of cards.
+Change an account’s icon and colour
+Rename it and pick a new colour and icon together — two accounts that looked alike no longer have to be deleted and re-created.
+Bring back an archived category
+Restore any archived category — a parent brings its subcategories back. One that was never used can be deleted for good.
+A photo for anyone
+Pick a profile photo from your gallery — no contact needed. It’s shrunk to avatar size and kept on your phone.
+Your own emoji as a category icon
+Tap ➕ under Emoji and type any emoji with your keyboard — 🍕 for food, 🐶 for the dog. It shows wherever that category does, and the emoji you’ve used stay one tap away for the next one.
+XPENC on iPhone
+The same app, now on iPhone through SideStore or AltStore. A backup made here restores there and the other way round, so switching phones doesn’t mean starting over.
+Share as a PDF or an image
+Pick PDF for a clean, printable document — a receipt for a transaction, a statement with a running balance for a person, every expense and who owes whom for a group. Pick Image for a styled card, dark or light, ready for any chat.
+Hide a transaction from screenshots
+Turn it on and the transaction shows as a frosted “Hidden · hold to view” row everywhere it’s listed, so a screenshot or screen recording only catches the frost. Hold the row to see it — screenshots and recordings are blocked while you do, and while its own page is open.
+Make the Dashboard yours
+Drag widgets into the order you want, take off the ones you don’t, and add new ones: Cash flow, Savings goals, Loans, Shortcuts, Groups and Shopping lists.
+Look back at any month
+Pick a past month and the Dashboard shows it as it closed: its opening and closing balance, account balances and who owed whom on its last day, and its own transactions.
+Shortcuts to related pages
+Every module now has a row of shortcuts to the pages that go with it — Currency from Accounts, Categories from Budgets, Tags and Payees from Transactions, and more. On the Dashboard, tap Total money to pick which accounts count toward it.
+Glass grows out of what you tap
+Switch tabs and the top bar resizes to the new tab’s buttons. Settled, Archived and Inbox grow down out of the top bar; New group grows out of its button; pages from More open on a calmer spring. The Transactions filters sit on frosted glass, and a person’s photo lights their card with its own colour.
+Glass that moves like liquid
+The tab bar now transforms into whatever you open from it: every sheet and every page in More grows up out of the bar on a spring and folds back into it when you close it. A quick action makes the ➕ itself swell into the page. Search on Transactions turns the top bar into the search field. And the glass takes the light of what's behind it — scroll something colourful under the tab bar and its edge glows with that colour.
+Glass quick actions, and smoother everything
+Hold the ➕ and your quick actions spring out onto two arcs in the corner — slide your thumb to one and let go, and the ➕ swells into its page. XPENC also runs at your screen’s full refresh rate now (90/120 Hz where the phone supports it), with calmer, smoother motion throughout Glass. The top bar is now a floating glass capsule too: tabs scroll under it to the top of the screen, the big title flies into it as you scroll, and the tab bar grows into the month picker. Person photos now show on their transactions too, Persons scrolls under the bar and its switch, and hidden amounts turn to frosted glass.
+New themes: Classic, Noir and Glass
+Glass is Liquid Glass, like iPhone: frosted cards, a floating tab bar with a sliding glass droplet, large titles under glass buttons, floating sheets, iOS icons and switches, swipe-back pages and bouncy scrolling — on a background you pick: Aurora, White, Black, Ocean, Sunset or Nebula. Noir (was Bold) is heavier and bolder and now has a light version too. Light, Dark or System is now its own choice. Colourful, Midnight and Cove are retired; if you used one, you are on Classic, with your light or dark choice kept.
+People as payees
+Pick one of your people as the payee — like money given to a parent that is not coming back. It shows on their page in a small "As payee" list but never counts toward owe/due. Add people or payees straight from contacts; someone already saved is reused, never duplicated. In Payees, "Connect to person" joins a payee to someone in People.
+Hold the ➕ and a ring of 8 shortcuts opens mid-screen — slide toward one to open it, or back to ✕ in the centre to cancel. Any slot can be a screen, a calculator, Add money in/out or a saved transaction template. Your old 3 shortcuts carry over.
+Settled, instead of vanishing
+When someone's balance reaches zero, XPENC now asks: Move to Settled, Archive, or Keep here — nothing disappears on its own. Settled people and groups keep their history and move back by themselves the moment money is owed again.
+Delete a person or group
+Delete now works even with history: every entry and group expense goes with it, and the money they moved is put back in your accounts. The confirm dialog says exactly how much will be removed.
+FD & RD, Loan EMI with a year-wise schedule and prepayment savings, SIP & Lumpsum with yearly step-up, PPF, GST, and Income Tax for India (new vs old regime), the US, the UK and Germany. Results update as you type.
+App says ₹100 in cash but your wallet has ₹75? Enter what you really have and the difference is saved as one "Correction" — no made-up payment, and your history stays as it was. Corrections never count as money in or out, but they lower the XPENC Score's Tracking habit, so logging as you go still pays off.
+Account Reports, rebuilt
+Money in and out for any month or year, plus seven reports: Balances, Activity per account, Balance history for any account, Transfers between accounts, Payment methods, Cards & pay later (spent, repaid, next due) and Account health — accounts below zero, under their minimum or sitting unused.
+Add loans that started years ago
+Dates now go back to 2000, and the first auto-payment can start on the loan's own start date — every past EMI is posted the moment you save, split into interest and principal. Older dates show their year, so a 2017 payment never looks like this year's.
+Loan payments, clearer
+An EMI's interest always gets a category (the loan's, the rule's, or EMI), you can name the lender as payee on a loan's Auto rule, and the payment card now says Interest and Principal. The loan screen no longer shows a "You're saving" amount when you haven't paid extra.
+Who owes whom in a group
+Each member's net balance, the fewest payments that settle the group, and every pairwise debt with the expenses behind it. Group expenses also carry a tappable group tag.
+Nothing hidden under the nav bar
+The last item of every list now scrolls clear of Android's gesture bar or buttons, so you can always reach and tap it.
+Contacts access is off. Turn it on in Settings → Permissions.
+Savings rate
+Share of money in left after money out over the last 90 days. 30% or more earns full points; 0% or less earns none.
+Living within means
+Of the last 3 full months, how many ended with money out at or below money in.
+Debt load
+Monthly debt obligations as a share of monthly money in — loan EMIs, credit card and pay-later dues, plus a third of what you owe people. 20% or less earns full points; 60% or more earns none.
+Repayment discipline
+A payment into every active loan in each of the last 3 full months, and no overdue amounts owed to people.
+Emergency fund
+Cash, bank, prepaid and savings-goal balances measured in months of average spending. 6 months or more earns full points.
+Budget discipline
+Share of your budgets still within their limit this period.
+Tracking habit
+Days with at least one entry in the last 30. 12 or more earns full points — the score is only as accurate as the ledger behind it. Each balance correction in the same 30 days takes away a quarter, since it means entries were missed.
+Its balance can be moved into the goal next.
+Money, tracked honestly
+You're here
+Backup & sync for XPENC
+Android
+Offline fitness tracker
+Soon
+All time
+Import CSV
+Download data
+Money in
+Money out
+Up
+Right
+Down
+Left
+Modules
+Classic
+Noir
+Glass
+Clean and monochrome
+Heavy type, ink outlines, coral & gold
+Liquid Glass Theme
+Aurora
+White
+Black
+Ocean
+Sunset
+Nebula
+All
+Linked
+Default
+Serif
+Monospace
+Matches your theme
+Rounded and friendly
+Geometric and confident
+Classic, with small strokes
+Fixed-width, every letter the same
+Einkommensteuer (income tax)
+Federal income tax
+Income tax
+Itemized deductions
+Medicare
+National Insurance
+Pension (salary sacrifice)
+Personal allowance
+Pre-tax contributions
+Social Security (6.2%)
+Solidaritätszuschlag
+Standard deduction
+XPENC in your language
+Settings → Language
+English, Hindi, German, Japanese and Russian are built in, and it follows your phone. Import a language pack for more.

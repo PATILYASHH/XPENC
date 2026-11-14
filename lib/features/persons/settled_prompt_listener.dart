@@ -7,6 +7,7 @@ import '../../core/money.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Watches every person's and group's balance and, the moment one comes
 /// back to exactly zero, asks what to do with it: **Move to Settled**,
@@ -148,8 +149,8 @@ class _SettledPromptListenerState extends ConsumerState<SettledPromptListener> {
         SnackBar(
           content: Text(
             choice == _SettledChoice.settled
-                ? 'Moved to Settled'
-                : 'Moved to Archived',
+                ? tr('Moved to Settled')
+                : tr('Moved to Archived'),
           ),
         ),
       );
@@ -183,16 +184,21 @@ class _SettledDialog extends StatelessWidget {
 
     return AlertDialog(
       icon: const AppIcon(Icons.check_circle_outline_rounded),
-      title: const Text('All settled'),
+      title: const Tr('All settled'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             single
-                ? '"${names.single}" is back to zero. Where should '
-                      '${groups.isEmpty ? 'they' : 'it'} go?'
-                : 'These are back to zero. Where should they go?',
+                ? (groups.isEmpty
+                      ? tr('"{0}" is back to zero. Where should they go?', [
+                          names.single,
+                        ])
+                      : tr('"{0}" is back to zero. Where should it go?', [
+                          names.single,
+                        ]))
+                : tr('These are back to zero. Where should they go?'),
           ),
           if (!single) ...[
             const SizedBox(height: 12),
@@ -202,7 +208,7 @@ class _SettledDialog extends StatelessWidget {
               _NameRow(icon: Icons.groups_outlined, name: g.name),
           ],
           const SizedBox(height: 12),
-          Text(
+          Tr(
             'Settled keeps them one tap away with full history. Archive '
             'hides them.',
             style: theme.textTheme.bodySmall?.copyWith(
@@ -215,15 +221,15 @@ class _SettledDialog extends StatelessWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(_SettledChoice.keep),
-          child: const Text('Keep here'),
+          child: const Tr('Keep here'),
         ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(_SettledChoice.archive),
-          child: const Text('Archive'),
+          child: const Tr('Archive'),
         ),
         FilledButton(
           onPressed: () => Navigator.of(context).pop(_SettledChoice.settled),
-          child: const Text('Move to Settled'),
+          child: const Tr('Move to Settled'),
         ),
       ],
     );

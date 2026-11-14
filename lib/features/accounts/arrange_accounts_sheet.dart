@@ -8,6 +8,7 @@ import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Arrange accounts (GitHub #190): drag the accounts into the order the
 /// Dashboard and Accounts show them in. Opened by holding an account on the
@@ -68,14 +69,14 @@ class _ArrangeAccountsState extends ConsumerState<_ArrangeAccounts> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              Tr(
                 'Arrange accounts',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
+              Tr(
                 'Drag them into the order you want on the Dashboard and in '
                 'Accounts.',
                 style: theme.textTheme.bodySmall?.copyWith(

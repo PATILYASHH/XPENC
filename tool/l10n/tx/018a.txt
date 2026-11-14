@@ -1,0 +1,202 @@
+@hi
+2680	खाता खोलें और उसके बैलेंस के बगल की पेंसिल दबाएँ। सुधार कभी आमदनी या ख़र्च नहीं गिने जाते, पर पिछले 30 दिनों का हर सुधार XPENC स्कोर की लिखने की आदत घटाता है — साथ-साथ लिखते रहने से बैलेंस अपने-आप सही रहते हैं। पलटने के लिए सुधार हटाएँ।
+2681	आपकी लिखी हर आमदनी, ख़र्च, ट्रांसफ़र और उधार की हलचल, तारीख़, ISO हफ़्ते, खाते या "जुड़ा" स्थिति से खोजने और छाँटने लायक।
+2682	किसी भी मुख्य स्क्रीन के ➕ से लिखें। कॉपी / बदलें / हटाएँ के लिए किसी मौजूदा को दबाकर रखें, या उसे खोलकर रीफ़्रेश आइकन दबाएँ ताकि उसके ब्योरों से भरा बार-बार का ऑटो नियम बन जाए।
+2683	कोई ट्रिप, शादी, त्योहार — एक आयोजन जिसे आप चालू करते हैं। चालू रहने तक आप जो भी जोड़ें वह उसमें जुड़ता है, आपकी तय टैग और सीमाओं के साथ, और ऐप सिर्फ़ ज़रूरी मॉड्यूल दिखाता है। उसके बाहर वह लेन-देन में एक कार्ड और आँकड़ों में एक हिस्सा है, और बजट उसे बाहर रखते हैं।
+2684	और → मोड → नया मोड, ट्रिप या ख़ाली से। तारीख़ें (फिर यह अपने-आप शुरू और ख़त्म होता है), बजट, इस्तेमाल होने वाले खाते और श्रेणियाँ, ऑटो-टैग, इसकी अपनी श्रेणियाँ और टैग, दिखाने वाले टैब और मॉड्यूल, जुड़ा समूह और मुद्रा चुनें। जोड़ते समय किसी एक ख़र्च को बाहर रखने के लिए "… का हिस्सा" बंद करें। टैब के ऊपर की पट्टी में "पूरा ऐप" इसे ख़त्म किए बिना बाहर ले जाता है। लेन-देन का पेज उसे मोड में या बाहर ले जाता है। चालू रहने तक ऐप एक सैंडबॉक्स है: होम पर सबसे पहले ख़र्च के लिए बचा पैसा, हर स्क्रीन पर सिर्फ़ मोड, "लोग" में इसके लोग शून्य से, और हर खाते में उतना जितना आपने उसे दिया। एडिटर में सीमाएँ (प्रति दिन, प्रति ख़र्च, प्रति श्रेणी), तय ख़र्च और ट्रिप वॉलेट तय करें; जोड़ते समय मोड के लोगों के साथ बिल बाँटें; बंद करने पर शेयर करने लायक सारांश दिखता है।
+2685	ट्रैक करता है कि किस पर आपका बकाया है और आप पर किसका, आपके अपने खातों से अलग — किसी को पैसा उधार देना ख़र्च नहीं है, और वापस मिलना आमदनी नहीं।
+2686	उधार देने/लेने की एंट्री (चाहें तो टैग के साथ) या वापसी लिखने के लिए व्यक्ति खोलें, और उनका पूरा हिसाब PDF में शेयर करें। "बदलें" से उन्हें आपकी गैलरी की फ़ोटो दें। बदलें, संपर्क जोड़ें, चुकता में ले जाएँ, संग्रहित करें या हटाएँ (हटाने से उनका पूरा इतिहास जाता है और पैसा वापस आता है) के लिए व्यक्ति को दबाकर रखें। डेटा सिग्नल न हो तो सेटिंग्स → भुगतान सहायता से *99# USSD मेन्यू द्वारा ऑफ़लाइन भुगतान चालू करें।
+2687	समूह और किसका किस पर बकाया
+2688	एक साझा ख़र्च को एक साथ कई लोगों में बाँटें। हर समूह अपना कुल बैलेंस, हर सदस्य का शुद्ध हिस्सा, और सबका हिसाब चुकाने वाले सबसे कम भुगतान दिखाता है।
+2689	समूह टैब पर समूह का नाम देने और सदस्य चुनने के लिए + दबाएँ। ख़र्च जोड़ने और किसका किस पर बकाया देखने के लिए इसे खोलें। चुकाने, संग्रहित करने या हटाने के लिए समूह को दबाकर रखें।
+2690	वे लोग और समूह जिनका बैलेंस शून्य है और जिन्हें आपने किनारे कर दिया है। वे पूरी, चालू पंक्तियाँ रहते हैं — वही इतिहास — और फिर से बकाया होने पर अपने-आप अपनी सूची में लौट आते हैं।
+2691	बैलेंस शून्य होने पर XPENC पूछता है: चुकता में ले जाएँ, संग्रहित करें, या यहीं रखें। आप शून्य बैलेंस वाली पंक्ति को दबाकर रखें → चुकता में ले जाएँ, और चुकता पंक्ति को दबाकर रखें → चुकता से बाहर ले जाएँ भी कर सकते हैं।
+2692	हर श्रेणी की ख़र्च सीमा, इस अवधि के असल ख़र्च के मुक़ाबले — सिर्फ़ मीडियम और प्रो में, बेसिक में बजट होता ही नहीं।
+2693	श्रेणी के बजट वाले फ़ील्ड से तय करें। प्रो हर बजट के लिए वैकल्पिक सेटिंग जोड़ता है: आगे ले जाना (बचा बजट अगली अवधि में) और ओवरफ़्लो (एक श्रेणी का ज़्यादा ख़र्च दूसरी में)।
+2694	सिर्फ़ प्रो की लिफ़ाफ़ा बजटिंग: हर श्रेणी पर अलग सीमा की जगह, बजट वाले हर खाते का पैसा एक "बाँटने के लिए तैयार" आँकड़े में जुड़ता है, जिसे आप ख़र्च से पहले श्रेणियों में बाँटते हैं।
+2695	प्रो पर आने के बाद सेटिंग्स → बजटिंग में चालू करें। फिर "और" हब में "बाँटने के लिए तैयार" टाइल दिखती है कि कितना अभी बाँटना बाक़ी है।
+2696	ऑटो (बार-बार के नियम)
+2697	ऐसे नियम जो आपके हाथ से लिखने की जगह तय समय पर अपने-आप दर्ज होते हैं: तय भुगतान या आमदनी, या आपके अपने खातों के बीच ट्रांसफ़र — बैंक से नकद, क्रेडिट कार्ड बिल, बचत लक्ष्य में, या लोन में EMI।
+2698	नया नियम → ख़र्च, आमदनी या ट्रांसफ़र, बारंबारता (रोज़/हफ़्ते/दो हफ़्ते/महीने/साल) के साथ, पहली कुछ बार के लिए वैकल्पिक प्रोमो क़ीमत, और देय होने से पहले रिमाइंडर। "पहले चुकाएँ" इसे देय तारीख़ का इंतज़ार किए बिना आज दर्ज करता है।
+2699	लेन-देन के प्राप्तकर्ता फ़ील्ड में लिखा हर नाम, अपने-आप समूहित — अलग से प्राप्तकर्ता सूची रखने की ज़रूरत नहीं।
+2700	आमदनी या ख़र्च लिखते समय प्राप्तकर्ता लिखें और वह अपने-आप यहाँ दिखेगा, अपने शुद्ध प्रवाह (दिया बनाम मिला) और पूरे लेन-देन इतिहास के लिंक के साथ।
+2701	बचत लक्ष्य किसी लक्ष्य राशि की ओर प्रगति ट्रैक करते हैं, चाहें तो किसी खाते से अपने-आप भरे जाते हैं। लोन ट्रैक करते हैं कि आप पर कितना बकाया है — और ब्याज दर, अवधि और शुरुआती तारीख़ बताने पर XPENC ख़ुद EMI निकालता है, हर भुगतान को अपने-आप ब्याज और मूलधन में बाँटता है (सादा भुगतान हो या बार-बार की EMI), और दिखाता है कि ज़्यादा चुकाने से असल में कितना ब्याज बचता है। लक्ष्य आपके बैंक खाते की एक जेब की तरह भी काम कर सकता है: सीधे उससे भुगतान करने या पैसे लेने के लिए उसके पेज पर "आमदनी / ख़र्च में दिखाएँ" चालू करें।
+2702	लक्ष्य और लोन टैब के + से लक्ष्य या लोन जोड़ें। लोन के लिए पूरी ट्रैकिंग खोलने के लिए दर/अवधि/शुरुआती तारीख़ भरें — सिर्फ़ बैलेंस वाले सादे लोन के लिए ख़ाली छोड़ें। "भुगतान करें" पिछली तारीख़/समय डालने देता है और लिखते समय ब्याज/मूलधन/अतिरिक्त का ब्योरा दिखाता है।
+2703	ख़रीदने से पहले योजना बनाएँ — नाम वाली सूचियाँ (जैसे "किराना") जिनकी चीज़ें आप टिक करते हैं, आपके असली लेन-देन से अलग, जब तक आप उन्हें दर्ज करने का फ़ैसला न करें।
+2704	सूची बनाएँ, चीज़ें जोड़ें, ख़रीदते हुए उन्हें टिक करें।
+2705	औज़ार
+2706	झटपट कार्यों का घेरा
+2707	एक इशारे पर आठ शॉर्टकट: ➕ दबाकर रखें और स्क्रीन के बीच एक घेरा खुलता है, बीच में ✕ (रद्द) के साथ।
+2708	दबाए रखें और किसी शॉर्टकट की ओर खिसकाकर छोड़ें। हर स्लॉट में क्या रहे — कोई भी स्क्रीन, कैलकुलेटर, आमदनी/ख़र्च जोड़ें या सहेजा लेन-देन टेम्पलेट — सेटिंग्स → झटपट कार्य में चुनें।
+2709	कैलकुलेटर (बीटा)
+2710	FD और RD, लोन EMI (सालवार ब्योरा, अग्रिम भुगतान से बचत), सालाना बढ़ोतरी के साथ SIP और एकमुश्त, PPF, GST, और भारत (नई बनाम पुरानी व्यवस्था), अमेरिका, ब्रिटेन और जर्मनी के लिए इनकम टैक्स।
+2711	कैलकुलेटर चुनें और लिखें — नतीजे तुरंत बदलते हैं। इनकम टैक्स के लिए पहले देश चुनें। आपकी खाता-बही में कुछ नहीं सहेजा जाता।
+2712	दिन-ब-दिन देखें कि क्या आया और क्या गया, साथ में आने वाले बार-बार के भुगतान ताकि कुछ अचानक न आए।
+2713	उस दिन के लेन-देन देखने के लिए कोई भी दिन टैप करें।
+2714	समय के साथ रुझान, श्रेणीवार ख़र्च के चार्ट, और स्थिति — अवधि के सबसे बड़े लेन-देन/श्रेणियों की क्रमवार सूची।
+2715	स्क्रीन के ऊपर से अवधि बदलें; किसी श्रेणी के हिस्से या स्थिति की पंक्ति पर टैप करके उसके ब्योरे में जाएँ।
+2716	हर खाते पर पैसे की नज़र से: कुल पैसा, इस महीने या साल की आमदनी और ख़र्च, और सात रिपोर्ट — बैलेंस, खातेवार गतिविधि, बैलेंस का इतिहास, खातों के बीच ट्रांसफ़र, भुगतान के तरीक़े, कार्ड और पे लेटर, और खातों की सेहत (शून्य से नीचे, न्यूनतम से कम, या बेकार पड़े खाते)।
+2717	ऊपर महीना/साल बदलें और अवधियाँ आगे-पीछे करें, फिर किसी रिपोर्ट टाइल पर टैप करें। किसी खाते की पंक्ति पर टैप करके उसका अपना स्टेटमेंट खोलें।
+2718	आपकी पूरी खाता-बही CSV या JSON में एक्सपोर्ट करता है — स्प्रेडशीट के लिए, ख़ुद रखने वाले बैकअप के लिए, या डेटा कहीं और ले जाने के लिए।
+2719	फ़ॉर्मैट चुनें और बनी फ़ाइल शेयर/सहेजें।
+2720	हाथ से बैकअप और तय समय पर अपने-आप बैकअप, रखने के नियम के विकल्प के साथ (आख़िरी N रखें, या समय सीमा)। रीस्टोर करने से मौजूदा खाता-बही बैकअप की सामग्री से बदल जाती है — फ़ोन बदलने या ग़लती पलटने का सहारा।
+2721	इस स्क्रीन से कभी भी बैकअप लें; चालू करने पर अपने-आप बैकअप अपने समय पर चलते हैं। एक साथ कई बैकअप हटाने के लिए दबाकर रखकर चुनें।
+2722	आमदनी और ख़र्च की श्रेणियाँ, हर एक का अपना आइकन और रंग, खोजने लायक आइकन सूची से चुना। किसी पर टैप करके देखें कि उस पर कितना गया — इस महीने, इस साल या अब तक — उप-श्रेणी के अनुसार बँटा, आँकड़े के पीछे के हर लेन-देन के साथ।
+2723	अपनी पूरी श्रेणी बनावट को नाम वाले टेम्पलेट के रूप में सहेजें और कभी भी सहेजे टेम्पलेट के बीच बदलें — बदलने से कोई लेन-देन नहीं बदलता। संग्रह बटन संग्रहित श्रेणियाँ दिखाता है, वापस लाने के लिए, या कभी इस्तेमाल न हुई को हटाने के लिए।
+2724	श्रेणियों से आगे के लेबल — टैग आमदनी या ख़र्च से बँधा नहीं, इसलिए यह एक संदर्भ वाली किसी भी चीज़ को चिह्नित कर सकता है (जैसे "गोवा ट्रिप")।
+2725	टैग समूह हमेशा साथ जाने वाले टैग बाँधते हैं (जैसे "ऑफ़िस ट्रिप" = यात्रा + खाना), ताकि टैग चुनते समय पूरा सेट एक साथ चुनें।
+2726	मुद्रा (आपकी बनाई भी), थीम, आमदनी, ख़र्च, ट्रांसफ़र और लोगों के लिए आपके अपने रंग, हफ़्ते का पहला दिन, सुरक्षा (PIN, मास्टर पासवर्ड, और/या ऑथेंटिकेटर ऐप — जो भी चालू करें, कोई भी ऐप खोलता है), सूचनाएँ, संपर्क जैसी अनुमतियाँ, ऐप स्तर (बेसिक/मीडियम/प्रो), बजट चक्र का शुरुआती दिन, और नीचे की पट्टी में कौन-से टैब दिखें।
+2727	यहाँ सब कुछ तुरंत लागू होता है, सहेजें बटन नहीं।
+2728	डाउनलोड और बैकअप
+2729	श्रेणियाँ और टैग
+2730	ट्रिप
+2731	यात्रा के ख़र्च, दोस्तों के साथ बँटे, विदेश में या घर पर
+2732	ख़ाली
+2733	शादी, त्योहार, घर बदलना — अपने तरीक़े से सेट करें
+2734	वार्षिक ऑटो नियम
+2735	सालाना सब्सक्रिप्शन या बीमा के लिए — यह शुरू होने वाले दिन और महीने पर दोहराता है।
+2736	विदेशी राशि आपकी दर से
+2737	सेटिंग्स → मुद्राएँ में दर सहेजी हो, तो वहाँ की क़ीमत लिखते ही यहाँ की राशि भर जाती है।
+2738	लक्ष्य जेब की तरह
+2739	लक्ष्यों के बीच पैसा भेजें, या किसी से लोन चुकाएँ। खाता बदलें से किसी भी खाते के ट्रांसफ़र इन / आउट छिपाएँ।
+2740	कार्ड बिल जो ख़ुद चुकते हैं
+2741	हर देय तारीख़ पर स्टेटमेंट का बचा हिस्सा आपके चुने खाते से जाता है — चुका दिया हो तो कुछ नहीं।
+2742	आपके कार्ड का स्टेटमेंट, जैसा बंद हुआ
+2743	देखें कि स्टेटमेंट में क्या था, तब से कितना चुकाया और देय तारीख़ तक कितना बाक़ी है। नई ख़रीद अगला स्टेटमेंट बनाती है।
+2744	आपका महीना सैलरी के दिन से
+2745	31 तारीख़ तक कोई भी दिन, या महीने का आख़िरी कार्यदिवस — डैशबोर्ड, बजट और आँकड़े सैलरी से सैलरी चलते हैं।
+2746	श्रेणी टेम्पलेट शेयर करें
+2747	अपनी श्रेणी बनावट फ़ाइल के रूप में भेजें, किसी की शेयर की हुई इम्पोर्ट करें, या तैयार 50/30/20 से शुरू करें — ज़रूरतें और चाहतें। समुदाय के भी और टेम्पलेट xpenc.in/templates पर हैं।
+2748	कई स्तरों पर बजट चेतावनी
+2749	50%, 80%, 100% चुनें — जो भी स्तर चाहें। हर एक अवधि में एक बार चेतावनी देता है, ताकि ख़र्च बढ़ता महसूस हो।
+2750	आपके पास क्या है, आप पर क्या बकाया
+2751	कुल पैसा अब अपने दो हिस्से दिखाता है: जो कुछ जमा में है, और हर कार्ड बिल और लोन जो अभी बकाया है।
+2752	अपने खाते क्रम में लगाएँ
+2753	खातों को मनचाहे क्रम में खींचें। डैशबोर्ड और खाते दोनों इसी को मानते हैं, और नए खाते आख़िर में जुड़ते हैं।
+2754	एक भुगतान छोड़ें
+2755	एक महीने बाहर हैं, या किसी और तरीक़े से चुका दिया? सिर्फ़ अगली तारीख़ छोड़ें — कुछ दर्ज नहीं होगा, और नियम उसके बाद वाली से जारी रहेगा।
+2756	सीधे WhatsApp पर शेयर करें
+2757	इमेज और PDF के बीच खिसकाएँ, अवधि चुनें, फिर सीधे उनकी WhatsApp या Messages चैट में भेजें। उन पर बकाया हो तो राशि के साथ आपके UPI ID का QR उन्हें स्कैन करके चुकाने देता है।
+2758	अब से 3, 6 या 12 महीने बाद आपके हाथ का पैसा: ऑटो नियम उनकी तारीख़ों पर, साथ में पिछले 3 महीनों का आपका सामान्य ख़र्च। सबसे निचला स्तर भी देखें — और वह दिन जब पैसा कम पड़ेगा, अगर पड़ेगा।
+2759	और निखरा ग्लास
+2760	बटन और टैब छूते ही जवाब देते हैं, शीट खिंचकर वापस आती हैं, महीना चुनने वाला धुँधला होता है, और सूचियाँ ऊपर की पट्टी के नीचे धीरे से मिटती हैं। टैबलेट पर टैब बार बीच में रहता है।
+2761	कैलेंडर से पैसा जोड़ें
+2762	आमदनी, ख़र्च या रिमाइंडर, आपके चुने दिन की तारीख़ के साथ। किसी और दिन पर चले गए? "आज" सीधे वापस लाता है।
+2763	"लोग" में Connector दोस्त
+2764	अपने Connector दोस्तों से सीधे व्यक्ति जोड़ें, या यहाँ पहले से मौजूद को जोड़ने के लिए दबाकर रखें। वे @username के रूप में दिखते हैं। फ़ोन पर यह Connector ऐप की शेयर की हुई सूची पढ़ता है — XPENC फिर भी कभी ऑनलाइन नहीं जाता।
+2765	Connector के बैकअप अपने-आप आते हैं
+2766	Connector ने आपके दूसरे फ़ोन से नया बैकअप लिया? XPENC खुलते ही उसे ले लेता है — अपने-आप जब यहाँ कुछ न खोए, और पूछकर जब इस फ़ोन में अपने बदलाव हों। पहले एक कॉपी सहेजी जाती है। XPENC फिर भी कभी इंटरनेट नहीं छूता।
+2767	आपका लॉक आपका ही रहता है
+2768	बैकअप में अब आपका PIN, रिकवरी वाक्यांश या ऑथेंटिकेटर सीक्रेट नहीं होता, और दूसरे फ़ोन का बैकअप इम्पोर्ट करने पर इस फ़ोन की अपनी PIN लंबाई बनी रहती है — ताकि आपका PIN हमेशा लिखा जा सके।
+2769	कंप्यूटर पर XPENC
+2770	आपके ब्राउज़र में XPENC की झलक — ऑफ़लाइन, आपका डेटा उसी ब्राउज़र में रहता है। फ़ाइल से इम्पोर्ट करके फ़ोन का बैकअप लाएँ, या अपने फ़ोन से सिंक रखने के लिए वहाँ Connector चालू करें (सेटिंग्स → Connector)।
+2771	मोड अब अपना एक छोटा ऐप है
+2772	ट्रिप चालू करें और ऐप ट्रिप बन जाता है: होम पर ख़र्च के लिए बचा पैसा और प्रति दिन कितना, "लोग" में सिर्फ़ आपके साथ के लोग (शून्य से), हर खाते में उतना जितना आपने ट्रिप को दिया, और सीमा पार करने से पहले पूछा जाता है। लोगों के साथ बिल बाँटें, पहले से ख़र्च तय करें, ट्रिप वॉलेट भरें — और अंत में सारांश शेयर करें।
+2773	मोड: ट्रिप, पूरे ध्यान में
+2774	ट्रिप सेट करें — तारीख़ें, बजट, इस्तेमाल होने वाले खाते और श्रेणियाँ, हर ख़र्च के टैग — और इसे चालू करें। आप जो भी जोड़ें वह इसमें जुड़ता है, और ऐप सिर्फ़ ट्रिप की ज़रूरत की चीज़ें दिखाता है। बाद में यह लेन-देन में एक पंक्ति है जो पूरी कहानी खोलती है।
+2775	हर श्रेणी का एक पेज
+2776	इस महीने, इस साल या अब तक उस पर कितना गया — मुख्य श्रेणी के लिए उप-श्रेणीवार — आँकड़े के पीछे के हर लेन-देन के साथ।
+2777	सीधे बचत लक्ष्य से भुगतान करें
+2778	चालू करें और लक्ष्य आपके बैंक खाते की जेब की तरह काम करता है: आमदनी या ख़र्च के लिए इसे चुनें, और इसका बैलेंस साथ में बदलता है। डिफ़ॉल्ट रूप से बंद — जब तक आप न कहें, लक्ष्य सिर्फ़ ट्रांसफ़र से चलता है।
+2779	खाते से ट्रांसफ़र इन / आउट
+@de
+2680	Öffne das Konto und tippe auf den Stift neben dem Saldo. Korrekturen zählen nie als Einnahme oder Ausgabe, aber jede aus den letzten 30 Tagen senkt die Erfassungsgewohnheit im XPENC-Score — wer laufend erfasst, hält die Salden von selbst richtig. Lösche eine Korrektur, um sie rückgängig zu machen.
+2681	Jede Einnahme, Ausgabe, Umbuchung und Leihbewegung, die du erfasst hast — durchsuchbar und filterbar nach Datum, ISO-Woche, Konto oder Status „verknüpft“.
+2682	Erfasse eine über das ➕ auf jedem Hauptbildschirm. Halte eine vorhandene gedrückt für Duplizieren / Bearbeiten / Löschen, oder öffne sie und tippe auf das Aktualisieren-Symbol, um daraus eine wiederkehrende Auto-Regel mit ihren Angaben zu machen.
+2683	Eine Reise, eine Hochzeit, ein Fest — ein Ereignis, das du AN schaltest. Solange es AN ist, zählt alles, was du hinzufügst, dazu, getaggt und begrenzt wie eingestellt, und die App zeigt nur die nötigen Module. Außerhalb ist es eine Karte bei den Buchungen und ein Stück in der Statistik, und Budgets lassen es außen vor.
+2684	Mehr → Modi → Neuer Modus, aus „Reise“ oder „Leer“. Wähle Daten (dann startet und endet er von selbst), ein Budget, die Konten und Kategorien, die er nutzen darf, Auto-Tags, eigene Kategorien und Tags, die anzuzeigenden Tabs und Module, eine verknüpfte Gruppe und eine Währung. Beim Hinzufügen schaltest du „Teil von …“ aus, um eine Ausgabe herauszuhalten. „Ganze App“ in der Leiste über den Tabs verlässt ihn, ohne ihn zu beenden. Die Seite einer Buchung verschiebt sie in einen Modus oder heraus. Solange er AN ist, ist die App ein Sandkasten: Die Startseite zeigt zuerst, was noch ausgegeben werden kann, jeder Bildschirm zeigt nur den Modus, „Personen“ zeigt seine Personen ab null, und jedes Konto das, was du ihm zugeteilt hast. Lege im Editor Grenzen (pro Tag, pro Ausgabe, pro Kategorie), geplante Kosten und eine Reisekasse fest; teile beim Hinzufügen Rechnungen mit den Personen des Modus; beim Ausschalten erscheint die Zusammenfassung zum Teilen.
+2685	Verfolgt, wer dir etwas schuldet und wem du etwas schuldest — getrennt von deinen eigenen Konten: Jemandem Geld zu leihen ist keine Ausgabe, und Rückzahlungen sind keine Einnahmen.
+2686	Öffne eine Person, um einen Leih-/Borgeintrag (gern mit Tags) oder eine Rückzahlung zu erfassen und ihr ganzes Konto als PDF zu teilen. „Bearbeiten“ gibt ihr ein Foto aus deiner Galerie. Halte eine Person gedrückt für Bearbeiten, Kontakt verknüpfen, Nach „Beglichen“ verschieben, Archivieren oder Löschen (Löschen nimmt ihren ganzen Verlauf mit und bucht das Geld zurück). Unter Einstellungen → Zahlungshilfe lässt sich das Offline-Bezahlen über das *99#-USSD-Menü ohne Datenempfang einschalten.
+2687	Gruppen & Wer schuldet wem
+2688	Teile eine gemeinsame Ausgabe auf mehrere Personen auf einmal auf. Jede Gruppe zeigt ihren Gesamtsaldo, den Netto-Anteil jedes Mitglieds und die wenigsten Zahlungen, die alle ausgleichen.
+2689	Tippe im Tab „Gruppe“ auf +, um eine Gruppe zu benennen und Mitglieder zu wählen. Öffne sie, um Ausgaben hinzuzufügen und „Wer schuldet wem“ zu sehen. Halte eine Gruppe gedrückt, um sie auszugleichen, zu archivieren oder zu löschen.
+2690	Personen und Gruppen mit Saldo null, die du beiseitegeschoben hast. Sie bleiben vollständige, aktive Zeilen — gleicher Verlauf — und kehren von selbst in ihre Liste zurück, sobald wieder Geld geschuldet wird.
+2691	Erreicht ein Saldo null, fragt XPENC: Nach „Beglichen“ verschieben, Archivieren oder Hier lassen. Du kannst auch eine Zeile mit Saldo null gedrückt halten → Nach „Beglichen“ verschieben, und eine beglichene Zeile gedrückt halten → Aus „Beglichen“ holen.
+2692	Eine Ausgabengrenze pro Kategorie, gemessen an dem, was in diesem Zeitraum tatsächlich ausgegeben wurde — nur in Mittel und Pro, Basis kennt gar keine Budgets.
+2693	Lege eines im Budgetfeld einer Kategorie fest. Pro fügt Übertrag (nicht Ausgegebenes in den nächsten Zeitraum) und Überlauf (Mehrausgaben einer Kategorie in eine andere umleiten) als optionale Einstellungen pro Budget hinzu.
+2694	Umschlagbudgetierung nur in Pro: Statt einer Grenze pro Kategorie fließt das Geld aller Budgetkonten in eine Zahl „Zuzuweisen“, die du vor dem Ausgeben auf Kategorien verteilst.
+2695	Schalte es unter Einstellungen → Budgetierung ein, sobald du Pro nutzt. „Mehr“ zeigt dann eine Kachel „Zuzuweisen“ mit dem noch nicht verteilten Betrag.
+2696	Auto (wiederkehrende Regeln)
+2697	Regeln, die sich nach Plan selbst buchen, statt dass du sie von Hand erfasst: eine feste Zahlung oder Einnahme oder eine Umbuchung zwischen deinen eigenen Konten — Bank zu Bargeld, eine Kreditkartenrechnung, in ein Sparziel oder eine Rate in einen Kredit.
+2698	Neue Regel → Ausgabe, Einnahme oder Umbuchung, mit Häufigkeit (täglich/wöchentlich/zweiwöchentlich/monatlich/jährlich), optionalem Aktionspreis für die ersten Male und Erinnerungen vor der Fälligkeit. „Früher zahlen“ bucht sie heute, statt auf die Fälligkeit zu warten.
+2699	Jeder Name, der in das Empfängerfeld einer Buchung getippt wurde, automatisch gruppiert — keine separate Empfängerliste zu pflegen.
+2700	Gib beim Erfassen einer Einnahme oder Ausgabe einen Empfänger ein, und er erscheint hier von selbst, mit seinem Nettofluss (gezahlt gegen erhalten) und einem Link zu seinem ganzen Buchungsverlauf.
+2701	Sparziele verfolgen den Fortschritt zu einem Zielbetrag, optional automatisch von einem Konto gespeist. Kredite verfolgen, was du schuldest — und mit Zinssatz, Laufzeit und Startdatum berechnet XPENC die Rate selbst, teilt jede Zahlung automatisch in Zinsen und Tilgung (einfache Zahlung oder wiederkehrende Rate) und zeigt, wie viel Zinsen eine Sondertilgung wirklich spart. Ein Ziel kann auch wie ein Fach deines Bankkontos funktionieren: Schalte auf seiner Seite „In Einnahmen / Ausgaben zeigen“ ein, um direkt daraus zu zahlen oder darauf zu empfangen.
+2702	Füge ein Ziel oder einen Kredit über das + im Tab „Ziele & Kredite“ hinzu. Für einen Kredit Zinssatz/Laufzeit/Startdatum ausfüllen, um die volle Verfolgung freizuschalten — für einen einfachen Kredit nur mit Saldo leer lassen. „Zahlung leisten“ erlaubt ein früheres Datum/Uhrzeit und zeigt beim Tippen die Aufteilung in Zinsen/Tilgung/Extra.
+2703	Plane Einkäufe, bevor du sie tätigst — benannte Listen (z. B. „Lebensmittel“) mit Einträgen zum Abhaken, getrennt von deinen echten Buchungen, bis du sie erfassen willst.
+2704	Lege eine Liste an, füge Einträge hinzu und hake sie beim Einkaufen ab.
+2705	Werkzeuge
+2706	Schnellaktionsring
+2707	Acht Verknüpfungen, eine Geste entfernt: Halte ➕ gedrückt, und in der Bildschirmmitte öffnet sich ein Ring mit ✕ (Abbrechen) in der Mitte.
+2708	Halte weiter, schiebe zu einer Verknüpfung und lass los. Was in jedem Platz liegt — jeder Bildschirm, ein Rechner, Einnahme/Ausgabe hinzufügen oder eine gespeicherte Buchungsvorlage —, wählst du unter Einstellungen → Schnellaktionen.
+2709	Rechner (Beta)
+2710	Festgeld & Sparplan, Kreditrate (Plan nach Jahren, Ersparnis durch Sondertilgung), Sparplan & Einmalanlage mit jährlicher Erhöhung, PPF, GST und Einkommensteuer für Indien (neues gegen altes Regime), die USA, das Vereinigte Königreich und Deutschland.
+2711	Wähle einen Rechner und tippe — die Ergebnisse aktualisieren sich sofort. Bei Einkommensteuer zuerst das Land wählen. Nichts wird in deinem Haushaltsbuch gespeichert.
+2712	Eine Tagesansicht dessen, was herein- und hinausging, plus anstehende wiederkehrende Zahlungen, damit dich nichts überrascht.
+2713	Tippe auf einen Tag, um seine Buchungen zu sehen.
+2714	Trends über die Zeit, Diagramme der Ausgaben nach Kategorie und Rangliste — eine geordnete Liste der größten Buchungen/Kategorien im Zeitraum.
+2715	Wechsle den Zeitraum oben auf dem Bildschirm; tippe auf ein Kategoriestück oder eine Ranglistenzeile, um zu ihren Details zu springen.
+2716	Ein geldorientierter Blick über alle Konten: Gesamtgeld, Einnahmen und Ausgaben in diesem Monat oder Jahr und sieben Berichte — Salden, Aktivität pro Konto, Saldoverlauf, Umbuchungen zwischen Konten, Zahlungsmittel, Karten & Später zahlen und Kontogesundheit (Konten unter null, unter dem Minimum oder ungenutzt).
+2717	Wechsle oben zwischen Monat/Jahr und blättere durch die Zeiträume, dann tippe auf eine Berichtskachel. Tippe auf eine Kontozeile, um seinen eigenen Auszug zu öffnen.
+2718	Exportiert dein ganzes Haushaltsbuch als CSV oder JSON — für eine Tabelle, ein eigenes Backup oder um deine Daten woandershin mitzunehmen.
+2719	Wähle ein Format und teile/speichere die Datei.
+2720	Manuelle Backups plus geplante automatische Backups, mit wählbarer Aufbewahrungsregel (die letzten N behalten oder ein Zeitfenster). Wiederherstellen ersetzt das aktuelle Haushaltsbuch durch den Inhalt eines Backups — das Sicherheitsnetz beim Telefonwechsel oder um einen Fehler rückgängig zu machen.
+2721	Sichere jederzeit von diesem Bildschirm; automatische Backups laufen nach dem Einschalten nach eigenem Plan. Lange drücken, um mehrere Backups zum gemeinsamen Löschen auszuwählen.
+2722	Einnahme- und Ausgabekategorien, jede mit eigenem Symbol und eigener Farbe aus einer durchsuchbaren Symbolauswahl. Tippe auf eine, um zu sehen, wie viel dorthin ging — diesen Monat, dieses Jahr oder insgesamt —, aufgeteilt nach Unterkategorie, mit jeder Buchung hinter der Zahl.
+2723	Speichere deine ganze Kategoriestruktur als benannte Vorlage und wechsle jederzeit zwischen gespeicherten Vorlagen — ein Wechsel ändert nie eine Buchung. Der Archiv-Knopf listet archivierte Kategorien zum Wiederherstellen oder zum Löschen einer nie genutzten.
+2724	Markierungen quer zu Kategorien — ein Tag ist nicht an Einnahmen oder Ausgaben gebunden und kann alles kennzeichnen, was einen Zusammenhang teilt (z. B. „Reise nach Mallorca“).
+2725	Tag-Gruppen bündeln Tags, die immer zusammengehören (z. B. „Dienstreise“ = Reisen + Essen), sodass du im Tag-Auswahlfeld den ganzen Satz auf einmal wählst.
+2726	Währung (auch selbst angelegte), Design, eigene Farben für Einnahmen, Ausgaben, Umbuchungen und Personen, der Wochenbeginn, Sicherheit (PIN, Master-Passwort und/oder Authenticator-App — jede eingeschaltete Kombination entsperrt die App), Benachrichtigungen, Berechtigungen wie Kontakte, die App-Stufe (Basis/Mittel/Pro), der Starttag des Budgetzyklus und welche Tabs in der unteren Navigation erscheinen.
+2727	Alles hier wirkt sofort, ohne Speichern-Taste.
+2728	Download & Backup
+2729	Kategorien & Tags
+2730	Reise
+2731	Reiseausgaben, mit Freunden geteilt, im Ausland oder zu Hause
+2732	Leer
+2733	Eine Hochzeit, ein Fest, ein Umzug — richte es nach deinen Vorstellungen ein
+2734	Jährliche Auto-Regeln
+2735	Für ein Jahresabo oder eine Versicherung — sie wiederholt sich an Tag und Monat ihres Beginns.
+2736	Fremdbeträge nutzen deinen Kurs
+2737	Mit einem unter Einstellungen → Währungen gespeicherten Kurs füllt die Eingabe des dortigen Preises den Betrag hier aus.
+2738	Ziele als Fächer
+2739	Schiebe Geld zwischen Zielen hin und her oder zahle einen Kredit aus einem Ziel. Blende Einbuchen / Ausbuchen bei jedem Konto über „Konto bearbeiten“ aus.
+2740	Kartenrechnungen, die sich selbst bezahlen
+2741	An jedem Fälligkeitstag geht der Rest der Abrechnung von deinem gewählten Konto ab — nichts, wenn schon bezahlt.
+2742	Deine Kartenabrechnung, wie sie abgeschlossen wurde
+2743	Sieh, was auf der Abrechnung stand, was du seitdem gezahlt hast und was bis zur Fälligkeit offen ist. Neue Einkäufe bilden die nächste Abrechnung.
+2744	Dein Monat beginnt am Zahltag
+2745	Jeder Tag bis zum 31. oder der letzte Werktag des Monats — Übersicht, Budgets und Statistik laufen von Zahltag zu Zahltag.
+2746	Kategorievorlagen teilen
+2747	Schicke deine Kategoriestruktur als Datei, importiere eine geteilte oder starte mit der fertigen 50/30/20 — Bedarf und Wünsche. Weitere Vorlagen, auch aus der Community, gibt es auf xpenc.in/templates.
+2748	Budgetwarnungen in mehreren Stufen
+2749	Wähle 50 %, 80 %, 100 % — beliebige Stufen. Jede meldet sich einmal pro Zeitraum, damit du spürst, wie die Ausgaben steigen.
+2750	Was du besitzt, was du schuldest
+2751	Das Gesamtgeld zeigt jetzt seine zwei Hälften: alles im Plus, und jede Kartenrechnung und jeder Kredit, den du noch schuldest.
+2752	Ordne deine Konten an
+2753	Ziehe deine Konten in die gewünschte Reihenfolge. Übersicht und Konten folgen ihr, und neue Konten kommen ans Ende.
+2754	Eine Zahlung überspringen
+2755	Einen Monat weg oder anders bezahlt? Überspringe nur den nächsten Termin — nichts wird gebucht, und die Regel macht ab dem übernächsten weiter.
+2756	Direkt an WhatsApp teilen
+2757	Wechsle zwischen Bild und PDF, wähle den Zeitraum und schick es direkt in ihren WhatsApp- oder Messages-Chat. Schulden sie dir etwas, lässt sie ein QR-Code deiner UPI-ID mit Betrag scannen und zahlen.
+2758	Dein verfügbares Geld in 3, 6 oder 12 Monaten: Auto-Regeln an ihren Terminen plus deine üblichen Ausgaben der letzten 3 Monate. Sieh auch den Tiefpunkt — und den Tag, an dem es knapp würde, falls überhaupt.
+2759	Ein ausgereifteres Glass
+2760	Tasten und Tabs reagieren sofort auf Berührung, Blätter dehnen sich und federn zurück, die Monatsauswahl wird mattiert, und Listen verblassen sanft unter der oberen Leiste. Auf dem Tablet sitzt die Tableiste mittig.
+2761	Geld aus dem Kalender hinzufügen
+2762	Einnahme, Ausgabe oder Erinnerung, schon auf den gewählten Tag datiert. Zu einem anderen Tag gewandert? „Heute“ bringt dich direkt zurück.
+2763	Connector-Freunde bei Personen
+2764	Füge eine Person direkt aus deinen Connector-Freunden hinzu oder halte jemanden, der schon hier ist, gedrückt, um ihn zu verknüpfen. Sie erscheinen als @Nutzername. Auf dem Telefon liest es die Liste, die die Connector-App teilt — XPENC geht trotzdem nie online.
+2765	Backups von Connector kommen von selbst
+2766	Connector hat ein neueres Backup von deinem anderen Telefon geholt? XPENC übernimmt es beim Öffnen — von selbst, wenn hier nichts verloren ginge, nach Rückfrage, wenn dieses Telefon eigene Änderungen hat. Vorher wird eine Kopie gespeichert. XPENC geht trotzdem nie ins Internet.
+2767	Deine Sperre bleibt deine
+2768	Backups enthalten deine PIN, Wiederherstellungsphrase und das Authenticator-Geheimnis nicht mehr, und das Importieren eines fremden Backups behält die PIN-Länge dieses Telefons — deine PIN lässt sich also immer eingeben.
+2769	XPENC auf dem Computer
+2770	Eine Vorschau von XPENC in deinem Browser — offline, deine Daten bleiben in diesem Browser. Übernimm ein Telefon-Backup mit „Aus Datei importieren“ oder schalte dort Connector ein (Einstellungen → Connector), um es mit deinen Telefonen synchron zu halten.
+2771	Ein Modus ist jetzt eine eigene kleine App
+2772	Schalte eine Reise AN, und die App ist die Reise: Die Startseite zeigt, was noch ausgegeben werden kann und wie viel pro Tag, „Personen“ zeigt nur die Mitreisenden (ab null), jedes Konto das, was du der Reise gegeben hast, und Grenzen fragen, bevor du sie überschreitest. Teile Rechnungen mit deinen Leuten, plane Kosten im Voraus, fülle eine Reisekasse — und teile am Ende die Zusammenfassung.
+2773	Modi: eine Reise im Fokus
+2774	Richte eine Reise ein — Daten, Budget, die genutzten Konten und Kategorien, Tags für jede Ausgabe — und schalte sie AN. Alles, was du hinzufügst, zählt dazu, und die App zeigt nur, was die Reise braucht. Danach ist sie eine Zeile bei den Buchungen, die sich zur ganzen Geschichte öffnet.
+2775	Eine Seite für jede Kategorie
+2776	Wie viel diesen Monat, dieses Jahr oder insgesamt dorthin ging — bei einer Überkategorie nach Unterkategorien aufgeteilt —, mit jeder Buchung hinter der Zahl.
+2777	Direkt aus einem Sparziel bezahlen
+2778	Schalte es ein, und das Ziel funktioniert wie ein Fach deines Bankkontos: Wähle es für Einnahmen oder Ausgaben, und sein Saldo bewegt sich mit. Standardmäßig aus — ein Ziel bleibt nur für Umbuchungen, bis du es anders willst.
+2779	Ein- / Ausbuchen von einem Konto

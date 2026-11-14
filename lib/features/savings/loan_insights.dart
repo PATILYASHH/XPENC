@@ -7,6 +7,7 @@ import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
+import '../../core/l10n/l10n.dart';
 
 // fl_chart speaks in doubles — `paise / 100` is fine here only, same rule as
 // reports/chart_widgets.dart: these values are drawn, never stored.
@@ -70,7 +71,7 @@ class _LoanInsightsSectionState extends State<LoanInsightsSection> {
     if (base.isEmpty) {
       return _card(
         theme,
-        child: Text(
+        child: Tr(
           "The EMI doesn't cover this month's interest, so the balance would "
           'never go down. Check the EMI and rate.',
           style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.expense),
@@ -131,12 +132,12 @@ class _LoanInsightsSectionState extends State<LoanInsightsSection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _label(theme, 'What this loan really costs'),
+          _label(theme, tr('What this loan really costs')),
           const SizedBox(height: 10),
           Text.rich(
             TextSpan(
               children: [
-                const TextSpan(text: 'Interest adds '),
+                TextSpan(text: tr('Interest adds ')),
                 TextSpan(
                   text: '$extraPct%',
                   style: TextStyle(
@@ -144,7 +145,7 @@ class _LoanInsightsSectionState extends State<LoanInsightsSection> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const TextSpan(text: ' on top of what you borrowed.'),
+                TextSpan(text: tr(' on top of what you borrowed.')),
               ],
             ),
             style: theme.textTheme.bodyLarge,
@@ -169,11 +170,11 @@ class _LoanInsightsSectionState extends State<LoanInsightsSection> {
             ),
           ),
           const SizedBox(height: 12),
-          _legendLine(theme, loanColor, 'Borrowed', principal),
+          _legendLine(theme, loanColor, tr('Borrowed'), principal),
           const SizedBox(height: 6),
-          _legendLine(theme, AppColors.expense, 'Interest', interest),
+          _legendLine(theme, AppColors.expense, tr('Interest'), interest),
           const SizedBox(height: 6),
-          _legendLine(theme, null, 'Total you repay', total, bold: true),
+          _legendLine(theme, null, tr('Total you repay'), total, bold: true),
         ],
       ),
     );
@@ -229,8 +230,8 @@ class _LoanInsightsSectionState extends State<LoanInsightsSection> {
                 child: _label(
                   theme,
                   _view == _ChartView.monthly
-                      ? 'Balance left, month by month'
-                      : 'Each year: principal vs interest',
+                      ? tr('Balance left, month by month')
+                      : tr('Each year: principal vs interest'),
                 ),
               ),
             ],
@@ -238,8 +239,8 @@ class _LoanInsightsSectionState extends State<LoanInsightsSection> {
           const SizedBox(height: 12),
           SegmentedButton<_ChartView>(
             segments: const [
-              ButtonSegment(value: _ChartView.monthly, label: Text('Monthly')),
-              ButtonSegment(value: _ChartView.yearly, label: Text('Yearly')),
+              ButtonSegment(value: _ChartView.monthly, label: Tr('Monthly')),
+              ButtonSegment(value: _ChartView.yearly, label: Tr('Yearly')),
             ],
             selected: {_view},
             showSelectedIcon: false,
@@ -260,7 +261,7 @@ class _LoanInsightsSectionState extends State<LoanInsightsSection> {
             ),
           if (_view == _ChartView.monthly && simulated != null) ...[
             const SizedBox(height: 8),
-            Text(
+            Tr(
               'Dashed: with the extra payment from the simulator below.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -269,7 +270,7 @@ class _LoanInsightsSectionState extends State<LoanInsightsSection> {
           ],
           if (_view == _ChartView.yearly) ...[
             const SizedBox(height: 8),
-            Text(
+            Tr(
               'Early years are mostly interest; the principal share grows '
               'as the balance shrinks.',
               style: theme.textTheme.bodySmall?.copyWith(
@@ -333,12 +334,12 @@ class _LoanInsightsSectionState extends State<LoanInsightsSection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _label(theme, 'What if I pay extra?'),
+          _label(theme, tr('What if I pay extra?')),
           const SizedBox(height: 10),
           Text(
             extra.isPositive
-                ? '+${MoneyFormat.symbol(extra)} every month'
-                : 'Slide to add a monthly prepayment',
+                ? tr('+{0} every month', [MoneyFormat.symbol(extra)])
+                : tr('Slide to add a monthly prepayment'),
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
             ),
@@ -353,7 +354,7 @@ class _LoanInsightsSectionState extends State<LoanInsightsSection> {
           ),
           _simRow(
             theme,
-            'Debt-free by',
+            tr('Debt-free by'),
             extra.isPositive
                 ? '${df.format(_monthOf(simulated.length - 1))} '
                       '(was ${df.format(_monthOf(base.length - 1))})'
@@ -361,25 +362,25 @@ class _LoanInsightsSectionState extends State<LoanInsightsSection> {
           ),
           _simRow(
             theme,
-            'Interest left to pay',
+            tr('Interest left to pay'),
             MoneyFormat.symbol(simInterest),
           ),
           if (extra.isPositive) ...[
             _simRow(
               theme,
-              'Interest saved',
+              tr('Interest saved'),
               MoneyFormat.symbol(saved),
               color: AppColors.income,
             ),
             _simRow(
               theme,
-              'Finish sooner by',
+              tr('Finish sooner by'),
               _formatMonths(monthsSooner),
               color: AppColors.income,
             ),
           ],
           const SizedBox(height: 4),
-          Text(
+          Tr(
             'Assumes the rate stays the same and the bank reduces tenure '
             '(not EMI) on prepayment.',
             style: theme.textTheme.bodySmall?.copyWith(
@@ -507,9 +508,9 @@ class _BalanceLineChart extends StatelessWidget {
               getTooltipItems: (spots) => [
                 for (final s in spots)
                   LineTooltipItem(
-                    '${s.barIndex == 0 ? '' : 'With extra · '}'
+                    '${s.barIndex == 0 ? '' : tr('With extra · ')}'
                     '${DateFormat('MMM yyyy').format(monthOf(s.x.round()))}\n'
-                    '${MoneyFormat.compact(Money.fromRupees(s.y))} left',
+                    '${tr('{0} left', [MoneyFormat.compact(Money.fromRupees(s.y))])}',
                     theme.textTheme.labelMedium?.copyWith(
                           color: cs.onInverseSurface,
                           fontWeight: FontWeight.w600,
@@ -624,14 +625,14 @@ class _YearlySplitChart extends StatelessWidget {
                       const TextStyle(),
                   children: [
                     TextSpan(
-                      text: 'Principal ${MoneyFormat.compact(y.principal)}\n',
+                      text: tr('Principal {0}\n', [MoneyFormat.compact(y.principal)]),
                       style: TextStyle(
                         color: cs.onInverseSurface,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     TextSpan(
-                      text: 'Interest ${MoneyFormat.compact(y.interest)}',
+                      text: tr('Interest {0}', [MoneyFormat.compact(y.interest)]),
                       style: TextStyle(
                         color: AppColors.expense,
                         fontWeight: FontWeight.w600,

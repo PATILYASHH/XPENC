@@ -7,6 +7,7 @@ import '../../core/money.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import 'recurring_rule_sheet.dart';
+import '../../core/l10n/l10n.dart';
 
 /// The Auto rules paying into goal/loan [accountId], shown on that goal's or
 /// loan's own screen — so a rule set up in Auto is visible where the money
@@ -41,7 +42,7 @@ class LinkedAutoRulesCard extends ConsumerWidget {
     final cs = theme.colorScheme;
     final rules = ref.watch(recurringRulesIntoAccountProvider(accountId));
     final accountMap = ref.watch(accountMapProvider);
-    final title = isLoan ? 'Auto-pay' : 'Auto-save';
+    final title = isLoan ? tr('Auto-pay') : tr('Auto-save');
 
     return AppCard(
       child: Padding(
@@ -64,7 +65,7 @@ class LinkedAutoRulesCard extends ConsumerWidget {
                 if (rules.isNotEmpty)
                   TextButton(
                     onPressed: () => _setUp(context),
-                    child: const Text('Add'),
+                    child: const Tr('Add'),
                   ),
               ],
             ),
@@ -72,10 +73,10 @@ class LinkedAutoRulesCard extends ConsumerWidget {
               const SizedBox(height: 6),
               Text(
                 isLoan
-                    ? 'Pay the EMI automatically every month — it shows up '
-                          'in Auto and stops once the loan is paid off.'
-                    : 'Move money into this goal automatically on a schedule '
-                          '— it shows up in Auto.',
+                    ? tr('Pay the EMI automatically every month — it shows up '
+                          'in Auto and stops once the loan is paid off.')
+                    : tr('Move money into this goal automatically on a schedule '
+                          '— it shows up in Auto.'),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: cs.onSurfaceVariant,
                 ),
@@ -93,7 +94,7 @@ class LinkedAutoRulesCard extends ConsumerWidget {
               OutlinedButton.icon(
                 onPressed: () => _setUp(context),
                 icon: const AppIcon(Icons.add_rounded),
-                label: Text(isLoan ? 'Set up auto-pay' : 'Set up auto-save'),
+                label: Text(isLoan ? tr('Set up auto-pay') : tr('Set up auto-save')),
               ),
             ] else
               for (final r in rules)
@@ -103,10 +104,10 @@ class LinkedAutoRulesCard extends ConsumerWidget {
                   title: Text(r.name),
                   subtitle: Text(
                     r.isActive
-                        ? '${_frequencyLabel(r.frequency.name)} · from '
-                              '${accountMap[r.accountId]?.name ?? '—'} · next '
-                              '${DateFormat('d MMM yyyy').format(r.nextDueDate)}'
-                        : 'Paused',
+                        ? tr('{0} · from '
+                              '{1} · next '
+                              '{2}', [_frequencyLabel(r.frequency.name), accountMap[r.accountId]?.name ?? '—', DateFormat('d MMM yyyy').format(r.nextDueDate)])
+                        : tr('Paused'),
                   ),
                   trailing: Text(
                     MoneyFormat.symbol(r.amount),
@@ -132,11 +133,11 @@ class LinkedAutoRulesCard extends ConsumerWidget {
   }
 
   static String _frequencyLabel(String name) => switch (name) {
-    'daily' => 'Daily',
-    'weekly' => 'Weekly',
-    'biweekly' => 'Every 2 weeks',
-    'monthly' => 'Monthly',
-    'yearly' => 'Yearly',
+    'daily' => tr('Daily'),
+    'weekly' => tr('Weekly'),
+    'biweekly' => tr('Every 2 weeks'),
+    'monthly' => tr('Monthly'),
+    'yearly' => tr('Yearly'),
     _ => name,
   };
 }

@@ -4,6 +4,7 @@ import '../core/currency.dart';
 import '../core/money.dart';
 import 'database.dart';
 import 'tables.dart';
+import '../core/l10n/l10n.dart';
 
 /// Modes — a trip or an event the app focuses on while it's ON. See
 /// [Modes] and `docs/superpowers/specs/2026-10-17-modes-design.md` (v1) and
@@ -218,7 +219,7 @@ extension ModesDb on AppDatabase {
   }) async {
     final existing = await modeById(id);
     if (existing == null) {
-      throw ArgumentError('That mode no longer exists.');
+      throw ArgumentError(tr('That mode no longer exists.'));
     }
     final clean = await _validateMode(
       name: name,
@@ -315,7 +316,7 @@ extension ModesDb on AppDatabase {
 
   Future<void> _setPeople(int modeId, Set<int> personIds) async {
     final mode = await modeById(modeId);
-    if (mode == null) throw ArgumentError('That mode no longer exists.');
+    if (mode == null) throw ArgumentError(tr('That mode no longer exists.'));
     var groupId = mode.groupId;
     if (groupId == null) {
       if (personIds.isEmpty) return;
@@ -333,7 +334,7 @@ extension ModesDb on AppDatabase {
   /// set up makes it now (once).
   Future<void> startMode(int id) => transaction(() async {
     final mode = await modeById(id);
-    if (mode == null) throw ArgumentError('That mode no longer exists.');
+    if (mode == null) throw ArgumentError(tr('That mode no longer exists.'));
     final current = await activeModeId();
     if (current != null && current != id) await _end(current);
     await (update(modes)..where((m) => m.id.equals(id))).write(
@@ -476,12 +477,12 @@ extension ModesDb on AppDatabase {
   /// split-across-accounts payment moves as one: every leg goes with it.
   Future<void> setTransactionMode(int txId, int? modeId) async {
     if (modeId != null && await modeById(modeId) == null) {
-      throw ArgumentError('That mode no longer exists.');
+      throw ArgumentError(tr('That mode no longer exists.'));
     }
     final tx = await (select(
       transactions,
     )..where((t) => t.id.equals(txId))).getSingleOrNull();
-    if (tx == null) throw ArgumentError('That transaction no longer exists.');
+    if (tx == null) throw ArgumentError(tr('That transaction no longer exists.'));
     final group = tx.paymentGroupId;
     await (update(transactions)..where(
           (t) => group == null
@@ -544,10 +545,10 @@ extension ModesDb on AppDatabase {
     required String iconKey,
   }) async {
     if (await modeById(modeId) == null) {
-      throw ArgumentError('That mode no longer exists.');
+      throw ArgumentError(tr('That mode no longer exists.'));
     }
     final clean = name.trim();
-    if (clean.isEmpty) throw ArgumentError('Give the category a name.');
+    if (clean.isEmpty) throw ArgumentError(tr('Give the category a name.'));
     return into(categories).insert(
       CategoriesCompanion.insert(
         name: clean,
@@ -567,15 +568,15 @@ extension ModesDb on AppDatabase {
     required int colorValue,
   }) async {
     if (await modeById(modeId) == null) {
-      throw ArgumentError('That mode no longer exists.');
+      throw ArgumentError(tr('That mode no longer exists.'));
     }
     final clean = name.trim();
-    if (clean.isEmpty) throw ArgumentError('Give the tag a name.');
+    if (clean.isEmpty) throw ArgumentError(tr('Give the tag a name.'));
     final taken = await (select(
       tags,
     )..where((t) => t.name.lower().equals(clean.toLowerCase()))).get();
     if (taken.isNotEmpty) {
-      throw ArgumentError('There is already a tag called "$clean".');
+      throw ArgumentError(tr('There is already a tag called "{0}".', [clean]));
     }
     return into(tags).insert(
       TagsCompanion.insert(
@@ -595,7 +596,7 @@ extension ModesDb on AppDatabase {
     int? categoryId,
   }) async {
     if (await modeById(modeId) == null) {
-      throw ArgumentError('That mode no longer exists.');
+      throw ArgumentError(tr('That mode no longer exists.'));
     }
     final clean = _plannedName(name, amount);
     final last =
@@ -648,12 +649,12 @@ extension ModesDb on AppDatabase {
 
   String _plannedName(String name, Money amount) {
     final clean = name.trim();
-    if (clean.isEmpty) throw ArgumentError('Give the cost a name.');
+    if (clean.isEmpty) throw ArgumentError(tr('Give the cost a name.'));
     if (clean.length > 60) {
-      throw ArgumentError('Keep the name to 60 characters.');
+      throw ArgumentError(tr('Keep the name to 60 characters.'));
     }
     if (!amount.isPositive) {
-      throw ArgumentError('A planned cost has to be more than zero.');
+      throw ArgumentError(tr('A planned cost has to be more than zero.'));
     }
     return clean;
   }
@@ -889,12 +890,12 @@ extension ModesDb on AppDatabase {
     Money? walletAmount,
   }) async {
     final clean = name.trim();
-    if (clean.isEmpty) throw ArgumentError('Give the mode a name.');
+    if (clean.isEmpty) throw ArgumentError(tr('Give the mode a name.'));
     if (clean.length > 40) {
-      throw ArgumentError('Keep the name to 40 characters.');
+      throw ArgumentError(tr('Keep the name to 40 characters.'));
     }
     if (budget != null && budget.paise <= 0) {
-      throw ArgumentError('A budget has to be more than zero.');
+      throw ArgumentError(tr('A budget has to be more than zero.'));
     }
     for (final (label, v) in [
       ('daily limit', dailyLimit),
@@ -902,41 +903,41 @@ extension ModesDb on AppDatabase {
       ('wallet amount', walletAmount),
     ]) {
       if (v != null && v.paise <= 0) {
-        throw ArgumentError('The $label has to be more than zero.');
+        throw ArgumentError(tr('The {0} has to be more than zero.', [label]));
       }
     }
     if (allocations.values.any((v) => v.paise <= 0) ||
         categoryLimits.values.any((v) => v.paise <= 0)) {
-      throw ArgumentError('Every amount set has to be more than zero.');
+      throw ArgumentError(tr('Every amount set has to be more than zero.'));
     }
     if ((walletSourceAccountId == null) != (walletAmount == null)) {
       throw ArgumentError(
-        'A trip wallet needs both an amount and an account to fill it from.',
+        tr('A trip wallet needs both an amount and an account to fill it from.'),
       );
     }
     if (walletSourceAccountId != null) {
       final from = await (select(
         accounts,
       )..where((a) => a.id.equals(walletSourceAccountId))).getSingleOrNull();
-      if (from == null) throw ArgumentError('That account no longer exists.');
+      if (from == null) throw ArgumentError(tr('That account no longer exists.'));
       if (from.type == AccountType.goal || from.type == AccountType.loan) {
-        throw ArgumentError('Fill the wallet from a spendable account.');
+        throw ArgumentError(tr('Fill the wallet from a spendable account.'));
       }
     }
     final start = _day(startDate);
     final end = _day(endDate);
     if (start != null && end != null && end.isBefore(start)) {
-      throw ArgumentError("The end date can't be before the start date.");
+      throw ArgumentError(tr("The end date can't be before the start date."));
     }
     if (currencyCode != null &&
         currencyForCode(currencyCode).code != currencyCode) {
-      throw ArgumentError('Unknown currency $currencyCode.');
+      throw ArgumentError(tr('Unknown currency {0}.', [currencyCode]));
     }
     if (groupId != null) {
       final group = await (select(
         groups,
       )..where((g) => g.id.equals(groupId))).getSingleOrNull();
-      if (group == null) throw ArgumentError('That group no longer exists.');
+      if (group == null) throw ArgumentError(tr('That group no longer exists.'));
       final other =
           await (select(modes)..where(
                 (m) =>
@@ -948,7 +949,7 @@ extension ModesDb on AppDatabase {
               .get();
       if (other.isNotEmpty) {
         throw ArgumentError(
-          '${group.name} is already linked to ${other.first.name}.',
+          tr('{0} is already linked to {1}.', [group.name, other.first.name]),
         );
       }
     }

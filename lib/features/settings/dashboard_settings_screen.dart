@@ -14,6 +14,7 @@ import '../../data/tables.dart';
 import '../accounts/arrange_accounts_sheet.dart';
 import '../dashboard/dashboard_layout.dart';
 import 'settings_common.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Settings ▸ Customize dashboard: which widgets the Dashboard shows and in
 /// what order — drag to reorder, − to take one off, + to add one back — how
@@ -66,7 +67,7 @@ class _DashboardSettingsScreenState
         w.unavailableNote(mode: mode, rtaOn: rtaOn);
 
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Customize dashboard')),
+      appBar: AppTopBar(title: const Tr('Customize dashboard')),
       body: CustomScrollView(
         slivers: [
           SliverPadding(
@@ -75,11 +76,11 @@ class _DashboardSettingsScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  settingsSectionLabel(context, 'On your dashboard'),
+                  settingsSectionLabel(context, tr('On your dashboard')),
                   if (shown.isEmpty)
                     Padding(
                       padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-                      child: Text(
+                      child: Tr(
                         'Nothing yet — add a widget below.',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: cs.onSurfaceVariant,
@@ -89,7 +90,7 @@ class _DashboardSettingsScreenState
                   else
                     Padding(
                       padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
-                      child: Text(
+                      child: Tr(
                         'Hold a widget, or drag its handle, to move it. The '
                         'top of this list is the top of your dashboard.',
                         style: theme.textTheme.bodySmall?.copyWith(
@@ -147,7 +148,7 @@ class _DashboardSettingsScreenState
                           ),
                         ),
                         action: IconButton(
-                          tooltip: 'Remove ${w.title}',
+                          tooltip: tr('Remove {0}', [w.title]),
                           icon: AppIcon(
                             Icons.remove_circle_rounded,
                             color: AppColors.expense,
@@ -173,11 +174,11 @@ class _DashboardSettingsScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  settingsSectionLabel(context, 'Add widgets'),
+                  settingsSectionLabel(context, tr('Add widgets')),
                   if (hidden.isEmpty)
                     Padding(
                       padding: const EdgeInsets.fromLTRB(4, 0, 4, 0),
-                      child: Text(
+                      child: Tr(
                         'Every widget is on your dashboard.',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: cs.onSurfaceVariant,
@@ -196,7 +197,7 @@ class _DashboardSettingsScreenState
                               widget: hidden[i],
                               note: noteFor(hidden[i]),
                               action: IconButton(
-                                tooltip: 'Add ${hidden[i].title}',
+                                tooltip: tr('Add {0}', [hidden[i].title]),
                                 icon: AppIcon(
                                   Icons.add_circle_rounded,
                                   color: AppColors.income,
@@ -221,13 +222,13 @@ class _DashboardSettingsScreenState
                         child: TextButton.icon(
                           onPressed: () => _apply(defaultDashboardLayout),
                           icon: const AppIcon(Icons.restart_alt_rounded),
-                          label: const Text('Reset to default'),
+                          label: const Tr('Reset to default'),
                         ),
                       ),
                     ),
-                  settingsSectionLabel(context, 'Accounts widget'),
+                  settingsSectionLabel(context, tr('Accounts widget')),
                   const _AccountsStylePicker(),
-                  settingsSectionLabel(context, 'Included in Net Worth'),
+                  settingsSectionLabel(context, tr('Included in Net Worth')),
                 ],
               ),
             ),
@@ -338,12 +339,12 @@ class _AccountsStylePicker extends ConsumerWidget {
               ButtonSegment(
                 value: DashboardAccountsStyle.slider,
                 icon: AppIcon(Icons.view_carousel_outlined),
-                label: Text('Slider'),
+                label: Tr('Slider'),
               ),
               ButtonSegment(
                 value: DashboardAccountsStyle.oneCard,
                 icon: AppIcon(Icons.view_agenda_outlined),
-                label: Text('One card'),
+                label: Tr('One card'),
               ),
             ],
             selected: {style},
@@ -355,9 +356,9 @@ class _AccountsStylePicker extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
           child: Text(
             style == DashboardAccountsStyle.slider
-                ? 'One card per account — swipe across to see them all.'
-                : 'Every account and its balance in one card — nothing to '
-                      'swipe.',
+                ? tr('One card per account — swipe across to see them all.')
+                : tr('Every account and its balance in one card — nothing to '
+                      'swipe.'),
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -367,7 +368,7 @@ class _AccountsStylePicker extends ConsumerWidget {
         TextButton.icon(
           onPressed: () => showArrangeAccountsSheet(context),
           icon: const AppIcon(Icons.swap_vert_rounded, size: 18),
-          label: const Text('Arrange accounts'),
+          label: const Tr('Arrange accounts'),
         ),
       ],
     );
@@ -391,7 +392,7 @@ class _NetWorthAccounts extends ConsumerWidget {
           data: (accounts) => accounts.isEmpty
               ? Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Text(
+                  child: Tr(
                     'Add an account to see it here.',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: cs.onSurfaceVariant,
@@ -414,7 +415,7 @@ class _NetWorthAccounts extends ConsumerWidget {
             padding: EdgeInsets.all(24),
             child: Center(child: CircularProgressIndicator()),
           ),
-          error: (_, _) => Text(
+          error: (_, _) => Tr(
             'Could not load your accounts.',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: cs.onSurfaceVariant,

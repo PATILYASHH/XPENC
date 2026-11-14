@@ -4,11 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:xpenc/core/money.dart';
 import 'package:xpenc/core/theme/app_theme.dart';
+import 'package:xpenc/core/widgets/app_surfaces.dart';
 import 'package:xpenc/data/database.dart';
 import 'package:xpenc/data/providers.dart';
 import 'package:xpenc/data/tables.dart';
 import 'package:xpenc/features/accounts/account_detail_screen.dart';
 import 'package:xpenc/features/accounts/add_account_sheet.dart';
+import 'package:xpenc/features/accounts/edit_account_sheet.dart';
 import 'package:xpenc/features/add_transaction/add_transaction_screen.dart';
 
 /// Cash at home works like an ATM you withdraw from into the wallet
@@ -140,6 +142,123 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Transfer out'), findsNothing);
     await unmount(tester);
+  });
+
+  group('#199 an account can hide either shortcut', () {
+    Future<int> prepaid() => db.addAccount(
+      name: 'Coffee Capp',
+      type: AccountType.prepaidBalance,
+      colorValue: 0,
+      iconKey: 'card',
+      openingBalance: Money.fromRupees(16),
+    );
+
+    test('both are on for a new account', () async {
+      final id = await prepaid();
+      final row = (await db.watchAccounts().first).firstWhere(
+        (a) => a.id == id,
+      );
+      expect(row.showTransferIn, isTrue);
+      expect(row.showTransferOut, isTrue);
+    });
+
+    testWidgets('Transfer out off leaves only Transfer in', (tester) async {
+      late int id;
+      await tester.runAsync(() async {
+        id = await prepaid();
+        await db.setAccountTransferShortcuts(
+          id,
+          transferIn: true,
+          transferOut: false,
+        );
+      });
+      await pump(tester, AccountDetailScreen(accountId: id));
+      expect(tester.takeException(), isNull);
+      expect(find.text('Transfer in'), findsOneWidget);
+      expect(find.text('Transfer out'), findsNothing);
+      await unmount(tester);
+    });
+
+    testWidgets('both off hides the row', (tester) async {
+      late int id;
+      await tester.runAsync(() async {
+        id = await prepaid();
+        await db.setAccountTransferShortcuts(
+          id,
+          transferIn: false,
+          transferOut: false,
+        );
+      });
+      await pump(tester, AccountDetailScreen(accountId: id));
+      expect(find.text('Transfer in'), findsNothing);
+      expect(find.text('Transfer out'), findsNothing);
+      await unmount(tester);
+    });
+
+    testWidgets('Edit account turns Transfer out off', (tester) async {
+      late AccountRow account;
+      await tester.runAsync(() async {
+        final id = await prepaid();
+        account = (await db.watchAccounts().first).firstWhere(
+          (a) => a.id == id,
+        );
+      });
+      await pump(tester, Scaffold(body: EditAccountSheet(account: account)));
+      expect(tester.takeException(), isNull);
+
+      final outSwitch = find.ancestor(
+        of: find.text('Transfer out'),
+        matching: find.byType(AppSwitchListTile),
+      );
+      await tester.ensureVisible(outSwitch);
+      await tester.tap(outSwitch);
+      await tester.pump();
+      await tester.ensureVisible(find.text('Save'));
+      await tester.tap(find.text('Save'));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+      await tester.pump();
+
+      late AccountRow saved;
+      await tester.runAsync(() async {
+        saved = (await db.watchAccounts().first).firstWhere(
+          (a) => a.id == account.id,
+        );
+      });
+      expect(saved.showTransferIn, isTrue);
+      expect(saved.showTransferOut, isFalse);
+      expect(saved.name, 'Coffee Capp');
+      await unmount(tester);
+    });
+
+    testWidgets("a debit card's edit sheet has no shortcut switches", (
+      tester,
+    ) async {
+      late AccountRow debit;
+      await tester.runAsync(() async {
+        final bank = await db.addAccount(
+          name: 'IPPB',
+          type: AccountType.bank,
+          colorValue: 0,
+          iconKey: 'bank',
+          openingBalance: Money.fromRupees(1000),
+        );
+        final id = await db.addAccount(
+          name: 'IPPB Debit',
+          type: AccountType.card,
+          cardKind: CardKind.debit,
+          linkedAccountId: bank,
+          colorValue: 0,
+          iconKey: 'card',
+          openingBalance: const Money.zero(),
+        );
+        debit = (await db.watchAccounts().first).firstWhere((a) => a.id == id);
+      });
+      await pump(tester, Scaffold(body: EditAccountSheet(account: debit)));
+      expect(find.text('Transfer out'), findsNothing);
+      await unmount(tester);
+    });
   });
 
   testWidgets('Add account: the Cash at home suggestion fills in the name', (

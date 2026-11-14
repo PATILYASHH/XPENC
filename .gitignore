@@ -76,3 +76,7 @@ packages/flutter_tesseract_ocr_floss/android/.gradle/
 # XPENC web's Connector settings for tool/build_web.sh — the Connector
 # app's Supabase project. Kept out of git with the Connector app's own.
 /tool/web/connector.local.json
+
+# tool/l10n/wrap_strings.dart reports, rewritten on every run
+tool/l10n/findings.txt
+tool/l10n/const_data.txt

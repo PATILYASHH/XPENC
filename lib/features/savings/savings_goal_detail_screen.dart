@@ -14,6 +14,7 @@ import '../../data/tables.dart';
 import '../auto/linked_auto_rules_card.dart';
 import 'savings_goals_screen.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// One goal: progress ring, target date, and the two shortcuts that move
 /// money in and out of it — each just posts an ordinary transfer, the same
@@ -32,8 +33,8 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
 
     if (progress == null) {
       return Scaffold(
-        appBar: AppTopBar(title: const Text('Savings goal')),
-        body: const Center(child: Text('Goal not found')),
+        appBar: AppTopBar(title: const Tr('Savings goal')),
+        body: const Center(child: Tr('Goal not found')),
       );
     }
 
@@ -50,12 +51,12 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const AppIcon(Icons.edit_outlined),
-            tooltip: 'Edit',
+            tooltip: tr('Edit'),
             onPressed: () => openGoalEditor(context, progress),
           ),
           IconButton(
             icon: const AppIcon(Icons.more_vert_rounded),
-            tooltip: 'More',
+            tooltip: tr('More'),
             onPressed: () => _showActions(context, ref, progress),
           ),
         ],
@@ -114,7 +115,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
                     defaultCategoryId: detail.categoryId,
                   ),
                   icon: const AppIcon(Icons.add_rounded),
-                  label: const Text('Add funds'),
+                  label: const Tr('Add funds'),
                 ),
               ),
               const SizedBox(width: 12),
@@ -124,7 +125,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
                       ? () => _openFundsSheet(context, goalId, isAdd: false)
                       : null,
                   icon: const AppIcon(Icons.remove_rounded),
-                  label: const Text('Withdraw'),
+                  label: const Tr('Withdraw'),
                 ),
               ),
             ],
@@ -137,13 +138,13 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
                 children: [
                   _row(
                     context,
-                    'Saved',
+                    tr('Saved'),
                     MoneyText(progress.saved, color: color),
                   ),
                   _divider(theme),
                   _row(
                     context,
-                    'Target',
+                    tr('Target'),
                     _plainValue(
                       context,
                       MoneyFormat.symbol(detail.targetAmount),
@@ -152,7 +153,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
                   _divider(theme),
                   _row(
                     context,
-                    progress.reached ? 'Reached' : 'Remaining',
+                    progress.reached ? tr('Reached') : tr('Remaining'),
                     progress.reached
                         ? AppIcon(
                             Icons.check_circle_rounded,
@@ -164,7 +165,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
                     _divider(theme),
                     _row(
                       context,
-                      'Target date',
+                      tr('Target date'),
                       _plainValue(
                         context,
                         DateFormat('d MMM yyyy').format(detail.targetDate!),
@@ -180,8 +181,8 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
           AppCard(
             child: AppSwitchListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-              title: const Text('Show in Money in / out'),
-              subtitle: const Text(
+              title: const Tr('Show in Money in / out'),
+              subtitle: const Tr(
                 'Pay or receive straight from this goal, like a pocket of '
                 'your bank account. Off: only transfers move its money.',
               ),
@@ -201,9 +202,9 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
                 suggestedAmount: perMonth,
                 suggestionNote: perMonth == null
                     ? null
-                    : '${MoneyFormat.symbol(perMonth)}/month reaches the '
+                    : tr('{0}/month reaches the '
                           'target by '
-                          '${DateFormat('d MMM yyyy').format(detail.targetDate!)}.',
+                          '{1}.', [MoneyFormat.symbol(perMonth), DateFormat('d MMM yyyy').format(detail.targetDate!)]),
               );
             }(),
           ],
@@ -215,7 +216,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    Tr(
                       'Notes',
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
@@ -234,7 +235,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
           Row(
             children: [
               Expanded(
-                child: Text(
+                child: Tr(
                   'History',
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
@@ -250,7 +251,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
             categoryMap: categoryMap,
             ownIds: {goalId},
             currency: null,
-            emptyMessage: 'No funding activity yet.',
+            emptyMessage: tr('No funding activity yet.'),
             openingBalance:
                 (ref.watch(settingsProvider).valueOrNull?.showRunningBalance ??
                     false)
@@ -315,8 +316,8 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
           children: [
             AppListTile(
               leading: const AppIcon(Icons.tune_rounded),
-              title: const Text('Fix starting amount'),
-              subtitle: const Text(
+              title: const Tr('Fix starting amount'),
+              subtitle: const Tr(
                 'Correct "Saved" if it opened already showing money you '
                 "hadn't actually put in — common right after updating from "
                 '1.3.0.',
@@ -326,8 +327,8 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
             ),
             AppListTile(
               leading: const AppIcon(Icons.archive_outlined),
-              title: const Text('Archive'),
-              subtitle: const Text(
+              title: const Tr('Archive'),
+              subtitle: const Tr(
                 'Hides it from active goals. Its money and history stay.',
               ),
               onTap: () => Navigator.of(sheetContext).pop(_GoalAction.archive),
@@ -337,13 +338,13 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
                 Icons.delete_outline,
                 color: Theme.of(sheetContext).colorScheme.error,
               ),
-              title: Text(
+              title: Tr(
                 'Delete',
                 style: TextStyle(
                   color: Theme.of(sheetContext).colorScheme.error,
                 ),
               ),
-              subtitle: const Text(
+              subtitle: const Tr(
                 'Only for a goal with no funding history yet.',
               ),
               onTap: () => Navigator.of(sheetContext).pop(_GoalAction.delete),
@@ -373,12 +374,12 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
     final newAmount = await showAppDialog<Money>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Fix starting amount'),
+        title: const Tr('Fix starting amount'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            const Tr(
               'Sets "Saved" directly — it does not create or change any '
               'transaction.',
             ),
@@ -386,7 +387,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
             AmountKeypadField(
               controller: controller,
               autofocus: true,
-              label: 'Saved so far',
+              label: tr('Saved so far'),
               yieldTo: const [],
             ),
           ],
@@ -394,7 +395,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           FilledButton(
             onPressed: () {
@@ -404,14 +405,14 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
                   ..hideCurrentSnackBar()
                   ..showSnackBar(
                     const SnackBar(
-                      content: Text('Enter a valid amount, zero or more.'),
+                      content: Tr('Enter a valid amount, zero or more.'),
                     ),
                   );
                 return;
               }
               Navigator.of(dialogContext).pop(amount);
             },
-            child: const Text('Save'),
+            child: const Tr('Save'),
           ),
         ],
       ),
@@ -432,13 +433,13 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
       if (!context.mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text("Couldn't save: $e")));
+        ..showSnackBar(SnackBar(content: Text(tr("Couldn't save: {0}", [e]))));
       return;
     }
     if (!context.mounted) return;
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Starting amount updated')));
+      ..showSnackBar(const SnackBar(content: Tr('Starting amount updated')));
   }
 
   Future<void> _confirmArchive(
@@ -451,19 +452,19 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Archive "${progress.account.name}"?'),
-        content: const Text(
+        title: Text(tr('Archive "{0}"?', [progress.account.name])),
+        content: const Tr(
           "It stays in your history and net worth — this only hides it from "
           'the active goals list.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Archive'),
+            child: const Tr('Archive'),
           ),
         ],
       ),
@@ -474,7 +475,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
     navigator.pop();
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Goal archived')));
+      ..showSnackBar(const SnackBar(content: Tr('Goal archived')));
   }
 
   Future<void> _confirmDelete(
@@ -487,22 +488,22 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text('Delete "${progress.account.name}"?'),
-        content: const Text(
+        title: Text(tr('Delete "{0}"?', [progress.account.name])),
+        content: const Tr(
           'Permanent. A goal that has ever been funded refuses to delete — '
           'archive it instead.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(dialogContext).colorScheme.error,
             ),
-            child: const Text('Delete'),
+            child: const Tr('Delete'),
           ),
         ],
       ),
@@ -518,7 +519,7 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          SnackBar(content: Text(e.message?.toString() ?? 'Could not delete.')),
+          SnackBar(content: Text(e.message?.toString() ?? tr('Could not delete.'))),
         );
       return;
     }
@@ -530,9 +531,9 @@ class SavingsGoalDetailScreen extends ConsumerWidget {
         SnackBar(
           content: Text(
             rtaAutoDisabled
-                ? 'Goal deleted. Ready to Assign turned off — no accounts '
-                      'left in the pool.'
-                : 'Goal deleted',
+                ? tr('Goal deleted. Ready to Assign turned off — no accounts '
+                      'left in the pool.')
+                : tr('Goal deleted'),
           ),
         ),
       );
@@ -609,13 +610,13 @@ class _FundsSheetState extends ConsumerState<_FundsSheet> {
   Future<void> _save() async {
     final amount = Money.tryParse(_amountController.text);
     if (amount == null || !amount.isPositive) {
-      _showError('Enter an amount greater than zero.');
+      _showError(tr('Enter an amount greater than zero.'));
       return;
     }
     final otherId = _otherAccountId;
     if (otherId == null) {
       _showError(
-        widget.isAdd ? 'Choose a source account.' : 'Choose where it goes.',
+        widget.isAdd ? tr('Choose a source account.') : tr('Choose where it goes.'),
       );
       return;
     }
@@ -638,25 +639,22 @@ class _FundsSheetState extends ConsumerState<_FundsSheet> {
     } on ArgumentError catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      _showError(e.message?.toString() ?? 'Could not save.');
+      _showError(e.message?.toString() ?? tr('Could not save.'));
     } catch (_) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      _showError('Could not save.');
+      _showError(tr('Could not save.'));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Any account, goal or loan but this goal (GitHub #196): goals used as
+    // pockets move money between each other, and a pocket can pay a loan.
     final accounts =
         (ref.watch(balanceAccountsProvider).valueOrNull ?? const [])
-            .where(
-              (a) =>
-                  a.id != widget.goalAccountId &&
-                  a.type != AccountType.goal &&
-                  a.type != AccountType.loan,
-            )
+            .where((a) => a.id != widget.goalAccountId)
             .toList();
     final categories = widget.isAdd
         ? [
@@ -684,7 +682,7 @@ class _FundsSheetState extends ConsumerState<_FundsSheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            widget.isAdd ? 'Add funds' : 'Withdraw',
+            widget.isAdd ? tr('Add funds') : tr('Withdraw'),
             style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w700,
             ),
@@ -694,11 +692,18 @@ class _FundsSheetState extends ConsumerState<_FundsSheet> {
             initialValue: _otherAccountId,
             isExpanded: true,
             decoration: InputDecoration(
-              labelText: widget.isAdd ? 'From' : 'To',
+              labelText: widget.isAdd ? tr('From') : tr('To'),
             ),
             items: [
               for (final a in accounts)
-                DropdownMenuItem(value: a.id, child: Text(a.name)),
+                DropdownMenuItem(
+                  value: a.id,
+                  child: Text(switch (a.type) {
+                    AccountType.goal => tr('{0} · Goal', [a.name]),
+                    AccountType.loan => tr('{0} · Loan', [a.name]),
+                    _ => a.name,
+                  }, overflow: TextOverflow.ellipsis),
+                ),
             ],
             onChanged: (v) => setState(() => _otherAccountId = v),
           ),
@@ -706,7 +711,7 @@ class _FundsSheetState extends ConsumerState<_FundsSheet> {
           AmountKeypadField(
             controller: _amountController,
             autofocus: true,
-            label: 'Amount',
+            label: tr('Amount'),
             yieldTo: const [],
           ),
           if (widget.isAdd) ...[
@@ -714,11 +719,11 @@ class _FundsSheetState extends ConsumerState<_FundsSheet> {
             DropdownButtonFormField<int?>(
               initialValue: _categoryId,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Category (optional)',
+              decoration: InputDecoration(
+                labelText: tr('Category (optional)'),
               ),
               items: [
-                const DropdownMenuItem(value: null, child: Text('None')),
+                const DropdownMenuItem(value: null, child: Tr('None')),
                 for (final c in categories)
                   DropdownMenuItem(value: c.id, child: Text(c.name)),
               ],
@@ -734,7 +739,7 @@ class _FundsSheetState extends ConsumerState<_FundsSheet> {
                     width: 22,
                     child: CircularProgressIndicator(strokeWidth: 2.4),
                   )
-                : Text(widget.isAdd ? 'Add funds' : 'Withdraw'),
+                : Text(widget.isAdd ? tr('Add funds') : tr('Withdraw')),
           ),
         ],
       ),

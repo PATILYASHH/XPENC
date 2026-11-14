@@ -14,6 +14,7 @@ import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 import '../modes/mode_sandbox_views.dart';
+import '../../core/l10n/l10n.dart';
 
 /// A top-level category paired with its live (non-archived) children, in the
 /// tree shape the budgets list renders — see [_categoryTree].
@@ -64,23 +65,23 @@ class BudgetsScreen extends ConsumerWidget {
     final progress = ref.watch(budgetProgressProvider);
     final progressById = {for (final p in progress) p.category.id: p};
     final shortcuts = [
-      const ModuleShortcut(
+      ModuleShortcut(
         Icons.category_outlined,
-        'Categories',
+        tr('Categories'),
         '/more/categories',
       ),
       if (ref.watch(appModeProvider) == AppMode.pro &&
           ref.watch(rtaEnabledProvider))
-        const ModuleShortcut(
+        ModuleShortcut(
           Icons.savings_outlined,
-          'Ready to Assign',
+          tr('Ready to Assign'),
           '/more/ready-to-assign',
         ),
-      const ModuleShortcut(Icons.autorenew_rounded, 'Auto', '/more/auto'),
-      const ModuleShortcut(Icons.insights_outlined, 'Stats', '/more/stats'),
-      const ModuleShortcut(
+      ModuleShortcut(Icons.autorenew_rounded, tr('Auto'), '/more/auto'),
+      ModuleShortcut(Icons.insights_outlined, tr('Stats'), '/more/stats'),
+      ModuleShortcut(
         Icons.tune_rounded,
-        'Budget cycle',
+        tr('Budget cycle'),
         '/more/settings/mode-budgeting',
       ),
     ];
@@ -106,7 +107,7 @@ class BudgetsScreen extends ConsumerWidget {
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Text(
-              'Could not load budgets.\n$e',
+              tr('Could not load budgets.\n{0}', [e]),
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(color: cs.error),
             ),
@@ -127,11 +128,11 @@ class BudgetsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppTopBar(
-        title: const Text('Budgets'),
+        title: const Tr('Budgets'),
         actions: [
           IconButton(
             icon: const AppIcon(Icons.picture_as_pdf_outlined),
-            tooltip: 'Download budget statement',
+            tooltip: tr('Download budget statement'),
             onPressed: () => _downloadBudgetStatement(context, ref),
           ),
         ],
@@ -142,7 +143,7 @@ class BudgetsScreen extends ConsumerWidget {
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Text(
-              'Could not load budgets.\n$e',
+              tr('Could not load budgets.\n{0}', [e]),
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(color: cs.error),
             ),
@@ -183,7 +184,7 @@ class BudgetsScreen extends ConsumerWidget {
       const SizedBox(height: 12),
       ModuleShortcuts(shortcuts, padding: EdgeInsets.zero),
       const SizedBox(height: 16),
-      Text(
+      Tr(
         'Categories',
         style: theme.textTheme.titleSmall?.copyWith(color: cs.onSurfaceVariant),
       ),
@@ -191,7 +192,7 @@ class BudgetsScreen extends ConsumerWidget {
       if (categories.isEmpty)
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 24),
-          child: Text(
+          child: Tr(
             'No money-out categories yet.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
@@ -217,7 +218,7 @@ class BudgetsScreen extends ConsumerWidget {
           ],
         ),
       const SizedBox(height: 8),
-      Text(
+      Tr(
         'Budgets only count money out. Transfers between your own '
         'accounts are never counted.',
         style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
@@ -240,23 +241,23 @@ class BudgetsScreen extends ConsumerWidget {
     final service = ref.read(backupServiceProvider);
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Generating statement...')));
+      ..showSnackBar(const SnackBar(content: Tr('Generating statement...')));
     try {
       final file = await service.writeBudgetStatementPdf(
         month,
         ref.read(budgetStartDayProvider),
       );
-      await service.share(file, subject: 'Budget statement');
+      await service.share(file, subject: tr('Budget statement'));
       if (!context.mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text('Exported ${file.name}')));
+        ..showSnackBar(SnackBar(content: Text(tr('Exported {0}', [file.name]))));
     } catch (e) {
       if (!context.mounted) return;
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          SnackBar(content: Text("Couldn't generate statement: $e")),
+          SnackBar(content: Text(tr("Couldn't generate statement: {0}", [e]))),
         );
     }
   }
@@ -270,7 +271,7 @@ class BudgetsScreen extends ConsumerWidget {
       initialDate: now,
       firstDate: DateTime(2000),
       lastDate: now,
-      helpText: 'Pick any day in the month to statement',
+      helpText: tr('Pick any day in the month to statement'),
     );
     if (picked == null) return null;
     return DateTime(picked.year, picked.month);
@@ -300,7 +301,7 @@ class _SummaryCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
+            Tr(
               'This month',
               style: theme.textTheme.labelLarge?.copyWith(
                 color: cs.onSurfaceVariant,
@@ -310,9 +311,9 @@ class _SummaryCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Expanded(child: _stat(context, 'Spent', spent)),
+                Expanded(child: _stat(context, tr('Spent'), spent)),
                 Expanded(
-                  child: _stat(context, 'Budgeted', budgeted, alignEnd: true),
+                  child: _stat(context, tr('Budgeted'), budgeted, alignEnd: true),
                 ),
               ],
             ),
@@ -329,10 +330,10 @@ class _SummaryCard extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               budgeted.isZero
-                  ? 'No budgets set yet — tap a category below to add one.'
+                  ? tr('No budgets set yet — tap a category below to add one.')
                   : over
-                  ? '${MoneyFormat.symbol(remaining.abs)} over budget'
-                  : '${MoneyFormat.symbol(remaining)} left to spend',
+                  ? tr('{0} over budget', [MoneyFormat.symbol(remaining.abs)])
+                  : tr('{0} left to spend', [MoneyFormat.symbol(remaining)]),
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: over ? AppColors.expense : cs.onSurfaceVariant,
               ),
@@ -450,7 +451,7 @@ class _BudgetTile extends ConsumerWidget {
                     : theme.textTheme.titleMedium,
               ),
               const SizedBox(height: 2),
-              Text(
+              Tr(
                 'No budget set',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
@@ -461,8 +462,8 @@ class _BudgetTile extends ConsumerWidget {
         ),
         const SizedBox(width: 8),
         compact
-            ? TextButton(onPressed: onTap, child: const Text('Set'))
-            : OutlinedButton(onPressed: onTap, child: const Text('Set')),
+            ? TextButton(onPressed: onTap, child: const Tr('Set'))
+            : OutlinedButton(onPressed: onTap, child: const Tr('Set')),
       ],
     );
   }
@@ -545,7 +546,7 @@ class _BudgetTile extends ConsumerWidget {
         ),
         SizedBox(height: compact ? 4 : 6),
         Text(
-          '${MoneyFormat.symbol(p.spent)} of ${MoneyFormat.symbol(p.effectiveAmount)}',
+          tr('{0} of {1}', [MoneyFormat.symbol(p.spent), MoneyFormat.symbol(p.effectiveAmount)]),
           style: theme.textTheme.bodySmall?.copyWith(
             color: cs.onSurfaceVariant,
           ),
@@ -738,7 +739,7 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
         }
 
         return AlertDialog(
-          title: const Text('Alert at'),
+          title: const Tr('Alert at'),
           content: TextField(
             controller: controller,
             autofocus: true,
@@ -752,9 +753,9 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel'),
+              child: const Tr('Cancel'),
             ),
-            TextButton(onPressed: submit, child: const Text('Add')),
+            TextButton(onPressed: submit, child: const Tr('Add')),
           ],
         );
       },
@@ -767,7 +768,7 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
     final amount = Money.tryParse(_amountCtrl.text);
     if (amount == null || !amount.isPositive) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter an amount greater than zero')),
+        const SnackBar(content: Tr('Enter an amount greater than zero')),
       );
       return;
     }
@@ -783,7 +784,7 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
     } on ArgumentError catch (e) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text(e.message?.toString() ?? 'Could not save budget'),
+          content: Text(e.message?.toString() ?? tr('Could not save budget')),
         ),
       );
       return;
@@ -798,7 +799,7 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
       } on ArgumentError catch (e) {
         messenger.showSnackBar(
           SnackBar(
-            content: Text(e.message?.toString() ?? 'Could not set overflow'),
+            content: Text(e.message?.toString() ?? tr('Could not set overflow')),
           ),
         );
         return;
@@ -834,10 +835,10 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
       final parentProgress = byCategoryId[widget.category.parentId];
       if (parentProgress != null) {
         final parentName =
-            cats[widget.category.parentId]?.name ?? 'the parent category';
+            cats[widget.category.parentId]?.name ?? tr('the parent category');
         hint =
-            "Can't be more than $parentName's "
-            '${MoneyFormat.symbol(parentProgress.budget.amount)} budget.';
+            tr("Can't be more than {0}'s "
+            '{1} budget.', [parentName, MoneyFormat.symbol(parentProgress.budget.amount)]);
       }
     } else {
       BudgetProgress? tightest;
@@ -849,8 +850,8 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
       }
       if (tightest != null) {
         hint =
-            'Must be at least ${MoneyFormat.symbol(tightest.budget.amount)} — '
-            '${tightest.category.name} is already budgeted that much.';
+            tr('Must be at least {0} — '
+            '{1} is already budgeted that much.', [MoneyFormat.symbol(tightest.budget.amount), tightest.category.name]);
       }
     }
 
@@ -919,7 +920,7 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      hasBudget ? 'Edit budget' : 'Set budget',
+                      hasBudget ? tr('Edit budget') : tr('Set budget'),
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -939,7 +940,7 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
           AmountKeypadField(
             controller: _amountCtrl,
             autofocus: !hasBudget,
-            label: 'Monthly budget',
+            label: tr('Monthly budget'),
             yieldTo: [_noteFocus],
           ),
           ..._budgetHint(context),
@@ -951,13 +952,13 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
             maxLength: 200,
             maxLines: 3,
             minLines: 1,
-            decoration: const InputDecoration(
-              labelText: 'Note (optional)',
-              hintText: 'What this budget is for, or anything to remember',
+            decoration: InputDecoration(
+              labelText: tr('Note (optional)'),
+              hintText: tr('What this budget is for, or anything to remember'),
             ),
           ),
           const SizedBox(height: 8),
-          Text('Alert me at', style: theme.textTheme.bodyMedium),
+          Tr('Alert me at', style: theme.textTheme.bodyMedium),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -977,7 +978,7 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
                 ),
               ActionChip(
                 avatar: const AppIcon(Icons.add_rounded, size: 18),
-                label: const Text('Other'),
+                label: const Tr('Other'),
                 onPressed: _addLevel,
               ),
             ],
@@ -985,9 +986,9 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
           const SizedBox(height: 6),
           Text(
             _levels.isEmpty
-                ? "No early alerts — you'll hear only if it goes over."
-                : 'Each one alerts once a budget period. Going over always '
-                      'alerts too.',
+                ? tr("No early alerts — you'll hear only if it goes over.")
+                : tr('Each one alerts once a budget period. Going over always '
+                      'alerts too.'),
             style: theme.textTheme.bodySmall?.copyWith(
               color: cs.onSurfaceVariant,
             ),
@@ -1029,11 +1030,11 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
                   children: [
                     AppSwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text('Rollover'),
+                      title: const Tr('Rollover'),
                       subtitle: Text(
                         _rolloverEnabled
-                            ? 'Unspent budget carries into next period'
-                            : 'Off — each period starts fresh',
+                            ? tr('Unspent budget carries into next period')
+                            : tr('Off — each period starts fresh'),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: cs.onSurfaceVariant,
                         ),
@@ -1043,8 +1044,8 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
                     ),
                     if (_rolloverEnabled) ...[
                       Text(
-                        'Carries in ${_rolloverDecayPct.round()}% of what '
-                        "was left over last period",
+                        tr('Carries in {0}% of what '
+                        "was left over last period", [_rolloverDecayPct.round()]),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: cs.onSurfaceVariant,
                         ),
@@ -1070,7 +1071,7 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
             onPressed: _save,
             child: const Padding(
               padding: EdgeInsets.symmetric(vertical: 4),
-              child: Text('Save'),
+              child: Tr('Save'),
             ),
           ),
           if (hasBudget) ...[
@@ -1078,7 +1079,7 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
             TextButton(
               onPressed: _remove,
               style: TextButton.styleFrom(foregroundColor: AppColors.expense),
-              child: const Text('Remove budget'),
+              child: const Tr('Remove budget'),
             ),
           ],
         ],
@@ -1119,7 +1120,7 @@ class _OverflowTargetTile extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    Tr(
                       'Overflow',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
@@ -1127,8 +1128,8 @@ class _OverflowTargetTile extends ConsumerWidget {
                     ),
                     Text(
                       targetName == null
-                          ? 'Off — spending over budget just shows overspent'
-                          : 'Excess counted against $targetName',
+                          ? tr('Off — spending over budget just shows overspent')
+                          : tr('Excess counted against {0}', [targetName]),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
                       ),
@@ -1203,7 +1204,7 @@ class _OverflowTargetSheet extends ConsumerWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
-              child: Text(
+              child: Tr(
                 'Overflow into which category?',
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w700,
@@ -1212,7 +1213,7 @@ class _OverflowTargetSheet extends ConsumerWidget {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-              child: Text(
+              child: Tr(
                 'Spending over this budget will show up against the chosen '
                 "category's total instead — never the other way around.",
                 style: theme.textTheme.bodySmall?.copyWith(
@@ -1239,7 +1240,7 @@ class _OverflowTargetSheet extends ConsumerWidget {
                     children: [
                       AppListTile(
                         leading: const AppIcon(Icons.block_rounded),
-                        title: const Text('Off'),
+                        title: const Tr('Off'),
                         selected: currentTarget == null,
                         onTap: () => Navigator.of(
                           context,

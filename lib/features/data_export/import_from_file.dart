@@ -10,6 +10,7 @@ import '../../core/platform/platform_features.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import '../connector/connector_inbox_runner.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Import a backup file the app didn't necessarily write itself — any
 /// `.json` produced by "Everything (JSON)" on the Download Data screen or
@@ -43,7 +44,7 @@ Future<void> importDataFromFile(
     if (!context.mounted) return;
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text("Couldn't open a file: $e")));
+      ..showSnackBar(SnackBar(content: Text(tr("Couldn't open a file: {0}", [e]))));
     return;
   }
   if (picked == null || picked.files.isEmpty) return; // cancelled
@@ -59,14 +60,14 @@ Future<void> importDataFromFile(
     } else if (file.path != null) {
       bytes = await File(file.path!).readAsBytes();
     } else {
-      throw const FormatException('empty selection');
+      throw FormatException(tr('empty selection'));
     }
     content = utf8.decode(bytes);
   } catch (_) {
     if (!context.mounted) return;
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text("Couldn't read that file.")));
+      ..showSnackBar(const SnackBar(content: Tr("Couldn't read that file.")));
     return;
   }
 
@@ -74,24 +75,24 @@ Future<void> importDataFromFile(
   final confirmed = await showAppDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: const Text('Import this file?'),
+      title: const Tr('Import this file?'),
       content: Text(
-        'Importing "${file.name}" replaces ALL current data on this phone — '
+        tr('Importing "{0}" replaces ALL current data on this phone — '
         'every account, transaction, budget and person — with its contents. '
         'A safety copy of your current data is saved first, so this can be '
-        'undone by restoring that copy.',
+        'undone by restoring that copy.', [file.name]),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Cancel'),
+          child: const Tr('Cancel'),
         ),
         TextButton(
           style: TextButton.styleFrom(
             foregroundColor: Theme.of(dialogContext).colorScheme.error,
           ),
           onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: const Text('Replace everything'),
+          child: const Tr('Replace everything'),
         ),
       ],
     ),
@@ -108,7 +109,7 @@ Future<void> importDataFromFile(
       ..hideCurrentSnackBar()
       ..showSnackBar(
         const SnackBar(
-          content: Text(
+          content: Tr(
             'Imported. A safety copy of your previous data was saved.',
           ),
         ),
@@ -127,14 +128,14 @@ Future<void> importDataFromFile(
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        SnackBar(content: Text('${e.message} Nothing was changed.')),
+        SnackBar(content: Text(tr('{0} Nothing was changed.', [e.message]))),
       );
   } catch (e) {
     if (!context.mounted) return;
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        SnackBar(content: Text("Couldn't import: $e Nothing was changed.")),
+        SnackBar(content: Text(tr("Couldn't import: {0} Nothing was changed.", [e]))),
       );
   } finally {
     setBusy?.call(false);
@@ -152,19 +153,19 @@ Future<void> _offerConnectorHandoff(
   final tell = await showAppDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: const Text('Let Connector know?'),
-      content: const Text(
+      title: const Tr('Let Connector know?'),
+      content: const Tr(
         'This backup came from Connector. Tell it the import is done, so '
         'backups from this phone carry on syncing from here.',
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Not now'),
+          child: const Tr('Not now'),
         ),
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: const Text('Tell Connector'),
+          child: const Tr('Tell Connector'),
         ),
       ],
     ),
@@ -175,7 +176,7 @@ Future<void> _offerConnectorHandoff(
       ..hideCurrentSnackBar()
       ..showSnackBar(
         const SnackBar(
-          content: Text(
+          content: Tr(
             "Couldn't open Connector. In Connector, tap \"I've imported "
             'it" instead.',
           ),

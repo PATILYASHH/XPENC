@@ -11,6 +11,7 @@ import '../../core/widgets/money_text.dart';
 import '../../data/providers.dart';
 import '../persons/person_avatar.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Who you pay, or who pays you. Derived from the `payee` typed on each
 /// expense or income (GitHub #62) — there is no separate table, so this
@@ -39,26 +40,26 @@ class PayeesScreen extends ConsumerWidget {
               pinned: true,
               flexibleSpace: const GlassScrollEdge(),
               automaticallyImplyLeading: impliesBackArrow(context),
-              title: const Text('Payees'),
+              title: const Tr('Payees'),
             ),
           SliverToBoxAdapter(
             child: _TotalsHeader(net: net, count: summaries.length),
           ),
-          const SliverToBoxAdapter(
+          SliverToBoxAdapter(
             child: ModuleShortcuts([
               ModuleShortcut(
                 Icons.people_alt_outlined,
-                'Persons',
+                tr('Persons'),
                 '/more/persons',
               ),
               ModuleShortcut(
                 Icons.receipt_long_outlined,
-                'Transactions',
+                tr('Transactions'),
                 '/more/transactions',
               ),
               ModuleShortcut(
                 Icons.category_outlined,
-                'Categories',
+                tr('Categories'),
                 '/more/categories',
               ),
             ]),
@@ -121,7 +122,7 @@ class _TotalsHeader extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                count == 1 ? 'Net across 1 payee' : 'Net across $count payees',
+                count == 1 ? tr('Net across 1 payee') : tr('Net across {0} payees', [count]),
                 style: theme.textTheme.labelMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -194,7 +195,7 @@ class _PayeeTile extends StatelessWidget {
       subtitle: Text(
         [
           if (person != null) 'Person',
-          s.count == 1 ? '1 transaction' : '${s.count} transactions',
+          s.count == 1 ? tr('1 transaction') : tr('{0} transactions', [s.count]),
         ].join(' · '),
         style: theme.textTheme.bodySmall?.copyWith(
           color: theme.colorScheme.onSurfaceVariant,
@@ -239,7 +240,7 @@ class _EmptyPayees extends StatelessWidget {
             color: theme.colorScheme.onSurfaceVariant,
           ),
           const SizedBox(height: 16),
-          Text(
+          Tr(
             'No payees yet — name one when you add money in or out to see it here.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(

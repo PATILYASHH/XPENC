@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/widgets/beta_badge.dart';
+import '../../core/l10n/l10n.dart';
 
 /// One payment method's worth of state for a [PersonPaymentRow] — a button
 /// label, the id used to decide whether it's ready, and the launch attempt
@@ -64,8 +65,8 @@ class PersonPaymentRow extends StatelessWidget {
       ..showSnackBar(
         SnackBar(
           content: Text(
-            "Couldn't open ${method.buttonLabel} — copied "
-            "${method.missingLabel} instead",
+            tr("Couldn't open {0} — copied "
+            "{1} instead", [method.buttonLabel, method.missingLabel]),
           ),
         ),
       );

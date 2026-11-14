@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/platform/distribution.dart';
+import '../../core/l10n/l10n.dart';
 
 /// One line item on the What's New screen — what shipped, where to find it,
 /// and what it actually does. Updated by hand alongside CHANGELOG.md each
@@ -10,18 +11,21 @@ import '../../core/platform/distribution.dart';
 class WhatsNewEntry {
   const WhatsNewEntry({
     required this.icon,
-    required this.title,
-    required this.location,
-    required this.description,
+    required String title,
+    required String location,
+    required String description,
     this.aboutConectr = false,
-  });
+  }) : _title = title, _location = location, _description = description;
 
   final IconData icon;
-  final String title;
+  final String _title;
+  String get title => tr(_title);
 
   /// Where to find it, e.g. "Persons → tap a person".
-  final String location;
-  final String description;
+  final String _location;
+  String get location => tr(_location);
+  final String _description;
+  String get description => tr(_description);
 
   /// News of a feature that works with the CONECTR app — left out of
   /// builds that mustn't promote it ([Distribution.promotesConectr]).
@@ -35,6 +39,38 @@ List<WhatsNewEntry> get whatsNewEntries => [
 ];
 
 const _whatsNewEntries = <WhatsNewEntry>[
+  WhatsNewEntry(
+    icon: Icons.translate_rounded,
+    title: 'XPENC in your language',
+    location: 'Settings → Language',
+    description:
+        'English, Hindi, German, Japanese and Russian are built in, and it '
+        'follows your phone. Import a language pack for more.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.event_repeat_rounded,
+    title: 'Yearly Auto rules',
+    location: 'Auto → New rule → Yearly',
+    description:
+        'For an annual subscription or insurance — it repeats on the day '
+        'and month it starts.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.currency_exchange_rounded,
+    title: 'Foreign amounts use your rate',
+    location: 'Add → Foreign currency',
+    description:
+        'With a rate saved in Settings → Currencies, typing what it cost '
+        'there fills in the amount here.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.savings_outlined,
+    title: 'Goals as pockets',
+    location: 'A goal → Add funds / Withdraw',
+    description:
+        'Move money between goals, or pay a loan from one. Hide Transfer '
+        'in / out on any account from Edit account.',
+  ),
   WhatsNewEntry(
     icon: Icons.autorenew_rounded,
     title: 'Card bills that pay themselves',

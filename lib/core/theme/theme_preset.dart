@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'app_colors.dart';
 import 'glass.dart';
 import 'theme_shape.dart';
+import '../../core/l10n/l10n.dart';
 
 /// The looks a user can pick — "Classic, Noir, Glass" is what a person expects
 /// to see. Brightness is a separate, smaller choice ([ThemeChoice.mode]) that
@@ -37,16 +38,18 @@ enum ThemeStyle {
   );
 
   const ThemeStyle({
-    required this.label,
-    required this.description,
+    required String label,
+    required String description,
     required this.icon,
     required this.lightPalette,
     required this.darkPalette,
     required this.shape,
-  });
+  }) : _label = label, _description = description;
 
-  final String label;
-  final String description;
+  final String _label;
+  String get label => tr(_label);
+  final String _description;
+  String get description => tr(_description);
   final IconData icon;
   final Palette lightPalette;
   final Palette darkPalette;

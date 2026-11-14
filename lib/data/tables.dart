@@ -290,6 +290,17 @@ class Accounts extends Table {
   /// in `data/providers.dart`.
   BoolColumn get envelopeMode => boolean().withDefault(const Constant(false))();
 
+  /// Whether this account's page shows the Transfer in shortcut
+  /// (GitHub #199). On by default.
+  BoolColumn get showTransferIn =>
+      boolean().withDefault(const Constant(true))();
+
+  /// Whether this account's page shows the Transfer out shortcut — off for
+  /// money that can't leave, like a vending machine's prepaid balance
+  /// (GitHub #199). On by default.
+  BoolColumn get showTransferOut =>
+      boolean().withDefault(const Constant(true))();
+
   /// Whether this account's balance counts toward Net Worth (dashboard,
   /// Accounts screen total, More screen subtitle — see
   /// `AppDatabase.watchNetWorth`). On by default; a user turns a specific
@@ -1478,6 +1489,11 @@ class Settings extends Table {
   /// (see `ThemeShape.displayFontFamily`/`bodyFontFamily`). Unknown values
   /// degrade to null on read, same convention as [themeName].
   TextColumn get fontFamily => text().nullable()();
+
+  /// The interface language picked in Settings → Language, as an
+  /// `AppLanguage.code` (e.g. `hi`), or null to follow the phone's own
+  /// language (GitHub #191).
+  TextColumn get languageCode => text().nullable()();
 
   /// Extra logical pixels of bottom clearance added app-wide, on top of
   /// whatever the OS reports as the system nav bar's safe-area inset — a

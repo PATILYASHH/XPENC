@@ -12,6 +12,7 @@ import 'stats_modules.dart';
 import 'stats_sections.dart';
 import 'xpenc_score_screen.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// The Stats hub: the XPENC Score up top, this month at a glance, then one
 /// tile per [StatsModule] — each opens a focused screen (cash flow, spending,
@@ -47,33 +48,33 @@ class StatsScreen extends ConsumerWidget {
       children: [
         const XpencScoreCard(),
         const SizedBox(height: 12),
-        const ModuleShortcuts([
+        ModuleShortcuts([
           ModuleShortcut(
             Icons.account_balance_outlined,
-            'Account reports',
+            tr('Account reports'),
             '/more/account-reports',
           ),
           ModuleShortcut(
             Icons.calendar_month_outlined,
-            'Calendar',
+            tr('Calendar'),
             '/more/calendar',
           ),
           ModuleShortcut(
             Icons.category_outlined,
-            'Categories',
+            tr('Categories'),
             '/more/categories',
           ),
           ModuleShortcut(
             Icons.download_outlined,
-            'Download data',
+            tr('Download data'),
             '/more/export',
           ),
         ], padding: EdgeInsets.zero),
         const SizedBox(height: 16),
-        const SectionCaption('This month'),
+        SectionCaption(tr('This month')),
         const ThisMonthSection(),
         const SizedBox(height: 28),
-        const SectionCaption('Explore'),
+        SectionCaption(tr('Explore')),
         for (var i = 0; i < modules.length; i += 2) ...[
           IntrinsicHeight(
             child: Row(
@@ -92,7 +93,7 @@ class StatsScreen extends ConsumerWidget {
           const SizedBox(height: 12),
         ],
         const SizedBox(height: 12),
-        Text(
+        Tr(
           'Transfers between your own accounts are never counted as money in '
           'or money out.',
           textAlign: TextAlign.center,
@@ -107,11 +108,11 @@ class StatsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppTopBar(
-        title: const Text('Stats'),
+        title: const Tr('Stats'),
         actions: [
           IconButton(
             icon: const AppIcon(Icons.picture_as_pdf_outlined),
-            tooltip: 'Download report',
+            tooltip: tr('Download report'),
             onPressed: () => _downloadReport(context, ref, month, showYear),
           ),
         ],
@@ -155,7 +156,7 @@ Future<void> _downloadReport(
   final categories = ref.read(categoryMapProvider);
   messenger
     ..hideCurrentSnackBar()
-    ..showSnackBar(const SnackBar(content: Text('Generating report...')));
+    ..showSnackBar(const SnackBar(content: Tr('Generating report...')));
   try {
     final file = await service.writeIncomeExpenseReportPdf(
       start: start,
@@ -166,16 +167,16 @@ Future<void> _downloadReport(
     );
     await service.share(
       file,
-      subject: 'Money in and out report - $periodLabel',
+      subject: tr('Money in and out report - {0}', [periodLabel]),
     );
     if (!context.mounted) return;
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('Exported ${file.name}')));
+      ..showSnackBar(SnackBar(content: Text(tr('Exported {0}', [file.name]))));
   } catch (e) {
     if (!context.mounted) return;
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text("Couldn't generate report: $e")));
+      ..showSnackBar(SnackBar(content: Text(tr("Couldn't generate report: {0}", [e]))));
   }
 }

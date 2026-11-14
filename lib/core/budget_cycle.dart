@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import '../core/l10n/l10n.dart';
 
 /// Some households get paid on a fixed day other than the 1st — e.g. the
 /// 15th — and want their budgeting "month" to run payday-to-payday instead
@@ -62,8 +63,8 @@ DateTime budgetPeriodAnchorFor(DateTime date, int startDay) {
 
 /// The start day as words: "the 15th", or "the last working day".
 String budgetCycleStartPhrase(int startDay) => startDay == kLastWorkingDay
-    ? 'the last working day'
-    : 'the ${ordinalDay(startDay)}';
+    ? tr('the last working day')
+    : tr('the {0}', [ordinalDay(startDay)]);
 
 /// The exact date range for [anchor]'s period, e.g. "15 Sep – 14 Oct" — only
 /// meaningful once [startDay] moves off the default 1st-of-the-month cycle;
@@ -77,6 +78,8 @@ String budgetPeriodRangeLabel(DateTime anchor, int startDay) {
 
 /// "1st", "15th", "22nd" — the Settings picker's row/chip labels.
 String ordinalDay(int day) {
+  // English only; other languages write the plain number.
+  if (L10n.code != 'en') return '$day';
   if (day >= 11 && day <= 13) return '${day}th';
   return switch (day % 10) {
     1 => '${day}st',

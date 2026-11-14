@@ -11,6 +11,7 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// The shared Ready to Assign figure, pooled across every Envelope-Mode
 /// account (see `readyToAssignProvider` in `data/providers.dart` —
@@ -34,7 +35,7 @@ class ReadyToAssignCard extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  Tr(
                     'Ready to Assign',
                     style: theme.textTheme.labelLarge?.copyWith(
                       color: cs.onSurfaceVariant,
@@ -72,7 +73,7 @@ class ReadyToAssignScreen extends ConsumerWidget {
     final poolAccounts = ref.watch(envelopeModeAccountsProvider);
 
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Ready to Assign')),
+      appBar: AppTopBar(title: const Tr('Ready to Assign')),
       body: poolAccounts.isEmpty
           ? const _EmptyState()
           : ListView(
@@ -82,7 +83,7 @@ class ReadyToAssignScreen extends ConsumerWidget {
                 const SizedBox(height: 16),
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8, left: 4),
-                  child: Text(
+                  child: Tr(
                     'Categories',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -105,7 +106,7 @@ class _EmptyState extends StatelessWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
-        child: Text(
+        child: Tr(
           'Add an account, then come back here to start assigning money '
           'into categories.',
           textAlign: TextAlign.center,
@@ -238,14 +239,14 @@ class _AssignSheetState extends ConsumerState<_AssignSheet> {
     final typed = Money.tryParse(_amountCtrl.text);
     if (typed == null || !typed.isPositive) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter an amount greater than zero')),
+        const SnackBar(content: Tr('Enter an amount greater than zero')),
       );
       return;
     }
     final accountId = _accountId ?? ref.read(defaultEnvelopeAccountIdProvider);
     if (accountId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No account is in Envelope Mode')),
+        const SnackBar(content: Tr('No account is in Envelope Mode')),
       );
       return;
     }
@@ -258,7 +259,7 @@ class _AssignSheetState extends ConsumerState<_AssignSheet> {
       );
     } on ArgumentError catch (e) {
       messenger.showSnackBar(
-        SnackBar(content: Text(e.message?.toString() ?? 'Could not save')),
+        SnackBar(content: Text(e.message?.toString() ?? tr('Could not save'))),
       );
       return;
     }
@@ -305,8 +306,8 @@ class _AssignSheetState extends ConsumerState<_AssignSheet> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Currently ${MoneyFormat.symbol(widget.currentBalance)} · '
-            'Ready to Assign: ${MoneyFormat.symbol(rta)}',
+            tr('Currently {0} · '
+            'Ready to Assign: {1}', [MoneyFormat.symbol(widget.currentBalance), MoneyFormat.symbol(rta)]),
             style: theme.textTheme.bodySmall?.copyWith(
               color: cs.onSurfaceVariant,
             ),
@@ -314,8 +315,8 @@ class _AssignSheetState extends ConsumerState<_AssignSheet> {
           const SizedBox(height: 20),
           SegmentedButton<bool>(
             segments: const [
-              ButtonSegment(value: false, label: Text('Assign')),
-              ButtonSegment(value: true, label: Text('Unassign')),
+              ButtonSegment(value: false, label: Tr('Assign')),
+              ButtonSegment(value: true, label: Tr('Unassign')),
             ],
             selected: {_unassign},
             onSelectionChanged: (s) => setState(() => _unassign = s.first),
@@ -329,7 +330,7 @@ class _AssignSheetState extends ConsumerState<_AssignSheet> {
                     ? _accountId
                     : poolAccounts.first.id,
                 isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Account'),
+                decoration: InputDecoration(labelText: tr('Account')),
                 items: [
                   for (final account in poolAccounts)
                     DropdownMenuItem(
@@ -344,8 +345,8 @@ class _AssignSheetState extends ConsumerState<_AssignSheet> {
             controller: _amountCtrl,
             autofocus: true,
             label: _unassign
-                ? 'Move back to Ready to Assign'
-                : 'Assign from Ready to Assign',
+                ? tr('Move back to Ready to Assign')
+                : tr('Assign from Ready to Assign'),
             yieldTo: const [],
           ),
           const SizedBox(height: 16),
@@ -353,7 +354,7 @@ class _AssignSheetState extends ConsumerState<_AssignSheet> {
             onPressed: _save,
             child: const Padding(
               padding: EdgeInsets.symmetric(vertical: 4),
-              child: Text('Save'),
+              child: Tr('Save'),
             ),
           ),
         ],

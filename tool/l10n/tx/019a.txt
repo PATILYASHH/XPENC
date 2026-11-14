@@ -1,0 +1,134 @@
+@hi
+2780	एक टैप उस खाते को पहले से भरकर ट्रांसफ़र शुरू करता है। घर के नकद को अपना अलग खाता रखें और ATM की तरह उससे वॉलेट में निकालें — खाता जोड़ें → नकद "घर पर नकद (V-ATM)" सुझाता है।
+2781	हर एंट्री के ठीक बाद का बैलेंस दिखता है, बैंक पासबुक की तरह — वही आँकड़ा जो आपका स्टेटमेंट PDF छापता है। डिफ़ॉल्ट रूप से बंद।
+2782	ऑटो ट्रांसफ़र
+2783	तय समय पर अपने ही खातों के बीच पैसा भेजें — बैंक से नकद, कार्ड बिल, लक्ष्य में या लोन की ओर। यह G&L की जगह लेता है; लक्ष्य और लोन के नियम पहले की तरह काम करते हैं।
+2784	उधार दिए और लिए पैसे पर टैग
+2785	किसी भी लेन-देन की तरह एंट्री पर टैग लगाएँ — हर एक व्यक्ति के पेज पर अपने टैग दिखाती है, और जब पैसा किसी खाते से गया हो तो उसके लेन-देन पर भी वे लगते हैं, ताकि टैग से छाँटने पर वह दिखे।
+2786	अपनी मुद्रा बनाएँ
+2787	उस मुद्रा के लिए जो XPENC में नहीं: तीन अक्षर का कोड, चिह्न, नाम और दशमलव स्थान। यह बाक़ी जैसी ही काम करती है — मुख्य मुद्रा, किसी खाते की अपनी, या विनिमय दर के साथ।
+2788	हफ़्ता रविवार या सोमवार से शुरू करें
+2789	कैलेंडर टैब और हर तारीख़ चुनने वाला इसी को मानते हैं। सोमवार डिफ़ॉल्ट है।
+2790	पहुँच बंद हो तो संपर्क बंद रहते हैं
+2791	संपर्क की पहुँच से मना करें, या बंद करें, और "संपर्कों से" वाले सारे बटन चले जाते हैं — XPENC उसके बिना कभी आपकी पता-सूची नहीं खोलता। यहाँ फिर चालू करें तो वे लौट आते हैं।
+2792	आमदनी और ख़र्च
+2793	अब आय और व्यय की जगह "आमदनी" और "ख़र्च" — रिफ़ंड या भोजन कूपन आय नहीं है, और हर भुगतान व्यय नहीं। आपका डेटा और बैकअप नहीं बदलते।
+2794	अपने रंग चुनें
+2795	आमदनी, ख़र्च, ट्रांसफ़र और लोगों के लिए रंग चुनें — नमूनों से या कोई भी हेक्स रंग। लेन-देन के आइकन अपनी श्रेणी, पैसे के रंग, या सबके लिए एक रंग अपना सकते हैं।
+2796	आपके सारे खाते एक कार्ड में
+2797	"एक कार्ड" चुनें और हर खाता व उसका बैलेंस एक नज़र में देखें, स्वाइप की ज़रूरत नहीं। "स्लाइडर" कार्डों की पंक्ति रखता है।
+2798	खाते का आइकन और रंग बदलें
+2799	नाम बदलें और नया रंग व आइकन साथ में चुनें — एक जैसे दिखने वाले दो खातों को अब हटाकर दोबारा बनाने की ज़रूरत नहीं।
+2800	संग्रहित श्रेणी वापस लाएँ
+2801	कोई भी संग्रहित श्रेणी वापस लाएँ — मुख्य श्रेणी अपनी उप-श्रेणियाँ भी लाती है। कभी इस्तेमाल न हुई हमेशा के लिए हटाई जा सकती है।
+2802	किसी की भी फ़ोटो
+2803	अपनी गैलरी से प्रोफ़ाइल फ़ोटो चुनें — संपर्क की ज़रूरत नहीं। यह अवतार के आकार की होकर आपके फ़ोन पर रहती है।
+2804	श्रेणी आइकन के रूप में अपनी इमोजी
+2805	इमोजी के नीचे ➕ दबाएँ और कीबोर्ड से कोई भी इमोजी लिखें — खाने के लिए 🍕, कुत्ते के लिए 🐶। यह जहाँ-जहाँ श्रेणी दिखती है वहाँ दिखती है, और इस्तेमाल की गई इमोजी अगली बार एक टैप दूर रहती हैं।
+2806	iPhone पर XPENC
+2807	वही ऐप, अब SideStore या AltStore से iPhone पर। यहाँ बना बैकअप वहाँ रीस्टोर होता है और उल्टा भी, इसलिए फ़ोन बदलने का मतलब नए सिरे से शुरू करना नहीं।
+2808	PDF या इमेज के रूप में शेयर करें
+2809	साफ़, प्रिंट करने लायक दस्तावेज़ के लिए PDF चुनें — लेन-देन की रसीद, व्यक्ति का चालू बैलेंस वाला स्टेटमेंट, समूह का हर ख़र्च और किसका किस पर बकाया। किसी भी चैट के लिए तैयार सजे कार्ड के लिए इमेज चुनें, गहरा या हल्का।
+2810	लेन-देन को स्क्रीनशॉट से छिपाएँ
+2811	चालू करें और लेन-देन जहाँ भी सूची में हो, धुँधली "छिपा · देखने के लिए दबाकर रखें" पंक्ति के रूप में दिखता है, ताकि स्क्रीनशॉट या रिकॉर्डिंग में सिर्फ़ धुँधलापन आए। देखने के लिए पंक्ति दबाकर रखें — तब और उसका पेज खुला रहने पर स्क्रीनशॉट व रिकॉर्डिंग बंद रहती हैं।
+2812	डैशबोर्ड को अपना बनाएँ
+2813	विजेट को मनचाहे क्रम में खींचें, जो न चाहें हटाएँ, और नए जोड़ें: नकदी प्रवाह, बचत लक्ष्य, लोन, शॉर्टकट, समूह और ख़रीदारी सूचियाँ।
+2814	किसी भी महीने को पीछे देखें
+2815	कोई पिछला महीना चुनें और डैशबोर्ड उसे वैसा दिखाता है जैसा वह बंद हुआ: शुरुआती और आख़िरी बैलेंस, आख़िरी दिन के खाते के बैलेंस और किसका किस पर बकाया, और उसके अपने लेन-देन।
+2816	संबंधित पेजों के शॉर्टकट
+2817	हर मॉड्यूल में अब उससे जुड़े पेजों के शॉर्टकट की पंक्ति है — खातों से मुद्रा, बजट से श्रेणियाँ, लेन-देन से टैग और प्राप्तकर्ता, और भी। डैशबोर्ड पर कुल पैसा टैप करके चुनें कि कौन-से खाते उसमें गिने जाएँ।
+2818	ग्लास वहीं से उभरता है जहाँ आप टैप करते हैं
+2819	टैब बदलें और ऊपर की पट्टी नए टैब के बटनों के हिसाब से आकार बदलती है। चुकता, संग्रहित और इनबॉक्स ऊपर की पट्टी से नीचे उभरते हैं; नया समूह अपने बटन से उभरता है; "और" के पेज शांत स्प्रिंग पर खुलते हैं। लेन-देन के फ़िल्टर धुँधले ग्लास पर बैठते हैं, और व्यक्ति की फ़ोटो उसके कार्ड को अपने रंग से रोशन करती है।
+2820	तरल की तरह चलता ग्लास
+2821	टैब बार अब उसी में बदल जाता है जो आप उससे खोलते हैं: हर शीट और "और" का हर पेज स्प्रिंग के साथ बार से ऊपर उभरता है और बंद होने पर उसी में सिमट जाता है। झटपट कार्य ➕ को ही फुलाकर पेज बना देता है। लेन-देन में खोज ऊपर की पट्टी को खोज फ़ील्ड बना देती है। और ग्लास पीछे की चीज़ की रोशनी लेता है — टैब बार के नीचे कुछ रंगीन स्क्रॉल करें और उसका किनारा उसी रंग से चमकता है।
+2822	ग्लास के झटपट कार्य, और सब कुछ और स्मूद
+2823	➕ दबाकर रखें और आपके झटपट कार्य कोने में दो चापों पर उछलकर आते हैं — अँगूठा किसी पर खिसकाकर छोड़ें, और ➕ फूलकर उसका पेज बन जाता है। XPENC अब आपकी स्क्रीन की पूरी रिफ़्रेश दर पर चलता है (जहाँ फ़ोन समर्थन करे, 90/120 Hz), पूरे ग्लास में शांत और स्मूद हलचल के साथ। ऊपर की पट्टी भी अब तैरता ग्लास कैप्सूल है: टैब उसके नीचे स्क्रीन के ऊपर तक स्क्रॉल होते हैं, बड़ा शीर्षक स्क्रॉल करते हुए उसमें उड़ जाता है, और टैब बार महीना चुनने वाले में बदल जाता है। व्यक्ति की फ़ोटो अब उनके लेन-देन पर भी दिखती है, "लोग" पट्टी और उसके स्विच के नीचे स्क्रॉल होता है, और छिपी राशियाँ धुँधले ग्लास में बदल जाती हैं।
+2824	नई थीम: क्लासिक, नुआर और ग्लास
+2825	ग्लास iPhone जैसा लिक्विड ग्लास है: धुँधले कार्ड, फिसलती ग्लास बूँद वाला तैरता टैब बार, ग्लास बटनों के नीचे बड़े शीर्षक, तैरती शीट, iOS आइकन और स्विच, स्वाइप-बैक पेज और उछलता स्क्रॉल — आपकी चुनी पृष्ठभूमि पर: ऑरोरा, सफ़ेद, काला, समुद्र, सूर्यास्त या नेबुला। नुआर (पहले बोल्ड) ज़्यादा भारी और गाढ़ा है और अब इसका हल्का रूप भी है। लाइट, डार्क या सिस्टम अब अलग से चुना जाता है। कलरफ़ुल, मिडनाइट और कोव हटाए गए; अगर आप इनमें से किसी पर थे, तो अब क्लासिक पर हैं, आपकी लाइट या डार्क पसंद के साथ।
+2826	लोग प्राप्तकर्ता के रूप में
+2827	अपने लोगों में से किसी को प्राप्तकर्ता चुनें — जैसे माता-पिता को दिया पैसा जो वापस नहीं आएगा। यह उनके पेज पर छोटी "प्राप्तकर्ता के रूप में" सूची में दिखता है पर लेना/देना में कभी नहीं गिना जाता। लोग या प्राप्तकर्ता सीधे संपर्कों से जोड़ें; पहले से सहेजा व्यक्ति दोबारा इस्तेमाल होता है, कभी दोहराया नहीं जाता। प्राप्तकर्ताओं में "व्यक्ति से जोड़ें" किसी प्राप्तकर्ता को "लोग" के किसी व्यक्ति से जोड़ता है।
+2828	➕ दबाकर रखें और स्क्रीन के बीच 8 शॉर्टकट का घेरा खुलता है — खोलने के लिए किसी की ओर खिसकाएँ, या रद्द करने के लिए बीच के ✕ पर लौटें। कोई भी स्लॉट स्क्रीन, कैलकुलेटर, आमदनी/ख़र्च जोड़ें या सहेजा लेन-देन टेम्पलेट हो सकता है। आपके पुराने 3 शॉर्टकट साथ आते हैं।
+2829	ग़ायब होने की जगह चुकता
+2830	जब किसी का बैलेंस शून्य होता है, XPENC अब पूछता है: चुकता में ले जाएँ, संग्रहित करें, या यहीं रखें — कुछ भी अपने-आप ग़ायब नहीं होता। चुकता लोग और समूह अपना इतिहास रखते हैं और फिर से बकाया होते ही अपने-आप लौट आते हैं।
+2831	व्यक्ति या समूह हटाएँ
+2832	हटाना अब इतिहास होने पर भी काम करता है: हर एंट्री और समूह ख़र्च साथ जाता है, और उनसे हिला पैसा आपके खातों में वापस आता है। पुष्टि वाला डायलॉग बताता है कि ठीक कितना हटेगा।
+2833	FD और RD, सालवार ब्योरे और अग्रिम भुगतान की बचत वाली लोन EMI, सालाना बढ़ोतरी वाली SIP और एकमुश्त, PPF, GST, और भारत (नई बनाम पुरानी व्यवस्था), अमेरिका, ब्रिटेन और जर्मनी के लिए इनकम टैक्स। लिखते ही नतीजे बदलते हैं।
+2834	ऐप नकद ₹100 दिखाता है पर वॉलेट में ₹75 हैं? जितना असल में है वह लिखें और अंतर एक "सुधार" के रूप में सहेजा जाता है — कोई गढ़ा हुआ भुगतान नहीं, और आपका इतिहास जैसा था वैसा रहता है। सुधार कभी आमदनी या ख़र्च नहीं गिने जाते, पर वे XPENC स्कोर की लिखने की आदत घटाते हैं, इसलिए साथ-साथ लिखना अब भी फ़ायदेमंद है।
+2835	खाता रिपोर्ट, नए सिरे से
+2836	किसी भी महीने या साल की आमदनी और ख़र्च, साथ में सात रिपोर्ट: बैलेंस, खातेवार गतिविधि, किसी भी खाते का बैलेंस इतिहास, खातों के बीच ट्रांसफ़र, भुगतान के तरीक़े, कार्ड और पे लेटर (ख़र्च, चुकाया, अगली देय) और खातों की सेहत — शून्य से नीचे, न्यूनतम से कम या बेकार पड़े खाते।
+2837	बरसों पहले शुरू हुए लोन जोड़ें
+2838	तारीख़ें अब 2000 तक पीछे जाती हैं, और पहला ऑटो-भुगतान लोन की अपनी शुरुआती तारीख़ से शुरू हो सकता है — सहेजते ही हर पिछली EMI ब्याज और मूलधन में बँटकर दर्ज हो जाती है। पुरानी तारीख़ें अपना साल दिखाती हैं, ताकि 2017 का भुगतान इस साल का न लगे।
+2839	लोन भुगतान, और साफ़
+2840	EMI के ब्याज को हमेशा एक श्रेणी मिलती है (लोन की, नियम की, या EMI), लोन के ऑटो नियम पर क़र्ज़दाता को प्राप्तकर्ता के रूप में दे सकते हैं, और भुगतान कार्ड अब ब्याज और मूलधन बताता है। ज़्यादा न चुकाने पर लोन स्क्रीन अब "आप बचा रहे हैं" राशि नहीं दिखाती।
+2841	समूह में किसका किस पर बकाया
+2842	हर सदस्य का शुद्ध बैलेंस, समूह का हिसाब चुकाने वाले सबसे कम भुगतान, और हर दो लोगों के बीच का बकाया उसके पीछे के ख़र्चों के साथ। समूह ख़र्च पर टैप करने लायक समूह टैग भी लगता है।
+2843	नीचे की पट्टी के नीचे कुछ नहीं छिपता
+2844	हर सूची की आख़िरी चीज़ अब Android के जेस्चर बार या बटनों से ऊपर तक स्क्रॉल होती है, ताकि आप उस तक पहुँचकर उसे हमेशा दबा सकें।
+2845	संपर्क की पहुँच बंद है। सेटिंग्स → अनुमतियाँ में चालू करें।
+@de
+2780	Ein Tipp startet eine Umbuchung, in der dieses Konto schon eingetragen ist. Führe Bargeld zu Hause als eigenes Konto und hebe davon wie an einem Automaten in deine Geldbörse ab — Konto hinzufügen → Bargeld schlägt „Bargeld zu Hause (V-ATM)“ vor.
+2781	Jeder Eintrag zeigt den Saldo direkt danach, wie ein Sparbuch — dieselbe Zahl, die dein Auszug-PDF druckt. Standardmäßig aus.
+2782	Automatische Umbuchungen
+2783	Bewege Geld nach Plan zwischen deinen eigenen Konten — Bank zu Bargeld, eine Kartenrechnung, in ein Ziel oder für einen Kredit. Ersetzt Z&K; Ziel- und Kreditregeln funktionieren wie bisher.
+2784	Tags für verliehenes und geliehenes Geld
+2785	Tagge einen Eintrag wie jede Buchung — jeder zeigt seine Tags auf der Seite der Person, und wenn das Geld über ein Konto lief, trägt auch dessen Buchung sie, sodass sie beim Filtern nach Tag erscheint.
+2786	Eigene Währung anlegen
+2787	Für eine Währung, die XPENC nicht kennt: ein dreibuchstabiger Code, ein Symbol, ein Name und die Dezimalstellen. Sie funktioniert wie jede andere — als Hauptwährung, als Währung eines Kontos oder mit einem Wechselkurs.
+2788	Woche am Sonntag oder Montag beginnen
+2789	Der Kalender-Tab und jede Datumsauswahl folgen dem. Montag ist Standard.
+2790	Kontakte bleiben zu, wenn der Zugriff aus ist
+2791	Verweigere den Kontaktzugriff oder schalte ihn aus, und jede Taste „aus Kontakten“ verschwindet — XPENC öffnet dein Adressbuch nie ohne ihn. Schalte ihn hier wieder ein, und sie kehren zurück.
+2792	Einnahmen und Ausgaben
+2793	Aus „Einkommen“ und „Aufwand“ werden Einnahmen und Ausgaben — eine Erstattung oder ein Essensgutschein ist kein Einkommen, und nicht jede Zahlung ist Aufwand. Deine Daten und Backups ändern sich nicht.
+2794	Wähle deine eigenen Farben
+2795	Wähle die Farbe für Einnahmen, Ausgaben, Umbuchungen und Personen — aus den Mustern oder als beliebige Hex-Farbe. Buchungssymbole können ihrer Kategorie, der Geldfarbe oder einer Farbe für alle folgen.
+2796	Alle Konten in einer Karte
+2797	Wähle „Eine Karte“, um jedes Konto und seinen Saldo auf einen Blick zu sehen, ohne Wischen. „Schieberegler“ behält die Kartenreihe.
+2798	Symbol und Farbe eines Kontos ändern
+2799	Benenne es um und wähle Farbe und Symbol gleich mit — zwei Konten, die gleich aussahen, müssen nicht mehr gelöscht und neu angelegt werden.
+2800	Eine archivierte Kategorie zurückholen
+2801	Stelle jede archivierte Kategorie wieder her — eine Überkategorie bringt ihre Unterkategorien mit. Eine nie genutzte lässt sich endgültig löschen.
+2802	Ein Foto für jeden
+2803	Wähle ein Profilfoto aus deiner Galerie — kein Kontakt nötig. Es wird auf Avatargröße verkleinert und auf deinem Telefon gespeichert.
+2804	Dein eigenes Emoji als Kategoriesymbol
+2805	Tippe unter Emoji auf ➕ und gib mit deiner Tastatur ein beliebiges Emoji ein — 🍕 für Essen, 🐶 für den Hund. Es erscheint überall, wo die Kategorie erscheint, und benutzte Emojis bleiben fürs nächste Mal einen Tipp entfernt.
+2806	XPENC auf dem iPhone
+2807	Dieselbe App, jetzt über SideStore oder AltStore auf dem iPhone. Ein hier erstelltes Backup lässt sich dort wiederherstellen und umgekehrt — ein Telefonwechsel heißt also nicht, von vorn anzufangen.
+2808	Als PDF oder Bild teilen
+2809	Wähle PDF für ein sauberes, druckbares Dokument — einen Beleg für eine Buchung, einen Auszug mit laufendem Saldo für eine Person, jede Ausgabe und wer wem was schuldet für eine Gruppe. Wähle Bild für eine gestaltete Karte, dunkel oder hell, bereit für jeden Chat.
+2810	Eine Buchung vor Screenshots verbergen
+2811	Schalte es ein, und die Buchung erscheint überall in Listen als mattierte Zeile „Verborgen · zum Ansehen halten“, sodass ein Screenshot oder eine Bildschirmaufnahme nur das Matt erwischt. Halte die Zeile, um sie zu sehen — währenddessen und solange ihre eigene Seite offen ist, sind Screenshots und Aufnahmen blockiert.
+2812	Gestalte deine Übersicht
+2813	Ziehe Widgets in die gewünschte Reihenfolge, entferne, was du nicht brauchst, und füge neue hinzu: Cashflow, Sparziele, Kredite, Verknüpfungen, Gruppen und Einkaufslisten.
+2814	Auf jeden Monat zurückblicken
+2815	Wähle einen vergangenen Monat, und die Übersicht zeigt ihn so, wie er abgeschlossen wurde: Anfangs- und Endsaldo, Kontosalden und wer wem was schuldete am letzten Tag, und seine eigenen Buchungen.
+2816	Verknüpfungen zu verwandten Seiten
+2817	Jedes Modul hat jetzt eine Reihe Verknüpfungen zu den passenden Seiten — Währung von Konten aus, Kategorien von Budgets aus, Tags und Empfänger von Buchungen aus und mehr. Tippe auf der Übersicht auf Gesamtgeld, um zu wählen, welche Konten dazu zählen.
+2818	Glass wächst aus dem, was du antippst
+2819	Wechsle den Tab, und die obere Leiste passt sich den Tasten des neuen Tabs an. „Beglichen“, „Archiviert“ und „Posteingang“ wachsen aus der oberen Leiste nach unten; „Neue Gruppe“ wächst aus ihrer Taste; Seiten aus „Mehr“ öffnen sich mit ruhigerer Federung. Die Buchungsfilter liegen auf mattem Glas, und das Foto einer Person beleuchtet ihre Karte in seiner eigenen Farbe.
+2820	Glass, das sich wie Flüssigkeit bewegt
+2821	Die Tableiste verwandelt sich jetzt in das, was du aus ihr öffnest: Jedes Blatt und jede Seite aus „Mehr“ wächst federnd aus der Leiste hervor und faltet sich beim Schließen wieder hinein. Eine Schnellaktion lässt das ➕ selbst zur Seite anschwellen. Die Suche in den Buchungen macht die obere Leiste zum Suchfeld. Und das Glas nimmt das Licht dessen an, was dahinter liegt — scrolle etwas Buntes unter die Tableiste, und ihr Rand leuchtet in dieser Farbe.
+2822	Glass-Schnellaktionen und alles flüssiger
+2823	Halte ➕, und deine Schnellaktionen springen auf zwei Bögen in die Ecke — schieb den Daumen zu einer und lass los, und das ➕ schwillt zu ihrer Seite an. XPENC läuft jetzt auch mit der vollen Bildwiederholrate deines Bildschirms (90/120 Hz, wo das Telefon es kann), mit ruhigeren, flüssigeren Bewegungen in ganz Glass. Die obere Leiste ist jetzt auch eine schwebende Glaskapsel: Tabs scrollen darunter bis an den oberen Rand, der große Titel fliegt beim Scrollen hinein, und die Tableiste wächst zur Monatsauswahl. Personenfotos erscheinen jetzt auch bei ihren Buchungen, „Personen“ scrollt unter die Leiste und ihren Schalter, und verborgene Beträge werden zu mattem Glas.
+2824	Neue Designs: Klassisch, Noir und Glass
+2825	Glass ist Liquid Glass wie auf dem iPhone: mattierte Karten, eine schwebende Tableiste mit gleitendem Glastropfen, große Titel unter Glastasten, schwebende Blätter, iOS-Symbole und -Schalter, Zurückwischen und federndes Scrollen — auf einem Hintergrund deiner Wahl: Aurora, Weiß, Schwarz, Ozean, Sonnenuntergang oder Nebel. Noir (früher Bold) ist kräftiger und hat jetzt auch eine helle Variante. Hell, Dunkel oder System ist jetzt eine eigene Wahl. Colourful, Midnight und Cove wurden eingestellt; wer eines davon nutzte, ist jetzt auf Klassisch, mit beibehaltener Hell-/Dunkel-Wahl.
+2826	Personen als Empfänger
+2827	Wähle eine deiner Personen als Empfänger — etwa Geld, das du Eltern gibst und das nicht zurückkommt. Es erscheint auf ihrer Seite in einer kleinen Liste „Als Empfänger“, zählt aber nie zu Schulden/Forderungen. Füge Personen oder Empfänger direkt aus Kontakten hinzu; wer schon gespeichert ist, wird wiederverwendet, nie doppelt angelegt. Unter Empfänger verbindet „Mit Person verbinden“ einen Empfänger mit jemandem bei Personen.
+2828	Halte ➕, und ein Ring aus 8 Verknüpfungen öffnet sich in der Bildschirmmitte — schiebe zu einer, um sie zu öffnen, oder zurück zum ✕ in der Mitte, um abzubrechen. Jeder Platz kann ein Bildschirm, ein Rechner, Einnahme/Ausgabe hinzufügen oder eine gespeicherte Buchungsvorlage sein. Deine alten 3 Verknüpfungen werden übernommen.
+2829	Beglichen statt verschwunden
+2830	Erreicht der Saldo einer Person null, fragt XPENC jetzt: Nach „Beglichen“ verschieben, Archivieren oder Hier lassen — nichts verschwindet von selbst. Beglichene Personen und Gruppen behalten ihren Verlauf und kehren von selbst zurück, sobald wieder Geld geschuldet wird.
+2831	Eine Person oder Gruppe löschen
+2832	Löschen klappt jetzt auch mit Verlauf: Jeder Eintrag und jede Gruppenausgabe geht mit, und das dadurch bewegte Geld wird auf deine Konten zurückgebucht. Der Bestätigungsdialog sagt genau, wie viel entfernt wird.
+2833	Festgeld & Sparplan, Kreditrate mit Jahresplan und Ersparnis durch Sondertilgung, Sparplan & Einmalanlage mit jährlicher Erhöhung, PPF, GST und Einkommensteuer für Indien (neues gegen altes Regime), die USA, das Vereinigte Königreich und Deutschland. Die Ergebnisse aktualisieren sich beim Tippen.
+2834	Die App zeigt 100 € in bar, aber deine Geldbörse hat 75 €? Gib ein, was du wirklich hast, und die Differenz wird als eine „Korrektur“ gespeichert — keine erfundene Zahlung, und dein Verlauf bleibt, wie er war. Korrekturen zählen nie als Einnahme oder Ausgabe, senken aber die Erfassungsgewohnheit im XPENC-Score — laufendes Erfassen lohnt sich also weiterhin.
+2835	Kontoberichte, neu gebaut
+2836	Einnahmen und Ausgaben für jeden Monat oder jedes Jahr, plus sieben Berichte: Salden, Aktivität pro Konto, Saldoverlauf für jedes Konto, Umbuchungen zwischen Konten, Zahlungsmittel, Karten & Später zahlen (ausgegeben, zurückgezahlt, nächste Fälligkeit) und Kontogesundheit — Konten unter null, unter ihrem Minimum oder ungenutzt.
+2837	Kredite hinzufügen, die vor Jahren begannen
+2838	Daten reichen jetzt bis 2000 zurück, und die erste automatische Zahlung kann am Startdatum des Kredits beginnen — jede vergangene Rate wird beim Speichern gebucht, aufgeteilt in Zinsen und Tilgung. Ältere Daten zeigen ihr Jahr, sodass eine Zahlung von 2017 nie wie eine von diesem Jahr aussieht.
+2839	Kreditzahlungen, klarer
+2840	Die Zinsen einer Rate bekommen immer eine Kategorie (die des Kredits, der Regel oder „Rate“), du kannst den Kreditgeber in der Auto-Regel eines Kredits als Empfänger angeben, und die Zahlungskarte zeigt jetzt Zinsen und Tilgung. Der Kreditbildschirm zeigt keinen Betrag „Du sparst“ mehr, wenn du nicht extra gezahlt hast.
+2841	Wer schuldet wem in einer Gruppe
+2842	Der Nettosaldo jedes Mitglieds, die wenigsten Zahlungen, die die Gruppe ausgleichen, und jede Schuld zwischen zwei Personen mit den Ausgaben dahinter. Gruppenausgaben tragen außerdem ein antippbares Gruppen-Tag.
+2843	Nichts mehr unter der Navigationsleiste verborgen
+2844	Der letzte Eintrag jeder Liste scrollt jetzt frei von Androids Gestenleiste oder Tasten, sodass du ihn immer erreichst und antippen kannst.
+2845	Kontaktzugriff ist aus. Schalte ihn unter Einstellungen → Berechtigungen ein.

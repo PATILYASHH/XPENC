@@ -15,6 +15,7 @@ import '../../data/database.dart';
 import '../../data/tables.dart';
 import '../persons/person_avatar.dart' show personInitials;
 import 'share_models.dart';
+import '../../core/l10n/l10n.dart';
 
 /// The shareable image cards — a transaction receipt, a person's balance,
 /// a group's spend. Each is a fixed 360-wide layout, captured at 3× into a
@@ -206,8 +207,8 @@ class _Frame extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    'Tracked with ${AppInfo.name} · '
-                    '${AppInfo.websiteUrl.replaceFirst('https://', '')}',
+                    tr('Tracked with {0} · '
+                    '{1}', [AppInfo.name, AppInfo.websiteUrl.replaceFirst('https://', '')]),
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 11, color: p.faint),
                   ),
@@ -547,6 +548,8 @@ class _ListLine extends StatelessWidget {
   }
 }
 
+/// "+ 3 more entries" under a cut-off list. [one] and [many] are whole
+/// English phrases, so each language translates the noun with its count.
 class _MoreLine extends StatelessWidget {
   const _MoreLine(this.p, this.count, this.one, this.many);
 
@@ -561,7 +564,7 @@ class _MoreLine extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 6),
       child: Text(
-        '+ $count more ${count == 1 ? one : many}',
+        plural(count, one, many),
         textAlign: TextAlign.center,
         style: TextStyle(fontSize: 11.5, color: p.faint),
       ),
@@ -613,7 +616,7 @@ class _PayStub extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                Tr(
                   'SCAN TO PAY',
                   style: TextStyle(
                     fontSize: 10.5,
@@ -639,7 +642,7 @@ class _PayStub extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  payTo == null ? qr.method : '${qr.method} · to $payTo',
+                  payTo == null ? qr.method : tr('{0} · to {1}', [qr.method, payTo]),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -776,7 +779,7 @@ class TransactionShareCard extends StatelessWidget {
                 if (data.category != null)
                   _DetailRow(
                     p,
-                    'Category',
+                    tr('Category'),
                     value: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -810,7 +813,7 @@ class TransactionShareCard extends StatelessWidget {
                 if (data.splits.isNotEmpty)
                   _DetailRow(
                     p,
-                    'Split',
+                    tr('Split'),
                     value: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
@@ -843,21 +846,21 @@ class TransactionShareCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                _DetailRow(p, 'Account', text: data.account),
+                _DetailRow(p, tr('Account'), text: data.account),
                 if (data.fundedFrom != null)
-                  _DetailRow(p, 'Funded from', text: data.fundedFrom),
+                  _DetailRow(p, tr('Funded from'), text: data.fundedFrom),
                 if (data.payee != null)
-                  _DetailRow(p, 'Payee', text: data.payee),
+                  _DetailRow(p, tr('Payee'), text: data.payee),
                 if (data.person != null && data.payee == null)
-                  _DetailRow(p, 'Person', text: data.person),
+                  _DetailRow(p, tr('Person'), text: data.person),
                 if (data.foreign case (final m, final c)?)
-                  _DetailRow(p, 'Original', text: _money(m, c)),
+                  _DetailRow(p, tr('Original'), text: _money(m, c)),
                 if (data.received case (final m, final c)?)
-                  _DetailRow(p, 'Arrived as', text: _money(m, c)),
+                  _DetailRow(p, tr('Arrived as'), text: _money(m, c)),
                 if (data.tags.isNotEmpty)
                   _DetailRow(
                     p,
-                    'Tags',
+                    tr('Tags'),
                     value: Wrap(
                       alignment: WrapAlignment.end,
                       spacing: 6,
@@ -869,7 +872,7 @@ class TransactionShareCard extends StatelessWidget {
                     ),
                   ),
                 if (data.rule != null)
-                  _DetailRow(p, 'Auto rule', text: data.rule),
+                  _DetailRow(p, tr('Auto rule'), text: data.rule),
                 if (data.note != null) ...[
                   const SizedBox(height: 8),
                   Container(
@@ -972,8 +975,8 @@ class PersonShareCard extends StatelessWidget {
                           ),
                           const SizedBox(height: 1),
                           Text(
-                            '${period.label} · $count '
-                            '${count == 1 ? 'entry' : 'entries'}',
+                            '${period.label} · '
+                            '${plural(count, '1 entry', '{0} entries')}',
                             style: TextStyle(fontSize: 12, color: p.muted),
                           ),
                         ],
@@ -996,7 +999,7 @@ class PersonShareCard extends StatelessWidget {
                 _Hero(_money(balance.abs, currency), accent),
                 const SizedBox(height: 4),
                 Text(
-                  'Balance as of ${DateFormat('d MMM yyyy').format(DateTime.now())}',
+                  tr('Balance as of {0}', [DateFormat('d MMM yyyy').format(DateTime.now())]),
                   style: TextStyle(fontSize: 11.5, color: p.faint),
                 ),
                 const SizedBox(height: 18),
@@ -1014,7 +1017,7 @@ class PersonShareCard extends StatelessWidget {
                     Expanded(
                       child: _Stat(
                         p,
-                        '${person.name} gave',
+                        tr('{0} gave', [person.name]),
                         _money(ledger.theyGave, currency),
                         caption: period.label,
                       ),
@@ -1032,13 +1035,18 @@ class PersonShareCard extends StatelessWidget {
               children: [
                 _SectionLabel(
                   p,
-                  count > maxLines ? 'Latest entries' : 'Entries',
+                  count > maxLines ? tr('Latest entries') : tr('Entries'),
                 ),
                 if (recent.isEmpty)
-                  _Empty(p, 'No entries in this period.')
+                  _Empty(p, tr('No entries in this period.'))
                 else
                   for (final line in recent) _entry(p, line.entry, currency),
-                _MoreLine(p, count - recent.length, 'entry', 'entries'),
+                _MoreLine(
+                  p,
+                  count - recent.length,
+                  '+ 1 more entry',
+                  '+ {0} more entries',
+                ),
               ],
             ),
           ),
@@ -1172,7 +1180,7 @@ class GroupShareCard extends StatelessWidget {
                           ),
                           const SizedBox(height: 1),
                           Text(
-                            '$members members · ${period.label}',
+                            tr('{0} members · {1}', [members, period.label]),
                             style: TextStyle(fontSize: 12, color: p.muted),
                           ),
                         ],
@@ -1181,7 +1189,7 @@ class GroupShareCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 24),
-                Text(
+                Tr(
                   'TOTAL SPENT',
                   style: TextStyle(
                     fontSize: 11,
@@ -1194,8 +1202,11 @@ class GroupShareCard extends StatelessWidget {
                 _Hero(_money(slice.total, currency), p.text),
                 const SizedBox(height: 4),
                 Text(
-                  '${slice.expenses.length} '
-                  '${slice.expenses.length == 1 ? 'expense' : 'expenses'}',
+                  plural(
+                    slice.expenses.length,
+                    '1 expense',
+                    '{0} expenses',
+                  ),
                   style: TextStyle(fontSize: 11.5, color: p.faint),
                 ),
                 const SizedBox(height: 18),
@@ -1205,8 +1216,8 @@ class GroupShareCard extends StatelessWidget {
                       child: _Stat(
                         p,
                         owner.name == null
-                            ? 'Your share'
-                            : "${owner.name}'s share",
+                            ? tr('Your share')
+                            : tr("{0}'s share", [owner.name]),
                         _money(slice.myShare, currency),
                         caption: period.label,
                       ),
@@ -1215,15 +1226,15 @@ class GroupShareCard extends StatelessWidget {
                     Expanded(
                       child: _Stat(
                         p,
-                        'Balance today',
+                        tr('Balance today'),
                         _money(balance.abs, currency),
                         caption: balance.isPositive
-                            ? 'Owed to ${owner.object}'
+                            ? tr('Owed to {0}', [owner.object])
                             : balance.isNegative
                             ? (owner.name == null
-                                  ? 'You owe'
-                                  : '${owner.name} owes')
-                            : 'All settled',
+                                  ? tr('You owe')
+                                  : tr('{0} owes', [owner.name]))
+                            : tr('All settled'),
                         color: balanceColor,
                       ),
                     ),
@@ -1238,9 +1249,9 @@ class GroupShareCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _SectionLabel(p, 'Who owes whom', trailing: 'Today'),
+                _SectionLabel(p, tr('Who owes whom'), trailing: tr('Today')),
                 if (debts.isEmpty)
-                  _Empty(p, 'Everyone is settled up.')
+                  _Empty(p, tr('Everyone is settled up.'))
                 else
                   for (final d in debts)
                     Padding(
@@ -1284,16 +1295,21 @@ class GroupShareCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                _MoreLine(p, data.debts.length - debts.length, 'debt', 'debts'),
+                _MoreLine(
+                  p,
+                  data.debts.length - debts.length,
+                  '+ 1 more debt',
+                  '+ {0} more debts',
+                ),
                 const SizedBox(height: 10),
                 _SectionLabel(
                   p,
                   slice.expenses.length > maxExpenses
-                      ? 'Latest expenses'
-                      : 'Expenses',
+                      ? tr('Latest expenses')
+                      : tr('Expenses'),
                 ),
                 if (recent.isEmpty)
-                  _Empty(p, 'No expenses in this period.')
+                  _Empty(p, tr('No expenses in this period.'))
                 else
                   for (final e in recent)
                     _ListLine(
@@ -1303,14 +1319,14 @@ class GroupShareCard extends StatelessWidget {
                       title: data.titleOf(e),
                       subtitle:
                           '${DateFormat('d MMM').format(e.date)} · '
-                          '${e.payerId == null ? '${owner.subject} paid' : '${data.nameOf(e.payerId)} paid'}',
+                          '${tr('{0} paid', [e.payerId == null ? owner.subject : data.nameOf(e.payerId)])}',
                       amount: _money(e.amount, currency),
                     ),
                 _MoreLine(
                   p,
                   slice.expenses.length - recent.length,
-                  'expense',
-                  'expenses',
+                  '+ 1 more expense',
+                  '+ {0} more expenses',
                 ),
               ],
             ),
@@ -1377,7 +1393,7 @@ class ModeShareCard extends StatelessWidget {
                           Text(
                             [
                               ?data.dates,
-                              '${data.days} ${data.days == 1 ? 'day' : 'days'}',
+                              plural(data.days, '1 day', '{0} days'),
                             ].join(' · '),
                             style: TextStyle(fontSize: 12, color: p.muted),
                           ),
@@ -1400,30 +1416,29 @@ class ModeShareCard extends StatelessWidget {
                 _Hero(_money(data.spent, currency), p.text),
                 const SizedBox(height: 4),
                 Text(
-                  '${data.count} '
-                  '${data.count == 1 ? 'transaction' : 'transactions'}',
+                  plural(data.count, '1 transaction', '{0} transactions'),
                   style: TextStyle(fontSize: 11.5, color: p.faint),
                 ),
                 const SizedBox(height: 18),
                 Row(
                   children: [
                     Expanded(
-                      child: _Stat(p, 'Per day', _money(data.perDay, currency)),
+                      child: _Stat(p, tr('Per day'), _money(data.perDay, currency)),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: budget == null
-                          ? _Stat(p, 'Days', '${data.days}')
+                          ? _Stat(p, tr('Days'), '${data.days}')
                           : _Stat(
                               p,
-                              over ? 'Over budget' : 'Under budget',
+                              over ? tr('Over budget') : tr('Under budget'),
                               _money(
                                 over
                                     ? data.spent - budget
                                     : budget - data.spent,
                                 currency,
                               ),
-                              caption: 'of ${_money(budget, currency)}',
+                              caption: tr('of {0}', [_money(budget, currency)]),
                               color: over
                                   ? AppColors.expense
                                   : AppColors.income,
@@ -1440,9 +1455,9 @@ class ModeShareCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _SectionLabel(p, 'Where it went'),
+                _SectionLabel(p, tr('Where it went')),
                 if (cats.isEmpty)
-                  _Empty(p, 'Nothing spent.')
+                  _Empty(p, tr('Nothing spent.'))
                 else
                   for (final c in cats)
                     _ListLine(
@@ -1452,25 +1467,25 @@ class ModeShareCard extends StatelessWidget {
                       title: c.name,
                       subtitle: data.spent.isZero
                           ? ''
-                          : '${(c.amount.paise / data.spent.paise * 100).round()}% of it',
+                          : tr('{0}% of it', [(c.amount.paise / data.spent.paise * 100).round()]),
                       amount: _money(c.amount, currency),
                     ),
                 _MoreLine(
                   p,
                   data.categories.length - cats.length,
-                  'category',
-                  'categories',
+                  '+ 1 more category',
+                  '+ {0} more categories',
                 ),
                 if (owing.isNotEmpty) ...[
                   const SizedBox(height: 10),
-                  _SectionLabel(p, 'Who owes whom'),
+                  _SectionLabel(p, tr('Who owes whom')),
                   for (final x in people)
                     _ListLine(
                       p: p,
                       icon: Icons.person_rounded,
                       color: AppColors.person,
                       title: x.name,
-                      subtitle: x.balance.isPositive ? 'Owes you' : 'You owe',
+                      subtitle: x.balance.isPositive ? tr('Owes you') : tr('You owe'),
                       amount: _money(x.balance.abs, currency),
                       amountColor: x.balance.isPositive
                           ? AppColors.income
@@ -1479,8 +1494,8 @@ class ModeShareCard extends StatelessWidget {
                   _MoreLine(
                     p,
                     owing.length - people.length,
-                    'person',
-                    'people',
+                    '+ 1 more person',
+                    '+ {0} more people',
                   ),
                 ],
               ],

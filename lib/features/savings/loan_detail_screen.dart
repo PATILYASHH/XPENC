@@ -17,6 +17,7 @@ import '../auto/linked_auto_rules_card.dart';
 import 'loan_insights.dart';
 import 'savings_goals_screen.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// One loan: outstanding balance, original amount, repayment progress, and a
 /// "Make a payment" shortcut that posts an ordinary transfer into the loan
@@ -35,8 +36,8 @@ class LoanDetailScreen extends ConsumerWidget {
 
     if (loan == null) {
       return Scaffold(
-        appBar: AppTopBar(title: const Text('Loan')),
-        body: const Center(child: Text('Loan not found')),
+        appBar: AppTopBar(title: const Tr('Loan')),
+        body: const Center(child: Tr('Loan not found')),
       );
     }
 
@@ -52,12 +53,12 @@ class LoanDetailScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const AppIcon(Icons.edit_outlined),
-            tooltip: 'Edit',
+            tooltip: tr('Edit'),
             onPressed: () => openLoanEditor(context, loan),
           ),
           IconButton(
             icon: const AppIcon(Icons.more_vert_rounded),
-            tooltip: 'More',
+            tooltip: tr('More'),
             onPressed: () => _showActions(context, ref, loan),
           ),
         ],
@@ -119,7 +120,7 @@ class LoanDetailScreen extends ConsumerWidget {
                       ? null
                       : () => _openPaymentSheet(context, loan: loan),
                   icon: const AppIcon(Icons.payments_outlined),
-                  label: const Text('Make a payment'),
+                  label: const Tr('Make a payment'),
                 ),
               ),
             ],
@@ -132,19 +133,19 @@ class LoanDetailScreen extends ConsumerWidget {
                 children: [
                   _row(
                     context,
-                    'Outstanding',
+                    tr('Outstanding'),
                     MoneyText(loan.outstanding, color: AppColors.expense),
                   ),
                   _divider(theme),
                   _row(
                     context,
-                    'Original amount',
+                    tr('Original amount'),
                     _plainValue(context, MoneyFormat.symbol(loan.principal)),
                   ),
                   _divider(theme),
                   _row(
                     context,
-                    'Paid so far',
+                    tr('Paid so far'),
                     _plainValue(
                       context,
                       MoneyFormat.symbol(loan.principal - loan.outstanding),
@@ -155,7 +156,7 @@ class LoanDetailScreen extends ConsumerWidget {
                     _divider(theme),
                     _row(
                       context,
-                      'Interest paid',
+                      tr('Interest paid'),
                       _plainValue(
                         context,
                         MoneyFormat.symbol(loan.totalInterestPaid),
@@ -167,7 +168,7 @@ class LoanDetailScreen extends ConsumerWidget {
                     _divider(theme),
                     _row(
                       context,
-                      'Interest rate',
+                      tr('Interest rate'),
                       _plainValue(
                         context,
                         '${_formatRate(detail.interestRatePct!)}% / yr',
@@ -178,7 +179,7 @@ class LoanDetailScreen extends ConsumerWidget {
                     _divider(theme),
                     _row(
                       context,
-                      'Monthly EMI',
+                      tr('Monthly EMI'),
                       _plainValue(context, MoneyFormat.symbol(loan.emi!)),
                     ),
                   ],
@@ -188,11 +189,11 @@ class LoanDetailScreen extends ConsumerWidget {
                     _divider(theme),
                     _row(
                       context,
-                      'Next payment',
+                      tr('Next payment'),
                       _plainValue(
                         context,
-                        '${MoneyFormat.symbol(loan.nextInterest!)} interest + '
-                        '${MoneyFormat.symbol(loan.nextPrincipal!)} principal',
+                        tr('{0} interest + '
+                        '{1} principal', [MoneyFormat.symbol(loan.nextInterest!), MoneyFormat.symbol(loan.nextPrincipal!)]),
                       ),
                     ),
                   ],
@@ -200,7 +201,7 @@ class LoanDetailScreen extends ConsumerWidget {
                     _divider(theme),
                     _row(
                       context,
-                      'Total interest',
+                      tr('Total interest'),
                       _plainValue(
                         context,
                         MoneyFormat.symbol(loan.totalInterestScheduled!),
@@ -211,7 +212,7 @@ class LoanDetailScreen extends ConsumerWidget {
                     _divider(theme),
                     _row(
                       context,
-                      'Total payable',
+                      tr('Total payable'),
                       _plainValue(
                         context,
                         MoneyFormat.symbol(loan.totalPayableScheduled!),
@@ -222,7 +223,7 @@ class LoanDetailScreen extends ConsumerWidget {
                     _divider(theme),
                     _row(
                       context,
-                      "You're saving",
+                      tr("You're saving"),
                       _plainValue(
                         context,
                         loan.monthsSaved != null && loan.monthsSaved! > 0
@@ -237,7 +238,7 @@ class LoanDetailScreen extends ConsumerWidget {
                     _divider(theme),
                     _row(
                       context,
-                      'Status',
+                      tr('Status'),
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -247,7 +248,7 @@ class LoanDetailScreen extends ConsumerWidget {
                             size: 18,
                           ),
                           const SizedBox(width: 6),
-                          Text(
+                          Tr(
                             'Paid off',
                             style: theme.textTheme.bodyLarge?.copyWith(
                               fontWeight: FontWeight.w500,
@@ -273,7 +274,7 @@ class LoanDetailScreen extends ConsumerWidget {
           ],
           if (LoanInsightsSection.canShow(loan)) ...[
             const SizedBox(height: 28),
-            Text(
+            Tr(
               'Insights',
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
@@ -283,7 +284,7 @@ class LoanDetailScreen extends ConsumerWidget {
             LoanInsightsSection(loan: loan),
           ],
           const SizedBox(height: 28),
-          Text(
+          Tr(
             'History',
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
@@ -295,7 +296,7 @@ class LoanDetailScreen extends ConsumerWidget {
             categoryMap: categoryMap,
             ownIds: {accountId},
             currency: null,
-            emptyMessage: 'No payments yet.',
+            emptyMessage: tr('No payments yet.'),
           ),
         ],
       ),
@@ -355,8 +356,8 @@ class LoanDetailScreen extends ConsumerWidget {
           children: [
             AppListTile(
               leading: const AppIcon(Icons.archive_outlined),
-              title: const Text('Archive'),
-              subtitle: const Text(
+              title: const Tr('Archive'),
+              subtitle: const Tr(
                 'Hides it from active loans. Its history stays.',
               ),
               onTap: () => Navigator.of(sheetContext).pop(_LoanAction.archive),
@@ -366,13 +367,13 @@ class LoanDetailScreen extends ConsumerWidget {
                 Icons.delete_outline,
                 color: Theme.of(sheetContext).colorScheme.error,
               ),
-              title: Text(
+              title: Tr(
                 'Delete',
                 style: TextStyle(
                   color: Theme.of(sheetContext).colorScheme.error,
                 ),
               ),
-              subtitle: const Text(
+              subtitle: const Tr(
                 'Only for a loan with no payment history yet.',
               ),
               onTap: () => Navigator.of(sheetContext).pop(_LoanAction.delete),
@@ -400,19 +401,19 @@ class LoanDetailScreen extends ConsumerWidget {
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Archive "${loan.account.name}"?'),
-        content: const Text(
+        title: Text(tr('Archive "{0}"?', [loan.account.name])),
+        content: const Tr(
           "It stays in your history and net worth — this only hides it from "
           'the active loans list.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Archive'),
+            child: const Tr('Archive'),
           ),
         ],
       ),
@@ -423,7 +424,7 @@ class LoanDetailScreen extends ConsumerWidget {
     navigator.pop();
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Loan archived')));
+      ..showSnackBar(const SnackBar(content: Tr('Loan archived')));
   }
 
   Future<void> _confirmDelete(
@@ -436,22 +437,22 @@ class LoanDetailScreen extends ConsumerWidget {
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text('Delete "${loan.account.name}"?'),
-        content: const Text(
+        title: Text(tr('Delete "{0}"?', [loan.account.name])),
+        content: const Tr(
           'Permanent. A loan that has had payments refuses to delete — '
           'archive it instead.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(dialogContext).colorScheme.error,
             ),
-            child: const Text('Delete'),
+            child: const Tr('Delete'),
           ),
         ],
       ),
@@ -467,7 +468,7 @@ class LoanDetailScreen extends ConsumerWidget {
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          SnackBar(content: Text(e.message?.toString() ?? 'Could not delete.')),
+          SnackBar(content: Text(e.message?.toString() ?? tr('Could not delete.'))),
         );
       return;
     }
@@ -479,9 +480,9 @@ class LoanDetailScreen extends ConsumerWidget {
         SnackBar(
           content: Text(
             rtaAutoDisabled
-                ? 'Loan deleted. Ready to Assign turned off — no accounts '
-                      'left in the pool.'
-                : 'Loan deleted',
+                ? tr('Loan deleted. Ready to Assign turned off — no accounts '
+                      'left in the pool.')
+                : tr('Loan deleted'),
           ),
         ),
       );
@@ -646,47 +647,47 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
 
   String _paymentHint() {
     if (!_hasInterest) {
-      return 'Split out the interest part of an EMI — it posts as '
-          'money out instead of reducing the loan balance.';
+      return tr('Split out the interest part of an EMI — it posts as '
+          'money out instead of reducing the loan balance.');
     }
     final scheduled = _scheduledPrincipal;
     final principalText = scheduled != null && _extraPrincipal.isPositive
-        ? '${MoneyFormat.symbol(scheduled)} scheduled + '
-              '${MoneyFormat.symbol(_extraPrincipal)} extra'
+        ? tr('{0} scheduled + '
+              '{1} extra', [MoneyFormat.symbol(scheduled), MoneyFormat.symbol(_extraPrincipal)])
         : MoneyFormat.symbol(_principalPreview);
     final estimated =
         widget.loan.detail.interestRatePct != null && !_interestEditedByUser;
     return estimated
-        ? "Estimated from the loan's rate — edit to match your statement. "
-              'Only $principalText reduces the loan.'
-        : 'Interest posts as real money out; only the rest ($principalText) '
-              'reduces the loan.';
+        ? tr("Estimated from the loan's rate — edit to match your statement. "
+              'Only {0} reduces the loan.', [principalText])
+        : tr('Interest posts as real money out; only the rest ({0}) '
+              'reduces the loan.', [principalText]);
   }
 
   Future<void> _save() async {
     final amount = Money.tryParse(_amountController.text);
     if (amount == null || !amount.isPositive) {
-      _showError('Enter an amount greater than zero.');
+      _showError(tr('Enter an amount greater than zero.'));
       return;
     }
     final sourceId = _sourceAccountId;
     if (sourceId == null) {
-      _showError('Choose a source account.');
+      _showError(tr('Choose a source account.'));
       return;
     }
     Money? interest;
     if (_hasInterest) {
       interest = Money.tryParse(_interestController.text);
       if (interest == null || !interest.isPositive) {
-        _showError('Interest must be greater than zero, or leave it blank.');
+        _showError(tr('Interest must be greater than zero, or leave it blank.'));
         return;
       }
       if (interest.paise > amount.paise) {
-        _showError('Interest cannot be more than the total payment.');
+        _showError(tr('Interest cannot be more than the total payment.'));
         return;
       }
       if (_categoryId == null) {
-        _showError('Pick a category for the interest portion.');
+        _showError(tr('Pick a category for the interest portion.'));
         return;
       }
     }
@@ -710,24 +711,24 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
     } on ArgumentError catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      _showError(e.message?.toString() ?? 'Could not save.');
+      _showError(e.message?.toString() ?? tr('Could not save.'));
     } catch (_) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      _showError('Could not save.');
+      _showError(tr('Could not save.'));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // A goal can pay it too (GitHub #196) — a pocket put aside for the EMI.
+    // Another loan can't: that's refinancing, not a payment.
     final accounts =
         (ref.watch(balanceAccountsProvider).valueOrNull ?? const [])
             .where(
               (a) =>
-                  a.id != widget.loan.account.id &&
-                  a.type != AccountType.goal &&
-                  a.type != AccountType.loan,
+                  a.id != widget.loan.account.id && a.type != AccountType.loan,
             )
             .toList();
     final categories = [
@@ -750,7 +751,7 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
+            Tr(
               'Make a payment',
               style: theme.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w700,
@@ -773,7 +774,7 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          Tr(
                             'Date',
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
@@ -788,7 +789,7 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
                       ),
                     ),
                     IconButton(
-                      tooltip: 'Change time',
+                      tooltip: tr('Change time'),
                       icon: AppIcon(
                         Icons.access_time_rounded,
                         color: theme.colorScheme.onSurfaceVariant,
@@ -803,10 +804,16 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
             DropdownButtonFormField<int>(
               initialValue: _sourceAccountId,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'From'),
+              decoration: InputDecoration(labelText: tr('From')),
               items: [
                 for (final a in accounts)
-                  DropdownMenuItem(value: a.id, child: Text(a.name)),
+                  DropdownMenuItem(
+                    value: a.id,
+                    child: Text(
+                      a.type == AccountType.goal ? tr('{0} · Goal', [a.name]) : a.name,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
               ],
               onChanged: (v) => setState(() => _sourceAccountId = v),
             ),
@@ -815,14 +822,14 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
               controller: _amountController,
               group: _amountGroup,
               autofocus: true,
-              label: 'Amount',
+              label: tr('Amount'),
               yieldTo: const [],
             ),
             const SizedBox(height: 16),
             AmountKeypadField(
               controller: _interestController,
               group: _amountGroup,
-              label: 'Interest (optional)',
+              label: tr('Interest (optional)'),
               hintText: '0.00',
               yieldTo: const [],
             ),
@@ -841,14 +848,14 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
               isExpanded: true,
               decoration: InputDecoration(
                 labelText: _hasInterest
-                    ? 'Interest category'
-                    : 'Category (optional)',
+                    ? tr('Interest category')
+                    : tr('Category (optional)'),
                 helperText: _hasInterest
-                    ? 'Required — tags the interest payment.'
+                    ? tr('Required — tags the interest payment.')
                     : null,
               ),
               items: [
-                const DropdownMenuItem(value: null, child: Text('None')),
+                const DropdownMenuItem(value: null, child: Tr('None')),
                 for (final c in categories)
                   DropdownMenuItem(value: c.id, child: Text(c.name)),
               ],
@@ -863,7 +870,7 @@ class _LoanPaymentSheetState extends ConsumerState<_LoanPaymentSheet> {
                       width: 22,
                       child: CircularProgressIndicator(strokeWidth: 2.4),
                     )
-                  : const Text('Make a payment'),
+                  : const Tr('Make a payment'),
             ),
           ],
         ),

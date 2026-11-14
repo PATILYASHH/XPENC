@@ -5,6 +5,7 @@ import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_surfaces.dart';
 import 'calculator_widgets.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Reducing-balance EMI calculator. Reuses [LoanAmortization] — the same
 /// math behind real loans in Goals & Loans — so the numbers here match what
@@ -74,43 +75,43 @@ class _LoanCalculatorScreenState extends State<LoanCalculatorScreen>
     }
 
     return CalculatorScaffold(
-      title: 'Loan EMI',
+      title: tr('Loan EMI'),
       children: [
         CalcField(
           controller: _principal,
-          label: 'Loan amount',
+          label: tr('Loan amount'),
           prefix: MoneyFormat.inputPrefix,
         ),
-        CalcField(controller: _rate, label: 'Interest rate', suffix: '% p.a.'),
+        CalcField(controller: _rate, label: tr('Interest rate'), suffix: '% p.a.'),
         CalcFieldPair(
           CalcField(
             controller: _years,
-            label: 'Years',
+            label: tr('Years'),
             suffix: 'yrs',
             decimal: false,
           ),
           CalcField(
             controller: _months,
-            label: 'Months',
+            label: tr('Months'),
             suffix: 'mo',
             decimal: false,
           ),
         ),
         const SizedBox(height: 4),
         CalcResultCard(
-          label: 'Monthly EMI',
+          label: tr('Monthly EMI'),
           value: emi,
           format: MoneyFormat.symbol,
           sub: tenure <= 0
-              ? 'Enter a tenure'
-              : 'Total payable ${MoneyFormat.symbol(principal + totalInterest)}',
+              ? tr('Enter a tenure')
+              : tr('Total payable {0}', [MoneyFormat.symbol(principal + totalInterest)]),
           parts: [
-            CalcPart('Principal', principal, cs.primary),
-            CalcPart('Total interest', totalInterest, AppColors.expense),
+            CalcPart(tr('Principal'), principal, cs.primary),
+            CalcPart(tr('Total interest'), totalInterest, AppColors.expense),
           ],
         ),
         const SizedBox(height: 20),
-        Text(
+        Tr(
           'Prepay every month',
           style: theme.textTheme.titleSmall?.copyWith(
             fontWeight: FontWeight.w700,
@@ -119,18 +120,18 @@ class _LoanCalculatorScreenState extends State<LoanCalculatorScreen>
         const SizedBox(height: 10),
         CalcField(
           controller: _extra,
-          label: 'Extra payment on top of EMI',
+          label: tr('Extra payment on top of EMI'),
           prefix: MoneyFormat.inputPrefix,
         ),
         if (withExtra != null && extraInterest != null)
           CalcBreakdownCard(
             rows: [
               CalcRow(
-                'Loan closes in',
-                '${withExtra.length} months (vs $tenure)',
+                tr('Loan closes in'),
+                tr('{0} months (vs {1})', [withExtra.length, tenure]),
               ),
               CalcRow(
-                'Interest saved',
+                tr('Interest saved'),
                 MoneyFormat.symbol(totalInterest - extraInterest),
                 bold: true,
               ),
@@ -138,7 +139,7 @@ class _LoanCalculatorScreenState extends State<LoanCalculatorScreen>
           ),
         if (yearly.isNotEmpty) ...[
           const SizedBox(height: 20),
-          Text(
+          Tr(
             'Year-wise schedule',
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w700,
@@ -151,11 +152,11 @@ class _LoanCalculatorScreenState extends State<LoanCalculatorScreen>
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Column(
                 children: [
-                  const _ScheduleRow(
-                    'Year',
-                    'Principal',
-                    'Interest',
-                    'Balance',
+                  _ScheduleRow(
+                    tr('Year'),
+                    tr('Principal'),
+                    tr('Interest'),
+                    tr('Balance'),
                     header: true,
                   ),
                   for (var y = 0; y < yearly.length; y++)

@@ -5,6 +5,7 @@ import '../../core/money.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/beta_badge.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Shared building blocks for every More → Calculators screen: the page
 /// shell, number fields, the headline result card and breakdown rows.
@@ -78,7 +79,7 @@ class CalculatorScaffold extends StatelessWidget {
           children: [
             ...children,
             const SizedBox(height: 20),
-            Text(
+            Tr(
               footnote,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,

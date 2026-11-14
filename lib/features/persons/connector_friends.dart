@@ -13,6 +13,7 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../connector/connector_controller.dart';
 import 'shared_entries.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Where Connector friends come from here, if anywhere: the Connector app on
 /// Android, the built-in Connector on XPENC web (built with an anon key).
@@ -62,7 +63,7 @@ Future<void> openConnectorForFriends(BuildContext context) async {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          const SnackBar(content: Text("Couldn't open the Connector app.")),
+          const SnackBar(content: Tr("Couldn't open the Connector app.")),
         );
     }
     return;
@@ -107,7 +108,7 @@ Future<void> linkPersonToFriend(
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        SnackBar(content: Text('${person.name} is @${friend.username}')),
+        SnackBar(content: Text(tr('{0} is @{1}', [person.name, friend.username]))),
       );
     // A balance from before linking: offer to start sharing from it.
     final db = ref.read(dbProvider);
@@ -125,7 +126,7 @@ Future<void> linkPersonToFriend(
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Text('@${friend.username} is already ${e.person.name}.'),
+          content: Text(tr('@{0} is already {1}.', [friend.username, e.person.name])),
         ),
       );
   }
@@ -139,19 +140,19 @@ Future<void> confirmUnlinkFriend(
   final ok = await showAppDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: Text('Unlink @${person.remoteUsername}?'),
+      title: Text(tr('Unlink @{0}?', [person.remoteUsername])),
       content: Text(
-        '${person.name} stays, with all their history. They just stop being '
-        'tied to their Connector account.',
+        tr('{0} stays, with all their history. They just stop being '
+        'tied to their Connector account.', [person.name]),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(false),
-          child: const Text('Cancel'),
+          child: const Tr('Cancel'),
         ),
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(true),
-          child: const Text('Unlink'),
+          child: const Tr('Unlink'),
         ),
       ],
     ),
@@ -175,7 +176,7 @@ class ConnectorFriendBadge extends ConsumerWidget {
         child: TextButton.icon(
           onPressed: () => linkPersonToFriend(context, ref, person),
           icon: const AppIcon(Icons.group_outlined, size: 18),
-          label: const Text('Link Connector friend'),
+          label: const Tr('Link Connector friend'),
         ),
       );
     }
@@ -185,8 +186,8 @@ class ConnectorFriendBadge extends ConsumerWidget {
       child: Center(
         child: InputChip(
           avatar: AppIcon(Icons.link_rounded, size: 18, color: cs.secondary),
-          label: Text('@$username · Connector friend'),
-          tooltip: 'Unlink',
+          label: Text(tr('@{0} · Connector friend', [username])),
+          tooltip: tr('Unlink'),
           onPressed: () => confirmUnlinkFriend(context, ref, person),
         ),
       ),
@@ -228,7 +229,7 @@ class _FriendPickerSheet extends ConsumerWidget {
     final List<Widget> body = switch (lookup) {
       AsyncData(value: FriendsLoaded(:final friends, :final updatedAt)) => [
         if (friends.isEmpty) ...[
-          Text(
+          Tr(
             'No friends on Connector yet. Add them there by username, then '
             'come back.',
             style: muted,
@@ -236,8 +237,8 @@ class _FriendPickerSheet extends ConsumerWidget {
           const SizedBox(height: 12),
           openButton(
             PlatformFeatures.connectorFriendsApp
-                ? 'Open Connector'
-                : 'Connector settings',
+                ? tr('Open Connector')
+                : tr('Connector settings'),
           ),
         ] else
           for (final friend in friends)
@@ -249,16 +250,16 @@ class _FriendPickerSheet extends ConsumerWidget {
         if (updatedAt != null) ...[
           const SizedBox(height: 8),
           Text(
-            'As Connector last shared them, '
-            '${DateFormat('d MMM, h:mm a').format(updatedAt)}. Someone '
-            'missing? Open Connector to refresh.',
+            tr('As Connector last shared them, '
+            '{0}. Someone '
+            'missing? Open Connector to refresh.', [DateFormat('d MMM, h:mm a').format(updatedAt)]),
             style: theme.textTheme.bodySmall?.copyWith(
               color: cs.onSurfaceVariant,
             ),
           ),
           if (friends.isNotEmpty) ...[
             const SizedBox(height: 8),
-            openButton('Open Connector'),
+            openButton(tr('Open Connector')),
           ],
         ],
       ],
@@ -267,15 +268,15 @@ class _FriendPickerSheet extends ConsumerWidget {
         const SizedBox(height: 12),
         openButton(
           PlatformFeatures.connectorFriendsApp
-              ? 'Open Connector'
-              : 'Connector settings',
+              ? tr('Open Connector')
+              : tr('Connector settings'),
         ),
       ],
       AsyncData(value: FriendsHidden()) => [
-        Text('Connector isn\'t on this device.', style: muted),
+        Tr('Connector isn\'t on this device.', style: muted),
       ],
       AsyncError() => [
-        Text(
+        Tr(
           "Couldn't load your Connector friends. Check your connection and "
           'try again.',
           style: muted,
@@ -306,22 +307,22 @@ class _FriendPickerSheet extends ConsumerWidget {
                 Expanded(
                   child: Text(
                     linking == null
-                        ? 'Connector friends'
-                        : 'Link ${linking!.name} to…',
+                        ? tr('Connector friends')
+                        : tr('Link {0} to…', [linking!.name]),
                     style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Refresh',
+                  tooltip: tr('Refresh'),
                   icon: const AppIcon(Icons.refresh_rounded),
                   onPressed: () => ref.invalidate(connectorFriendsProvider),
                 ),
               ],
             ),
             const SizedBox(height: 4),
-            Text(
+            Tr(
               'Linking remembers who they are on Connector. Nothing is sent '
               'unless you share an entry with them — then it goes through '
               'the Connector app, and they accept it in their XPENC.',
@@ -362,9 +363,9 @@ class _FriendTile extends StatelessWidget {
       title: Text(friend.name),
       subtitle: Text(
         taken
-            ? '@${friend.username} · already ${linkedTo!.name}'
+            ? tr('@{0} · already {1}', [friend.username, linkedTo!.name])
             : current
-            ? '@${friend.username} · linked now'
+            ? tr('@{0} · linked now', [friend.username])
             : '@${friend.username}',
       ),
       enabled: !taken && !current,

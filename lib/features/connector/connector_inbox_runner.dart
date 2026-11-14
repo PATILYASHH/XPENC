@@ -11,6 +11,7 @@ import '../../core/platform/platform_features.dart';
 import '../../core/routing/app_router.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
+import '../../core/l10n/l10n.dart';
 
 sealed class InboxCheck {
   const InboxCheck();
@@ -162,21 +163,21 @@ Future<bool> askToTakeIn(PendingBackup backup) async {
   final yes = await showAppDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: Text('Newer backup from ${backup.from}'),
+      title: Text(tr('Newer backup from {0}', [backup.from])),
       content: Text(
-        'Made ${_when(backup.backupModifiedAt)}. This phone has changes '
+        tr('Made {0}. This phone has changes '
         "that aren't in it — using it replaces this phone's data (a copy "
         'of it is saved first). Until you choose, Connector keeps backups '
-        'from this phone back.',
+        'from this phone back.', [_when(backup.backupModifiedAt)]),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Not now'),
+          child: const Tr('Not now'),
         ),
         FilledButton(
           onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: const Text('Use it'),
+          child: const Tr('Use it'),
         ),
       ],
     ),
@@ -185,7 +186,7 @@ Future<bool> askToTakeIn(PendingBackup backup) async {
 }
 
 void announceTakenIn(PendingBackup backup) => showAppSnackBar(
-  'Updated with the backup from ${backup.from} '
-  '(${_when(backup.backupModifiedAt)}). A copy of the previous data is in '
-  'Backup & Restore.',
+  tr('Updated with the backup from {0} '
+  '({1}). A copy of the previous data is in '
+  'Backup & Restore.', [backup.from, _when(backup.backupModifiedAt)]),
 );

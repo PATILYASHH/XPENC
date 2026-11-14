@@ -11,6 +11,7 @@ import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart' show UnlockMethod;
 import 'lock_screen_keypad.dart';
+import '../../core/l10n/l10n.dart';
 
 /// A TOTP code is always 6 digits (GitHub #104) — `Totp.provisioningUri`
 /// hard-codes `digits=6`, so entry here matches.
@@ -193,7 +194,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     }
     setState(() {
       _phraseChecking = false;
-      _phraseError = 'Wrong phrase';
+      _phraseError = tr('Wrong phrase');
     });
   }
 
@@ -266,7 +267,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
               padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: Text(
+                child: Tr(
                   'Try another method',
                   style: TextStyle(fontWeight: FontWeight.w700),
                 ),
@@ -298,8 +299,8 @@ class _LockScreenState extends ConsumerState<LockScreen> {
 
   static String _methodLabel(UnlockMethod method) => switch (method) {
     UnlockMethod.pin => 'PIN',
-    UnlockMethod.masterPhrase => 'Master password',
-    UnlockMethod.totp => 'Authenticator app',
+    UnlockMethod.masterPhrase => tr('Master password'),
+    UnlockMethod.totp => tr('Authenticator app'),
   };
 
   @override
@@ -387,7 +388,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                                   context,
                                   otherReadyMethods,
                                 ),
-                                child: const Text('Try another method'),
+                                child: const Tr('Try another method'),
                               ),
                             ],
                           ],
@@ -424,7 +425,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          _error ? 'Wrong PIN' : 'Enter your PIN',
+          _error ? tr('Wrong PIN') : tr('Enter your PIN'),
           style: theme.textTheme.bodyMedium?.copyWith(
             color: _error
                 ? theme.colorScheme.error
@@ -444,7 +445,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
             extraKey: biometricEnabled
                 ? IconButton(
                     icon: const AppIcon(Icons.fingerprint_rounded, size: 28),
-                    tooltip: 'Use biometric unlock',
+                    tooltip: tr('Use biometric unlock'),
                     onPressed: _tryBiometric,
                   )
                 : null,
@@ -466,10 +467,10 @@ class _LockScreenState extends ConsumerState<LockScreen> {
         ? _shownMethod
         : null;
     final fallbackHeading = switch (shownMethod) {
-      UnlockMethod.pin => 'Too many wrong PINs',
-      UnlockMethod.totp => 'Too many wrong codes',
+      UnlockMethod.pin => tr('Too many wrong PINs'),
+      UnlockMethod.totp => tr('Too many wrong codes'),
       UnlockMethod.masterPhrase ||
-      null => 'Too many wrong attempts', // masterPhrase case unreachable
+      null => tr('Too many wrong attempts'), // masterPhrase case unreachable
     };
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -488,7 +489,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
             ),
             const SizedBox(height: 8),
           ],
-          Text(
+          Tr(
             'Enter your master recovery phrase to unlock XPENC.',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: cs.onSurfaceVariant,
@@ -514,7 +515,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          _totpError ? 'Wrong code' : 'Enter your authenticator code',
+          _totpError ? tr('Wrong code') : tr('Enter your authenticator code'),
           style: theme.textTheme.bodyMedium?.copyWith(
             color: _totpError
                 ? theme.colorScheme.error
@@ -562,19 +563,19 @@ class _ScreenshotShortcut extends StatelessWidget {
     final (icon, label, tooltip) = offPending
         ? (
             Icons.hourglass_top_rounded,
-            'Allowed after unlock',
-            'Tap to keep screenshots blocked',
+            tr('Allowed after unlock'),
+            tr('Tap to keep screenshots blocked'),
           )
         : blocked
         ? (
             Icons.no_photography_outlined,
-            'Screenshots blocked',
-            'Allow screenshots after unlocking',
+            tr('Screenshots blocked'),
+            tr('Allow screenshots after unlocking'),
           )
         : (
             Icons.photo_camera_outlined,
-            'Screenshots allowed',
-            'Block screenshots now',
+            tr('Screenshots allowed'),
+            tr('Block screenshots now'),
           );
     return Tooltip(
       message: tooltip,

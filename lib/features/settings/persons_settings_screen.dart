@@ -5,6 +5,7 @@ import '../../core/platform/platform_features.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import 'settings_common.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Persons — how repayments post, and the payment methods & personal IDs
 /// used to request money from someone who owes you. A method's enable
@@ -33,7 +34,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
     final revolutEnabled = ref.watch(revolutEnabledProvider);
 
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Persons')),
+      appBar: AppTopBar(title: const Tr('Persons')),
       body: ListView(
         // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
         padding: EdgeInsets.fromLTRB(
@@ -47,8 +48,8 @@ class PersonsSettingsScreen extends ConsumerWidget {
             child: AppSwitchListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               secondary: const AppIcon(Icons.handshake_outlined),
-              title: const Text('Count repayments as money in'),
-              subtitle: Text(
+              title: const Tr('Count repayments as money in'),
+              subtitle: Tr(
                 'Offers "Mark as repaid" on a person\'s page — a repayment '
                 'posts as money in under a category you choose, instead of '
                 'staying off money in/out like lending normally does.',
@@ -62,11 +63,11 @@ class PersonsSettingsScreen extends ConsumerWidget {
             ),
           ),
 
-          settingsSectionLabel(context, 'Payment methods'),
+          settingsSectionLabel(context, tr('Payment methods')),
           AppCard(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Text(
+              child: Tr(
                 'Turn off any method not used or supported where you are — '
                 'it disappears from person pages instead of sitting there '
                 'disabled. Turn one on to fill in your own ID for it.',
@@ -83,7 +84,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                 AppSwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   title: const Text('UPI'),
-                  subtitle: const Text('India'),
+                  subtitle: const Tr('India'),
                   value: upiEnabled,
                   onChanged: (v) => ref.read(dbProvider).setUpiEnabled(v),
                 ),
@@ -92,12 +93,12 @@ class PersonsSettingsScreen extends ConsumerWidget {
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.qr_code_outlined),
-                    title: const Text('My UPI ID'),
+                    title: const Tr('My UPI ID'),
                     subtitle: Text(
                       (myUpiId?.isNotEmpty ?? false)
                           ? myUpiId!
-                          : 'Needed for the Beta "Request" button on a '
-                                'person who owes you',
+                          : tr('Needed for the Beta "Request" button on a '
+                                'person who owes you'),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
                       ),
@@ -114,8 +115,8 @@ class PersonsSettingsScreen extends ConsumerWidget {
                     Divider(height: 1, indent: 16, color: cs.outline),
                     AppListTile(
                       contentPadding: const EdgeInsets.only(left: 16, right: 8),
-                      title: const Text('Pay without internet (Beta)'),
-                      subtitle: const Text(
+                      title: const Tr('Pay without internet (Beta)'),
+                      subtitle: const Tr(
                         'Send via *99# USSD when you have no data — tap for '
                         'how it works',
                       ),
@@ -137,8 +138,8 @@ class PersonsSettingsScreen extends ConsumerWidget {
               children: [
                 AppSwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  title: const Text('PayPal'),
-                  subtitle: const Text('Worldwide'),
+                  title: const Tr('PayPal'),
+                  subtitle: const Tr('Worldwide'),
                   value: paypalEnabled,
                   onChanged: (v) => ref.read(dbProvider).setPaypalEnabled(v),
                 ),
@@ -147,12 +148,12 @@ class PersonsSettingsScreen extends ConsumerWidget {
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.attach_money_rounded),
-                    title: const Text('My PayPal.me ID'),
+                    title: const Tr('My PayPal.me ID'),
                     subtitle: Text(
                       (myPaypal?.isNotEmpty ?? false)
                           ? myPaypal!
-                          : 'Needed for the Beta "Request" button on a '
-                                'person who owes you',
+                          : tr('Needed for the Beta "Request" button on a '
+                                'person who owes you'),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
                       ),
@@ -161,8 +162,8 @@ class PersonsSettingsScreen extends ConsumerWidget {
                     onTap: () => _showMyIdDialog(
                       context,
                       ref,
-                      title: 'My PayPal.me ID',
-                      hintText: 'e.g. yourname',
+                      title: tr('My PayPal.me ID'),
+                      hintText: tr('e.g. yourname'),
                       currentId: myPaypal,
                       onSave: (id) => ref.read(dbProvider).setMyPaypal(id),
                     ),
@@ -177,7 +178,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
               children: [
                 AppSwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  title: const Text('Venmo'),
+                  title: const Tr('Venmo'),
                   subtitle: const Text('US'),
                   value: venmoEnabled,
                   onChanged: (v) => ref.read(dbProvider).setVenmoEnabled(v),
@@ -187,12 +188,12 @@ class PersonsSettingsScreen extends ConsumerWidget {
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.attach_money_rounded),
-                    title: const Text('My Venmo username'),
+                    title: const Tr('My Venmo username'),
                     subtitle: Text(
                       (myVenmo?.isNotEmpty ?? false)
                           ? myVenmo!
-                          : 'Needed for the Beta "Request" button on a '
-                                'person who owes you (US)',
+                          : tr('Needed for the Beta "Request" button on a '
+                                'person who owes you (US)'),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
                       ),
@@ -201,8 +202,8 @@ class PersonsSettingsScreen extends ConsumerWidget {
                     onTap: () => _showMyIdDialog(
                       context,
                       ref,
-                      title: 'My Venmo username',
-                      hintText: 'e.g. rahul',
+                      title: tr('My Venmo username'),
+                      hintText: tr('e.g. rahul'),
                       currentId: myVenmo,
                       onSave: (id) => ref.read(dbProvider).setMyVenmo(id),
                     ),
@@ -217,7 +218,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
               children: [
                 AppSwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  title: const Text('Cash App'),
+                  title: const Tr('Cash App'),
                   subtitle: const Text('US'),
                   value: cashappEnabled,
                   onChanged: (v) => ref.read(dbProvider).setCashappEnabled(v),
@@ -227,12 +228,12 @@ class PersonsSettingsScreen extends ConsumerWidget {
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.attach_money_rounded),
-                    title: const Text('My Cash App cashtag'),
+                    title: const Tr('My Cash App cashtag'),
                     subtitle: Text(
                       (myCashapp?.isNotEmpty ?? false)
                           ? myCashapp!
-                          : 'Needed for the Beta "Request" button on a '
-                                'person who owes you (US)',
+                          : tr('Needed for the Beta "Request" button on a '
+                                'person who owes you (US)'),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
                       ),
@@ -241,7 +242,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
                     onTap: () => _showMyIdDialog(
                       context,
                       ref,
-                      title: 'My Cash App cashtag',
+                      title: tr('My Cash App cashtag'),
                       hintText: r'e.g. $rahul',
                       currentId: myCashapp,
                       onSave: (id) => ref.read(dbProvider).setMyCashapp(id),
@@ -257,8 +258,8 @@ class PersonsSettingsScreen extends ConsumerWidget {
               children: [
                 AppSwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  title: const Text('Revolut'),
-                  subtitle: const Text('Europe'),
+                  title: const Tr('Revolut'),
+                  subtitle: const Tr('Europe'),
                   value: revolutEnabled,
                   onChanged: (v) => ref.read(dbProvider).setRevolutEnabled(v),
                 ),
@@ -267,12 +268,12 @@ class PersonsSettingsScreen extends ConsumerWidget {
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.attach_money_rounded),
-                    title: const Text('My Revolut.me username'),
+                    title: const Tr('My Revolut.me username'),
                     subtitle: Text(
                       (myRevolut?.isNotEmpty ?? false)
                           ? myRevolut!
-                          : 'Needed for the Beta "Request" button on a '
-                                'person who owes you (Europe)',
+                          : tr('Needed for the Beta "Request" button on a '
+                                'person who owes you (Europe)'),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
                       ),
@@ -281,8 +282,8 @@ class PersonsSettingsScreen extends ConsumerWidget {
                     onTap: () => _showMyIdDialog(
                       context,
                       ref,
-                      title: 'My Revolut.me username',
-                      hintText: 'e.g. rahul',
+                      title: tr('My Revolut.me username'),
+                      hintText: tr('e.g. rahul'),
                       currentId: myRevolut,
                       onSave: (id) => ref.read(dbProvider).setMyRevolut(id),
                     ),
@@ -319,28 +320,28 @@ class PersonsSettingsScreen extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              Tr(
                 'Pay without internet (Beta)',
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 12),
-              Text(
+              Tr(
                 '*99# is NPCI\'s USSD banking service — it sends a UPI '
                 'payment over your SIM\'s signal alone, no data connection '
                 'needed, on almost any phone.',
                 style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(height: 12),
-              Text(
+              Tr(
                 'XPENC can\'t read or answer the *99# menu for you — that '
                 'screen belongs to your phone\'s own dialer, not any app. '
                 'What this does instead:',
                 style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(height: 8),
-              Text(
+              Tr(
                 '1. You enter who you\'re paying (UPI ID or phone number).\n'
                 '2. Tap Dial *99# — XPENC copies it and opens your dialer, '
                 'ready to call.\n'
@@ -354,7 +355,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
               const SizedBox(height: 20),
               FilledButton(
                 onPressed: () => Navigator.of(sheetContext).pop(),
-                child: const Text('Got it'),
+                child: const Tr('Got it'),
               ),
             ],
           ),
@@ -440,7 +441,7 @@ class _MyUpiDialogState extends State<_MyUpiDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('My UPI ID'),
+      title: const Tr('My UPI ID'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -448,18 +449,18 @@ class _MyUpiDialogState extends State<_MyUpiDialog> {
             controller: _idController,
             autofocus: true,
             autocorrect: false,
-            decoration: const InputDecoration(
-              labelText: 'UPI ID',
-              hintText: 'e.g. you@okhdfcbank',
+            decoration: InputDecoration(
+              labelText: tr('UPI ID'),
+              hintText: tr('e.g. you@okhdfcbank'),
             ),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _nameController,
             textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(
-              labelText: 'Your name',
-              hintText: 'Shown to whoever pays your request',
+            decoration: InputDecoration(
+              labelText: tr('Your name'),
+              hintText: tr('Shown to whoever pays your request'),
             ),
           ),
         ],
@@ -467,13 +468,13 @@ class _MyUpiDialogState extends State<_MyUpiDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: const Tr('Cancel'),
         ),
         FilledButton(
           onPressed: () => Navigator.of(
             context,
           ).pop((id: _idController.text, name: _nameController.text)),
-          child: const Text('Save'),
+          child: const Tr('Save'),
         ),
       ],
     );
@@ -522,11 +523,11 @@ class _MyIdDialogState extends State<_MyIdDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: const Tr('Cancel'),
         ),
         FilledButton(
           onPressed: () => Navigator.of(context).pop(_controller.text),
-          child: const Text('Save'),
+          child: const Tr('Save'),
         ),
       ],
     );

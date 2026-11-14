@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart' show DateTimeRange;
 import 'package:intl/intl.dart';
+import '../core/l10n/l10n.dart';
 
 /// ISO 8601 week numbering (Monday-start weeks; week 1 is the week
 /// containing the year's first Thursday, equivalently the week containing
@@ -40,5 +41,5 @@ String weekLabel(DateTime anchor) {
       ? '${range.start.day}–${DateFormat('d MMM').format(range.end)}'
       : '${DateFormat('d MMM').format(range.start)} – '
             '${DateFormat('d MMM').format(range.end)}';
-  return 'Week ${iso.isoWeek}, ${iso.isoYear} · $dateRange';
+  return tr('Week {0}, {1} · {2}', [iso.isoWeek, iso.isoYear, dateRange]);
 }

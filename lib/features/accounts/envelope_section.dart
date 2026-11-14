@@ -6,6 +6,7 @@ import '../../core/widgets/app_surfaces.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart' show AppMode;
+import '../../core/l10n/l10n.dart';
 
 /// The on-budget (pool participation) toggle for [account] — only shown
 /// while Ready to Assign is on globally (GitHub #100 v2); there's nothing to
@@ -36,13 +37,13 @@ class EnvelopeSection extends ConsumerWidget {
         AppCard(
           margin: const EdgeInsets.fromLTRB(20, 8, 20, 4),
           child: AppSwitchListTile(
-            title: const Text('On-budget'),
+            title: const Tr('On-budget'),
             subtitle: Text(
               account.envelopeMode
-                  ? 'In the shared Ready to Assign pool. Money out needs a '
-                        'category.'
-                  : 'Off-budget — balance-only, like a vending-machine key '
-                        'fob. Outside the shared pool.',
+                  ? tr('In the shared Ready to Assign pool. Money out needs a '
+                        'category.')
+                  : tr('Off-budget — balance-only, like a vending-machine key '
+                        'fob. Outside the shared pool.'),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: cs.onSurfaceVariant,
               ),
@@ -59,12 +60,12 @@ class EnvelopeSection extends ConsumerWidget {
                 leading: const AppIcon(Icons.account_balance_wallet_outlined),
                 title: Text(
                   poolSize > 1
-                      ? 'Shares one Ready to Assign pool with '
-                            '${poolSize - 1} other account'
-                            '${poolSize - 1 == 1 ? '' : 's'}'
-                      : 'Its own Ready to Assign pool for now',
+                      ? tr('Shares one Ready to Assign pool with '
+                            '{0} other account'
+                            '{1}', [poolSize - 1, poolSize - 1 == 1 ? '' : 's'])
+                      : tr('Its own Ready to Assign pool for now'),
                 ),
-                subtitle: const Text('View shared budget'),
+                subtitle: const Tr('View shared budget'),
                 trailing: const AppIcon(Icons.chevron_right),
                 onTap: () => context.push('/more/ready-to-assign'),
               ),
@@ -83,8 +84,8 @@ class EnvelopeSection extends ConsumerWidget {
       final confirmed = await showAppDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('Mark this account on-budget?'),
-          content: const Text(
+          title: const Tr('Mark this account on-budget?'),
+          content: const Tr(
             'Money you assign to a category becomes reserved for it. '
             'Unassigned money sits in Ready to Assign. From now on, '
             'money out of this account needs a category.',
@@ -92,11 +93,11 @@ class EnvelopeSection extends ConsumerWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
+              child: const Tr('Cancel'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Turn on'),
+              child: const Tr('Turn on'),
             ),
           ],
         ),
@@ -109,7 +110,7 @@ class EnvelopeSection extends ConsumerWidget {
     if (rtaAutoDisabled && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
+          content: Tr(
             'Ready to Assign turned off — this was the last account in the '
             'pool.',
           ),

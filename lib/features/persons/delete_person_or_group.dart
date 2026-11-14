@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Asks, then permanently deletes [person] via [AppDatabase.deletePerson].
 /// The dialog spells out how much history goes with them, since any money
@@ -19,18 +20,20 @@ Future<bool> confirmDeletePerson(
   if (!context.mounted) return false;
   final confirmed = await _confirm(
     context,
-    title: 'Delete "${person.name}"?',
+    title: tr('Delete "{0}"?', [person.name]),
     body: count == 0
-        ? "This permanently deletes the person. It can't be undone."
-        : 'This permanently deletes the person and their $count '
-              '${count == 1 ? 'entry' : 'entries'}, including their share '
-              'of group expenses. Any money those entries moved through an '
-              "account is reversed. It can't be undone — archive them "
-              'instead to keep the history.',
+        ? tr("This permanently deletes the person. It can't be undone.")
+        : tr(
+            'This permanently deletes the person and their {0}, including '
+            'their share of group expenses. Any money those entries moved '
+            "through an account is reversed. It can't be undone — archive "
+            'them instead to keep the history.',
+            [plural(count, '1 entry', '{0} entries')],
+          ),
   );
   if (!confirmed) return false;
   await db.deletePerson(person.id);
-  if (context.mounted) _say(context, 'Person deleted');
+  if (context.mounted) _say(context, tr('Person deleted'));
   return true;
 }
 
@@ -46,18 +49,20 @@ Future<bool> confirmDeleteGroup(
   if (!context.mounted) return false;
   final confirmed = await _confirm(
     context,
-    title: 'Delete "${group.name}"?',
+    title: tr('Delete "{0}"?', [group.name]),
     body: count == 0
-        ? "This permanently deletes the group. Its members are kept. It "
-              "can't be undone."
-        : 'This permanently deletes the group and its $count '
-              '${count == 1 ? 'expense' : 'expenses'}. The dues and money '
-              'they created are reversed; members are kept. It can\'t be '
-              'undone — archive it instead to keep the history.',
+        ? tr("This permanently deletes the group. Its members are kept. It "
+              "can't be undone.")
+        : tr(
+            'This permanently deletes the group and its {0}. The dues and '
+            "money they created are reversed; members are kept. It can't be "
+            'undone — archive it instead to keep the history.',
+            [plural(count, '1 expense', '{0} expenses')],
+          ),
   );
   if (!confirmed) return false;
   await db.deleteGroup(group.id);
-  if (context.mounted) _say(context, 'Group deleted');
+  if (context.mounted) _say(context, tr('Group deleted'));
   return true;
 }
 
@@ -74,14 +79,14 @@ Future<bool> _confirm(
       actions: [
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(false),
-          child: const Text('Cancel'),
+          child: const Tr('Cancel'),
         ),
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(true),
           style: TextButton.styleFrom(
             foregroundColor: Theme.of(ctx).colorScheme.error,
           ),
-          child: const Text('Delete'),
+          child: const Tr('Delete'),
         ),
       ],
     ),

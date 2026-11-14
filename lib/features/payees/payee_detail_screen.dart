@@ -15,6 +15,7 @@ import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 import '../persons/person_avatar.dart';
+import '../../core/l10n/l10n.dart';
 
 /// One payee's expense/income history (GitHub #62). "Rename" bulk-edits
 /// every transaction that named this payee — renaming to a name that already
@@ -55,7 +56,7 @@ class PayeeDetailScreen extends ConsumerWidget {
               if (pid == null)
                 IconButton(
                   icon: const AppIcon(Icons.edit_outlined),
-                  tooltip: 'Rename',
+                  tooltip: tr('Rename'),
                   onPressed: () => _renameDialog(context, ref),
                 )
               else
@@ -63,7 +64,7 @@ class PayeeDetailScreen extends ConsumerWidget {
                   itemBuilder: (_) => [
                     PopupMenuItem(
                       onTap: () => _disconnect(context, ref, pid),
-                      child: const Text('Disconnect from person'),
+                      child: const Tr('Disconnect from person'),
                     ),
                   ],
                 ),
@@ -79,7 +80,7 @@ class PayeeDetailScreen extends ConsumerWidget {
                   ? FilledButton.tonalIcon(
                       onPressed: () => _connect(context, ref),
                       icon: const AppIcon(Icons.link_rounded),
-                      label: const Text('Connect to person'),
+                      label: const Tr('Connect to person'),
                       style: FilledButton.styleFrom(
                         minimumSize: const Size.fromHeight(48),
                       ),
@@ -93,7 +94,7 @@ class PayeeDetailScreen extends ConsumerWidget {
                               photoPath: person.photoPath,
                               radius: 11,
                             ),
-                      label: const Text('Open person'),
+                      label: const Tr('Open person'),
                       style: FilledButton.styleFrom(
                         minimumSize: const Size.fromHeight(48),
                       ),
@@ -117,7 +118,7 @@ class PayeeDetailScreen extends ConsumerWidget {
             const SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(20, 24, 20, 40),
-                child: Center(child: Text('No payments yet.')),
+                child: Center(child: Tr('No payments yet.')),
               ),
             )
           else
@@ -159,7 +160,7 @@ class PayeeDetailScreen extends ConsumerWidget {
       '/more/payees/${Uri.encodeComponent(picked.name)}?person=${picked.id}',
     );
     messenger.showSnackBar(
-      SnackBar(content: Text('Connected to ${picked.name}')),
+      SnackBar(content: Text(tr('Connected to {0}', [picked.name]))),
     );
   }
 
@@ -168,19 +169,19 @@ class PayeeDetailScreen extends ConsumerWidget {
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Disconnect from person?'),
-        content: const Text(
+        title: const Tr('Disconnect from person?'),
+        content: const Tr(
           'These transactions stay under this payee name but no longer show '
           "on the person's page.",
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Disconnect'),
+            child: const Tr('Disconnect'),
           ),
         ],
       ),
@@ -199,27 +200,27 @@ class PayeeDetailScreen extends ConsumerWidget {
     final newName = await showAppDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Rename payee'),
+        title: const Tr('Rename payee'),
         content: TextField(
           controller: controller,
           autofocus: true,
           textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(
-            labelText: 'Name',
+          decoration: InputDecoration(
+            labelText: tr('Name'),
             helperText:
-                'Renaming to an existing payee merges the two together.',
+                tr('Renaming to an existing payee merges the two together.'),
           ),
           onSubmitted: (value) => Navigator.of(dialogContext).pop(value.trim()),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           FilledButton(
             onPressed: () =>
                 Navigator.of(dialogContext).pop(controller.text.trim()),
-            child: const Text('Rename'),
+            child: const Tr('Rename'),
           ),
         ],
       ),
@@ -233,14 +234,14 @@ class PayeeDetailScreen extends ConsumerWidget {
       await ref.read(dbProvider).renamePayee(from: payee, to: newName);
     } on ArgumentError catch (e) {
       messenger.showSnackBar(
-        SnackBar(content: Text(e.message?.toString() ?? 'Could not rename')),
+        SnackBar(content: Text(e.message?.toString() ?? tr('Could not rename'))),
       );
       return;
     }
     // This screen's route names the old payee — go back to the hub rather
     // than show a now-stale name.
     navigator.pop();
-    messenger.showSnackBar(SnackBar(content: Text('Renamed to $newName')));
+    messenger.showSnackBar(SnackBar(content: Text(tr('Renamed to {0}', [newName]))));
   }
 }
 
@@ -270,7 +271,7 @@ class _TotalHero extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                count == 1 ? '1 transaction' : '$count transactions',
+                count == 1 ? tr('1 transaction') : tr('{0} transactions', [count]),
                 style: theme.textTheme.titleMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -401,7 +402,7 @@ class _ConnectPersonSheetState extends ConsumerState<_ConnectPersonSheet> {
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 4, 24, 4),
               child: Text(
-                'Connect ${widget.payee} to',
+                tr('Connect {0} to', [widget.payee]),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.titleLarge?.copyWith(
@@ -411,7 +412,7 @@ class _ConnectPersonSheetState extends ConsumerState<_ConnectPersonSheet> {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-              child: Text(
+              child: Tr(
                 'Their payments show on the person\'s page. Owe/due never '
                 'changes.',
                 style: theme.textTheme.bodySmall?.copyWith(
@@ -424,7 +425,7 @@ class _ConnectPersonSheetState extends ConsumerState<_ConnectPersonSheet> {
               child: TextField(
                 onChanged: (v) => setState(() => _query = v),
                 decoration: InputDecoration(
-                  hintText: 'Search people',
+                  hintText: tr('Search people'),
                   prefixIcon: const AppIcon(Icons.search_rounded),
                   filled: true,
                   fillColor: theme.colorScheme.surfaceContainerHighest,
@@ -451,7 +452,7 @@ class _ConnectPersonSheetState extends ConsumerState<_ConnectPersonSheet> {
                         foregroundColor: theme.colorScheme.onPrimaryContainer,
                         child: const AppIcon(Icons.person_add_alt_1_outlined),
                       ),
-                      title: Text('New person: ${widget.payee}'),
+                      title: Text(tr('New person: {0}', [widget.payee])),
                       onTap: _createFromPayee,
                     ),
                   for (final p in matched)

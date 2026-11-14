@@ -8,6 +8,7 @@ import '../../core/theme/theme_shape.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/motion.dart';
 import '../../data/providers.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Pick a theme: a style, then — for styles that come in both — light, dark
 /// or follow the device. Each style row previews the palette it will apply,
@@ -49,7 +50,7 @@ class ThemePickerSheet extends ConsumerWidget {
                   color: theme.colorScheme.secondary,
                 ),
                 const SizedBox(width: 10),
-                Text(
+                Tr(
                   'Theme',
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w700,
@@ -58,7 +59,7 @@ class ThemePickerSheet extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 4),
-            Text(
+            Tr(
               'Money colours stay the same in every theme — pick them in '
               'Settings → General → Colours.',
               style: theme.textTheme.bodySmall?.copyWith(
@@ -79,7 +80,7 @@ class ThemePickerSheet extends ConsumerWidget {
               ),
             ],
             const SizedBox(height: 20),
-            Text(
+            Tr(
               'Appearance',
               style: theme.textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.w700,
@@ -98,17 +99,17 @@ class ThemePickerSheet extends ConsumerWidget {
                           ButtonSegment(
                             value: ThemeMode.system,
                             icon: AppIcon(Icons.brightness_auto_rounded),
-                            label: Text('System'),
+                            label: Tr('System'),
                           ),
                           ButtonSegment(
                             value: ThemeMode.light,
                             icon: AppIcon(Icons.light_mode_rounded),
-                            label: Text('Light'),
+                            label: Tr('Light'),
                           ),
                           ButtonSegment(
                             value: ThemeMode.dark,
                             icon: AppIcon(Icons.dark_mode_rounded),
-                            label: Text('Dark'),
+                            label: Tr('Dark'),
                           ),
                         ],
                         selected: {current.mode},
@@ -118,9 +119,9 @@ class ThemePickerSheet extends ConsumerWidget {
                     )
                   : Text(
                       key: const ValueKey('glass-note'),
-                      'Glass sits on black, with the tab bar showing icons '
+                      tr('Glass sits on black, with the tab bar showing icons '
                       'only. Your light/dark choice is kept for the other '
-                      'themes.',
+                      'themes.'),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),

@@ -15,6 +15,7 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 const _presetColors = <int>[
   0xFF16A34A,
@@ -71,32 +72,32 @@ class _SavingsGoalsScreenState extends ConsumerState<SavingsGoalsScreen>
 
     return Scaffold(
       appBar: AppTopBar(
-        title: const Text('Goals & Loans'),
+        title: const Tr('Goals & Loans'),
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
-            Tab(text: 'Goals'),
-            Tab(text: 'Loans'),
+          tabs: [
+            Tab(text: tr('Goals')),
+            Tab(text: tr('Loans')),
           ],
         ),
       ),
       body: Column(
         children: [
-          const ModuleShortcuts([
+          ModuleShortcuts([
             ModuleShortcut(
               Icons.account_balance_wallet_outlined,
-              'Accounts',
+              tr('Accounts'),
               '/more/accounts',
             ),
-            ModuleShortcut(Icons.autorenew_rounded, 'Auto', '/more/auto'),
+            ModuleShortcut(Icons.autorenew_rounded, tr('Auto'), '/more/auto'),
             ModuleShortcut(
               Icons.request_quote_outlined,
-              'Loan EMI',
+              tr('Loan EMI'),
               '/more/calculators/loan',
             ),
             ModuleShortcut(
               Icons.trending_up_rounded,
-              'SIP & Lumpsum',
+              tr('SIP & Lumpsum'),
               '/more/calculators/sip',
             ),
           ], padding: EdgeInsets.fromLTRB(20, 10, 20, 0)),
@@ -109,7 +110,7 @@ class _SavingsGoalsScreenState extends ConsumerState<SavingsGoalsScreen>
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        tooltip: isGoalsTab ? 'New goal' : 'New loan',
+        tooltip: isGoalsTab ? tr('New goal') : tr('New loan'),
         onPressed: isGoalsTab
             ? () => _openNewGoalChoice(context)
             : () => _openLoanEditor(context),
@@ -133,7 +134,7 @@ class _GoalsTab extends ConsumerWidget {
     return detailsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (_, _) => Center(
-        child: Text(
+        child: Tr(
           "Couldn't load savings goals.",
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
@@ -152,7 +153,7 @@ class _GoalsTab extends ConsumerWidget {
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(height: 16),
-                Text(
+                Tr(
                   'No savings goals yet — tap + to set one, either fresh '
                   'or by turning an account you already have into a goal.',
                   textAlign: TextAlign.center,
@@ -258,7 +259,7 @@ class _GoalCard extends StatelessWidget {
                             ),
                             TextSpan(
                               text:
-                                  ' of ${MoneyFormat.symbol(detail.targetAmount)}',
+                                  tr(' of {0}', [MoneyFormat.symbol(detail.targetAmount)]),
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
                               ),
@@ -272,7 +273,7 @@ class _GoalCard extends StatelessWidget {
                     if (daysLeft != null) ...[
                       const SizedBox(width: 8),
                       Text(
-                        daysLeft >= 0 ? '$daysLeft days left' : 'Past due',
+                        daysLeft >= 0 ? tr('{0} days left', [daysLeft]) : tr('Past due'),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: daysLeft >= 0
                               ? theme.colorScheme.onSurfaceVariant
@@ -305,7 +306,7 @@ class _LoansTab extends ConsumerWidget {
     return detailsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (_, _) => Center(
-        child: Text(
+        child: Tr(
           "Couldn't load loans.",
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
@@ -324,7 +325,7 @@ class _LoansTab extends ConsumerWidget {
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(height: 16),
-                Text(
+                Tr(
                   'No loans tracked yet — tap + to add a loan you have taken.',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyMedium?.copyWith(
@@ -429,7 +430,7 @@ class _LoanCard extends StatelessWidget {
                             ),
                             TextSpan(
                               text:
-                                  ' of ${MoneyFormat.symbol(loan.principal)} left',
+                                  tr(' of {0} left', [MoneyFormat.symbol(loan.principal)]),
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
                               ),
@@ -443,7 +444,7 @@ class _LoanCard extends StatelessWidget {
                     if (loan.detail.emiAmount != null) ...[
                       const SizedBox(width: 8),
                       Text(
-                        'EMI ${MoneyFormat.compact(loan.detail.emiAmount!)}',
+                        tr('EMI {0}', [MoneyFormat.compact(loan.detail.emiAmount!)]),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
@@ -481,7 +482,7 @@ Future<void> _openNewGoalChoice(BuildContext context) async {
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Text(
+              child: Tr(
                 'New goal',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
@@ -491,14 +492,14 @@ Future<void> _openNewGoalChoice(BuildContext context) async {
           ),
           AppListTile(
             leading: const AppIcon(Icons.add_circle_outline_rounded),
-            title: const Text('Start fresh'),
-            subtitle: const Text('A new goal, empty until you fund it.'),
+            title: const Tr('Start fresh'),
+            subtitle: const Tr('A new goal, empty until you fund it.'),
             onTap: () => Navigator.of(sheetContext).pop(_NewGoalChoice.fresh),
           ),
           AppListTile(
             leading: const AppIcon(Icons.savings_outlined),
-            title: const Text('Turn an account into a goal'),
-            subtitle: const Text(
+            title: const Tr('Turn an account into a goal'),
+            subtitle: const Tr(
               'Move its balance in and set it aside for this.',
             ),
             onTap: () =>
@@ -619,16 +620,16 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
   Future<void> _save() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      _showError('Give the goal a name.');
+      _showError(tr('Give the goal a name.'));
       return;
     }
     final amount = Money.tryParse(_amountController.text);
     if (amount == null || !amount.isPositive) {
-      _showError('Enter a target amount greater than zero.');
+      _showError(tr('Enter a target amount greater than zero.'));
       return;
     }
     if (_fromExistingAccount && _sourceAccountId == null) {
-      _showError('Pick the account to turn into this goal.');
+      _showError(tr('Pick the account to turn into this goal.'));
       return;
     }
 
@@ -667,11 +668,11 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
     } on ArgumentError catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      _showError(e.message?.toString() ?? 'Could not save the goal.');
+      _showError(e.message?.toString() ?? tr('Could not save the goal.'));
     } catch (_) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      _showError('Could not save the goal.');
+      _showError(tr('Could not save the goal.'));
     }
   }
 
@@ -684,19 +685,19 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
     final move = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Move the balance in?'),
+        title: const Tr('Move the balance in?'),
         content: Text(
-          'Transfer ${MoneyFormat.symbol(source.currentBalance)} from '
-          '"${source.name}" into this goal now?',
+          tr('Transfer {0} from '
+          '"{1}" into this goal now?', [MoneyFormat.symbol(source.currentBalance), source.name]),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Not now'),
+            child: const Tr('Not now'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Move it'),
+            child: const Tr('Move it'),
           ),
         ],
       ),
@@ -715,19 +716,19 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
     final archive = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Archive "${source.name}"?'),
-        content: const Text(
+        title: Text(tr('Archive "{0}"?', [source.name])),
+        content: const Tr(
           'It stays in your history — this only hides it from active '
           "accounts, if you don't need it day-to-day anymore.",
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Keep it'),
+            child: const Tr('Keep it'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Archive'),
+            child: const Tr('Archive'),
           ),
         ],
       ),
@@ -761,10 +762,10 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
           children: [
             Text(
               _isEdit
-                  ? 'Edit goal'
+                  ? tr('Edit goal')
                   : _fromExistingAccount
-                  ? 'Turn an account into a goal'
-                  : 'New savings goal',
+                  ? tr('Turn an account into a goal')
+                  : tr('New savings goal'),
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
@@ -783,16 +784,16 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
               autofocus: !_isEdit,
               textCapitalization: TextCapitalization.words,
               maxLength: 60,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                hintText: 'e.g. Emergency fund, Goa trip',
+              decoration: InputDecoration(
+                labelText: tr('Name'),
+                hintText: tr('e.g. Emergency fund, Goa trip'),
                 counterText: '',
               ),
             ),
             const SizedBox(height: 16),
             AmountKeypadField(
               controller: _amountController,
-              label: 'Target amount',
+              label: tr('Target amount'),
               hintText: '0.00',
               yieldTo: [_nameFocus],
             ),
@@ -800,12 +801,12 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
             DropdownButtonFormField<int?>(
               initialValue: _categoryId,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Category (optional)',
-                helperText: 'Tag contributions to this category.',
+              decoration: InputDecoration(
+                labelText: tr('Category (optional)'),
+                helperText: tr('Tag contributions to this category.'),
               ),
               items: [
-                const DropdownMenuItem(value: null, child: Text('None')),
+                const DropdownMenuItem(value: null, child: Tr('None')),
                 for (final c in categories)
                   DropdownMenuItem(value: c.id, child: Text(c.name)),
               ],
@@ -817,7 +818,7 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
               icon: const AppIcon(Icons.event_outlined, size: 18),
               label: Text(
                 _targetDate == null
-                    ? 'Target date (optional)'
+                    ? tr('Target date (optional)')
                     : DateFormat('d MMM yyyy').format(_targetDate!),
               ),
             ),
@@ -826,7 +827,7 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
                 alignment: Alignment.centerLeft,
                 child: TextButton(
                   onPressed: () => setState(() => _targetDate = null),
-                  child: const Text('Clear date'),
+                  child: const Tr('Clear date'),
                 ),
               ),
             const SizedBox(height: 16),
@@ -834,15 +835,15 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
               controller: _notesController,
               maxLines: 3,
               maxLength: 500,
-              decoration: const InputDecoration(
-                labelText: 'Notes (optional)',
+              decoration: InputDecoration(
+                labelText: tr('Notes (optional)'),
                 hintText:
-                    'What this goal is for, or anything else worth noting',
+                    tr('What this goal is for, or anything else worth noting'),
                 alignLabelWithHint: true,
               ),
             ),
             const SizedBox(height: 12),
-            _fieldLabel(theme, 'Colour'),
+            _fieldLabel(theme, tr('Colour')),
             const SizedBox(height: 12),
             Wrap(
               spacing: 14,
@@ -850,7 +851,7 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
               children: [for (final c in _presetColors) _colorDot(theme, c)],
             ),
             const SizedBox(height: 24),
-            _fieldLabel(theme, 'Icon'),
+            _fieldLabel(theme, tr('Icon')),
             const SizedBox(height: 12),
             Wrap(
               spacing: 12,
@@ -866,7 +867,7 @@ class _GoalEditorSheetState extends ConsumerState<_GoalEditorSheet> {
                       width: 22,
                       child: CircularProgressIndicator(strokeWidth: 2.4),
                     )
-                  : const Text('Save'),
+                  : const Tr('Save'),
             ),
           ],
         ),
@@ -1157,36 +1158,36 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
   Future<void> _save() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      _showError('Give the loan a name.');
+      _showError(tr('Give the loan a name.'));
       return;
     }
     final principal = Money.tryParse(_principalController.text);
     if (!_isEdit && (principal == null || !principal.isPositive)) {
-      _showError('Enter the amount borrowed (greater than zero).');
+      _showError(tr('Enter the amount borrowed (greater than zero).'));
       return;
     }
     final emiText = _emiController.text.trim();
     final emi = emiText.isEmpty ? null : Money.tryParse(emiText);
     if (emiText.isNotEmpty && (emi == null || !emi.isPositive)) {
-      _showError('EMI must be greater than zero, or leave it blank.');
+      _showError(tr('EMI must be greater than zero, or leave it blank.'));
       return;
     }
     final rateText = _rateController.text.trim();
     final rate = rateText.isEmpty ? null : double.tryParse(rateText);
     if (rateText.isNotEmpty && (rate == null || rate <= 0)) {
-      _showError('Interest rate must be greater than zero, or leave it blank.');
+      _showError(tr('Interest rate must be greater than zero, or leave it blank.'));
       return;
     }
     final tenureText = _tenureController.text.trim();
     final tenure = tenureText.isEmpty ? null : int.tryParse(tenureText);
     if (tenureText.isNotEmpty && (tenure == null || tenure <= 0)) {
-      _showError('Tenure must be a whole number of months, or leave it blank.');
+      _showError(tr('Tenure must be a whole number of months, or leave it blank.'));
       return;
     }
 
     final wantsAutoPay = !_isEdit && _autoPay && _effectiveEmi != null;
     if (wantsAutoPay && _autoPayFromId == null) {
-      _showError('Choose the account that pays the EMI, or turn off auto-pay.');
+      _showError(tr('Choose the account that pays the EMI, or turn off auto-pay.'));
       return;
     }
     final autoPayStart = _autoPayStart;
@@ -1237,12 +1238,12 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
             SnackBar(
               content: Text(
                 backfilled > 0
-                    ? 'Loan added · $backfilled past '
-                          '${backfilled == 1 ? 'EMI' : 'EMIs'} posted '
-                          '(see Auto)'
-                    : 'Loan added · EMI auto-pay starts '
-                          '${DateFormat('d MMM yyyy').format(autoPayStart)} '
-                          '(see Auto)',
+                    ? tr('Loan added · {0} posted (see Auto)', [
+                        plural(backfilled, tr('1 past EMI'), tr('{0} past EMIs')),
+                      ])
+                    : tr('Loan added · EMI auto-pay starts '
+                          '{0} '
+                          '(see Auto)', [DateFormat('d MMM yyyy').format(autoPayStart)]),
               ),
             ),
           );
@@ -1250,11 +1251,11 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
     } on ArgumentError catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      _showError(e.message?.toString() ?? 'Could not save the loan.');
+      _showError(e.message?.toString() ?? tr('Could not save the loan.'));
     } catch (_) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      _showError('Could not save the loan.');
+      _showError(tr('Could not save the loan.'));
     }
   }
 
@@ -1281,7 +1282,7 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              _isEdit ? 'Edit loan' : 'New loan',
+              _isEdit ? tr('Edit loan') : tr('New loan'),
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
@@ -1293,9 +1294,9 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
               autofocus: true,
               textCapitalization: TextCapitalization.words,
               maxLength: 60,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                hintText: 'e.g. Home loan, Car loan',
+              decoration: InputDecoration(
+                labelText: tr('Name'),
+                hintText: tr('e.g. Home loan, Car loan'),
                 counterText: '',
               ),
             ),
@@ -1305,7 +1306,7 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
                 controller: _principalController,
                 group: _amountGroup,
                 yieldTo: [_nameFocus, _rateFocus, _tenureFocus],
-                label: 'Amount borrowed',
+                label: tr('Amount borrowed'),
                 hintText: '0.00',
               ),
               const SizedBox(height: 16),
@@ -1314,7 +1315,7 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
               controller: _emiController,
               group: _amountGroup,
               yieldTo: [_nameFocus, _rateFocus, _tenureFocus],
-              label: 'Monthly EMI (optional)',
+              label: tr('Monthly EMI (optional)'),
               hintText: '0.00',
             ),
             const SizedBox(height: 16),
@@ -1328,8 +1329,8 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
-                    decoration: const InputDecoration(
-                      labelText: 'Interest rate % / yr (optional)',
+                    decoration: InputDecoration(
+                      labelText: tr('Interest rate % / yr (optional)'),
                       hintText: 'e.g. 8.5',
                     ),
                   ),
@@ -1340,8 +1341,8 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
                     controller: _tenureController,
                     focusNode: _tenureFocus,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Tenure, months (optional)',
+                    decoration: InputDecoration(
+                      labelText: tr('Tenure, months (optional)'),
                       hintText: 'e.g. 60',
                     ),
                   ),
@@ -1352,9 +1353,9 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
               Padding(
                 padding: const EdgeInsets.only(top: 8, left: 4, right: 4),
                 child: Text(
-                  'Suggested EMI ≈ ${MoneyFormat.symbol(p.emi)} · '
-                  'Total interest ≈ ${MoneyFormat.symbol(p.totalInterest)} · '
-                  'Total payable ≈ ${MoneyFormat.symbol(p.totalPayable)}',
+                  tr('Suggested EMI ≈ {0} · '
+                  'Total interest ≈ {1} · '
+                  'Total payable ≈ {2}', [MoneyFormat.symbol(p.emi), MoneyFormat.symbol(p.totalInterest), MoneyFormat.symbol(p.totalPayable)]),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -1381,7 +1382,7 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          Tr(
                             'Repayment start date',
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
@@ -1411,19 +1412,19 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
             DropdownButtonFormField<int?>(
               initialValue: _categoryId,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Category (optional)',
-                helperText: 'Tag repayments to this category.',
+              decoration: InputDecoration(
+                labelText: tr('Category (optional)'),
+                helperText: tr('Tag repayments to this category.'),
               ),
               items: [
-                const DropdownMenuItem(value: null, child: Text('None')),
+                const DropdownMenuItem(value: null, child: Tr('None')),
                 for (final c in categories)
                   DropdownMenuItem(value: c.id, child: Text(c.name)),
               ],
               onChanged: (v) => setState(() => _categoryId = v),
             ),
             const SizedBox(height: 16),
-            _fieldLabel(theme, 'Colour'),
+            _fieldLabel(theme, tr('Colour')),
             const SizedBox(height: 12),
             Wrap(
               spacing: 14,
@@ -1431,7 +1432,7 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
               children: [for (final c in _presetColors) _colorDot(theme, c)],
             ),
             const SizedBox(height: 24),
-            _fieldLabel(theme, 'Icon'),
+            _fieldLabel(theme, tr('Icon')),
             const SizedBox(height: 12),
             Wrap(
               spacing: 12,
@@ -1447,7 +1448,7 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
                       width: 22,
                       child: CircularProgressIndicator(strokeWidth: 2.4),
                     )
-                  : const Text('Save'),
+                  : const Tr('Save'),
             ),
           ],
         ),
@@ -1468,10 +1469,10 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
         children: [
           AppSwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Auto-pay EMI'),
+            title: const Tr('Auto-pay EMI'),
             subtitle: Text(
-              'Posts ${MoneyFormat.symbol(emi)} every month on its own and '
-              'shows up in Auto.',
+              tr('Posts {0} every month on its own and '
+              'shows up in Auto.', [MoneyFormat.symbol(emi)]),
             ),
             value: _autoPay,
             onChanged: (v) => setState(() => _autoPay = v),
@@ -1480,7 +1481,7 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
             _SourceAccountPicker(
               selected: _autoPayFromId,
               onChanged: (v) => setState(() => _autoPayFromId = v),
-              labelText: 'Pay from',
+              labelText: tr('Pay from'),
               helperText: null,
             ),
             InkWell(
@@ -1496,7 +1497,7 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          Tr(
                             'First auto-payment',
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: cs.onSurfaceVariant,
@@ -1520,9 +1521,9 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
             ),
             Text(
               _autoPayStartsInPast
-                  ? 'Every EMI from this date up to today is posted as soon '
-                        'as you save. Stops by itself once the loan is paid off.'
-                  : 'Stops by itself once the loan is paid off.',
+                  ? tr('Every EMI from this date up to today is posted as soon '
+                        'as you save. Stops by itself once the loan is paid off.')
+                  : tr('Stops by itself once the loan is paid off.'),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: cs.onSurfaceVariant,
               ),
@@ -1621,7 +1622,7 @@ class _SourceAccountPicker extends ConsumerWidget {
     return DropdownButtonFormField<int>(
       initialValue: accounts.any((a) => a.id == selected) ? selected : null,
       isExpanded: true,
-      decoration: InputDecoration(labelText: labelText, helperText: helperText),
+      decoration: InputDecoration(labelText: tr(labelText), helperText: helperText == null ? null : tr(helperText!)),
       items: [
         for (final a in accounts)
           DropdownMenuItem(

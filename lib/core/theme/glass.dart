@@ -7,6 +7,7 @@ import 'package:flutter/scheduler.dart';
 
 import 'app_colors.dart';
 import 'theme_shape.dart';
+import '../../core/l10n/l10n.dart';
 
 /// The Glass theme's building blocks, modelled on iOS's Liquid Glass.
 ///
@@ -299,13 +300,14 @@ enum GlassBackdrop {
   );
 
   const GlassBackdrop({
-    required this.label,
+    required String label,
     required this.tone,
     required this.base,
     this.pools = const [],
-  });
+  }) : _label = label;
 
-  final String label;
+  final String _label;
+  String get label => tr(_label);
   final GlassTone tone;
   final Color base;
 

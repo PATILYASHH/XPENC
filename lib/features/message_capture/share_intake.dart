@@ -63,27 +63,35 @@ class ShareIntakeService {
   /// Call once at startup. Covers both a cold start launched *by* a share
   /// and one arriving while the app is already open — mirrors
   /// `HomeWidgetService.init`.
-  void init(void Function(ShareIntakeResult result) onResult) {
+  ///
+  /// [onFile] gets a JSON file opened with XPENC ("Open with" — a language
+  /// pack from xpenc.in/languages, GitHub #191): a local copy's path, which
+  /// the receiver may delete once read.
+  void init(
+    void Function(ShareIntakeResult result) onResult, {
+    void Function(String path)? onFile,
+  }) {
     // iOS needs a Share extension before anything can arrive here.
     if (!PlatformFeatures.shareIntake) return;
     ReceiveSharingIntent.instance.getInitialMedia().then((files) async {
-      await _handleAll(files, onResult);
+      await _handleAll(files, onResult, onFile);
       // Consumed — a later cold start must not replay the same share.
       await ReceiveSharingIntent.instance.reset();
     });
     ReceiveSharingIntent.instance.getMediaStream().listen(
-      (files) => _handleAll(files, onResult),
+      (files) => _handleAll(files, onResult, onFile),
     );
   }
 
   Future<void> _handleAll(
     List<SharedMediaFile> files,
     void Function(ShareIntakeResult result) onResult,
+    void Function(String path)? onFile,
   ) async {
     for (final f in files) {
-      // Only what the manifest's intent-filter offers XPENC for is ever
-      // routed here (text/plain or image/*); this switch is defence in
-      // depth, not the actual gate.
+      // Only what the manifest's intent-filters offer XPENC for is ever
+      // routed here (a shared text/plain or image/*, an opened
+      // application/json); this switch is defence in depth, not the gate.
       switch (f.type) {
         case SharedMediaType.text:
           final text = f.path.trim();
@@ -91,8 +99,9 @@ class ShareIntakeService {
           onResult(await ingest(text));
         case SharedMediaType.image:
           onResult(await ingestImage(f.path));
-        case SharedMediaType.video:
         case SharedMediaType.file:
+          if (onFile != null && f.path.isNotEmpty) onFile(f.path);
+        case SharedMediaType.video:
         case SharedMediaType.url:
           continue;
       }

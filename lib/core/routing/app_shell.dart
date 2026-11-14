@@ -31,6 +31,7 @@ import '../layout/desktop.dart';
 import '../theme/bar_page_transition.dart';
 import '../theme/glass.dart';
 import '../widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 part 'glass_chrome.dart';
 
@@ -335,7 +336,7 @@ class _DesktopAddButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return FloatingActionButton(
-      tooltip: 'New transaction',
+      tooltip: tr('New transaction'),
       backgroundColor: cs.secondary,
       foregroundColor: Colors.white,
       onPressed: () => hasTemplates
@@ -365,7 +366,7 @@ class _ProfileButton extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.only(left: 6, right: 6),
       child: Tooltip(
-        message: 'Profile & settings',
+        message: tr('Profile & settings'),
         child: Material(
           color: cs.secondary,
           shape: const CircleBorder(),
@@ -586,8 +587,8 @@ class _AddButtonState extends State<_AddButton> {
           backdrop: false,
           tint: Theme.of(context).colorScheme.secondary,
           // A tooltip would claim the long press the hold menu needs.
-          tooltip: widget.holdEnabled ? null : 'Add',
-          semanticLabel: 'Add',
+          tooltip: widget.holdEnabled ? null : tr('Add'),
+          semanticLabel: tr('Add'),
           onPressed: _open,
           child: const AppIcon(
             CupertinoIcons.add,
@@ -818,7 +819,7 @@ class _GlassQuickActionsState extends State<_GlassQuickActions>
     final open = _open.value.clamp(0.0, 1.0);
     final text = hovered >= 0
         ? widget.actions[hovered].label
-        : 'Slide to an action · release on × to cancel';
+        : tr('Slide to an action · release on × to cancel');
     final at = hovered >= 0
         ? widget.centres[hovered] - const Offset(0, _bubble * 0.95)
         : widget.anchor - const Offset(140, 270);
@@ -961,7 +962,7 @@ class _HoldMenuOverlay extends StatelessWidget {
   Widget _label(BuildContext context, Offset center, double radius, int i) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final text = i == -1 ? 'Release to cancel' : actions[i]!.label;
+    final text = i == -1 ? tr('Release to cancel') : actions[i]!.label;
     return Positioned(
       left: 16,
       right: 16,
@@ -1309,11 +1310,12 @@ class _LiquidTabState extends State<_LiquidTab> {
 }
 
 class _TabSpec {
-  const _TabSpec(this.branch, this.icon, this.activeIcon, this.label);
+  const _TabSpec(this.branch, this.icon, this.activeIcon, String label) : _label = label;
   final int branch;
   final IconData icon;
   final IconData activeIcon;
-  final String label;
+  final String _label;
+  String get label => tr(_label);
 }
 
 /// The app's persistent top bar — fixed on screen across every tab, sibling
@@ -1418,13 +1420,13 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
                 // that trailing slot there instead.
                 if (currentIndex == 2)
                   _TonalIconButton(
-                    tooltip: 'Settled',
+                    tooltip: tr('Settled'),
                     icon: const AppIcon(Icons.task_alt_rounded),
                     onPressed: () => context.push('/persons/settled'),
                   )
                 else
                   _TonalIconButton(
-                    tooltip: 'Review Inbox',
+                    tooltip: tr('Review Inbox'),
                     icon: const AppIcon(Icons.inbox_outlined),
                     onPressed: () => context.push('/inbox'),
                   ),
@@ -1448,7 +1450,7 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
           const _DashboardMonthButton(),
           const SizedBox(width: 4),
           _TonalIconButton(
-            tooltip: 'About ${AppInfo.name}',
+            tooltip: tr('About {0}', [AppInfo.name]),
             icon: const BrandMark(size: 22),
             onPressed: () => _pushFromTop(context, '/more/about'),
           ),
@@ -1459,13 +1461,13 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
       case 2: // Persons
         return [
           _TonalIconButton(
-            tooltip: 'Archived',
+            tooltip: tr('Archived'),
             icon: const AppIcon(Icons.inventory_2_outlined),
             onPressed: () => _pushFromTop(context, '/persons/archived'),
           ),
           const SizedBox(width: 4),
           _TonalIconButton(
-            tooltip: 'Add person',
+            tooltip: tr('Add person'),
             icon: const AppIcon(Icons.person_add_alt_1_outlined),
             onPressed: () => showAddPersonDialog(context, ref),
           ),
@@ -1475,7 +1477,7 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
         return [
           if (ref.watch(calendarAwayFromTodayProvider)) ...[
             _TonalIconButton(
-              tooltip: 'Today',
+              tooltip: tr('Today'),
               icon: const AppIcon(Icons.today_rounded),
               onPressed: () =>
                   ref.read(calendarGoToTodaySignalProvider.notifier).state++,
@@ -1483,7 +1485,7 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
             const SizedBox(width: 4),
           ],
           _TonalIconButton(
-            tooltip: 'Add',
+            tooltip: tr('Add'),
             icon: const AppIcon(Icons.add_rounded),
             onPressed: () =>
                 ref.read(calendarAddSignalProvider.notifier).state++,
@@ -1612,7 +1614,7 @@ class _DashboardMonthButton extends ConsumerWidget {
             HapticFeedback.selectionClick();
             _glassMonthPicker.value = !_glassMonthPicker.value;
           },
-          child: Tooltip(message: 'Change month', child: label),
+          child: Tooltip(message: tr('Change month'), child: label),
         ),
       );
     }
@@ -1620,7 +1622,7 @@ class _DashboardMonthButton extends ConsumerWidget {
       return SizedBox(
         height: 42,
         child: GlassButton(
-          tooltip: 'Change month',
+          tooltip: tr('Change month'),
           backdrop: false,
           onPressed: pick,
           child: Center(widthFactor: 1, child: label),
@@ -1633,7 +1635,7 @@ class _DashboardMonthButton extends ConsumerWidget {
       child: InkWell(
         customBorder: const StadiumBorder(),
         onTap: pick,
-        child: Tooltip(message: 'Change month', child: label),
+        child: Tooltip(message: tr('Change month'), child: label),
       ),
     );
   }
@@ -1656,7 +1658,7 @@ class _TransactionsBarActions extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         _TonalIconButton(
-          tooltip: 'Filters',
+          tooltip: tr('Filters'),
           icon: AnimatedSwitcher(
             duration: const Duration(milliseconds: 200),
             transitionBuilder: (child, animation) =>
@@ -1672,7 +1674,7 @@ class _TransactionsBarActions extends ConsumerWidget {
         ),
         const SizedBox(width: 4),
         _TonalIconButton(
-          tooltip: searchActive ? 'Close search' : 'Search',
+          tooltip: searchActive ? tr('Close search') : tr('Search'),
           icon: AnimatedSwitcher(
             duration: const Duration(milliseconds: 200),
             transitionBuilder: (child, animation) => ScaleTransition(

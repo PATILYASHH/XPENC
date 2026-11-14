@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'app_surfaces.dart';
 import 'nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Shown when something has genuinely failed.
 ///
@@ -44,7 +45,7 @@ class ErrorView extends StatelessWidget {
                   ?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 10),
-            Text(
+            Tr(
               message,
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -75,7 +76,7 @@ class ErrorView extends StatelessWidget {
               FilledButton.icon(
                 onPressed: onRetry,
                 icon: const AppIcon(Icons.refresh_rounded),
-                label: const Text('Try again'),
+                label: const Tr('Try again'),
               ),
             ],
           ],
@@ -102,7 +103,7 @@ class InlineErrorView extends StatelessWidget {
           AppIcon(Icons.error_outline_rounded,
               size: 16, color: theme.colorScheme.error),
           const SizedBox(width: 8),
-          Text(
+          Tr(
             message,
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,

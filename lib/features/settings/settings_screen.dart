@@ -8,6 +8,7 @@ import '../../core/platform/distribution.dart';
 import '../../core/platform/platform_features.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/open_link.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Settings' front door — a menu of modules, each its own page. Splitting it
 /// this way (instead of one long scrolling list of every toggle) keeps each
@@ -19,7 +20,7 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Settings')),
+      appBar: AppTopBar(title: const Tr('Settings')),
       body: ListView(
         // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
         padding: EdgeInsets.fromLTRB(
@@ -31,73 +32,85 @@ class SettingsScreen extends StatelessWidget {
         // Grouped the way iOS Settings (and the More hub) are: related
         // modules share one card, split by inset hairlines.
         children: [
+          // First, and named in its own script, so someone who can't read
+          // the language showing still finds the way back (GitHub #191).
+          _ModuleGroup([
+            _ModuleTile(
+              icon: Icons.translate_rounded,
+              title: L10n.code == 'en'
+                  ? 'Language'
+                  : '${tr('Language')} · Language',
+              subtitle: appLanguageFor(L10n.code)?.nativeName ?? L10n.code,
+              onTap: () => context.push('/more/settings/language'),
+            ),
+          ]),
           _ModuleGroup([
             _ModuleTile(
               icon: Icons.tune_rounded,
-              title: 'General',
-              subtitle: 'Currency, theme, font, dashboard layout',
+              title: tr('General'),
+              subtitle: tr('Language, currency, theme, font, dashboard layout'),
               onTap: () => context.push('/more/settings/general'),
             ),
             _ModuleTile(
               icon: Icons.savings_outlined,
-              title: 'Level & Budgeting',
-              subtitle: 'App level, budget cycle, Ready to Assign',
+              title: tr('Level & Budgeting'),
+              subtitle: tr('App level, budget cycle, Ready to Assign'),
               onTap: () => context.push('/more/settings/mode-budgeting'),
             ),
             _ModuleTile(
               icon: Icons.people_outline,
-              title: 'Persons',
-              subtitle: 'Repayments and your payment methods',
+              title: tr('Persons'),
+              subtitle: tr('Repayments and your payment methods'),
               onTap: () => context.push('/more/settings/persons'),
             ),
           ]),
           _ModuleGroup([
             _ModuleTile(
               icon: Icons.security_outlined,
-              title: 'Security & Privacy',
+              title: tr('Security & Privacy'),
               subtitle: PlatformFeatures.screenshotBlocking
-                  ? 'PIN, recovery phrase, authenticator, screenshots'
-                  : 'PIN, recovery phrase, authenticator',
+                  ? tr('PIN, recovery phrase, authenticator, screenshots')
+                  : tr('PIN, recovery phrase, authenticator'),
               onTap: () => context.push('/more/settings/security'),
             ),
             if (PlatformFeatures.permissionsScreen)
               _ModuleTile(
                 icon: Icons.verified_user_outlined,
-                title: 'Permissions',
-                subtitle: 'What XPENC can access — turn each on or off',
+                title: tr('Permissions'),
+                subtitle: tr('What XPENC can access — turn each on or off'),
                 onTap: () => context.push('/more/settings/permissions'),
               ),
             if (PlatformFeatures.notifications)
               _ModuleTile(
                 icon: Icons.notifications_outlined,
-                title: 'Notifications',
+                title: tr('Notifications'),
                 subtitle: PlatformFeatures.quickAddNotification
-                    ? 'Reminders and quick add from a notification'
-                    : 'Reminders',
+                    ? tr('Reminders and quick add from a notification')
+                    : tr('Reminders'),
                 onTap: () => context.push('/more/settings/notifications'),
               ),
           ]),
           _ModuleGroup([
             _ModuleTile(
               icon: Icons.flash_on_outlined,
-              title: 'Quick Actions',
+              title: tr('Quick Actions'),
               subtitle: PlatformFeatures.homeWidgets
-                  ? 'Hold ➕ shortcuts, home screen widgets'
-                  : 'Hold ➕ shortcuts',
+                  ? tr('Hold ➕ shortcuts, home screen widgets')
+                  : tr('Hold ➕ shortcuts'),
               onTap: () => context.push('/more/settings/quick-actions'),
             ),
             _ModuleTile(
               icon: Icons.storage_outlined,
-              title: 'Data',
-              subtitle: 'Recalculate balances, clear all data',
+              title: tr('Data'),
+              subtitle: tr('Recalculate balances, clear all data'),
               onTap: () => context.push('/more/settings/data'),
             ),
             // XPENC web only; phones have the Connector app.
             if (connectorPlatform != null)
               _ModuleTile(
                 icon: Icons.sync_alt_rounded,
-                title: 'Connector',
-                subtitle: 'Sync with your phones, Connector friends',
+                title: tr('Connector'),
+                subtitle: tr('Sync with your phones, Connector friends'),
                 onTap: () => context.push('/more/settings/connector'),
               ),
           ]),
@@ -106,7 +119,7 @@ class SettingsScreen extends StatelessWidget {
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               leading: const BrandMark(size: 34),
               title: const Text('${AppInfo.name} · ${AppInfo.version}'),
-              subtitle: Text(
+              subtitle: Tr(
                 'Developer, links and build info',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -217,9 +230,14 @@ class _MoreFromUs extends StatelessWidget {
     ];
     return Semantics(
       link: true,
-      label:
-          'More from us: ${AppInfo.labsName}. '
-          '${[for (final a in apps) a.name].join(', ')}',
+      label: tr(
+        'More from us: {0}. '
+        '{1}',
+        [
+          AppInfo.labsName,
+          [for (final a in apps) a.name].join(', '),
+        ],
+      ),
       excludeSemantics: true,
       child: AppCard(
         child: InkWell(
@@ -232,7 +250,7 @@ class _MoreFromUs extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(
+                      child: Tr(
                         'More from us',
                         style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w700,
@@ -282,18 +300,20 @@ class _LabsApp {
   const _LabsApp(
     this.icon,
     this.name,
-    this.blurb,
-    this.tag, {
+    String blurb,
+    String tag, {
     this.openSource = true,
-  });
+  }) : _blurb = blurb, _tag = tag;
 
   /// Null: XPENC, which wears its own mark.
   final IconData? icon;
   final String name;
-  final String blurb;
+  final String _blurb;
+  String get blurb => tr(_blurb);
 
   /// Where it stands: "You're here", a platform, "Soon".
-  final String tag;
+  final String _tag;
+  String get tag => tr(_tag);
   final bool openSource;
 }
 

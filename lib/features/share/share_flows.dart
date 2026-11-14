@@ -9,6 +9,7 @@ import 'share_files.dart';
 import 'share_models.dart';
 import 'share_pdfs.dart';
 import 'share_screen.dart';
+import '../../core/l10n/l10n.dart';
 
 // Every Share button — a transaction, a person, a group, a mode — opens the
 // same [ShareScreen]: an image card or a structured PDF, previewed, then
@@ -23,7 +24,7 @@ Future<void> shareTransaction(BuildContext context, TransactionRow t) {
   return _open(
     context,
     ShareScreen(
-      title: 'Share transaction',
+      title: tr('Share transaction'),
       fileStem: shareFileStem('${data.typeLabel} ${data.headline}'),
       subject:
           '${data.typeLabel} · ${MoneyFormat.forCurrency(t.amount, data.currency)}',
@@ -50,15 +51,15 @@ Future<void> sharePerson(BuildContext context, PersonRow person) async {
   await _open(
     context,
     ShareScreen(
-      title: 'Share ${person.name}',
+      title: tr('Share {0}', [person.name]),
       fileStem: shareFileStem('${person.name} statement'),
-      subject: '${person.name} · statement',
+      subject: tr('{0} · statement', [person.name]),
       message: (qr) => data.message(qr: qr),
       periods: _ledgerPeriods(),
       payments: payments,
       paymentsHint: payments.isEmpty && data.balance.isPositive && anyMethodOn
-          ? 'Add your UPI ID in Settings → Persons to put a scan-to-pay QR '
-                'on this.'
+          ? tr('Add your UPI ID in Settings → Persons to put a scan-to-pay QR '
+                'on this.')
           : null,
       recipientPhone: person.phone,
       image: (tone, period, qr) =>
@@ -78,9 +79,9 @@ Future<void> shareGroup(BuildContext context, GroupRow group) async {
   await _open(
     context,
     ShareScreen(
-      title: 'Share ${group.name}',
+      title: tr('Share {0}', [group.name]),
       fileStem: shareFileStem('${group.name} group'),
-      subject: '${group.name} · group statement',
+      subject: tr('{0} · group statement', [group.name]),
       periods: _ledgerPeriods(),
       image: (tone, period, _) =>
           GroupShareCard(data: data, period: period, tone: tone),
@@ -105,9 +106,9 @@ Future<void> _open(BuildContext context, Widget screen) => Navigator.of(
 Future<void> shareMode(BuildContext context, ModeShare data) => _open(
   context,
   ShareScreen(
-    title: 'Share ${data.name}',
+    title: tr('Share {0}', [data.name]),
     fileStem: shareFileStem('${data.name} summary'),
-    subject: '${data.name} · ${MoneyFormat.symbol(data.spent)} spent',
+    subject: tr('{0} · {1} spent', [data.name, MoneyFormat.symbol(data.spent)]),
     image: (tone, _, _) => ModeShareCard(data: data, tone: tone),
     pdf: (_, _) => buildModeSummaryPdf(data),
   ),

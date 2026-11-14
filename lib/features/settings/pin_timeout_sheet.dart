@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
+import '../../core/l10n/l10n.dart';
 
 /// How long XPENC may sit backgrounded before the next resume asks for the
 /// PIN again. See GitHub #60.
@@ -12,9 +13,9 @@ class PinTimeoutSheet extends ConsumerWidget {
   static const _options = <int>[0, 1, 5, 10, 15, 30, 60];
 
   static String label(int minutes) => switch (minutes) {
-    0 => 'Immediately',
-    1 => 'After 1 minute',
-    _ => 'After $minutes minutes',
+    0 => tr('Immediately'),
+    1 => tr('After 1 minute'),
+    _ => tr('After {0} minutes', [minutes]),
   };
 
   static Future<void> show(BuildContext context) => showAppSheet<void>(
@@ -42,11 +43,11 @@ class PinTimeoutSheet extends ConsumerWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
-            child: Text('Lock after', style: theme.textTheme.titleLarge),
+            child: Tr('Lock after', style: theme.textTheme.titleLarge),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-            child: Text(
+            child: Tr(
               'How long XPENC may sit in the background before it asks for '
               'your PIN again.',
               style: theme.textTheme.bodySmall?.copyWith(

@@ -9,6 +9,7 @@ import '../../core/widgets/error_view.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Preset colours for a tag. Plain ints — this is the tag's own decorative
 /// colour, not a money-direction signal.
@@ -39,36 +40,36 @@ class TagsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppTopBar(
-        title: const Text('Tags'),
+        title: const Tr('Tags'),
         actions: [
           IconButton(
             icon: const AppIcon(Icons.workspaces_outline),
-            tooltip: 'Tag groups',
+            tooltip: tr('Tag groups'),
             onPressed: () => context.push('/more/tags/groups'),
           ),
         ],
       ),
       body: tagsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => const Center(
+        error: (_, _) => Center(
           child: Padding(
             padding: EdgeInsets.all(24),
-            child: InlineErrorView(message: "Couldn't load tags"),
+            child: InlineErrorView(message: tr("Couldn't load tags")),
           ),
         ),
         data: (tags) {
           return ListView(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 96).plusNavBar(context),
             children: [
-              const ModuleShortcuts([
+              ModuleShortcuts([
                 ModuleShortcut(
                   Icons.category_outlined,
-                  'Categories',
+                  tr('Categories'),
                   '/more/categories',
                 ),
                 ModuleShortcut(
                   Icons.receipt_long_outlined,
-                  'Transactions',
+                  tr('Transactions'),
                   '/more/transactions',
                 ),
               ], padding: EdgeInsets.fromLTRB(0, 0, 0, 12)),
@@ -92,7 +93,7 @@ class TagsScreen extends ConsumerWidget {
                   ),
                 ),
               const SizedBox(height: 20),
-              Text(
+              Tr(
                 'A transaction can carry any number of tags. Deleting a tag '
                 "just removes it from whatever it was on — nothing else changes.",
                 textAlign: TextAlign.center,
@@ -105,7 +106,7 @@ class TagsScreen extends ConsumerWidget {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        tooltip: 'New tag',
+        tooltip: tr('New tag'),
         onPressed: () => _openTagEditor(context),
         child: const AppIcon(Icons.add),
       ),
@@ -130,7 +131,7 @@ class _EmptyTags extends StatelessWidget {
             color: theme.colorScheme.onSurfaceVariant,
           ),
           const SizedBox(height: 16),
-          Text(
+          Tr(
             'No tags yet — tap + to add one.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
@@ -176,13 +177,13 @@ class _TagTile extends ConsumerWidget {
         children: [
           IconButton(
             icon: const AppIcon(Icons.edit_outlined),
-            tooltip: 'Edit',
+            tooltip: tr('Edit'),
             visualDensity: VisualDensity.compact,
             onPressed: () => _openTagEditor(context, existing: tag),
           ),
           IconButton(
             icon: AppIcon(Icons.delete_outline, color: theme.colorScheme.error),
-            tooltip: 'Delete',
+            tooltip: tr('Delete'),
             visualDensity: VisualDensity.compact,
             onPressed: () => _confirmDelete(context, ref, tag),
           ),
@@ -201,22 +202,22 @@ Future<void> _confirmDelete(
   final confirmed = await showAppDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: Text('Delete "${tag.name}"?'),
-      content: const Text(
+      title: Text(tr('Delete "{0}"?', [tag.name])),
+      content: const Tr(
         "This removes the tag from every transaction that carries it. "
         "The transactions themselves aren't touched.",
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Cancel'),
+          child: const Tr('Cancel'),
         ),
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(true),
           style: TextButton.styleFrom(
             foregroundColor: Theme.of(dialogContext).colorScheme.error,
           ),
-          child: const Text('Delete'),
+          child: const Tr('Delete'),
         ),
       ],
     ),
@@ -226,7 +227,7 @@ Future<void> _confirmDelete(
   await ref.read(dbProvider).deleteTag(tag.id);
   messenger
     ..hideCurrentSnackBar()
-    ..showSnackBar(const SnackBar(content: Text('Tag deleted')));
+    ..showSnackBar(const SnackBar(content: Tr('Tag deleted')));
 }
 
 Future<void> _openTagEditor(BuildContext context, {TagRow? existing}) {
@@ -280,7 +281,7 @@ class _TagEditorSheetState extends ConsumerState<_TagEditorSheet> {
   Future<void> _save() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      _showError('Give the tag a name.');
+      _showError(tr('Give the tag a name.'));
       return;
     }
 
@@ -301,7 +302,7 @@ class _TagEditorSheetState extends ConsumerState<_TagEditorSheet> {
     } catch (_) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      _showError('Could not save the tag — that name may already be used.');
+      _showError(tr('Could not save the tag — that name may already be used.'));
     }
   }
 
@@ -324,7 +325,7 @@ class _TagEditorSheetState extends ConsumerState<_TagEditorSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              _isEdit ? 'Edit tag' : 'New tag',
+              _isEdit ? tr('Edit tag') : tr('New tag'),
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
@@ -335,9 +336,9 @@ class _TagEditorSheetState extends ConsumerState<_TagEditorSheet> {
               autofocus: !_isEdit,
               textCapitalization: TextCapitalization.words,
               maxLength: 30,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                hintText: 'e.g. Work trip, Tax deductible',
+              decoration: InputDecoration(
+                labelText: tr('Name'),
+                hintText: tr('e.g. Work trip, Tax deductible'),
                 counterText: '',
               ),
               onSubmitted: (_) => _save(),
@@ -366,7 +367,7 @@ class _TagEditorSheetState extends ConsumerState<_TagEditorSheet> {
                       width: 22,
                       child: CircularProgressIndicator(strokeWidth: 2.4),
                     )
-                  : const Text('Save'),
+                  : const Tr('Save'),
             ),
           ],
         ),

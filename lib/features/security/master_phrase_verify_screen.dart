@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/security/master_phrase_field.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Turning the master phrase off requires re-entering it — same reasoning
 /// as "Remove passcode" re-verifying the current PIN even though you're
@@ -32,7 +33,7 @@ class _MasterPhraseVerifyScreenState
     if (!ok) {
       setState(() {
         _checking = false;
-        _error = 'Wrong phrase';
+        _error = tr('Wrong phrase');
       });
       return;
     }
@@ -42,7 +43,7 @@ class _MasterPhraseVerifyScreenState
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        const SnackBar(content: Text('Master recovery phrase turned off')),
+        const SnackBar(content: Tr('Master recovery phrase turned off')),
       );
   }
 
@@ -50,20 +51,20 @@ class _MasterPhraseVerifyScreenState
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Turn off recovery phrase')),
+      appBar: AppTopBar(title: const Tr('Turn off recovery phrase')),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              Tr(
                 'Enter your master recovery phrase to turn this off.',
                 style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(height: 20),
               MasterPhraseField(
-                submitLabel: 'Turn off',
+                submitLabel: tr('Turn off'),
                 error: _error,
                 busy: _checking,
                 onSubmit: _onSubmit,

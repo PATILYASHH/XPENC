@@ -8,6 +8,7 @@ import '../../core/widgets/money_text.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'settings_common.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Settings → General → Colours (GitHub #156): the colour of each money
 /// direction, and what colours a transaction's icon. Each direction still
@@ -39,7 +40,7 @@ class ColorsSettingsScreen extends ConsumerWidget {
         choice.iconColor != null;
 
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Colours')),
+      appBar: AppTopBar(title: const Tr('Colours')),
       body: ListView(
         padding: EdgeInsets.fromLTRB(
           20,
@@ -48,7 +49,7 @@ class ColorsSettingsScreen extends ConsumerWidget {
           32 + MediaQuery.of(context).padding.bottom,
         ),
         children: [
-          settingsSectionLabel(context, 'Money colours'),
+          settingsSectionLabel(context, tr('Money colours')),
           AppCard(
             child: Column(
               children: [
@@ -67,7 +68,7 @@ class ColorsSettingsScreen extends ConsumerWidget {
           if (clash)
             Padding(
               padding: const EdgeInsets.fromLTRB(4, 10, 4, 0),
-              child: Text(
+              child: Tr(
                 'Money in and Money out are the same colour, so they’ll be '
                 'hard to tell apart at a glance.',
                 style: theme.textTheme.bodySmall?.copyWith(
@@ -79,7 +80,7 @@ class ColorsSettingsScreen extends ConsumerWidget {
             ),
           Padding(
             padding: const EdgeInsets.fromLTRB(4, 10, 4, 0),
-            child: Text(
+            child: Tr(
               'Each colour is used everywhere that kind of money shows — '
               'amounts, charts and icons.',
               style: theme.textTheme.bodySmall?.copyWith(
@@ -88,7 +89,7 @@ class ColorsSettingsScreen extends ConsumerWidget {
             ),
           ),
 
-          settingsSectionLabel(context, 'Transaction icon'),
+          settingsSectionLabel(context, tr('Transaction icon')),
           AppCard(
             child: Column(
               children: [
@@ -107,7 +108,7 @@ class ColorsSettingsScreen extends ConsumerWidget {
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: _Swatch(TxIconStyle.single),
-                    title: const Text('Icon colour'),
+                    title: const Tr('Icon colour'),
                     trailing: AppIcon(
                       Icons.chevron_right_rounded,
                       color: cs.onSurfaceVariant,
@@ -115,7 +116,7 @@ class ColorsSettingsScreen extends ConsumerWidget {
                     onTap: () async {
                       final picked = await showColorPickerSheet(
                         context,
-                        title: 'Icon colour',
+                        title: tr('Icon colour'),
                         current: TxIconStyle.single,
                         defaultColor: TxIconStyle.defaultSingle,
                       );
@@ -139,7 +140,7 @@ class ColorsSettingsScreen extends ConsumerWidget {
               child: Center(
                 child: TextButton.icon(
                   icon: const AppIcon(Icons.restart_alt_rounded),
-                  label: const Text('Reset all colours'),
+                  label: const Tr('Reset all colours'),
                   onPressed: () async {
                     await db.setMoneyColors(
                       income: null,
@@ -162,17 +163,17 @@ enum _Direction { income, expense, transfer, person }
 
 extension on _Direction {
   String get label => switch (this) {
-    _Direction.income => 'Money in',
-    _Direction.expense => 'Money out',
-    _Direction.transfer => 'Transfer',
-    _Direction.person => 'People',
+    _Direction.income => tr('Money in'),
+    _Direction.expense => tr('Money out'),
+    _Direction.transfer => tr('Transfer'),
+    _Direction.person => tr('People'),
   };
 
   String get example => switch (this) {
-    _Direction.income => 'Salary, refunds — anything coming in',
-    _Direction.expense => 'Spending — anything going out',
-    _Direction.transfer => 'Between your own accounts',
-    _Direction.person => 'Money lent, borrowed or settled',
+    _Direction.income => tr('Salary, refunds — anything coming in'),
+    _Direction.expense => tr('Spending — anything going out'),
+    _Direction.transfer => tr('Between your own accounts'),
+    _Direction.person => tr('Money lent, borrowed or settled'),
   };
 
   Color get current => switch (this) {
@@ -224,7 +225,7 @@ class _DirectionTile extends StatelessWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (!isCustom) Text('Default', style: settingsTrailingStyle(context)),
+          if (!isCustom) Tr('Default', style: settingsTrailingStyle(context)),
           const SizedBox(width: 4),
           AppIcon(
             Icons.chevron_right_rounded,
@@ -262,14 +263,14 @@ class _IconModeTile extends StatelessWidget {
     final theme = Theme.of(context);
     final (title, subtitle) = switch (mode) {
       TxIconBackground.category => (
-        'Category colour',
-        'Each icon wears its category’s colour',
+        tr('Category colour'),
+        tr('Each icon wears its category’s colour'),
       ),
       TxIconBackground.direction => (
-        'Money in / out colour',
-        'Icons match the money colours above',
+        tr('Money in / out colour'),
+        tr('Icons match the money colours above'),
       ),
-      TxIconBackground.single => ('One colour', 'Every icon the same colour'),
+      TxIconBackground.single => (tr('One colour'), tr('Every icon the same colour')),
     };
     return AppListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
@@ -334,9 +335,9 @@ class _IconPreview extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        sample(TxType.expense, Icons.restaurant_outlined, 'Money out'),
-        sample(TxType.income, Icons.work_outline_rounded, 'Money in'),
-        sample(TxType.transfer, Icons.swap_horiz_rounded, 'Transfer'),
+        sample(TxType.expense, Icons.restaurant_outlined, tr('Money out')),
+        sample(TxType.income, Icons.work_outline_rounded, tr('Money in')),
+        sample(TxType.transfer, Icons.swap_horiz_rounded, tr('Transfer')),
       ],
     );
   }
@@ -450,7 +451,7 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          const SnackBar(content: Text('Enter six hex digits, like 16A34A.')),
+          const SnackBar(content: Tr('Enter six hex digits, like 16A34A.')),
         );
       return;
     }
@@ -526,8 +527,8 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(RegExp('[#0-9a-fA-F]')),
                     ],
-                    decoration: const InputDecoration(
-                      labelText: 'Any colour (hex)',
+                    decoration: InputDecoration(
+                      labelText: tr('Any colour (hex)'),
                       prefixText: '#',
                       counterText: '',
                     ),
@@ -541,7 +542,7 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
                   width: 88,
                   child: FilledButton(
                     onPressed: _submitHex,
-                    child: const Text('Use'),
+                    child: const Tr('Use'),
                   ),
                 ),
               ],
@@ -556,7 +557,7 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
                   shape: BoxShape.circle,
                 ),
               ),
-              label: const Text('Use default'),
+              label: const Tr('Use default'),
               onPressed: () =>
                   Navigator.of(context).pop<PickedColor>((argb: null)),
             ),

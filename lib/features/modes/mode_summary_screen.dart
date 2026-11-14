@@ -17,6 +17,7 @@ import '../persons/person_avatar.dart';
 import '../share/share_flows.dart';
 import '../share/share_models.dart';
 import 'mode_widgets.dart';
+import '../../core/l10n/l10n.dart';
 
 /// A mode (a trip) told back once it's over (`/mode/:id/summary`): what it
 /// came to against its budget, where it went, who owes whom, the planned
@@ -33,11 +34,11 @@ class ModeSummaryScreen extends ConsumerWidget {
     final mode = ref.watch(modeMapProvider)[modeId];
     if (mode == null) {
       return Scaffold(
-        appBar: AppTopBar(title: const Text('Summary')),
+        appBar: AppTopBar(title: const Tr('Summary')),
         body: Center(
           child: ref.watch(modesProvider).isLoading
               ? const CircularProgressIndicator()
-              : const Text('This mode no longer exists'),
+              : const Tr('This mode no longer exists'),
         ),
       );
     }
@@ -55,7 +56,7 @@ class ModeSummaryScreen extends ConsumerWidget {
         title: Text(mode.name),
         actions: [
           IconButton(
-            tooltip: 'Share',
+            tooltip: tr('Share'),
             icon: const AppIcon(Icons.ios_share_rounded),
             onPressed: () => shareMode(context, data),
           ),
@@ -79,7 +80,7 @@ class ModeSummaryScreen extends ConsumerWidget {
                         child: Text(
                           [
                             ?data.dates,
-                            '${data.days} ${data.days == 1 ? 'day' : 'days'}',
+                            plural(data.days, '1 day', '{0} days'),
                           ].join(' · '),
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: cs.onSurfaceVariant,
@@ -89,7 +90,7 @@ class ModeSummaryScreen extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  Text(
+                  Tr(
                     'It came to',
                     style: theme.textTheme.labelLarge?.copyWith(
                       color: cs.onSurfaceVariant,
@@ -111,14 +112,27 @@ class ModeSummaryScreen extends ConsumerWidget {
                     [
                       if (budget != null)
                         over
-                            ? '${MoneyFormat.symbol(data.spent - budget)} over '
-                                  'the ${MoneyFormat.symbol(budget)} budget'
-                            : '${MoneyFormat.symbol(budget - data.spent)} '
-                                  'under the ${MoneyFormat.symbol(budget)} '
-                                  'budget',
-                      '${MoneyFormat.symbol(data.perDay)} a day',
-                      '${data.count} '
-                          '${data.count == 1 ? 'transaction' : 'transactions'}',
+                            ? tr(
+                                '{0} over '
+                                'the {1} budget',
+                                [
+                                  MoneyFormat.symbol(data.spent - budget),
+                                  MoneyFormat.symbol(budget),
+                                ],
+                              )
+                            : tr(
+                                '{0} '
+                                'under the {1} '
+                                'budget',
+                                [
+                                  MoneyFormat.symbol(budget - data.spent),
+                                  MoneyFormat.symbol(budget),
+                                ],
+                              ),
+                      tr('{0} a day', [MoneyFormat.symbol(data.perDay)]),
+                      data.count == 1
+                          ? tr('1 transaction')
+                          : tr('{0} transactions', [data.count]),
                     ].join(' · '),
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: over ? AppColors.expense : cs.onSurfaceVariant,
@@ -130,7 +144,7 @@ class ModeSummaryScreen extends ConsumerWidget {
           ),
           _WalletLeftover(mode: mode),
           if (summary.byCategory.isNotEmpty) ...[
-            modeSectionLabel(theme, 'WHERE IT WENT'),
+            modeSectionLabel(theme, tr('WHERE IT WENT')),
             AppCard(
               margin: EdgeInsets.zero,
               clipBehavior: Clip.antiAlias,
@@ -157,7 +171,7 @@ class ModeSummaryScreen extends ConsumerWidget {
             ),
           ],
           if (people.isNotEmpty) ...[
-            modeSectionLabel(theme, 'WHO OWES WHOM'),
+            modeSectionLabel(theme, tr('WHO OWES WHOM')),
             AppCard(
               margin: EdgeInsets.zero,
               clipBehavior: Clip.antiAlias,
@@ -180,10 +194,10 @@ class ModeSummaryScreen extends ConsumerWidget {
                           title: Text(p.name),
                           subtitle: Text(
                             bal.isZero
-                                ? 'Even'
+                                ? tr('Even')
                                 : bal.isPositive
-                                ? 'Owes you'
-                                : 'You owe',
+                                ? tr('Owes you')
+                                : tr('You owe'),
                           ),
                           trailing: bal.isZero
                               ? null
@@ -205,19 +219,19 @@ class ModeSummaryScreen extends ConsumerWidget {
             ),
           ],
           if (planned.isNotEmpty) ...[
-            modeSectionLabel(theme, 'PLANNED COSTS'),
+            modeSectionLabel(theme, tr('PLANNED COSTS')),
             ModePlannedCostsCard(mode: mode, costs: planned),
           ],
           const SizedBox(height: 24),
           FilledButton.icon(
             onPressed: () => shareMode(context, data),
             icon: const AppIcon(Icons.ios_share_rounded),
-            label: const Text('Share the summary'),
+            label: const Tr('Share the summary'),
           ),
           const SizedBox(height: 8),
           OutlinedButton(
             onPressed: () => context.push('/mode/${mode.id}'),
-            child: const Text('Every transaction'),
+            child: const Tr('Every transaction'),
           ),
         ],
       ),
@@ -253,8 +267,11 @@ class _WalletLeftover extends ConsumerWidget {
             children: [
               Text(
                 left.isPositive
-                    ? '${MoneyFormat.symbol(left)} left in ${wallet.name}'
-                    : '${wallet.name} is empty',
+                    ? tr('{0} left in {1}', [
+                        MoneyFormat.symbol(left),
+                        wallet.name,
+                      ])
+                    : tr('{0} is empty', [wallet.name]),
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -270,17 +287,23 @@ class _WalletLeftover extends ConsumerWidget {
                     SnackBar(
                       content: Text(
                         back.isPositive
-                            ? 'Moved ${MoneyFormat.symbol(back)} back to '
-                                  '${source?.name ?? 'its account'}'
-                            : 'Wallet closed',
+                            ? tr(
+                                'Moved {0} back to '
+                                '{1}',
+                                [
+                                  MoneyFormat.symbol(back),
+                                  source?.name ?? tr('its account'),
+                                ],
+                              )
+                            : tr('Wallet closed'),
                       ),
                     ),
                   );
                 },
                 child: Text(
                   left.isPositive && source != null
-                      ? 'Move it back to ${source.name}'
-                      : 'Close the wallet',
+                      ? tr('Move it back to {0}', [source.name])
+                      : tr('Close the wallet'),
                 ),
               ),
             ],
@@ -320,14 +343,14 @@ ModeShare buildModeShare(WidgetRef ref, ModeRow mode) {
     categories: [
       for (final e in byCategory)
         (
-          name: cats[e.key]?.name ?? 'Uncategorised',
+          name: cats[e.key]?.name ?? tr('Uncategorised'),
           colorValue: cats[e.key]?.colorValue ?? 0xFF78716C,
           amount: e.value,
         ),
     ],
     accounts: [
       for (final e in byAccount)
-        (name: accounts[e.key]?.name ?? 'Account', amount: e.value),
+        (name: accounts[e.key]?.name ?? tr('Account'), amount: e.value),
     ],
     people: [
       for (final p in people)
@@ -344,12 +367,12 @@ ModeShare buildModeShare(WidgetRef ref, ModeRow mode) {
           title: (t.payee?.trim().isNotEmpty ?? false)
               ? t.payee!.trim()
               : t.type.isPersonMovement
-              ? (persons[t.personId]?.name ?? 'Person')
+              ? (persons[t.personId]?.name ?? tr('Person'))
               : t.type == TxType.transfer
               ? 'Transfer'
               : (t.note?.trim().isNotEmpty ?? false)
               ? t.note!.trim()
-              : (cats[t.categoryId]?.name ?? 'Uncategorised'),
+              : (cats[t.categoryId]?.name ?? tr('Uncategorised')),
           detail: [
             ?cats[t.categoryId]?.name,
             if (t.type == TxType.transfer)

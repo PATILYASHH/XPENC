@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../../data/database.dart';
+import '../../core/l10n/l10n.dart';
 
 /// The More modules a mode can show while it's the focus (see
 /// `Modes.modules`). Keys are stored, so never rename one.
 class ModeModule {
-  const ModeModule(this.key, this.label, this.icon);
+  const ModeModule(this.key, String label, this.icon) : _label = label;
 
   final String key;
-  final String label;
+  final String _label;
+  String get label => tr(_label);
   final IconData icon;
 
   static const all = <ModeModule>[
@@ -59,18 +61,20 @@ String encodeModeModules(Set<String> keys) {
 class ModePreset {
   const ModePreset({
     required this.key,
-    required this.title,
-    required this.subtitle,
+    required String title,
+    required String subtitle,
     required this.name,
     required this.iconKey,
     required this.colorValue,
     required this.modules,
     this.navSlots,
-  });
+  }) : _title = title, _subtitle = subtitle;
 
   final String key;
-  final String title;
-  final String subtitle;
+  final String _title;
+  String get title => tr(_title);
+  final String _subtitle;
+  String get subtitle => tr(_subtitle);
   final String name;
   final String iconKey;
   final int colorValue;

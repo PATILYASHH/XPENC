@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'money.dart';
+import '../core/l10n/l10n.dart';
 
 /// Pure math behind the More → Calculators screens (FD, RD, SIP, lumpsum,
 /// PPF, GST, Indian income tax). No widgets, no providers — every screen
@@ -18,9 +19,10 @@ enum Compounding {
   halfYearly(2, 'Half-yearly'),
   yearly(1, 'Yearly');
 
-  const Compounding(this.perYear, this.label);
+  const Compounding(this.perYear, String label) : _label = label;
   final int perYear;
-  final String label;
+  final String _label;
+  String get label => tr(_label);
 }
 
 /// What you put in, what it grew to, and the difference.

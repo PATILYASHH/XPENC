@@ -15,6 +15,7 @@ import '../../data/tables.dart';
 import 'recurring_rule_sheet.dart';
 import 'skip_occurrence.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// One Auto rule: its schedule and posting details, plus the full history of
 /// every transaction it has actually posted (matched via
@@ -31,9 +32,9 @@ class AutoRuleDetailScreen extends ConsumerWidget {
     if (rule == null) {
       return Scaffold(
         appBar: AppTopBar(),
-        body: const ErrorView(
-          title: 'Rule not found',
-          message: 'This auto rule may have been deleted.',
+        body: ErrorView(
+          title: tr('Rule not found'),
+          message: tr('This auto rule may have been deleted.'),
         ),
       );
     }
@@ -63,18 +64,18 @@ class AutoRuleDetailScreen extends ConsumerWidget {
           if (rule.payCardStatement)
             IconButton(
               icon: const AppIcon(Icons.credit_card_outlined),
-              tooltip: 'Open the card',
+              tooltip: tr('Open the card'),
               onPressed: () => context.push('/account/${rule.toAccountId}'),
             )
           else
             IconButton(
               icon: const AppIcon(Icons.edit_outlined),
-              tooltip: 'Edit',
+              tooltip: tr('Edit'),
               onPressed: () => showRecurringRuleSheet(context, existing: rule),
             ),
           IconButton(
             icon: const AppIcon(Icons.more_vert_rounded),
-            tooltip: 'More',
+            tooltip: tr('More'),
             onPressed: () => _showActions(context, ref, rule),
           ),
         ],
@@ -89,9 +90,9 @@ class AutoRuleDetailScreen extends ConsumerWidget {
                 children: [
                   _row(
                     context,
-                    onPromo ? 'Promo amount' : 'Amount',
+                    onPromo ? tr('Promo amount') : tr('Amount'),
                     rule.payCardStatement
-                        ? _plainValue(context, "What's left of the statement")
+                        ? _plainValue(context, tr("What's left of the statement"))
                         : MoneyText(
                             onPromo ? rule.promoAmount! : rule.amount,
                             color: color,
@@ -100,13 +101,13 @@ class AutoRuleDetailScreen extends ConsumerWidget {
                   _divider(theme),
                   _row(
                     context,
-                    'Frequency',
+                    tr('Frequency'),
                     _plainValue(context, _frequencyLabel(rule)),
                   ),
                   _divider(theme),
                   _row(
                     context,
-                    rule.isActive ? 'Next due' : 'Paused',
+                    rule.isActive ? tr('Next due') : tr('Paused'),
                     rule.isActive
                         ? _plainValue(
                             context,
@@ -121,7 +122,7 @@ class AutoRuleDetailScreen extends ConsumerWidget {
                     _divider(theme),
                     _row(
                       context,
-                      isTransfer ? 'From' : 'Account',
+                      isTransfer ? tr('From') : tr('Account'),
                       _plainValue(context, sourceAccount.name),
                     ),
                   ],
@@ -129,7 +130,7 @@ class AutoRuleDetailScreen extends ConsumerWidget {
                     _divider(theme),
                     _row(
                       context,
-                      destination.type == AccountType.loan ? 'Loan' : 'Goal',
+                      destination.type == AccountType.loan ? tr('Loan') : tr('Goal'),
                       InkWell(
                         onTap: () => context.push(
                           destination.type == AccountType.loan
@@ -155,7 +156,7 @@ class AutoRuleDetailScreen extends ConsumerWidget {
                     _divider(theme),
                     _row(
                       context,
-                      isExpense ? 'Payee' : 'From',
+                      isExpense ? tr('Payee') : tr('From'),
                       _plainValue(context, rule.payee!),
                     ),
                   ],
@@ -163,10 +164,10 @@ class AutoRuleDetailScreen extends ConsumerWidget {
                     _divider(theme),
                     _row(
                       context,
-                      'Estimate',
+                      tr('Estimate'),
                       _plainValue(
                         context,
-                        'Flagged for review each time it posts',
+                        tr('Flagged for review each time it posts'),
                       ),
                     ),
                   ],
@@ -174,10 +175,10 @@ class AutoRuleDetailScreen extends ConsumerWidget {
                     _divider(theme),
                     _row(
                       context,
-                      'Promo',
+                      tr('Promo'),
                       _plainValue(
                         context,
-                        '${rule.promoOccurrencesLeft} more at this price',
+                        tr('{0} more at this price', [rule.promoOccurrencesLeft]),
                       ),
                     ),
                   ],
@@ -193,7 +194,7 @@ class AutoRuleDetailScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    Tr(
                       'Notes',
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
@@ -209,7 +210,7 @@ class AutoRuleDetailScreen extends ConsumerWidget {
             ),
           ],
           const SizedBox(height: 28),
-          Text(
+          Tr(
             'History',
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
@@ -221,7 +222,7 @@ class AutoRuleDetailScreen extends ConsumerWidget {
             categoryMap: categoryMap,
             ownIds: {rule.accountId},
             currency: null,
-            emptyMessage: 'Nothing posted yet.',
+            emptyMessage: tr('Nothing posted yet.'),
           ),
         ],
       ),
@@ -266,22 +267,24 @@ class AutoRuleDetailScreen extends ConsumerWidget {
   static String _frequencyLabel(RecurringRuleRow r) {
     switch (r.frequency) {
       case RecurringFrequency.daily:
-        return 'Daily';
+        return tr('Daily');
       case RecurringFrequency.weekly:
-        return 'Weekly';
+        return tr('Weekly');
       case RecurringFrequency.biweekly:
-        return 'Every 2 weeks';
+        return tr('Every 2 weeks');
       case RecurringFrequency.monthly:
-        return 'Monthly on the ${r.dayOfMonth}${_ordinalSuffix(r.dayOfMonth ?? 1)}';
+        return tr('Monthly on the {0}{1}', [r.dayOfMonth, _ordinalSuffix(r.dayOfMonth ?? 1)]);
       case RecurringFrequency.yearly:
         final month = DateFormat.MMMM().format(
           DateTime(2000, r.monthOfYear ?? 1),
         );
-        return 'Yearly on $month ${r.dayOfMonth}${_ordinalSuffix(r.dayOfMonth ?? 1)}';
+        return tr('Yearly on {0} {1}{2}', [month, r.dayOfMonth, _ordinalSuffix(r.dayOfMonth ?? 1)]);
     }
   }
 
   static String _ordinalSuffix(int day) {
+    // English only; other languages write the plain number.
+    if (L10n.code != 'en') return '';
     if (day >= 11 && day <= 13) return 'th';
     switch (day % 10) {
       case 1:
@@ -317,13 +320,13 @@ class AutoRuleDetailScreen extends ConsumerWidget {
             children: [
               AppListTile(
                 leading: const AppIcon(Icons.bolt_outlined),
-                title: const Text('Pay now'),
+                title: const Tr('Pay now'),
                 subtitle: Text(
                   rule.nextDueDate.isAfter(DateTime.now())
-                      ? "Pay it early, ahead of ${DateFormat('d MMM').format(rule.nextDueDate)} — "
-                            "posts today instead"
-                      : 'Posts today instead of waiting for the app to catch '
-                            'it up',
+                      ? tr("Pay it early, ahead of {0} — "
+                            "posts today instead", [DateFormat('d MMM').format(rule.nextDueDate)])
+                      : tr('Posts today instead of waiting for the app to catch '
+                            'it up'),
                 ),
                 onTap: () =>
                     Navigator.of(sheetContext).pop(_RuleDetailAction.payNow),
@@ -341,13 +344,13 @@ class AutoRuleDetailScreen extends ConsumerWidget {
                       ? Icons.pause_circle_outline
                       : Icons.play_circle_outline,
                 ),
-                title: Text(rule.isActive ? 'Pause' : 'Resume'),
+                title: Text(rule.isActive ? tr('Pause') : tr('Resume')),
                 subtitle: Text(
                   rule.isActive
-                      ? 'Move it to Archived auto rules until you restore it. '
-                            'Nothing is deleted.'
-                      : 'Make it active again — it resumes posting on '
-                            'schedule.',
+                      ? tr('Move it to Archived auto rules until you restore it. '
+                            'Nothing is deleted.')
+                      : tr('Make it active again — it resumes posting on '
+                            'schedule.'),
                 ),
                 onTap: () => Navigator.of(sheetContext).pop(
                   rule.isActive
@@ -360,11 +363,11 @@ class AutoRuleDetailScreen extends ConsumerWidget {
                   Icons.delete_outline,
                   color: theme.colorScheme.error,
                 ),
-                title: Text(
+                title: Tr(
                   'Delete',
                   style: TextStyle(color: theme.colorScheme.error),
                 ),
-                subtitle: const Text(
+                subtitle: const Tr(
                   'Removes the rule. Past auto-posted transactions stay.',
                 ),
                 onTap: () =>
@@ -387,13 +390,13 @@ class AutoRuleDetailScreen extends ConsumerWidget {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
-          ..showSnackBar(SnackBar(content: Text('"${rule.name}" paused')));
+          ..showSnackBar(SnackBar(content: Text(tr('"{0}" paused', [rule.name]))));
       case _RuleDetailAction.resume:
         await ref.read(dbProvider).setRecurringActive(rule.id, true);
         if (!context.mounted) return;
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
-          ..showSnackBar(SnackBar(content: Text('"${rule.name}" resumed')));
+          ..showSnackBar(SnackBar(content: Text(tr('"{0}" resumed', [rule.name]))));
       case _RuleDetailAction.delete:
         await _confirmDelete(context, ref, rule);
     }
@@ -411,21 +414,21 @@ class AutoRuleDetailScreen extends ConsumerWidget {
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Pay "${rule.name}" now?'),
+        title: Text(tr('Pay "{0}" now?', [rule.name])),
         content: Text(
-          'Posts ${rule.payCardStatement ? "what's left of the statement" : MoneyFormat.symbol(amount)}'
-          '${accountName != null ? ' from $accountName' : ''} today, '
-          "instead of ${DateFormat('d MMM').format(rule.nextDueDate)}. "
-          'The next one will still be due on schedule.',
+          tr('Posts {0}'
+          '{1} today, '
+          "instead of {2}. "
+          'The next one will still be due on schedule.', [rule.payCardStatement ? tr("what's left of the statement") : MoneyFormat.symbol(amount), accountName != null ? tr(' from {0}', [accountName]) : '', DateFormat('d MMM').format(rule.nextDueDate)]),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Pay now'),
+            child: const Tr('Pay now'),
           ),
         ],
       ),
@@ -439,9 +442,9 @@ class AutoRuleDetailScreen extends ConsumerWidget {
         SnackBar(
           content: Text(
             posted
-                ? '"${rule.name}" posted'
+                ? tr('"{0}" posted', [rule.name])
                 // A card bill that's already been paid (#183).
-                : 'Nothing left to pay on "${rule.name}"',
+                : tr('Nothing left to pay on "{0}"', [rule.name]),
           ),
         ),
       );
@@ -457,22 +460,22 @@ class AutoRuleDetailScreen extends ConsumerWidget {
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Delete "${rule.name}"?'),
-        content: const Text(
+        title: Text(tr('Delete "{0}"?', [rule.name])),
+        content: const Tr(
           "Its transactions already posted stay in your ledger — only the "
           "rule itself, and future auto-posting, goes away.",
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(ctx).colorScheme.error,
             ),
-            child: const Text('Delete'),
+            child: const Tr('Delete'),
           ),
         ],
       ),
@@ -483,7 +486,7 @@ class AutoRuleDetailScreen extends ConsumerWidget {
     navigator.pop();
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Rule deleted')));
+      ..showSnackBar(const SnackBar(content: Tr('Rule deleted')));
   }
 }
 

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import '../../core/money.dart';
 import '../../data/tables.dart';
+import '../../core/l10n/l10n.dart';
 
 /// XPENC Score — a 0–100 read on how well money is being managed, built only
 /// from what's already in the ledger. Pure: [computeXpencScore] takes a plain
@@ -197,7 +198,7 @@ class ScorePillar {
   final String? tip;
 
   ScorePillarSpec get spec => scorePillarSpec(id);
-  String get title => spec.title;
+  String get title => tr(spec.title);
   int get weight => spec.weight;
   double get points => applicable ? fraction * weight : 0;
 }
@@ -206,24 +207,24 @@ enum ScoreGrade { excellent, good, fair, needsWork, atRisk }
 
 extension ScoreGradeX on ScoreGrade {
   String get label => switch (this) {
-    ScoreGrade.excellent => 'Excellent',
-    ScoreGrade.good => 'Good',
-    ScoreGrade.fair => 'Fair',
-    ScoreGrade.needsWork => 'Needs work',
-    ScoreGrade.atRisk => 'At risk',
+    ScoreGrade.excellent => tr('Excellent'),
+    ScoreGrade.good => tr('Good'),
+    ScoreGrade.fair => tr('Fair'),
+    ScoreGrade.needsWork => tr('Needs work'),
+    ScoreGrade.atRisk => tr('At risk'),
   };
 
   String get blurb => switch (this) {
     ScoreGrade.excellent =>
-      'Your money is in great shape. Keep the habits that got you here.',
+      tr('Your money is in great shape. Keep the habits that got you here.'),
     ScoreGrade.good =>
-      'Solid footing. A couple of small changes would push you to the top.',
+      tr('Solid footing. A couple of small changes would push you to the top.'),
     ScoreGrade.fair =>
-      'Getting there. Focus on the lowest-scoring rule below first.',
+      tr('Getting there. Focus on the lowest-scoring rule below first.'),
     ScoreGrade.needsWork =>
-      'Some habits are costing you. The tips below show where to start.',
+      tr('Some habits are costing you. The tips below show where to start.'),
     ScoreGrade.atRisk =>
-      'Spending or debt is outpacing money in. Start with the first tip below.',
+      tr('Spending or debt is outpacing money in. Start with the first tip below.'),
   };
 }
 
@@ -330,17 +331,17 @@ XpencScore computeXpencScore(XpencScoreInput input) {
 ScorePillar _savingsRate(Money income, Money expense) {
   const id = ScorePillarId.savingsRate;
   if (income.isZero && expense.isZero) {
-    return const ScorePillar.skipped(id, 'No money in or out yet');
+    return ScorePillar.skipped(id, tr('No money in or out yet'));
   }
   if (!income.isPositive) {
     return ScorePillar(
       id: id,
       applicable: true,
       fraction: 0,
-      detail: 'Money out with no recorded money in',
+      detail: tr('Money out with no recorded money in'),
       tip:
-          'Record your money in too — salary, freelance, interest — so the '
-          'score can see what you earn.',
+          tr('Record your money in too — salary, freelance, interest — so the '
+          'score can see what you earn.'),
     );
   }
   final rate = (income.paise - expense.paise) / income.paise;
@@ -350,14 +351,14 @@ ScorePillar _savingsRate(Money income, Money expense) {
     applicable: true,
     fraction: fraction,
     detail: rate >= 0
-        ? 'Saved ${_pct(rate)} of money in'
-        : 'Spent ${_pct(-rate)} more than you earned',
+        ? tr('Saved {0} of money in', [_pct(rate)])
+        : tr('Spent {0} more than you earned', [_pct(-rate)]),
     tip: fraction >= 1
         ? null
         : rate < 0
-        ? 'Money out is above money in. Cut your top spending category first.'
-        : 'Aim to keep at least 30% of money in. Your top money-out categories '
-              'are the fastest place to find it.',
+        ? tr('Money out is above money in. Cut your top spending category first.')
+        : tr('Aim to keep at least 30% of money in. Your top money-out categories '
+              'are the fastest place to find it.'),
   );
 }
 
@@ -386,7 +387,7 @@ ScorePillar _livingWithinMeans(XpencScoreInput input) {
     if (exp <= inc) within++;
   }
   if (active == 0) {
-    return const ScorePillar.skipped(id, 'Needs one full month of entries');
+    return ScorePillar.skipped(id, tr('Needs one full month of entries'));
   }
   final fraction = within / active;
   return ScorePillar(
@@ -394,12 +395,12 @@ ScorePillar _livingWithinMeans(XpencScoreInput input) {
     applicable: true,
     fraction: fraction,
     detail:
-        '$within of $active full month${active == 1 ? '' : 's'} '
-        'within money in',
+        tr('{0} of {1} full month{2} '
+        'within money in', [within, active, active == 1 ? '' : 's']),
     tip: fraction >= 1
         ? null
-        : 'Some months ended in the red. A monthly budget on your biggest '
-              'categories keeps spending under money in.',
+        : tr('Some months ended in the red. A monthly budget on your biggest '
+              'categories keeps spending under money in.'),
   );
 }
 
@@ -407,22 +408,22 @@ ScorePillar _debtLoad(XpencScoreInput input, double avgIncome) {
   const id = ScorePillarId.debtLoad;
   final obligations = monthlyDebtObligations(input);
   if (obligations.isZero || obligations.isNegative) {
-    return const ScorePillar(
+    return ScorePillar(
       id: id,
       applicable: true,
       fraction: 1,
-      detail: 'No debt obligations',
+      detail: tr('No debt obligations'),
     );
   }
   if (avgIncome <= 0) {
-    return const ScorePillar(
+    return ScorePillar(
       id: id,
       applicable: true,
       fraction: 0,
-      detail: 'Debt with no recorded money in',
+      detail: tr('Debt with no recorded money in'),
       tip:
-          'Record your money in so debt can be weighed against it — and '
-          'prioritise clearing the most expensive debt first.',
+          tr('Record your money in so debt can be weighed against it — and '
+          'prioritise clearing the most expensive debt first.'),
     );
   }
   final ratio = obligations.paise / avgIncome;
@@ -431,11 +432,11 @@ ScorePillar _debtLoad(XpencScoreInput input, double avgIncome) {
     id: id,
     applicable: true,
     fraction: fraction,
-    detail: 'Debt takes ${_pct(ratio)} of monthly money in',
+    detail: tr('Debt takes {0} of monthly money in', [_pct(ratio)]),
     tip: fraction >= 1
         ? null
-        : 'Keep monthly debt payments under 20% of money in. Clear credit card '
-              'and pay-later dues in full first — they cost the most.',
+        : tr('Keep monthly debt payments under 20% of money in. Clear credit card '
+              'and pay-later dues in full first — they cost the most.'),
   );
 }
 
@@ -498,11 +499,11 @@ ScorePillar _repayment(XpencScoreInput input) {
   }
   if (expected > 0) {
     ratios.add(paid / expected);
-    parts.add('$paid of $expected loan payments made');
+    parts.add(tr('{0} of {1} loan payments made', [paid, expected]));
     if (missedLoans.isNotEmpty) {
       tip =
-          'Missed a month on ${missedLoans.join(', ')}. Set up a recurring '
-          'transfer so every EMI posts on time.';
+          tr('Missed a month on {0}. Set up a recurring '
+          'transfer so every EMI posts on time.', [missedLoans.join(', ')]);
     }
   }
 
@@ -511,18 +512,18 @@ ScorePillar _repayment(XpencScoreInput input) {
     ratios.add(1 - overdue / input.peopleYouOwe);
     parts.add(
       overdue == 0
-          ? 'No overdue dues to people'
-          : '$overdue overdue due${overdue == 1 ? '' : 's'} to people',
+          ? tr('No overdue dues to people')
+          : plural(overdue, '1 overdue due to people', '{0} overdue dues to people'),
     );
     if (overdue > 0) {
       tip ??=
-          'Settle what you owe people past its due date — or agree a new '
-          'date and update it.';
+          tr('Settle what you owe people past its due date — or agree a new '
+          'date and update it.');
     }
   }
 
   if (ratios.isEmpty) {
-    return const ScorePillar.skipped(id, 'No loans or dues to repay');
+    return ScorePillar.skipped(id, tr('No loans or dues to repay'));
   }
   final fraction = ratios.reduce((a, b) => a + b) / ratios.length;
   return ScorePillar(
@@ -537,9 +538,9 @@ ScorePillar _repayment(XpencScoreInput input) {
 ScorePillar _emergencyFund(XpencScoreInput input, double avgExpense) {
   const id = ScorePillarId.emergencyFund;
   if (avgExpense <= 0) {
-    return const ScorePillar.skipped(
+    return ScorePillar.skipped(
       id,
-      'Needs a few money-out entries to measure',
+      tr('Needs a few money-out entries to measure'),
     );
   }
   final months = math.max(0, input.liquid.paise) / avgExpense;
@@ -548,18 +549,18 @@ ScorePillar _emergencyFund(XpencScoreInput input, double avgExpense) {
     id: id,
     applicable: true,
     fraction: fraction,
-    detail: 'Covers ${months.toStringAsFixed(1)} months of spending',
+    detail: tr('Covers {0} months of spending', [months.toStringAsFixed(1)]),
     tip: fraction >= 1
         ? null
-        : 'Build a cushion of 6 months of spending. A savings goal with a '
-              'small monthly transfer is the easiest way to start.',
+        : tr('Build a cushion of 6 months of spending. A savings goal with a '
+              'small monthly transfer is the easiest way to start.'),
   );
 }
 
 ScorePillar _budgets(XpencScoreInput input) {
   const id = ScorePillarId.budgets;
   if (input.budgetCount == 0) {
-    return const ScorePillar.skipped(id, 'No budgets set');
+    return ScorePillar.skipped(id, tr('No budgets set'));
   }
   final ok = input.budgetCount - input.budgetsOverspent;
   final fraction = ok / input.budgetCount;
@@ -567,13 +568,16 @@ ScorePillar _budgets(XpencScoreInput input) {
     id: id,
     applicable: true,
     fraction: _clamp01(fraction),
-    detail: '$ok of ${input.budgetCount} budgets on track',
+    detail: tr('{0} of {1} budgets on track', [ok, input.budgetCount]),
     tip: fraction >= 1
         ? null
-        : '${input.budgetsOverspent} budget'
-              '${input.budgetsOverspent == 1 ? ' is' : 's are'} overspent. '
-              'Slow down there for the rest of the period, or resize the '
-              'budget if it was unrealistic.',
+        : plural(
+            input.budgetsOverspent,
+            '1 budget is overspent. Slow down there for the rest of the '
+                'period, or resize the budget if it was unrealistic.',
+            '{0} budgets are overspent. Slow down there for the rest of the '
+                'period, or resize the budget if it was unrealistic.',
+          ),
   );
 }
 
@@ -603,18 +607,18 @@ ScorePillar _trackingHabit(XpencScoreInput input) {
   );
   final correctionNote = corrections == 0
       ? ''
-      : ' · $corrections balance correction${corrections == 1 ? '' : 's'}';
+      : ' · ${plural(corrections, '1 balance correction', '{0} balance corrections')}';
   return ScorePillar(
     id: id,
     applicable: true,
     fraction: fraction,
-    detail: 'Entries on ${days.length} of the last 30 days$correctionNote',
+    detail: tr('Entries on {0} of the last 30 days{1}', [days.length, correctionNote]),
     tip: fraction >= 1
         ? null
         : corrections > 0
-        ? 'A correction means some spending never got logged. Add entries '
-              'as they happen so the balance stays right on its own.'
-        : 'Log spending as it happens. A daily reminder '
-              '(Settings › Notifications) helps.',
+        ? tr('A correction means some spending never got logged. Add entries '
+              'as they happen so the balance stays right on its own.')
+        : tr('Log spending as it happens. A daily reminder '
+              '(Settings › Notifications) helps.'),
   );
 }

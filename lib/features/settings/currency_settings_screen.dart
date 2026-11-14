@@ -9,6 +9,7 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import 'currency_picker_sheet.dart';
 import 'custom_currency_sheet.dart';
+import '../../core/l10n/l10n.dart';
 
 final _dateFormat = DateFormat('d MMM yyyy');
 
@@ -29,7 +30,7 @@ class CurrencySettingsScreen extends ConsumerWidget {
     final custom = ref.watch(customCurrenciesProvider).valueOrNull ?? const [];
 
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Currency')),
+      appBar: AppTopBar(title: const Tr('Currency')),
       body: ListView(
         // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
         padding: EdgeInsets.fromLTRB(
@@ -39,13 +40,13 @@ class CurrencySettingsScreen extends ConsumerWidget {
           32 + MediaQuery.of(context).padding.bottom,
         ),
         children: [
-          _sectionLabel(theme, 'Parent currency'),
+          _sectionLabel(theme, tr('Parent currency')),
           AppCard(
             child: AppListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               leading: const AppIcon(Icons.payments_outlined),
               title: Text('${parentCurrency.symbol} ${parentCurrency.code}'),
-              subtitle: Text(
+              subtitle: Tr(
                 'Every total — Net Worth, Reports, Budgets — is shown in '
                 'this currency.',
                 style: theme.textTheme.bodySmall?.copyWith(
@@ -57,7 +58,7 @@ class CurrencySettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 20),
-          _sectionLabel(theme, 'Exchange rates'),
+          _sectionLabel(theme, tr('Exchange rates')),
           ratesAsync.when(
             data: (rates) => AppCard(
               child: Column(
@@ -65,7 +66,7 @@ class CurrencySettingsScreen extends ConsumerWidget {
                   if (rates.isEmpty)
                     Padding(
                       padding: const EdgeInsets.all(16),
-                      child: Text(
+                      child: Tr(
                         'No exchange rates yet. Add a currency below to give '
                         'an account its own currency — a bank account, '
                         'wallet or card can then carry that currency and '
@@ -86,7 +87,7 @@ class CurrencySettingsScreen extends ConsumerWidget {
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.add_circle_outline_rounded),
-                    title: const Text('Add a currency'),
+                    title: const Tr('Add a currency'),
                     onTap: () => _addCurrency(context, ref),
                   ),
                 ],
@@ -98,7 +99,7 @@ class CurrencySettingsScreen extends ConsumerWidget {
             ),
             error: (_, _) => Padding(
               padding: const EdgeInsets.all(16),
-              child: Text(
+              child: Tr(
                 'Could not load exchange rates.',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: cs.onSurfaceVariant,
@@ -107,7 +108,7 @@ class CurrencySettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 20),
-          _sectionLabel(theme, 'Custom currencies'),
+          _sectionLabel(theme, tr('Custom currencies')),
           AppCard(
             child: Column(
               children: [
@@ -142,8 +143,8 @@ class CurrencySettingsScreen extends ConsumerWidget {
                 AppListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   leading: const AppIcon(Icons.add_circle_outline_rounded),
-                  title: const Text('Create a custom currency'),
-                  subtitle: Text(
+                  title: const Tr('Create a custom currency'),
+                  subtitle: Tr(
                     'For a currency XPENC doesn’t list',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: cs.onSurfaceVariant,
@@ -211,7 +212,7 @@ class _RateTile extends ConsumerWidget {
         '${parentCurrency.code}',
       ),
       subtitle: Text(
-        'Updated ${_dateFormat.format(rate.effectiveAt)}',
+        tr('Updated {0}', [_dateFormat.format(rate.effectiveAt)]),
         style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
       ),
       trailing: const AppIcon(Icons.chevron_right_rounded),
@@ -271,7 +272,7 @@ class _AddRateDialogState extends State<_AddRateDialog> {
   Widget build(BuildContext context) {
     final currency = currencyForCode(widget.currencyCode);
     return AlertDialog(
-      title: Text('${currency.name} rate'),
+      title: Text(tr('{0} rate', [currency.name])),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -281,7 +282,7 @@ class _AddRateDialogState extends State<_AddRateDialog> {
             autofocus: true,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
-              labelText: 'Rate',
+              labelText: tr('Rate'),
               hintText: 'e.g. 83.12',
               prefixText: '1 ${currency.code} = ',
               errorText: _error,
@@ -290,7 +291,7 @@ class _AddRateDialogState extends State<_AddRateDialog> {
           const SizedBox(height: 4),
           AppListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Effective date'),
+            title: const Tr('Effective date'),
             subtitle: Text(_dateFormat.format(_effectiveAt)),
             trailing: const AppIcon(Icons.calendar_today_outlined),
             onTap: _pickDate,
@@ -300,9 +301,9 @@ class _AddRateDialogState extends State<_AddRateDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: const Tr('Cancel'),
         ),
-        FilledButton(onPressed: _save, child: const Text('Save')),
+        FilledButton(onPressed: _save, child: const Tr('Save')),
       ],
     );
   }
@@ -320,7 +321,7 @@ class _AddRateDialogState extends State<_AddRateDialog> {
   void _save() {
     final rate = double.tryParse(_rateController.text.trim());
     if (rate == null || rate <= 0) {
-      setState(() => _error = 'Enter a valid rate.');
+      setState(() => _error = tr('Enter a valid rate.'));
       return;
     }
     Navigator.of(context).pop((

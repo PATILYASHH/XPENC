@@ -14,6 +14,7 @@ import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../../core/l10n/l10n.dart';
 
 // What a share — PDF or image — says about a transaction, a person or a
 // group, resolved once from the live providers. Both renderers read these
@@ -35,21 +36,21 @@ class ShareOwner {
   }
 
   /// "You" / "Yash" — as a sentence's subject.
-  String get subject => name ?? 'You';
+  String get subject => name ?? tr('You');
 
   /// "you" / "Yash" — as its object.
   String get object => name ?? 'you';
 
   /// "You gave" / "Yash gave".
-  String get gave => '$subject gave';
+  String get gave => tr('{0} gave', [subject]);
 
   /// The plain-language reading of a balance with [other]: `+` they owe me.
   String balanceLine(Money balance, String other) {
-    if (balance.isPositive) return '$other owes $object';
+    if (balance.isPositive) return tr('{0} owes {1}', [other, object]);
     if (balance.isNegative) {
-      return name == null ? 'You owe $other' : '$name owes $other';
+      return name == null ? tr('You owe {0}', [other]) : tr('{0} owes {1}', [name, other]);
     }
-    return 'All settled';
+    return tr('All settled');
   }
 }
 
@@ -88,7 +89,7 @@ class PaymentQr {
     if (!owed.isPositive) return const [];
     String? own(String? v) => (v?.trim().isEmpty ?? true) ? null : v!.trim();
     final name = own(ref.read(myUpiNameProvider));
-    const camera = 'Scan with your phone camera';
+    final camera = tr('Scan with your phone camera');
     final upi = own(ref.read(myUpiIdProvider));
     final paypal = own(ref.read(myPaypalProvider));
     final venmo = own(ref.read(myVenmoProvider));
@@ -107,7 +108,7 @@ class PaymentQr {
             note: 'Settlement via XPENC',
           ).toString(),
           amount: owed,
-          hint: 'Scan with any UPI app',
+          hint: tr('Scan with any UPI app'),
           payTo: name,
         ),
       if (paypal != null && ref.read(paypalEnabledProvider))
@@ -125,7 +126,7 @@ class PaymentQr {
         ),
       if (venmo != null && ref.read(venmoEnabledProvider))
         PaymentQr(
-          method: 'Venmo',
+          method: tr('Venmo'),
           id: '@${VenmoLauncher.normalizeUsername(venmo)}',
           link: VenmoLauncher.buildUri(
             username: venmo,
@@ -137,7 +138,7 @@ class PaymentQr {
         ),
       if (cashapp != null && ref.read(cashappEnabledProvider))
         PaymentQr(
-          method: 'Cash App',
+          method: tr('Cash App'),
           id: CashAppLauncher.normalizeCashtag(cashapp),
           link: CashAppLauncher.buildUri(
             cashtag: cashapp,
@@ -149,7 +150,7 @@ class PaymentQr {
         ),
       if (revolut != null && ref.read(revolutEnabledProvider))
         PaymentQr(
-          method: 'Revolut',
+          method: tr('Revolut'),
           id: '@${RevolutLauncher.normalizeUsername(revolut)}',
           link: RevolutLauncher.buildUri(
             username: revolut,
@@ -286,17 +287,17 @@ class TransactionShare {
         : currencyForCode(t.currencyCode);
 
     final typeLabel = switch (t.type) {
-      TxType.correctionIn => 'Correction · added',
-      TxType.correctionOut => 'Correction · removed',
+      TxType.correctionIn => tr('Correction · added'),
+      TxType.correctionOut => tr('Correction · removed'),
       _ => labelForTxType(t.type, personName: personName),
     };
 
     final headline = switch (t.type) {
       TxType.transfer => '$acct → $toAcct',
       TxType.personOut || TxType.personIn => typeLabel,
-      TxType.correctionIn || TxType.correctionOut => 'Balance correction',
+      TxType.correctionIn || TxType.correctionOut => tr('Balance correction'),
       _ when payee != null && payee.isNotEmpty => payee,
-      _ when splits.isNotEmpty => 'Split across ${splits.length} categories',
+      _ when splits.isNotEmpty => tr('Split across {0} categories', [splits.length]),
       _ => category?.name ?? typeLabel,
     };
 
@@ -306,13 +307,13 @@ class TransactionShare {
       typeLabel: typeLabel,
       currency: currency,
       account: switch (t.type) {
-        TxType.income => 'Deposited to $acct',
-        TxType.expense => 'Paid via $acct',
+        TxType.income => tr('Deposited to {0}', [acct]),
+        TxType.expense => tr('Paid via {0}', [acct]),
         TxType.transfer => '$acct → $toAcct',
-        TxType.personOut => 'Given from $acct',
-        TxType.personIn => 'Received into $acct',
-        TxType.correctionIn => 'Added to $acct',
-        TxType.correctionOut => 'Removed from $acct',
+        TxType.personOut => tr('Given from {0}', [acct]),
+        TxType.personIn => tr('Received into {0}', [acct]),
+        TxType.correctionIn => tr('Added to {0}', [acct]),
+        TxType.correctionOut => tr('Removed from {0}', [acct]),
       },
       category: category == null || splits.isNotEmpty
           ? null
@@ -366,17 +367,18 @@ class ShareSplit {
 
 /// The period a ledger share covers. [range] null = everything.
 class SharePeriod {
-  const SharePeriod(this.label, this.range);
+  const SharePeriod(String label, this.range) : _label = label;
 
   static const allTime = SharePeriod('All time', null);
 
-  final String label;
+  final String _label;
+  String get label => tr(_label);
   final DateTimeRange? range;
 
   static SharePeriod thisMonth([DateTime? now]) {
     final n = now ?? DateTime.now();
     return SharePeriod(
-      'This month',
+      tr('This month'),
       DateTimeRange(
         start: DateTime(n.year, n.month),
         end: DateTime(n.year, n.month + 1).subtract(const Duration(days: 1)),
@@ -387,7 +389,7 @@ class SharePeriod {
   static SharePeriod lastMonth([DateTime? now]) {
     final n = now ?? DateTime.now();
     return SharePeriod(
-      'Last month',
+      tr('Last month'),
       DateTimeRange(
         start: DateTime(n.year, n.month - 1),
         end: DateTime(n.year, n.month).subtract(const Duration(days: 1)),
@@ -464,12 +466,12 @@ class PersonShare {
   String message({PaymentQr? qr}) {
     final amount = MoneyFormat.forCurrency(balance.abs, MoneyFormat.currency);
     final where = balance.isPositive
-        ? 'you owe me $amount.'
+        ? tr('you owe me {0}.', [amount])
         : balance.isNegative
-        ? 'I owe you $amount.'
-        : "we're all settled.";
-    final pay = qr == null ? '' : ' Scan the QR to pay by ${qr.method}.';
-    return "Hi ${person.name}, here's where we stand: $where$pay";
+        ? tr('I owe you {0}.', [amount])
+        : tr("we're all settled.");
+    final pay = qr == null ? '' : tr(' Scan the QR to pay by {0}.', [qr.method]);
+    return tr("Hi {0}, here's where we stand: {1}{2}", [person.name, where, pay]);
   }
 
   /// `+` = this entry adds to what they owe me.
@@ -480,10 +482,10 @@ class PersonShare {
   String titleOf(PersonEntryRow e) {
     final note = e.note?.trim();
     if (note != null && note.isNotEmpty) return note;
-    if (e.categoryId != null) return '${person.name} repaid';
+    if (e.categoryId != null) return tr('{0} repaid', [person.name]);
     return e.direction == PersonDirection.theyOwe
         ? owner.gave
-        : '${person.name} gave';
+        : tr('{0} gave', [person.name]);
   }
 
   DateTime? get firstDate => entries.isEmpty
@@ -607,17 +609,17 @@ class GroupShare {
 
   /// A person id, or null for me, as a name.
   String nameOf(int? id) =>
-      id == null ? owner.subject : (names[id] ?? 'Someone');
+      id == null ? owner.subject : (names[id] ?? tr('Someone'));
 
   String titleOf(GroupExpenseRow e) {
     final note = e.note?.trim();
-    return note == null || note.isEmpty ? 'Group expense' : note;
+    return note == null || note.isEmpty ? tr('Group expense') : note;
   }
 
   static String splitLabel(GroupSplitMethod m) => switch (m) {
-    GroupSplitMethod.equal => 'Equal',
-    GroupSplitMethod.percentage => 'By %',
-    GroupSplitMethod.manual => 'Custom',
+    GroupSplitMethod.equal => tr('Equal'),
+    GroupSplitMethod.percentage => tr('By %'),
+    GroupSplitMethod.manual => tr('Custom'),
   };
 
   /// [period]'s expenses, newest first, with their totals.

@@ -9,6 +9,7 @@ import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 import 'auto_screen.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Auto rules paused via **Pause** on [AutoScreen] — hidden from its main
 /// list entirely (see GitHub #61) and gathered here instead. Restoring one
@@ -22,7 +23,7 @@ class ArchivedAutoRulesScreen extends ConsumerWidget {
     final rules = ref.watch(archivedRecurringRulesProvider);
 
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Archived auto rules')),
+      appBar: AppTopBar(title: const Tr('Archived auto rules')),
       body: rules.isEmpty
           ? Padding(
               padding: const EdgeInsets.fromLTRB(32, 48, 32, 24),
@@ -34,7 +35,7 @@ class ArchivedAutoRulesScreen extends ConsumerWidget {
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                   const SizedBox(height: 16),
-                  Text(
+                  Tr(
                     'No paused auto rules.',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium?.copyWith(
@@ -85,7 +86,7 @@ class _ArchivedRuleTile extends ConsumerWidget {
         overflow: TextOverflow.ellipsis,
         style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
       ),
-      subtitle: Text(
+      subtitle: Tr(
         'Paused',
         style: theme.textTheme.bodySmall?.copyWith(
           color: theme.colorScheme.onSurfaceVariant,
@@ -93,14 +94,14 @@ class _ArchivedRuleTile extends ConsumerWidget {
       ),
       trailing: TextButton.icon(
         icon: const AppIcon(Icons.unarchive_outlined, size: 18),
-        label: const Text('Restore'),
+        label: const Tr('Restore'),
         style: TextButton.styleFrom(foregroundColor: color),
         onPressed: () async {
           final messenger = ScaffoldMessenger.of(context);
           await ref.read(dbProvider).setRecurringActive(rule.id, true);
           messenger
             ..hideCurrentSnackBar()
-            ..showSnackBar(SnackBar(content: Text('"${rule.name}" restored')));
+            ..showSnackBar(SnackBar(content: Text(tr('"{0}" restored', [rule.name]))));
         },
       ),
     );

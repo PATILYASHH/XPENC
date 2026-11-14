@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Which numpad the lock screen (and set/change-passcode screen) draws —
 /// GitHub #81.
@@ -11,19 +12,19 @@ class LockScreenStyleSheet extends ConsumerWidget {
   const LockScreenStyleSheet({super.key});
 
   static String label(LockScreenStyle style) => switch (style) {
-    LockScreenStyle.classic => 'Classic',
-    LockScreenStyle.bigNumpad => 'Big numpad',
-    LockScreenStyle.scrambled => 'Scrambled numpad',
+    LockScreenStyle.classic => tr('Classic'),
+    LockScreenStyle.bigNumpad => tr('Big numpad'),
+    LockScreenStyle.scrambled => tr('Scrambled numpad'),
   };
 
   static String _description(LockScreenStyle style) => switch (style) {
-    LockScreenStyle.classic => 'Plain digits, no button background — '
-        "XPENC's original look.",
-    LockScreenStyle.bigNumpad => 'Large filled buttons in the usual '
-        '1-9, 0 order — easier to hit and read.',
-    LockScreenStyle.scrambled => 'Same big buttons, but the digits land in '
+    LockScreenStyle.classic => tr('Plain digits, no button background — '
+        "XPENC's original look."),
+    LockScreenStyle.bigNumpad => tr('Large filled buttons in the usual '
+        '1-9, 0 order — easier to hit and read.'),
+    LockScreenStyle.scrambled => tr('Same big buttons, but the digits land in '
         'a random order every attempt — so someone watching your finger '
-        "can't learn your PIN from its shape.",
+        "can't learn your PIN from its shape."),
   };
 
   static IconData _icon(LockScreenStyle style) => switch (style) {
@@ -57,11 +58,11 @@ class LockScreenStyleSheet extends ConsumerWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
-            child: Text('Lock screen style', style: theme.textTheme.titleLarge),
+            child: Tr('Lock screen style', style: theme.textTheme.titleLarge),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-            child: Text(
+            child: Tr(
               'How the PIN pad looks on the lock screen and when you set or '
               'change your PIN.',
               style: theme.textTheme.bodySmall?.copyWith(

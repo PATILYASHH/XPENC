@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Languages — XPENC</title>
+  <meta name="description" content="Use XPENC in your language. English, Hindi, German, Japanese and Russian are built in. Download a language pack for more, open it with XPENC and the whole app switches.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://xpenc.in/languages">
+  <meta name="theme-color" content="#050606">
+
+  <link rel="icon" href="/assets/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon_32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon_16.png">
+  <link rel="apple-touch-icon" href="/assets/apple_touch_icon_180.png">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="XPENC in your language">
+  <meta property="og:description" content="Download a language pack, open it with XPENC, and the whole app switches. Free, offline, open source.">
+  <meta property="og:url" content="https://xpenc.in/languages">
+  <meta property="og:image" content="https://xpenc.in/assets/og-cover-2026.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=check,check_circle,close,download,open_in_new,search,translate&display=block" rel="stylesheet">
+
+  <style>
+    :root {
+      /* the website */
+      --bg: #ffffff; --bg-soft: #f4f6f5; --line: #e6eae8;
+      --ink: #0b0d0c; --muted: #5d6b66; --faint: #8c9893;
+      --brand: #12a150; --brand-300: #3ecf8e; --brand-100: #ddf5e7; --brand-700: #0b7f3e;
+      --night: #050606; --night-ink: #f3f5f4; --night-muted: #9aa6a1;
+      --shadow-2: 0 2px 6px rgba(11,13,12,.06), 0 24px 60px rgba(11,13,12,.12);
+      /* the app, Classic light (AppPalettes.monoLight) */
+      --app-bg: #F2F2F5; --app-card: #FFFFFF; --app-track: #E5E5EA; --app-border: #DBDBE1;
+      --app-text: #0A0A0B; --app-muted: #6B6B70; --app-primary: #0A0A0B; --app-on-primary: #FFFFFF;
+      --app-select: rgba(10,10,11,.05);
+      --font-display: "Space Grotesk", system-ui, sans-serif;
+      --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+      color-scheme: light;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #070908; --bg-soft: #0e1311; --line: #1d2622;
+        --ink: #eef3f0; --muted: #9aa9a2; --faint: #6c7a74;
+        --brand: #2fc774; --brand-100: #143524; --brand-700: #5ee29a;
+        --shadow-2: 0 18px 42px rgba(0,0,0,.45);
+        /* Classic dark (AppPalettes.monoDark): true black */
+        --app-bg: #000000; --app-card: #17171A; --app-track: #232328; --app-border: #2F2F35;
+        --app-text: #F5F5F6; --app-muted: #9A9AA0; --app-primary: #F5F5F6; --app-on-primary: #0A0A0B;
+        --app-select: rgba(255,255,255,.07);
+        color-scheme: dark;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #070908; --bg-soft: #0e1311; --line: #1d2622;
+      --ink: #eef3f0; --muted: #9aa9a2; --faint: #6c7a74;
+      --brand: #2fc774; --brand-100: #143524; --brand-700: #5ee29a;
+      --shadow-2: 0 18px 42px rgba(0,0,0,.45);
+      --app-bg: #000000; --app-card: #17171A; --app-track: #232328; --app-border: #2F2F35;
+      --app-text: #F5F5F6; --app-muted: #9A9AA0; --app-primary: #F5F5F6; --app-on-primary: #0A0A0B;
+      --app-select: rgba(255,255,255,.07);
+      color-scheme: dark;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html { scroll-behavior: smooth; scroll-padding-top: 84px; }
+    body {
+      background: var(--bg); color: var(--ink);
+      font-family: var(--font-body); font-size: 15px; line-height: 1.6;
+      -webkit-font-smoothing: antialiased; overflow-x: hidden;
+    }
+    a { color: inherit; }
+    button, input { font: inherit; color: inherit; }
+    ::selection { background: var(--brand-100); color: var(--brand-700); }
+    :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 8px; }
+    .wrap { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+    h1, h2, h3 { font-family: var(--font-display); letter-spacing: -.025em; line-height: 1.12; }
+    .material-symbols-outlined {
+      font-family: "Material Symbols Outlined"; font-weight: normal; font-style: normal;
+      font-size: 22px; line-height: 1; width: 1em; height: 1em; overflow: hidden;
+      display: inline-block; white-space: nowrap; direction: ltr; user-select: none;
+      -webkit-font-feature-settings: "liga"; font-feature-settings: "liga";
+    }
+
+    /* ── nav (same as the other pages) ── */
+    nav.top {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 40; color: #fff;
+      border-bottom: 1px solid transparent; transition: background .25s, border-color .25s, color .25s;
+    }
+    nav.top.solid {
+      background: color-mix(in srgb, var(--bg) 88%, transparent);
+      backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4);
+      border-bottom-color: var(--line); color: var(--ink);
+    }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 68px; gap: 12px; }
+    .brand { display: flex; align-items: center; gap: 11px; text-decoration: none; font-family: var(--font-display); font-weight: 700; letter-spacing: .16em; font-size: 16px; }
+    .brand img { width: 30px; height: 30px; border-radius: 9px; }
+    .brand small { letter-spacing: .02em; font-weight: 600; font-size: 13px; opacity: .6; padding-left: 10px; border-left: 1px solid currentColor; }
+    .nav-links { display: flex; align-items: center; gap: 24px; font-size: 14.5px; font-weight: 500; }
+    .nav-links a { text-decoration: none; opacity: .72; transition: opacity .15s; }
+    .nav-links a:hover { opacity: 1; }
+    .nav-links .nav-cta { opacity: 1; height: 40px; padding: 0 18px; border-radius: 999px; display: inline-flex; align-items: center; background: #fff; color: #0b0d0c; font-weight: 600; }
+    nav.top.solid .nav-cta { background: var(--ink); color: var(--bg); }
+
+    /* ── hero ── */
+    .hero { position: relative; overflow: hidden; background: var(--night); color: var(--night-ink); padding: 128px 0 132px; }
+    .hero::before {
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(50% 70% at 85% 30%, rgba(18,161,80,.30), transparent 70%), radial-gradient(40% 45% at 0% 0%, rgba(37,99,235,.14), transparent 70%);
+    }
+    .hero .wrap { position: relative; }
+    .kicker { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-display); font-size: 12px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--brand-300); margin-bottom: 14px; }
+    .kicker::before { content: ""; width: 18px; height: 2px; border-radius: 2px; background: currentColor; }
+    .hero h1 { font-size: clamp(34px, 4.6vw, 54px); letter-spacing: -.035em; line-height: 1.04; margin-bottom: 16px; max-width: 760px; }
+    .hero .lede { color: var(--night-muted); font-size: 17.5px; max-width: 620px; }
+    .hero-facts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+    .hero-facts span { font-size: 13px; font-weight: 600; padding: 5px 12px; border-radius: 999px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); color: #d5dcd9; }
+    .scripts { margin-top: 28px; font-size: clamp(20px, 2.6vw, 28px); color: rgba(243,245,244,.28); letter-spacing: .02em; line-height: 1.5; max-width: 820px; }
+
+    /* ── the list, drawn like the app's Language screen ── */
+    .browser { margin-top: -88px; position: relative; z-index: 2; }
+    .app {
+      max-width: 760px; margin: 0 auto; padding: 8px 20px 24px;
+      background: var(--app-bg); color: var(--app-text);
+      border: 1px solid var(--app-border); border-radius: 24px; box-shadow: var(--shadow-2);
+    }
+    .bar { display: flex; align-items: center; gap: 8px; min-height: 64px; padding: 12px 0 4px; }
+    .bar h2 { font-family: var(--font-body); font-size: 20px; font-weight: 600; letter-spacing: -.01em; flex: 1; min-width: 0; }
+    .bar .count { font-size: 13px; color: var(--app-muted); font-variant-numeric: tabular-nums; }
+    .search {
+      display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 16px; margin: 8px 0 4px;
+      background: var(--app-card); border: 1px solid var(--app-border); border-radius: 999px;
+    }
+    .search .material-symbols-outlined { color: var(--app-muted); font-size: 20px; }
+    .search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 15.5px; }
+    .search input::placeholder { color: var(--app-muted); }
+    .search:focus-within { border-color: var(--app-text); }
+    .label { font-size: 12.5px; font-weight: 600; color: var(--app-muted); padding: 16px 4px 8px; }
+    .label-note { font-weight: 500; }
+
+    .card { background: var(--app-card); border-radius: 12px; overflow: hidden; }
+    .row { position: relative; display: flex; align-items: center; gap: 16px; min-height: 68px; padding: 10px 12px 10px 16px; }
+    .row + .row::before { content: ""; position: absolute; top: 0; right: 0; left: 72px; height: 1px; background: var(--app-border); }
+    .glyph {
+      flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
+      background: var(--app-track); font-size: 17px; font-weight: 600; line-height: 1;
+    }
+    .row-text { flex: 1; min-width: 0; }
+    .row-title { display: block; font-size: 16px; font-weight: 500; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .row-sub { display: block; font-size: 13px; color: var(--app-muted); line-height: 1.45; }
+    .meter { display: block; height: 4px; border-radius: 4px; background: var(--app-track); margin-top: 6px; max-width: 220px; overflow: hidden; }
+    .meter i { display: block; height: 100%; border-radius: 4px; background: var(--app-text); }
+    .chip {
+      flex: none; display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px;
+      border-radius: 999px; background: var(--app-track); font-size: 12.5px; font-weight: 600;
+    }
+    .chip .material-symbols-outlined { font-size: 17px; }
+    .dl {
+      flex: none; display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 18px 0 14px;
+      border-radius: 999px; background: var(--app-primary); color: var(--app-on-primary);
+      font-weight: 600; font-size: 14.5px; text-decoration: none; transition: opacity .15s;
+    }
+    .dl:hover { opacity: .88; }
+    .dl .material-symbols-outlined { font-size: 20px; }
+    .dl.done { background: var(--app-track); color: var(--app-text); }
+    .empty { padding: 18px 16px; font-size: 14px; color: var(--app-muted); line-height: 1.5; }
+    .empty a { color: var(--app-text); font-weight: 600; }
+    .foot { margin-top: 14px; padding: 0 4px; font-size: 13px; color: var(--app-muted); }
+
+    .skel { height: 68px; background: linear-gradient(90deg, var(--app-card), var(--app-track), var(--app-card)); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+    .skel + .skel { border-top: 1px solid var(--app-border); }
+    @keyframes shimmer { to { background-position: -200% 0; } }
+
+    /* ── after a download: what to do next ── */
+    .next {
+      position: fixed; left: 50%; bottom: 20px; z-index: 50; transform: translateX(-50%);
+      width: min(560px, calc(100% - 32px)); display: flex; gap: 14px; align-items: flex-start;
+      background: var(--night); color: var(--night-ink); border-radius: 20px; padding: 18px 16px 18px 20px;
+      box-shadow: 0 18px 50px rgba(0,0,0,.35); animation: rise .25s ease both;
+    }
+    @keyframes rise { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
+    .next .material-symbols-outlined.lead { color: var(--brand-300); font-size: 24px; margin-top: 2px; flex: none; }
+    .next b { display: block; font-size: 15.5px; margin-bottom: 2px; }
+    .next p { color: var(--night-muted); font-size: 14px; line-height: 1.5; }
+    .next p strong { color: var(--night-ink); }
+    .next button { flex: none; width: 36px; height: 36px; border: 0; border-radius: 50%; background: rgba(255,255,255,.08); cursor: pointer; display: grid; place-items: center; }
+    .next button:hover { background: rgba(255,255,255,.16); }
+    .next button .material-symbols-outlined { font-size: 20px; }
+
+    /* ── ask for a language ── */
+    section.ask { padding: 72px 0 0; }
+    .ask-card {
+      display: grid; grid-template-columns: 1fr 1.2fr; gap: 40px; align-items: start;
+      background: var(--bg-soft); border: 1px solid var(--line); border-radius: 28px; padding: 40px;
+    }
+    .ask-card h2 { font-size: clamp(26px, 3.2vw, 36px); margin-bottom: 12px; }
+    .ask-card .intro p { color: var(--muted); font-size: 16px; }
+    .ask-card .intro p + p { margin-top: 12px; font-size: 14px; }
+    .ask-form { display: grid; gap: 14px; }
+    .field { display: grid; gap: 6px; }
+    .field label, .field .lbl { font-size: 13.5px; font-weight: 600; }
+    .field .opt { font-weight: 500; color: var(--faint); }
+    .field input[type="text"], .field textarea {
+      width: 100%; border: 1px solid var(--line); border-radius: 14px; background: var(--bg);
+      padding: 12px 14px; font-size: 15.5px; line-height: 1.4; color: var(--ink);
+    }
+    .field textarea { min-height: 88px; resize: vertical; }
+    .field input:focus, .field textarea:focus { outline: 0; border-color: var(--ink); }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .check { display: flex; align-items: flex-start; gap: 10px; font-size: 14.5px; cursor: pointer; }
+    .check input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--brand); flex: none; }
+    .ask-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+    .btn-ink { background: var(--ink); color: var(--bg); border: 0; cursor: pointer; }
+    .btn-line { border: 1px solid var(--line); color: var(--ink); background: transparent; cursor: pointer; }
+    .btn-line:hover { background: var(--bg); }
+    .ask-err { font-size: 13.5px; color: #c2410c; }
+    .ask-done { font-size: 14px; color: var(--muted); }
+    .ask-done strong { color: var(--ink); }
+    .privacy { font-size: 12.5px; color: var(--faint); }
+
+    /* ── how to ── */
+    section.how { padding: 88px 0 96px; }
+    .sec-head { max-width: 680px; margin-bottom: 36px; }
+    .sec-head .kicker { color: var(--brand); }
+    .sec-head h2 { font-size: clamp(28px, 3.6vw, 40px); margin-bottom: 12px; }
+    .sec-head p { color: var(--muted); font-size: 16.5px; }
+    .steps { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; counter-reset: s; }
+    .steps li { counter-increment: s; background: var(--bg-soft); border: 1px solid var(--line); border-radius: 20px; padding: 24px; }
+    .steps li::before {
+      content: counter(s); width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; margin-bottom: 16px;
+      background: var(--ink); color: var(--bg); font-family: var(--font-display); font-weight: 700; font-size: 14px;
+    }
+    .steps b { display: block; font-size: 16.5px; margin-bottom: 4px; }
+    .steps span { color: var(--muted); font-size: 14.5px; line-height: 1.55; }
+    .note { margin-top: 18px; font-size: 14px; color: var(--muted); }
+    .note b { color: var(--ink); }
+
+    .share {
+      margin-top: 40px; display: grid; grid-template-columns: 1.3fr auto; gap: 28px; align-items: center;
+      background: linear-gradient(135deg, #0e1512, #06231a 60%, #0c3b27); color: #fff; border-radius: 28px; padding: 40px;
+    }
+    .share h3 { font-size: clamp(22px, 2.6vw, 30px); margin-bottom: 10px; }
+    .share p { color: #b9c7c1; font-size: 15.5px; max-width: 600px; }
+    .steps code, .share code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: .9em; }
+    .share-ctas { display: flex; flex-wrap: wrap; gap: 10px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 48px; padding: 0 22px;
+      border-radius: 999px; font-family: var(--font-display); font-weight: 600; font-size: 15px; text-decoration: none;
+      transition: transform .15s, background .15s;
+    }
+    .btn:active { transform: scale(.98); }
+    .btn-light { background: #fff; color: #0b0d0c; }
+    .btn-ghost { border: 1px solid rgba(255,255,255,.22); color: #fff; }
+    .btn-ghost:hover { background: rgba(255,255,255,.08); }
+    .btn .material-symbols-outlined { font-size: 19px; }
+
+    footer { border-top: 1px solid var(--line); padding: 28px 0 40px; color: var(--faint); font-size: 13.5px; }
+    footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+    footer a { color: var(--faint); }
+    footer a:hover { color: var(--ink); }
+
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .next { animation: none; } .skel { animation: none; } }
+    @media (max-width: 860px) {
+      .hide-sm { display: none; }
+      .hero { padding: 108px 0 104px; }
+      .browser { margin-top: -64px; }
+      .app { border-radius: 20px; padding: 4px 12px 16px; }
+      .steps { grid-template-columns: 1fr; }
+      .share { grid-template-columns: 1fr; padding: 28px; }
+      .ask-card { grid-template-columns: 1fr; gap: 24px; padding: 28px; }
+    }
+    @media (max-width: 520px) {
+      .wrap { padding: 0 16px; }
+      .row { gap: 12px; padding: 10px 10px 10px 12px; }
+      .row + .row::before { left: 64px; }
+      .dl-text { display: none; }
+      .dl { width: 40px; padding: 0; justify-content: center; }
+      .chip-text { display: none; }
+      .chip { width: 30px; padding: 0; justify-content: center; }
+      .share-ctas .btn { flex: 1 1 100%; }
+      .two { grid-template-columns: 1fr; }
+      .ask-card { padding: 22px 18px; border-radius: 22px; }
+      .ask-actions .btn { flex: 1 1 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="top" id="topNav" aria-label="Main">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">
+        <img src="/assets/icon_192.png" alt="" width="30" height="30">
+        XPENC <small>Languages</small>
+      </a>
+      <div class="nav-links">
+        <a class="hide-sm" href="/#tour">The app</a>
+        <a class="hide-sm" href="/templates">Templates</a>
+        <a class="hide-sm" href="https://github.com/PATILYASHH/XPENC" target="_blank" rel="noopener">GitHub</a>
+        <a class="nav-cta" href="/#download">Get XPENC</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero" id="heroTop">
+    <div class="wrap">
+      <div class="kicker">Languages</div>
+      <h1>XPENC, in your language.</h1>
+      <p class="lede">Download a language pack, open it with XPENC, and the whole app switches to it. Packs are small files that work offline. They change only the app's wording, never your money.</p>
+      <div class="hero-facts" id="heroFacts">
+        <span>Free</span><span>Works offline</span><span>Switch back any time</span>
+      </div>
+      <p class="scripts" aria-hidden="true">हिन्दी · Deutsch · 日本語 · Русский · मराठी · বাংলা · தமிழ் · తెలుగు · Español · Français · Italiano · Português</p>
+    </div>
+  </header>
+
+  <section class="browser" aria-label="Languages">
+    <div class="wrap">
+      <div class="app">
+        <div class="bar">
+          <h2>Language packs</h2>
+          <span class="count" id="langCount"></span>
+        </div>
+        <label class="search">
+          <span class="material-symbols-outlined" aria-hidden="true">search</span>
+          <input id="q" type="search" placeholder="Search languages" autocomplete="off" aria-label="Search languages">
+        </label>
+        <div id="sections">
+          <div class="label">Language packs</div>
+          <div class="card" aria-hidden="true"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
+        </div>
+        <noscript>
+          <div class="card empty">
+            This list needs JavaScript. The pack files are listed in
+            <a href="/languages/index.json">index.json</a>.
+          </div>
+        </noscript>
+        <p class="foot" id="foot" hidden></p>
+      </div>
+    </div>
+  </section>
+
+  <div class="next" id="next" role="status" aria-live="polite" hidden>
+    <span class="material-symbols-outlined lead" aria-hidden="true">check_circle</span>
+    <div>
+      <b id="nextTitle">Downloaded</b>
+      <p id="nextText"></p>
+    </div>
+    <button type="button" id="nextClose" aria-label="Close">
+      <span class="material-symbols-outlined" aria-hidden="true">close</span>
+    </button>
+  </div>
+
+  <section class="ask" id="request" aria-labelledby="askTitle">
+    <div class="wrap">
+      <div class="ask-card">
+        <div class="intro">
+          <div class="kicker" style="color: var(--brand)">Your language</div>
+          <h2 id="askTitle">Don't see your language? Ask for it.</h2>
+          <p>Tell us which language you'd like XPENC in. The most-requested languages get translated first, and a pack shows up on this page when it's ready.</p>
+          <p>If you speak it well, tick <strong>I can help</strong>. Checking a translation takes an hour or two, and it's what makes a pack read naturally.</p>
+        </div>
+        <form class="ask-form" id="askForm" novalidate>
+          <div class="two">
+            <div class="field">
+              <label for="askLang">Language</label>
+              <input type="text" id="askLang" name="language" placeholder="e.g. Gujarati" autocomplete="off" maxlength="60" required>
+            </div>
+            <div class="field">
+              <label for="askNative">In that language <span class="opt">(optional)</span></label>
+              <input type="text" id="askNative" name="native" placeholder="e.g. ગુજરાતી" autocomplete="off" maxlength="60">
+            </div>
+          </div>
+          <div class="field">
+            <label for="askWhere">Where you use XPENC <span class="opt">(optional)</span></label>
+            <input type="text" id="askWhere" name="where" placeholder="e.g. Ahmedabad, India" autocomplete="off" maxlength="80">
+          </div>
+          <label class="check"><input type="checkbox" id="askHelp" name="help"> <span><strong>I can help</strong> translate or check the translation</span></label>
+          <div class="field">
+            <label for="askNote">Anything else <span class="opt">(optional)</span></label>
+            <textarea id="askNote" name="note" maxlength="1000" placeholder="A dialect, a script, or words XPENC should get right"></textarea>
+          </div>
+          <p class="ask-err" id="askErr" role="alert" hidden>Type the language you'd like first.</p>
+          <div class="ask-actions">
+            <button class="btn btn-ink" type="submit" id="askEmail">Send request by email</button>
+            <button class="btn btn-line" type="button" id="askGithub">Request on GitHub
+              <span class="material-symbols-outlined" aria-hidden="true">open_in_new</span>
+            </button>
+          </div>
+          <p class="ask-done" id="askDone" role="status" hidden></p>
+          <p class="privacy">Email opens your mail app with the request filled in, and it reaches the XPENC developer from your address. A GitHub request is public. Nothing is sent until you send it.</p>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section class="how" id="howTo">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="kicker">How it works</div>
+        <h2>Download, open, done.</h2>
+        <p>Needs XPENC <span id="minApp">1.6.6</span> or newer. To get here from the app, go to <strong>Settings › General › Language › More languages</strong>.</p>
+      </div>
+      <ol class="steps">
+        <li><b>Download</b><span>Tap <strong>Download</strong> next to your language. You get one small <code>.json</code> file.</span></li>
+        <li><b>Open with XPENC</b><span>On Android, tap <strong>Open</strong> when the download finishes, or open the file from <strong>Files › Downloads</strong>, and choose <strong>XPENC</strong>.</span></li>
+        <li><b>Done</b><span>XPENC switches to that language straight away. To change it again, go to <strong>Settings › General › Language</strong>.</span></li>
+      </ol>
+      <p class="note"><b>On iPhone, or if XPENC isn't offered:</b> in XPENC, go to <strong>Settings › General › Language</strong>, tap <strong>Import language pack</strong> and pick the file you downloaded. A pack doesn't touch your accounts or transactions. Exported PDFs and spreadsheets stay in English.</p>
+
+      <div class="share">
+        <div>
+          <h3>Spot a wrong word? Help finish a language.</h3>
+          <p>Each pack is a plain file that maps XPENC's English text to your language. Where a pack has no translation yet, that text stays in English. Corrections and new translations are welcome on GitHub, and they reach this page with the next update.</p>
+        </div>
+        <div class="share-ctas">
+          <a class="btn btn-light" href="https://github.com/PATILYASHH/XPENC/issues/new/choose" target="_blank" rel="noopener">Suggest a fix
+            <span class="material-symbols-outlined" aria-hidden="true">open_in_new</span>
+          </a>
+          <a class="btn btn-ghost" href="https://github.com/PATILYASHH/XPENC" target="_blank" rel="noopener">View on GitHub</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <span>© <span id="yearNow">2026</span> Yash Patil · XPENC</span>
+      <span><a href="/">xpenc.in</a> · <a href="/templates">Templates</a> · <a href="/privacy">Privacy</a></span>
+    </div>
+  </footer>
+
+  <script>
+  (() => {
+    'use strict';
+
+    // Written by tool/l10n/assemble.dart in the XPENC repo, next to the packs.
+    const INDEX = '/languages/index.json';
+    const BASE = '/languages/';
+    // A pack this complete or more is labelled complete; anything below
+    // shows how much of the app it covers, since the rest stays English.
+    const COMPLETE = 95;
+
+    const $ = (id) => document.getElementById(id);
+    const ua = navigator.userAgent || '';
+    const isAndroid = /Android/i.test(ua);
+    const isIOS = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    let languages = [];
+
+    function el(tag, cls, text) {
+      const n = document.createElement(tag);
+      if (cls) n.className = cls;
+      if (text != null) n.textContent = text;
+      return n;
+    }
+    const kb = (bytes) => `${Math.max(1, Math.round(bytes / 1024))} KB`;
+    // The first letter of a name in its own script, like the app's badges.
+    const glyph = (name) => Array.from(name.trim())[0] || '?';
+    const matches = (l, q) => !q || [l.nativeName, l.englishName, l.code]
+      .some((s) => s.toLowerCase().includes(q));
+
+    function row(l) {
+      const r = el('div', 'row');
+      const g = el('span', 'glyph', glyph(l.nativeName));
+      g.setAttribute('aria-hidden', 'true');
+      r.append(g);
+
+      const text = el('span', 'row-text');
+      const title = el('span', 'row-title', l.nativeName);
+      title.lang = l.code;
+      text.append(title);
+      const sub = [];
+      if (l.nativeName !== l.englishName) sub.push(l.englishName);
+      if (l.builtIn) {
+        sub.push('In the app, nothing to download');
+      } else {
+        sub.push(l.coverage >= COMPLETE ? 'Complete' : `${l.coverage}% translated, the rest in English`);
+        sub.push(kb(l.bytes));
+      }
+      text.append(el('span', 'row-sub', sub.join(' · ')));
+      if (!l.builtIn) {
+        const m = el('span', 'meter');
+        m.setAttribute('role', 'img');
+        m.setAttribute('aria-label', `${l.coverage}% translated`);
+        const bar = el('i');
+        bar.style.width = `${Math.max(2, Math.min(100, l.coverage))}%`;
+        m.append(bar);
+        text.append(m);
+      }
+      r.append(text);
+
+      if (l.builtIn) {
+        const chip = el('span', 'chip');
+        chip.append(el('span', 'material-symbols-outlined', 'check'), el('span', 'chip-text', 'Built in'));
+        chip.title = 'Built into XPENC';
+        r.append(chip);
+      } else {
+        const a = el('a', 'dl');
+        a.href = BASE + l.file;
+        a.setAttribute('download', l.file.split('/').pop());
+        a.setAttribute('aria-label', `Download ${l.englishName}`);
+        a.append(el('span', 'material-symbols-outlined', 'download'), el('span', 'dl-text', 'Download'));
+        a.addEventListener('click', () => downloaded(l, a));
+        r.append(a);
+      }
+      return r;
+    }
+
+    function render() {
+      const q = $('q').value.trim().toLowerCase();
+      const box = $('sections');
+      box.replaceChildren();
+      const groups = [
+        ['Built into XPENC', languages.filter((l) => l.builtIn)],
+        ['Language packs', languages.filter((l) => !l.builtIn)],
+      ];
+      let shown = 0;
+      for (const [label, list] of groups) {
+        const items = list.filter((l) => matches(l, q));
+        if (!items.length) continue;
+        shown += items.length;
+        box.append(el('div', 'label', label));
+        const card = el('div', 'card');
+        for (const l of items) card.append(row(l));
+        box.append(card);
+      }
+      if (!shown) {
+        const typed = $('q').value.trim();
+        const card = el('div', 'card');
+        const p = el('p', 'empty', `No language matches “${typed}” yet. `);
+        const a = el('a', null, 'Ask for it');
+        a.href = '#request';
+        a.addEventListener('click', () => {
+          if (!$('askLang').value.trim()) $('askLang').value = typed;
+          setTimeout(() => $('askLang').focus({ preventScroll: true }), 300);
+        });
+        p.append(a, '.');
+        card.append(p);
+        box.append(card);
+      }
+    }
+
+    // ── ask for a language: a filled-in email, or a filled-in GitHub issue ──
+    const FEEDBACK = 'feedback.yashpatil@gmail.com';
+    const ISSUES = 'https://github.com/PATILYASHH/XPENC/issues/new';
+    function request() {
+      const v = (id) => $(id).value.trim().replace(/\s+/g, ' ');
+      const language = v('askLang');
+      if (!language) {
+        $('askErr').hidden = false;
+        $('askLang').focus();
+        return null;
+      }
+      $('askErr').hidden = true;
+      const lines = [
+        `Language: ${language}`,
+        v('askNative') && `In that language: ${v('askNative')}`,
+        v('askWhere') && `Where I use XPENC: ${v('askWhere')}`,
+        `I can help translate: ${$('askHelp').checked ? 'Yes' : 'No'}`,
+        $('askNote').value.trim() && `\n${$('askNote').value.trim()}`,
+      ].filter(Boolean);
+      return { title: `Language request: ${language}`, body: lines.join('\n') };
+    }
+    function done(how) {
+      const d = $('askDone');
+      d.replaceChildren();
+      d.append(how === 'email'
+        ? 'Your mail app should open with the request ready. Just tap '
+        : 'GitHub should open in a new tab with the request ready. Just tap ',
+        el('strong', null, how === 'email' ? 'Send' : 'Create'), '. Thank you!');
+      d.hidden = false;
+    }
+    $('askForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const r = request();
+      if (!r) return;
+      location.href = `mailto:${FEEDBACK}?subject=${encodeURIComponent(`XPENC ${r.title.toLowerCase()}`)}` +
+        `&body=${encodeURIComponent(`${r.body}\n\n(Sent from xpenc.in/languages)`)}`;
+      done('email');
+    });
+    $('askGithub').addEventListener('click', () => {
+      const r = request();
+      if (!r) return;
+      window.open(`${ISSUES}?title=${encodeURIComponent(r.title)}` +
+        `&body=${encodeURIComponent(`${r.body}\n\n_Sent from xpenc.in/languages_`)}`, '_blank', 'noopener');
+      done('github');
+    });
+    $('askLang').addEventListener('input', () => { if ($('askLang').value.trim()) $('askErr').hidden = true; });
+
+    // What to do with the file now depends on the device it landed on.
+    function downloaded(l, button) {
+      button.classList.add('done');
+      button.querySelector('.material-symbols-outlined').textContent = 'check';
+      $('nextTitle').textContent = `${l.englishName} downloaded`;
+      const t = $('nextText');
+      t.replaceChildren();
+      const strong = (s) => el('strong', null, s);
+      if (isIOS) {
+        t.append('In XPENC, go to ', strong('Settings › General › Language'), ', tap ',
+          strong('Import language pack'), ' and pick ', strong(button.getAttribute('download')), '.');
+      } else if (isAndroid) {
+        t.append('Tap ', strong('Open'), ' on the download bar, or open the file from ',
+          strong('Files › Downloads'), ', and choose ', strong('XPENC'), `. XPENC switches to ${l.nativeName} straight away.`);
+      } else {
+        t.append('Send the file to your phone, then open it there and choose ', strong('XPENC'),
+          '. Or, in XPENC, go to ', strong('Settings › General › Language › Import language pack'), '.');
+      }
+      $('next').hidden = false;
+    }
+    $('nextClose').addEventListener('click', () => { $('next').hidden = true; });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('next').hidden = true; });
+
+    $('q').addEventListener('input', render);
+
+    fetch(INDEX).then((r) => {
+      if (!r.ok) throw new Error(String(r.status));
+      return r.json();
+    }).then((index) => {
+      if (!index || index.format !== 'xpenc-language-index' || !Array.isArray(index.languages)) throw new Error('format');
+      languages = index.languages.filter((l) => l && typeof l.code === 'string' &&
+        typeof l.englishName === 'string' && typeof l.nativeName === 'string' &&
+        (l.builtIn === true || (typeof l.file === 'string' && /^packs\/xpenc-language-[a-z]{2,3}\.json$/.test(l.file))));
+      if (typeof index.minAppVersion === 'string') $('minApp').textContent = index.minAppVersion;
+      const packs = languages.filter((l) => !l.builtIn).length;
+      const builtIn = languages.length - packs;
+      $('langCount').textContent = `${languages.length} languages`;
+      $('heroFacts').replaceChildren(
+        el('span', null, `${builtIn} built in`),
+        el('span', null, `${packs} to download`),
+        el('span', null, 'Works offline'),
+        el('span', null, 'Switch back any time'));
+      const foot = $('foot');
+      foot.textContent = 'Where a pack has no translation yet, XPENC shows English. Built-in languages stay up to date with the app.';
+      foot.hidden = false;
+      render();
+    }).catch(() => {
+      const card = el('div', 'card');
+      const p = el('p', 'empty', "Couldn't load the languages. Check your connection, or ");
+      const a = el('a', null, 'browse them on GitHub');
+      a.href = 'https://github.com/PATILYASHH/XPENC';
+      p.append(a, '.');
+      card.append(p);
+      $('sections').replaceChildren(card);
+    });
+
+    // nav: clear over the dark hero, frosted after it
+    const nav = $('topNav');
+    const hero = $('heroTop');
+    const onScroll = () => nav.classList.toggle('solid', window.scrollY > hero.offsetHeight - 80);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    $('yearNow').textContent = new Date().getFullYear();
+  })();
+  </script>
+</body>
+</html>

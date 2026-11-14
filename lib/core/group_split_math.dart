@@ -1,5 +1,6 @@
 import 'money.dart';
 import '../data/tables.dart' show GroupSplitMethod;
+import '../core/l10n/l10n.dart';
 
 /// Splits [amount] across [participantIds] (`null` = "me") for
 /// [splitMethod], paisa-exact — the returned shares always sum to exactly
@@ -21,7 +22,7 @@ Map<int?, Money> computeGroupShares({
   Map<int?, Money>? manualAmounts,
 }) {
   if (participantIds.isEmpty) {
-    throw ArgumentError('Need at least one participant.');
+    throw ArgumentError(tr('Need at least one participant.'));
   }
 
   switch (splitMethod) {
@@ -31,13 +32,13 @@ Map<int?, Money> computeGroupShares({
 
     case GroupSplitMethod.percentage:
       if (percentBasisPoints == null) {
-        throw ArgumentError('Percentages are required for a percentage split.');
+        throw ArgumentError(tr('Percentages are required for a percentage split.'));
       }
       final totalBp = percentBasisPoints.values.fold(0, (a, b) => a + b);
       // ±0.5% (50 basis points) of slack for display rounding — a manual
       // amount split has no such tolerance (exact integer paise there).
       if ((totalBp - 10000).abs() > 50) {
-        throw ArgumentError('Percentages must add up to 100%.');
+        throw ArgumentError(tr('Percentages must add up to 100%.'));
       }
       return _distributeRemainder(
         amount,
@@ -47,14 +48,14 @@ Map<int?, Money> computeGroupShares({
 
     case GroupSplitMethod.manual:
       if (manualAmounts == null) {
-        throw ArgumentError('Amounts are required for a manual split.');
+        throw ArgumentError(tr('Amounts are required for a manual split.'));
       }
       final sum = manualAmounts.values.fold(
         const Money.zero(),
         (a, b) => a + b,
       );
       if (sum != amount) {
-        throw ArgumentError('Amounts must add up to the total exactly.');
+        throw ArgumentError(tr('Amounts must add up to the total exactly.'));
       }
       return Map.of(manualAmounts);
   }

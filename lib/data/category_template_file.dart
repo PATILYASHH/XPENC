@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'database.dart' show CategoryTemplateItemRow;
 import 'tables.dart' show CategoryKind;
+import '../core/l10n/l10n.dart';
 
 /// A category template as a file to share (GitHub #187): the shape of a
 /// category set — names, money in or out, colours, icons, and which sit
@@ -97,15 +98,15 @@ class CategoryTemplateFile {
     try {
       json = jsonDecode(text);
     } on FormatException {
-      throw const FormatException("That isn't an XPENC category template.");
+      throw FormatException(tr("That isn't an XPENC category template."));
     }
     if (json is! Map || json['format'] != format) {
-      throw const FormatException("That isn't an XPENC category template.");
+      throw FormatException(tr("That isn't an XPENC category template."));
     }
     final v = json['version'];
     if (v is! int || v > version) {
-      throw const FormatException(
-        'That template was made by a newer XPENC — update the app to use it.',
+      throw FormatException(
+        tr('That template was made by a newer XPENC — update the app to use it.'),
       );
     }
     final name = _string(json['name'], max: 60) ?? 'Shared template';
@@ -113,7 +114,7 @@ class CategoryTemplateFile {
     List<TemplateCategory> list(Object? raw, {required bool top}) {
       if (raw == null) return const [];
       if (raw is! List) {
-        throw const FormatException('That template is damaged.');
+        throw FormatException(tr('That template is damaged.'));
       }
       return [for (final c in raw) TemplateCategory._fromJson(c, top: top)];
     }
@@ -125,10 +126,10 @@ class CategoryTemplateFile {
       expense: list(json['expense'], top: true),
     );
     if (file.categoryCount == 0) {
-      throw const FormatException('That template has no categories.');
+      throw FormatException(tr('That template has no categories.'));
     }
     if (file.categoryCount > maxCategories) {
-      throw const FormatException('That template has too many categories.');
+      throw FormatException(tr('That template has too many categories.'));
     }
     return file;
   }
@@ -162,21 +163,21 @@ class TemplateCategory {
   };
 
   static TemplateCategory _fromJson(Object? json, {required bool top}) {
-    if (json is! Map) throw const FormatException('That template is damaged.');
+    if (json is! Map) throw FormatException(tr('That template is damaged.'));
     final name = _string(json['name'], max: 40);
     if (name == null) {
-      throw const FormatException(
-        'Every category in a template needs a name of up to 40 letters.',
+      throw FormatException(
+        tr('Every category in a template needs a name of up to 40 letters.'),
       );
     }
     final rawChildren = json['children'];
     if (rawChildren != null && !top) {
-      throw const FormatException(
-        'Categories nest two levels deep — that template goes deeper.',
+      throw FormatException(
+        tr('Categories nest two levels deep — that template goes deeper.'),
       );
     }
     if (rawChildren != null && rawChildren is! List) {
-      throw const FormatException('That template is damaged.');
+      throw FormatException(tr('That template is damaged.'));
     }
     return TemplateCategory(
       name: name,

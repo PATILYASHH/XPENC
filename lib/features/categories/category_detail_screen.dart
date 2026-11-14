@@ -15,6 +15,7 @@ import '../../core/widgets/nav_bar_inset.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../../core/l10n/l10n.dart';
 
 /// One category's own page (GitHub #169): how much went to it — this month,
 /// this year or all time — split by subcategory for a parent, and every
@@ -44,8 +45,8 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
     final category = byId[widget.categoryId];
     if (category == null) {
       return Scaffold(
-        appBar: AppTopBar(title: const Text('Category')),
-        body: const Center(child: Text('Category not found')),
+        appBar: AppTopBar(title: const Tr('Category')),
+        body: const Center(child: Tr('Category not found')),
       );
     }
 
@@ -71,7 +72,7 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
           if (!isIncome)
             IconButton(
               icon: const AppIcon(Icons.donut_large_outlined),
-              tooltip: 'Budget',
+              tooltip: tr('Budget'),
               onPressed: () => context.push('/more/budgets/${category.id}'),
             ),
         ],
@@ -86,15 +87,15 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
               segments: const [
                 ButtonSegment(
                   value: CategoryRange.thisMonth,
-                  label: Text('This month'),
+                  label: Tr('This month'),
                 ),
                 ButtonSegment(
                   value: CategoryRange.thisYear,
-                  label: Text('This year'),
+                  label: Tr('This year'),
                 ),
                 ButtonSegment(
                   value: CategoryRange.allTime,
-                  label: Text('All time'),
+                  label: Tr('All time'),
                 ),
               ],
               selected: {_range},
@@ -109,7 +110,7 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
             isIncome: isIncome,
           ),
           if (children.isNotEmpty) ...[
-            _label(theme, 'BY SUBCATEGORY'),
+            _label(theme, tr('BY SUBCATEGORY')),
             AppCard(
               margin: EdgeInsets.zero,
               clipBehavior: Clip.antiAlias,
@@ -125,7 +126,7 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
                     _ShareRow(
                       category: sub,
                       label: sub.id == category.id
-                          ? 'Directly in ${category.name}'
+                          ? tr('Directly in {0}', [category.name])
                           : sub.name,
                       amount: bySub[sub.id] ?? const Money.zero(),
                       total: total,
@@ -145,9 +146,9 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Text(
                 switch (_range) {
-                  CategoryRange.thisMonth => 'Nothing here this month.',
-                  CategoryRange.thisYear => 'Nothing here this year.',
-                  CategoryRange.allTime => 'Nothing here yet.',
+                  CategoryRange.thisMonth => tr('Nothing here this month.'),
+                  CategoryRange.thisYear => tr('Nothing here this year.'),
+                  CategoryRange.allTime => tr('Nothing here yet.'),
                 },
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
@@ -229,8 +230,8 @@ class _TotalCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              '${isIncome ? 'Money in' : 'Money out'} · '
-              '${count == 1 ? '1 transaction' : '$count transactions'}',
+              '${isIncome ? tr('Money in') : tr('Money out')} · '
+              '${plural(count, '1 transaction', '{0} transactions')}',
               style: theme.textTheme.titleSmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),

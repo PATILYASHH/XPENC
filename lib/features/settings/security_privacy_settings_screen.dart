@@ -10,6 +10,7 @@ import 'lock_screen_style_sheet.dart';
 import 'master_phrase_attempts_sheet.dart';
 import 'pin_timeout_sheet.dart';
 import 'settings_common.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Security & Privacy — the app's unlock methods (PIN, master recovery
 /// phrase, authenticator app) plus screenshot handling. Two sections:
@@ -45,7 +46,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
     );
 
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Security & Privacy')),
+      appBar: AppTopBar(title: const Tr('Security & Privacy')),
       body: ListView(
         // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
         padding: EdgeInsets.fromLTRB(
@@ -55,7 +56,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
           32 + MediaQuery.of(context).padding.bottom,
         ),
         children: [
-          settingsSectionLabel(context, 'Security'),
+          settingsSectionLabel(context, tr('Security')),
           AppCard(
             child: Column(
               children: [
@@ -66,7 +67,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                 // still manages independently below, toggled on or not.
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                  child: Text(
+                  child: Tr(
                     'Turn on more than one and any of them unlocks the app — '
                     'switch between them from "Try another method" on the '
                     'lock screen.',
@@ -81,10 +82,10 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                   title: const Text('PIN'),
                   subtitle: Text(
                     !hasPasscode
-                        ? 'Tap to set up a PIN'
+                        ? tr('Tap to set up a PIN')
                         : pinUnlockEnabled
-                        ? 'A PIN can unlock the app'
-                        : 'Set up, but turned off',
+                        ? tr('A PIN can unlock the app')
+                        : tr('Set up, but turned off'),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: cs.onSurfaceVariant,
                     ),
@@ -102,13 +103,13 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                 AppSwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   secondary: const AppIcon(Icons.key_outlined),
-                  title: const Text('Master password'),
+                  title: const Tr('Master password'),
                   subtitle: Text(
                     !hasMasterPhrase
-                        ? 'Tap to set up a recovery phrase'
+                        ? tr('Tap to set up a recovery phrase')
                         : masterPhraseUnlockEnabled
-                        ? 'Your recovery phrase can unlock the app'
-                        : 'Set up, but turned off',
+                        ? tr('Your recovery phrase can unlock the app')
+                        : tr('Set up, but turned off'),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: cs.onSurfaceVariant,
                     ),
@@ -126,13 +127,13 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                 AppSwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   secondary: const AppIcon(Icons.qr_code_2_rounded),
-                  title: const Text('Authenticator app'),
+                  title: const Tr('Authenticator app'),
                   subtitle: Text(
                     !hasTotp
-                        ? 'Tap to set up an authenticator app'
+                        ? tr('Tap to set up an authenticator app')
                         : totpUnlockEnabled
-                        ? 'A 6-digit code can unlock the app'
-                        : 'Set up, but turned off',
+                        ? tr('A 6-digit code can unlock the app')
+                        : tr('Set up, but turned off'),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: cs.onSurfaceVariant,
                     ),
@@ -152,11 +153,11 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                 AppListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   leading: const AppIcon(Icons.lock_outline_rounded),
-                  title: Text(hasPasscode ? 'Change passcode' : 'Set passcode'),
+                  title: Text(hasPasscode ? tr('Change passcode') : tr('Set passcode')),
                   subtitle: Text(
                     hasPasscode
-                        ? 'A PIN is required to open the app'
-                        : 'Require a PIN to open the app',
+                        ? tr('A PIN is required to open the app')
+                        : tr('Require a PIN to open the app'),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: cs.onSurfaceVariant,
                     ),
@@ -175,8 +176,8 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                         horizontal: 16,
                       ),
                       secondary: const AppIcon(Icons.fingerprint_rounded),
-                      title: const Text('Biometric unlock'),
-                      subtitle: Text(
+                      title: const Tr('Biometric unlock'),
+                      subtitle: Tr(
                         'Use your fingerprint or face instead of the PIN — the '
                         'PIN always still works. Only applies while PIN unlock '
                         'is turned on.',
@@ -193,7 +194,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: AppIcon(Icons.lock_open_outlined, color: cs.error),
-                    title: Text(
+                    title: Tr(
                       'Remove passcode',
                       style: TextStyle(color: cs.error),
                     ),
@@ -209,8 +210,8 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.key_outlined),
-                    title: const Text('Master recovery phrase'),
-                    subtitle: Text(
+                    title: const Tr('Master recovery phrase'),
+                    subtitle: Tr(
                       'Set — also used as a fallback after too many wrong '
                       'attempts at whichever method is active',
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -222,8 +223,8 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.pin_outlined),
-                    title: const Text('Require after'),
-                    subtitle: Text(
+                    title: const Tr('Require after'),
+                    subtitle: Tr(
                       'How many wrong attempts before the recovery phrase is '
                       'asked for instead',
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -252,7 +253,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: AppIcon(Icons.key_off_outlined, color: cs.error),
-                    title: Text(
+                    title: Tr(
                       'Turn off recovery phrase',
                       style: TextStyle(color: cs.error),
                     ),
@@ -263,8 +264,8 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.key_outlined),
-                    title: const Text('Set up master recovery phrase'),
-                    subtitle: Text(
+                    title: const Tr('Set up master recovery phrase'),
+                    subtitle: Tr(
                       'A 10-word backup that can unlock XPENC if the active '
                       'method is entered wrong too many times',
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -286,8 +287,8 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.qr_code_2_rounded),
-                    title: const Text('Authenticator app'),
-                    subtitle: Text(
+                    title: const Tr('Authenticator app'),
+                    subtitle: Tr(
                       'Set up',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
@@ -298,7 +299,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: AppIcon(Icons.qr_code_2_rounded, color: cs.error),
-                    title: Text(
+                    title: Tr(
                       'Turn off authenticator app',
                       style: TextStyle(color: cs.error),
                     ),
@@ -308,8 +309,8 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.qr_code_2_rounded),
-                    title: const Text('Set up authenticator app'),
-                    subtitle: Text(
+                    title: const Tr('Set up authenticator app'),
+                    subtitle: Tr(
                       'Use Google Authenticator, Authy or similar to unlock '
                       'XPENC with a 6-digit code',
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -331,8 +332,8 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.timer_outlined),
-                    title: const Text('Lock after'),
-                    subtitle: Text(
+                    title: const Tr('Lock after'),
+                    subtitle: Tr(
                       'How long XPENC may sit in the background before it '
                       'locks again',
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -359,8 +360,8 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.dialpad_outlined),
-                    title: const Text('Lock screen style'),
-                    subtitle: Text(
+                    title: const Tr('Lock screen style'),
+                    subtitle: Tr(
                       'How the PIN/code pad looks',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
@@ -388,15 +389,15 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
           ),
 
           if (PlatformFeatures.screenshotBlocking) ...[
-            settingsSectionLabel(context, 'Privacy'),
+            settingsSectionLabel(context, tr('Privacy')),
             AppCard(
               child: Column(
                 children: [
                   AppSwitchListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     secondary: const AppIcon(Icons.screenshot_outlined),
-                    title: const Text('Block screenshots'),
-                    subtitle: Text(
+                    title: const Tr('Block screenshots'),
+                    subtitle: Tr(
                       'Hides XPENC from screenshots, screen recording and the '
                       'recent-apps thumbnail',
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -411,8 +412,8 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                   AppSwitchListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     secondary: const AppIcon(Icons.visibility_outlined),
-                    title: const Text('Remind when screenshots are allowed'),
-                    subtitle: Text(
+                    title: const Tr('Remind when screenshots are allowed'),
+                    subtitle: Tr(
                       'A small tag in the corner whenever "Block screenshots" '
                       "is off — easy to forget it's still off. Off by default, "
                       "so leaving it off on purpose isn't disturbed.",
@@ -465,7 +466,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
         ..hideCurrentSnackBar()
         ..showSnackBar(
           const SnackBar(
-            content: Text('At least one unlock method must stay on'),
+            content: Tr('At least one unlock method must stay on'),
           ),
         );
     }

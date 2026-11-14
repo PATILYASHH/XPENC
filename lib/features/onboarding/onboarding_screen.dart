@@ -17,6 +17,7 @@ import '../data_export/backup_service.dart'
     show BackupService, backupAppFolder;
 import '../../core/widgets/nav_bar_inset.dart';
 import 'country_step.dart';
+import '../../core/l10n/l10n.dart';
 
 const _pageDuration = Duration(milliseconds: 280);
 
@@ -193,7 +194,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         ..hideCurrentSnackBar()
         ..showSnackBar(
           const SnackBar(
-            content: Text('Something went wrong. Please try again.'),
+            content: Tr('Something went wrong. Please try again.'),
           ),
         );
     }
@@ -230,7 +231,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           ..hideCurrentSnackBar()
           ..showSnackBar(
             const SnackBar(
-              content: Text("Couldn't find a backup on this phone."),
+              content: Tr("Couldn't find a backup on this phone."),
             ),
           );
         return;
@@ -243,7 +244,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           ..hideCurrentSnackBar()
           ..showSnackBar(
             const SnackBar(
-              content: Text("Couldn't find a backup on this phone."),
+              content: Tr("Couldn't find a backup on this phone."),
             ),
           );
         return;
@@ -261,7 +262,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       setState(() => _restoring = false);
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text("Couldn't restore: $e")));
+        ..showSnackBar(SnackBar(content: Text(tr("Couldn't restore: {0}", [e]))));
     }
   }
 
@@ -298,7 +299,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               lastPage: pages.length - 1,
               showNext: page != 1,
               nextEnabled: !_onCountryStep || _currencyChoice != null,
-              finishLabel: _path == _UserPath.oldUser ? 'Continue' : 'Get Started',
+              finishLabel: _path == _UserPath.oldUser ? tr('Continue') : tr('Get Started'),
               submitting: _submitting,
               onNext: _next,
               onBack: _back,
@@ -387,7 +388,7 @@ class _StepScaffold extends StatelessWidget {
           if (onSkip != null)
             Align(
               alignment: Alignment.centerRight,
-              child: TextButton(onPressed: onSkip, child: const Text('Skip')),
+              child: TextButton(onPressed: onSkip, child: const Tr('Skip')),
             )
           else
             const SizedBox(height: 40),
@@ -445,7 +446,7 @@ class _WelcomeStep extends StatelessWidget {
           const SizedBox(height: 22),
           const BrandWordmark(fontSize: 36),
           const SizedBox(height: 10),
-          Text(
+          Tr(
             'Track where your money is — simply and privately.',
             style: theme.textTheme.bodyLarge?.copyWith(
               color: cs.onSurfaceVariant,
@@ -457,19 +458,19 @@ class _WelcomeStep extends StatelessWidget {
             icon: Icons.lock_outline_rounded,
             color: cs.primary,
             text: PlatformFeatures.isWeb
-                ? 'Open-source and private — everything stays in this '
-                      'browser.'
-                : 'Open-source and private — everything stays on this phone.',
+                ? tr('Open-source and private — everything stays in this '
+                      'browser.')
+                : tr('Open-source and private — everything stays on this phone.'),
           ),
           _FeatureRow(
             icon: Icons.wifi_off_rounded,
             color: cs.primary,
-            text: 'Works fully offline. No account, no server, no ads.',
+            text: tr('Works fully offline. No account, no server, no ads.'),
           ),
           _FeatureRow(
             icon: Icons.code_rounded,
             color: AppColors.transfer,
-            text: 'Built and maintained by Yash Patil (PATILYASHH).',
+            text: tr('Built and maintained by Yash Patil (PATILYASHH).'),
           ),
         ],
       ),
@@ -494,7 +495,7 @@ class _PathChoiceStep extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          Tr(
             'Are you new to XPENC?',
             style: theme.textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.w700,
@@ -502,7 +503,7 @@ class _PathChoiceStep extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Text(
+          Tr(
             "We'll tailor the next few screens to your answer.",
             style: theme.textTheme.bodyLarge?.copyWith(
               color: cs.onSurfaceVariant,
@@ -512,15 +513,15 @@ class _PathChoiceStep extends StatelessWidget {
           const SizedBox(height: 28),
           _ChoiceCard(
             icon: Icons.auto_awesome_outlined,
-            title: "I'm new here",
-            subtitle: 'Show me a quick tour of how XPENC works.',
+            title: tr("I'm new here"),
+            subtitle: tr('Show me a quick tour of how XPENC works.'),
             onTap: () => onChoose(_UserPath.newUser),
           ),
           const SizedBox(height: 14),
           _ChoiceCard(
             icon: Icons.check_circle_outline_rounded,
-            title: 'I already know XPENC',
-            subtitle: 'Skip the tour, and restore a backup if I have one.',
+            title: tr('I already know XPENC'),
+            subtitle: tr('Skip the tour, and restore a backup if I have one.'),
             onTap: () => onChoose(_UserPath.oldUser),
           ),
         ],
@@ -615,34 +616,34 @@ class _EnvelopeModeStep extends StatelessWidget {
   Widget build(BuildContext context) {
     return _StepScaffold(
       onSkip: onSkip,
-      title: 'How do you want to track money?',
-      subtitle: 'You can change this any time in Settings.',
+      title: tr('How do you want to track money?'),
+      subtitle: tr('You can change this any time in Settings.'),
       rows: [
         _ModeCard(
           icon: Icons.receipt_long_outlined,
-          title: 'Basic',
-          subtitle: 'Just transactions, and people you owe or are owed by.',
+          title: tr('Basic'),
+          subtitle: tr('Just transactions, and people you owe or are owed by.'),
           selected: selected == AppMode.basic,
           onTap: () => onChoose(AppMode.basic),
         ),
         const SizedBox(height: 12),
         _ModeCard(
           icon: Icons.account_balance_wallet_outlined,
-          title: 'Medium',
+          title: tr('Medium'),
           subtitle:
-              'Adds accounts, budgets and net worth — the full app, without '
-              'envelope budgeting.',
+              tr('Adds accounts, budgets and net worth — the full app, without '
+              'envelope budgeting.'),
           selected: selected == AppMode.medium,
           onTap: () => onChoose(AppMode.medium),
         ),
         const SizedBox(height: 12),
         _ModeCard(
           icon: Icons.mail_outline_rounded,
-          title: 'Pro',
+          title: tr('Pro'),
           subtitle:
-              'Adds Envelope mode — assign money to categories from a '
+              tr('Adds Envelope mode — assign money to categories from a '
               'shared "Ready to Assign" pool before you spend it — plus '
-              'budget rollover.',
+              'budget rollover.'),
           selected: selected == AppMode.pro,
           onTap: () => onChoose(AppMode.pro),
         ),
@@ -742,26 +743,26 @@ class _AccountsStep extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return _StepScaffold(
       onSkip: onSkip,
-      title: 'Accounts hold your money',
-      subtitle: 'Cash, bank, cards, loans — each is its own account.',
+      title: tr('Accounts hold your money'),
+      subtitle: tr('Cash, bank, cards, loans — each is its own account.'),
       rows: [
         _FeatureRow(
           icon: Icons.account_balance_outlined,
           color: cs.primary,
           text:
-              'Cash, Bank, Card, Pay Later, Prepaid, Goal and Loan accounts '
-              'are all supported.',
+              tr('Cash, Bank, Card, Pay Later, Prepaid, Goal and Loan accounts '
+              'are all supported.'),
         ),
         _FeatureRow(
           icon: Icons.add_circle_outline_rounded,
           color: cs.primary,
-          text: 'Add one any time from the Accounts tab — a Cash account is already set up for you.',
+          text: tr('Add one any time from the Accounts tab — a Cash account is already set up for you.'),
         ),
         _FeatureRow(
           icon: Icons.swap_horiz_rounded,
           color: AppColors.transfer,
           text:
-              'Balances only change from transactions and transfers — never edited directly.',
+              tr('Balances only change from transactions and transfers — never edited directly.'),
         ),
       ],
     );
@@ -779,23 +780,23 @@ class _PersonsGroupsStep extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return _StepScaffold(
       onSkip: onSkip,
-      title: 'Split money with people',
-      subtitle: 'Track what you owe, and what\'s owed to you.',
+      title: tr('Split money with people'),
+      subtitle: tr('Track what you owe, and what\'s owed to you.'),
       rows: [
         _FeatureRow(
           icon: Icons.person_outline_rounded,
           color: cs.primary,
-          text: 'Persons track a running balance of who owes whom.',
+          text: tr('Persons track a running balance of who owes whom.'),
         ),
         _FeatureRow(
           icon: Icons.group_outlined,
           color: cs.primary,
-          text: 'Groups split one expense across several people at once.',
+          text: tr('Groups split one expense across several people at once.'),
         ),
         _FeatureRow(
           icon: Icons.handshake_outlined,
           color: AppColors.transfer,
-          text: 'Settle up with a payment whenever you\'re ready.',
+          text: tr('Settle up with a payment whenever you\'re ready.'),
         ),
       ],
     );
@@ -813,27 +814,27 @@ class _AutoGoalsLoansStep extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return _StepScaffold(
       onSkip: onSkip,
-      title: 'Automate the boring parts',
-      subtitle: 'Recurring payments, savings targets, and loans.',
+      title: tr('Automate the boring parts'),
+      subtitle: tr('Recurring payments, savings targets, and loans.'),
       rows: [
         _FeatureRow(
           icon: Icons.autorenew_rounded,
           color: cs.primary,
           text:
-              'Auto rules capture recurring transactions and can read '
-              'bank SMS/notifications for you.',
+              tr('Auto rules capture recurring transactions and can read '
+              'bank SMS/notifications for you.'),
         ),
         _FeatureRow(
           icon: Icons.flag_outlined,
           color: cs.primary,
-          text: 'Goals are savings targets you fund a little at a time.',
+          text: tr('Goals are savings targets you fund a little at a time.'),
         ),
         _FeatureRow(
           icon: Icons.request_quote_outlined,
           color: AppColors.transfer,
           text:
-              'Loans are real liabilities — funded and repaid through '
-              'transfers, never counted as money in or out.',
+              tr('Loans are real liabilities — funded and repaid through '
+              'transfers, never counted as money in or out.'),
         ),
       ],
     );
@@ -851,25 +852,25 @@ class _PayeesBudgetsSecurityStep extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return _StepScaffold(
       onSkip: onSkip,
-      title: 'Stay organized and safe',
-      subtitle: 'Who you pay, how much you plan to spend, and who can get in.',
+      title: tr('Stay organized and safe'),
+      subtitle: tr('Who you pay, how much you plan to spend, and who can get in.'),
       rows: [
         _FeatureRow(
           icon: Icons.storefront_outlined,
           color: cs.primary,
-          text: 'Payees track where your money goes — useful in reports.',
+          text: tr('Payees track where your money goes — useful in reports.'),
         ),
         _FeatureRow(
           icon: Icons.pie_chart_outline_rounded,
           color: cs.primary,
-          text: 'Budgets set a monthly spending cap per category.',
+          text: tr('Budgets set a monthly spending cap per category.'),
         ),
         _FeatureRow(
           icon: Icons.lock_outline_rounded,
           color: AppColors.transfer,
           text:
-              'A PIN, biometric lock, and master-phrase recovery keep your '
-              'data private, even if you lose access.',
+              tr('A PIN, biometric lock, and master-phrase recovery keep your '
+              'data private, even if you lose access.'),
         ),
       ],
     );
@@ -892,7 +893,7 @@ class _StartStep extends StatelessWidget {
         children: [
           const BrandMark(size: 56),
           const SizedBox(height: 22),
-          Text(
+          Tr(
             "You're all set",
             style: theme.textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.w700,
@@ -900,7 +901,7 @@ class _StartStep extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Text(
+          Tr(
             'Add an account from the Accounts tab, or just log your first '
             'transaction — XPENC is ready whenever you are.',
             style: theme.textTheme.bodyLarge?.copyWith(
@@ -932,27 +933,27 @@ class _RestoreStep extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return _StepScaffold(
       onSkip: restoring ? null : onSkip,
-      title: 'Restore your data?',
+      title: tr('Restore your data?'),
       subtitle: PlatformFeatures.isWeb
-          ? 'If you have an XPENC backup file, restore it now — or skip and '
-                'start fresh.'
-          : 'If you have an XPENC backup on this phone, restore it now — or '
-                'skip and start fresh.',
+          ? tr('If you have an XPENC backup file, restore it now — or skip and '
+                'start fresh.')
+          : tr('If you have an XPENC backup on this phone, restore it now — or '
+                'skip and start fresh.'),
       rows: [
         _FeatureRow(
           icon: Icons.cloud_download_outlined,
           color: cs.primary,
           text: PlatformFeatures.isWeb
-              ? 'Pick the backup file your phone made, or one this browser '
-                    'downloaded earlier.'
+              ? tr('Pick the backup file your phone made, or one this browser '
+                    'downloaded earlier.')
               : PlatformFeatures.durableBackupFolder
-              ? 'Looks in Download/$backupAppFolder for a backup you made earlier.'
-              : 'Looks on this iPhone for a backup you made earlier.',
+              ? tr('Looks in Download/{0} for a backup you made earlier.', [backupAppFolder])
+              : tr('Looks on this iPhone for a backup you made earlier.'),
         ),
         _FeatureRow(
           icon: Icons.settings_backup_restore_rounded,
           color: cs.primary,
-          text: 'You can always restore later from Settings instead.',
+          text: tr('You can always restore later from Settings instead.'),
         ),
       ],
       trailing: SizedBox(
@@ -966,7 +967,7 @@ class _RestoreStep extends StatelessWidget {
                   child: CircularProgressIndicator(strokeWidth: 2.4),
                 )
               : const AppIcon(Icons.restore_rounded),
-          label: Text(restoring ? 'Restoring…' : 'Restore my data'),
+          label: Text(restoring ? tr('Restoring…') : tr('Restore my data')),
         ),
       ),
     );
@@ -989,7 +990,7 @@ class _WelcomeBackStep extends StatelessWidget {
         children: [
           const BrandMark(size: 56),
           const SizedBox(height: 22),
-          Text(
+          Tr(
             'Welcome back',
             style: theme.textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.w700,
@@ -997,7 +998,7 @@ class _WelcomeBackStep extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Text(
+          Tr(
             "Good to see you again. Let's get you to your dashboard.",
             style: theme.textTheme.bodyLarge?.copyWith(
               color: cs.onSurfaceVariant,
@@ -1050,7 +1051,7 @@ class _BottomBar extends StatelessWidget {
               if (page > 0)
                 TextButton(
                   onPressed: submitting ? null : onBack,
-                  child: const Text('Back'),
+                  child: const Tr('Back'),
                 ),
               const Spacer(),
               if (showNext)
@@ -1073,7 +1074,7 @@ class _BottomBar extends StatelessWidget {
                           width: 20,
                           child: CircularProgressIndicator(strokeWidth: 2.4),
                         )
-                      : Text(isLast ? finishLabel : 'Next'),
+                      : Text(isLast ? finishLabel : tr('Next')),
                 ),
             ],
           ),

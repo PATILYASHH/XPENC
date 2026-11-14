@@ -34,6 +34,7 @@ import 'shared_entries.dart';
 import '../share/share_flows.dart';
 import '../tags/tag_picker_sheet.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// One person's ledger. Net balance = Σ(theyOwe) − Σ(iOwe).
 /// `+` they owe you · `-` you owe them.
@@ -50,8 +51,8 @@ class PersonDetailScreen extends ConsumerWidget {
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (error, _) => Scaffold(
-        appBar: AppTopBar(title: const Text('Person')),
-        body: const Center(child: Text('Something went wrong')),
+        appBar: AppTopBar(title: const Tr('Person')),
+        body: const Center(child: Tr('Something went wrong')),
       ),
       data: (persons) {
         PersonRow? person;
@@ -63,8 +64,8 @@ class PersonDetailScreen extends ConsumerWidget {
         }
         if (person == null) {
           return Scaffold(
-            appBar: AppTopBar(title: const Text('Person')),
-            body: const Center(child: Text('Person not found')),
+            appBar: AppTopBar(title: const Tr('Person')),
+            body: const Center(child: Tr('Person not found')),
           );
         }
         return _buildScaffold(context, ref, person);
@@ -120,17 +121,17 @@ class PersonDetailScreen extends ConsumerWidget {
             ),
             actions: [GlassActionGroup(children: [
               IconButton(
-                tooltip: 'Share',
+                tooltip: tr('Share'),
                 icon: const AppIcon(Icons.ios_share_rounded),
                 onPressed: () => sharePerson(context, person),
               ),
               IconButton(
-                tooltip: 'Edit person',
+                tooltip: tr('Edit person'),
                 icon: const AppIcon(Icons.edit_outlined),
                 onPressed: () => showEditPersonSheet(context, ref, person),
               ),
               IconButton(
-                tooltip: 'Delete person',
+                tooltip: tr('Delete person'),
                 icon: const AppIcon(Icons.delete_outline_rounded),
                 onPressed: () async {
                   if (await confirmDeletePerson(context, ref, person) &&
@@ -179,7 +180,7 @@ class PersonDetailScreen extends ConsumerWidget {
               child: Padding(
                 padding: const EdgeInsets.all(32),
                 child: Center(
-                  child: Text(
+                  child: Tr(
                     "Couldn't load history",
                     style: TextStyle(color: theme.colorScheme.error),
                   ),
@@ -191,7 +192,7 @@ class PersonDetailScreen extends ConsumerWidget {
                 return const SliverToBoxAdapter(
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(20, 24, 20, 40),
-                    child: Center(child: Text('No entries yet.')),
+                    child: Center(child: Tr('No entries yet.')),
                   ),
                 );
               }
@@ -259,7 +260,7 @@ class _PayeeActivity extends ConsumerWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: Text(
+                  child: Tr(
                     'AS PAYEE',
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: muted,
@@ -281,7 +282,7 @@ class _PayeeActivity extends ConsumerWidget {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-            child: Text(
+            child: Tr(
               'Paid to or received from them. Not counted in owe/due.',
               style: theme.textTheme.bodySmall?.copyWith(color: muted),
             ),
@@ -403,11 +404,11 @@ class _BalanceHero extends StatelessWidget {
     if (balance.isPositive) {
       shown = balance;
       color = AppColors.income;
-      label = 'Owes you';
+      label = tr('Owes you');
     } else if (balance.isNegative) {
       shown = balance.abs;
       color = AppColors.expense;
-      label = 'You owe';
+      label = tr('You owe');
     } else {
       shown = balance;
       color = theme.colorScheme.onSurfaceVariant;
@@ -496,7 +497,7 @@ class _ActionButtons extends ConsumerWidget {
                     personId,
                     PersonDirection.theyOwe,
                   ),
-                  child: const Text('They owe'),
+                  child: const Tr('They owe'),
                 ),
               ),
               const SizedBox(width: 12),
@@ -509,7 +510,7 @@ class _ActionButtons extends ConsumerWidget {
                   ),
                   onPressed: () =>
                       _showEntrySheet(context, personId, PersonDirection.iOwe),
-                  child: const Text('I owe'),
+                  child: const Tr('I owe'),
                 ),
               ),
             ],
@@ -526,34 +527,34 @@ class _ActionButtons extends ConsumerWidget {
                   isRepayment: true,
                 ),
                 icon: const AppIcon(Icons.paid_outlined, size: 18),
-                label: const Text('Mark as repaid'),
+                label: const Tr('Mark as repaid'),
               ),
             ),
           ],
           if (balance.isPositive && anyPaymentMethodEnabled) ...[
             const SizedBox(height: 16),
             PersonPaymentRow(
-              label: 'Request',
+              label: tr('Request'),
               methods: [
                 if (upiEnabled)
                   PaymentMethodSpec(
                     buttonLabel: 'UPI',
-                    missingLabel: 'UPI ID',
+                    missingLabel: tr('UPI ID'),
                     id: myUpiId,
                     attempt: () => UpiLauncher.launch(
                       action: UpiAction.collect,
                       payeeUpiId: myUpiId!,
                       payeeName: (myUpiName?.trim().isNotEmpty ?? false)
                           ? myUpiName!.trim()
-                          : 'XPENC user',
+                          : tr('XPENC user'),
                       amount: balance,
                       note: 'Requested via XPENC',
                     ),
                   ),
                 if (paypalEnabled)
                   PaymentMethodSpec(
-                    buttonLabel: 'PayPal',
-                    missingLabel: 'PayPal.me ID',
+                    buttonLabel: tr('PayPal'),
+                    missingLabel: tr('PayPal.me ID'),
                     id: myPaypal,
                     attempt: () => PaypalLauncher.launch(
                       paypalId: myPaypal!,
@@ -563,8 +564,8 @@ class _ActionButtons extends ConsumerWidget {
                   ),
                 if (venmoEnabled)
                   PaymentMethodSpec(
-                    buttonLabel: 'Venmo',
-                    missingLabel: 'Venmo username',
+                    buttonLabel: tr('Venmo'),
+                    missingLabel: tr('Venmo username'),
                     id: myVenmo,
                     attempt: () => VenmoLauncher.launch(
                       username: myVenmo!,
@@ -574,8 +575,8 @@ class _ActionButtons extends ConsumerWidget {
                   ),
                 if (cashappEnabled)
                   PaymentMethodSpec(
-                    buttonLabel: 'Cash App',
-                    missingLabel: 'Cashtag',
+                    buttonLabel: tr('Cash App'),
+                    missingLabel: tr('Cashtag'),
                     id: myCashapp,
                     attempt: () => CashAppLauncher.launch(
                       cashtag: myCashapp!,
@@ -584,8 +585,8 @@ class _ActionButtons extends ConsumerWidget {
                   ),
                 if (revolutEnabled)
                   PaymentMethodSpec(
-                    buttonLabel: 'Revolut',
-                    missingLabel: 'Revolut username',
+                    buttonLabel: tr('Revolut'),
+                    missingLabel: tr('Revolut username'),
                     id: myRevolut,
                     attempt: () => RevolutLauncher.launch(
                       username: myRevolut!,
@@ -594,19 +595,19 @@ class _ActionButtons extends ConsumerWidget {
                   ),
               ],
               missingHint: (missing) =>
-                  'Add your ${_joinWithAnd(missing)} in Settings to request '
-                  'money',
+                  tr('Add your {0} in Settings to request '
+                  'money', [_joinWithAnd(missing)]),
               onMissingTap: () => context.push('/more/settings'),
             ),
           ] else if (balance.isNegative && anyPaymentMethodEnabled) ...[
             const SizedBox(height: 16),
             PersonPaymentRow(
-              label: 'Pay',
+              label: tr('Pay'),
               methods: [
                 if (upiEnabled)
                   PaymentMethodSpec(
                     buttonLabel: 'UPI',
-                    missingLabel: 'UPI ID',
+                    missingLabel: tr('UPI ID'),
                     id: person.upiId,
                     attempt: () => UpiLauncher.launch(
                       action: UpiAction.pay,
@@ -618,8 +619,8 @@ class _ActionButtons extends ConsumerWidget {
                   ),
                 if (paypalEnabled)
                   PaymentMethodSpec(
-                    buttonLabel: 'PayPal',
-                    missingLabel: 'PayPal.me ID',
+                    buttonLabel: tr('PayPal'),
+                    missingLabel: tr('PayPal.me ID'),
                     id: person.paypal,
                     attempt: () => PaypalLauncher.launch(
                       paypalId: person.paypal!,
@@ -629,8 +630,8 @@ class _ActionButtons extends ConsumerWidget {
                   ),
                 if (venmoEnabled)
                   PaymentMethodSpec(
-                    buttonLabel: 'Venmo',
-                    missingLabel: 'Venmo username',
+                    buttonLabel: tr('Venmo'),
+                    missingLabel: tr('Venmo username'),
                     id: person.venmo,
                     attempt: () => VenmoLauncher.launch(
                       username: person.venmo!,
@@ -640,8 +641,8 @@ class _ActionButtons extends ConsumerWidget {
                   ),
                 if (cashappEnabled)
                   PaymentMethodSpec(
-                    buttonLabel: 'Cash App',
-                    missingLabel: 'Cashtag',
+                    buttonLabel: tr('Cash App'),
+                    missingLabel: tr('Cashtag'),
                     id: person.cashapp,
                     attempt: () => CashAppLauncher.launch(
                       cashtag: person.cashapp!,
@@ -650,8 +651,8 @@ class _ActionButtons extends ConsumerWidget {
                   ),
                 if (revolutEnabled)
                   PaymentMethodSpec(
-                    buttonLabel: 'Revolut',
-                    missingLabel: 'Revolut username',
+                    buttonLabel: tr('Revolut'),
+                    missingLabel: tr('Revolut username'),
                     id: person.revolut,
                     attempt: () => RevolutLauncher.launch(
                       username: person.revolut!,
@@ -660,8 +661,8 @@ class _ActionButtons extends ConsumerWidget {
                   ),
               ],
               missingHint: (missing) =>
-                  "Add ${person.name}'s ${_joinWithAnd(missing)} to pay them "
-                  'directly',
+                  tr("Add {0}'s {1} to pay them "
+                  'directly', [person.name, _joinWithAnd(missing)]),
               onMissingTap: () => showEditPersonSheet(context, ref, person),
             ),
           ],
@@ -675,7 +676,7 @@ class _ActionButtons extends ConsumerWidget {
 /// `"UPI ID"`, `['UPI ID', 'PayPal.me ID']` → `"UPI ID and PayPal.me ID"`.
 String _joinWithAnd(List<String> parts) {
   if (parts.length <= 1) return parts.join();
-  return '${parts.sublist(0, parts.length - 1).join(', ')} and ${parts.last}';
+  return tr('{0} and {1}', [parts.sublist(0, parts.length - 1).join(', '), parts.last]);
 }
 
 /// One ledger row. The leading icon shows which way *cash* moved:
@@ -708,7 +709,7 @@ class _EntryRow extends ConsumerWidget {
     final note = entry.note?.trim();
     final title = (note != null && note.isNotEmpty)
         ? note
-        : (theyOwe ? 'You gave' : 'You received');
+        : (theyOwe ? tr('You gave') : tr('You received'));
 
     final categoryName = isRepayment
         ? ref.watch(categoryMapProvider)[entry.categoryId]?.name
@@ -742,7 +743,7 @@ class _EntryRow extends ConsumerWidget {
             backgroundColor: AppColors.expense,
             foregroundColor: Colors.white,
             icon: Icons.delete_outline,
-            label: 'Delete',
+            label: tr('Delete'),
           ),
         ],
       ),
@@ -810,8 +811,8 @@ class _EntryRow extends ConsumerWidget {
         ..showSnackBar(
           SnackBar(
             content: Text(
-              'Agreed with @${friendUsername ?? 'your friend'} — add a '
-              'correcting entry instead.',
+              tr('Agreed with @{0} — add a '
+              'correcting entry instead.', [friendUsername ?? tr('your friend')]),
             ),
           ),
         );
@@ -827,9 +828,9 @@ class _EntryRow extends ConsumerWidget {
         SnackBar(
           content: Text(
             status == null
-                ? 'Entry deleted'
-                : 'Entry deleted — and taken back from '
-                      '@${friendUsername ?? 'your friend'}',
+                ? tr('Entry deleted')
+                : tr('Entry deleted — and taken back from '
+                      '@{0}', [friendUsername ?? tr('your friend')]),
           ),
         ),
       );
@@ -1017,7 +1018,7 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
   Future<void> _save() async {
     final amount = Money.tryParse(_amountController.text);
     if (amount == null || !amount.isPositive) {
-      setState(() => _amountError = 'Enter an amount greater than zero');
+      setState(() => _amountError = tr('Enter an amount greater than zero'));
       return;
     }
     final messenger = ScaffoldMessenger.of(context);
@@ -1025,14 +1026,14 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
     final note = _noteController.text.trim();
     if (widget.isRepayment && _repaymentCategoryId == null) {
       messenger.showSnackBar(
-        const SnackBar(content: Text('Choose a category for this repayment')),
+        const SnackBar(content: Tr('Choose a category for this repayment')),
       );
       return;
     }
     if (widget.isRepayment && _accountId == null) {
       messenger.showSnackBar(
         const SnackBar(
-          content: Text('A repayment counted as money in must move money'),
+          content: Tr('A repayment counted as money in must move money'),
         ),
       );
       return;
@@ -1078,7 +1079,7 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
         ..hideCurrentSnackBar()
         ..showSnackBar(
           const SnackBar(
-            content: Text(
+            content: Tr(
               'Agreed with your friend — amount, date and note can\'t '
               'change. Add a correcting entry instead.',
             ),
@@ -1161,7 +1162,7 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
           categoryId: envelopeShortfallCategoryId,
           amount: -envelopeShortfall,
           date: _date,
-          note: 'Drawn for money lent out of this account',
+          note: tr('Drawn for money lent out of this account'),
         );
       }
       navigator.pop();
@@ -1171,12 +1172,12 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
           SnackBar(
             content: Text(
               _isEdit
-                  ? 'Entry updated'
+                  ? tr('Entry updated')
                   : widget.isRepayment
-                  ? 'Saved as money in'
+                  ? tr('Saved as money in')
                   : _theyOwe
-                  ? 'Saved — they owe you'
-                  : 'Saved — you owe them',
+                  ? tr('Saved — they owe you')
+                  : tr('Saved — you owe them'),
             ),
           ),
         );
@@ -1184,7 +1185,7 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
       if (mounted) setState(() => _saving = false);
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text('Could not save: $error')));
+        ..showSnackBar(SnackBar(content: Text(tr('Could not save: {0}', [error]))));
     }
   }
 
@@ -1208,7 +1209,7 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
   Widget _sharingField(ThemeData theme) {
     ref.watch(sharedEntriesProvider);
     final person = _person();
-    final who = '@${person?.remoteUsername ?? 'your friend'}';
+    final who = '@${person?.remoteUsername ?? tr('your friend')}';
     final muted = theme.textTheme.bodySmall?.copyWith(
       color: theme.colorScheme.onSurfaceVariant,
     );
@@ -1221,12 +1222,12 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
         contentPadding: EdgeInsets.zero,
         value: _share,
         onChanged: (on) => setState(() => _share = on),
-        title: Text('Share with $who'),
+        title: Text(tr('Share with {0}', [who])),
         subtitle: Text(
           _share
-              ? 'They accept it in their XPENC, and it counts the same on '
-                    'both sides. Sent through Connector.'
-              : 'Only on this phone.',
+              ? tr('They accept it in their XPENC, and it counts the same on '
+                    'both sides. Sent through Connector.')
+              : tr('Only on this phone.'),
         ),
       );
     }
@@ -1238,15 +1239,15 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
         Text(
           switch (status) {
             SharedStatus.accepted || SharedStatus.received =>
-              'Agreed with $who. Amount, date and note can\'t change — only '
-                  'the account and tags, which are yours alone.',
+              tr('Agreed with {0}. Amount, date and note can\'t change — only '
+                  'the account and tags, which are yours alone.', [who]),
             SharedStatus.rejected =>
-              '$who rejected this. Fix it and save to send it again — or '
-                  'keep it on this phone only.',
+              tr('{0} rejected this. Fix it and save to send it again — or '
+                  'keep it on this phone only.', [who]),
             SharedStatus.failed =>
-              "Couldn't share this with $who. Save to try again.",
-            SharedStatus.sending => 'On its way to $who.',
-            SharedStatus.pending => 'Waiting for $who to accept it.',
+              tr("Couldn't share this with {0}. Save to try again.", [who]),
+            SharedStatus.sending => tr('On its way to {0}.', [who]),
+            SharedStatus.pending => tr('Waiting for {0} to accept it.', [who]),
           },
           style: muted,
         ),
@@ -1259,7 +1260,7 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
                   .keepAsMine(existing);
               navigator.pop();
             },
-            child: const Text('Keep it on this phone only'),
+            child: const Tr('Keep it on this phone only'),
           ),
       ],
     );
@@ -1274,8 +1275,8 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
       onTap: _pickTags,
       borderRadius: BorderRadius.circular(4),
       child: InputDecorator(
-        decoration: const InputDecoration(
-          labelText: 'Tags (optional)',
+        decoration: InputDecoration(
+          labelText: tr('Tags (optional)'),
           border: OutlineInputBorder(),
           suffixIcon: AppIcon(Icons.sell_outlined),
         ),
@@ -1348,12 +1349,12 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
               const SizedBox(height: 16),
               Text(
                 _isEdit
-                    ? 'Edit entry'
+                    ? tr('Edit entry')
                     : widget.isRepayment
-                    ? 'Mark as repaid'
+                    ? tr('Mark as repaid')
                     : _theyOwe
-                    ? 'They owe you'
-                    : 'You owe them',
+                    ? tr('They owe you')
+                    : tr('You owe them'),
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: accent,
@@ -1362,11 +1363,11 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
               const SizedBox(height: 4),
               Text(
                 widget.isRepayment
-                    ? 'Counts as money in, under the category you '
-                          'choose below.'
+                    ? tr('Counts as money in, under the category you '
+                          'choose below.')
                     : _theyOwe
-                    ? 'You gave money out. Their balance goes up.'
-                    : 'You received money. Their balance goes down.',
+                    ? tr('You gave money out. Their balance goes up.')
+                    : tr('You received money. Their balance goes down.'),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -1375,7 +1376,7 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
               AmountKeypadField(
                 controller: _amountController,
                 autofocus: true,
-                label: 'Amount',
+                label: tr('Amount'),
                 yieldTo: [_noteFocus],
                 onChanged: (_) {
                   if (_amountError != null) {
@@ -1412,7 +1413,7 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
                       ),
                       label: Text(
                         _dueDate == null
-                            ? 'Due date'
+                            ? tr('Due date')
                             : DateFormat('d MMM yyyy').format(_dueDate!),
                       ),
                     ),
@@ -1420,7 +1421,7 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
                   if (_dueDate != null)
                     IconButton(
                       icon: const AppIcon(Icons.close),
-                      tooltip: 'Clear due date',
+                      tooltip: tr('Clear due date'),
                       onPressed: () => setState(() => _dueDate = null),
                     ),
                 ],
@@ -1430,8 +1431,8 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
                 controller: _noteController,
                 focusNode: _noteFocus,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                  labelText: 'Note (optional)',
+                decoration: InputDecoration(
+                  labelText: tr('Note (optional)'),
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -1443,8 +1444,8 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
                 // hands is the normal case; not moving any is the exception.
                 initialValue: _accountId,
                 isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Money moved through',
+                decoration: InputDecoration(
+                  labelText: tr('Money moved through'),
                   border: OutlineInputBorder(),
                 ),
                 items: [
@@ -1452,7 +1453,7 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
                     DropdownMenuItem<int?>(
                       value: a.id,
                       child: Text(
-                        a.isArchived ? '${a.name} (archived)' : a.name,
+                        a.isArchived ? tr('{0} (archived)', [a.name]) : a.name,
                       ),
                     ),
                   // A repayment counted as income must move real money — see
@@ -1460,7 +1461,7 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
                   if (!widget.isRepayment)
                     const DropdownMenuItem<int?>(
                       value: null,
-                      child: Text("Don't move money (just note it)"),
+                      child: Tr("Don't move money (just note it)"),
                     ),
                 ],
                 onChanged: (value) => setState(() => _accountId = value),
@@ -1468,14 +1469,14 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
               const SizedBox(height: 8),
               Text(
                 _accountId == null
-                    ? 'No money will move. This only records who owes whom.'
+                    ? tr('No money will move. This only records who owes whom.')
                     : widget.isRepayment
-                    ? 'This amount enters that account and posts as '
-                          'money in under the category below.'
-                    : 'This amount will leave or enter that account and '
+                    ? tr('This amount enters that account and posts as '
+                          'money in under the category below.')
+                    : tr('This amount will leave or enter that account and '
                           "appear in Transactions. Lending still isn't "
                           'spending — it\'s your money, just held by '
-                          'someone else.',
+                          'someone else.'),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -1506,7 +1507,7 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
                           color: Colors.white,
                         ),
                       )
-                    : const Text('Save'),
+                    : const Tr('Save'),
               ),
             ],
           ),
@@ -1539,8 +1540,8 @@ class _RepaymentCategoryField extends ConsumerWidget {
     return DropdownButtonFormField<int?>(
       initialValue: value,
       isExpanded: true,
-      decoration: const InputDecoration(
-        labelText: 'Category',
+      decoration: InputDecoration(
+        labelText: tr('Category'),
         border: OutlineInputBorder(),
       ),
       items: [

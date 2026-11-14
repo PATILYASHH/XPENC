@@ -6,6 +6,7 @@ import '../../data/database.dart';
 import '../../data/mode_providers.dart';
 import '../../data/providers.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Bottom sheet: pick any number of tags as toggleable filter chips. New tags
 /// are created from **More → Tags**, not from here — this sheet only selects.
@@ -60,11 +61,11 @@ class _TagPickerSheetState extends ConsumerState<TagPickerSheet> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text('Tags', style: theme.textTheme.titleLarge),
+                    child: Tr('Tags', style: theme.textTheme.titleLarge),
                   ),
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(_selected),
-                    child: const Text('Done'),
+                    child: const Tr('Done'),
                   ),
                 ],
               ),
@@ -101,7 +102,7 @@ class _TagPickerSheetState extends ConsumerState<TagPickerSheet> {
                 error: (e, _) => Padding(
                   padding: const EdgeInsets.all(32),
                   child: Text(
-                    'Could not load tags.\n$e',
+                    tr('Could not load tags.\n{0}', [e]),
                     style: theme.textTheme.bodyMedium,
                   ),
                 ),
@@ -109,7 +110,7 @@ class _TagPickerSheetState extends ConsumerState<TagPickerSheet> {
                   if (tags.isEmpty) {
                     return Padding(
                       padding: const EdgeInsets.all(32),
-                      child: Text(
+                      child: Tr(
                         'No tags yet — add one from More → Tags.',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,

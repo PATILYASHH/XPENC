@@ -7,6 +7,7 @@ import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Shared by a transfer out and a "they owe" lending entry — the two ways
 /// money can leave an Envelope Mode account **without** being an expense.
@@ -81,7 +82,7 @@ class _EnvelopeSourceSheet extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
               child: Text(
-                'Take ${MoneyFormat.symbol(shortfall)} from which category?',
+                tr('Take {0} from which category?', [MoneyFormat.symbol(shortfall)]),
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
@@ -89,7 +90,7 @@ class _EnvelopeSourceSheet extends ConsumerWidget {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-              child: Text(
+              child: Tr(
                 "Ready to Assign doesn't cover the full amount — the rest "
                 'has to come out of one category’s envelope.',
                 style: theme.textTheme.bodySmall?.copyWith(

@@ -9,6 +9,7 @@ import '../../data/tables.dart';
 import 'more_screen_layout_sheet.dart';
 import 'settings_common.dart';
 import 'theme_picker_sheet.dart';
+import '../../core/l10n/l10n.dart';
 
 /// General — currency, theme, font, colours and layout. The settings that
 /// shape how XPENC looks and reads, independent of app mode or any one
@@ -30,7 +31,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
     final weekStart = ref.watch(weekStartProvider);
 
     return Scaffold(
-      appBar: AppTopBar(title: const Text('General')),
+      appBar: AppTopBar(title: const Tr('General')),
       body: ListView(
         // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
         padding: EdgeInsets.fromLTRB(
@@ -43,10 +44,34 @@ class GeneralSettingsScreen extends ConsumerWidget {
           AppCard(
             child: Column(
               children: [
+                // Also first in Settings itself, named in English too — the
+                // way back for someone who can't read the language showing.
+                AppListTile(
+                  key: const Key('general-language'),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  leading: const AppIcon(Icons.translate_rounded),
+                  title: const Tr('Language'),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        appLanguageFor(L10n.code)?.nativeName ?? L10n.code,
+                        style: trailingStyle,
+                      ),
+                      const SizedBox(width: 4),
+                      AppIcon(
+                        Icons.chevron_right_rounded,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ],
+                  ),
+                  onTap: () => context.push('/more/settings/language'),
+                ),
+                Divider(height: 1, indent: 60, color: cs.outline),
                 AppListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   leading: const AppIcon(Icons.payments_outlined),
-                  title: const Text('Currency'),
+                  title: const Tr('Currency'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -67,12 +92,12 @@ class GeneralSettingsScreen extends ConsumerWidget {
                 AppSwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   secondary: const AppIcon(Icons.attach_money_rounded),
-                  title: const Text('Show currency symbol'),
+                  title: const Tr('Show currency symbol'),
                   subtitle: Text(
                     showSymbol
-                        ? 'Amounts show ${currency.symbol}'
-                        : 'Amounts show plain numbers — use this if your '
-                              'currency symbol is missing',
+                        ? tr('Amounts show {0}', [currency.symbol])
+                        : tr('Amounts show plain numbers — use this if your '
+                              'currency symbol is missing'),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: cs.onSurfaceVariant,
                     ),
@@ -85,7 +110,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
                 AppListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   leading: AppIcon(themeChoice.style.icon),
-                  title: const Text('Theme'),
+                  title: const Tr('Theme'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -103,8 +128,8 @@ class GeneralSettingsScreen extends ConsumerWidget {
                 AppListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   leading: const AppIcon(Icons.text_fields_rounded),
-                  title: const Text('Font'),
-                  subtitle: Text(
+                  title: const Tr('Font'),
+                  subtitle: Tr(
                     'Text size, boldness and font family',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: cs.onSurfaceVariant,
@@ -120,8 +145,8 @@ class GeneralSettingsScreen extends ConsumerWidget {
                 AppListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   leading: const AppIcon(Icons.palette_outlined),
-                  title: const Text('Colours'),
-                  subtitle: Text(
+                  title: const Tr('Colours'),
+                  subtitle: Tr(
                     'Money in, money out, people, and transaction icons',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: cs.onSurfaceVariant,
@@ -137,7 +162,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
                 AppListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   leading: const AppIcon(Icons.dashboard_outlined),
-                  title: const Text('More screen layout'),
+                  title: const Tr('More screen layout'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -158,13 +183,13 @@ class GeneralSettingsScreen extends ConsumerWidget {
             ),
           ),
 
-          settingsSectionLabel(context, 'Dashboard'),
+          settingsSectionLabel(context, tr('Dashboard')),
           AppCard(
             child: AppListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               leading: const AppIcon(Icons.dashboard_customize_outlined),
-              title: const Text('Customize dashboard'),
-              subtitle: Text(
+              title: const Tr('Customize dashboard'),
+              subtitle: Tr(
                 'Add, remove and reorder widgets, lay out Accounts, and pick '
                 'what counts toward Net Worth.',
                 style: theme.textTheme.bodySmall?.copyWith(
@@ -176,7 +201,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
             ),
           ),
 
-          settingsSectionLabel(context, 'Calendar'),
+          settingsSectionLabel(context, tr('Calendar')),
           AppCard(
             child: Column(
               children: [
@@ -191,7 +216,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
                           const AppIcon(Icons.view_week_outlined),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: Text(
+                            child: Tr(
                               'Week starts on',
                               style: theme.textTheme.bodyLarge,
                             ),
@@ -206,11 +231,11 @@ class GeneralSettingsScreen extends ConsumerWidget {
                           segments: const [
                             ButtonSegment(
                               value: WeekStart.sunday,
-                              label: Text('Sunday'),
+                              label: Tr('Sunday'),
                             ),
                             ButtonSegment(
                               value: WeekStart.monday,
-                              label: Text('Monday'),
+                              label: Tr('Monday'),
                             ),
                           ],
                           selected: {weekStart},
@@ -225,8 +250,8 @@ class GeneralSettingsScreen extends ConsumerWidget {
                 AppSwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   secondary: const AppIcon(Icons.calendar_month_outlined),
-                  title: const Text('Show day totals'),
-                  subtitle: Text(
+                  title: const Tr('Show day totals'),
+                  subtitle: Tr(
                     'Selecting a day on the calendar shows its money in/out '
                     'totals.',
                     style: theme.textTheme.bodySmall?.copyWith(
@@ -241,13 +266,13 @@ class GeneralSettingsScreen extends ConsumerWidget {
             ),
           ),
 
-          settingsSectionLabel(context, 'Layout'),
+          settingsSectionLabel(context, tr('Layout')),
           AppCard(
             child: AppListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               leading: const AppIcon(Icons.dashboard_customize_outlined),
-              title: const Text('Customize bottom nav'),
-              subtitle: Text(
+              title: const Tr('Customize bottom nav'),
+              subtitle: Tr(
                 'Choose what goes next to the ➕ button',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: cs.onSurfaceVariant,
@@ -258,15 +283,15 @@ class GeneralSettingsScreen extends ConsumerWidget {
             ),
           ),
 
-          settingsSectionLabel(context, 'Message Capture'),
+          settingsSectionLabel(context, tr('Message Capture')),
           AppCard(
             child: Column(
               children: [
                 AppListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   leading: const AppIcon(Icons.sms_outlined),
-                  title: const Text('Bank-SMS auto-capture'),
-                  subtitle: Text(
+                  title: const Tr('Bank-SMS auto-capture'),
+                  subtitle: Tr(
                     'Coming soon — removed for now so the app installs '
                     'without a Play Protect block.',
                     style: theme.textTheme.bodySmall?.copyWith(
@@ -281,8 +306,8 @@ class GeneralSettingsScreen extends ConsumerWidget {
                   AppListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     leading: const AppIcon(Icons.rate_review_outlined),
-                    title: const Text('OCR corrections'),
-                    subtitle: Text(
+                    title: const Tr('OCR corrections'),
+                    subtitle: Tr(
                       'Optional — test a payment screenshot and help improve '
                       'OCR by sharing what you find, entirely on your terms.',
                       style: theme.textTheme.bodySmall?.copyWith(

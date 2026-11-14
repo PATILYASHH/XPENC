@@ -15,6 +15,7 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 import '../settings/settings_common.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Save the current category structure as a reusable template, and switch
 /// between saved templates (GitHub #101). Switching never touches a
@@ -33,10 +34,10 @@ class CategoryTemplatesScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppTopBar(
-        title: const Text('Category templates'),
+        title: const Tr('Category templates'),
         actions: [
           IconButton(
-            tooltip: 'Import from file',
+            tooltip: tr('Import from file'),
             icon: const AppIcon(Icons.file_open_outlined),
             onPressed: () => _importTemplate(context, ref),
           ),
@@ -44,10 +45,10 @@ class CategoryTemplatesScreen extends ConsumerWidget {
       ),
       body: templatesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => const Center(
+        error: (_, _) => Center(
           child: Padding(
             padding: EdgeInsets.all(24),
-            child: InlineErrorView(message: "Couldn't load templates"),
+            child: InlineErrorView(message: tr("Couldn't load templates")),
           ),
         ),
         data: (templates) => ListView(
@@ -58,7 +59,7 @@ class CategoryTemplatesScreen extends ConsumerWidget {
             96,
           ).plusNavBar(context),
           children: [
-            Text(
+            Tr(
               'A template is a saved snapshot of your category and '
               'sub-category structure. Save your current one before trying '
               'a reorganization, or switch to another template any time — '
@@ -81,7 +82,7 @@ class CategoryTemplatesScreen extends ConsumerWidget {
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                     const SizedBox(height: 16),
-                    Text(
+                    Tr(
                       'No templates saved yet — tap + to save your current '
                       'categories as one.',
                       textAlign: TextAlign.center,
@@ -104,7 +105,7 @@ class CategoryTemplatesScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-            settingsSectionLabel(context, 'Ready-made'),
+            settingsSectionLabel(context, tr('Ready-made')),
             AppCard(
               clipBehavior: Clip.antiAlias,
               child: Column(
@@ -126,7 +127,7 @@ class CategoryTemplatesScreen extends ConsumerWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        tooltip: 'Save current as template',
+        tooltip: tr('Save current as template'),
         onPressed: () => _saveCurrentAsTemplate(context, ref),
         child: const AppIcon(Icons.add),
       ),
@@ -147,8 +148,8 @@ class _TemplateTile extends ConsumerWidget {
         .valueOrNull
         ?.length;
     final subtitle = itemCount == null
-        ? 'Loading…'
-        : '$itemCount ${itemCount == 1 ? 'category' : 'categories'}';
+        ? tr('Loading…')
+        : plural(itemCount, '1 category', '{0} categories');
 
     return AppListTile(
       contentPadding: const EdgeInsets.only(left: 16, right: 4),
@@ -181,14 +182,14 @@ class _TemplateTile extends ConsumerWidget {
         itemBuilder: (_) => const [
           PopupMenuItem(
             value: _TemplateAction.apply,
-            child: Text('Switch to this template'),
+            child: Tr('Switch to this template'),
           ),
           PopupMenuItem(
             value: _TemplateAction.share,
-            child: Text('Share as file'),
+            child: Tr('Share as file'),
           ),
-          PopupMenuItem(value: _TemplateAction.rename, child: Text('Rename')),
-          PopupMenuItem(value: _TemplateAction.delete, child: Text('Delete')),
+          PopupMenuItem(value: _TemplateAction.rename, child: Tr('Rename')),
+          PopupMenuItem(value: _TemplateAction.delete, child: Tr('Delete')),
         ],
       ),
       onTap: () => _applyTemplate(context, ref, template),
@@ -231,7 +232,7 @@ class _BuiltInTile extends ConsumerWidget {
             ),
       trailing: TextButton(
         onPressed: () => _addTemplateFile(context, ref, file),
-        child: const Text('Add'),
+        child: const Tr('Add'),
       ),
     );
   }
@@ -255,11 +256,11 @@ class _MoreTemplatesTile extends StatelessWidget {
           color: theme.colorScheme.onSecondaryContainer,
         ),
       ),
-      title: Text(
+      title: Tr(
         'More templates on xpenc.in',
         style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
       ),
-      subtitle: Text(
+      subtitle: Tr(
         'Student, Family Household and ones shared by the community. '
         'Download one, then use Import from file.',
         style: theme.textTheme.bodySmall?.copyWith(
@@ -287,7 +288,7 @@ Future<void> _addTemplateFile(
   messenger
     ..hideCurrentSnackBar()
     ..showSnackBar(
-      SnackBar(content: Text('Added "${file.name}" — tap it to switch to it')),
+      SnackBar(content: Text(tr('Added "{0}" — tap it to switch to it', [file.name]))),
     );
 }
 
@@ -306,15 +307,15 @@ Future<void> _shareTemplate(
       bytes: utf8.encode(file.encode()),
       mimeType: 'application/json',
     ).deliver(
-      subject: 'XPENC categories: ${template.name}',
+      subject: tr('XPENC categories: {0}', [template.name]),
       text:
-          'My "${template.name}" categories for XPENC. Import it from '
-          'Categories → Category templates.',
+          tr('My "{0}" categories for XPENC. Import it from '
+          'Categories → Category templates.', [template.name]),
     );
   } catch (e) {
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text("Couldn't share it: $e")));
+      ..showSnackBar(SnackBar(content: Text(tr("Couldn't share it: {0}", [e]))));
   }
 }
 
@@ -332,13 +333,13 @@ Future<void> _importTemplate(BuildContext context, WidgetRef ref) async {
     // under one. Decoding is the real check.
     picked = await FilePicker.platform.pickFiles(withData: true);
   } catch (e) {
-    say("Couldn't open a file: $e");
+    say(tr("Couldn't open a file: {0}", [e]));
     return;
   }
   final bytes = picked?.files.singleOrNull?.bytes;
   if (picked == null) return; // cancelled
   if (bytes == null) {
-    say("Couldn't read that file.");
+    say(tr("Couldn't read that file."));
     return;
   }
   final CategoryTemplateFile file;
@@ -354,22 +355,23 @@ Future<void> _importTemplate(BuildContext context, WidgetRef ref) async {
   final add = await showAppDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: Text('Add "${file.name}"?'),
+      title: Text(tr('Add "{0}"?', [file.name])),
       content: Text(
         [
           ?file.description,
-          '$count ${count == 1 ? 'category' : 'categories'}. Nothing changes '
-              'until you switch to it.',
+          tr('{0}. Nothing changes until you switch to it.', [
+            plural(count, '1 category', '{0} categories'),
+          ]),
         ].join('\n\n'),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Cancel'),
+          child: const Tr('Cancel'),
         ),
         FilledButton(
           onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: const Text('Add'),
+          child: const Tr('Add'),
         ),
       ],
     ),
@@ -379,7 +381,7 @@ Future<void> _importTemplate(BuildContext context, WidgetRef ref) async {
 }
 
 Future<void> _saveCurrentAsTemplate(BuildContext context, WidgetRef ref) async {
-  final name = await _promptForName(context, title: 'Save as template');
+  final name = await _promptForName(context, title: tr('Save as template'));
   if (name == null || name.isEmpty) return;
   if (!context.mounted) return;
 
@@ -387,7 +389,7 @@ Future<void> _saveCurrentAsTemplate(BuildContext context, WidgetRef ref) async {
   await ref.read(dbProvider).saveCategoriesAsTemplate(name);
   messenger
     ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text('Saved "$name"')));
+    ..showSnackBar(SnackBar(content: Text(tr('Saved "{0}"', [name]))));
 }
 
 Future<void> _renameTemplate(
@@ -397,7 +399,7 @@ Future<void> _renameTemplate(
 ) async {
   final name = await _promptForName(
     context,
-    title: 'Rename template',
+    title: tr('Rename template'),
     initialValue: template.name,
   );
   if (name == null || name.isEmpty || name == template.name) return;
@@ -421,9 +423,9 @@ Future<String?> _promptForName(
         autofocus: true,
         maxLength: 60,
         textCapitalization: TextCapitalization.words,
-        decoration: const InputDecoration(
-          labelText: 'Name',
-          hintText: 'e.g. Minimalist, Detailed tracking',
+        decoration: InputDecoration(
+          labelText: tr('Name'),
+          hintText: tr('e.g. Minimalist, Detailed tracking'),
           counterText: '',
         ),
         onSubmitted: (v) => Navigator.of(dialogContext).pop(v.trim()),
@@ -431,12 +433,12 @@ Future<String?> _promptForName(
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
-          child: const Text('Cancel'),
+          child: const Tr('Cancel'),
         ),
         FilledButton(
           onPressed: () =>
               Navigator.of(dialogContext).pop(controller.text.trim()),
-          child: const Text('Save'),
+          child: const Tr('Save'),
         ),
       ],
     ),
@@ -451,8 +453,8 @@ Future<void> _applyTemplate(
   final confirmed = await showAppDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: Text('Switch to "${template.name}"?'),
-      content: const Text(
+      title: Text(tr('Switch to "{0}"?', [template.name])),
+      content: const Tr(
         'Categories not in this template are archived, not deleted — every '
         "transaction keeps the category it's already tagged with, and "
         'switching back later brings the same categories back. Categories '
@@ -461,11 +463,11 @@ Future<void> _applyTemplate(
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Cancel'),
+          child: const Tr('Cancel'),
         ),
         FilledButton(
           onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: const Text('Switch'),
+          child: const Tr('Switch'),
         ),
       ],
     ),
@@ -477,12 +479,12 @@ Future<void> _applyTemplate(
     await ref.read(dbProvider).applyCategoryTemplate(template.id);
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('Switched to "${template.name}"')));
+      ..showSnackBar(SnackBar(content: Text(tr('Switched to "{0}"', [template.name]))));
   } on ArgumentError catch (e) {
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        SnackBar(content: Text(e.message?.toString() ?? "Couldn't switch.")),
+        SnackBar(content: Text(e.message?.toString() ?? tr("Couldn't switch."))),
       );
   }
 }
@@ -495,22 +497,22 @@ Future<void> _deleteTemplate(
   final confirmed = await showAppDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: Text('Delete "${template.name}"?'),
-      content: const Text(
+      title: Text(tr('Delete "{0}"?', [template.name])),
+      content: const Tr(
         'This only deletes the saved template — your current categories '
         'and every transaction are untouched.',
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Cancel'),
+          child: const Tr('Cancel'),
         ),
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(true),
           style: TextButton.styleFrom(
             foregroundColor: Theme.of(dialogContext).colorScheme.error,
           ),
-          child: const Text('Delete'),
+          child: const Tr('Delete'),
         ),
       ],
     ),

@@ -62,6 +62,7 @@ import '../../features/security/totp_setup_screen.dart';
 import '../../features/security/totp_verify_screen.dart';
 import '../../features/settings/bottom_nav_settings_screen.dart';
 import '../../features/settings/currency_settings_screen.dart';
+import '../../features/settings/language_settings_screen.dart';
 import '../../features/settings/dashboard_settings_screen.dart';
 import '../../features/settings/data_settings_screen.dart';
 import '../../features/settings/colors_settings_screen.dart';
@@ -281,6 +282,11 @@ final appRouter = GoRouter(
                       path: 'font',
                       parentNavigatorKey: _rootKey,
                       builder: (_, _) => const FontSettingsScreen(),
+                    ),
+                    GoRoute(
+                      path: 'language',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const LanguageSettingsScreen(),
                     ),
                     GoRoute(
                       path: 'colours',

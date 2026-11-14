@@ -4,6 +4,7 @@ import '../../core/branding/app_info.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import 'whats_new_data.dart';
+import '../../core/l10n/l10n.dart';
 
 /// What's new in the current version, one card per feature — what it is,
 /// where to find it, what it actually does. Hand-curated from
@@ -15,7 +16,7 @@ class WhatsNewScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppTopBar(title: Text("What's new in ${AppInfo.version}")),
+      appBar: AppTopBar(title: Text(tr("What's new in {0}", [AppInfo.version]))),
       // Not a SafeArea — see about_screen.dart's identical note (GitHub
       // #53/#14): its reported bottom inset doesn't clear the nav bar on
       // some 3-button-nav devices. Reading the inset explicitly instead.

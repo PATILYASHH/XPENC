@@ -1,3 +1,5 @@
+import '../l10n/l10n.dart';
+
 /// The font families the Font settings screen offers.
 ///
 /// Kept to a short, deliberately offline list — [manrope] and [sora] are the
@@ -13,15 +15,17 @@ enum AppFontFamily {
   serif('Serif', 'serif', 'Classic, with small strokes'),
   monospace('Monospace', 'monospace', 'Fixed-width, every letter the same');
 
-  const AppFontFamily(this.label, this.family, this.description);
+  const AppFontFamily(String label, this.family, String description) : _label = label, _description = description;
 
-  final String label;
+  final String _label;
+  String get label => tr(_label);
 
   /// The actual `fontFamily` string to hand Flutter, or null to leave every
   /// text style's family untouched.
   final String? family;
 
-  final String description;
+  final String _description;
+  String get description => tr(_description);
 
   /// Unknown or missing names fall back to [system], so a bad write can
   /// never brick the app — same convention as `ThemeChoice.parse`.

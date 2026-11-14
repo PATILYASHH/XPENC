@@ -11,6 +11,7 @@ import '../../data/tables.dart';
 import 'mode_detail_screen.dart';
 import 'mode_modules.dart';
 import 'mode_widgets.dart';
+import '../../core/l10n/l10n.dart';
 
 /// More → Modes: every trip or event — the one that's ON, the planned ones
 /// and the ones that are over.
@@ -48,11 +49,11 @@ class ModesScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppTopBar(
-        title: const Text('Modes'),
+        title: const Tr('Modes'),
         actions: [
           IconButton(
             icon: const AppIcon(Icons.add_rounded),
-            tooltip: 'New mode',
+            tooltip: tr('New mode'),
             onPressed: () => showNewModeSheet(context),
           ),
         ],
@@ -81,7 +82,7 @@ class ModesScreen extends ConsumerWidget {
                 FilledButton.tonalIcon(
                   onPressed: () => showNewModeSheet(context),
                   icon: const AppIcon(Icons.add_rounded),
-                  label: const Text('New mode'),
+                  label: const Tr('New mode'),
                 ),
               ],
             ),
@@ -102,14 +103,14 @@ class _Intro extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            Tr(
               'A mode for every trip',
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 8),
-            Text(
+            Tr(
               'Switch a mode ON and the app focuses on it: everything you add '
               'joins it, tagged the way you set, from the accounts and '
               'categories you picked. Switch it off and it becomes one line '
@@ -184,7 +185,7 @@ Future<void> showNewModeSheet(BuildContext context) async {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-            child: Text(
+            child: Tr(
               'New mode',
               style: Theme.of(context).textTheme.titleLarge,
             ),

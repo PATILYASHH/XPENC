@@ -19,6 +19,7 @@ import 'account_reports_data.dart';
 import 'chart_widgets.dart';
 import 'stats_sections.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Account Reports' modules — the same hub-and-module shape as Stats: each
 /// has a tile on the hub with one live headline and opens its own screen at
@@ -35,13 +36,13 @@ enum AccountReportModule {
 
 extension AccountReportModuleX on AccountReportModule {
   String get title => switch (this) {
-    AccountReportModule.balances => 'Balances',
-    AccountReportModule.activity => 'Activity',
-    AccountReportModule.history => 'Balance history',
-    AccountReportModule.transfers => 'Transfers',
-    AccountReportModule.paymentMethods => 'Payment methods',
-    AccountReportModule.cards => 'Cards & pay later',
-    AccountReportModule.health => 'Account health',
+    AccountReportModule.balances => tr('Balances'),
+    AccountReportModule.activity => tr('Activity'),
+    AccountReportModule.history => tr('Balance history'),
+    AccountReportModule.transfers => tr('Transfers'),
+    AccountReportModule.paymentMethods => tr('Payment methods'),
+    AccountReportModule.cards => tr('Cards & pay later'),
+    AccountReportModule.health => tr('Account health'),
   };
 
   IconData get icon => switch (this) {
@@ -60,16 +61,16 @@ extension AccountReportModuleX on AccountReportModule {
 // ── Shared helpers ──────────────────────────────────────────────────────────
 
 String accountTypeLabel(AccountRow a) {
-  if (a.linkedAccountId != null) return 'Debit card';
-  if (isCreditCard(a)) return 'Credit card';
+  if (a.linkedAccountId != null) return tr('Debit card');
+  if (isCreditCard(a)) return tr('Credit card');
   return switch (a.type) {
-    AccountType.cash => 'Cash',
-    AccountType.bank => 'Bank',
-    AccountType.card => 'Card',
-    AccountType.payLater => 'Pay later',
-    AccountType.prepaidBalance => 'Prepaid',
-    AccountType.goal => 'Savings goal',
-    AccountType.loan => 'Loan',
+    AccountType.cash => tr('Cash'),
+    AccountType.bank => tr('Bank'),
+    AccountType.card => tr('Card'),
+    AccountType.payLater => tr('Pay later'),
+    AccountType.prepaidBalance => tr('Prepaid'),
+    AccountType.goal => tr('Savings goal'),
+    AccountType.loan => tr('Loan'),
   };
 }
 
@@ -81,12 +82,6 @@ String _inAccountCurrency(Money m, AccountRow a) => a.currencyCode == null
 String _pct(Money part, Money whole) =>
     whole.isZero ? '0%' : '${(part.paise * 100 / whole.paise).round()}%';
 
-String _count(int n, String noun) {
-  if (n == 1) return '$n $noun';
-  return noun.endsWith('y')
-      ? '$n ${noun.substring(0, noun.length - 1)}ies'
-      : '$n ${noun}s';
-}
 
 double _fraction(Money part, Money max) =>
     max.isZero ? 0 : (part.abs.paise / max.abs.paise).clamp(0.0, 1.0);
@@ -203,7 +198,7 @@ class AccountPeriodControls extends ConsumerWidget {
 }
 
 String periodNoun(WidgetRef ref) =>
-    ref.watch(accountReportsShowYearProvider) ? 'this year' : 'this month';
+    ref.watch(accountReportsShowYearProvider) ? tr('this year') : tr('this month');
 
 // ── Hub tile ────────────────────────────────────────────────────────────────
 
@@ -287,7 +282,7 @@ class AccountReportTile extends ConsumerWidget {
         final n = ref.watch(balanceAccountsProvider).valueOrNull?.length ?? 0;
         return (
           nw == null ? '—' : MoneyFormat.compact(nw),
-          _count(n, 'account'),
+          plural(n, '1 account', '{0} accounts'),
           null,
         );
       case AccountReportModule.activity:
@@ -296,37 +291,42 @@ class AccountReportTile extends ConsumerWidget {
         return (
           a?.name ?? '—',
           busiest == null
-              ? 'No activity $noun'
-              : 'Busiest · ${_count(busiest.count, 'entry')}',
+              ? tr('No activity {0}', [noun])
+              : tr('Busiest · {0}', [
+                  plural(busiest.count, '1 entry', '{0} entries'),
+                ]),
           null,
         );
       case AccountReportModule.history:
         final trend = ref.watch(netWorthTrendProvider(12));
-        if (trend.length < 2) return ('—', 'Past 12 months', null);
+        if (trend.length < 2) return ('—', tr('Past 12 months'), null);
         final change = trend.last.value - trend.first.value;
         return (
           change.isZero
               ? MoneyFormat.compact(change)
               : '${change.isNegative ? '-' : '+'}'
                     '${MoneyFormat.compact(change.abs)}',
-          'Past 12 months',
+          tr('Past 12 months'),
           change.isNegative ? AppColors.expense : AppColors.income,
         );
       case AccountReportModule.transfers:
         final s = ref.watch(accountPeriodSummaryProvider);
         return (
           MoneyFormat.compact(s.moved),
-          '${_count(s.transfers, 'transfer')} $noun',
+          tr('{0} {1}', [
+            plural(s.transfers, '1 transfer', '{0} transfers'),
+            noun,
+          ]),
           null,
         );
       case AccountReportModule.paymentMethods:
         final methods = ref.watch(paymentMethodsProvider);
-        if (methods.isEmpty) return ('—', 'No spending $noun', null);
+        if (methods.isEmpty) return ('—', tr('No spending {0}', [noun]), null);
         final total = methods.fold(const Money.zero(), (s, m) => s + m.amount);
         final top = methods.first;
         return (
           accounts[top.accountId]?.name ?? '—',
-          '${_pct(top.amount, total)} of spending',
+          tr('{0} of spending', [_pct(top.amount, total)]),
           null,
         );
       case AccountReportModule.cards:
@@ -340,18 +340,18 @@ class AccountReportTile extends ConsumerWidget {
         );
         return (
           cards.isEmpty ? '—' : MoneyFormat.compact(owed),
-          cards.isEmpty ? 'No cards yet' : 'Outstanding',
+          cards.isEmpty ? tr('No cards yet') : tr('Outstanding'),
           owed.isZero ? null : AppColors.expense,
         );
       case AccountReportModule.health:
         final flags = ref.watch(accountHealthProvider);
         return (
-          flags.isEmpty ? 'All good' : '${flags.length}',
+          flags.isEmpty ? tr('All good') : '${flags.length}',
           flags.isEmpty
-              ? 'Nothing to check'
+              ? tr('Nothing to check')
               : flags.length == 1
-              ? 'Needs a look'
-              : 'Need a look',
+              ? tr('Needs a look')
+              : tr('Need a look'),
           flags.isEmpty ? AppColors.income : AppColors.expense,
         );
     }
@@ -420,18 +420,18 @@ class _BalancesBody extends ConsumerWidget {
           children: [
             _TilePair(
               StatTile(
-                label: 'You have',
+                label: tr('You have'),
                 value: MoneyFormat.symbol(assets),
                 color: AppColors.income,
               ),
               StatTile(
-                label: 'You owe',
+                label: tr('You owe'),
                 value: MoneyFormat.symbol(owed),
                 color: owed.isZero ? null : AppColors.expense,
               ),
             ),
             _gap,
-            const SectionCaption('Where your money sits'),
+            SectionCaption(tr('Where your money sits')),
             AppCard(
               margin: EdgeInsets.zero,
               child: Padding(
@@ -453,7 +453,7 @@ class _BalancesBody extends ConsumerWidget {
             ),
             if (negative.isNotEmpty) ...[
               _gap,
-              const SectionCaption('Owed'),
+              SectionCaption(tr('Owed')),
               _ListCard(
                 empty: '',
                 children: [
@@ -471,9 +471,9 @@ class _BalancesBody extends ConsumerWidget {
               ),
             ],
             _gap,
-            const SectionCaption('By account type'),
+            SectionCaption(tr('By account type')),
             _ListCard(
-              empty: 'No balances yet.',
+              empty: tr('No balances yet.'),
               children: [
                 for (final (i, e) in types.indexed)
                   StandingRow(
@@ -518,31 +518,31 @@ class _ActivityBody extends ConsumerWidget {
             const SizedBox(height: 16),
             _TilePair(
               StatTile(
-                label: 'Money in',
+                label: tr('Money in'),
                 value: MoneyFormat.symbol(summary.moneyIn),
-                sub: 'Money in + from people',
+                sub: tr('Money in + from people'),
                 color: AppColors.income,
               ),
               StatTile(
-                label: 'Money out',
+                label: tr('Money out'),
                 value: MoneyFormat.symbol(summary.moneyOut),
-                sub: 'Spent + to people',
+                sub: tr('Spent + to people'),
                 color: AppColors.expense,
               ),
             ),
             _gap,
-            const SectionCaption('By account'),
+            SectionCaption(tr('By account')),
             _ListCard(
-              empty: 'No activity $noun.',
+              empty: tr('No activity {0}.', [noun]),
               children: [
                 for (final (i, a) in activity.indexed)
                   StandingRow(
                     rank: i + 1,
-                    title: accounts[a.accountId]?.name ?? 'Deleted account',
+                    title: accounts[a.accountId]?.name ?? tr('Deleted account'),
                     subtitle:
-                        'In ${MoneyFormat.compact(a.moneyIn)} · '
-                        'Out ${MoneyFormat.compact(a.moneyOut)} · '
-                        '${_count(a.count, 'entry')}',
+                        tr('In {0} · '
+                        'Out {1} · '
+                        '{2}', [MoneyFormat.compact(a.moneyIn), MoneyFormat.compact(a.moneyOut), plural(a.count, '1 entry', '{0} entries')]),
                     value: a.net.isZero
                         ? MoneyFormat.symbol(a.net)
                         : MoneyFormat.signed(a.net),
@@ -563,8 +563,8 @@ class _ActivityBody extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             _Footnote(
-              'Net includes transfers between your accounts. Debit card '
-              'payments count on the bank they draw from.',
+              tr('Net includes transfers between your accounts. Debit card '
+              'payments count on the bank they draw from.'),
             ),
           ],
         );
@@ -623,7 +623,7 @@ class _HistoryBodyState extends ConsumerState<_HistoryBody> {
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 children: [
-                  _chip('All accounts', _accountId == null, null),
+                  _chip(tr('All accounts'), _accountId == null, null),
                   for (final a in accounts)
                     _chip(a.name, _accountId == a.id, a.id),
                 ],
@@ -632,9 +632,9 @@ class _HistoryBodyState extends ConsumerState<_HistoryBody> {
             const SizedBox(height: 12),
             SegmentedButton<int>(
               segments: const [
-                ButtonSegment(value: 6, label: Text('6 months')),
-                ButtonSegment(value: 12, label: Text('1 year')),
-                ButtonSegment(value: 24, label: Text('2 years')),
+                ButtonSegment(value: 6, label: Tr('6 months')),
+                ButtonSegment(value: 12, label: Tr('1 year')),
+                ButtonSegment(value: 24, label: Tr('2 years')),
               ],
               selected: {_months},
               showSelectedIcon: false,
@@ -643,16 +643,16 @@ class _HistoryBodyState extends ConsumerState<_HistoryBody> {
             const SizedBox(height: 16),
             _TilePair(
               StatTile(
-                label: 'Now',
+                label: tr('Now'),
                 value: points.isEmpty ? '—' : fmt(points.last.value),
-                sub: selected == null ? 'Total money' : selected.name,
+                sub: selected == null ? tr('Total money') : selected.name,
               ),
               StatTile(
-                label: 'Change',
+                label: tr('Change'),
                 value: change.isZero
                     ? fmt(change)
                     : '${change.isNegative ? '-' : '+'}${fmt(change.abs)}',
-                sub: 'Over ${_months == 24 ? '2 years' : '$_months months'}',
+                sub: tr('Over {0}', [_months == 24 ? tr('2 years') : tr('{0} months', [_months])]),
                 color: change.isNegative
                     ? AppColors.expense
                     : change.isPositive
@@ -661,7 +661,7 @@ class _HistoryBodyState extends ConsumerState<_HistoryBody> {
               ),
             ),
             _gap,
-            const SectionCaption('Month-end balance'),
+            SectionCaption(tr('Month-end balance')),
             AppCard(
               margin: EdgeInsets.zero,
               child: Padding(
@@ -673,12 +673,12 @@ class _HistoryBodyState extends ConsumerState<_HistoryBody> {
               _tileGap,
               _TilePair(
                 StatTile(
-                  label: 'Highest',
+                  label: tr('Highest'),
                   value: fmt(high.value),
                   sub: DateFormat('MMM yyyy').format(high.month),
                 ),
                 StatTile(
-                  label: 'Lowest',
+                  label: tr('Lowest'),
                   value: fmt(low.value),
                   sub: DateFormat('MMM yyyy').format(low.month),
                   color: low.value.isNegative ? AppColors.expense : null,
@@ -688,9 +688,9 @@ class _HistoryBodyState extends ConsumerState<_HistoryBody> {
             const SizedBox(height: 12),
             Text(
               selected == null
-                  ? 'Every account combined. Transfers between your own '
-                        'accounts cancel out.'
-                  : 'Balance on the last day of each month.',
+                  ? tr('Every account combined. Transfers between your own '
+                        'accounts cancel out.')
+                  : tr('Balance on the last day of each month.'),
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -728,7 +728,7 @@ class _TransfersBody extends ConsumerWidget {
         final maxAmount = routes.isEmpty
             ? const Money.zero()
             : routes.first.amount;
-        String name(int id) => accounts[id]?.name ?? 'Deleted account';
+        String name(int id) => accounts[id]?.name ?? tr('Deleted account');
 
         // Where transferred money ended up, summed per destination.
         final byTarget = <int, Money>{};
@@ -745,28 +745,28 @@ class _TransfersBody extends ConsumerWidget {
             const SizedBox(height: 16),
             _TilePair(
               StatTile(
-                label: 'Moved',
+                label: tr('Moved'),
                 value: MoneyFormat.symbol(summary.moved),
-                sub: 'Between your accounts',
+                sub: tr('Between your accounts'),
               ),
               StatTile(
-                label: 'Transfers',
+                label: tr('Transfers'),
                 value: '${summary.transfers}',
                 sub: routes.isEmpty
                     ? 'None ${periodNoun(ref)}'
-                    : _count(routes.length, 'route'),
+                    : plural(routes.length, '1 route', '{0} routes'),
               ),
             ),
             _gap,
-            const SectionCaption('Routes'),
+            SectionCaption(tr('Routes')),
             _ListCard(
-              empty: 'No transfers ${periodNoun(ref)}.',
+              empty: tr('No transfers {0}.', [periodNoun(ref)]),
               children: [
                 for (final (i, r) in routes.indexed)
                   StandingRow(
                     rank: i + 1,
                     title: '${name(r.fromId)} → ${name(r.toId)}',
-                    subtitle: _count(r.count, 'transfer'),
+                    subtitle: plural(r.count, '1 transfer', '{0} transfers'),
                     value: MoneyFormat.symbol(r.amount),
                     barFraction: _fraction(r.amount, maxAmount),
                   ),
@@ -774,7 +774,7 @@ class _TransfersBody extends ConsumerWidget {
             ),
             if (targets.length > 1) ...[
               _gap,
-              const SectionCaption('Where it went'),
+              SectionCaption(tr('Where it went')),
               _ListCard(
                 empty: '',
                 children: [
@@ -832,12 +832,12 @@ class _PaymentMethodsBody extends ConsumerWidget {
             const SizedBox(height: 16),
             _TilePair(
               StatTile(
-                label: 'Spent',
+                label: tr('Spent'),
                 value: MoneyFormat.symbol(total),
                 color: total.isZero ? null : AppColors.expense,
               ),
               StatTile(
-                label: 'Payments',
+                label: tr('Payments'),
                 value: '$count',
                 sub: count == 0
                     ? 'None ${periodNoun(ref)}'
@@ -845,7 +845,7 @@ class _PaymentMethodsBody extends ConsumerWidget {
               ),
             ),
             _gap,
-            const SectionCaption('How you paid'),
+            SectionCaption(tr('How you paid')),
             AppCard(
               margin: EdgeInsets.zero,
               child: Padding(
@@ -856,7 +856,7 @@ class _PaymentMethodsBody extends ConsumerWidget {
                         slices: [
                           for (final m in methods)
                             (
-                              label: accounts[m.accountId]?.name ?? 'Other',
+                              label: accounts[m.accountId]?.name ?? tr('Other'),
                               value: m.amount,
                               color: accounts[m.accountId] == null
                                   ? Colors.grey
@@ -868,16 +868,17 @@ class _PaymentMethodsBody extends ConsumerWidget {
               ),
             ),
             _gap,
-            const SectionCaption('By account'),
+            SectionCaption(tr('By account')),
             _ListCard(
-              empty: 'No spending ${periodNoun(ref)}.',
+              empty: tr('No spending {0}.', [periodNoun(ref)]),
               children: [
                 for (final (i, m) in methods.indexed)
                   StandingRow(
                     rank: i + 1,
-                    title: accounts[m.accountId]?.name ?? 'Deleted account',
+                    title: accounts[m.accountId]?.name ?? tr('Deleted account'),
                     subtitle:
-                        '${_pct(m.amount, total)} · ${_count(m.count, 'payment')}',
+                        '${_pct(m.amount, total)} · '
+                        '${plural(m.count, '1 payment', '{0} payments')}',
                     value: MoneyFormat.symbol(m.amount),
                     dotColor: accounts[m.accountId] == null
                         ? null
@@ -892,7 +893,7 @@ class _PaymentMethodsBody extends ConsumerWidget {
             ),
             if (kinds.length > 1) ...[
               _gap,
-              const SectionCaption('By type'),
+              SectionCaption(tr('By type')),
               _ListCard(
                 empty: '',
                 children: [
@@ -911,8 +912,8 @@ class _PaymentMethodsBody extends ConsumerWidget {
             ],
             const SizedBox(height: 12),
             _Footnote(
-              'Counts money out only. A debit card shows on its own here, even '
-              'though the money comes from its bank.',
+              tr('Counts money out only. A debit card shows on its own here, even '
+              'though the money comes from its bank.'),
             ),
           ],
         );
@@ -950,13 +951,13 @@ class _CardsBody extends ConsumerWidget {
         }
 
         if (cards.isEmpty) {
-          return const _ModuleList(
+          return _ModuleList(
             children: [
               _EmptyModule(
                 icon: Icons.credit_card_outlined,
                 text:
-                    'No credit cards or pay-later accounts yet. Add one from '
-                    'Accounts to track what you owe on it.',
+                    tr('No credit cards or pay-later accounts yet. Add one from '
+                    'Accounts to track what you owe on it.'),
               ),
             ],
           );
@@ -965,11 +966,13 @@ class _CardsBody extends ConsumerWidget {
         return _ModuleList(
           children: [
             StatTile(
-              label: 'Outstanding',
+              label: tr('Outstanding'),
               value: MoneyFormat.symbol(owed),
               sub: owed.isZero
-                  ? 'Nothing owed right now'
-                  : 'Across ${_count(cards.length, 'card')}',
+                  ? tr('Nothing owed right now')
+                  : tr('Across {0}', [
+                      plural(cards.length, '1 card', '{0} cards'),
+                    ]),
               color: owed.isZero ? AppColors.income : AppColors.expense,
             ),
             _gap,
@@ -977,19 +980,19 @@ class _CardsBody extends ConsumerWidget {
             const SizedBox(height: 16),
             _TilePair(
               StatTile(
-                label: 'Spent on cards',
+                label: tr('Spent on cards'),
                 value: MoneyFormat.symbol(spent),
                 sub: noun,
               ),
               StatTile(
-                label: 'Repaid',
+                label: tr('Repaid'),
                 value: MoneyFormat.symbol(repaid),
                 sub: noun,
                 color: repaid.isZero ? null : AppColors.income,
               ),
             ),
             _gap,
-            const SectionCaption('Each card'),
+            SectionCaption(tr('Each card')),
             for (final c in cards) ...[
               _CardRow(card: c, activity: activity[c.id]),
               _tileGap,
@@ -1090,23 +1093,23 @@ class _CardRow extends ConsumerWidget {
               Row(
                 children: [
                   fact(
-                    'Spent',
+                    tr('Spent'),
                     _inAccountCurrency(
                       activity?.expense ?? const Money.zero(),
                       card,
                     ),
                   ),
                   fact(
-                    'Repaid',
+                    tr('Repaid'),
                     _inAccountCurrency(
                       activity?.transferIn ?? const Money.zero(),
                       card,
                     ),
                   ),
                   fact(
-                    owed.isZero ? 'Status' : 'Next due',
+                    owed.isZero ? tr('Status') : tr('Next due'),
                     owed.isZero
-                        ? 'Paid off'
+                        ? tr('Paid off')
                         : due == null
                         ? '—'
                         : DateFormat('d MMM').format(due),
@@ -1142,12 +1145,12 @@ class _HealthBody extends ConsumerWidget {
               _EmptyModule(
                 icon: Icons.verified_outlined,
                 text:
-                    'Every account looks right: nothing below zero, nothing '
-                    'under its minimum, nothing sitting unused.',
+                    tr('Every account looks right: nothing below zero, nothing '
+                    'under its minimum, nothing sitting unused.'),
                 color: AppColors.income,
               )
             else ...[
-              const SectionCaption('Needs a look'),
+              SectionCaption(tr('Needs a look')),
               for (final f in flags)
                 if (accounts[f.accountId] != null) ...[
                   _HealthRow(flag: f, account: accounts[f.accountId]!),
@@ -1155,9 +1158,9 @@ class _HealthBody extends ConsumerWidget {
                 ],
             ],
             _gap,
-            const SectionCaption('Last used'),
+            SectionCaption(tr('Last used')),
             _ListCard(
-              empty: 'No accounts yet.',
+              empty: tr('No accounts yet.'),
               children: [
                 for (final (i, a)
                     in ([...all]..sort((x, y) {
@@ -1178,8 +1181,8 @@ class _HealthBody extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'An account is idle after $kIdleAfterDays days without a '
-              'transaction. Goals and loans are never flagged idle.',
+              tr('An account is idle after {0} days without a '
+              'transaction. Goals and loans are never flagged idle.', [kIdleAfterDays]),
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -1192,16 +1195,16 @@ class _HealthBody extends ConsumerWidget {
   }
 
   static String _lastUsedLabel(DateTime? d) {
-    if (d == null) return 'Never';
+    if (d == null) return tr('Never');
     final now = DateTime.now();
     final days = DateTime(
       now.year,
       now.month,
       now.day,
     ).difference(DateTime(d.year, d.month, d.day)).inDays;
-    if (days <= 0) return 'Today';
-    if (days == 1) return 'Yesterday';
-    if (days < 30) return '$days days ago';
+    if (days <= 0) return tr('Today');
+    if (days == 1) return tr('Yesterday');
+    if (days < 30) return tr('{0} days ago', [days]);
     return DateFormat(d.year == now.year ? 'd MMM' : 'd MMM yyyy').format(d);
   }
 }
@@ -1220,25 +1223,25 @@ class _HealthRow extends StatelessWidget {
       AccountHealthIssue.belowZero => (
         Icons.error_outline_rounded,
         AppColors.expense,
-        'Below zero',
-        '${accountTypeLabel(account)} can\'t really go negative — '
-            '${_inAccountCurrency(flag.amount!, account)} usually means a '
-            'missing money in or a mistyped amount.',
+        tr('Below zero'),
+        tr('{0} can\'t really go negative — '
+            '{1} usually means a '
+            'missing money in or a mistyped amount.', [accountTypeLabel(account), _inAccountCurrency(flag.amount!, account)]),
       ),
       AccountHealthIssue.belowMinimum => (
         Icons.trending_down_rounded,
         AppColors.expense,
-        'Under its minimum',
-        '${_inAccountCurrency(flag.amount!, account)} short of the '
-            '${_inAccountCurrency(account.minimumBalance!, account)} '
-            'minimum you set.',
+        tr('Under its minimum'),
+        tr('{0} short of the '
+            '{1} '
+            'minimum you set.', [_inAccountCurrency(flag.amount!, account), _inAccountCurrency(account.minimumBalance!, account)]),
       ),
       AccountHealthIssue.idle => (
         Icons.bedtime_outlined,
         cs.onSurfaceVariant,
         'Idle',
-        'No transactions in ${flag.idleDays} days. Archive it if you no '
-            'longer use it.',
+        tr('No transactions in {0} days. Archive it if you no '
+            'longer use it.', [flag.idleDays]),
       ),
     };
 

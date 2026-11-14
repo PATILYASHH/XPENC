@@ -189,6 +189,36 @@ class $AccountsTable extends Accounts
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _showTransferInMeta = const VerificationMeta(
+    'showTransferIn',
+  );
+  @override
+  late final GeneratedColumn<bool> showTransferIn = GeneratedColumn<bool>(
+    'show_transfer_in',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("show_transfer_in" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _showTransferOutMeta = const VerificationMeta(
+    'showTransferOut',
+  );
+  @override
+  late final GeneratedColumn<bool> showTransferOut = GeneratedColumn<bool>(
+    'show_transfer_out',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("show_transfer_out" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
   static const VerificationMeta _includeInNetWorthMeta = const VerificationMeta(
     'includeInNetWorth',
   );
@@ -245,6 +275,8 @@ class $AccountsTable extends Accounts
     sortOrder,
     createdAt,
     envelopeMode,
+    showTransferIn,
+    showTransferOut,
     includeInNetWorth,
     currencyCode,
     minimumBalance,
@@ -333,6 +365,24 @@ class $AccountsTable extends Accounts
         envelopeMode.isAcceptableOrUnknown(
           data['envelope_mode']!,
           _envelopeModeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('show_transfer_in')) {
+      context.handle(
+        _showTransferInMeta,
+        showTransferIn.isAcceptableOrUnknown(
+          data['show_transfer_in']!,
+          _showTransferInMeta,
+        ),
+      );
+    }
+    if (data.containsKey('show_transfer_out')) {
+      context.handle(
+        _showTransferOutMeta,
+        showTransferOut.isAcceptableOrUnknown(
+          data['show_transfer_out']!,
+          _showTransferOutMeta,
         ),
       );
     }
@@ -431,6 +481,14 @@ class $AccountsTable extends Accounts
         DriftSqlType.bool,
         data['${effectivePrefix}envelope_mode'],
       )!,
+      showTransferIn: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}show_transfer_in'],
+      )!,
+      showTransferOut: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}show_transfer_out'],
+      )!,
       includeInNetWorth: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}include_in_net_worth'],
@@ -507,6 +565,15 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   /// in `data/providers.dart`.
   final bool envelopeMode;
 
+  /// Whether this account's page shows the Transfer in shortcut
+  /// (GitHub #199). On by default.
+  final bool showTransferIn;
+
+  /// Whether this account's page shows the Transfer out shortcut — off for
+  /// money that can't leave, like a vending machine's prepaid balance
+  /// (GitHub #199). On by default.
+  final bool showTransferOut;
+
   /// Whether this account's balance counts toward Net Worth (dashboard,
   /// Accounts screen total, More screen subtitle — see
   /// `AppDatabase.watchNetWorth`). On by default; a user turns a specific
@@ -546,6 +613,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     required this.sortOrder,
     required this.createdAt,
     required this.envelopeMode,
+    required this.showTransferIn,
+    required this.showTransferOut,
     required this.includeInNetWorth,
     this.currencyCode,
     this.minimumBalance,
@@ -588,6 +657,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     map['sort_order'] = Variable<int>(sortOrder);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['envelope_mode'] = Variable<bool>(envelopeMode);
+    map['show_transfer_in'] = Variable<bool>(showTransferIn);
+    map['show_transfer_out'] = Variable<bool>(showTransferOut);
     map['include_in_net_worth'] = Variable<bool>(includeInNetWorth);
     if (!nullToAbsent || currencyCode != null) {
       map['currency_code'] = Variable<String>(currencyCode);
@@ -625,6 +696,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       sortOrder: Value(sortOrder),
       createdAt: Value(createdAt),
       envelopeMode: Value(envelopeMode),
+      showTransferIn: Value(showTransferIn),
+      showTransferOut: Value(showTransferOut),
       includeInNetWorth: Value(includeInNetWorth),
       currencyCode: currencyCode == null && nullToAbsent
           ? const Value.absent()
@@ -660,6 +733,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       envelopeMode: serializer.fromJson<bool>(json['envelopeMode']),
+      showTransferIn: serializer.fromJson<bool>(json['showTransferIn']),
+      showTransferOut: serializer.fromJson<bool>(json['showTransferOut']),
       includeInNetWorth: serializer.fromJson<bool>(json['includeInNetWorth']),
       currencyCode: serializer.fromJson<String?>(json['currencyCode']),
       minimumBalance: serializer.fromJson<Money?>(json['minimumBalance']),
@@ -688,6 +763,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       'sortOrder': serializer.toJson<int>(sortOrder),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'envelopeMode': serializer.toJson<bool>(envelopeMode),
+      'showTransferIn': serializer.toJson<bool>(showTransferIn),
+      'showTransferOut': serializer.toJson<bool>(showTransferOut),
       'includeInNetWorth': serializer.toJson<bool>(includeInNetWorth),
       'currencyCode': serializer.toJson<String?>(currencyCode),
       'minimumBalance': serializer.toJson<Money?>(minimumBalance),
@@ -710,6 +787,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     int? sortOrder,
     DateTime? createdAt,
     bool? envelopeMode,
+    bool? showTransferIn,
+    bool? showTransferOut,
     bool? includeInNetWorth,
     Value<String?> currencyCode = const Value.absent(),
     Value<Money?> minimumBalance = const Value.absent(),
@@ -731,6 +810,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     sortOrder: sortOrder ?? this.sortOrder,
     createdAt: createdAt ?? this.createdAt,
     envelopeMode: envelopeMode ?? this.envelopeMode,
+    showTransferIn: showTransferIn ?? this.showTransferIn,
+    showTransferOut: showTransferOut ?? this.showTransferOut,
     includeInNetWorth: includeInNetWorth ?? this.includeInNetWorth,
     currencyCode: currencyCode.present ? currencyCode.value : this.currencyCode,
     minimumBalance: minimumBalance.present
@@ -766,6 +847,12 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       envelopeMode: data.envelopeMode.present
           ? data.envelopeMode.value
           : this.envelopeMode,
+      showTransferIn: data.showTransferIn.present
+          ? data.showTransferIn.value
+          : this.showTransferIn,
+      showTransferOut: data.showTransferOut.present
+          ? data.showTransferOut.value
+          : this.showTransferOut,
       includeInNetWorth: data.includeInNetWorth.present
           ? data.includeInNetWorth.value
           : this.includeInNetWorth,
@@ -796,6 +883,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           ..write('sortOrder: $sortOrder, ')
           ..write('createdAt: $createdAt, ')
           ..write('envelopeMode: $envelopeMode, ')
+          ..write('showTransferIn: $showTransferIn, ')
+          ..write('showTransferOut: $showTransferOut, ')
           ..write('includeInNetWorth: $includeInNetWorth, ')
           ..write('currencyCode: $currencyCode, ')
           ..write('minimumBalance: $minimumBalance')
@@ -820,6 +909,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     sortOrder,
     createdAt,
     envelopeMode,
+    showTransferIn,
+    showTransferOut,
     includeInNetWorth,
     currencyCode,
     minimumBalance,
@@ -843,6 +934,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           other.sortOrder == this.sortOrder &&
           other.createdAt == this.createdAt &&
           other.envelopeMode == this.envelopeMode &&
+          other.showTransferIn == this.showTransferIn &&
+          other.showTransferOut == this.showTransferOut &&
           other.includeInNetWorth == this.includeInNetWorth &&
           other.currencyCode == this.currencyCode &&
           other.minimumBalance == this.minimumBalance);
@@ -864,6 +957,8 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
   final Value<int> sortOrder;
   final Value<DateTime> createdAt;
   final Value<bool> envelopeMode;
+  final Value<bool> showTransferIn;
+  final Value<bool> showTransferOut;
   final Value<bool> includeInNetWorth;
   final Value<String?> currencyCode;
   final Value<Money?> minimumBalance;
@@ -883,6 +978,8 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.sortOrder = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.envelopeMode = const Value.absent(),
+    this.showTransferIn = const Value.absent(),
+    this.showTransferOut = const Value.absent(),
     this.includeInNetWorth = const Value.absent(),
     this.currencyCode = const Value.absent(),
     this.minimumBalance = const Value.absent(),
@@ -903,6 +1000,8 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.sortOrder = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.envelopeMode = const Value.absent(),
+    this.showTransferIn = const Value.absent(),
+    this.showTransferOut = const Value.absent(),
     this.includeInNetWorth = const Value.absent(),
     this.currencyCode = const Value.absent(),
     this.minimumBalance = const Value.absent(),
@@ -928,6 +1027,8 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Expression<int>? sortOrder,
     Expression<DateTime>? createdAt,
     Expression<bool>? envelopeMode,
+    Expression<bool>? showTransferIn,
+    Expression<bool>? showTransferOut,
     Expression<bool>? includeInNetWorth,
     Expression<String>? currencyCode,
     Expression<int>? minimumBalance,
@@ -948,6 +1049,8 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       if (sortOrder != null) 'sort_order': sortOrder,
       if (createdAt != null) 'created_at': createdAt,
       if (envelopeMode != null) 'envelope_mode': envelopeMode,
+      if (showTransferIn != null) 'show_transfer_in': showTransferIn,
+      if (showTransferOut != null) 'show_transfer_out': showTransferOut,
       if (includeInNetWorth != null) 'include_in_net_worth': includeInNetWorth,
       if (currencyCode != null) 'currency_code': currencyCode,
       if (minimumBalance != null) 'minimum_balance': minimumBalance,
@@ -970,6 +1073,8 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Value<int>? sortOrder,
     Value<DateTime>? createdAt,
     Value<bool>? envelopeMode,
+    Value<bool>? showTransferIn,
+    Value<bool>? showTransferOut,
     Value<bool>? includeInNetWorth,
     Value<String?>? currencyCode,
     Value<Money?>? minimumBalance,
@@ -990,6 +1095,8 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       sortOrder: sortOrder ?? this.sortOrder,
       createdAt: createdAt ?? this.createdAt,
       envelopeMode: envelopeMode ?? this.envelopeMode,
+      showTransferIn: showTransferIn ?? this.showTransferIn,
+      showTransferOut: showTransferOut ?? this.showTransferOut,
       includeInNetWorth: includeInNetWorth ?? this.includeInNetWorth,
       currencyCode: currencyCode ?? this.currencyCode,
       minimumBalance: minimumBalance ?? this.minimumBalance,
@@ -1052,6 +1159,12 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     if (envelopeMode.present) {
       map['envelope_mode'] = Variable<bool>(envelopeMode.value);
     }
+    if (showTransferIn.present) {
+      map['show_transfer_in'] = Variable<bool>(showTransferIn.value);
+    }
+    if (showTransferOut.present) {
+      map['show_transfer_out'] = Variable<bool>(showTransferOut.value);
+    }
     if (includeInNetWorth.present) {
       map['include_in_net_worth'] = Variable<bool>(includeInNetWorth.value);
     }
@@ -1084,6 +1197,8 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
           ..write('sortOrder: $sortOrder, ')
           ..write('createdAt: $createdAt, ')
           ..write('envelopeMode: $envelopeMode, ')
+          ..write('showTransferIn: $showTransferIn, ')
+          ..write('showTransferOut: $showTransferOut, ')
           ..write('includeInNetWorth: $includeInNetWorth, ')
           ..write('currencyCode: $currencyCode, ')
           ..write('minimumBalance: $minimumBalance')
@@ -11983,6 +12098,17 @@ class $SettingsTable extends Settings
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _languageCodeMeta = const VerificationMeta(
+    'languageCode',
+  );
+  @override
+  late final GeneratedColumn<String> languageCode = GeneratedColumn<String>(
+    'language_code',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _extraBottomInsetMeta = const VerificationMeta(
     'extraBottomInset',
   );
@@ -12228,6 +12354,7 @@ class $SettingsTable extends Settings
     fontScalePercent,
     fontWeightDelta,
     fontFamily,
+    languageCode,
     extraBottomInset,
     frequentIconKeys,
     dashboardLayout,
@@ -12772,6 +12899,12 @@ class $SettingsTable extends Settings
         fontFamily.isAcceptableOrUnknown(data['font_family']!, _fontFamilyMeta),
       );
     }
+    if (data.containsKey('language_code')) {
+      context.handle(
+        _languageCodeMeta,
+        languageCode.isAcceptableOrUnknown(data['language_code']!, _languageCodeMeta),
+      );
+    }
     if (data.containsKey('extra_bottom_inset')) {
       context.handle(
         _extraBottomInsetMeta,
@@ -13169,6 +13302,10 @@ class $SettingsTable extends Settings
       fontFamily: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}font_family'],
+      ),
+      languageCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}language_code'],
       ),
       extraBottomInset: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
@@ -13619,6 +13756,11 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// degrade to null on read, same convention as [themeName].
   final String? fontFamily;
 
+  /// The interface language picked in Settings → Language, as an
+  /// `AppLanguage.code` (e.g. `hi`), or null to follow the phone's own
+  /// language (GitHub #191).
+  final String? languageCode;
+
   /// Extra logical pixels of bottom clearance added app-wide, on top of
   /// whatever the OS reports as the system nav bar's safe-area inset — a
   /// manual escape hatch for OEM devices that misreport (or don't report at
@@ -13751,6 +13893,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     required this.fontScalePercent,
     required this.fontWeightDelta,
     this.fontFamily,
+    this.languageCode,
     required this.extraBottomInset,
     required this.frequentIconKeys,
     required this.dashboardLayout,
@@ -13911,6 +14054,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     if (!nullToAbsent || fontFamily != null) {
       map['font_family'] = Variable<String>(fontFamily);
     }
+    if (!nullToAbsent || languageCode != null) {
+      map['language_code'] = Variable<String>(languageCode);
+    }
     map['extra_bottom_inset'] = Variable<int>(extraBottomInset);
     map['frequent_icon_keys'] = Variable<String>(frequentIconKeys);
     map['dashboard_layout'] = Variable<String>(dashboardLayout);
@@ -14062,6 +14208,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       fontFamily: fontFamily == null && nullToAbsent
           ? const Value.absent()
           : Value(fontFamily),
+      languageCode: languageCode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(languageCode),
       extraBottomInset: Value(extraBottomInset),
       frequentIconKeys: Value(frequentIconKeys),
       dashboardLayout: Value(dashboardLayout),
@@ -14221,6 +14370,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       fontScalePercent: serializer.fromJson<int>(json['fontScalePercent']),
       fontWeightDelta: serializer.fromJson<int>(json['fontWeightDelta']),
       fontFamily: serializer.fromJson<String?>(json['fontFamily']),
+      languageCode: serializer.fromJson<String?>(json['languageCode']),
       extraBottomInset: serializer.fromJson<int>(json['extraBottomInset']),
       frequentIconKeys: serializer.fromJson<String>(json['frequentIconKeys']),
       dashboardLayout: serializer.fromJson<String>(json['dashboardLayout']),
@@ -14354,6 +14504,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'fontScalePercent': serializer.toJson<int>(fontScalePercent),
       'fontWeightDelta': serializer.toJson<int>(fontWeightDelta),
       'fontFamily': serializer.toJson<String?>(fontFamily),
+      'languageCode': serializer.toJson<String?>(languageCode),
       'extraBottomInset': serializer.toJson<int>(extraBottomInset),
       'frequentIconKeys': serializer.toJson<String>(frequentIconKeys),
       'dashboardLayout': serializer.toJson<String>(dashboardLayout),
@@ -14454,6 +14605,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     int? fontScalePercent,
     int? fontWeightDelta,
     Value<String?> fontFamily = const Value.absent(),
+    Value<String?> languageCode = const Value.absent(),
     int? extraBottomInset,
     String? frequentIconKeys,
     String? dashboardLayout,
@@ -14560,6 +14712,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     fontScalePercent: fontScalePercent ?? this.fontScalePercent,
     fontWeightDelta: fontWeightDelta ?? this.fontWeightDelta,
     fontFamily: fontFamily.present ? fontFamily.value : this.fontFamily,
+    languageCode: languageCode.present ? languageCode.value : this.languageCode,
     extraBottomInset: extraBottomInset ?? this.extraBottomInset,
     frequentIconKeys: frequentIconKeys ?? this.frequentIconKeys,
     dashboardLayout: dashboardLayout ?? this.dashboardLayout,
@@ -14769,6 +14922,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       fontFamily: data.fontFamily.present
           ? data.fontFamily.value
           : this.fontFamily,
+      languageCode: data.languageCode.present
+          ? data.languageCode.value
+          : this.languageCode,
       extraBottomInset: data.extraBottomInset.present
           ? data.extraBottomInset.value
           : this.extraBottomInset,
@@ -14891,6 +15047,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('fontScalePercent: $fontScalePercent, ')
           ..write('fontWeightDelta: $fontWeightDelta, ')
           ..write('fontFamily: $fontFamily, ')
+          ..write('languageCode: $languageCode, ')
           ..write('extraBottomInset: $extraBottomInset, ')
           ..write('frequentIconKeys: $frequentIconKeys, ')
           ..write('dashboardLayout: $dashboardLayout, ')
@@ -14981,6 +15138,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     fontScalePercent,
     fontWeightDelta,
     fontFamily,
+    languageCode,
     extraBottomInset,
     frequentIconKeys,
     dashboardLayout,
@@ -15073,6 +15231,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.fontScalePercent == this.fontScalePercent &&
           other.fontWeightDelta == this.fontWeightDelta &&
           other.fontFamily == this.fontFamily &&
+          other.languageCode == this.languageCode &&
           other.extraBottomInset == this.extraBottomInset &&
           other.frequentIconKeys == this.frequentIconKeys &&
           other.dashboardLayout == this.dashboardLayout &&
@@ -15160,6 +15319,11 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<int> fontScalePercent;
   final Value<int> fontWeightDelta;
   final Value<String?> fontFamily;
+
+  /// The interface language picked in Settings → Language, as an
+  /// `AppLanguage.code` (e.g. `hi`), or null to follow the phone's own
+  /// language (GitHub #191).
+  final Value<String?> languageCode;
   final Value<int> extraBottomInset;
   final Value<String> frequentIconKeys;
   final Value<String> dashboardLayout;
@@ -15245,6 +15409,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.fontScalePercent = const Value.absent(),
     this.fontWeightDelta = const Value.absent(),
     this.fontFamily = const Value.absent(),
+    this.languageCode = const Value.absent(),
     this.extraBottomInset = const Value.absent(),
     this.frequentIconKeys = const Value.absent(),
     this.dashboardLayout = const Value.absent(),
@@ -15331,6 +15496,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.fontScalePercent = const Value.absent(),
     this.fontWeightDelta = const Value.absent(),
     this.fontFamily = const Value.absent(),
+    this.languageCode = const Value.absent(),
     this.extraBottomInset = const Value.absent(),
     this.frequentIconKeys = const Value.absent(),
     this.dashboardLayout = const Value.absent(),
@@ -15417,6 +15583,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<int>? fontScalePercent,
     Expression<int>? fontWeightDelta,
     Expression<String>? fontFamily,
+    Expression<String>? languageCode,
     Expression<int>? extraBottomInset,
     Expression<String>? frequentIconKeys,
     Expression<String>? dashboardLayout,
@@ -15526,6 +15693,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       if (fontScalePercent != null) 'font_scale_percent': fontScalePercent,
       if (fontWeightDelta != null) 'font_weight_delta': fontWeightDelta,
       if (fontFamily != null) 'font_family': fontFamily,
+      if (languageCode != null) 'language_code': languageCode,
       if (extraBottomInset != null) 'extra_bottom_inset': extraBottomInset,
       if (frequentIconKeys != null) 'frequent_icon_keys': frequentIconKeys,
       if (dashboardLayout != null) 'dashboard_layout': dashboardLayout,
@@ -15617,6 +15785,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<int>? fontScalePercent,
     Value<int>? fontWeightDelta,
     Value<String?>? fontFamily,
+    Value<String?>? languageCode,
     Value<int>? extraBottomInset,
     Value<String>? frequentIconKeys,
     Value<String>? dashboardLayout,
@@ -15716,6 +15885,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       fontScalePercent: fontScalePercent ?? this.fontScalePercent,
       fontWeightDelta: fontWeightDelta ?? this.fontWeightDelta,
       fontFamily: fontFamily ?? this.fontFamily,
+      languageCode: languageCode ?? this.languageCode,
       extraBottomInset: extraBottomInset ?? this.extraBottomInset,
       frequentIconKeys: frequentIconKeys ?? this.frequentIconKeys,
       dashboardLayout: dashboardLayout ?? this.dashboardLayout,
@@ -15994,6 +16164,9 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     if (fontFamily.present) {
       map['font_family'] = Variable<String>(fontFamily.value);
     }
+    if (languageCode.present) {
+      map['language_code'] = Variable<String>(languageCode.value);
+    }
     if (extraBottomInset.present) {
       map['extra_bottom_inset'] = Variable<int>(extraBottomInset.value);
     }
@@ -16130,6 +16303,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('fontScalePercent: $fontScalePercent, ')
           ..write('fontWeightDelta: $fontWeightDelta, ')
           ..write('fontFamily: $fontFamily, ')
+          ..write('languageCode: $languageCode, ')
           ..write('extraBottomInset: $extraBottomInset, ')
           ..write('frequentIconKeys: $frequentIconKeys, ')
           ..write('dashboardLayout: $dashboardLayout, ')
@@ -28197,6 +28371,8 @@ typedef $$AccountsTableCreateCompanionBuilder =
       Value<int> sortOrder,
       Value<DateTime> createdAt,
       Value<bool> envelopeMode,
+      Value<bool> showTransferIn,
+      Value<bool> showTransferOut,
       Value<bool> includeInNetWorth,
       Value<String?> currencyCode,
       Value<Money?> minimumBalance,
@@ -28218,6 +28394,8 @@ typedef $$AccountsTableUpdateCompanionBuilder =
       Value<int> sortOrder,
       Value<DateTime> createdAt,
       Value<bool> envelopeMode,
+      Value<bool> showTransferIn,
+      Value<bool> showTransferOut,
       Value<bool> includeInNetWorth,
       Value<String?> currencyCode,
       Value<Money?> minimumBalance,
@@ -28537,6 +28715,14 @@ class $$AccountsTableFilterComposer
 
   ColumnFilters<bool> get envelopeMode => $composableBuilder(
     column: $table.envelopeMode,
+    builder: (column) => ColumnFilters(column),
+  );
+  ColumnFilters<bool> get showTransferIn => $composableBuilder(
+    column: $table.showTransferIn,
+    builder: (column) => ColumnFilters(column),
+  );
+  ColumnFilters<bool> get showTransferOut => $composableBuilder(
+    column: $table.showTransferOut,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -28933,6 +29119,14 @@ class $$AccountsTableOrderingComposer
     column: $table.envelopeMode,
     builder: (column) => ColumnOrderings(column),
   );
+  ColumnOrderings<bool> get showTransferIn => $composableBuilder(
+    column: $table.showTransferIn,
+    builder: (column) => ColumnOrderings(column),
+  );
+  ColumnOrderings<bool> get showTransferOut => $composableBuilder(
+    column: $table.showTransferOut,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<bool> get includeInNetWorth => $composableBuilder(
     column: $table.includeInNetWorth,
@@ -29033,6 +29227,14 @@ class $$AccountsTableAnnotationComposer
 
   GeneratedColumn<bool> get envelopeMode => $composableBuilder(
     column: $table.envelopeMode,
+    builder: (column) => column,
+  );
+  GeneratedColumn<bool> get showTransferIn => $composableBuilder(
+    column: $table.showTransferIn,
+    builder: (column) => column,
+  );
+  GeneratedColumn<bool> get showTransferOut => $composableBuilder(
+    column: $table.showTransferOut,
     builder: (column) => column,
   );
 
@@ -29408,6 +29610,8 @@ class $$AccountsTableTableManager
                 Value<int> sortOrder = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<bool> envelopeMode = const Value.absent(),
+                Value<bool> showTransferIn = const Value.absent(),
+                Value<bool> showTransferOut = const Value.absent(),
                 Value<bool> includeInNetWorth = const Value.absent(),
                 Value<String?> currencyCode = const Value.absent(),
                 Value<Money?> minimumBalance = const Value.absent(),
@@ -29427,6 +29631,8 @@ class $$AccountsTableTableManager
                 sortOrder: sortOrder,
                 createdAt: createdAt,
                 envelopeMode: envelopeMode,
+                showTransferIn: showTransferIn,
+                showTransferOut: showTransferOut,
                 includeInNetWorth: includeInNetWorth,
                 currencyCode: currencyCode,
                 minimumBalance: minimumBalance,
@@ -29448,6 +29654,8 @@ class $$AccountsTableTableManager
                 Value<int> sortOrder = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<bool> envelopeMode = const Value.absent(),
+                Value<bool> showTransferIn = const Value.absent(),
+                Value<bool> showTransferOut = const Value.absent(),
                 Value<bool> includeInNetWorth = const Value.absent(),
                 Value<String?> currencyCode = const Value.absent(),
                 Value<Money?> minimumBalance = const Value.absent(),
@@ -29467,6 +29675,8 @@ class $$AccountsTableTableManager
                 sortOrder: sortOrder,
                 createdAt: createdAt,
                 envelopeMode: envelopeMode,
+                showTransferIn: showTransferIn,
+                showTransferOut: showTransferOut,
                 includeInNetWorth: includeInNetWorth,
                 currencyCode: currencyCode,
                 minimumBalance: minimumBalance,
@@ -42269,6 +42479,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<int> fontScalePercent,
       Value<int> fontWeightDelta,
       Value<String?> fontFamily,
+      Value<String?> languageCode,
       Value<int> extraBottomInset,
       Value<String> frequentIconKeys,
       Value<String> dashboardLayout,
@@ -42356,6 +42567,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<int> fontScalePercent,
       Value<int> fontWeightDelta,
       Value<String?> fontFamily,
+      Value<String?> languageCode,
       Value<int> extraBottomInset,
       Value<String> frequentIconKeys,
       Value<String> dashboardLayout,
@@ -42758,6 +42970,10 @@ class $$SettingsTableFilterComposer
 
   ColumnFilters<String> get fontFamily => $composableBuilder(
     column: $table.fontFamily,
+    builder: (column) => ColumnFilters(column),
+  );
+  ColumnFilters<String> get languageCode => $composableBuilder(
+    column: $table.languageCode,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -43216,6 +43432,10 @@ class $$SettingsTableOrderingComposer
     column: $table.fontFamily,
     builder: (column) => ColumnOrderings(column),
   );
+  ColumnOrderings<String> get languageCode => $composableBuilder(
+    column: $table.languageCode,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<int> get extraBottomInset => $composableBuilder(
     column: $table.extraBottomInset,
@@ -43650,6 +43870,10 @@ class $$SettingsTableAnnotationComposer
     column: $table.fontFamily,
     builder: (column) => column,
   );
+  GeneratedColumn<String> get languageCode => $composableBuilder(
+    column: $table.languageCode,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get extraBottomInset => $composableBuilder(
     column: $table.extraBottomInset,
@@ -43851,6 +44075,7 @@ class $$SettingsTableTableManager
                 Value<int> fontScalePercent = const Value.absent(),
                 Value<int> fontWeightDelta = const Value.absent(),
                 Value<String?> fontFamily = const Value.absent(),
+                Value<String?> languageCode = const Value.absent(),
                 Value<int> extraBottomInset = const Value.absent(),
                 Value<String> frequentIconKeys = const Value.absent(),
                 Value<String> dashboardLayout = const Value.absent(),
@@ -43937,6 +44162,7 @@ class $$SettingsTableTableManager
                 fontScalePercent: fontScalePercent,
                 fontWeightDelta: fontWeightDelta,
                 fontFamily: fontFamily,
+                languageCode: languageCode,
                 extraBottomInset: extraBottomInset,
                 frequentIconKeys: frequentIconKeys,
                 dashboardLayout: dashboardLayout,
@@ -44027,6 +44253,7 @@ class $$SettingsTableTableManager
                 Value<int> fontScalePercent = const Value.absent(),
                 Value<int> fontWeightDelta = const Value.absent(),
                 Value<String?> fontFamily = const Value.absent(),
+                Value<String?> languageCode = const Value.absent(),
                 Value<int> extraBottomInset = const Value.absent(),
                 Value<String> frequentIconKeys = const Value.absent(),
                 Value<String> dashboardLayout = const Value.absent(),
@@ -44113,6 +44340,7 @@ class $$SettingsTableTableManager
                 fontScalePercent: fontScalePercent,
                 fontWeightDelta: fontWeightDelta,
                 fontFamily: fontFamily,
+                languageCode: languageCode,
                 extraBottomInset: extraBottomInset,
                 frequentIconKeys: frequentIconKeys,
                 dashboardLayout: dashboardLayout,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/l10n/l10n.dart';
 
 /// One feature explained: what it does, how to use it, and where to find
 /// it. Hand-maintained alongside the actual features — there's no
@@ -7,25 +8,30 @@ import 'package:flutter/material.dart';
 class GuideEntry {
   const GuideEntry({
     required this.icon,
-    required this.title,
-    required this.whatItDoes,
-    required this.howToUse,
-    required this.location,
-  });
+    required String title,
+    required String whatItDoes,
+    required String howToUse,
+    required String location,
+  }) : _title = title, _whatItDoes = whatItDoes, _howToUse = howToUse, _location = location;
 
   final IconData icon;
-  final String title;
-  final String whatItDoes;
-  final String howToUse;
+  final String _title;
+  String get title => tr(_title);
+  final String _whatItDoes;
+  String get whatItDoes => tr(_whatItDoes);
+  final String _howToUse;
+  String get howToUse => tr(_howToUse);
 
   /// Where to find it, e.g. "More → Accounts → +".
-  final String location;
+  final String _location;
+  String get location => tr(_location);
 }
 
 class GuideSection {
-  const GuideSection(this.title, this.entries);
+  const GuideSection(String title, this.entries) : _title = title;
 
-  final String title;
+  final String _title;
+  String get title => tr(_title);
   final List<GuideEntry> entries;
 }
 

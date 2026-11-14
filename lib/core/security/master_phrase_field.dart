@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'recovery_words.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Free-text entry for the master recovery phrase — used both embedded in
 /// the lock screen (no `Scaffold` of its own) and wrapped in a route for the
@@ -42,7 +43,7 @@ class _MasterPhraseFieldState extends State<MasterPhraseField> {
     if (words.length != RecoveryWords.wordCount) {
       setState(
         () => _localError =
-            'Enter all ${RecoveryWords.wordCount} words, separated by spaces',
+            tr('Enter all {0} words, separated by spaces', [RecoveryWords.wordCount]),
       );
       return;
     }
@@ -73,7 +74,7 @@ class _MasterPhraseFieldState extends State<MasterPhraseField> {
             onSubmitted: (_) => _submit(),
             decoration: InputDecoration(
               border: const OutlineInputBorder(),
-              hintText: 'word1 word2 word3 …',
+              hintText: tr('word1 word2 word3 …'),
               errorText: error,
             ),
           ),

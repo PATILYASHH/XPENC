@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
 import 'core/connector/connector_platform.dart';
+import 'core/l10n/pack_store.dart';
 import 'core/theme/glass.dart';
 import 'features/connector/connector_controller.dart';
 
@@ -28,5 +29,11 @@ Future<void> main() async {
   // XPENC web, back from Connector's GitHub sign-in with a one-time code in
   // the address: taken (and wiped from it) before the router reads it.
   connectorLoginReturn = connectorPlatform?.takeLoginReturn();
+  // Imported language packs, so a pack's language can be the one the app
+  // opens in (GitHub #191).
+  await LanguagePackStore.loadAll().timeout(
+    const Duration(seconds: 2),
+    onTimeout: () {},
+  );
   runApp(const ProviderScope(child: XpencApp()));
 }

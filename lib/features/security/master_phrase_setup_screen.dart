@@ -5,6 +5,7 @@ import '../../core/security/recovery_words.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 enum _Step { reveal, confirm }
 
@@ -80,7 +81,7 @@ class _MasterPhraseSetupScreenState
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        const SnackBar(content: Text('Master recovery phrase set')),
+        const SnackBar(content: Tr('Master recovery phrase set')),
       );
   }
 
@@ -89,7 +90,7 @@ class _MasterPhraseSetupScreenState
     return Scaffold(
       appBar: AppTopBar(
         title: Text(
-          _step == _Step.reveal ? 'Recovery phrase' : 'Confirm phrase',
+          _step == _Step.reveal ? tr('Recovery phrase') : tr('Confirm phrase'),
         ),
       ),
       body: SafeArea(
@@ -105,9 +106,9 @@ class _MasterPhraseSetupScreenState
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24).plusNavBar(context),
       children: [
         Text(
-          'Write these ${_words.length} words down, in order, and keep them '
+          tr('Write these {0} words down, in order, and keep them '
           'somewhere safe. If XPENC ever locks you out after too many wrong '
-          'PIN attempts, this phrase is the only way back in.',
+          'PIN attempts, this phrase is the only way back in.', [_words.length]),
           style: theme.textTheme.bodyMedium,
         ),
         const SizedBox(height: 12),
@@ -123,7 +124,7 @@ class _MasterPhraseSetupScreenState
               AppIcon(Icons.warning_amber_rounded, color: cs.onErrorContainer),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
+                child: Tr(
                   "It can't be changed and it isn't stored anywhere "
                   'recoverable — not in a backup, not by XPENC. Lose it '
                   "along with your PIN and there's no way back into your "
@@ -178,12 +179,12 @@ class _MasterPhraseSetupScreenState
         TextButton.icon(
           onPressed: _regenerate,
           icon: const AppIcon(Icons.refresh_rounded),
-          label: const Text('Generate different words'),
+          label: const Tr('Generate different words'),
         ),
         const SizedBox(height: 12),
         FilledButton(
           onPressed: _goToConfirm,
-          child: const Text("I've written it down"),
+          child: const Tr("I've written it down"),
         ),
       ],
     );
@@ -197,7 +198,7 @@ class _MasterPhraseSetupScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          Tr(
             'Tap the words in the order you wrote them down.',
             style: theme.textTheme.bodyMedium,
           ),
@@ -217,7 +218,7 @@ class _MasterPhraseSetupScreenState
           ),
           if (_mismatch) ...[
             const SizedBox(height: 8),
-            Text(
+            Tr(
               "That's not the next word — try again",
               style: theme.textTheme.bodySmall?.copyWith(color: cs.error),
             ),

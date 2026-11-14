@@ -26,8 +26,12 @@ import 'features/connector/connector_controller.dart';
 import 'features/connector/connector_inbox_runner.dart';
 import 'features/message_capture/parser/bank_message.dart';
 import 'features/message_capture/share_intake.dart';
+import 'features/settings/language_pack_intake.dart';
+import 'core/l10n/language_pack.dart';
+import 'core/l10n/pack_store.dart';
 import 'features/persons/shared_entries.dart';
 import 'features/security/lock_screen.dart';
+import 'core/l10n/l10n.dart';
 
 class XpencApp extends ConsumerStatefulWidget {
   const XpencApp({super.key});
@@ -43,6 +47,46 @@ class _XpencAppState extends ConsumerState<XpencApp>
   /// instead of risking a flash of real data before the lock engages.
   bool _passcodeKnown = false;
   bool _locked = false;
+
+  /// The interface language whose table is loaded (GitHub #191) — null
+  /// until the first one is, which keeps the splash up so nothing paints
+  /// in English first and then switches.
+  String? _language;
+
+  /// The language being loaded right now, so a rebuild mid-load doesn't
+  /// start a second load — and [_languageLoad], that load.
+  String? _loadingLanguage;
+  Future<void>? _languageLoad;
+
+  /// Loads [code]'s table when it isn't the one showing. After a switch
+  /// (not the first load) every widget redraws — `tr` is read at build
+  /// time, and not every widget would rebuild on its own. Completes once
+  /// [code] is the language showing.
+  Future<void> _ensureLanguage(String code) {
+    if (code == _language) return Future.value();
+    if (code == _loadingLanguage) return _languageLoad ?? Future.value();
+    _loadingLanguage = code;
+    return _languageLoad = L10n.load(code).then((_) {
+      if (!mounted || _loadingLanguage != code) return;
+      final switched = _language != null;
+      setState(() {
+        _language = code;
+        _loadingLanguage = null;
+      });
+      if (switched) {
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => rebuildAllWidgets(),
+        );
+      }
+    });
+  }
+
+  /// Following the phone's language, a change to it in the phone's
+  /// settings shows up the next time XPENC is opened.
+  @override
+  void didChangeLocales(List<Locale>? locales) {
+    if (mounted) setState(() {});
+  }
 
   /// When the app was last backgrounded — the anchor a non-zero
   /// [pinTimeoutMinutesProvider] is measured from on the next resume. Null
@@ -89,7 +133,9 @@ class _XpencAppState extends ConsumerState<XpencApp>
 
     final homeWidget = ref.read(homeWidgetServiceProvider);
     homeWidget.init();
-    ref.read(shareIntakeServiceProvider).init(_handleShareResult);
+    ref
+        .read(shareIntakeServiceProvider)
+        .init(_handleShareResult, onFile: _handleOpenedFile);
     final netWorth = await ref.read(netWorthProvider.future).catchError((_) {
       return const Money.zero();
     });
@@ -132,9 +178,9 @@ class _XpencAppState extends ConsumerState<XpencApp>
       final mode = await db.modeById(id);
       if (mode == null) continue;
       showAppSnackBar(
-        '${mode.name} has ended',
+        tr('{0} has ended', [mode.name]),
         action: SnackBarAction(
-          label: 'Summary',
+          label: tr('Summary'),
           onPressed: () => appRouter.push('/mode/$id/summary'),
         ),
       );
@@ -257,7 +303,7 @@ class _XpencAppState extends ConsumerState<XpencApp>
           break;
       }
     } catch (e) {
-      showAppSnackBar("Couldn't take in Connector's backup: $e");
+      showAppSnackBar(tr("Couldn't take in Connector's backup: {0}", [e]));
     }
   }
 
@@ -270,7 +316,7 @@ class _XpencAppState extends ConsumerState<XpencApp>
       await ref.read(connectorInboxRunnerProvider).apply(backup);
       announceTakenIn(backup);
     } catch (e) {
-      showAppSnackBar("Couldn't take in the backup: $e");
+      showAppSnackBar(tr("Couldn't take in the backup: {0}", [e]));
     }
   }
 
@@ -326,27 +372,75 @@ class _XpencAppState extends ConsumerState<XpencApp>
       case ShareIntakeIngested():
         appRouter.go('/inbox');
       case ShareIntakeDuplicate():
-        showAppSnackBar('Already in your Review Inbox');
+        showAppSnackBar(tr('Already in your Review Inbox'));
       case ShareIntakeRejected(:final reason, :final recognizedText):
         showAppSnackBar(
-          "Couldn't find a transaction in that message"
-          '${_rejectReasonHint(reason)}',
+          tr(
+            "Couldn't find a transaction in that message"
+            '{0}',
+            [_rejectReasonHint(reason)],
+          ),
           action: recognizedText == null
               ? null
               : SnackBarAction(
-                  label: 'View text',
+                  label: tr('View text'),
                   onPressed: () => showRecognizedTextDialog(recognizedText),
                 ),
         );
     }
   }
 
+  /// A JSON file the user opened with XPENC — normally a language pack
+  /// downloaded from xpenc.in/languages (GitHub #191).
+  Future<void> _handleOpenedFile(String path) async {
+    switch (await readOpenedFile(path)) {
+      case OpenedLanguagePack(:final pack):
+        await _useLanguagePack(pack);
+      case OpenedOtherFile(:final message):
+        showAppSnackBar(message);
+    }
+  }
+
+  /// Opening a pack is asking for that language: install it and switch the
+  /// whole app to it, with an Undo back to what was showing.
+  Future<void> _useLanguagePack(LanguagePack pack) async {
+    if (!LanguagePackStore.supported) return;
+    final db = ref.read(dbProvider);
+    final before = ref.read(settingsProvider).valueOrNull?.languageCode;
+    try {
+      await LanguagePackStore.install(pack);
+    } catch (e) {
+      showAppSnackBar(tr("Couldn't save the language pack: {0}", [e]));
+      return;
+    }
+    await db.setLanguageCode(pack.code);
+    if (!mounted) return;
+    if (_language == pack.code) {
+      // Already showing (a newer pack of the same language): its table
+      // changed underneath it.
+      await L10n.load(pack.code);
+      WidgetsBinding.instance.addPostFrameCallback((_) => rebuildAllWidgets());
+    } else {
+      await _ensureLanguage(pack.code);
+    }
+    if (!mounted) return;
+    showAppSnackBar(
+      tr('XPENC is now in {0}.', [pack.nativeName]),
+      action: before == pack.code
+          ? null
+          : SnackBarAction(
+              label: tr('Undo'),
+              onPressed: () => db.setLanguageCode(before),
+            ),
+    );
+  }
+
   String _rejectReasonHint(RejectReason reason) => switch (reason) {
-    RejectReason.otp => ' — looks like an OTP.',
-    RejectReason.promotional => ' — looks promotional.',
-    RejectReason.balanceOnly => ' — no transaction, just a balance.',
-    RejectReason.declined => ' — the payment was declined.',
-    RejectReason.noAmount => ' — no amount found.',
+    RejectReason.otp => tr(' — looks like an OTP.'),
+    RejectReason.promotional => tr(' — looks promotional.'),
+    RejectReason.balanceOnly => tr(' — no transaction, just a balance.'),
+    RejectReason.declined => tr(' — the payment was declined.'),
+    RejectReason.noAmount => tr(' — no amount found.'),
     RejectReason.noDirection || RejectReason.notATransaction => '.',
   };
 
@@ -399,6 +493,9 @@ class _XpencAppState extends ConsumerState<XpencApp>
       _passcodeKnown = true;
       _locked = hasUnlockCredential(settingsRow);
     }
+    if (settingsRow != null) {
+      _ensureLanguage(L10n.resolve(settingsRow.languageCode));
+    }
 
     // Point the global formatters at the chosen currency before anything paints,
     // and broadcast it via CurrencyScope so every amount reformats the instant
@@ -447,7 +544,10 @@ class _XpencAppState extends ConsumerState<XpencApp>
       debugShowCheckedModeBanner: false,
       // Every date picker's first column (GitHub #166).
       localizationsDelegates: [
-        WeekStartLocalizationsDelegate(ref.watch(weekStartProvider)),
+        WeekStartLocalizationsDelegate(
+          ref.watch(weekStartProvider),
+          language: _language ?? 'en',
+        ),
       ],
       // A style that only exists in one brightness (Glass) stores the same
       // palette in both slots, so `themeMode` alone decides.
@@ -494,77 +594,82 @@ class _XpencAppState extends ConsumerState<XpencApp>
               bottom: mq.viewPadding.bottom + extraBottomInset,
             ),
           ),
-          child: CurrencyScope(
-            currency: currency,
-            showSymbol: showSymbol,
-            child: AmountVisibilityScope(
-              hidden: hideAmounts,
-              child: switch (ready) {
-                AsyncError(:final error) => _FatalError(
-                  error: error,
-                  onRetry: () => ref.invalidate(databaseReadyProvider),
-                ),
-                // The router's subtree stays mounted underneath even while
-                // locked — only stacked, opaque `LockScreen` sits on top of
-                // it — or every relock (immediate, on every backgrounding)
-                // would silently drop whatever the user was in the middle of
-                // doing: a half-typed transaction, a scroll position,
-                // anything not yet saved.
-                AsyncData() =>
-                  !_passcodeKnown
-                      ? const _LaunchSplash()
-                      : Stack(
-                          children: [
-                            // On a PC-sized screen, a sidebar beside every
-                            // page — see `DesktopFrame`.
-                            if (child != null) DesktopFrame(child: child),
-                            // Opt-in (GitHub #90) — someone who deliberately
-                            // leaves screenshot-blocking off made that choice
-                            // on purpose and shouldn't be nagged about it
-                            // unless they ask to be. Never over the lock
-                            // screen either: nothing sensitive is on it.
-                            if (!_locked &&
-                                !ref.watch(preventScreenshotsProvider) &&
-                                ref.watch(screenshotReminderEnabledProvider))
-                              const Positioned(
-                                right: 12,
-                                bottom: 84,
-                                child: _ScreenshotAllowedTag(),
-                              ),
-                            if (_locked)
-                              Positioned.fill(
-                                // `LockScreen` sits here as a sibling of the
-                                // routed `child` above, not a descendant of
-                                // it — the app's real `Navigator` lives
-                                // inside `child`, built by go_router, so
-                                // `LockScreen`'s own context would otherwise
-                                // have no `Navigator` ancestor at all. That
-                                // silently broke "Try another method"'s
-                                // `showModalBottomSheet` (GitHub #127): it
-                                // threw on tap with no visible feedback,
-                                // since only 2+ ready unlock methods ever
-                                // show that button in the first place. A
-                                // small nested `Navigator` — never touched by
-                                // the app's own routing — gives it one.
-                                // `HeroControllerScope.none`: a bare
-                                // `Navigator` otherwise inherits the
-                                // ambient `HeroController` `MaterialApp
-                                // .router` provides, which throws once two
-                                // Navigators (this one and go_router's,
-                                // inside `child`) end up sharing it.
-                                child: HeroControllerScope.none(
-                                  child: Navigator(
-                                    onGenerateRoute: (_) => MaterialPageRoute(
-                                      builder: (_) =>
-                                          LockScreen(onUnlocked: _unlocked),
+          child: L10nScope(
+            code: _language ?? 'en',
+            child: CurrencyScope(
+              currency: currency,
+              showSymbol: showSymbol,
+              child: AmountVisibilityScope(
+                hidden: hideAmounts,
+                child: switch (ready) {
+                  AsyncError(:final error) => _FatalError(
+                    error: error,
+                    onRetry: () => ref.invalidate(databaseReadyProvider),
+                  ),
+                  // The router's subtree stays mounted underneath even while
+                  // locked — only stacked, opaque `LockScreen` sits on top of
+                  // it — or every relock (immediate, on every backgrounding)
+                  // would silently drop whatever the user was in the middle of
+                  // doing: a half-typed transaction, a scroll position,
+                  // anything not yet saved.
+                  AsyncData() =>
+                    !_passcodeKnown
+                        ? const _LaunchSplash()
+                        : _language == null
+                        ? const _LaunchSplash()
+                        : Stack(
+                            children: [
+                              // On a PC-sized screen, a sidebar beside every
+                              // page — see `DesktopFrame`.
+                              if (child != null) DesktopFrame(child: child),
+                              // Opt-in (GitHub #90) — someone who deliberately
+                              // leaves screenshot-blocking off made that choice
+                              // on purpose and shouldn't be nagged about it
+                              // unless they ask to be. Never over the lock
+                              // screen either: nothing sensitive is on it.
+                              if (!_locked &&
+                                  !ref.watch(preventScreenshotsProvider) &&
+                                  ref.watch(screenshotReminderEnabledProvider))
+                                const Positioned(
+                                  right: 12,
+                                  bottom: 84,
+                                  child: _ScreenshotAllowedTag(),
+                                ),
+                              if (_locked)
+                                Positioned.fill(
+                                  // `LockScreen` sits here as a sibling of the
+                                  // routed `child` above, not a descendant of
+                                  // it — the app's real `Navigator` lives
+                                  // inside `child`, built by go_router, so
+                                  // `LockScreen`'s own context would otherwise
+                                  // have no `Navigator` ancestor at all. That
+                                  // silently broke "Try another method"'s
+                                  // `showModalBottomSheet` (GitHub #127): it
+                                  // threw on tap with no visible feedback,
+                                  // since only 2+ ready unlock methods ever
+                                  // show that button in the first place. A
+                                  // small nested `Navigator` — never touched by
+                                  // the app's own routing — gives it one.
+                                  // `HeroControllerScope.none`: a bare
+                                  // `Navigator` otherwise inherits the
+                                  // ambient `HeroController` `MaterialApp
+                                  // .router` provides, which throws once two
+                                  // Navigators (this one and go_router's,
+                                  // inside `child`) end up sharing it.
+                                  child: HeroControllerScope.none(
+                                    child: Navigator(
+                                      onGenerateRoute: (_) => MaterialPageRoute(
+                                        builder: (_) =>
+                                            LockScreen(onUnlocked: _unlocked),
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                          ],
-                        ),
-                _ => child ?? const SizedBox.shrink(),
-              },
+                            ],
+                          ),
+                  _ => child ?? const SizedBox.shrink(),
+                },
+              ),
             ),
           ),
         );
@@ -586,7 +691,7 @@ class _ScreenshotAllowedTag extends StatelessWidget {
     return SafeArea(
       child: GestureDetector(
         onTap: () => appRouter.push('/more/settings'),
-        child: Text(
+        child: Tr(
           'Screenshots allowed',
           style: theme.textTheme.labelSmall?.copyWith(
             color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
@@ -624,10 +729,11 @@ class _FatalError extends StatelessWidget {
       child: Scaffold(
         body: SafeArea(
           child: ErrorView(
-            title: "Couldn't open your data",
-            message:
-                'The app could not open its database, so nothing can be shown. '
-                'Your saved data is not lost.',
+            title: tr("Couldn't open your data"),
+            message: tr(
+              'The app could not open its database, so nothing can be shown. '
+              'Your saved data is not lost.',
+            ),
             detail: error.toString(),
             onRetry: onRetry,
           ),

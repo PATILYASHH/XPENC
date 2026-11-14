@@ -13,6 +13,7 @@ import '../../data/modes_db.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'mode_widgets.dart';
+import '../../core/l10n/l10n.dart';
 
 /// A mode's own page (`/mode/:id`): the whole story of a trip — what it
 /// came to, where it went, and every transaction in it. The one line a mode
@@ -29,11 +30,11 @@ class ModeDetailScreen extends ConsumerWidget {
     final mode = ref.watch(modeMapProvider)[modeId];
     if (mode == null) {
       return Scaffold(
-        appBar: AppTopBar(title: const Text('Mode')),
+        appBar: AppTopBar(title: const Tr('Mode')),
         body: Center(
           child: modesAsync.isLoading
               ? const CircularProgressIndicator()
-              : const Text('This mode no longer exists'),
+              : const Tr('This mode no longer exists'),
         ),
       );
     }
@@ -56,7 +57,7 @@ class ModeDetailScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const AppIcon(Icons.edit_outlined),
-            tooltip: 'Edit',
+            tooltip: tr('Edit'),
             onPressed: () => context.push('/mode/${mode.id}/edit'),
           ),
           PopupMenuButton<String>(
@@ -65,8 +66,8 @@ class ModeDetailScreen extends ConsumerWidget {
               if (v == 'delete') _delete(context, ref, mode);
             },
             itemBuilder: (_) => const [
-              PopupMenuItem(value: 'summary', child: Text('Summary & share')),
-              PopupMenuItem(value: 'delete', child: Text('Delete mode')),
+              PopupMenuItem(value: 'summary', child: Tr('Summary & share')),
+              PopupMenuItem(value: 'delete', child: Tr('Delete mode')),
             ],
           ),
         ],
@@ -82,7 +83,7 @@ class ModeDetailScreen extends ConsumerWidget {
             currencyNote: mode.currencyCode,
           ),
           if (byCategory.isNotEmpty) ...[
-            modeSectionLabel(theme, 'BY CATEGORY'),
+            modeSectionLabel(theme, tr('BY CATEGORY')),
             AppCard(
               margin: EdgeInsets.zero,
               clipBehavior: Clip.antiAlias,
@@ -100,7 +101,7 @@ class ModeDetailScreen extends ConsumerWidget {
                       colorValue:
                           categories[e.key]?.colorValue ??
                           theme.colorScheme.onSurfaceVariant.toARGB32(),
-                      label: categories[e.key]?.name ?? 'Uncategorised',
+                      label: categories[e.key]?.name ?? tr('Uncategorised'),
                       amount: e.value,
                       total: summary.spent,
                       onTap: categories[e.key] == null
@@ -113,7 +114,7 @@ class ModeDetailScreen extends ConsumerWidget {
             ),
           ],
           if (byAccount.length > 1) ...[
-            modeSectionLabel(theme, 'BY ACCOUNT'),
+            modeSectionLabel(theme, tr('BY ACCOUNT')),
             AppCard(
               margin: EdgeInsets.zero,
               clipBehavior: Clip.antiAlias,
@@ -131,7 +132,7 @@ class ModeDetailScreen extends ConsumerWidget {
                       colorValue:
                           accounts[e.key]?.colorValue ??
                           theme.colorScheme.onSurfaceVariant.toARGB32(),
-                      label: accounts[e.key]?.name ?? 'Account',
+                      label: accounts[e.key]?.name ?? tr('Account'),
                       amount: e.value,
                       total: summary.spent,
                       onTap: () => pushZoom(context, '/account/${e.key}'),
@@ -149,7 +150,7 @@ class ModeDetailScreen extends ConsumerWidget {
               child: AppListTile(
                 leading: const AppIcon(Icons.groups_outlined),
                 title: Text(group.name),
-                subtitle: const Text('Its expenses join this mode'),
+                subtitle: const Tr('Its expenses join this mode'),
                 trailing: MoneyText(
                   ref.watch(groupBalanceProvider(group.id)),
                   signed: true,
@@ -159,7 +160,7 @@ class ModeDetailScreen extends ConsumerWidget {
             ),
           ],
           if (ref.watch(modePlannedCostsProvider(mode.id)).isNotEmpty) ...[
-            modeSectionLabel(theme, 'PLANNED COSTS'),
+            modeSectionLabel(theme, tr('PLANNED COSTS')),
             ModePlannedCostsCard(
               mode: mode,
               costs: ref.watch(modePlannedCostsProvider(mode.id)),
@@ -171,8 +172,8 @@ class ModeDetailScreen extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Text(
                 mode.status == ModeStatus.active
-                    ? 'Everything you add now joins ${mode.name}.'
-                    : 'Nothing in ${mode.name} yet.',
+                    ? tr('Everything you add now joins {0}.', [mode.name])
+                    : tr('Nothing in {0} yet.', [mode.name]),
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
@@ -194,8 +195,8 @@ class ModeDetailScreen extends ConsumerWidget {
     final ok = await showAppDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Delete ${mode.name}?'),
-        content: const Text(
+        title: Text(tr('Delete {0}?', [mode.name])),
+        content: const Tr(
           'Its transactions stay exactly as they are — they just stop being '
           'in a mode. Its own categories are archived, its own tags become '
           'everyday tags.',
@@ -203,11 +204,11 @@ class ModeDetailScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
+            child: const Tr('Delete'),
           ),
         ],
       ),
@@ -268,4 +269,4 @@ class _Header extends ConsumerWidget {
 
 /// [Money] spent in the mode the way a list row says it: "−₹18,400".
 String modeSpentLabel(Money spent) =>
-    spent.isZero ? 'Nothing spent' : '−${MoneyFormat.symbol(spent)}';
+    spent.isZero ? tr('Nothing spent') : '−${MoneyFormat.symbol(spent)}';

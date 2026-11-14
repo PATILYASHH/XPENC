@@ -19,6 +19,7 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'connector_friends.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Entries shared with Connector friends: Android only, through the
 /// Connector app (see [SharedBridge]). Null elsewhere — all of it hidden.
@@ -276,12 +277,12 @@ String? sharedLabel(PersonEntryRow entry, String? username) {
   final who = username == null ? 'them' : '@$username';
   return switch (SharedStatus.of(entry.sharedStatus)) {
     null => null,
-    SharedStatus.sending => 'Sending to $who…',
-    SharedStatus.pending => 'Waiting for $who',
-    SharedStatus.accepted => 'Agreed with $who',
-    SharedStatus.rejected => 'Rejected by $who — tap to fix',
-    SharedStatus.failed => "Couldn't share — tap to try again",
-    SharedStatus.received => 'From $who',
+    SharedStatus.sending => tr('Sending to {0}…', [who]),
+    SharedStatus.pending => tr('Waiting for {0}', [who]),
+    SharedStatus.accepted => tr('Agreed with {0}', [who]),
+    SharedStatus.rejected => tr('Rejected by {0} — tap to fix', [who]),
+    SharedStatus.failed => tr("Couldn't share — tap to try again"),
+    SharedStatus.received => tr('From {0}', [who]),
   };
 }
 
@@ -299,7 +300,11 @@ String _remoteMoney(RemoteEntry e) {
 /// phone's answer, and the opening balance — offered when there's a
 /// balance from before linking, shown once sent.
 class SharedFriendCard extends ConsumerWidget {
-  const SharedFriendCard({required this.person, required this.balance, super.key});
+  const SharedFriendCard({
+    required this.person,
+    required this.balance,
+    super.key,
+  });
 
   final PersonRow person;
   final Money balance;
@@ -320,7 +325,9 @@ class SharedFriendCard extends ConsumerWidget {
       return _CardShell(
         children: [
           Text(
-            'Sign in to the Connector app to share entries with $who.',
+            tr('Sign in to the Connector app to share entries with {0}.', [
+              who,
+            ]),
             style: theme.textTheme.bodySmall?.copyWith(color: muted),
           ),
         ],
@@ -336,8 +343,7 @@ class SharedFriendCard extends ConsumerWidget {
             .valueOrNull
             ?.any((e) => e.sharedStatus != null) ??
         false;
-    final offerOpening =
-        !balance.isZero && opening == null && !sharedBefore;
+    final offerOpening = !balance.isZero && opening == null && !sharedBefore;
 
     if (waiting.isEmpty && opening == null && !offerOpening) {
       return const SizedBox.shrink();
@@ -347,29 +353,35 @@ class SharedFriendCard extends ConsumerWidget {
         for (final entry in waiting)
           _WaitingEntry(entry: entry, who: who, snapshot: snapshot),
         if (opening != null)
-          Text(
-            switch (opening.status) {
-              'accepted' => 'Opening balance agreed with $who.',
-              'rejected' =>
-                '$who rejected the opening balance (${_remoteMoney(opening)}).',
-              _ => 'Opening balance (${_remoteMoney(opening)}) sent — waiting '
-                  'for $who.',
-            },
-            style: theme.textTheme.bodySmall?.copyWith(color: muted),
-          ),
+          Text(switch (opening.status) {
+            'accepted' => tr('Opening balance agreed with {0}.', [who]),
+            'rejected' => tr('{0} rejected the opening balance ({1}).', [
+              who,
+              _remoteMoney(opening),
+            ]),
+            _ => tr(
+              'Opening balance ({0}) sent — waiting '
+              'for {1}.',
+              [_remoteMoney(opening), who],
+            ),
+          }, style: theme.textTheme.bodySmall?.copyWith(color: muted)),
         if (offerOpening) ...[
           Text(
-            'Start sharing with $who from today\'s balance. Earlier history '
-            'stays on this phone.',
+            tr(
+              'Start sharing with {0} from today\'s balance. Earlier history '
+              'stays on this phone.',
+              [who],
+            ),
             style: theme.textTheme.bodySmall?.copyWith(color: muted),
           ),
           const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerLeft,
             child: OutlinedButton.icon(
-              onPressed: () => confirmShareOpening(context, ref, person, balance),
+              onPressed: () =>
+                  confirmShareOpening(context, ref, person, balance),
               icon: const AppIcon(Icons.handshake_outlined, size: 18),
-              label: const Text('Share current balance'),
+              label: const Tr('Share current balance'),
             ),
           ),
         ],
@@ -417,17 +429,19 @@ class _WaitingEntry extends ConsumerWidget {
     final mine = ref.watch(currencyProvider).code.toUpperCase();
     final note = entry.note?.trim();
     final what = entry.isOpening
-        ? 'Opening balance: ${entry.theyOwe ? 'they owe you' : 'you owe'}'
+        ? (entry.theyOwe
+              ? tr('Opening balance: they owe you')
+              : tr('Opening balance: you owe'))
         : entry.theyOwe
-        ? 'They owe you'
-        : 'You owe';
+        ? tr('They owe you')
+        : tr('You owe');
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '$who shared',
+            tr('{0} shared', [who]),
             style: theme.textTheme.labelMedium?.copyWith(color: muted),
           ),
           const SizedBox(height: 2),
@@ -458,7 +472,7 @@ class _WaitingEntry extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           if (answering)
-            Text(
+            Tr(
               'Sending your answer…',
               style: theme.textTheme.bodySmall?.copyWith(color: muted),
             )
@@ -467,12 +481,12 @@ class _WaitingEntry extends ConsumerWidget {
               children: [
                 FilledButton(
                   onPressed: () => _answer(context, ref, accept: true),
-                  child: const Text('Accept'),
+                  child: const Tr('Accept'),
                 ),
                 const SizedBox(width: 8),
                 OutlinedButton(
                   onPressed: () => _answer(context, ref, accept: false),
-                  child: const Text('Reject'),
+                  child: const Tr('Reject'),
                 ),
               ],
             ),
@@ -496,11 +510,13 @@ class _WaitingEntry extends ConsumerWidget {
         SnackBar(
           content: Text(
             !ok
-                ? "Connector didn't take it. Open Connector and try again."
+                ? tr("Connector didn't take it. Open Connector and try again.")
                 : accept
-                ? 'Accepted — it lands in their history once Connector '
-                      'sends it.'
-                : 'Rejected. $who can fix it and send it again.',
+                ? tr(
+                    'Accepted — it lands in their history once Connector '
+                    'sends it.',
+                  )
+                : tr('Rejected. {0} can fix it and send it again.', [who]),
           ),
         ),
       );
@@ -518,37 +534,37 @@ Future<void> confirmShareOpening(
   final ok = await showAppDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: Text('Share your balance with $who?'),
+      title: Text(tr('Share your balance with {0}?', [who])),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             balance.isPositive
-                ? '${person.name} owes you'
-                : 'You owe ${person.name}',
+                ? tr('{0} owes you', [person.name])
+                : tr('You owe {0}', [person.name]),
           ),
           const SizedBox(height: 4),
-          MoneyText(
-            balance.abs,
-            style: Theme.of(ctx).textTheme.headlineSmall,
-          ),
+          MoneyText(balance.abs, style: Theme.of(ctx).textTheme.headlineSmall),
           const SizedBox(height: 12),
           Text(
-            '$who accepts or rejects it in their XPENC. Once accepted, you '
-            'both start from this number, and entries you share from now on '
-            'count on both sides. Your earlier entries stay on this phone.',
+            tr(
+              '{0} accepts or rejects it in their XPENC. Once accepted, you '
+              'both start from this number, and entries you share from now on '
+              'count on both sides. Your earlier entries stay on this phone.',
+              [who],
+            ),
           ),
         ],
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(false),
-          child: const Text('Not now'),
+          child: const Tr('Not now'),
         ),
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(true),
-          child: const Text('Share'),
+          child: const Tr('Share'),
         ),
       ],
     ),
@@ -564,8 +580,8 @@ Future<void> confirmShareOpening(
       SnackBar(
         content: Text(
           sent
-              ? 'Sent to $who.'
-              : "Connector didn't take it. Open Connector and try again.",
+              ? tr('Sent to {0}.', [who])
+              : tr("Connector didn't take it. Open Connector and try again."),
         ),
       ),
     );
@@ -610,7 +626,7 @@ class SharedInboxCard extends ConsumerWidget {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-                child: Text(
+                child: Tr(
                   'SHARED WITH YOU',
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
@@ -648,21 +664,26 @@ class _InboxRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final linked = person;
-    final name = linked?.name ?? friend?.name ?? 'A friend';
+    final name = linked?.name ?? friend?.name ?? tr('A friend');
     final username = linked?.remoteUsername ?? friend?.username;
     return AppListTile(
       leading: const AppIcon(Icons.mark_email_unread_outlined),
       title: Text(name),
       subtitle: Text(
-        '${username == null ? '' : '@$username · '}'
-        '$count ${count == 1 ? 'entry' : 'entries'} to answer',
+        tr(
+          '{0}{1} to answer',
+          [
+            username == null ? '' : '@$username · ',
+            plural(count, '1 entry', '{0} entries'),
+          ],
+        ),
       ),
       trailing: linked == null
           ? TextButton(
               onPressed: friend == null
                   ? null
                   : () => _linkFriend(context, ref, friend!),
-              child: const Text('Link'),
+              child: const Tr('Link'),
             )
           : const AppIcon(Icons.chevron_right_rounded),
       onTap: linked == null
@@ -679,7 +700,8 @@ Future<void> _linkFriend(
   ConnectorFriend friend,
 ) async {
   final unlinked = [
-    for (final p in ref.read(personsProvider).valueOrNull ?? const <PersonRow>[])
+    for (final p
+        in ref.read(personsProvider).valueOrNull ?? const <PersonRow>[])
       if (p.remoteFriendId == null) p,
   ];
   final picked = await showAppSheet<Object>(
@@ -696,13 +718,13 @@ Future<void> _linkFriend(
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
               child: Text(
-                'Who is @${friend.username}?',
+                tr('Who is @{0}?', [friend.username]),
                 style: Theme.of(ctx).textTheme.titleLarge,
               ),
             ),
             AppListTile(
               leading: const AppIcon(Icons.person_add_alt_1_outlined),
-              title: Text('Add ${friend.name} as a new person'),
+              title: Text(tr('Add {0} as a new person', [friend.name])),
               onTap: () => Navigator.of(ctx).pop(true),
             ),
             for (final p in unlinked)

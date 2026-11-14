@@ -4,6 +4,7 @@ import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/world_tax.dart';
 import 'calculator_widgets.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Countries the Income Tax calculator covers. [currencyCode] formats the
 /// results and picks the default country from the app's currency setting.
@@ -13,10 +14,11 @@ enum TaxCountry {
   uk('🇬🇧', 'United Kingdom', 'GBP'),
   germany('🇩🇪', 'Germany', 'EUR');
 
-  const TaxCountry(this.flag, this.label, this.currencyCode);
+  const TaxCountry(this.flag, String label, this.currencyCode) : _label = label;
 
   final String flag;
-  final String label;
+  final String _label;
+  String get label => tr(_label);
   final String currencyCode;
 
   Currency get currency => currencyForCode(currencyCode);
@@ -33,22 +35,22 @@ enum TaxCountry {
 
   String get footnote => switch (this) {
     TaxCountry.india =>
-      'Based on FY 2025-26 slabs (Budget 2025). Covers normal-rate income '
+      tr('Based on FY 2025-26 slabs (Budget 2025). Covers normal-rate income '
           'only — capital gains, lottery and other special-rate income are '
           'taxed separately. Verify with a CA or the income-tax portal before '
-          'filing.',
+          'filing.'),
     TaxCountry.us =>
-      'Federal tax year 2025 brackets. State and local income tax are not '
+      tr('Federal tax year 2025 brackets. State and local income tax are not '
           'included. Credits (child tax credit, EITC, etc.) are not applied. '
-          'Estimates only — check with a tax professional or IRS.gov.',
+          'Estimates only — check with a tax professional or IRS.gov.'),
     TaxCountry.uk =>
-      'England, Wales & Northern Ireland, 2025/26 and 2026/27 (thresholds '
+      tr('England, Wales & Northern Ireland, 2025/26 and 2026/27 (thresholds '
           'frozen). Scotland has different income tax bands. Student loan '
-          'repayments are not included. Estimates only — check GOV.UK.',
+          'repayments are not included. Estimates only — check GOV.UK.'),
     TaxCountry.germany =>
-      '2025 tariff (§32a EStG). Enter taxable income after social insurance '
+      tr('2025 tariff (§32a EStG). Enter taxable income after social insurance '
           'and other deductions. Church tax (8–9%) is not included. '
-          'Estimates only — check with a Steuerberater or ELSTER.',
+          'Estimates only — check with a Steuerberater or ELSTER.'),
   };
 }
 
@@ -73,14 +75,14 @@ class TaxSummaryView extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         CalcResultCard(
-          label: 'Total tax (yearly)',
+          label: tr('Total tax (yearly)'),
           value: summary.totalTax,
           format: fmt,
           sub:
-              '${summary.effectiveRatePct.toStringAsFixed(1)}% effective · '
-              '${summary.marginalRatePct.toStringAsFixed(0)}% marginal',
+              tr('{0}% effective · '
+              '{1}% marginal', [summary.effectiveRatePct.toStringAsFixed(1), summary.marginalRatePct.toStringAsFixed(0)]),
           parts: [
-            CalcPart('Take-home', summary.afterTax, cs.primary),
+            CalcPart(tr('Take-home'), summary.afterTax, cs.primary),
             for (var i = 0; i < taxes.length; i++)
               CalcPart(taxes[i].label, taxes[i].amount, _taxColors[i % 3]),
           ],
@@ -88,15 +90,15 @@ class TaxSummaryView extends StatelessWidget {
         const SizedBox(height: 12),
         CalcBreakdownCard(
           rows: [
-            CalcRow('Gross income', fmt(summary.gross)),
+            CalcRow(tr('Gross income'), fmt(summary.gross)),
             for (final l in summary.lines.where((l) => !l.isTax))
               CalcRow(l.label, '− ${fmt(l.amount)}'),
-            CalcRow('Taxable income', fmt(summary.taxable)),
+            CalcRow(tr('Taxable income'), fmt(summary.taxable)),
             for (final l in taxes) CalcRow(l.label, fmt(l.amount)),
-            CalcRow('Total tax', fmt(summary.totalTax), bold: true),
-            CalcRow('Take-home (yearly)', fmt(summary.afterTax), bold: true),
+            CalcRow(tr('Total tax'), fmt(summary.totalTax), bold: true),
+            CalcRow(tr('Take-home (yearly)'), fmt(summary.afterTax), bold: true),
             CalcRow(
-              'Take-home (monthly)',
+              tr('Take-home (monthly)'),
               fmt(Money.fromPaise((summary.afterTax.paise / 12).round())),
             ),
           ],
@@ -139,39 +141,39 @@ class _UsTaxBodyState extends State<UsTaxBody> with CalculatorFormMixin {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const CalcHeading('Filing status'),
+        CalcHeading(tr('Filing status')),
         _Chips(
           values: UsFilingStatus.values,
           selected: _status,
           label: (s) => s.label,
           onSelected: (s) => setState(() => _status = s),
         ),
-        const CalcHeading('Income (yearly)'),
+        CalcHeading(tr('Income (yearly)')),
         CalcField(
           controller: _wages,
-          label: 'Wages / salary (W-2)',
+          label: tr('Wages / salary (W-2)'),
           prefix: country.inputPrefix,
         ),
         CalcField(
           controller: _other,
-          label: 'Other income',
+          label: tr('Other income'),
           prefix: country.inputPrefix,
-          helper: 'Interest, freelance, rental — no FICA applied',
+          helper: tr('Interest, freelance, rental — no FICA applied'),
         ),
-        const CalcHeading('Deductions'),
+        CalcHeading(tr('Deductions')),
         CalcField(
           controller: _preTax,
-          label: 'Pre-tax contributions',
+          label: tr('Pre-tax contributions'),
           prefix: country.inputPrefix,
-          helper: '401(k), HSA, traditional IRA',
+          helper: tr('401(k), HSA, traditional IRA'),
         ),
         CalcField(
           controller: _itemized,
-          label: 'Itemized deductions (optional)',
+          label: tr('Itemized deductions (optional)'),
           prefix: country.inputPrefix,
           helper:
-              'Used only if above the ${country.format(Money.fromRupees(std))} '
-              'standard deduction',
+              tr('Used only if above the {0} '
+              'standard deduction', [country.format(Money.fromRupees(std))]),
         ),
         const SizedBox(height: 4),
         TaxSummaryView(summary: summary, country: country),
@@ -206,23 +208,23 @@ class _UkTaxBodyState extends State<UkTaxBody> with CalculatorFormMixin {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const CalcHeading('Income (yearly)'),
+        CalcHeading(tr('Income (yearly)')),
         CalcField(
           controller: _salary,
-          label: 'Salary (PAYE)',
+          label: tr('Salary (PAYE)'),
           prefix: country.inputPrefix,
         ),
         CalcField(
           controller: _other,
-          label: 'Other taxable income',
+          label: tr('Other taxable income'),
           prefix: country.inputPrefix,
-          helper: 'Rent, savings interest over allowance — no NI applied',
+          helper: tr('Rent, savings interest over allowance — no NI applied'),
         ),
         CalcField(
           controller: _pension,
-          label: 'Pension via salary sacrifice',
+          label: tr('Pension via salary sacrifice'),
           prefix: country.inputPrefix,
-          helper: 'Reduces both income tax and National Insurance',
+          helper: tr('Reduces both income tax and National Insurance'),
         ),
         const SizedBox(height: 4),
         TaxSummaryView(summary: summary, country: country),
@@ -256,21 +258,21 @@ class _GermanyTaxBodyState extends State<GermanyTaxBody>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const CalcHeading('Filing'),
+        CalcHeading(tr('Filing')),
         _Chips(
           values: const [false, true],
           selected: _married,
-          label: (m) => m ? 'Married, joint (splitting)' : 'Single',
+          label: (m) => m ? tr('Married, joint (splitting)') : 'Single',
           onSelected: (m) => setState(() => _married = m),
         ),
-        const CalcHeading('Income (yearly)'),
+        CalcHeading(tr('Income (yearly)')),
         CalcField(
           controller: _taxable,
-          label: 'Taxable income (zvE)',
+          label: tr('Taxable income (zvE)'),
           prefix: country.inputPrefix,
           helper: _married
-              ? 'Combined for both spouses'
-              : 'After social insurance, Werbungskosten, etc.',
+              ? tr('Combined for both spouses')
+              : tr('After social insurance, Werbungskosten, etc.'),
         ),
         const SizedBox(height: 4),
         TaxSummaryView(summary: summary, country: country),

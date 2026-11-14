@@ -11,6 +11,8 @@ import '../../data/modes_db.dart';
 import '../../data/tables.dart';
 import '../money.dart';
 import '../platform/platform_features.dart';
+import '../../core/l10n/l10n.dart';
+import '../l10n/pack_store.dart';
 
 /// Local notifications only. Nothing leaves the device.
 /// Which of a budget's alert [levels] (ascending percents, GitHub #186) to
@@ -238,10 +240,12 @@ class NotificationService {
           periodKey: periodKey,
           level: AlertLevel.overspent,
           id: 100000 + b.categoryId,
-          title: 'Overspent on ${category.name}',
-          body:
-              'You have spent ${MoneyFormat.symbol(spent)} of '
-              '${MoneyFormat.symbol(b.amount)}.',
+          title: tr('Overspent on {0}', [category.name]),
+          body: tr(
+            'You have spent {0} of '
+            '{1}.',
+            [MoneyFormat.symbol(spent), MoneyFormat.symbol(b.amount)],
+          ),
         );
       }
       await _checkLevels(
@@ -303,12 +307,19 @@ class NotificationService {
       // piling up in the shade.
       id: 200000 + b.categoryId,
       title: usedUp
-          ? '$categoryName budget used up'
-          : '$categoryName budget $top% used',
+          ? tr('{0} budget used up', [categoryName])
+          : tr('{0} budget {1}% used', [categoryName, top]),
       body: usedUp
-          ? 'You have spent all ${MoneyFormat.symbol(b.amount)}.'
-          : 'You have spent ${MoneyFormat.symbol(spent)} of '
-                '${MoneyFormat.symbol(b.amount)} (${(pct * 100).round()}%).',
+          ? tr('You have spent all {0}.', [MoneyFormat.symbol(b.amount)])
+          : tr(
+              'You have spent {0} of '
+              '{1} ({2}%).',
+              [
+                MoneyFormat.symbol(spent),
+                MoneyFormat.symbol(b.amount),
+                (pct * 100).round(),
+              ],
+            ),
     );
   }
 
@@ -359,15 +370,19 @@ class NotificationService {
       final amount = r.amount == null
           ? ''
           : ' — ${MoneyFormat.symbol(r.amount!)}';
-      final verb = r.direction == ReminderDirection.pay ? 'Pay' : 'Collect';
+      final verb = r.direction == ReminderDirection.pay
+          ? tr('Pay')
+          : tr('Collect');
 
       try {
         await _plugin.zonedSchedule(
           id: _reminderId(r.id),
           title: '$verb: ${r.title}',
-          body:
-              'Due ${_dayLabel(r.dueDate)}$amount. Nothing has been posted — '
-              'confirm it in the app.',
+          body: tr(
+            'Due {0}{1}. Nothing has been posted — '
+            'confirm it in the app.',
+            [_dayLabel(r.dueDate), amount],
+          ),
           scheduledDate: tz.TZDateTime.from(fireAt, tz.local),
           notificationDetails: _details(_reminderChannel),
           // Inexact avoids needing SCHEDULE_EXACT_ALARM. A bill reminder does
@@ -435,8 +450,10 @@ class NotificationService {
     if (!settings.notificationsEnabled) return;
     await _show(
       400000,
-      count == 1 ? '1 transaction detected' : '$count transactions detected',
-      'Open the app to review and categorise.',
+      count == 1
+          ? tr('1 transaction detected')
+          : tr('{0} transactions detected', [count]),
+      tr('Open the app to review and categorise.'),
       _captureChannel,
     );
   }
@@ -460,20 +477,37 @@ class NotificationService {
       if (fireAt == null) continue;
 
       final account = await _db.watchAccount(r.accountId).first;
-      final accountName = account?.name ?? 'your account';
+      final accountName = account?.name ?? tr('your account');
       final isExpense = r.kind == CategoryKind.expense;
       final title = isExpense
-          ? '${r.name}: auto-pay coming up'
-          : '${r.name}: expected soon';
+          ? tr('{0}: auto-pay coming up', [r.name])
+          : tr('{0}: expected soon', [r.name]);
       final body = r.payCardStatement
           // A card bill's amount is the statement's, known only on the day.
-          ? "What's left of the statement will be paid from $accountName on "
-                '${_dayLabel(r.nextDueDate)}. Keep it ready.'
+          ? tr(
+              "What's left of the statement will be paid from {0} on "
+              '{1}. Keep it ready.',
+              [accountName, _dayLabel(r.nextDueDate)],
+            )
           : isExpense
-          ? '${MoneyFormat.symbol(r.amount)} will be auto-deducted from '
-                '$accountName on ${_dayLabel(r.nextDueDate)}. Keep that much ready.'
-          : '${MoneyFormat.symbol(r.amount)} is expected in $accountName '
-                'on ${_dayLabel(r.nextDueDate)}.';
+          ? tr(
+              '{0} will be auto-deducted from '
+              '{1} on {2}. Keep that much ready.',
+              [
+                MoneyFormat.symbol(r.amount),
+                accountName,
+                _dayLabel(r.nextDueDate),
+              ],
+            )
+          : tr(
+              '{0} is expected in {1} '
+              'on {2}.',
+              [
+                MoneyFormat.symbol(r.amount),
+                accountName,
+                _dayLabel(r.nextDueDate),
+              ],
+            );
 
       try {
         await _plugin.zonedSchedule(
@@ -546,13 +580,15 @@ class NotificationService {
       if (fireAt == null) continue;
 
       final account = await _db.watchAccount(d.accountId).first;
-      final cardName = account?.name ?? 'your card';
+      final cardName = account?.name ?? tr('your card');
 
       try {
         await _plugin.zonedSchedule(
           id: _creditCardReminderId(d.accountId),
-          title: '$cardName: payment due ${_dayLabel(dueDate)}',
-          body: 'Pay by ${_dayLabel(dueDate)} to avoid interest or a late fee.',
+          title: tr('{0}: payment due {1}', [cardName, _dayLabel(dueDate)]),
+          body: tr('Pay by {0} to avoid interest or a late fee.', [
+            _dayLabel(dueDate),
+          ]),
           scheduledDate: tz.TZDateTime.from(fireAt, tz.local),
           notificationDetails: _details(_reminderChannel),
           androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
@@ -619,9 +655,9 @@ class NotificationService {
     await _show(
       500000,
       count == 1
-          ? '1 auto-transaction posted'
-          : '$count auto-transactions posted',
-      'Open Auto to review what was posted.',
+          ? tr('1 auto-transaction posted')
+          : tr('{0} auto-transactions posted', [count]),
+      tr('Open Auto to review what was posted.'),
       _autoChannel,
     );
   }
@@ -658,8 +694,8 @@ class NotificationService {
     try {
       await _plugin.zonedSchedule(
         id: _expenseNudgeId,
-        title: 'Log today\'s spending',
-        body: "A minute now beats reconstructing it from memory later.",
+        title: tr('Log today\'s spending'),
+        body: tr("A minute now beats reconstructing it from memory later."),
         scheduledDate: fireAt,
         notificationDetails: _details(_expenseNudgeChannel),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
@@ -697,8 +733,8 @@ class NotificationService {
     try {
       await _plugin.show(
         id: _quickAddId,
-        title: 'Quick add',
-        body: 'Reply with an amount to log money out or in.',
+        title: tr('Quick add'),
+        body: tr('Reply with an amount to log money out or in.'),
         notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
             _quickAddChannel.id,
@@ -712,18 +748,18 @@ class NotificationService {
             // back off, and a swipe shouldn't quietly disable the feature.
             ongoing: true,
             autoCancel: false,
-            actions: const [
+            actions: [
               AndroidNotificationAction(
                 _quickAddExpenseAction,
-                'Add money out',
+                tr('Add money out'),
                 cancelNotification: false,
-                inputs: [AndroidNotificationActionInput(label: 'Amount')],
+                inputs: [AndroidNotificationActionInput(label: tr('Amount'))],
               ),
               AndroidNotificationAction(
                 _quickAddIncomeAction,
-                'Add money in',
+                tr('Add money in'),
                 cancelNotification: false,
-                inputs: [AndroidNotificationActionInput(label: 'Amount')],
+                inputs: [AndroidNotificationActionInput(label: tr('Amount'))],
               ),
             ],
           ),
@@ -774,7 +810,7 @@ Future<void> _handleQuickAddReply(NotificationResponse response) async {
 
   Future<void> result(String body) => plugin.show(
     id: NotificationService._quickAddResultId,
-    title: 'Quick add',
+    title: tr('Quick add'),
     body: body,
     notificationDetails: NotificationDetails(
       android: AndroidNotificationDetails(
@@ -789,17 +825,21 @@ Future<void> _handleQuickAddReply(NotificationResponse response) async {
     ),
   );
 
+  final db = AppDatabase();
+  // A background isolate starts in English; answer in the app's language.
+  await _loadLanguage(db);
+
   final amount = Money.tryParse(response.input ?? '');
   if (amount == null || !amount.isPositive) {
-    await result("Couldn't read that as an amount — nothing was added.");
+    await db.close();
+    await result(tr("Couldn't read that as an amount — nothing was added."));
     return;
   }
 
-  final db = AppDatabase();
   try {
     final accountId = await db.resolveQuickAddAccountId();
     if (accountId == null) {
-      await result('No account to post to — nothing was added.');
+      await result(tr('No account to post to — nothing was added.'));
       return;
     }
     // Added by hand, so it joins the mode (trip) that's ON, if any.
@@ -814,13 +854,33 @@ Future<void> _handleQuickAddReply(NotificationResponse response) async {
     await db.applyModeTags(txId, modeId);
     final account = await db.watchAccount(accountId).first;
     await result(
-      '${type == TxType.expense ? 'Money out' : 'Money in'} of '
-      '${MoneyFormat.symbol(amount)} added to ${account?.name ?? 'your account'}.',
+      tr(
+        '{0} of '
+        '{1} added to {2}.',
+        [
+          type == TxType.expense ? tr('Money out') : tr('Money in'),
+          MoneyFormat.symbol(amount),
+          account?.name ?? tr('your account'),
+        ],
+      ),
     );
   } catch (e) {
-    await result("Couldn't save that — nothing was added.");
+    await result(tr("Couldn't save that — nothing was added."));
     debugPrint('quick add background insert failed: $e');
   } finally {
     await db.close();
+  }
+}
+
+/// Loads the interface language the app is set to (GitHub #191), for code
+/// running where the app itself isn't — a background isolate. English if
+/// anything goes wrong; a notification is better in English than not at all.
+Future<void> _loadLanguage(AppDatabase db) async {
+  try {
+    await LanguagePackStore.loadAll();
+    final saved = (await db.getSettings()).languageCode;
+    await L10n.load(L10n.resolve(saved));
+  } catch (e) {
+    debugPrint('Notification language not loaded: $e');
   }
 }

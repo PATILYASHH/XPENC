@@ -9,6 +9,7 @@ import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import 'lock_screen_keypad.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 enum _Step { scan, confirm }
 
@@ -89,7 +90,7 @@ class _TotpSetupScreenState extends ConsumerState<TotpSetupScreen> {
     Navigator.of(context).pop();
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Authenticator app set up')));
+      ..showSnackBar(const SnackBar(content: Tr('Authenticator app set up')));
   }
 
   @override
@@ -97,7 +98,7 @@ class _TotpSetupScreenState extends ConsumerState<TotpSetupScreen> {
     return Scaffold(
       appBar: AppTopBar(
         title: Text(
-          _step == _Step.scan ? 'Authenticator app' : 'Enter the code',
+          _step == _Step.scan ? tr('Authenticator app') : tr('Enter the code'),
         ),
       ),
       body: SafeArea(
@@ -114,7 +115,7 @@ class _TotpSetupScreenState extends ConsumerState<TotpSetupScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24).plusNavBar(context),
       children: [
-        Text(
+        Tr(
           'Scan this QR code with Google Authenticator, Authy, or any '
           'compatible app.',
           style: theme.textTheme.bodyMedium,
@@ -135,7 +136,7 @@ class _TotpSetupScreenState extends ConsumerState<TotpSetupScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        Text(
+        Tr(
           "Can't scan? Enter this code manually:",
           style: theme.textTheme.bodySmall?.copyWith(
             color: cs.onSurfaceVariant,
@@ -162,7 +163,7 @@ class _TotpSetupScreenState extends ConsumerState<TotpSetupScreen> {
               AppIcon(Icons.warning_amber_rounded, color: cs.onErrorContainer),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
+                child: Tr(
                   'If you lose this device or uninstall your authenticator '
                   'app, a master recovery phrase is the only way back in — '
                   'set one up too if you haven’t. Without one, losing the '
@@ -178,7 +179,7 @@ class _TotpSetupScreenState extends ConsumerState<TotpSetupScreen> {
         const SizedBox(height: 20),
         FilledButton(
           onPressed: _goToConfirm,
-          child: const Text("I've added it to my app"),
+          child: const Tr("I've added it to my app"),
         ),
       ],
     );
@@ -189,7 +190,7 @@ class _TotpSetupScreenState extends ConsumerState<TotpSetupScreen> {
     return Column(
       children: [
         const Spacer(flex: 2),
-        Text(
+        Tr(
           'Enter the 6-digit code',
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w700,
@@ -197,7 +198,7 @@ class _TotpSetupScreenState extends ConsumerState<TotpSetupScreen> {
         ),
         const SizedBox(height: 6),
         if (_error)
-          Text(
+          Tr(
             'Wrong code — try again',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.error,

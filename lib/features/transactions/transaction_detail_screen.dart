@@ -22,6 +22,7 @@ import '../modes/mode_widgets.dart';
 import '../share/share_flows.dart';
 import '../tags/tag_picker_sheet.dart';
 import 'transaction_link_picker_sheet.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Read-only view of a single transaction, with edit + delete in the app bar.
 ///
@@ -43,18 +44,18 @@ class TransactionDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppTopBar(
-        title: const Text('Transaction'),
+        title: const Tr('Transaction'),
         actions: [
           if (t != null)
             IconButton(
               icon: const AppIcon(Icons.ios_share_rounded),
-              tooltip: 'Share',
+              tooltip: tr('Share'),
               onPressed: () => shareTransaction(context, t),
             ),
           if (canMakeRecurring)
             IconButton(
               icon: const AppIcon(Icons.autorenew_rounded),
-              tooltip: 'Make recurring',
+              tooltip: tr('Make recurring'),
               onPressed: () => showRecurringRuleSheet(context, prefillFrom: t),
             ),
           // A correction is the difference between two balances on one
@@ -63,18 +64,18 @@ class TransactionDetailScreen extends ConsumerWidget {
           if (t == null || !t.type.isCorrection) ...[
             IconButton(
               icon: const AppIcon(Icons.content_copy_outlined),
-              tooltip: 'Duplicate',
+              tooltip: tr('Duplicate'),
               onPressed: () => context.push('/add?duplicate=$transactionId'),
             ),
             IconButton(
               icon: const AppIcon(Icons.edit_outlined),
-              tooltip: 'Edit',
+              tooltip: tr('Edit'),
               onPressed: () => context.push('/add?id=$transactionId'),
             ),
           ],
           IconButton(
             icon: const AppIcon(Icons.delete_outline),
-            tooltip: 'Delete',
+            tooltip: tr('Delete'),
             onPressed: () => _confirmDelete(context, ref),
           ),
         ],
@@ -82,16 +83,16 @@ class TransactionDetailScreen extends ConsumerWidget {
       body: txAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorView(
-          title: 'Something went wrong',
-          message: "Couldn't load this transaction.",
+          title: tr('Something went wrong'),
+          message: tr("Couldn't load this transaction."),
           detail: '$e',
           onRetry: () => ref.invalidate(transactionByIdProvider(transactionId)),
         ),
         data: (t) {
           if (t == null) {
-            return const ErrorView(
-              title: 'Transaction not found',
-              message: 'It may have been deleted.',
+            return ErrorView(
+              title: tr('Transaction not found'),
+              message: tr('It may have been deleted.'),
             );
           }
           // Shown in full here, so an NCT transaction keeps captures
@@ -114,19 +115,19 @@ class TransactionDetailScreen extends ConsumerWidget {
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete this transaction?'),
-        content: const Text('The amount will be added back to your balance.'),
+        title: const Tr('Delete this transaction?'),
+        content: const Tr('The amount will be added back to your balance.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           TextButton(
             style: TextButton.styleFrom(
               foregroundColor: theme.colorScheme.error,
             ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete'),
+            child: const Tr('Delete'),
           ),
         ],
       ),
@@ -138,11 +139,11 @@ class TransactionDetailScreen extends ConsumerWidget {
       navigator.pop();
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(const SnackBar(content: Text('Transaction deleted')));
+        ..showSnackBar(const SnackBar(content: Tr('Transaction deleted')));
     } catch (e) {
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text('Could not delete: $e')));
+        ..showSnackBar(SnackBar(content: Text(tr('Could not delete: {0}', [e]))));
     }
   }
 }
@@ -195,7 +196,7 @@ class _TransactionView extends ConsumerWidget {
               children: [
                 _detailRow(
                   context,
-                  'Date',
+                  tr('Date'),
                   _valueText(
                     context,
                     DateFormat('EEEE, d MMM yyyy').format(t.date),
@@ -204,7 +205,7 @@ class _TransactionView extends ConsumerWidget {
                 _divider(theme),
                 _detailRow(
                   context,
-                  splits.isEmpty ? 'Category' : 'Split into',
+                  splits.isEmpty ? tr('Category') : tr('Split into'),
                   splits.isEmpty
                       ? _categoryValue(context, t, categoryMap)
                       : _splitCategoryValue(context, splits, categoryMap),
@@ -212,7 +213,7 @@ class _TransactionView extends ConsumerWidget {
                 _divider(theme),
                 _detailRow(
                   context,
-                  'Account',
+                  tr('Account'),
                   _accountValue(context, t, accountMap),
                 ),
                 if (t.foreignCurrencyCode != null &&
@@ -220,7 +221,7 @@ class _TransactionView extends ConsumerWidget {
                   _divider(theme),
                   _detailRow(
                     context,
-                    'Original amount',
+                    tr('Original amount'),
                     _valueText(context, _foreignAmountValue(t)),
                   ),
                 ],
@@ -228,7 +229,7 @@ class _TransactionView extends ConsumerWidget {
                   _divider(theme),
                   _detailRow(
                     context,
-                    'Payee',
+                    tr('Payee'),
                     _valueText(
                       context,
                       t.payee?.trim().isNotEmpty == true
@@ -241,8 +242,8 @@ class _TransactionView extends ConsumerWidget {
                   _divider(theme),
                   _detailRow(
                     context,
-                    'Auto',
-                    _valueText(context, 'Posted by "${rule.name}"'),
+                    tr('Auto'),
+                    _valueText(context, tr('Posted by "{0}"', [rule.name])),
                   ),
                 ],
                 _divider(theme),
@@ -250,7 +251,7 @@ class _TransactionView extends ConsumerWidget {
                 _divider(theme),
                 _ModeRow(transaction: t),
                 _divider(theme),
-                _detailRow(context, 'Note', _valueText(context, noteText)),
+                _detailRow(context, tr('Note'), _valueText(context, noteText)),
                 _divider(theme),
                 _NctRow(transaction: t),
               ],
@@ -295,7 +296,7 @@ class _ReceiptCard extends StatelessWidget {
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                   const SizedBox(width: 8),
-                  Text(
+                  Tr(
                     'Receipt',
                     style: theme.textTheme.labelLarge?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
@@ -312,7 +313,7 @@ class _ReceiptCard extends StatelessWidget {
                 fit: BoxFit.cover,
                 errorBuilder: (_, _, _) => Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: Text(
+                  child: Tr(
                     "This receipt's file is missing from the device.",
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
@@ -384,13 +385,13 @@ class _Hero extends StatelessWidget {
         : currencyForCode(t.currencyCode!);
 
     final (String label, IconData icon) = switch (t.type) {
-      TxType.income => ('Money in', Icons.arrow_downward_rounded),
-      TxType.expense => ('Money out', Icons.arrow_upward_rounded),
+      TxType.income => (tr('Money in'), Icons.arrow_downward_rounded),
+      TxType.expense => (tr('Money out'), Icons.arrow_upward_rounded),
       TxType.transfer => ('Transfer', Icons.swap_horiz_rounded),
-      TxType.personOut => ('Gave to person', Icons.call_made_rounded),
-      TxType.personIn => ('Received from person', Icons.call_received_rounded),
-      TxType.correctionIn => ('Correction · added', Icons.tune_rounded),
-      TxType.correctionOut => ('Correction · removed', Icons.tune_rounded),
+      TxType.personOut => (tr('Gave to person'), Icons.call_made_rounded),
+      TxType.personIn => (tr('Received from person'), Icons.call_received_rounded),
+      TxType.correctionIn => (tr('Correction · added'), Icons.tune_rounded),
+      TxType.correctionOut => (tr('Correction · removed'), Icons.tune_rounded),
     };
 
     return Column(
@@ -482,10 +483,10 @@ class _PaymentGroupBanner extends ConsumerWidget {
         final others = legs.where((l) => l.id != transaction.id).toList();
         final total = legs.fold(const Money.zero(), (s, l) => s + l.amount);
         final headline = isLoanGroup
-            ? 'Loan payment · total ${MoneyFormat.symbol(total)}'
+            ? tr('Loan payment · total {0}', [MoneyFormat.symbol(total)])
             : isChangeGroup
-            ? 'Change also went elsewhere'
-            : 'Split payment · total ${MoneyFormat.symbol(total)}';
+            ? tr('Change also went elsewhere')
+            : tr('Split payment · total {0}', [MoneyFormat.symbol(total)]);
 
         return AppCard(
           color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.4),
@@ -533,13 +534,13 @@ class _PaymentGroupBanner extends ConsumerWidget {
                             // not change or a second paying account.
                             isLoanGroup
                                 ? (leg.type == TxType.transfer
-                                      ? 'Principal to '
-                                            '${accountMap[leg.toAccountId]?.name ?? '—'}'
-                                      : 'Interest')
+                                      ? tr('Principal to '
+                                            '{0}', [accountMap[leg.toAccountId]?.name ?? '—'])
+                                      : tr('Interest'))
                                 : leg.type == TxType.transfer
-                                ? 'Change to '
-                                      '${accountMap[leg.toAccountId]?.name ?? '—'}'
-                                : 'Also ${accountMap[leg.accountId]?.name ?? '—'}',
+                                ? tr('Change to '
+                                      '{0}', [accountMap[leg.toAccountId]?.name ?? '—'])
+                                : tr('Also {0}', [accountMap[leg.accountId]?.name ?? '—']),
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: theme.colorScheme.onSecondaryContainer,
                             ),
@@ -601,7 +602,7 @@ class _LinkedTransactionsCard extends ConsumerWidget {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
+                  child: Tr(
                     'Linked transactions',
                     style: theme.textTheme.labelLarge?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
@@ -611,7 +612,7 @@ class _LinkedTransactionsCard extends ConsumerWidget {
                 ),
                 IconButton(
                   icon: const AppIcon(Icons.add_link_rounded),
-                  tooltip: 'Link to another transaction',
+                  tooltip: tr('Link to another transaction'),
                   visualDensity: VisualDensity.compact,
                   onPressed: () => _pickAndLink(
                     context,
@@ -628,7 +629,7 @@ class _LinkedTransactionsCard extends ConsumerWidget {
                 if (links.isEmpty) {
                   return Padding(
                     padding: const EdgeInsets.fromLTRB(26, 0, 8, 0),
-                    child: Text(
+                    child: Tr(
                       'No linked transactions yet.',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
@@ -673,7 +674,7 @@ class _LinkedTransactionsCard extends ConsumerWidget {
     } catch (e) {
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text('Could not link: $e')));
+        ..showSnackBar(SnackBar(content: Text(tr('Could not link: {0}', [e]))));
     }
   }
 
@@ -684,7 +685,7 @@ class _LinkedTransactionsCard extends ConsumerWidget {
     } catch (e) {
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text('Could not remove link: $e')));
+        ..showSnackBar(SnackBar(content: Text(tr('Could not remove link: {0}', [e]))));
     }
   }
 }
@@ -758,7 +759,7 @@ class _LinkedTxRow extends StatelessWidget {
         ),
         IconButton(
           icon: const AppIcon(Icons.link_off_rounded, size: 18),
-          tooltip: 'Remove link',
+          tooltip: tr('Remove link'),
           visualDensity: VisualDensity.compact,
           onPressed: onUnlink,
         ),
@@ -782,14 +783,14 @@ class _NctRow extends ConsumerWidget {
       value: transaction.isNct,
       onChanged: (v) =>
           ref.read(dbProvider).setTransactionNct(transaction.id, v),
-      title: Text(
+      title: Tr(
         'Hide from screenshots',
         style: theme.textTheme.bodyMedium,
       ),
       subtitle: Text(
         transaction.isNct
-            ? 'NCT · hidden in lists until held. Captures are blocked here.'
-            : 'NCT · keep it out of screenshots and recordings',
+            ? tr('NCT · hidden in lists until held. Captures are blocked here.')
+            : tr('NCT · keep it out of screenshots and recordings'),
         style: theme.textTheme.bodySmall?.copyWith(
           color: theme.colorScheme.onSurfaceVariant,
         ),
@@ -816,7 +817,7 @@ class _TagsRow extends ConsumerWidget {
       onTap: () => _pickTags(context, ref),
       child: _detailRow(
         context,
-        'Tags',
+        tr('Tags'),
         tags.isEmpty ? _valueText(context, '—') : _tagsValue(context, tags),
       ),
     );
@@ -854,7 +855,7 @@ class _ModeRow extends ConsumerWidget {
           : _inMode(context, ref, mode),
       child: _detailRow(
         context,
-        'Mode',
+        tr('Mode'),
         mode == null ? _valueText(context, '—') : ModeChip(mode.id),
       ),
     );
@@ -875,13 +876,13 @@ class _ModeRow extends ConsumerWidget {
           children: [
             AppListTile(
               leading: ModeBadge(mode, size: 36),
-              title: Text('Open ${mode.name}'),
+              title: Text(tr('Open {0}', [mode.name])),
               onTap: () => Navigator.of(context).pop('open'),
             ),
             AppListTile(
               leading: const AppIcon(Icons.logout_rounded),
-              title: Text('Move out of ${mode.name}'),
-              subtitle: const Text('It stays in your everyday transactions'),
+              title: Text(tr('Move out of {0}', [mode.name])),
+              subtitle: const Tr('It stays in your everyday transactions'),
               onTap: () => Navigator.of(context).pop('out'),
             ),
             const SizedBox(height: 12),
@@ -899,12 +900,12 @@ class _ModeRow extends ConsumerWidget {
 }
 
 String _typeLabel(TxType type) => switch (type) {
-  TxType.income => 'Money in',
-  TxType.expense => 'Money out',
-  TxType.transfer => 'Transfer',
-  TxType.personOut => 'Gave to person',
-  TxType.personIn => 'Received from person',
-  TxType.correctionIn || TxType.correctionOut => 'Correction',
+  TxType.income => tr('Money in'),
+  TxType.expense => tr('Money out'),
+  TxType.transfer => tr('Transfer'),
+  TxType.personOut => tr('Gave to person'),
+  TxType.personIn => tr('Received from person'),
+  TxType.correctionIn || TxType.correctionOut => tr('Correction'),
 };
 
 // ── Row helpers ───────────────────────────────────────────────────────────────
@@ -981,7 +982,7 @@ Widget _splitCategoryValue(
                 // instead of overflowing past its edge (#137).
                 Flexible(
                   child: Text(
-                    category?.name ?? 'Uncategorised',
+                    category?.name ?? tr('Uncategorised'),
                     textAlign: TextAlign.right,
                     style: theme.textTheme.bodyLarge?.copyWith(
                       fontWeight: FontWeight.w500,
@@ -1014,8 +1015,8 @@ Widget _categoryValue(
         const SizedBox(height: 2),
         Text(
           t.type.isCorrection
-              ? 'Not money in or out — never counted in stats'
-              : 'Transfers have no category',
+              ? tr('Not money in or out — never counted in stats')
+              : tr('Transfers have no category'),
           textAlign: TextAlign.right,
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
@@ -1026,7 +1027,7 @@ Widget _categoryValue(
   }
 
   final category = t.categoryId == null ? null : categoryMap[t.categoryId];
-  final name = category?.name ?? 'Uncategorised';
+  final name = category?.name ?? tr('Uncategorised');
   final color = category != null
       ? Color(category.colorValue)
       : theme.colorScheme.onSurfaceVariant;
@@ -1091,13 +1092,13 @@ Widget _accountValue(
   final acctName = account?.name ?? '—';
 
   final text = switch (t.type) {
-    TxType.income => 'Deposited to $acctName',
-    TxType.expense => 'Paid via $acctName',
+    TxType.income => tr('Deposited to {0}', [acctName]),
+    TxType.expense => tr('Paid via {0}', [acctName]),
     TxType.transfer => '$acctName → ${accountMap[t.toAccountId]?.name ?? '—'}',
-    TxType.personOut => 'Given from $acctName',
-    TxType.personIn => 'Received into $acctName',
-    TxType.correctionIn => 'Added to $acctName',
-    TxType.correctionOut => 'Removed from $acctName',
+    TxType.personOut => tr('Given from {0}', [acctName]),
+    TxType.personIn => tr('Received into {0}', [acctName]),
+    TxType.correctionIn => tr('Added to {0}', [acctName]),
+    TxType.correctionOut => tr('Removed from {0}', [acctName]),
   };
 
   final linkedId = account?.linkedAccountId;
@@ -1110,7 +1111,7 @@ Widget _accountValue(
       if (linked != null) ...[
         const SizedBox(height: 4),
         Text(
-          'Money came from ${linked.name}.',
+          tr('Money came from {0}.', [linked.name]),
           textAlign: TextAlign.right,
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,

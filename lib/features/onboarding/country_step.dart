@@ -7,6 +7,7 @@ import '../../core/money.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import '../settings/currency_picker_sheet.dart';
+import '../../core/l10n/l10n.dart';
 
 /// What the country step settled on: a country, and so its currency — or,
 /// for a country the list doesn't carry, a currency picked directly.
@@ -188,7 +189,7 @@ class _CountryStepState extends State<CountryStep> {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(32, 28, 32, 8),
               child: Text(
-                'No country matches "${_query.trim()}".',
+                tr('No country matches "{0}".', [_query.trim()]),
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: cs.onSurfaceVariant,
@@ -231,7 +232,7 @@ class _CountryStepState extends State<CountryStep> {
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Text(
+            child: Tr(
               'Where do you live?',
               style: theme.textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.w700,
@@ -241,7 +242,7 @@ class _CountryStepState extends State<CountryStep> {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 12, 8, 24),
-            child: Text(
+            child: Tr(
               'Your country sets your parent currency — every total '
               'in XPENC is shown in it. You can change it later in '
               'Settings.',
@@ -355,14 +356,14 @@ class _EmptyChoice extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              Tr(
                 'Pick your country',
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
+              Tr(
                 'Search or scroll the list below.',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: cs.onSurfaceVariant,
@@ -428,7 +429,7 @@ class _FilledChoice extends StatelessWidget {
                   Text(
                     country != null
                         ? '${currency.name} · ${currency.code}'
-                        : 'Chosen directly · ${currency.code}',
+                        : tr('Chosen directly · {0}', [currency.code]),
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: cs.onSurfaceVariant,
                     ),
@@ -449,7 +450,7 @@ class _FilledChoice extends StatelessWidget {
           child: Row(
             children: [
               Expanded(
-                child: Text(
+                child: Tr(
                   'Amounts will look like',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: cs.onSurfaceVariant,
@@ -480,7 +481,7 @@ class _FilledChoice extends StatelessWidget {
               AppIcon(Icons.near_me_rounded, size: 16, color: cs.primary),
               const SizedBox(width: 6),
               Expanded(
-                child: Text(
+                child: Tr(
                   "Suggested from your phone's region",
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: cs.primary,
@@ -550,10 +551,10 @@ class _SearchField extends StatelessWidget {
       onChanged: onChanged,
       textInputAction: TextInputAction.search,
       decoration: InputDecoration(
-        hintText: 'Search country or currency',
+        hintText: tr('Search country or currency'),
         prefixIcon: searching
             ? IconButton(
-                tooltip: 'Back',
+                tooltip: tr('Back'),
                 onPressed: onExit,
                 icon: const AppIcon(Icons.arrow_back_rounded),
               )
@@ -561,7 +562,7 @@ class _SearchField extends StatelessWidget {
         suffixIcon: controller.text.isEmpty
             ? null
             : IconButton(
-                tooltip: 'Clear',
+                tooltip: tr('Clear'),
                 onPressed: () {
                   controller.clear();
                   onChanged('');
@@ -769,14 +770,14 @@ class _NotListedTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    Tr(
                       "Don't see your country?",
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
+                    Tr(
                       'Choose your currency directly instead.',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,

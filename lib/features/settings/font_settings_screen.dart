@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/font_options.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Text size, boldness and font family — three global reading-comfort knobs,
 /// each applied over the whole app (see `AppTheme.of` and `XpencApp`'s
@@ -33,10 +34,10 @@ class FontSettingsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppTopBar(
-        title: const Text('Font'),
+        title: const Tr('Font'),
         actions: [
           IconButton(
-            tooltip: 'Reset to default',
+            tooltip: tr('Reset to default'),
             icon: const AppIcon(Icons.restart_alt_rounded),
             onPressed: isDefault
                 ? null
@@ -59,7 +60,7 @@ class FontSettingsScreen extends ConsumerWidget {
         children: [
           _PreviewCard(family: family),
           const SizedBox(height: 20),
-          _sectionLabel(context, 'Text size'),
+          _sectionLabel(context, tr('Text size')),
           AppCard(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
@@ -69,7 +70,7 @@ class FontSettingsScreen extends ConsumerWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
+                      Tr(
                         'Size',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: cs.onSurfaceVariant,
@@ -116,7 +117,7 @@ class FontSettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 20),
-          _sectionLabel(context, 'Boldness'),
+          _sectionLabel(context, tr('Boldness')),
           AppCard(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
@@ -126,7 +127,7 @@ class FontSettingsScreen extends ConsumerWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
+                      Tr(
                         'Weight',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: cs.onSurfaceVariant,
@@ -175,7 +176,7 @@ class FontSettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 20),
-          _sectionLabel(context, 'Font family'),
+          _sectionLabel(context, tr('Font family')),
           AppCard(
             child: Column(
               children: [
@@ -218,11 +219,11 @@ class FontSettingsScreen extends ConsumerWidget {
   // "Default" for its own zero state, and showing both on one screen read as
   // if they were the same choice.
   String _weightLabel(int delta) => switch (delta) {
-    <= -2 => 'Lighter',
-    -1 => 'Light',
-    0 => 'Normal',
-    1 => 'Bold',
-    _ => 'Bolder',
+    <= -2 => tr('Lighter'),
+    -1 => tr('Light'),
+    0 => tr('Normal'),
+    1 => tr('Bold'),
+    _ => tr('Bolder'),
   };
 }
 
@@ -243,9 +244,9 @@ class _PreviewCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Grocery Shopping', style: theme.textTheme.titleLarge),
+            Tr('Grocery Shopping', style: theme.textTheme.titleLarge),
             const SizedBox(height: 6),
-            Text(
+            Tr(
               'Food & Dining · Today',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: cs.onSurfaceVariant,
@@ -285,7 +286,7 @@ class _FontFamilyTile extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
       leading: SizedBox(
         width: 32,
-        child: Text(
+        child: Tr(
           'Aa',
           style: TextStyle(fontSize: 20, fontFamily: option.family),
         ),

@@ -7,6 +7,7 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../persons/contact_import.dart';
 import '../persons/person_avatar.dart';
+import '../../core/l10n/l10n.dart';
 
 /// What the payee picker hands back. [personId] is set when the payee is one
 /// of the user's people — the transaction then shows on their page, but
@@ -97,15 +98,15 @@ class _PayeePickerSheetState extends ConsumerState<PayeePickerSheet> {
       final contact = await pickContact(ref.read(dbProvider));
       if (contact == null || !mounted) return null;
       if (contact.name == null) {
-        setState(() => _notice = 'That contact has no name to use.');
+        setState(() => _notice = tr('That contact has no name to use.'));
         return null;
       }
       return contact;
     } on ContactsAccessOff {
-      if (mounted) setState(() => _notice = contactsAccessOffMessage);
+      if (mounted) setState(() => _notice = tr(contactsAccessOffMessage));
       return null;
     } on PlatformException {
-      if (mounted) setState(() => _notice = "Couldn't open contacts.");
+      if (mounted) setState(() => _notice = tr("Couldn't open contacts."));
       return null;
     }
   }
@@ -123,7 +124,7 @@ class _PayeePickerSheetState extends ConsumerState<PayeePickerSheet> {
       _pop(
         existing.name,
         existing.id,
-        notice: '${existing.name} is already in your people — used them.',
+        notice: tr('{0} is already in your people — used them.', [existing.name]),
       );
       return;
     }
@@ -135,7 +136,7 @@ class _PayeePickerSheetState extends ConsumerState<PayeePickerSheet> {
           photoPath: contact.photoPath,
         );
     if (!mounted) return;
-    _pop(contact.name!, id, notice: 'Added ${contact.name} to your people.');
+    _pop(contact.name!, id, notice: tr('Added {0} to your people.', [contact.name]));
   }
 
   /// "Payee from contacts": a plain payee named after the contact — unless
@@ -151,7 +152,7 @@ class _PayeePickerSheetState extends ConsumerState<PayeePickerSheet> {
       _pop(
         existing.name,
         existing.id,
-        notice: '${existing.name} is already in your people — used them.',
+        notice: tr('{0} is already in your people — used them.', [existing.name]),
       );
       return;
     }
@@ -174,7 +175,7 @@ class _PayeePickerSheetState extends ConsumerState<PayeePickerSheet> {
     }
     final id = await ref.read(dbProvider).addPerson(name);
     if (!mounted) return;
-    _pop(name, id, notice: 'Added $name to your people.');
+    _pop(name, id, notice: tr('Added {0} to your people.', [name]));
   }
 
   @override
@@ -244,7 +245,7 @@ class _PayeePickerSheetState extends ConsumerState<PayeePickerSheet> {
                 children: [
                   Expanded(
                     child: Text(
-                      widget.isIncome ? 'Who paid you?' : 'Who did you pay?',
+                      widget.isIncome ? tr('Who paid you?') : tr('Who did you pay?'),
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -257,7 +258,7 @@ class _PayeePickerSheetState extends ConsumerState<PayeePickerSheet> {
                         personId: null,
                         notice: null,
                       )),
-                      child: const Text('Clear'),
+                      child: const Tr('Clear'),
                     ),
                 ],
               ),
@@ -282,7 +283,7 @@ class _PayeePickerSheetState extends ConsumerState<PayeePickerSheet> {
                   }
                 },
                 decoration: InputDecoration(
-                  hintText: 'Search or type a new payee',
+                  hintText: tr('Search or type a new payee'),
                   prefixIcon: const AppIcon(Icons.search_rounded),
                   filled: true,
                   fillColor: theme.colorScheme.surfaceContainerHighest,
@@ -314,21 +315,21 @@ class _PayeePickerSheetState extends ConsumerState<PayeePickerSheet> {
                     const SizedBox(height: 8),
                     _OptionTile(
                       icon: Icons.storefront_outlined,
-                      title: 'Use “$typed” as payee',
-                      subtitle: 'A shop, company or anyone',
+                      title: tr('Use “{0}” as payee', [typed]),
+                      subtitle: tr('A shop, company or anyone'),
                       onTap: _busy ? null : () => _pop(typed, null),
                     ),
                     _OptionTile(
                       icon: Icons.person_add_alt_1_outlined,
-                      title: 'Add “$typed” as a person',
-                      subtitle: 'Shows on their page, not in owe/due',
+                      title: tr('Add “{0}” as a person', [typed]),
+                      subtitle: tr('Shows on their page, not in owe/due'),
                       onTap: _busy ? null : () => _addTypedAsPerson(typed),
                     ),
                   ],
                   // GitHub #167: hidden while contacts access is off.
                   if (ref.watch(contactsAccessProvider).valueOrNull ??
                       false) ...[
-                    section('FROM CONTACTS'),
+                    section(tr('FROM CONTACTS')),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Row(
@@ -336,7 +337,7 @@ class _PayeePickerSheetState extends ConsumerState<PayeePickerSheet> {
                           Expanded(
                             child: _ContactButton(
                               icon: Icons.person_add_alt_1_outlined,
-                              label: 'New person',
+                              label: tr('New person'),
                               onTap: _busy ? null : _personFromContacts,
                             ),
                           ),
@@ -344,7 +345,7 @@ class _PayeePickerSheetState extends ConsumerState<PayeePickerSheet> {
                           Expanded(
                             child: _ContactButton(
                               icon: Icons.contacts_outlined,
-                              label: 'New payee',
+                              label: tr('New payee'),
                               onTap: _busy ? null : _payeeFromContacts,
                             ),
                           ),
@@ -361,7 +362,7 @@ class _PayeePickerSheetState extends ConsumerState<PayeePickerSheet> {
                           photoPath: p.photoPath,
                         ),
                         title: p.name,
-                        subtitle: 'Person',
+                        subtitle: tr('Person'),
                         selected: widget.selectedPersonId == p.id,
                         onTap: _busy ? null : () => _pop(p.name, p.id),
                       ),
@@ -391,7 +392,7 @@ class _PayeePickerSheetState extends ConsumerState<PayeePickerSheet> {
                       typed.isEmpty)
                     Padding(
                       padding: const EdgeInsets.fromLTRB(32, 32, 32, 0),
-                      child: Text(
+                      child: Tr(
                         'No payees yet — type a name above, or pick one '
                         'from your contacts.',
                         textAlign: TextAlign.center,

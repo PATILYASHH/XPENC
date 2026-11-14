@@ -13,6 +13,7 @@ import 'stats_sections.dart';
 import 'xpenc_score.dart';
 import 'xpenc_score_provider.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Where the full score breakdown lives. Pushed on the root navigator, so it
 /// opens full-screen from the Stats tab as well as from More › Stats.
@@ -75,7 +76,7 @@ class ScoreGauge extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  caption ?? 'of 100',
+                  caption ?? tr('of 100'),
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: cs.onSurfaceVariant,
                   ),
@@ -168,7 +169,7 @@ class XpencScoreCard extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    Tr(
                       'XPENC SCORE',
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: cs.onSurfaceVariant,
@@ -178,7 +179,7 @@ class XpencScoreCard extends ConsumerWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      grade?.label ?? 'Not enough data yet',
+                      grade?.label ?? tr('Not enough data yet'),
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w700,
                         color: result.score == null
@@ -190,10 +191,10 @@ class XpencScoreCard extends ConsumerWidget {
                     Text(
                       result.hasScore
                           ? (next == null
-                                ? 'Every rule at full marks.'
-                                : 'Next: improve ${next.title.toLowerCase()}')
-                          : 'Add at least $kScoreMinTransactions money in or '
-                                'money out entries to see your score.',
+                                ? tr('Every rule at full marks.')
+                                : tr('Next: improve {0}', [next.title.toLowerCase()]))
+                          : tr('Add at least {0} money in or '
+                                'money out entries to see your score.', [kScoreMinTransactions]),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -204,7 +205,7 @@ class XpencScoreCard extends ConsumerWidget {
                     Row(
                       children: [
                         Flexible(
-                          child: Text(
+                          child: Tr(
                             'See breakdown',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -246,7 +247,7 @@ class XpencScoreScreen extends ConsumerWidget {
     final grade = result.grade;
 
     return Scaffold(
-      appBar: AppTopBar(title: const Text('XPENC Score')),
+      appBar: AppTopBar(title: const Tr('XPENC Score')),
       body: ledger.isLoading
           ? const StatsSectionLoader(height: 240)
           : ListView(
@@ -255,7 +256,7 @@ class XpencScoreScreen extends ConsumerWidget {
                 Center(child: ScoreGauge(score: result.score, size: 184)),
                 const SizedBox(height: 12),
                 Text(
-                  grade?.label ?? 'Not enough data yet',
+                  grade?.label ?? tr('Not enough data yet'),
                   textAlign: TextAlign.center,
                   style: theme.textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w700,
@@ -267,10 +268,10 @@ class XpencScoreScreen extends ConsumerWidget {
                 const SizedBox(height: 6),
                 Text(
                   grade?.blurb ??
-                      'Add at least $kScoreMinTransactions money in or out '
-                          'entries (you have ${result.entriesInWindow} in the '
-                          'last $kScoreWindowDays days) and your score appears '
-                          'here.',
+                      tr('Add at least {0} money in or out '
+                          'entries (you have {1} in the '
+                          'last {2} days) and your score appears '
+                          'here.', [kScoreMinTransactions, result.entriesInWindow, kScoreWindowDays]),
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: cs.onSurfaceVariant,
@@ -281,7 +282,7 @@ class XpencScoreScreen extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: StatTile(
-                        label: 'Money in · 90 days',
+                        label: tr('Money in · 90 days'),
                         value: MoneyFormat.compact(result.windowIncome),
                         color: AppColors.income,
                       ),
@@ -289,7 +290,7 @@ class XpencScoreScreen extends ConsumerWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: StatTile(
-                        label: 'Money out · 90 days',
+                        label: tr('Money out · 90 days'),
                         value: MoneyFormat.compact(result.windowExpense),
                         color: AppColors.expense,
                       ),
@@ -298,7 +299,7 @@ class XpencScoreScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 28),
                 if (result.hasScore && result.improvements.isNotEmpty) ...[
-                  const SectionCaption('What to improve'),
+                  SectionCaption(tr('What to improve')),
                   AppCard(
                     margin: EdgeInsets.zero,
                     child: Padding(
@@ -320,8 +321,8 @@ class XpencScoreScreen extends ConsumerWidget {
                               ),
                               title: Text(p.tip!),
                               subtitle: Text(
-                                '+${(p.weight - p.points).round()} points '
-                                'available · ${p.title}',
+                                tr('+{0} points '
+                                'available · {1}', [(p.weight - p.points).round(), p.title]),
                               ),
                             ),
                         ],
@@ -330,13 +331,13 @@ class XpencScoreScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 28),
                 ],
-                const SectionCaption('Breakdown'),
+                SectionCaption(tr('Breakdown')),
                 for (final p in result.pillars) ...[
                   _PillarCard(pillar: p),
                   const SizedBox(height: 10),
                 ],
                 const SizedBox(height: 18),
-                const SectionCaption('How it\'s calculated'),
+                SectionCaption(tr('How it\'s calculated')),
                 AppCard(
                   margin: EdgeInsets.zero,
                   child: Padding(
@@ -346,21 +347,21 @@ class XpencScoreScreen extends ConsumerWidget {
                       children: [
                         for (final spec in kScorePillars) ...[
                           Text(
-                            '${spec.title} · ${spec.weight} pts',
+                            tr('{0} · {1} pts', [tr(spec.title), spec.weight]),
                             style: theme.textTheme.titleSmall?.copyWith(
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            spec.rule,
+                            tr(spec.rule),
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: cs.onSurfaceVariant,
                             ),
                           ),
                           const SizedBox(height: 12),
                         ],
-                        Text(
+                        Tr(
                           'Rules with nothing to judge (no budgets, no loans) '
                           'are left out and the rest scaled to 100, so you '
                           'are never marked down for a feature you don\'t '
@@ -372,7 +373,7 @@ class XpencScoreScreen extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Text(
+                        Tr(
                           'Grades: 80+ Excellent · 65+ Good · 50+ Fair · '
                           '35+ Needs work · below 35 At risk.',
                           style: theme.textTheme.bodySmall?.copyWith(
@@ -384,7 +385,7 @@ class XpencScoreScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Text(
+                Tr(
                   'Calculated on this device from your own records. Not a '
                   'credit score, and never shared.',
                   textAlign: TextAlign.center,
@@ -432,7 +433,7 @@ class _PillarCard extends StatelessWidget {
                 Text(
                   p.applicable
                       ? '${p.points.round()} / ${p.weight}'
-                      : 'Not scored',
+                      : tr('Not scored'),
                   style: theme.textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.w700,
                     color: color,

@@ -4,6 +4,7 @@ import '../../data/database.dart' show TransactionTemplateRow;
 import '../../data/tables.dart' show AppMode, TxType;
 import '../../features/calculators/calculator_kind.dart';
 import '../widgets/money_text.dart' show iconForTxType;
+import '../../core/l10n/l10n.dart';
 
 /// The hold-➕ radial menu's 8 slots — one ball per compass direction around
 /// a fixed ✕ (cancel) in the middle. Slot `i` sits at [holdMenuSlotAngles]
@@ -45,20 +46,22 @@ const quickActionTemplatePrefix = 'template:';
 class QuickActionSpec {
   const QuickActionSpec({
     required this.id,
-    required this.label,
+    required String label,
     required this.icon,
     required this.route,
-    this.group = 'Modules',
+    String group = 'Modules',
     this.hiddenInBasic = false,
-  });
+  }) : _label = label, _group = group;
 
   final String id;
-  final String label;
+  final String _label;
+  String get label => tr(_label);
   final IconData icon;
   final String route;
 
   /// Section heading in the settings picker.
-  final String group;
+  final String _group;
+  String get group => tr(_group);
 
   /// Basic mode has no budgets — a slot pointing there resolves to empty
   /// while Basic is active (the stored id is kept, so switching back
@@ -217,7 +220,7 @@ QuickActionSpec? resolveQuickAction(
           label: t.name,
           icon: iconForTxType(t.type),
           route: '/add?template=${t.id}',
-          group: 'Templates',
+          group: tr('Templates'),
         );
       }
     }

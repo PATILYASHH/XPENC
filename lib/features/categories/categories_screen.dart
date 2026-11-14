@@ -13,6 +13,7 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Preset colours for a category. Plain ints — this is the category's own
 /// decorative colour, not a money-direction signal.
@@ -58,24 +59,24 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppTopBar(
-        title: const Text('Categories'),
+        title: const Tr('Categories'),
         actions: [
           IconButton(
             icon: const AppIcon(Icons.inventory_2_outlined),
-            tooltip: 'Archived categories',
+            tooltip: tr('Archived categories'),
             onPressed: () => context.push('/more/categories/archived'),
           ),
           IconButton(
             icon: const AppIcon(Icons.dashboard_customize_outlined),
-            tooltip: 'Templates',
+            tooltip: tr('Templates'),
             onPressed: () => context.push('/more/categories/templates'),
           ),
         ],
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
-            Tab(text: 'Money out'),
-            Tab(text: 'Money in'),
+          tabs: [
+            Tab(text: tr('Money out')),
+            Tab(text: tr('Money in')),
           ],
         ),
       ),
@@ -87,7 +88,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen>
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        tooltip: 'New category',
+        tooltip: tr('New category'),
         onPressed: () {
           final kind = _tabController.index == 0
               ? CategoryKind.expense
@@ -113,10 +114,10 @@ class _CategoryList extends ConsumerWidget {
 
     return categoriesAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, _) => const Center(
+      error: (_, _) => Center(
         child: Padding(
           padding: EdgeInsets.all(24),
-          child: InlineErrorView(message: "Couldn't load categories"),
+          child: InlineErrorView(message: tr("Couldn't load categories")),
         ),
       ),
       data: (categories) {
@@ -127,15 +128,15 @@ class _CategoryList extends ConsumerWidget {
             ModuleShortcuts([
               // Basic mode has no budgets.
               if (ref.watch(appModeProvider) != AppMode.basic)
-                const ModuleShortcut(
+                ModuleShortcut(
                   Icons.donut_large_outlined,
-                  'Budgets',
+                  tr('Budgets'),
                   '/more/budgets',
                 ),
-              const ModuleShortcut(Icons.sell_outlined, 'Tags', '/more/tags'),
-              const ModuleShortcut(
+              ModuleShortcut(Icons.sell_outlined, tr('Tags'), '/more/tags'),
+              ModuleShortcut(
                 Icons.receipt_long_outlined,
-                'Transactions',
+                tr('Transactions'),
                 '/more/transactions',
               ),
             ], padding: const EdgeInsets.fromLTRB(0, 0, 0, 12)),
@@ -162,7 +163,7 @@ class _CategoryList extends ConsumerWidget {
                 ),
               ),
             const SizedBox(height: 20),
-            Text(
+            Tr(
               'Group related categories under a parent — a subcategory rolls its '
               'spending up into its parent. Categories are archived, not '
               'deleted, so past reports stay intact — restore them from the '
@@ -257,7 +258,7 @@ class _CategoryTile extends ConsumerWidget {
           if (!isChild)
             IconButton(
               icon: const AppIcon(Icons.add),
-              tooltip: 'Add subcategory',
+              tooltip: tr('Add subcategory'),
               visualDensity: VisualDensity.compact,
               onPressed: () => _openCategoryEditor(
                 context,
@@ -267,7 +268,7 @@ class _CategoryTile extends ConsumerWidget {
             ),
           IconButton(
             icon: const AppIcon(Icons.edit_outlined),
-            tooltip: 'Edit',
+            tooltip: tr('Edit'),
             visualDensity: VisualDensity.compact,
             onPressed: () => _openCategoryEditor(
               context,
@@ -277,7 +278,7 @@ class _CategoryTile extends ConsumerWidget {
           ),
           IconButton(
             icon: const AppIcon(Icons.archive_outlined),
-            tooltip: 'Archive',
+            tooltip: tr('Archive'),
             visualDensity: VisualDensity.compact,
             onPressed: () => _confirmArchive(context, ref, category),
           ),
@@ -309,7 +310,7 @@ class _EmptyCategories extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'No $label categories yet — tap + to add one.',
+            tr('No {0} categories yet — tap + to add one.', [label]),
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -360,29 +361,30 @@ Future<void> _confirmArchive(
   if (!context.mounted) return;
 
   final usage = count > 0
-      ? '$count transactions use this category. They keep it — '
+      ? tr('{0} transactions use this category. They keep it — '
             'archiving only hides the category from new entries. '
-            'Nothing is deleted.'
-      : "This category isn't used yet. It will be hidden from new "
-            'entries.';
+            'Nothing is deleted.', [count])
+      : tr("This category isn't used yet. It will be hidden from new "
+            'entries.');
   final cascade = childCount > 0
-      ? '\n\nIts $childCount ${childCount == 1 ? 'subcategory' : 'subcategories'} '
-            'will be archived too.'
+      ? tr('\n\nIts {0} will be archived too.', [
+          plural(childCount, '1 subcategory', '{0} subcategories'),
+        ])
       : '';
 
   final confirmed = await showAppDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: Text('Archive "${category.name}"?'),
+      title: Text(tr('Archive "{0}"?', [category.name])),
       content: Text('$usage$cascade'),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Cancel'),
+          child: const Tr('Cancel'),
         ),
         FilledButton(
           onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: const Text('Archive'),
+          child: const Tr('Archive'),
         ),
       ],
     ),
@@ -393,9 +395,9 @@ Future<void> _confirmArchive(
   await db.archiveCategory(category.id);
   messenger.showSnackBar(
     SnackBar(
-      content: const Text('Category archived'),
+      content: const Tr('Category archived'),
       action: SnackBarAction(
-        label: 'Undo',
+        label: tr('Undo'),
         onPressed: () => db.unarchiveCategory(category.id),
       ),
     ),
@@ -455,7 +457,7 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
   Future<void> _save() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      _showError('Give the category a name.');
+      _showError(tr('Give the category a name.'));
       return;
     }
 
@@ -484,11 +486,11 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
     } on ArgumentError catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      _showError(e.message?.toString() ?? 'Could not save the category.');
+      _showError(e.message?.toString() ?? tr('Could not save the category.'));
     } catch (_) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      _showError('Could not save the category.');
+      _showError(tr('Could not save the category.'));
     }
   }
 
@@ -511,7 +513,7 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              _isEdit ? 'Edit category' : 'New category',
+              _isEdit ? tr('Edit category') : tr('New category'),
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
@@ -522,16 +524,16 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
               autofocus: !_isEdit,
               textCapitalization: TextCapitalization.words,
               maxLength: 40,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                hintText: 'e.g. Groceries, Salary',
+              decoration: InputDecoration(
+                labelText: tr('Name'),
+                hintText: tr('e.g. Groceries, Salary'),
                 counterText: '',
               ),
               onSubmitted: (_) => _save(),
             ),
             const SizedBox(height: 20),
             _buildParentField(theme),
-            _fieldLabel(theme, 'Colour'),
+            _fieldLabel(theme, tr('Colour')),
             const SizedBox(height: 12),
             Wrap(
               spacing: 14,
@@ -539,7 +541,7 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
               children: [for (final c in _presetColors) _colorDot(theme, c)],
             ),
             const SizedBox(height: 24),
-            _fieldLabel(theme, 'Icon'),
+            _fieldLabel(theme, tr('Icon')),
             const SizedBox(height: 12),
             _iconField(theme),
             const SizedBox(height: 28),
@@ -551,7 +553,7 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
                       width: 22,
                       child: CircularProgressIndicator(strokeWidth: 2.4),
                     )
-                  : const Text('Save'),
+                  : const Tr('Save'),
             ),
           ],
         ),
@@ -574,8 +576,8 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
     if (hasChildren) {
       return wrap(
         InputDecorator(
-          decoration: const InputDecoration(labelText: 'Parent category'),
-          child: Text(
+          decoration: InputDecoration(labelText: tr('Parent category')),
+          child: Tr(
             'Top-level — it has subcategories',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -600,14 +602,14 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
       DropdownButtonFormField<int?>(
         initialValue: value,
         isExpanded: true,
-        decoration: const InputDecoration(
-          labelText: 'Parent category',
-          helperText: 'Optional — nest this under another category',
+        decoration: InputDecoration(
+          labelText: tr('Parent category'),
+          helperText: tr('Optional — nest this under another category'),
         ),
         items: [
           const DropdownMenuItem<int?>(
             value: null,
-            child: Text('None (top-level)'),
+            child: Tr('None (top-level)'),
           ),
           for (final p in parents)
             DropdownMenuItem<int?>(
@@ -695,7 +697,7 @@ class _CategoryEditorSheetState extends ConsumerState<_CategoryEditorSheet> {
             ),
             const SizedBox(width: 14),
             Expanded(
-              child: Text(
+              child: Tr(
                 'Tap to change',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,

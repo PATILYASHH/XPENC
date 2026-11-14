@@ -13,6 +13,7 @@ import 'connector_friends.dart';
 import 'contact_import.dart';
 import 'person_avatar.dart';
 import 'person_photo_storage.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Opens the "edit person" bottom sheet.
 Future<void> showEditPersonSheet(
@@ -123,10 +124,10 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
       }
     } on ContactsAccessOff {
       if (!mounted) return;
-      _showError(contactsAccessOffMessage);
+      _showError(tr(contactsAccessOffMessage));
     } on PlatformException {
       if (!mounted) return;
-      _showError("Couldn't open contacts.");
+      _showError(tr("Couldn't open contacts."));
     }
   }
 
@@ -152,20 +153,20 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
       final link = await showAppDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: Text('Is this ${existing.name}?'),
+          title: Text(tr('Is this {0}?', [existing.name])),
           content: Text(
-            '${existing.name} is already in your people'
-            '${existing.isArchived ? ' (archived)' : ''}. Link them to '
-            '@${friend.username}, or add a separate person?',
+            tr('{0} is already in your people'
+            '{1}. Link them to '
+            '@{2}, or add a separate person?', [existing.name, existing.isArchived ? tr(' (archived)') : '', friend.username]),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Add separate'),
+              child: const Tr('Add separate'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(ctx).pop(true),
-              child: Text('Link ${existing.name}'),
+              child: Text(tr('Link {0}', [existing.name])),
             ),
           ],
         ),
@@ -194,7 +195,7 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
         username: friend.username,
       );
     } on FriendAlreadyLinked catch (e) {
-      _showError('@${friend.username} is already ${e.person.name}.');
+      _showError(tr('@{0} is already {1}.', [friend.username, e.person.name]));
       return;
     }
     if (existing.isArchived) await db.unarchivePerson(existing.id);
@@ -205,7 +206,7 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        SnackBar(content: Text('${existing.name} is @${friend.username}')),
+        SnackBar(content: Text(tr('{0} is @{1}', [existing.name, friend.username]))),
       );
   }
 
@@ -226,7 +227,7 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
       setState(() => _photoPath = path);
     } on PlatformException {
       if (!mounted) return;
-      _showError("Couldn't open your photos.");
+      _showError(tr("Couldn't open your photos."));
     }
   }
 
@@ -261,8 +262,8 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
         SnackBar(
           content: Text(
             existing.isArchived
-                ? '${existing.name} was archived — brought them back.'
-                : '${existing.name} is already in your people.',
+                ? tr('{0} was archived — brought them back.', [existing.name])
+                : tr('{0} is already in your people.', [existing.name]),
           ),
         ),
       );
@@ -286,7 +287,7 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
   Future<void> _save() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      _showError('Give them a name.');
+      _showError(tr('Give them a name.'));
       return;
     }
 
@@ -308,20 +309,20 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
         final addAnyway = await showAppDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('Already in your people'),
+            title: const Tr('Already in your people'),
             content: Text(
-              '${existing.name} already exists'
-              '${existing.isArchived ? ' (archived)' : ''}. '
-              'Keep the existing one, or add a separate person?',
+              tr('{0} already exists'
+              '{1}. '
+              'Keep the existing one, or add a separate person?', [existing.name, existing.isArchived ? tr(' (archived)') : '']),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('Add separate'),
+                child: const Tr('Add separate'),
               ),
               FilledButton(
                 onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('Keep existing'),
+                child: const Tr('Keep existing'),
               ),
             ],
           ),
@@ -347,7 +348,7 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
     if (person == null && friend != null) {
       final taken = await ref.read(dbProvider).personByFriendId(friend.id);
       if (taken != null) {
-        _showError('@${friend.username} is already ${taken.name}.');
+        _showError(tr('@{0} is already {1}.', [friend.username, taken.name]));
         return;
       }
     }
@@ -422,7 +423,7 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              widget.person == null ? 'Add person' : 'Edit person',
+              widget.person == null ? tr('Add person') : tr('Edit person'),
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
@@ -434,7 +435,7 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
                 clipBehavior: Clip.none,
                 children: [
                   Tooltip(
-                    message: _photoPath == null ? 'Add photo' : 'Change photo',
+                    message: _photoPath == null ? tr('Add photo') : tr('Change photo'),
                     child: InkWell(
                       onTap: _pickFromGallery,
                       customBorder: const CircleBorder(),
@@ -461,7 +462,7 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
                       right: -4,
                       top: -4,
                       child: Tooltip(
-                        message: 'Remove photo',
+                        message: tr('Remove photo'),
                         child: InkWell(
                           onTap: () => setState(() => _photoPath = null),
                           customBorder: const CircleBorder(),
@@ -489,7 +490,7 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
             Center(
               child: TextButton(
                 onPressed: _pickFromGallery,
-                child: Text(_photoPath == null ? 'Add photo' : 'Change photo'),
+                child: Text(_photoPath == null ? tr('Add photo') : tr('Change photo')),
               ),
             ),
             const SizedBox(height: 8),
@@ -500,13 +501,13 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
               textCapitalization: TextCapitalization.words,
               textInputAction: TextInputAction.next,
               decoration: InputDecoration(
-                labelText: 'Name',
-                hintText: 'e.g. Yash',
+                labelText: tr('Name'),
+                hintText: tr('e.g. Yash'),
                 suffixIcon: contactsOn
                     ? IconButton(
                         tooltip: widget.person == null
-                            ? 'Pick from contacts'
-                            : 'Link contact (phone & photo)',
+                            ? tr('Pick from contacts')
+                            : tr('Link contact (phone & photo)'),
                         icon: const AppIcon(Icons.contacts_outlined),
                         onPressed: _pickFromContacts,
                       )
@@ -521,11 +522,11 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
                     ? TextButton.icon(
                         onPressed: _pickFromFriends,
                         icon: const AppIcon(Icons.group_outlined, size: 18),
-                        label: const Text('From Connector friends'),
+                        label: const Tr('From Connector friends'),
                       )
                     : InputChip(
                         avatar: const AppIcon(Icons.link_rounded, size: 18),
-                        label: Text('@${_friend!.username} · Connector friend'),
+                        label: Text(tr('@{0} · Connector friend', [_friend!.username])),
                         onDeleted: () => setState(() => _friend = null),
                       ),
               ),
@@ -533,14 +534,14 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
             const SizedBox(height: 16),
 
             if (anyPaymentMethodEnabled) ...[
-              Text(
+              Tr(
                 'Payment IDs',
                 style: theme.textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
+              Tr(
                 "Lets you pay them directly from their page. Not shared "
                 "anywhere — stored only on this phone. Turn a method off in "
                 "Settings → Payment Support if it doesn't apply here.",
@@ -554,9 +555,9 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
                   controller: _upiIdController,
                   textInputAction: TextInputAction.next,
                   autocorrect: false,
-                  decoration: const InputDecoration(
-                    labelText: 'UPI ID',
-                    hintText: 'e.g. rahul@okhdfcbank',
+                  decoration: InputDecoration(
+                    labelText: tr('UPI ID'),
+                    hintText: tr('e.g. rahul@okhdfcbank'),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -566,9 +567,9 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
                   controller: _paypalController,
                   textInputAction: TextInputAction.next,
                   autocorrect: false,
-                  decoration: const InputDecoration(
-                    labelText: 'PayPal.me ID',
-                    hintText: 'e.g. rahul',
+                  decoration: InputDecoration(
+                    labelText: tr('PayPal.me ID'),
+                    hintText: tr('e.g. rahul'),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -578,9 +579,9 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
                   controller: _venmoController,
                   textInputAction: TextInputAction.next,
                   autocorrect: false,
-                  decoration: const InputDecoration(
-                    labelText: 'Venmo username',
-                    hintText: 'e.g. rahul (US)',
+                  decoration: InputDecoration(
+                    labelText: tr('Venmo username'),
+                    hintText: tr('e.g. rahul (US)'),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -590,8 +591,8 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
                   controller: _cashappController,
                   textInputAction: TextInputAction.next,
                   autocorrect: false,
-                  decoration: const InputDecoration(
-                    labelText: 'Cash App cashtag',
+                  decoration: InputDecoration(
+                    labelText: tr('Cash App cashtag'),
                     hintText: r'e.g. $rahul (US)',
                   ),
                 ),
@@ -602,9 +603,9 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
                   controller: _revolutController,
                   textInputAction: TextInputAction.next,
                   autocorrect: false,
-                  decoration: const InputDecoration(
-                    labelText: 'Revolut.me username',
-                    hintText: 'e.g. rahul (Europe)',
+                  decoration: InputDecoration(
+                    labelText: tr('Revolut.me username'),
+                    hintText: tr('e.g. rahul (Europe)'),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -616,9 +617,9 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
               controller: _phoneController,
               keyboardType: TextInputType.phone,
               textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: 'Phone',
-                hintText: 'Optional',
+              decoration: InputDecoration(
+                labelText: tr('Phone'),
+                hintText: tr('Optional'),
               ),
             ),
             const SizedBox(height: 16),
@@ -626,9 +627,9 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
             TextField(
               controller: _contactController,
               textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: 'Contact',
-                hintText: 'Any other way to reach them — optional',
+              decoration: InputDecoration(
+                labelText: tr('Contact'),
+                hintText: tr('Any other way to reach them — optional'),
               ),
             ),
             const SizedBox(height: 16),
@@ -637,9 +638,9 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
               controller: _noteController,
               textInputAction: TextInputAction.done,
               maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Note',
-                hintText: 'Optional',
+              decoration: InputDecoration(
+                labelText: tr('Note'),
+                hintText: tr('Optional'),
               ),
             ),
             const SizedBox(height: 24),
@@ -652,7 +653,7 @@ class _EditPersonSheetState extends ConsumerState<EditPersonSheet> {
                       width: 22,
                       child: CircularProgressIndicator(strokeWidth: 2.4),
                     )
-                  : Text(widget.person == null ? 'Add' : 'Save'),
+                  : Text(widget.person == null ? tr('Add') : tr('Save')),
             ),
           ],
         ),

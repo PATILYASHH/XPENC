@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../widgets/app_surfaces.dart';
 import 'screen_security.dart';
+import '../../core/l10n/l10n.dart';
 
 // NCT — "non-capturable transaction" (GitHub #143).
 //
@@ -79,7 +80,7 @@ class _NctVeilState extends State<NctVeil> {
       onLongPressEnd: (_) => _unpeek(),
       onLongPressCancel: _unpeek,
       child: Semantics(
-        label: veiled ? 'Hidden transaction. Touch and hold to view.' : null,
+        label: veiled ? tr('Hidden transaction. Touch and hold to view.') : null,
         child: Stack(
           children: [
             // Keeps the row's size and its tap, but draws none of it —
@@ -156,7 +157,7 @@ class _Frost extends StatelessWidget {
                         ),
                         const SizedBox(width: 6),
                         Flexible(
-                          child: Text(
+                          child: Tr(
                             'Hidden · hold to view',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,

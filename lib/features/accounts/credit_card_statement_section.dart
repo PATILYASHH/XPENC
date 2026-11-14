@@ -10,6 +10,7 @@ import '../../data/card_statement.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Opt-in statement/due-date tracking for a credit card (GitHub #91) — off
 /// unless the user turns it on, same shape as [EnvelopeSection]'s own
@@ -34,13 +35,13 @@ class CreditCardStatementSection extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AppSwitchListTile(
-            title: const Text('Track statement & due date'),
+            title: const Tr('Track statement & due date'),
             subtitle: Text(
               detail != null
-                  ? "Know when this month's bill is due, with a reminder "
-                        'before it.'
-                  : 'Optional — set your statement close day and payment '
-                        'due day.',
+                  ? tr("Know when this month's bill is due, with a reminder "
+                        'before it.')
+                  : tr('Optional — set your statement close day and payment '
+                        'due day.'),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: cs.onSurfaceVariant,
               ),
@@ -62,7 +63,7 @@ class CreditCardStatementSection extends ConsumerWidget {
                 child: TextButton(
                   onPressed: () =>
                       _showCycleDialog(context, ref, existing: detail),
-                  child: const Text('Edit'),
+                  child: const Tr('Edit'),
                 ),
               ),
             ),
@@ -97,19 +98,19 @@ class CreditCardStatementSection extends ConsumerWidget {
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Stop tracking this card\'s cycle?'),
-        content: const Text(
+        title: const Tr('Stop tracking this card\'s cycle?'),
+        content: const Tr(
           'The statement close day, due day and reminder are forgotten. '
           "Nothing about the card itself changes.",
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Turn off'),
+            child: const Tr('Turn off'),
           ),
         ],
       ),
@@ -142,14 +143,14 @@ class _StatementSummary extends ConsumerWidget {
           if (statement != null) ...[
             _amountRow(
               theme,
-              'Statement, closed ${day.format(statement.closedOn)}',
+              tr('Statement, closed {0}', [day.format(statement.closedOn)]),
               statement.statement,
             ),
             if (statement.paidSince.isPositive) ...[
               const SizedBox(height: 8),
               _amountRow(
                 theme,
-                'Paid since',
+                tr('Paid since'),
                 statement.paidSince,
                 color: AppColors.income,
               ),
@@ -159,8 +160,8 @@ class _StatementSummary extends ConsumerWidget {
             const Divider(height: 28),
             _amountRow(
               theme,
-              'Next statement so far · '
-              '${day.format(period.start)} – ${day.format(period.end)}',
+              tr('Next statement so far · '
+              '{0} – {1}', [day.format(period.start), day.format(period.end)]),
               statement.spentSince,
             ),
             const SizedBox(height: 8),
@@ -168,7 +169,7 @@ class _StatementSummary extends ConsumerWidget {
           Row(
             children: [
               Expanded(
-                child: Text(
+                child: Tr(
                   'You currently owe',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: cs.onSurfaceVariant,
@@ -194,7 +195,7 @@ class _StatementSummary extends ConsumerWidget {
   Widget _leftToPay(ThemeData theme, CardStatement statement) {
     final cs = theme.colorScheme;
     if (statement.statement.isZero) {
-      return Text(
+      return Tr(
         'Nothing was due on it',
         style: theme.textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
       );
@@ -209,7 +210,7 @@ class _StatementSummary extends ConsumerWidget {
             color: AppColors.income,
           ),
           const SizedBox(width: 8),
-          Text(
+          Tr(
             'Paid in full',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: AppColors.income,
@@ -225,8 +226,8 @@ class _StatementSummary extends ConsumerWidget {
         .inDays;
     return _amountRow(
       theme,
-      'Left to pay · due ${DateFormat('d MMM').format(statement.dueOn)} '
-      '(${_dueInLabel(daysLeft)})',
+      tr('Left to pay · due {0} '
+      '({1})', [DateFormat('d MMM').format(statement.dueOn), _dueInLabel(daysLeft)]),
       left,
       bold: true,
     );
@@ -270,7 +271,7 @@ class _StatementSummary extends ConsumerWidget {
     if (daysLeft < 0) return 'overdue';
     if (daysLeft == 0) return 'today';
     if (daysLeft == 1) return 'tomorrow';
-    return 'in $daysLeft days';
+    return tr('in {0} days', [daysLeft]);
   }
 }
 
@@ -307,7 +308,7 @@ class _AutoPayTile extends ConsumerWidget {
         await ref.read(notificationServiceProvider).syncCreditCardReminders();
       } on ArgumentError catch (e) {
         messenger.showSnackBar(
-          SnackBar(content: Text(e.message?.toString() ?? "Couldn't set it")),
+          SnackBar(content: Text(e.message?.toString() ?? tr("Couldn't set it"))),
         );
       }
     }
@@ -316,13 +317,13 @@ class _AutoPayTile extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AppSwitchListTile(
-          title: const Text('Pay it automatically'),
+          title: const Tr('Pay it automatically'),
           subtitle: Text(
             on
-                ? "From $from on each due date — what's left of the "
-                      'statement, nothing if it\'s paid.'
-                : "On each due date, what's left of the statement — from an "
-                      'account you choose.',
+                ? tr("From {0} on each due date — what's left of the "
+                      'statement, nothing if it\'s paid.', [from])
+                : tr("On each due date, what's left of the statement — from an "
+                      'account you choose.'),
             style: theme.textTheme.bodySmall?.copyWith(
               color: cs.onSurfaceVariant,
             ),
@@ -356,7 +357,7 @@ class _AutoPayTile extends ConsumerWidget {
               alignment: Alignment.centerRight,
               child: TextButton(
                 onPressed: choose,
-                child: const Text('Pay from another account'),
+                child: const Tr('Pay from another account'),
               ),
             ),
           ),
@@ -393,7 +394,7 @@ Future<int?> _pickFundingAccount(
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
               child: Text(
-                'Pay ${card.name} from',
+                tr('Pay {0} from', [card.name]),
                 style: Theme.of(
                   sheetContext,
                 ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
@@ -402,7 +403,7 @@ Future<int?> _pickFundingAccount(
             if (accounts.isEmpty)
               const Padding(
                 padding: EdgeInsets.fromLTRB(24, 8, 24, 24),
-                child: Text('Add a bank or cash account to pay it from.'),
+                child: Tr('Add a bank or cash account to pay it from.'),
               ),
             for (final a in accounts)
               AppListTile(
@@ -484,8 +485,8 @@ class _CreditCardCycleDialogState extends State<_CreditCardCycleDialog> {
     return AlertDialog(
       title: Text(
         widget.existing == null
-            ? 'Track statement & due date'
-            : 'Edit statement & due date',
+            ? tr('Track statement & due date')
+            : tr('Edit statement & due date'),
       ),
       content: SingleChildScrollView(
         child: Column(
@@ -494,22 +495,22 @@ class _CreditCardCycleDialogState extends State<_CreditCardCycleDialog> {
           children: [
             AppListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Statement closes'),
-              subtitle: Text('The ${_ordinal(_statementDay)} of each month'),
+              title: const Tr('Statement closes'),
+              subtitle: Text(tr('The {0} of each month', [_ordinal(_statementDay)])),
               trailing: const AppIcon(Icons.calendar_month_outlined),
               onTap: () => _pickDay(forStatement: true),
             ),
             AppListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Payment due'),
-              subtitle: Text('The ${_ordinal(_dueDay)} of each month'),
+              title: const Tr('Payment due'),
+              subtitle: Text(tr('The {0} of each month', [_ordinal(_dueDay)])),
               trailing: const AppIcon(Icons.calendar_month_outlined),
               onTap: () => _pickDay(forStatement: false),
             ),
             const SizedBox(height: 8),
             Text(
-              'Notify me ${_notifyDays.round()} '
-              'day${_notifyDays.round() == 1 ? '' : 's'} before',
+              tr('Notify me {0} '
+              'day{1} before', [_notifyDays.round(), _notifyDays.round() == 1 ? '' : 's']),
               style: theme.textTheme.bodyMedium,
             ),
             Slider(
@@ -520,7 +521,7 @@ class _CreditCardCycleDialogState extends State<_CreditCardCycleDialog> {
               label: '${_notifyDays.round()}',
               onChanged: (v) => setState(() => _notifyDays = v),
             ),
-            Text(
+            Tr(
               'A shorter month snaps the close/due day to its last day, '
               'then returns once that day exists again.',
               style: theme.textTheme.bodySmall?.copyWith(
@@ -533,7 +534,7 @@ class _CreditCardCycleDialogState extends State<_CreditCardCycleDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: const Tr('Cancel'),
         ),
         FilledButton(
           onPressed: () => Navigator.of(context).pop((
@@ -541,7 +542,7 @@ class _CreditCardCycleDialogState extends State<_CreditCardCycleDialog> {
             dueDay: _dueDay,
             notifyDaysBefore: _notifyDays.round(),
           )),
-          child: const Text('Save'),
+          child: const Tr('Save'),
         ),
       ],
     );

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/currency.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Opens the sheet that makes a currency the app doesn't list — or, with
 /// [existing], edits one already made (its code stays). Resolves to the
@@ -91,7 +92,7 @@ class _CustomCurrencySheetState extends ConsumerState<CustomCurrencySheet> {
     } on ArgumentError catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      _showError(e.message?.toString() ?? "Couldn't save the currency.");
+      _showError(e.message?.toString() ?? tr("Couldn't save the currency."));
       return;
     }
     navigator.pop(currencyForCode(code));
@@ -102,22 +103,22 @@ class _CustomCurrencySheetState extends ConsumerState<CustomCurrencySheet> {
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Delete ${existing.code}?'),
-        content: const Text(
+        title: Text(tr('Delete {0}?', [existing.code])),
+        content: const Tr(
           'Only works while nothing uses it — not your parent currency, an '
           'account, a transaction or an Auto rule. Its exchange rates go too.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(ctx).colorScheme.error,
             ),
-            child: const Text('Delete'),
+            child: const Tr('Delete'),
           ),
         ],
       ),
@@ -128,13 +129,13 @@ class _CustomCurrencySheetState extends ConsumerState<CustomCurrencySheet> {
     try {
       await ref.read(dbProvider).deleteCustomCurrency(existing.code);
     } on ArgumentError catch (e) {
-      _showError(e.message?.toString() ?? "Can't delete it.");
+      _showError(e.message?.toString() ?? tr("Can't delete it."));
       return;
     }
     navigator.pop();
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('${existing.code} deleted')));
+      ..showSnackBar(SnackBar(content: Text(tr('{0} deleted', [existing.code]))));
   }
 
   @override
@@ -156,13 +157,13 @@ class _CustomCurrencySheetState extends ConsumerState<CustomCurrencySheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              _isEdit ? 'Edit currency' : 'Custom currency',
+              _isEdit ? tr('Edit currency') : tr('Custom currency'),
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 6),
-            Text(
+            Tr(
               'For a currency XPENC doesn’t list. It works like any other — '
               'as your parent currency, an account’s own, or with an '
               'exchange rate.',
@@ -180,12 +181,12 @@ class _CustomCurrencySheetState extends ConsumerState<CustomCurrencySheet> {
                 FilteringTextInputFormatter.allow(RegExp('[a-zA-Z]')),
               ],
               decoration: InputDecoration(
-                labelText: 'Code',
-                hintText: 'e.g. XYZ',
+                labelText: tr('Code'),
+                hintText: tr('e.g. XYZ'),
                 helperText: _isEdit
-                    ? 'The code can’t change — accounts and transactions '
-                          'store it.'
-                    : 'Three letters, not one already in the list.',
+                    ? tr('The code can’t change — accounts and transactions '
+                          'store it.')
+                    : tr('Three letters, not one already in the list.'),
                 counterText: '',
               ),
             ),
@@ -193,9 +194,9 @@ class _CustomCurrencySheetState extends ConsumerState<CustomCurrencySheet> {
             TextField(
               controller: _symbolController,
               maxLength: 8,
-              decoration: const InputDecoration(
-                labelText: 'Symbol',
-                hintText: 'e.g. ¤ or Tk',
+              decoration: InputDecoration(
+                labelText: tr('Symbol'),
+                hintText: tr('e.g. ¤ or Tk'),
                 counterText: '',
               ),
             ),
@@ -204,14 +205,14 @@ class _CustomCurrencySheetState extends ConsumerState<CustomCurrencySheet> {
               controller: _nameController,
               maxLength: 40,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                hintText: 'e.g. Island Dollar',
+              decoration: InputDecoration(
+                labelText: tr('Name'),
+                hintText: tr('e.g. Island Dollar'),
                 counterText: '',
               ),
             ),
             const SizedBox(height: 20),
-            Text(
+            Tr(
               'DECIMAL PLACES',
               style: theme.textTheme.labelSmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -242,7 +243,7 @@ class _CustomCurrencySheetState extends ConsumerState<CustomCurrencySheet> {
                       width: 22,
                       child: CircularProgressIndicator(strokeWidth: 2.4),
                     )
-                  : Text(_isEdit ? 'Save' : 'Create'),
+                  : Text(_isEdit ? tr('Save') : tr('Create')),
             ),
             if (_isEdit) ...[
               const SizedBox(height: 8),
@@ -251,7 +252,7 @@ class _CustomCurrencySheetState extends ConsumerState<CustomCurrencySheet> {
                 style: TextButton.styleFrom(
                   foregroundColor: theme.colorScheme.error,
                 ),
-                child: const Text('Delete currency'),
+                child: const Tr('Delete currency'),
               ),
             ],
           ],

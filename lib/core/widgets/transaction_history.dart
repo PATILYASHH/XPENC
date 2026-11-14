@@ -15,6 +15,7 @@ import 'app_surfaces.dart';
 import 'custom_icon_badge.dart';
 import 'error_view.dart';
 import 'money_text.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Day-grouped transaction history, signed relative to [ownIds]. Shared by
 /// every screen that shows one account's (or goal's / loan's, which are
@@ -52,16 +53,16 @@ class TransactionHistorySection extends StatelessWidget {
         padding: EdgeInsets.all(40),
         child: Center(child: CircularProgressIndicator()),
       ),
-      error: (_, _) => const Padding(
+      error: (_, _) => Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
-        child: InlineErrorView(message: "Couldn't load history"),
+        child: InlineErrorView(message: tr("Couldn't load history")),
       ),
       data: (txns) {
         if (txns.isEmpty) {
           return Padding(
             padding: const EdgeInsets.fromLTRB(4, 24, 4, 4),
             child: Center(
-              child: Text(
+              child: Tr(
                 emptyMessage,
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
@@ -154,7 +155,7 @@ class RunningBalanceChip extends ConsumerWidget {
     final on =
         ref.watch(settingsProvider).valueOrNull?.showRunningBalance ?? false;
     return FilterChip(
-      label: const Text('Running balance'),
+      label: const Tr('Running balance'),
       selected: on,
       visualDensity: VisualDensity.compact,
       onSelected: (v) => ref.read(dbProvider).setShowRunningBalance(v),
@@ -259,7 +260,7 @@ class HistoryRow extends StatelessWidget {
         ? 'Transfer'
         : isCorrection
         ? 'Correction'
-        : (category?.name ?? 'Uncategorised');
+        : (category?.name ?? tr('Uncategorised'));
 
     // Signed movement: negative = money out of this account, positive = in.
     final movement = accountMovement(tx, ownIds);
@@ -327,8 +328,8 @@ class HistoryRow extends StatelessWidget {
       final otherId = out ? tx.toAccountId : tx.accountId;
       final other = otherId == null ? null : accountMap[otherId];
       final base = out
-          ? 'To ${other?.name ?? '—'}'
-          : 'From ${other?.name ?? '—'}';
+          ? tr('To {0}', [other?.name ?? '—'])
+          : tr('From {0}', [other?.name ?? '—']);
       return (note != null && note.isNotEmpty) ? '$base · $note' : base;
     }
     return (note != null && note.isNotEmpty) ? note : null;
@@ -339,8 +340,8 @@ String historyDayLabel(DateTime day) {
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
   final diff = today.difference(day).inDays;
-  if (diff == 0) return 'Today';
-  if (diff == 1) return 'Yesterday';
+  if (diff == 0) return tr('Today');
+  if (diff == 1) return tr('Yesterday');
   // Backfilled history spans years — only the current one goes unstated.
   return DateFormat(
     day.year == now.year ? 'EEE, d MMM' : 'EEE, d MMM yyyy',

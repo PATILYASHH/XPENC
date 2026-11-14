@@ -18,6 +18,7 @@ import 'credit_card_statement_section.dart';
 import 'edit_account_sheet.dart';
 import 'envelope_section.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// [account]'s own currency — null for the parent currency, matching
 /// [AccountRow.currencyCode]'s own convention. A debit/UPI instrument
@@ -56,8 +57,8 @@ class AccountDetailScreen extends ConsumerWidget {
       error: (error, _) => Scaffold(
         appBar: AppTopBar(),
         body: ErrorView(
-          title: 'Account not found',
-          message: "We couldn't open this account.",
+          title: tr('Account not found'),
+          message: tr("We couldn't open this account."),
           detail: error.toString(),
           onRetry: () => ref.invalidate(accountByIdProvider(accountId)),
         ),
@@ -66,9 +67,9 @@ class AccountDetailScreen extends ConsumerWidget {
         if (account == null) {
           return Scaffold(
             appBar: AppTopBar(),
-            body: const ErrorView(
-              title: 'Account not found',
-              message: 'This account may have been archived or removed.',
+            body: ErrorView(
+              title: tr('Account not found'),
+              message: tr('This account may have been archived or removed.'),
             ),
           );
         }
@@ -111,12 +112,12 @@ class _AccountDetailView extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const AppIcon(Icons.edit_outlined),
-            tooltip: 'Edit account',
+            tooltip: tr('Edit account'),
             onPressed: () => showEditAccountSheet(context, account),
           ),
           IconButton(
             icon: const AppIcon(Icons.picture_as_pdf_outlined),
-            tooltip: 'Download statement',
+            tooltip: tr('Download statement'),
             onPressed: () => _downloadStatement(context, ref, account),
           ),
         ],
@@ -131,14 +132,17 @@ class _AccountDetailView extends ConsumerWidget {
             ),
           ),
           // Move money between your own accounts in one tap (GitHub #171) —
-          // cash at home into the wallet, a bank to cash, a card's bill. A
-          // debit card moves its bank's money, so it's done from the bank;
-          // goals and loans have their own pages.
-          if (!isDebitCard &&
-              !account.isArchived &&
-              account.type != AccountType.goal &&
-              account.type != AccountType.loan)
-            SliverToBoxAdapter(child: _TransferButtons(accountId: account.id)),
+          // cash at home into the wallet, a bank to cash, a card's bill.
+          // Either button can be turned off in Edit account (GitHub #199).
+          if (hasTransferShortcuts(account) &&
+              (account.showTransferIn || account.showTransferOut))
+            SliverToBoxAdapter(
+              child: _TransferButtons(
+                accountId: account.id,
+                showIn: account.showTransferIn,
+                showOut: account.showTransferOut,
+              ),
+            ),
           // A linked instrument (debit card / UPI) holds no balance of its
           // own — there is no money on it to give a job to.
           if (account.linkedAccountId == null)
@@ -186,11 +190,11 @@ class _AccountDetailView extends ConsumerWidget {
           ),
         ),
       ],
-      error: (_, _) => const [
+      error: (_, _) => [
         SliverToBoxAdapter(
           child: Padding(
             padding: EdgeInsets.symmetric(vertical: 24),
-            child: InlineErrorView(message: "Couldn't load history"),
+            child: InlineErrorView(message: tr("Couldn't load history")),
           ),
         ),
       ],
@@ -201,7 +205,7 @@ class _AccountDetailView extends ConsumerWidget {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
                 child: Center(
-                  child: Text(
+                  child: Tr(
                     'No transactions on this account yet.',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium?.copyWith(
@@ -242,11 +246,18 @@ class _AccountDetailView extends ConsumerWidget {
 }
 
 /// Transfer in / Transfer out — opens Add Transaction as a transfer with
-/// this account already on the right side (GitHub #171).
+/// this account already on the right side (GitHub #171). Either one can be
+/// hidden (GitHub #199); the other then takes the full width.
 class _TransferButtons extends StatelessWidget {
-  const _TransferButtons({required this.accountId});
+  const _TransferButtons({
+    required this.accountId,
+    required this.showIn,
+    required this.showOut,
+  });
 
   final int accountId;
+  final bool showIn;
+  final bool showOut;
 
   @override
   Widget build(BuildContext context) {
@@ -254,22 +265,25 @@ class _TransferButtons extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
       child: Row(
         children: [
-          Expanded(
-            child: FilledButton.tonalIcon(
-              onPressed: () => context.push('/add?type=transfer&to=$accountId'),
-              icon: const AppIcon(Icons.south_west_rounded),
-              label: const Text('Transfer in'),
+          if (showIn)
+            Expanded(
+              child: FilledButton.tonalIcon(
+                onPressed: () =>
+                    context.push('/add?type=transfer&to=$accountId'),
+                icon: const AppIcon(Icons.south_west_rounded),
+                label: const Tr('Transfer in'),
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () =>
-                  context.push('/add?type=transfer&from=$accountId'),
-              icon: const AppIcon(Icons.north_east_rounded),
-              label: const Text('Transfer out'),
+          if (showIn && showOut) const SizedBox(width: 12),
+          if (showOut)
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () =>
+                    context.push('/add?type=transfer&from=$accountId'),
+                icon: const AppIcon(Icons.north_east_rounded),
+                label: const Tr('Transfer out'),
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -310,22 +324,22 @@ class _HeaderCard extends ConsumerWidget {
     final Color contextColor;
     if (_isDebitCard) {
       contextLine =
-          'This card has no balance of its own. It spends from '
-          '${linkedBank?.name ?? 'its linked bank'}.';
+          tr('This card has no balance of its own. It spends from '
+          '{0}.', [linkedBank?.name ?? tr('its linked bank')]);
       contextColor = cs.onSurfaceVariant;
     } else if (_owesLikeCredit) {
       if (account.currentBalance.isNegative) {
-        contextLine = 'Outstanding — you owe this';
+        contextLine = tr('Outstanding — you owe this');
         contextColor = AppColors.expense;
       } else {
-        contextLine = 'Paid off';
+        contextLine = tr('Paid off');
         contextColor = AppColors.income;
       }
     } else {
       final openingBalanceText = currency == null
           ? MoneyFormat.symbol(account.openingBalance)
           : MoneyFormat.symbolIn(account.openingBalance, currency!);
-      contextLine = 'Opening balance $openingBalanceText';
+      contextLine = tr('Opening balance {0}', [openingBalanceText]);
       contextColor = cs.onSurfaceVariant;
     }
 
@@ -340,7 +354,7 @@ class _HeaderCard extends ConsumerWidget {
               ? MoneyFormat.symbol(minimumBalance)
               : MoneyFormat.symbolIn(minimumBalance, currency!));
     if (minimumBalanceText != null) {
-      chips.add(_InfoChip(label: 'Min $minimumBalanceText'));
+      chips.add(_InfoChip(label: tr('Min {0}', [minimumBalanceText])));
     }
     // A debit card shows its linked bank's own balance above — that
     // account's own detail page is where its minimum-balance floor (if any)
@@ -362,7 +376,7 @@ class _HeaderCard extends ConsumerWidget {
               Row(
                 children: [
                   Text(
-                    _isDebitCard ? 'Available balance' : 'Balance',
+                    _isDebitCard ? tr('Available balance') : tr('Balance'),
                     style: theme.textTheme.labelMedium?.copyWith(
                       color: cs.onSurfaceVariant,
                       fontWeight: FontWeight.w600,
@@ -373,7 +387,7 @@ class _HeaderCard extends ConsumerWidget {
                   if (!_isDebitCard)
                     IconButton(
                       icon: const AppIcon(Icons.edit_outlined, size: 20),
-                      tooltip: 'Correct balance',
+                      tooltip: tr('Correct balance'),
                       visualDensity: VisualDensity.compact,
                       onPressed: () => _correctBalance(context, ref),
                     ),
@@ -401,7 +415,7 @@ class _HeaderCard extends ConsumerWidget {
               if (belowMinimumBalance) ...[
                 const SizedBox(height: 4),
                 Text(
-                  'Below your minimum balance of $minimumBalanceText',
+                  tr('Below your minimum balance of {0}', [minimumBalanceText]),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: cs.error,
                     fontWeight: FontWeight.w600,
@@ -431,7 +445,7 @@ class _HeaderCard extends ConsumerWidget {
   /// [AppDatabase.correctAccountBalance]) — no fake spend, history left
   /// alone, and it counts against the XPENC Score's Tracking habit.
   Future<void> _correctBalance(BuildContext context, WidgetRef ref) async {
-    final label = _entersAsOwed ? 'Actual outstanding' : 'Actual balance';
+    final label = _entersAsOwed ? tr('Actual outstanding') : tr('Actual balance');
     final shown = _entersAsOwed
         ? account.currentBalance.abs
         : account.currentBalance;
@@ -453,16 +467,16 @@ class _HeaderCard extends ConsumerWidget {
       builder: (dialogContext) {
         final theme = Theme.of(dialogContext);
         return AlertDialog(
-          title: const Text('Correct balance'),
+          title: const Tr('Correct balance'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'XPENC shows ${_fmt(shown)}${_entersAsOwed ? ' owed' : ''}. '
-                  'Enter what ${_entersAsOwed ? 'you really owe' : 'you really have'} '
-                  'and the difference is recorded as a Correction.',
+                  tr('XPENC shows {0}{1}. '
+                  'Enter what {2} '
+                  'and the difference is recorded as a Correction.', [_fmt(shown), _entersAsOwed ? tr(' owed') : '', _entersAsOwed ? tr('you really owe') : tr('you really have')]),
                 ),
                 const SizedBox(height: 16),
                 AmountKeypadField(
@@ -480,15 +494,15 @@ class _HeaderCard extends ConsumerWidget {
                     final String text;
                     final Color color;
                     if (diff == null) {
-                      text = 'Enter an amount.';
+                      text = tr('Enter an amount.');
                       color = theme.colorScheme.onSurfaceVariant;
                     } else if (diff.isZero) {
-                      text = 'Matches — nothing to correct.';
+                      text = tr('Matches — nothing to correct.');
                       color = theme.colorScheme.onSurfaceVariant;
                     } else {
                       text =
-                          'Correction of ${diff.isNegative ? '-' : '+'}'
-                          '${_fmt(diff.abs)} will be added today.';
+                          tr('Correction of {0}'
+                          '{1} will be added today.', [diff.isNegative ? '-' : '+', _fmt(diff.abs)]);
                       color = AppColors.correction;
                     }
                     return Text(
@@ -504,13 +518,13 @@ class _HeaderCard extends ConsumerWidget {
                 TextField(
                   controller: noteController,
                   textCapitalization: TextCapitalization.sentences,
-                  decoration: const InputDecoration(
-                    labelText: 'Note (optional)',
-                    hintText: 'e.g. forgot to log small cash spends',
+                  decoration: InputDecoration(
+                    labelText: tr('Note (optional)'),
+                    hintText: tr('e.g. forgot to log small cash spends'),
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
+                Tr(
                   'Corrections are never counted as money in or out, but '
                   'they lower your XPENC Score\'s Tracking habit — logging as '
                   'you go keeps the balance right on its own.',
@@ -525,7 +539,7 @@ class _HeaderCard extends ConsumerWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
+              child: const Tr('Cancel'),
             ),
             FilledButton(
               onPressed: () {
@@ -533,13 +547,13 @@ class _HeaderCard extends ConsumerWidget {
                   messenger
                     ..hideCurrentSnackBar()
                     ..showSnackBar(
-                      const SnackBar(content: Text('Enter a valid amount.')),
+                      const SnackBar(content: Tr('Enter a valid amount.')),
                     );
                   return;
                 }
                 Navigator.of(dialogContext).pop(true);
               },
-              child: const Text('Save'),
+              child: const Tr('Save'),
             ),
           ],
         );
@@ -567,7 +581,7 @@ class _HeaderCard extends ConsumerWidget {
       if (!context.mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text("Couldn't save: $e")));
+        ..showSnackBar(SnackBar(content: Text(tr("Couldn't save: {0}", [e]))));
       return;
     }
     if (!context.mounted) return;
@@ -578,9 +592,9 @@ class _HeaderCard extends ConsumerWidget {
         SnackBar(
           content: Text(
             id == null
-                ? 'Balance already matches'
-                : 'Balance corrected · ${diff.isNegative ? '-' : '+'}'
-                      '${_fmt(diff.abs)} recorded as a Correction',
+                ? tr('Balance already matches')
+                : tr('Balance corrected · {0}'
+                      '{1} recorded as a Correction', [diff.isNegative ? '-' : '+', _fmt(diff.abs)]),
           ),
         ),
       );
@@ -623,13 +637,13 @@ class _InfoChip extends StatelessWidget {
 // ── Direction ─────────────────────────────────────────────────────────────
 
 String _typeLabel(AccountType type) => switch (type) {
-  AccountType.cash => 'Cash',
-  AccountType.bank => 'Bank',
-  AccountType.card => 'Card',
-  AccountType.payLater => 'Pay later',
-  AccountType.prepaidBalance => 'Prepaid Balance',
-  AccountType.goal => 'Goal',
-  AccountType.loan => 'Loan',
+  AccountType.cash => tr('Cash'),
+  AccountType.bank => tr('Bank'),
+  AccountType.card => tr('Card'),
+  AccountType.payLater => tr('Pay later'),
+  AccountType.prepaidBalance => tr('Prepaid Balance'),
+  AccountType.goal => tr('Goal'),
+  AccountType.loan => tr('Loan'),
 };
 
 // ── Statement download ───────────────────────────────────────────────────────
@@ -646,24 +660,24 @@ Future<void> _downloadStatement(
   final service = ref.read(backupServiceProvider);
   messenger
     ..hideCurrentSnackBar()
-    ..showSnackBar(const SnackBar(content: Text('Generating statement...')));
+    ..showSnackBar(const SnackBar(content: Tr('Generating statement...')));
   try {
     final file = await service.writeAccountStatementPdf(
       account: account,
       start: range.start,
       end: range.end,
     );
-    await service.share(file, subject: '${account.name} statement');
+    await service.share(file, subject: tr('{0} statement', [account.name]));
     if (!context.mounted) return;
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('Exported ${file.name}')));
+      ..showSnackBar(SnackBar(content: Text(tr('Exported {0}', [file.name]))));
   } catch (e) {
     if (!context.mounted) return;
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        SnackBar(content: Text("Couldn't generate statement: $e")),
+        SnackBar(content: Text(tr("Couldn't generate statement: {0}", [e]))),
       );
   }
 }

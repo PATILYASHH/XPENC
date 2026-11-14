@@ -6,6 +6,7 @@ import '../../core/security/pin_pad.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import 'lock_screen_keypad.dart';
+import '../../core/l10n/l10n.dart';
 
 const _codeLength = 6;
 
@@ -72,7 +73,7 @@ class _TotpVerifyScreenState extends ConsumerState<TotpVerifyScreen> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        const SnackBar(content: Text('Authenticator app turned off')),
+        const SnackBar(content: Tr('Authenticator app turned off')),
       );
   }
 
@@ -80,14 +81,14 @@ class _TotpVerifyScreenState extends ConsumerState<TotpVerifyScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Turn off authenticator app')),
+      appBar: AppTopBar(title: const Tr('Turn off authenticator app')),
       body: SafeArea(
         child: Column(
           children: [
             const Spacer(flex: 2),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Text(
+              child: Tr(
                 'Enter a current code from your authenticator app to turn '
                 'this off.',
                 style: theme.textTheme.bodyMedium,
@@ -96,7 +97,7 @@ class _TotpVerifyScreenState extends ConsumerState<TotpVerifyScreen> {
             ),
             const SizedBox(height: 18),
             if (_error)
-              Text(
+              Tr(
                 'Wrong code',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.error,

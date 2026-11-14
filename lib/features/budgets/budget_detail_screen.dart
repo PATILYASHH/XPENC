@@ -13,6 +13,7 @@ import '../../core/widgets/money_text.dart';
 import '../../data/providers.dart';
 import 'budgets_screen.dart' show BudgetEditSheet;
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// One category's budget: this period's transactions (a parent's page rolls
 /// up its children's, same as the summary tile that links here), with a
@@ -27,8 +28,8 @@ class BudgetDetailScreen extends ConsumerWidget {
     final category = ref.watch(categoryMapProvider)[categoryId];
     if (category == null) {
       return Scaffold(
-        appBar: AppTopBar(title: const Text('Budget')),
-        body: const Center(child: Text('Category not found')),
+        appBar: AppTopBar(title: const Tr('Budget')),
+        body: const Center(child: Tr('Category not found')),
       );
     }
 
@@ -57,17 +58,17 @@ class BudgetDetailScreen extends ConsumerWidget {
           // Every month, not just this one (GitHub #169).
           IconButton(
             icon: const AppIcon(Icons.history_rounded),
-            tooltip: 'History',
+            tooltip: tr('History'),
             onPressed: () => context.push('/more/categories/$categoryId'),
           ),
           IconButton(
             icon: const AppIcon(Icons.picture_as_pdf_outlined),
-            tooltip: 'Download statement',
+            tooltip: tr('Download statement'),
             onPressed: () => _downloadStatement(context, ref, month),
           ),
           IconButton(
             icon: const AppIcon(Icons.edit_outlined),
-            tooltip: progress == null ? 'Set budget' : 'Edit budget',
+            tooltip: progress == null ? tr('Set budget') : tr('Edit budget'),
             onPressed: () => showAppSheet<void>(
               context: context,
               isScrollControlled: true,
@@ -91,7 +92,7 @@ class BudgetDetailScreen extends ConsumerWidget {
             fundingState: fundingState,
           ),
           const SizedBox(height: 24),
-          Text(
+          Tr(
             'Transactions',
             style: theme.textTheme.titleSmall?.copyWith(
               color: cs.onSurfaceVariant,
@@ -102,7 +103,7 @@ class BudgetDetailScreen extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Text(
-                'No transactions in $periodLabel.',
+                tr('No transactions in {0}.', [periodLabel]),
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: cs.onSurfaceVariant,
@@ -126,24 +127,24 @@ class BudgetDetailScreen extends ConsumerWidget {
     final service = ref.read(backupServiceProvider);
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Generating statement...')));
+      ..showSnackBar(const SnackBar(content: Tr('Generating statement...')));
     try {
       final file = await service.writeCategoryStatementPdf(
         categoryId: categoryId,
         month: month,
         startDay: ref.read(budgetStartDayProvider),
       );
-      await service.share(file, subject: 'Budget statement');
+      await service.share(file, subject: tr('Budget statement'));
       if (!context.mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text('Exported ${file.name}')));
+        ..showSnackBar(SnackBar(content: Text(tr('Exported {0}', [file.name]))));
     } catch (e) {
       if (!context.mounted) return;
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          SnackBar(content: Text("Couldn't generate statement: $e")),
+          SnackBar(content: Text(tr("Couldn't generate statement: {0}", [e]))),
         );
     }
   }
@@ -196,7 +197,7 @@ class _SummaryCard extends StatelessWidget {
               ),
             const SizedBox(height: 16),
             if (p == null)
-              Text(
+              Tr(
                 'No budget set for this category yet — tap the edit icon '
                 'above to set one.',
                 style: theme.textTheme.bodyMedium?.copyWith(
@@ -207,11 +208,11 @@ class _SummaryCard extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Expanded(child: _stat(context, 'Spent', p.spent)),
+                  Expanded(child: _stat(context, tr('Spent'), p.spent)),
                   Expanded(
                     child: _stat(
                       context,
-                      'Budgeted',
+                      tr('Budgeted'),
                       p.effectiveAmount,
                       alignEnd: true,
                     ),
@@ -238,8 +239,8 @@ class _SummaryCard extends StatelessWidget {
               const SizedBox(height: 12),
               Text(
                 p.overspent
-                    ? '${MoneyFormat.symbol((p.effectiveAmount - p.spent).abs)} over budget'
-                    : '${MoneyFormat.symbol(p.effectiveAmount - p.spent)} left to spend',
+                    ? tr('{0} over budget', [MoneyFormat.symbol((p.effectiveAmount - p.spent).abs)])
+                    : tr('{0} left to spend', [MoneyFormat.symbol(p.effectiveAmount - p.spent)]),
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: p.overspent ? AppColors.expense : cs.onSurfaceVariant,
                 ),
@@ -304,7 +305,7 @@ class _TxRow extends StatelessWidget {
     final note = tx.note?.trim();
     final title = (note != null && note.isNotEmpty)
         ? note
-        : (tx.payee ?? 'Money out');
+        : (tx.payee ?? tr('Money out'));
     final dateStr = DateFormat('d MMM').format(tx.date);
     final subtitle = [
       dateStr,

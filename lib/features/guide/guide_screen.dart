@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/widgets/app_surfaces.dart';
 import 'guide_data.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Explains every module and feature in the app — what it does, how to use
 /// it, and where to find it — plus the three app-wide modes
@@ -16,7 +17,7 @@ class GuideScreen extends StatelessWidget {
     final cs = theme.colorScheme;
 
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Guide')),
+      appBar: AppTopBar(title: const Tr('Guide')),
       body: ListView(
         padding: EdgeInsets.fromLTRB(
           20,
@@ -25,14 +26,14 @@ class GuideScreen extends StatelessWidget {
           32 + MediaQuery.of(context).padding.bottom,
         ),
         children: [
-          Text(
+          Tr(
             'App levels',
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 4),
-          Text(
+          Tr(
             'Every feature below belongs to one of three tiers. Switch any '
             'time in Settings → Budgeting — it never deletes data, it just '
             'changes what\'s shown.',
@@ -135,14 +136,14 @@ class _GuideTile extends StatelessWidget {
         childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
         expandedCrossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _label(theme, 'What it does'),
+          _label(theme, tr('What it does')),
           const SizedBox(height: 4),
           Text(
             entry.whatItDoes,
             style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
           ),
           const SizedBox(height: 14),
-          _label(theme, 'How to use it'),
+          _label(theme, tr('How to use it')),
           const SizedBox(height: 4),
           Text(
             entry.howToUse,

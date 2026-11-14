@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/home_widget/home_widget_service.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Home-screen widgets — three presets, not a from-scratch designer (Android's
 /// RemoteViews format has hard limits on what a widget can even be: no
@@ -19,7 +20,7 @@ class WidgetsScreen extends ConsumerWidget {
     final canPin = ref.watch(_canRequestPinProvider).valueOrNull ?? false;
 
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Widgets')),
+      appBar: AppTopBar(title: const Tr('Widgets')),
       body: ListView(
         // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
         padding: EdgeInsets.fromLTRB(
@@ -34,38 +35,38 @@ class WidgetsScreen extends ConsumerWidget {
           _WidgetCard(
             widget: HomeScreenWidget.balance,
             icon: Icons.account_balance_wallet_outlined,
-            title: 'Balance',
+            title: tr('Balance'),
             description:
-                'Your total balance, plus "+ Money out" / "+ Money in" '
-                'shortcuts.',
+                tr('Your total balance, plus "+ Money out" / "+ Money in" '
+                'shortcuts.'),
             canPin: canPin,
           ),
           const SizedBox(height: 12),
           _WidgetCard(
             widget: HomeScreenWidget.budgets,
             icon: Icons.pie_chart_outline_rounded,
-            title: 'Budgets',
+            title: tr('Budgets'),
             description:
-                'Your top budgets, closest to their limit first — up to '
-                '${HomeWidgetService.maxBudgetLines}.',
+                tr('Your top budgets, closest to their limit first — up to '
+                '{0}.', [HomeWidgetService.maxBudgetLines]),
             canPin: canPin,
           ),
           const SizedBox(height: 12),
           _WidgetCard(
             widget: HomeScreenWidget.quickAdd,
             icon: Icons.flash_on_outlined,
-            title: 'Quick Add',
+            title: tr('Quick Add'),
             description:
-                'Just the "+ Money out" / "+ Money in" shortcuts, enlarged — '
-                'for a dedicated one-tap-to-log tile.',
+                tr('Just the "+ Money out" / "+ Money in" shortcuts, enlarged — '
+                'for a dedicated one-tap-to-log tile.'),
             canPin: canPin,
           ),
           const SizedBox(height: 12),
           _WidgetCard(
             widget: HomeScreenWidget.monthSummary,
             icon: Icons.calendar_month_outlined,
-            title: 'This Month',
-            description: "This month's money in and out totals, side by side.",
+            title: tr('This Month'),
+            description: tr("This month's money in and out totals, side by side."),
             canPin: canPin,
           ),
         ],
@@ -98,13 +99,13 @@ class _IntroCard extends StatelessWidget {
             Expanded(
               child: Text(
                 canPin
-                    ? 'Tap "Add to home screen" on any of these, or add '
+                    ? tr('Tap "Add to home screen" on any of these, or add '
                           'them the usual way: long-press your home screen '
-                          '→ Widgets → XPENC.'
-                    : 'Add any of these the usual way: long-press your '
+                          '→ Widgets → XPENC.')
+                    : tr('Add any of these the usual way: long-press your '
                           'home screen → Widgets → XPENC — your launcher '
                           "doesn't support adding widgets from inside an "
-                          'app.',
+                          'app.'),
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: cs.onSurfaceVariant,
                   height: 1.4,
@@ -178,7 +179,7 @@ class _WidgetCard extends ConsumerWidget {
               FilledButton.tonal(
                 onPressed: () =>
                     ref.read(homeWidgetServiceProvider).requestPin(widget),
-                child: const Text('Add to home screen'),
+                child: const Tr('Add to home screen'),
               ),
             ],
           ],

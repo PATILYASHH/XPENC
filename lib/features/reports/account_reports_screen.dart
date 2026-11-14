@@ -18,6 +18,7 @@ import 'account_reports_data.dart';
 import 'chart_widgets.dart';
 import 'stats_sections.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Account Reports hub — the same shape as Stats: total money up top, this
 /// period across your accounts, then one tile per [AccountReportModule]
@@ -30,32 +31,32 @@ class AccountReportsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     const modules = AccountReportModule.values;
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Account Reports')),
+      appBar: AppTopBar(title: const Tr('Account Reports')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32).plusNavBar(context),
         children: [
           const _HeroCard(),
           const SizedBox(height: 12),
-          const ModuleShortcuts([
+          ModuleShortcuts([
             ModuleShortcut(
               Icons.account_balance_wallet_outlined,
-              'Accounts',
+              tr('Accounts'),
               '/more/accounts',
             ),
-            ModuleShortcut(Icons.insights_outlined, 'Stats', '/more/stats'),
+            ModuleShortcut(Icons.insights_outlined, tr('Stats'), '/more/stats'),
             ModuleShortcut(
               Icons.currency_exchange_rounded,
-              'Currency',
+              tr('Currency'),
               '/more/settings/currency',
             ),
           ], padding: EdgeInsets.zero),
           const SizedBox(height: 16),
-          const SectionCaption('This period'),
+          SectionCaption(tr('This period')),
           const AccountPeriodControls(),
           const SizedBox(height: 12),
           const _PeriodTiles(),
           const SizedBox(height: 28),
-          const SectionCaption('Explore'),
+          SectionCaption(tr('Explore')),
           for (var i = 0; i < modules.length; i += 2) ...[
             IntrinsicHeight(
               child: Row(
@@ -106,7 +107,7 @@ class _HeroCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            Tr(
               'Total money',
               style: theme.textTheme.labelMedium?.copyWith(
                 color: cs.onSurfaceVariant,
@@ -141,7 +142,7 @@ class _HeroCard extends ConsumerWidget {
             if (change != null && !change.isZero) ...[
               const SizedBox(height: 8),
               Text(
-                '${MoneyFormat.signed(change)} since last month',
+                tr('{0} since last month', [MoneyFormat.signed(change)]),
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: change.isNegative
                       ? AppColors.expense
@@ -151,7 +152,7 @@ class _HeroCard extends ConsumerWidget {
               ),
             ],
             const SizedBox(height: 8),
-            Text(
+            Tr(
               'Cash + Bank + Cards. Debit cards draw from their bank and are '
               'never counted twice.',
               style: theme.textTheme.bodySmall?.copyWith(
@@ -198,12 +199,12 @@ class _PeriodTiles extends ConsumerWidget {
       children: [
         pair(
           StatTile(
-            label: 'Money in',
+            label: tr('Money in'),
             value: MoneyFormat.symbol(s.moneyIn),
             color: AppColors.income,
           ),
           StatTile(
-            label: 'Money out',
+            label: tr('Money out'),
             value: MoneyFormat.symbol(s.moneyOut),
             sub: net.isZero ? null : 'Net ${MoneyFormat.signed(net)}',
             color: AppColors.expense,
@@ -212,16 +213,16 @@ class _PeriodTiles extends ConsumerWidget {
         const SizedBox(height: 12),
         pair(
           StatTile(
-            label: 'Moved between accounts',
+            label: tr('Moved between accounts'),
             value: MoneyFormat.symbol(s.moved),
-            sub: '${s.transfers} transfer${s.transfers == 1 ? '' : 's'}',
+            sub: plural(s.transfers, '1 transfer', '{0} transfers'),
           ),
           StatTile(
-            label: 'Most used',
+            label: tr('Most used'),
             value: busiest?.name ?? '—',
             sub: busiest == null
-                ? 'No activity'
-                : '$entries ${entries == 1 ? 'entry' : 'entries'}',
+                ? tr('No activity')
+                : plural(entries, '1 entry', '{0} entries'),
           ),
         ),
       ],
@@ -246,7 +247,7 @@ class _AllAccountsList extends ConsumerWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 4, bottom: 10),
-          child: Text(
+          child: Tr(
             'All accounts',
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
@@ -258,7 +259,7 @@ class _AllAccountsList extends ConsumerWidget {
             if (list.isEmpty) {
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24),
-                child: Text(
+                child: Tr(
                   'No accounts yet.',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
@@ -308,10 +309,10 @@ class _AccountRow extends StatelessWidget {
     final Widget trailing;
     if (_isDebitCard) {
       final bank = accountMap[account.linkedAccountId];
-      subtitle = 'Draws from ${bank?.name ?? 'bank'}';
+      subtitle = tr('Draws from {0}', [bank?.name ?? 'bank']);
       trailing = const _LinkedChip();
     } else if (_isCreditCard) {
-      subtitle = account.currentBalance.isNegative ? 'Outstanding' : 'Paid off';
+      subtitle = account.currentBalance.isNegative ? 'Outstanding' : tr('Paid off');
       trailing = BalanceText(
         account.currentBalance,
         style: theme.textTheme.titleMedium?.copyWith(
@@ -378,7 +379,7 @@ class _LinkedChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Chip(
-      label: const Text('Linked'),
+      label: const Tr('Linked'),
       labelStyle: theme.textTheme.labelSmall?.copyWith(
         color: theme.colorScheme.onSurfaceVariant,
         fontWeight: FontWeight.w600,
@@ -392,11 +393,11 @@ class _LinkedChip extends StatelessWidget {
 }
 
 String _typeLabel(AccountType type) => switch (type) {
-  AccountType.cash => 'Cash',
-  AccountType.bank => 'Bank',
-  AccountType.card => 'Card',
-  AccountType.payLater => 'Pay later',
-  AccountType.prepaidBalance => 'Prepaid Balance',
-  AccountType.goal => 'Goal',
-  AccountType.loan => 'Loan',
+  AccountType.cash => tr('Cash'),
+  AccountType.bank => tr('Bank'),
+  AccountType.card => tr('Card'),
+  AccountType.payLater => tr('Pay later'),
+  AccountType.prepaidBalance => tr('Prepaid Balance'),
+  AccountType.goal => tr('Goal'),
+  AccountType.loan => tr('Loan'),
 };

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
+import '../../core/l10n/l10n.dart';
 
 /// How many consecutive wrong PINs force the lock screen into
 /// master-phrase-only mode. See GitHub #74.
@@ -11,7 +12,7 @@ class MasterPhraseAttemptsSheet extends ConsumerWidget {
 
   static const _options = <int>[3, 5, 10, 15];
 
-  static String label(int attempts) => '$attempts attempts';
+  static String label(int attempts) => tr('{0} attempts', [attempts]);
 
   static Future<void> show(BuildContext context) => showAppSheet<void>(
     context: context,
@@ -38,11 +39,11 @@ class MasterPhraseAttemptsSheet extends ConsumerWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
-            child: Text('Require after', style: theme.textTheme.titleLarge),
+            child: Tr('Require after', style: theme.textTheme.titleLarge),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-            child: Text(
+            child: Tr(
               'How many wrong PINs in a row before XPENC stops accepting the '
               'PIN and asks for your master recovery phrase instead.',
               style: theme.textTheme.bodySmall?.copyWith(

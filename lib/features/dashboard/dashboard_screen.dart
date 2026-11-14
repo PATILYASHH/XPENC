@@ -33,6 +33,7 @@ import 'sparkline.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 import '../modes/mode_home.dart';
 import '../modes/mode_widgets.dart';
+import '../../core/l10n/l10n.dart';
 
 /// The graphical glance view: net worth, this-month income vs expense,
 /// account balances, budgets, spend breakdown and recent activity — whichever
@@ -267,7 +268,7 @@ class _InlineError extends StatelessWidget {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Text(
+      child: Tr(
         "Couldn't load",
         style: theme.textTheme.bodySmall?.copyWith(
           color: theme.colorScheme.onSurfaceVariant,
@@ -301,7 +302,7 @@ class _ReviewCardsSection extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Text(
+              Tr(
                 'Detected transactions',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
@@ -312,7 +313,7 @@ class _ReviewCardsSection extends ConsumerWidget {
               const Spacer(),
               TextButton(
                 onPressed: () => context.push('/inbox'),
-                child: const Text('See all'),
+                child: const Tr('See all'),
               ),
             ],
           ),
@@ -326,7 +327,7 @@ class _ReviewCardsSection extends ConsumerWidget {
               alignment: Alignment.centerLeft,
               child: TextButton(
                 onPressed: () => context.push('/inbox'),
-                child: Text('View $extra more'),
+                child: Text(tr('View {0} more', [extra])),
               ),
             ),
         ],
@@ -419,12 +420,12 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
     final metric = _metric;
     final label = switch (metric) {
       null when past =>
-        'Total money on ${DateFormat('d MMM').format(period.end)}',
-      null => 'Total money',
-      _MoneyMetric.income => 'Money in',
-      _MoneyMetric.expense => 'Money out',
-      _MoneyMetric.savings => 'Savings',
-      _MoneyMetric.loan => 'Loan',
+        tr('Total money on {0}', [DateFormat('d MMM').format(period.end)]),
+      null => tr('Total money'),
+      _MoneyMetric.income => tr('Money in'),
+      _MoneyMetric.expense => tr('Money out'),
+      _MoneyMetric.savings => tr('Savings'),
+      _MoneyMetric.loan => tr('Loan'),
     };
 
     // Today's net worth keeps its own AsyncValue (a live DB stream) so its
@@ -491,9 +492,9 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
             if (last.loans.isPositive)
               'Loans ${MoneyFormat.compact(last.loans)}',
             if (last.payLater.isPositive)
-              'Pay later ${MoneyFormat.compact(last.payLater)}',
+              tr('Pay later {0}', [MoneyFormat.compact(last.payLater)]),
             if (last.people.isPositive)
-              'You owe people ${MoneyFormat.compact(last.people)}',
+              tr('You owe people {0}', [MoneyFormat.compact(last.people)]),
           ].join(' · ');
         }
       case _MoneyMetric.savings:
@@ -692,8 +693,8 @@ class _MoneyMetricTabs extends StatelessWidget {
   // A getter, not a `static const`: the colours are the person's picks
   // (GitHub #156), read fresh each build.
   static List<(_MoneyMetric, String, Color)> get _tabs => [
-    (_MoneyMetric.income, 'Money in', AppColors.income),
-    (_MoneyMetric.expense, 'Money out', AppColors.expense),
+    (_MoneyMetric.income, tr('Money in'), AppColors.income),
+    (_MoneyMetric.expense, tr('Money out'), AppColors.expense),
     (_MoneyMetric.savings, 'Savings', AppColors.transfer),
     (_MoneyMetric.loan, 'Loan', AppColors.person),
   ];
@@ -818,7 +819,7 @@ class _OpeningLine extends StatelessWidget {
       children: [
         Flexible(
           child: Text(
-            'Opening balance · ${DateFormat('d MMM').format(on)}',
+            tr('Opening balance · {0}', [DateFormat('d MMM').format(on)]),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: muted,
@@ -936,7 +937,7 @@ class _ThisMonthCard extends ConsumerWidget {
                         children: [
                           Expanded(
                             child: _MetricTile(
-                              label: 'Money in',
+                              label: tr('Money in'),
                               amount: t.income,
                               color: AppColors.income,
                               icon: Icons.south_west_rounded,
@@ -945,7 +946,7 @@ class _ThisMonthCard extends ConsumerWidget {
                           const SizedBox(width: 12),
                           Expanded(
                             child: _MetricTile(
-                              label: 'Money out',
+                              label: tr('Money out'),
                               amount: t.expense,
                               color: AppColors.expense,
                               icon: Icons.north_east_rounded,
@@ -1083,7 +1084,7 @@ class _NetLine extends StatelessWidget {
     return Row(
       children: [
         Text(
-          net.isNegative ? 'Overspent by' : 'Saved',
+          net.isNegative ? tr('Overspent by') : tr('Saved'),
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
@@ -1128,10 +1129,10 @@ class _AccountsStrip extends ConsumerWidget {
         DesktopLayout.of(context) ||
         ref.watch(dashboardAccountsStyleProvider) ==
             DashboardAccountsStyle.oneCard;
-    final title = asOf == null ? 'Accounts' : 'Accounts on $asOf';
+    final title = asOf == null ? 'Accounts' : tr('Accounts on {0}', [asOf]);
     final seeAll = TextButton(
       onPressed: () => context.push('/more/accounts'),
-      child: const Text('See all'),
+      child: const Tr('See all'),
     );
 
     return accounts.when(
@@ -1354,7 +1355,7 @@ class _ReadyToAssignSection extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _SectionHeader('Ready to Assign'),
+          _SectionHeader(tr('Ready to Assign')),
           InkWell(
             borderRadius: BorderRadius.circular(_cardRadius),
             onTap: () => context.push('/more/ready-to-assign'),
@@ -1409,10 +1410,10 @@ class _PersonsSection extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _SectionHeader(
-            past ? 'People on ${_periodEndLabel(ref)}' : 'People',
+            past ? tr('People on {0}', [_periodEndLabel(ref)]) : tr('People'),
             trailing: TextButton(
               onPressed: () => context.push('/persons'),
-              child: const Text('See all'),
+              child: const Tr('See all'),
             ),
           ),
           Padding(
@@ -1444,7 +1445,7 @@ class _PersonsSection extends ConsumerWidget {
                         alignment: Alignment.centerLeft,
                         child: TextButton(
                           onPressed: () => context.push('/persons'),
-                          child: Text('$extra more'),
+                          child: Text(tr('{0} more', [extra])),
                         ),
                       ),
                     ),
@@ -1482,7 +1483,7 @@ class _DuesOwesRow extends StatelessWidget {
           Expanded(
             child: _column(
               theme,
-              past ? 'Owed to you' : "You'll get",
+              past ? tr('Owed to you') : tr("You'll get"),
               youGet,
               AppColors.income,
               Icons.south_west_rounded,
@@ -1492,7 +1493,7 @@ class _DuesOwesRow extends StatelessWidget {
           Expanded(
             child: _column(
               theme,
-              past ? 'You owed' : "You'll pay",
+              past ? tr('You owed') : tr("You'll pay"),
               youPay,
               AppColors.expense,
               Icons.north_east_rounded,
@@ -1564,10 +1565,10 @@ class _PersonDuesTile extends StatelessWidget {
     final owesYou = balance.isPositive;
     final color = owesYou ? AppColors.income : AppColors.expense;
     final status = switch ((owesYou, past)) {
-      (true, false) => 'Owes you',
-      (false, false) => 'You owe',
-      (true, true) => 'Owed you',
-      (false, true) => 'You owed',
+      (true, false) => tr('Owes you'),
+      (false, false) => tr('You owe'),
+      (true, true) => tr('Owed you'),
+      (false, true) => tr('You owed'),
     };
     final statusIcon = owesYou
         ? Icons.south_west_rounded
@@ -1646,10 +1647,10 @@ class _UpcomingSection extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _SectionHeader(
-            'Upcoming',
+            tr('Upcoming'),
             trailing: TextButton(
               onPressed: () => context.push('/more/calendar'),
-              child: const Text('See all'),
+              child: const Tr('See all'),
             ),
           ),
           Padding(
@@ -1671,7 +1672,7 @@ class _UpcomingSection extends ConsumerWidget {
                         alignment: Alignment.centerLeft,
                         child: TextButton(
                           onPressed: () => context.push('/more/calendar'),
-                          child: Text('$extra more'),
+                          child: Text(tr('{0} more', [extra])),
                         ),
                       ),
                     ),
@@ -1737,9 +1738,9 @@ class _UpcomingTile extends StatelessWidget {
     final today = DateTime(now.year, now.month, now.day);
     final day = DateTime(date.year, date.month, date.day);
     final diff = day.difference(today).inDays;
-    if (diff < 0) return 'Overdue';
-    if (diff == 0) return 'Today';
-    if (diff == 1) return 'Tomorrow';
+    if (diff < 0) return tr('Overdue');
+    if (diff == 0) return tr('Today');
+    if (diff == 1) return tr('Tomorrow');
     return DateFormat('EEE, d MMM').format(date);
   }
 }
@@ -1758,10 +1759,10 @@ class _BudgetsSection extends ConsumerWidget {
     final progress = ref.watch(budgetProgressProvider);
 
     if (progress.isEmpty) {
-      return const _NudgeCard(
+      return _NudgeCard(
         icon: Icons.pie_chart_outline_rounded,
-        title: 'Set a budget',
-        subtitle: 'Cap a category and watch it fill',
+        title: tr('Set a budget'),
+        subtitle: tr('Cap a category and watch it fill'),
         route: '/more/budgets',
       );
     }
@@ -1774,10 +1775,10 @@ class _BudgetsSection extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _SectionHeader(
-            'Budgets',
+            tr('Budgets'),
             trailing: TextButton(
               onPressed: () => context.push('/more/budgets'),
-              child: const Text('Manage'),
+              child: const Tr('Manage'),
             ),
           ),
           Padding(
@@ -1923,7 +1924,7 @@ class _SpendByCategorySection extends ConsumerWidget {
           for (final e in map.entries)
             if (e.value.isPositive)
               (
-                label: cats[e.key]?.name ?? 'Uncategorised',
+                label: cats[e.key]?.name ?? tr('Uncategorised'),
                 value: e.value,
                 color: cats[e.key] != null
                     ? Color(cats[e.key]!.colorValue)
@@ -1948,7 +1949,7 @@ class _SpendByCategorySection extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _SectionHeader('Spending'),
+                _SectionHeader(tr('Spending')),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: AppCard(
@@ -1957,9 +1958,9 @@ class _SpendByCategorySection extends ConsumerWidget {
                       padding: const EdgeInsets.all(20),
                       child: Text(
                         past
-                            ? 'Nothing was spent this month.'
-                            : 'Nothing spent yet this month. It fills in as '
-                                  'you add expenses.',
+                            ? tr('Nothing was spent this month.')
+                            : tr('Nothing spent yet this month. It fills in as '
+                                  'you add expenses.'),
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
@@ -1983,7 +1984,7 @@ class _SpendByCategorySection extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _SectionHeader(
-                'Spending',
+                tr('Spending'),
                 trailing: Padding(
                   padding: const EdgeInsets.only(right: 12),
                   child: MoneyText(
@@ -2059,10 +2060,10 @@ class _RecentSection extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _SectionHeader(
-                past ? 'Last in ${DateFormat('MMMM').format(month)}' : 'Recent',
+                past ? tr('Last in {0}', [DateFormat('MMMM').format(month)]) : tr('Recent'),
                 trailing: TextButton(
                   onPressed: () => context.push('/transactions'),
-                  child: const Text('See all'),
+                  child: const Tr('See all'),
                 ),
               ),
               Padding(
@@ -2154,7 +2155,7 @@ class _TxRow extends StatelessWidget {
         : labelForTxType(tx.type, personName: person?.name);
 
     final subtitle =
-        '${account?.name ?? 'Account'} · ${DateFormat('d MMM').format(tx.date)}';
+        '${account?.name ?? tr('Account')} · ${DateFormat('d MMM').format(tx.date)}';
 
     return NctVeil(
       active: tx.isNct,
@@ -2287,14 +2288,14 @@ class _EmptyState extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              Text(
+              Tr(
                 'No transactions yet',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
+              Tr(
                 'Add your first one to see it here.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
@@ -2305,7 +2306,7 @@ class _EmptyState extends StatelessWidget {
               FilledButton.icon(
                 onPressed: () => context.push('/add'),
                 icon: const AppIcon(Icons.add_rounded),
-                label: const Text('Add transaction'),
+                label: const Tr('Add transaction'),
               ),
             ],
           ),
@@ -2515,10 +2516,10 @@ class _CashFlowSection extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _SectionHeader(
-            'Cash flow',
+            tr('Cash flow'),
             trailing: TextButton(
               onPressed: () => context.push(StatsModule.cashFlow.route),
-              child: const Text('More'),
+              child: const Tr('More'),
             ),
           ),
           Padding(
@@ -2553,10 +2554,10 @@ class _GoalsSection extends ConsumerWidget {
     }
     final goals = ref.watch(goalProgressListProvider);
     if (goals.isEmpty) {
-      return const _NudgeCard(
+      return _NudgeCard(
         icon: Icons.savings_outlined,
-        title: 'Start a savings goal',
-        subtitle: 'Put money aside and watch it grow',
+        title: tr('Start a savings goal'),
+        subtitle: tr('Put money aside and watch it grow'),
         route: '/more/goals',
       );
     }
@@ -2568,11 +2569,11 @@ class _GoalsSection extends ConsumerWidget {
 
     return _CardSection(
       title: past
-          ? 'Savings goals on ${_periodEndLabel(ref)}'
-          : 'Savings goals',
+          ? tr('Savings goals on {0}', [_periodEndLabel(ref)])
+          : tr('Savings goals'),
       trailing: TextButton(
         onPressed: () => context.push('/more/goals'),
-        child: const Text('See all'),
+        child: const Tr('See all'),
       ),
       children: [
         for (final g in goals.take(4))
@@ -2610,10 +2611,10 @@ class _LoansSection extends ConsumerWidget {
     }
     final loans = ref.watch(loanProgressListProvider);
     if (loans.isEmpty) {
-      return const _NudgeCard(
+      return _NudgeCard(
         icon: Icons.request_quote_outlined,
-        title: 'Track a loan',
-        subtitle: 'See what’s left to repay, month by month',
+        title: tr('Track a loan'),
+        subtitle: tr('See what’s left to repay, month by month'),
         route: '/more/goals',
       );
     }
@@ -2624,10 +2625,10 @@ class _LoansSection extends ConsumerWidget {
     }
 
     return _CardSection(
-      title: past ? 'Loans on ${_periodEndLabel(ref)}' : 'Loans',
+      title: past ? tr('Loans on {0}', [_periodEndLabel(ref)]) : tr('Loans'),
       trailing: TextButton(
         onPressed: () => context.push('/more/goals'),
-        child: const Text('See all'),
+        child: const Tr('See all'),
       ),
       children: [
         for (final l in loans.take(4))
@@ -2652,7 +2653,7 @@ class _LoansSection extends ConsumerWidget {
               title: l.account.name,
               amount: outstanding,
               fraction: repaid,
-              footnote: '${_percent(repaid)} repaid of',
+              footnote: tr('{0} repaid of', [_percent(repaid)]),
               of: principal,
               onTap: () => context.push('/more/goals/loan/${l.account.id}'),
             );
@@ -2675,10 +2676,10 @@ class _ShortcutsSection extends ConsumerWidget {
         .whereType<QuickActionSpec>()
         .toList();
     if (actions.isEmpty) {
-      return const _NudgeCard(
+      return _NudgeCard(
         icon: Icons.apps_rounded,
-        title: 'Pick your shortcuts',
-        subtitle: 'Choose them in Quick Actions',
+        title: tr('Pick your shortcuts'),
+        subtitle: tr('Choose them in Quick Actions'),
         route: _editRoute,
       );
     }
@@ -2688,10 +2689,10 @@ class _ShortcutsSection extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _SectionHeader(
-            'Shortcuts',
+            tr('Shortcuts'),
             trailing: TextButton(
               onPressed: () => context.push(_editRoute),
-              child: const Text('Edit'),
+              child: const Tr('Edit'),
             ),
           ),
           Padding(
@@ -2776,10 +2777,10 @@ class _GroupsSection extends ConsumerWidget {
     final groups = ref.watch(groupsProvider).valueOrNull;
     if (groups == null) return const SizedBox.shrink();
     if (groups.isEmpty) {
-      return const _NudgeCard(
+      return _NudgeCard(
         icon: Icons.groups_outlined,
-        title: 'Split with a group',
-        subtitle: 'Trips, flatmates, dinners — who owes what',
+        title: tr('Split with a group'),
+        subtitle: tr('Trips, flatmates, dinners — who owes what'),
         route: '/persons',
       );
     }
@@ -2792,13 +2793,13 @@ class _GroupsSection extends ConsumerWidget {
     final theme = Theme.of(context);
 
     return _CardSection(
-      title: 'Groups',
+      title: tr('Groups'),
       trailing: TextButton(
         onPressed: () => context.push('/persons'),
-        child: const Text('See all'),
+        child: const Tr('See all'),
       ),
       children: [
-        if (open.isEmpty) const _QuietLine('All settled up'),
+        if (open.isEmpty) _QuietLine(tr('All settled up')),
         for (final g in open.take(4))
           () {
             final balance = balanceOf(g);
@@ -2825,7 +2826,7 @@ class _GroupsSection extends ConsumerWidget {
                 ),
               ),
               subtitle: Text(
-                balance.isPositive ? 'You get back' : 'You owe',
+                balance.isPositive ? tr('You get back') : tr('You owe'),
                 style: theme.textTheme.bodySmall?.copyWith(color: color),
               ),
               trailing: MoneyText(
@@ -2853,10 +2854,10 @@ class _ShoppingSection extends ConsumerWidget {
     final lists = ref.watch(shoppingListsProvider).valueOrNull;
     if (lists == null) return const SizedBox.shrink();
     if (lists.isEmpty) {
-      return const _NudgeCard(
+      return _NudgeCard(
         icon: Icons.shopping_cart_outlined,
-        title: 'Make a shopping list',
-        subtitle: 'Plan what to buy before you spend',
+        title: tr('Make a shopping list'),
+        subtitle: tr('Plan what to buy before you spend'),
         route: '/more/shopping',
       );
     }
@@ -2870,13 +2871,13 @@ class _ShoppingSection extends ConsumerWidget {
     final theme = Theme.of(context);
 
     return _CardSection(
-      title: 'Shopping lists',
+      title: tr('Shopping lists'),
       trailing: TextButton(
         onPressed: () => context.push('/more/shopping'),
-        child: const Text('See all'),
+        child: const Tr('See all'),
       ),
       children: [
-        if (open.isEmpty) const _QuietLine('Nothing left to buy'),
+        if (open.isEmpty) _QuietLine(tr('Nothing left to buy')),
         for (final l in open.take(4))
           () {
             final color = Color(l.colorValue);
@@ -2901,7 +2902,7 @@ class _ShoppingSection extends ConsumerWidget {
                 ),
               ),
               subtitle: Text(
-                '${left(l)} of $total left to buy',
+                tr('{0} of {1} left to buy', [left(l), total]),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -2926,7 +2927,7 @@ class _CustomizeLink extends StatelessWidget {
       child: TextButton.icon(
         onPressed: () => pushFromBar<void>(context, '/more/settings/dashboard'),
         icon: const AppIcon(Icons.tune_rounded, size: 18),
-        label: const Text('Customize dashboard'),
+        label: const Tr('Customize dashboard'),
       ),
     );
   }
@@ -2961,14 +2962,14 @@ class _EmptyDashboard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              Text(
+              Tr(
                 'Your dashboard is empty',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
+              Tr(
                 'Add the widgets you want to see here.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
@@ -2980,7 +2981,7 @@ class _EmptyDashboard extends StatelessWidget {
                 onPressed: () =>
                     pushFromBar<void>(context, '/more/settings/dashboard'),
                 icon: const AppIcon(Icons.add_rounded),
-                label: const Text('Add widgets'),
+                label: const Tr('Add widgets'),
               ),
             ],
           ),

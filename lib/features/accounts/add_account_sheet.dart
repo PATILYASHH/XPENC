@@ -11,6 +11,7 @@ import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../settings/currency_picker_sheet.dart';
 import 'account_look_fields.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Opens the "add account" bottom sheet.
 Future<void> showAddAccountSheet(BuildContext context) {
@@ -82,7 +83,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
   Future<void> _submit() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      _showError('Give the account a name.');
+      _showError(tr('Give the account a name.'));
       return;
     }
 
@@ -93,7 +94,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
       final raw = _last4Controller.text.trim();
       if (raw.isNotEmpty) {
         if (raw.length != 4) {
-          _showError('Last 4 digits must be exactly four digits.');
+          _showError(tr('Last 4 digits must be exactly four digits.'));
           return;
         }
         last4 = raw;
@@ -109,7 +110,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
     int? linkedAccountId;
     if (_isDebitCard) {
       if (_linkedAccountId == null) {
-        _showError('Pick the bank this debit card draws from.');
+        _showError(tr('Pick the bank this debit card draws from.'));
         return;
       }
       linkedAccountId = _linkedAccountId;
@@ -150,11 +151,11 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
     } on ArgumentError catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      _showError(e.message?.toString() ?? 'Could not add the account.');
+      _showError(e.message?.toString() ?? tr('Could not add the account.'));
     } catch (_) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      _showError('Could not add the account.');
+      _showError(tr('Could not add the account.'));
     }
   }
 
@@ -179,7 +180,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
+            Tr(
               'Add account',
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w700,
@@ -193,8 +194,8 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
               textCapitalization: TextCapitalization.words,
               textInputAction: TextInputAction.next,
               decoration: InputDecoration(
-                labelText: 'Name',
-                hintText: 'e.g. Wallet, IPPB Savings',
+                labelText: tr('Name'),
+                hintText: tr('e.g. Wallet, IPPB Savings'),
                 // The two cash places most people keep (GitHub #171): what's
                 // in the wallet, and the stash at home you "withdraw" from
                 // like an ATM — both plain Cash accounts, only the name and
@@ -202,20 +203,20 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
                 // without scrolling to "Add account".
                 suffixIcon: _type == AccountType.cash
                     ? PopupMenuButton<(String, String)>(
-                        tooltip: 'Suggestions',
+                        tooltip: tr('Suggestions'),
                         icon: const AppIcon(Icons.arrow_drop_down_rounded),
                         onSelected: (s) => setState(() {
                           _nameController.text = s.$1;
                           _iconKey = s.$2;
                         }),
-                        itemBuilder: (_) => const [
+                        itemBuilder: (_) => [
                           PopupMenuItem(
                             value: ('Wallet', 'wallet'),
-                            child: Text('Wallet'),
+                            child: Tr('Wallet'),
                           ),
                           PopupMenuItem(
-                            value: ('Cash at home', 'house'),
-                            child: Text('Cash at home (V-ATM)'),
+                            value: (tr('Cash at home'), 'house'),
+                            child: Tr('Cash at home (V-ATM)'),
                           ),
                         ],
                       )
@@ -224,7 +225,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
             ),
             const SizedBox(height: 20),
 
-            _fieldLabel(theme, 'Type'),
+            _fieldLabel(theme, tr('Type')),
             const SizedBox(height: 8),
             // Five segments is too many to guarantee a fit — a narrow phone
             // or a larger system font scale pushes "Prepaid" straight past
@@ -236,16 +237,16 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
               scrollDirection: Axis.horizontal,
               child: SegmentedButton<AccountType>(
                 segments: const [
-                  ButtonSegment(value: AccountType.cash, label: Text('Cash')),
-                  ButtonSegment(value: AccountType.bank, label: Text('Bank')),
-                  ButtonSegment(value: AccountType.card, label: Text('Card')),
+                  ButtonSegment(value: AccountType.cash, label: Tr('Cash')),
+                  ButtonSegment(value: AccountType.bank, label: Tr('Bank')),
+                  ButtonSegment(value: AccountType.card, label: Tr('Card')),
                   ButtonSegment(
                     value: AccountType.payLater,
-                    label: Text('Pay later'),
+                    label: Tr('Pay later'),
                   ),
                   ButtonSegment(
                     value: AccountType.prepaidBalance,
-                    label: Text('Prepaid'),
+                    label: Tr('Prepaid'),
                   ),
                 ],
                 selected: {_type},
@@ -275,7 +276,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
               const SizedBox(height: 20),
             ],
 
-            _fieldLabel(theme, 'Colour'),
+            _fieldLabel(theme, tr('Colour')),
             const SizedBox(height: 12),
             AccountColorPicker(
               selected: _colorValue,
@@ -283,7 +284,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
             ),
             const SizedBox(height: 24),
 
-            _fieldLabel(theme, 'Icon'),
+            _fieldLabel(theme, tr('Icon')),
             const SizedBox(height: 12),
             AccountIconField(
               iconKey: _iconKey,
@@ -300,7 +301,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
                       width: 22,
                       child: CircularProgressIndicator(strokeWidth: 2.4),
                     )
-                  : const Text('Add account'),
+                  : const Tr('Add account'),
             ),
           ],
         ),
@@ -312,7 +313,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
     switch (_type) {
       case AccountType.cash:
         return [
-          _amountField(label: 'Opening balance'),
+          _amountField(label: tr('Opening balance')),
           const SizedBox(height: 20),
         ];
 
@@ -322,26 +323,26 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
             controller: _bankNameController,
             focusNode: _bankNameFocus,
             textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(
-              labelText: 'Bank name',
-              hintText: 'e.g. India Post Payments Bank (IPPB)',
+            decoration: InputDecoration(
+              labelText: tr('Bank name'),
+              hintText: tr('e.g. India Post Payments Bank (IPPB)'),
             ),
           ),
           const SizedBox(height: 16),
           _last4Field(),
           const SizedBox(height: 16),
-          _amountField(label: 'Opening balance'),
+          _amountField(label: tr('Opening balance')),
           const SizedBox(height: 20),
         ];
 
       case AccountType.card:
         return [
-          _fieldLabel(theme, 'Card type'),
+          _fieldLabel(theme, tr('Card type')),
           const SizedBox(height: 8),
           SegmentedButton<CardKind>(
             segments: const [
-              ButtonSegment(value: CardKind.credit, label: Text('Credit')),
-              ButtonSegment(value: CardKind.debit, label: Text('Debit')),
+              ButtonSegment(value: CardKind.credit, label: Tr('Credit')),
+              ButtonSegment(value: CardKind.debit, label: Tr('Debit')),
             ],
             selected: {_cardKind},
             showSelectedIcon: false,
@@ -357,13 +358,13 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
         return [
           _infoTile(
             theme,
-            'A pay-later account (Simpl, LazyPay, Amazon Pay Later, …) holds '
+            tr('A pay-later account (Simpl, LazyPay, Amazon Pay Later, …) holds '
             'its own balance, just like a credit card. Spending makes it '
             'negative (what you owe); paying it off is a Transfer from your '
-            'bank.',
+            'bank.'),
           ),
           const SizedBox(height: 16),
-          _amountField(label: 'Outstanding (optional)'),
+          _amountField(label: tr('Outstanding (optional)')),
           const SizedBox(height: 20),
         ];
 
@@ -371,12 +372,12 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
         return [
           _infoTile(
             theme,
-            'A prepaid balance (a canteen key fob, gift card, transit card, '
+            tr('A prepaid balance (a canteen key fob, gift card, transit card, '
             '…) holds money you already loaded onto it. Spending draws it '
-            'down, just like Cash.',
+            'down, just like Cash.'),
           ),
           const SizedBox(height: 16),
-          _amountField(label: 'Starting balance'),
+          _amountField(label: tr('Starting balance')),
           const SizedBox(height: 20),
         ];
 
@@ -392,11 +393,11 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
     return [
       _infoTile(
         theme,
-        'A credit card holds its own balance. Spending makes it negative (what '
-        'you owe). Paying the bill is a Transfer from your bank.',
+        tr('A credit card holds its own balance. Spending makes it negative (what '
+        'you owe). Paying the bill is a Transfer from your bank.'),
       ),
       const SizedBox(height: 16),
-      _amountField(label: 'Outstanding (optional)'),
+      _amountField(label: tr('Outstanding (optional)')),
       const SizedBox(height: 16),
     ];
   }
@@ -405,14 +406,14 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
     return [
       _infoTile(
         theme,
-        'A debit card spends your bank money. It holds no balance of its own — '
-        'payments post to the linked bank.',
+        tr('A debit card spends your bank money. It holds no balance of its own — '
+        'payments post to the linked bank.'),
       ),
       const SizedBox(height: 16),
       if (banks.isEmpty)
         Padding(
           padding: const EdgeInsets.only(bottom: 16),
-          child: Text(
+          child: Tr(
             'Add a bank account first, then link the debit card to it.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.error,
@@ -425,7 +426,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
           child: DropdownButtonFormField<int>(
             initialValue: _linkedAccountId,
             isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Linked bank account'),
+            decoration: InputDecoration(labelText: tr('Linked bank account')),
             items: [
               for (final b in banks)
                 DropdownMenuItem(value: b.id, child: Text(b.name)),
@@ -477,7 +478,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
         ),
         child: Row(
           children: [
-            const Text('Currency'),
+            const Tr('Currency'),
             const Spacer(),
             Flexible(
               child: Text(
@@ -510,8 +511,8 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
       keyboardType: TextInputType.number,
       maxLength: 4,
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-      decoration: const InputDecoration(
-        labelText: 'Last 4 digits (optional)',
+      decoration: InputDecoration(
+        labelText: tr('Last 4 digits (optional)'),
         counterText: '',
       ),
     );

@@ -7,6 +7,7 @@ import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import 'import_from_file.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Export the ledger to a file the user can carry off the phone, or bring
 /// one back in.
@@ -48,9 +49,9 @@ class _DownloadDataScreenState extends ConsumerState<DownloadDataScreen> {
         ..hideCurrentSnackBar()
         ..showSnackBar(
           SnackBar(
-            content: Text('Exported $name'),
+            content: Text(tr('Exported {0}', [name])),
             action: SnackBarAction(
-              label: 'Share again',
+              label: tr('Share again'),
               onPressed: () => service.share(f, subject: subject),
             ),
           ),
@@ -59,7 +60,7 @@ class _DownloadDataScreenState extends ConsumerState<DownloadDataScreen> {
       if (!mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text("Couldn't export: $e")));
+        ..showSnackBar(SnackBar(content: Text(tr("Couldn't export: {0}", [e]))));
     } finally {
       if (mounted) {
         setState(() {
@@ -89,7 +90,7 @@ class _DownloadDataScreenState extends ConsumerState<DownloadDataScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Download Data')),
+      appBar: AppTopBar(title: const Tr('Download Data')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32).plusNavBar(context),
         children: [
@@ -97,37 +98,37 @@ class _DownloadDataScreenState extends ConsumerState<DownloadDataScreen> {
           const SizedBox(height: 16),
           _ActionCard(
             icon: Icons.table_chart_outlined,
-            title: 'Transactions (CSV)',
-            subtitle: 'Opens in Excel or Google Sheets. Accountant friendly.',
-            buttonLabel: 'Export CSV',
+            title: tr('Transactions (CSV)'),
+            subtitle: tr('Opens in Excel or Google Sheets. Accountant friendly.'),
+            buttonLabel: tr('Export CSV'),
             busy: _busy && _running == 'csv',
             enabled: !_busy,
             onPressed: () => _export(
               tag: 'csv',
               write: () => ref.read(backupServiceProvider).writeCsv(),
-              subject: 'XPENC transactions',
+              subject: tr('XPENC transactions'),
             ),
           ),
           const SizedBox(height: 12),
           _ActionCard(
             icon: Icons.data_object_outlined,
-            title: 'Everything (JSON)',
+            title: tr('Everything (JSON)'),
             subtitle:
-                'A complete copy of every account, transaction, budget and '
-                'person.',
-            buttonLabel: 'Export JSON',
+                tr('A complete copy of every account, transaction, budget and '
+                'person.'),
+            buttonLabel: tr('Export JSON'),
             busy: _busy && _running == 'json',
             enabled: !_busy,
             onPressed: () => _export(
               tag: 'json',
               write: () => ref.read(backupServiceProvider).writeJson(),
-              subject: 'XPENC data',
+              subject: tr('XPENC data'),
             ),
           ),
           const SizedBox(height: 28),
           Padding(
             padding: const EdgeInsets.only(left: 4, bottom: 8),
-            child: Text(
+            child: Tr(
               'Import',
               style: Theme.of(
                 context,
@@ -136,12 +137,12 @@ class _DownloadDataScreenState extends ConsumerState<DownloadDataScreen> {
           ),
           _ActionCard(
             icon: Icons.file_open_outlined,
-            title: 'From a JSON file',
+            title: tr('From a JSON file'),
             subtitle:
-                'Bring in an "Everything (JSON)" export — from this phone or '
+                tr('Bring in an "Everything (JSON)" export — from this phone or '
                 'another one. Replaces all current data; a safety copy is '
-                'saved first.',
-            buttonLabel: 'Import JSON',
+                'saved first.'),
+            buttonLabel: tr('Import JSON'),
             busy: _busy && _running == 'import',
             enabled: !_busy,
             onPressed: _importFromFile,
@@ -149,11 +150,11 @@ class _DownloadDataScreenState extends ConsumerState<DownloadDataScreen> {
           const SizedBox(height: 12),
           _ActionCard(
             icon: Icons.table_chart_outlined,
-            title: 'From a bank CSV statement',
+            title: tr('From a bank CSV statement'),
             subtitle:
-                "Adds transactions from a bank's exported .csv statement "
-                "into an account you choose — doesn't touch anything else.",
-            buttonLabel: 'Import CSV',
+                tr("Adds transactions from a bank's exported .csv statement "
+                "into an account you choose — doesn't touch anything else."),
+            buttonLabel: tr('Import CSV'),
             busy: false,
             enabled: !_busy,
             onPressed: () => context.push('/import-csv'),
@@ -181,7 +182,7 @@ class _IntroCard extends StatelessWidget {
             AppIcon(Icons.lock_outline, color: cs.onSurfaceVariant),
             const SizedBox(width: 14),
             Expanded(
-              child: Text(
+              child: Tr(
                 'Your data never leaves this phone unless you choose to share '
                 'it.',
                 style: theme.textTheme.bodyMedium?.copyWith(

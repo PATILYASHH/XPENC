@@ -11,6 +11,7 @@ import '../../data/providers.dart';
 import '../../data/tables.dart' show AppMode;
 import 'settings_common.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Quick Actions — shortcuts that don't fit any other module. Bank-SMS
 /// capture and OCR corrections live under General's "Message Capture"
@@ -27,7 +28,7 @@ class QuickActionsSettingsScreen extends ConsumerWidget {
     final holdMenuEnabled = ref.watch(holdMenuEnabledProvider);
 
     return Scaffold(
-      appBar: AppTopBar(title: const Text('Quick Actions')),
+      appBar: AppTopBar(title: const Tr('Quick Actions')),
       body: ListView(
         // Explicit padding drops ListView's nav-bar inset; re-add it (#137).
         padding: EdgeInsets.fromLTRB(
@@ -37,15 +38,15 @@ class QuickActionsSettingsScreen extends ConsumerWidget {
           32 + MediaQuery.of(context).padding.bottom,
         ),
         children: [
-          settingsSectionLabel(context, 'Hold ➕ button'),
+          settingsSectionLabel(context, tr('Hold ➕ button')),
           AppCard(
             child: Column(
               children: [
                 AppSwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   secondary: const AppIcon(Icons.radio_button_checked_rounded),
-                  title: const Text('Hold ➕ for quick actions'),
-                  subtitle: Text(
+                  title: const Tr('Hold ➕ for quick actions'),
+                  subtitle: Tr(
                     'Press and hold ➕ — a ring of shortcuts opens. Slide '
                     'toward one and let go to open it; let go in the middle '
                     'to cancel.',
@@ -69,7 +70,7 @@ class QuickActionsSettingsScreen extends ConsumerWidget {
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    child: Text(
+                    child: Tr(
                       'Tap a circle to choose what it opens. The ✕ in the '
                       'middle is always Cancel.',
                       textAlign: TextAlign.center,
@@ -83,13 +84,13 @@ class QuickActionsSettingsScreen extends ConsumerWidget {
             ),
           ),
           if (PlatformFeatures.homeWidgets) ...[
-            settingsSectionLabel(context, 'Home screen'),
+            settingsSectionLabel(context, tr('Home screen')),
             AppCard(
               child: AppListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                 leading: const AppIcon(Icons.widgets_outlined),
-                title: const Text('Home screen widgets'),
-                subtitle: Text(
+                title: const Tr('Home screen widgets'),
+                subtitle: Tr(
                   'Balance, Budgets, Quick Add or This Month — pick what to '
                   'put on your home screen.',
                   style: theme.textTheme.bodySmall?.copyWith(
@@ -102,13 +103,13 @@ class QuickActionsSettingsScreen extends ConsumerWidget {
             ),
           ],
           if (PlatformFeatures.screenshotBlocking) ...[
-            settingsSectionLabel(context, 'Lock screen shortcuts'),
+            settingsSectionLabel(context, tr('Lock screen shortcuts')),
             AppCard(
               child: AppSwitchListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                 secondary: const AppIcon(Icons.screenshot_monitor_outlined),
-                title: const Text('Screenshot blocking'),
-                subtitle: Text(
+                title: const Tr('Screenshot blocking'),
+                subtitle: Tr(
                   'Turn screenshot blocking on or off from the lock screen. '
                   'On applies right away; off only after you unlock.',
                   style: theme.textTheme.bodySmall?.copyWith(
@@ -154,9 +155,9 @@ class _HoldMenuEditor extends ConsumerWidget {
               children: [
                 _positioned(
                   center,
-                  const _Ball(
+                  _Ball(
                     icon: Icons.close_rounded,
-                    label: 'Cancel',
+                    label: tr('Cancel'),
                     fixed: true,
                   ),
                 ),
@@ -165,7 +166,7 @@ class _HoldMenuEditor extends ConsumerWidget {
                     holdMenuOptionCenter(center, holdMenuSlotAngles, radius, i),
                     _Ball(
                       icon: actions[i]?.icon,
-                      label: actions[i]?.label ?? 'Empty',
+                      label: actions[i]?.label ?? tr('Empty'),
                       onTap: () => _pick(context, ref, slots, i),
                     ),
                   ),
@@ -289,7 +290,7 @@ class _QuickActionPickerSheet extends ConsumerWidget {
 
     String? usedBy(String id) {
       for (var i = 0; i < slots.length; i++) {
-        if (i != index && slots[i] == id) return holdMenuSlotDirections[i];
+        if (i != index && slots[i] == id) return tr(holdMenuSlotDirections[i]);
       }
       return null;
     }
@@ -300,7 +301,7 @@ class _QuickActionPickerSheet extends ConsumerWidget {
       return AppListTile(
         leading: AppIcon(icon),
         title: Text(label),
-        subtitle: other == null ? null : Text('Already on $other'),
+        subtitle: other == null ? null : Text(tr('Already on {0}', [other])),
         enabled: other == null,
         trailing: selected
             ? AppIcon(Icons.check_rounded, color: cs.secondary)
@@ -341,7 +342,7 @@ class _QuickActionPickerSheet extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
               child: Text(
-                '${holdMenuSlotDirections[index]} slot',
+                tr('{0} slot', [tr(holdMenuSlotDirections[index])]),
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
@@ -350,7 +351,7 @@ class _QuickActionPickerSheet extends ConsumerWidget {
             if (current.isNotEmpty)
               AppListTile(
                 leading: const AppIcon(Icons.remove_circle_outline_rounded),
-                title: const Text('Leave empty'),
+                title: const Tr('Leave empty'),
                 onTap: () => Navigator.of(context).pop(''),
               ),
             for (final group in groups.entries) ...[
@@ -360,11 +361,11 @@ class _QuickActionPickerSheet extends ConsumerWidget {
               // Templates sit right after the Add shortcuts — both start a
               // new transaction.
               if (group.key == 'Add') ...[
-                heading('Templates'),
+                heading(tr('Templates')),
                 if (templates.isEmpty)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-                    child: Text(
+                    child: Tr(
                       'No templates yet. Save one from Add Transaction and '
                       'it shows up here.',
                       style: theme.textTheme.bodySmall?.copyWith(

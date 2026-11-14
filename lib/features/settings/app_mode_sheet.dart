@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart' show AppMode;
+import '../../core/l10n/l10n.dart';
 
 /// Switches the active tier — see [AppMode]. Mode switching itself never
 /// touches data (existing budgets/allocations are simply left alone and
@@ -48,8 +49,8 @@ class _AppModeSheetState extends ConsumerState<AppModeSheet> {
       final proceed = await showAppDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: const Text("Couldn't back up your data"),
-          content: const Text(
+          title: const Tr("Couldn't back up your data"),
+          content: const Tr(
             'Switching mode is safe on its own — nothing is deleted — but '
             "the usual safety-net backup couldn't be saved this time. "
             'Switch anyway?',
@@ -57,11 +58,11 @@ class _AppModeSheetState extends ConsumerState<AppModeSheet> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
+              child: const Tr('Cancel'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Switch anyway'),
+              child: const Tr('Switch anyway'),
             ),
           ],
         ),
@@ -76,13 +77,13 @@ class _AppModeSheetState extends ConsumerState<AppModeSheet> {
     navigator.pop();
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('Switched to ${_label(mode)} mode.')));
+      ..showSnackBar(SnackBar(content: Text(tr('Switched to {0} mode.', [_label(mode)]))));
   }
 
   String _label(AppMode mode) => switch (mode) {
-    AppMode.basic => 'Basic',
-    AppMode.medium => 'Medium',
-    AppMode.pro => 'Pro',
+    AppMode.basic => tr('Basic'),
+    AppMode.medium => tr('Medium'),
+    AppMode.pro => tr('Pro'),
   };
 
   @override
@@ -101,14 +102,14 @@ class _AppModeSheetState extends ConsumerState<AppModeSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
+          Tr(
             'App level',
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 8),
-          Text(
+          Tr(
             'Switching takes a safety-net backup first. Existing data is '
             'never deleted — it just stops showing while its tier is off.',
             style: theme.textTheme.bodySmall?.copyWith(
@@ -117,24 +118,24 @@ class _AppModeSheetState extends ConsumerState<AppModeSheet> {
           ),
           const SizedBox(height: 20),
           _ModeOption(
-            title: 'Basic',
-            subtitle: 'Just transactions, and people you owe or are owed by.',
+            title: tr('Basic'),
+            subtitle: tr('Just transactions, and people you owe or are owed by.'),
             selected: selected == AppMode.basic,
             enabled: !_switching,
             onTap: () => _choose(AppMode.basic),
           ),
           const SizedBox(height: 10),
           _ModeOption(
-            title: 'Medium',
-            subtitle: 'Adds accounts, budgets and net worth.',
+            title: tr('Medium'),
+            subtitle: tr('Adds accounts, budgets and net worth.'),
             selected: selected == AppMode.medium,
             enabled: !_switching,
             onTap: () => _choose(AppMode.medium),
           ),
           const SizedBox(height: 10),
           _ModeOption(
-            title: 'Pro',
-            subtitle: 'Adds Envelope mode and budget rollover.',
+            title: tr('Pro'),
+            subtitle: tr('Adds Envelope mode and budget rollover.'),
             selected: selected == AppMode.pro,
             enabled: !_switching,
             onTap: () => _choose(AppMode.pro),

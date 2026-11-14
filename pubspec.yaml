@@ -167,6 +167,9 @@ flutter:
     # pick a weight out of a variable font, and these carry ₹, €, £ and the
     # other currency glyphs the built-in PDF fonts lack. ~35 KB each.
     - assets/fonts/pdf/
+    # Interface translations, English -> each language (GitHub #191);
+    # built by tool/l10n/assemble.dart. English itself needs no table.
+    - assets/l10n/
 
   # The Glass theme's Liquid Glass lens (see lib/core/theme/glass.dart).
   shaders:

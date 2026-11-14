@@ -32,6 +32,7 @@ import 'transaction_filters.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 import '../persons/person_avatar.dart';
 import '../share/share_flows.dart';
+import '../../core/l10n/l10n.dart';
 
 /// All transactions, grouped day-wise (newest first) with a per-day net total.
 /// Searchable by note / category / account and filterable by [TxType].
@@ -72,15 +73,15 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         icon: const AppIcon(Icons.delete_outline_rounded),
-        title: const Text('Delete this transaction?'),
+        title: const Tr('Delete this transaction?'),
         content: Text(
-          '$title · ${MoneyFormat.symbol(tx.amount)}\n\n'
-          'The account balance will be corrected. This cannot be undone.',
+          tr('{0} · {1}\n\n'
+          'The account balance will be corrected. This cannot be undone.', [title, MoneyFormat.symbol(tx.amount)]),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           FilledButton.icon(
             style: FilledButton.styleFrom(
@@ -92,7 +93,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             ),
             onPressed: () => Navigator.pop(context, true),
             icon: const AppIcon(Icons.delete_outline_rounded, size: 18),
-            label: const Text('Delete'),
+            label: const Tr('Delete'),
           ),
         ],
       ),
@@ -110,14 +111,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final name = await showAppDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Save as template'),
+        title: const Tr('Save as template'),
         content: TextField(
           controller: controller,
           autofocus: true,
           maxLength: 60,
           textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(
-            labelText: 'Template name',
+          decoration: InputDecoration(
+            labelText: tr('Template name'),
             counterText: '',
           ),
           onSubmitted: (v) => Navigator.of(dialogContext).pop(v.trim()),
@@ -125,12 +126,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           FilledButton(
             onPressed: () =>
                 Navigator.of(dialogContext).pop(controller.text.trim()),
-            child: const Text('Save'),
+            child: const Tr('Save'),
           ),
         ],
       ),
@@ -151,12 +152,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             modeId: ref.read(focusedModeProvider)?.id,
           );
       messenger.showSnackBar(
-        SnackBar(content: Text('Saved "$name" as a template')),
+        SnackBar(content: Text(tr('Saved "{0}" as a template', [name]))),
       );
     } on ArgumentError catch (e) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text(e.message?.toString() ?? "Couldn't save template"),
+          content: Text(e.message?.toString() ?? tr("Couldn't save template")),
         ),
       );
     }
@@ -181,16 +182,16 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     try {
       await ref.read(dbProvider).deleteTransaction(id);
       messenger.showSnackBar(
-        const SnackBar(content: Text('Transaction deleted')),
+        const SnackBar(content: Tr('Transaction deleted')),
       );
     } on ArgumentError catch (e) {
       // e.g. a person movement, which must be deleted from the person's page.
       messenger.showSnackBar(
-        SnackBar(content: Text(e.message?.toString() ?? 'Could not delete')),
+        SnackBar(content: Text(e.message?.toString() ?? tr('Could not delete'))),
       );
     } catch (_) {
       messenger.showSnackBar(
-        const SnackBar(content: Text('Could not delete transaction')),
+        const SnackBar(content: Tr('Could not delete transaction')),
       );
     }
   }
@@ -278,12 +279,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         hasScrollBody: false,
         child: Center(child: CircularProgressIndicator()),
       ),
-      error: (_, _) => const SliverFillRemaining(
+      error: (_, _) => SliverFillRemaining(
         hasScrollBody: false,
         child: _EmptyState(
           icon: Icons.error_outline_rounded,
-          title: 'Could not load transactions',
-          message: 'Something went wrong reading your ledger.',
+          title: tr('Could not load transactions'),
+          message: tr('Something went wrong reading your ledger.'),
         ),
       ),
       data: (_) {
@@ -291,23 +292,23 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           return SliverFillRemaining(
             hasScrollBody: false,
             child: linkedOnly
-                ? const _EmptyState(
+                ? _EmptyState(
                     icon: Icons.link_off_rounded,
-                    title: 'No linked transactions',
+                    title: tr('No linked transactions'),
                     message:
-                        "Open a transaction and tap the link icon to connect "
-                        'it to another — they\'ll show up here.',
+                        tr("Open a transaction and tap the link icon to connect "
+                        'it to another — they\'ll show up here.'),
                   )
                 : searchOrFilterActive
-                ? const _EmptyState(
+                ? _EmptyState(
                     icon: Icons.search_off_rounded,
-                    title: 'Nothing matches',
-                    message: 'Try a different search or filter.',
+                    title: tr('Nothing matches'),
+                    message: tr('Try a different search or filter.'),
                   )
-                : const _EmptyState(
+                : _EmptyState(
                     icon: Icons.receipt_long_outlined,
-                    title: 'No transactions yet',
-                    message: 'Tap ➕ to record your first one.',
+                    title: tr('No transactions yet'),
+                    message: tr('Tap ➕ to record your first one.'),
                   ),
           );
         }
@@ -403,17 +404,17 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               title: glass && searchActive
                   ? GlassSearchField(
                       controller: _searchController,
-                      hint: 'Search transactions',
+                      hint: tr('Search transactions'),
                       onChanged: (value) =>
                           ref.read(txSearchQueryProvider.notifier).state =
                               value,
                     )
-                  : const Text('Transactions'),
+                  : const Tr('Transactions'),
               actions: [
                 GlassActionGroup(
                   children: [
                     IconButton(
-                      tooltip: 'Filters',
+                      tooltip: tr('Filters'),
                       icon: Badge(
                         isLabelVisible: advanced.count > 0,
                         label: Text('${advanced.count}'),
@@ -422,7 +423,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                       onPressed: () => _openFilters(advanced),
                     ),
                     IconButton(
-                      tooltip: searchActive ? 'Close search' : 'Search',
+                      tooltip: searchActive ? tr('Close search') : tr('Search'),
                       icon: AppIcon(
                         searchActive
                             ? Icons.close_rounded
@@ -707,7 +708,7 @@ class _ModeCard extends ConsumerWidget {
     final range = modeDateRange(mode);
     final subtitle = [
       ?range,
-      summary.count == 1 ? '1 transaction' : '${summary.count} transactions',
+      summary.count == 1 ? tr('1 transaction') : tr('{0} transactions', [summary.count]),
     ].join(' · ');
 
     return Padding(
@@ -995,8 +996,8 @@ class _DayHeader extends StatelessWidget {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final diff = today.difference(day).inDays;
-    if (diff == 0) return 'Today';
-    if (diff == 1) return 'Yesterday';
+    if (diff == 0) return tr('Today');
+    if (diff == 1) return tr('Yesterday');
     // Backfilled history spans years — only the current one goes unstated.
     return DateFormat(
       day.year == now.year ? 'EEE, d MMM' : 'EEE, d MMM yyyy',
@@ -1038,7 +1039,7 @@ class _ClusterHeader extends StatelessWidget {
           const SizedBox(width: 8),
           Flexible(
             child: Text(
-              'Linked · $span',
+              tr('Linked · {0}', [span]),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.titleSmall?.copyWith(
@@ -1092,8 +1093,8 @@ Future<void> _openQuickActions(
       if (!tx.type.isCorrection) ...[
         AppListTile(
           leading: const AppIcon(Icons.content_copy_outlined),
-          title: const Text('Duplicate'),
-          subtitle: const Text('Add a new transaction with these details'),
+          title: const Tr('Duplicate'),
+          subtitle: const Tr('Add a new transaction with these details'),
           onTap: () {
             Navigator.of(sheetContext).pop();
             context.push('/add?duplicate=${tx.id}');
@@ -1101,8 +1102,8 @@ Future<void> _openQuickActions(
         ),
         AppListTile(
           leading: const AppIcon(Icons.bookmark_add_outlined),
-          title: const Text('Save as template'),
-          subtitle: const Text('Reuse these details from the ➕ button'),
+          title: const Tr('Save as template'),
+          subtitle: const Tr('Reuse these details from the ➕ button'),
           onTap: () {
             Navigator.of(sheetContext).pop();
             onCreateTemplate(tx, title);
@@ -1110,7 +1111,7 @@ Future<void> _openQuickActions(
         ),
         AppListTile(
           leading: const AppIcon(Icons.edit_outlined),
-          title: const Text('Edit'),
+          title: const Tr('Edit'),
           onTap: () {
             Navigator.of(sheetContext).pop();
             context.push('/add?id=${tx.id}');
@@ -1119,8 +1120,8 @@ Future<void> _openQuickActions(
       ],
       AppListTile(
         leading: const AppIcon(Icons.ios_share_rounded),
-        title: const Text('Share'),
-        subtitle: const Text('As a PDF receipt or an image card'),
+        title: const Tr('Share'),
+        subtitle: const Tr('As a PDF receipt or an image card'),
         onTap: () {
           Navigator.of(sheetContext).pop();
           shareTransaction(context, tx);
@@ -1131,7 +1132,7 @@ Future<void> _openQuickActions(
           Icons.delete_outline_rounded,
           color: theme.colorScheme.error,
         ),
-        title: Text(
+        title: Tr(
           'Delete',
           style: TextStyle(color: theme.colorScheme.error),
         ),
@@ -1264,7 +1265,7 @@ class _TxCard extends StatelessWidget {
                 children: [
                   AppIcon(Icons.delete_outline_rounded, size: 20),
                   SizedBox(height: 4),
-                  Text('Delete', style: TextStyle(fontSize: 11)),
+                  Tr('Delete', style: TextStyle(fontSize: 11)),
                 ],
               ),
             ),
@@ -1342,8 +1343,8 @@ class _TxCard extends StatelessWidget {
                                 if (tx.needsAmountReview) ...[
                                   Tooltip(
                                     message:
-                                        'Posted from an estimate — tap to '
-                                        'confirm the exact amount.',
+                                        tr('Posted from an estimate — tap to '
+                                        'confirm the exact amount.'),
                                     child: AppIcon(
                                       Icons.error_outline_rounded,
                                       size: 13,
@@ -1519,8 +1520,8 @@ extension on _TxCard {
                             if (tx.needsAmountReview) ...[
                               Tooltip(
                                 message:
-                                    'Posted from an estimate — open it to '
-                                    'confirm the exact amount.',
+                                    tr('Posted from an estimate — open it to '
+                                    'confirm the exact amount.'),
                                 child: AppIcon(
                                   Icons.error_outline_rounded,
                                   size: 13,
@@ -2016,7 +2017,7 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
                 textInputAction: TextInputAction.search,
                 decoration: InputDecoration(
                   isDense: true,
-                  hintText: 'Search note, payee, category or account',
+                  hintText: tr('Search note, payee, category or account'),
                   prefixIcon: const AppIcon(Icons.search_rounded),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -2164,7 +2165,7 @@ class _FilterChips extends StatelessWidget {
                 size: 16,
                 color: selected == value ? cs.secondary : cs.onSurfaceVariant,
               ),
-              label: Text(label),
+              label: Tr(label),
               selected: selected == value,
               showCheckmark: false,
               onSelected: (_) => onChanged(value),
@@ -2234,7 +2235,7 @@ class _FilterChips extends StatelessWidget {
                                   : cs.onSurface,
                             ),
                             const SizedBox(width: 6),
-                            Text(
+                            Tr(
                               label,
                               style: theme.textTheme.labelLarge?.copyWith(
                                 fontWeight: FontWeight.w700,

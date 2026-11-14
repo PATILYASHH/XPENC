@@ -30,6 +30,7 @@ import '../tags/tag_picker_sheet.dart';
 import 'date_time_combine.dart';
 import 'receipt_storage.dart';
 import '../../core/widgets/nav_bar_inset.dart';
+import '../../core/l10n/l10n.dart';
 
 /// One editable row of a split expense: which category, and how much of the
 /// total it takes. Holds its own [AmountKeypadController] so its buffer text
@@ -440,7 +441,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final go = await showAppDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Over ${mode.name}’s limits'),
+        title: Text(tr('Over {0}’s limits', [mode.name])),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -455,11 +456,11 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Change'),
+            child: const Tr('Change'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Save anyway'),
+            child: const Tr('Save anyway'),
           ),
         ],
       ),
@@ -563,7 +564,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     if (row == null) {
       navigator.pop();
       messenger.showSnackBar(
-        const SnackBar(content: Text('Transaction not found')),
+        const SnackBar(content: Tr('Transaction not found')),
       );
       return;
     }
@@ -581,7 +582,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     if (isPersonLinked) {
       navigator.pop();
       messenger.showSnackBar(
-        const SnackBar(content: Text('Edit this from the person\'s page.')),
+        const SnackBar(content: Tr('Edit this from the person\'s page.')),
       );
       return;
     }
@@ -633,7 +634,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     if (row == null) {
       navigator.pop();
       messenger.showSnackBar(
-        const SnackBar(content: Text('Transaction not found')),
+        const SnackBar(content: Tr('Transaction not found')),
       );
       return;
     }
@@ -649,7 +650,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     if (isPersonLinked) {
       navigator.pop();
       messenger.showSnackBar(
-        const SnackBar(content: Text("This can't be duplicated from here.")),
+        const SnackBar(content: Tr("This can't be duplicated from here.")),
       );
       return;
     }
@@ -695,7 +696,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     if (row == null) {
       navigator.pop();
       messenger.showSnackBar(
-        const SnackBar(content: Text('Template not found')),
+        const SnackBar(content: Tr('Template not found')),
       );
       return;
     }
@@ -730,9 +731,57 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     setState(() => _activeAmountCtrl = ctrl);
   }
 
-  void _onKey(String k) => setState(() => _activeAmountCtrl.applyKey(k));
+  void _onKey(String k) => setState(() {
+    _activeAmountCtrl.applyKey(k);
+    _afterAmountTyped();
+  });
 
-  void _onBackspace() => setState(() => _activeAmountCtrl.applyBackspace());
+  void _onBackspace() => setState(() {
+    _activeAmountCtrl.applyBackspace();
+    _afterAmountTyped();
+  });
+
+  void _afterAmountTyped() {
+    if (identical(_activeAmountCtrl, _foreignAmountCtrl)) {
+      _fillAmountFromForeign();
+    } else if (identical(_activeAmountCtrl, _mainAmountCtrl)) {
+      _amountFromRate = false;
+    }
+  }
+
+  /// Whether the main amount was last written by [_fillAmountFromForeign]
+  /// rather than typed — only then may clearing the foreign amount clear it.
+  bool _amountFromRate = false;
+
+  /// The latest Settings › Currencies rate for the picked foreign currency,
+  /// or null when none has been saved (or rates haven't loaded yet).
+  int? get _foreignRate {
+    final code = _foreignCurrencyCode;
+    if (code == null) return null;
+    for (final r in ref.read(currencyRatesProvider).valueOrNull ?? const []) {
+      if (r.currencyCode == code) return r.rateToBaseMicros;
+    }
+    return null;
+  }
+
+  /// With a saved rate, the foreign amount fills in the main amount, as it's
+  /// typed and when its currency changes (GitHub #195 — the rate saved in
+  /// Settings was never used here, so the amount kept whatever was typed).
+  /// Typing the main amount afterwards still wins: what the card was really
+  /// charged is the truth, and the line under the editor shows the rate
+  /// that implies.
+  void _fillAmountFromForeign() {
+    if (!_isForeignCurrency) return;
+    final rate = _foreignRate;
+    if (rate == null) return;
+    final foreign = _foreignAmount;
+    if (foreign.isPositive) {
+      _mainAmountCtrl.setAmount(convertUsingRate(foreign, rate));
+      _amountFromRate = true;
+    } else if (_amountFromRate) {
+      _mainAmountCtrl.text = '';
+    }
+  }
 
   // ── Pickers ───────────────────────────────────────────────────────────────
 
@@ -744,8 +793,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       showDragHandle: true,
       builder: (_) => _AccountPickerSheet(
         title: forTo
-            ? 'To account'
-            : (_type == TxType.transfer ? 'From account' : 'Account'),
+            ? tr('To account')
+            : (_type == TxType.transfer ? tr('From account') : tr('Account')),
         excludeId: forTo ? _accountId : null,
         // A mode's account limit is about what it pays with — a transfer
         // can still land anywhere.
@@ -850,7 +899,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Text(
-        '≈ $formatted received, at today\'s rate',
+        tr('≈ {0} received, at today\'s rate', [formatted]),
         style: theme.textTheme.bodySmall?.copyWith(
           color: theme.colorScheme.onSurfaceVariant,
         ),
@@ -894,8 +943,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           const SizedBox(width: 6),
           Expanded(
             child: Text(
-              'This takes ${account.name} below your minimum balance of '
-              '$formattedMin.',
+              tr('This takes {0} below your minimum balance of '
+              '{1}.', [account.name, formattedMin]),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.error,
               ),
@@ -955,7 +1004,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               color: theme.colorScheme.onSurfaceVariant,
             )
           : CustomIconBadge(value: value, size: 26),
-      tooltip: value == null ? 'Add an icon or emoji' : 'Icon set',
+      tooltip: value == null ? tr('Add an icon or emoji') : tr('Icon set'),
       onPressed: value == null ? _pickCustomIcon : _openCustomIconSheet,
     );
   }
@@ -974,15 +1023,15 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           children: [
             AppListTile(
               leading: const AppIcon(Icons.grid_view_rounded),
-              title: const Text('XPENC icon'),
-              subtitle: const Text('Pick from the app\'s own icon library'),
+              title: const Tr('XPENC icon'),
+              subtitle: const Tr('Pick from the app\'s own icon library'),
               onTap: () =>
                   Navigator.of(sheetContext).pop(_CustomIconSource.library),
             ),
             AppListTile(
               leading: const AppIcon(Icons.emoji_emotions_outlined),
-              title: const Text('Emoji'),
-              subtitle: const Text('Type one with your keyboard\'s emoji key'),
+              title: const Tr('Emoji'),
+              subtitle: const Tr('Type one with your keyboard\'s emoji key'),
               onTap: () =>
                   Navigator.of(sheetContext).pop(_CustomIconSource.emoji),
             ),
@@ -1042,7 +1091,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                         _pickCustomIcon();
                       },
                       icon: const AppIcon(Icons.swap_horiz_rounded),
-                      label: const Text('Change'),
+                      label: const Tr('Change'),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -1056,7 +1105,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                         setState(() => _customIcon = null);
                       },
                       icon: const AppIcon(Icons.delete_outline),
-                      label: const Text('Remove'),
+                      label: const Tr('Remove'),
                     ),
                   ),
                 ],
@@ -1086,13 +1135,13 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           children: [
             AppListTile(
               leading: const AppIcon(Icons.photo_camera_outlined),
-              title: const Text('Take photo'),
+              title: const Tr('Take photo'),
               onTap: () =>
                   Navigator.of(sheetContext).pop(_ReceiptSource.camera),
             ),
             AppListTile(
               leading: const AppIcon(Icons.photo_library_outlined),
-              title: const Text('Choose from gallery'),
+              title: const Tr('Choose from gallery'),
               onTap: () =>
                   Navigator.of(sheetContext).pop(_ReceiptSource.gallery),
             ),
@@ -1118,7 +1167,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         ..hideCurrentSnackBar()
         ..showSnackBar(
           const SnackBar(
-            content: Text(
+            content: Tr(
               "Couldn't open the camera — check its permission in system "
               'settings.',
             ),
@@ -1157,7 +1206,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         attached ? Icons.camera_alt_rounded : Icons.camera_alt_outlined,
         color: attached ? theme.colorScheme.primary : null,
       ),
-      tooltip: attached ? 'Receipt attached' : 'Attach receipt',
+      tooltip: attached ? tr('Receipt attached') : tr('Attach receipt'),
       onPressed: attached ? _openReceiptSheet : _showAttachReceiptSheet,
     );
   }
@@ -1203,7 +1252,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                         _showAttachReceiptSheet();
                       },
                       icon: const AppIcon(Icons.swap_horiz_rounded),
-                      label: const Text('Replace'),
+                      label: const Tr('Replace'),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -1217,7 +1266,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                         _removeReceipt();
                       },
                       icon: const AppIcon(Icons.delete_outline),
-                      label: const Text('Remove'),
+                      label: const Tr('Remove'),
                     ),
                   ),
                 ],
@@ -1269,10 +1318,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           Icons.call_split_rounded,
           color: theme.colorScheme.onSurfaceVariant,
         ),
-        title: const Text('Split into categories'),
+        title: const Tr('Split into categories'),
         subtitle: _isSplit
             ? null
-            : const Text('One payment, more than one category'),
+            : const Tr('One payment, more than one category'),
       ),
     );
   }
@@ -1290,7 +1339,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       isScrollControlled: true,
       showDragHandle: true,
       builder: (_) => _AccountPickerSheet(
-        title: 'Account',
+        title: tr('Account'),
         excludeGoals: true,
         moneyInOut: true,
         excludeIds: excludeIds,
@@ -1328,7 +1377,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                 Expanded(
                   child: _splitModeLabel(
                     theme,
-                    'Split into categories',
+                    tr('Split into categories'),
                     active: mode == _SplitMode.categories,
                     onTap: () => _setSplitMode(_SplitMode.categories),
                   ),
@@ -1337,7 +1386,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                 Expanded(
                   child: _splitModeLabel(
                     theme,
-                    'Split into accounts',
+                    tr('Split into accounts'),
                     active: mode == _SplitMode.accounts,
                     onTap: () => _setSplitMode(_SplitMode.accounts),
                   ),
@@ -1347,10 +1396,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             const SizedBox(height: 4),
             Text(
               switch (mode) {
-                null => 'One payment — tap either side to split it up',
-                _SplitMode.categories => 'One payment, more than one category',
+                null => tr('One payment — tap either side to split it up'),
+                _SplitMode.categories => tr('One payment, more than one category'),
                 _SplitMode.accounts =>
-                  'One purchase, paid from more than one account',
+                  tr('One purchase, paid from more than one account'),
               },
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall?.copyWith(
@@ -1450,14 +1499,14 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                 onPressed: () =>
                     setState(() => _hybridLegs.add(_PaymentLegEntry())),
                 icon: const AppIcon(Icons.add_rounded, size: 18),
-                label: const Text('Add account'),
+                label: const Tr('Add account'),
               ),
             ),
             const Divider(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
+                Tr(
                   'Remaining',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
@@ -1512,7 +1561,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 84),
                   child: Text(
-                    account?.name ?? 'Account',
+                    account?.name ?? tr('Account'),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodyMedium,
@@ -1534,7 +1583,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         ),
         IconButton(
           icon: const AppIcon(Icons.close_rounded, size: 18),
-          tooltip: 'Remove',
+          tooltip: tr('Remove'),
           onPressed: _hybridLegs.length <= 1
               ? null
               : () => setState(() {
@@ -1557,7 +1606,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       isScrollControlled: true,
       showDragHandle: true,
       builder: (_) => _AccountPickerSheet(
-        title: 'Change to account',
+        title: tr('Change to account'),
         excludeId: _accountId,
         onlyTypes: const {AccountType.cash},
       ),
@@ -1585,10 +1634,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           Icons.currency_exchange_rounded,
           color: theme.colorScheme.onSurfaceVariant,
         ),
-        title: const Text('Change went elsewhere'),
+        title: const Tr('Change went elsewhere'),
         subtitle: _hasChange
             ? null
-            : const Text('Part of the change lands in another account'),
+            : const Tr('Part of the change lands in another account'),
       ),
     );
   }
@@ -1601,7 +1650,11 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       initialCode: _foreignCurrencyCode ?? MoneyFormat.currency.code,
     );
     if (picked == null || !mounted) return;
-    setState(() => _foreignCurrencyCode = picked.code);
+    setState(() {
+      _foreignCurrencyCode = picked.code;
+      // Only re-convert an amount the rate wrote — a typed one stays put.
+      if (_amountFromRate || !_amount.isPositive) _fillAmountFromForeign();
+    });
   }
 
   Widget _foreignToggleTile() {
@@ -1622,10 +1675,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           Icons.public_rounded,
           color: theme.colorScheme.onSurfaceVariant,
         ),
-        title: const Text('Foreign currency'),
+        title: const Tr('Foreign currency'),
         subtitle: _hasForeignCurrency
             ? null
-            : const Text('Record what this cost in another currency'),
+            : const Tr('Record what this cost in another currency'),
       ),
     );
   }
@@ -1634,10 +1687,36 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final theme = Theme.of(context);
     final currency = currencyForCode(_foreignCurrencyCode);
     final foreignAmount = _foreignAmount;
-    final rateLine = foreignAmount.isPositive
+    // Watched so the rates are loaded (and current) by the time a key is
+    // typed — [_foreignRate] only reads them.
+    ref.watch(currencyRatesProvider);
+    final parentCode = MoneyFormat.currency.code;
+    final isOtherCurrency =
+        _foreignCurrencyCode != null && _foreignCurrencyCode != parentCode;
+    final savedRate = isOtherCurrency ? _foreignRate : null;
+
+    // What the two amounts as entered say the rate is.
+    final implied = foreignAmount.isPositive && _amount.isPositive
         ? '1 ${currency.code} ≈ '
               '${MoneyFormat.symbol(Money.fromRupees(_amount.rupees / foreignAmount.rupees))}'
         : null;
+    final String? rateLine;
+    if (savedRate != null) {
+      final overridden =
+          implied != null &&
+          _amount != convertUsingRate(foreignAmount, savedRate);
+      rateLine =
+          tr('At your saved rate, 1 {0} = '
+          '{1} {2}.'
+          '{3}', [currency.code, (savedRate / currencyRateScale).toStringAsFixed(4), parentCode, overridden ? tr(' The amount you entered works out to {0}.', [implied]) : '']);
+    } else if (isOtherCurrency) {
+      rateLine =
+          tr('{0}. '
+          'Save a {1} rate in Settings › Currencies and the '
+          'amount fills in for you.', [implied ?? tr('No {0} rate saved yet', [currency.code]), currency.code]);
+    } else {
+      rateLine = implied;
+    }
 
     return AppCard(
       margin: EdgeInsets.zero,
@@ -1741,7 +1820,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 100),
                       child: Text(
-                        account?.name ?? 'Account',
+                        account?.name ?? tr('Account'),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodyMedium,
@@ -1801,10 +1880,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           color: theme.colorScheme.onSurfaceVariant,
         ),
         title: Text(
-          'Change ${MoneyFormat.symbol(leg.amount)} to '
-          '${accountMap[leg.toAccountId]?.name ?? '—'}',
+          tr('Change {0} to '
+          '{1}', [MoneyFormat.symbol(leg.amount), accountMap[leg.toAccountId]?.name ?? '—']),
         ),
-        subtitle: const Text('Saved as its own transfer · tap to edit'),
+        subtitle: const Tr('Saved as its own transfer · tap to edit'),
         trailing: AppIcon(
           Icons.chevron_right_rounded,
           color: theme.colorScheme.onSurfaceVariant,
@@ -1835,14 +1914,14 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               child: TextButton.icon(
                 onPressed: () => setState(() => _splitRows.add(_SplitEntry())),
                 icon: const AppIcon(Icons.add_rounded, size: 18),
-                label: const Text('Add category'),
+                label: const Tr('Add category'),
               ),
             ),
             const Divider(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
+                Tr(
                   'Remaining',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
@@ -1897,7 +1976,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 84),
                   child: Text(
-                    cat?.name ?? 'Category',
+                    cat?.name ?? tr('Category'),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodyMedium,
@@ -1919,7 +1998,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         ),
         IconButton(
           icon: const AppIcon(Icons.close_rounded, size: 18),
-          tooltip: 'Remove',
+          tooltip: tr('Remove'),
           onPressed: _splitRows.length <= 1
               ? null
               : () => setState(() {
@@ -1951,7 +2030,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         : amount.isPositive;
     if (!amountValid) {
       messenger.showSnackBar(
-        const SnackBar(content: Text('Enter a valid amount')),
+        const SnackBar(content: Tr('Enter a valid amount')),
       );
       return;
     }
@@ -1959,14 +2038,14 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     if (_isHybrid) {
       if (_hybridLegs.any((r) => r.accountId == null)) {
         messenger.showSnackBar(
-          const SnackBar(content: Text('Choose an account for every leg')),
+          const SnackBar(content: Tr('Choose an account for every leg')),
         );
         return;
       }
       if (_hybridLegs.any((r) => !r.amount.isPositive)) {
         messenger.showSnackBar(
           const SnackBar(
-            content: Text('Every leg needs an amount greater than zero'),
+            content: Tr('Every leg needs an amount greater than zero'),
           ),
         );
         return;
@@ -1977,8 +2056,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           SnackBar(
             content: Text(
               sum < amount
-                  ? 'Accounts are short by ${MoneyFormat.symbol(amount - sum)}'
-                  : 'Accounts are over by ${MoneyFormat.symbol(sum - amount)}',
+                  ? tr('Accounts are short by {0}', [MoneyFormat.symbol(amount - sum)])
+                  : tr('Accounts are over by {0}', [MoneyFormat.symbol(sum - amount)]),
             ),
           ),
         );
@@ -2017,14 +2096,14 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         messenger.showSnackBar(
           SnackBar(
             content: Text(
-              e.message?.toString() ?? 'Could not save transaction',
+              e.message?.toString() ?? tr('Could not save transaction'),
             ),
           ),
         );
         return;
       }
       navigator.pop();
-      messenger.showSnackBar(const SnackBar(content: Text('Saved')));
+      messenger.showSnackBar(const SnackBar(content: Tr('Saved')));
       return;
     }
     if (_accountId == null) {
@@ -2032,8 +2111,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         SnackBar(
           content: Text(
             _type == TxType.transfer
-                ? 'Choose the account to transfer from'
-                : 'Choose an account',
+                ? tr('Choose the account to transfer from')
+                : tr('Choose an account'),
           ),
         ),
       );
@@ -2042,13 +2121,13 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     if (_isChange) {
       if (_changeAccountId == null) {
         messenger.showSnackBar(
-          const SnackBar(content: Text('Choose where the change goes')),
+          const SnackBar(content: Tr('Choose where the change goes')),
         );
         return;
       }
       if (!_changeAmount.isPositive) {
         messenger.showSnackBar(
-          const SnackBar(content: Text('Enter how much change goes there')),
+          const SnackBar(content: Tr('Enter how much change goes there')),
         );
         return;
       }
@@ -2078,14 +2157,14 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         messenger.showSnackBar(
           SnackBar(
             content: Text(
-              e.message?.toString() ?? 'Could not save transaction',
+              e.message?.toString() ?? tr('Could not save transaction'),
             ),
           ),
         );
         return;
       }
       navigator.pop();
-      messenger.showSnackBar(const SnackBar(content: Text('Saved')));
+      messenger.showSnackBar(const SnackBar(content: Tr('Saved')));
       return;
     }
     int? envelopeShortfallCategoryId;
@@ -2093,14 +2172,14 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     if (_type == TxType.transfer) {
       if (_toAccountId == null) {
         messenger.showSnackBar(
-          const SnackBar(content: Text('Choose the account to transfer to')),
+          const SnackBar(content: Tr('Choose the account to transfer to')),
         );
         return;
       }
       if (_toAccountId == _accountId) {
         messenger.showSnackBar(
           const SnackBar(
-            content: Text('Transfer must be between two different accounts'),
+            content: Tr('Transfer must be between two different accounts'),
           ),
         );
         return;
@@ -2127,14 +2206,14 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     } else if (_isSplitting) {
       if (_splitRows.any((r) => r.categoryId == null)) {
         messenger.showSnackBar(
-          const SnackBar(content: Text('Choose a category for every split')),
+          const SnackBar(content: Tr('Choose a category for every split')),
         );
         return;
       }
       if (_splitRows.any((r) => !r.amount.isPositive)) {
         messenger.showSnackBar(
           const SnackBar(
-            content: Text('Every split needs an amount greater than zero'),
+            content: Tr('Every split needs an amount greater than zero'),
           ),
         );
         return;
@@ -2145,8 +2224,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           SnackBar(
             content: Text(
               sum < amount
-                  ? 'Splits are short by ${MoneyFormat.symbol(amount - sum)}'
-                  : 'Splits are over by ${MoneyFormat.symbol(sum - amount)}',
+                  ? tr('Splits are short by {0}', [MoneyFormat.symbol(amount - sum)])
+                  : tr('Splits are over by {0}', [MoneyFormat.symbol(sum - amount)]),
             ),
           ),
         );
@@ -2165,7 +2244,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     if (useForeign &&
         (_foreignCurrencyCode == null || !_foreignAmount.isPositive)) {
       messenger.showSnackBar(
-        const SnackBar(content: Text('Choose a currency and enter its amount')),
+        const SnackBar(content: Tr('Choose a currency and enter its amount')),
       );
       return;
     }
@@ -2217,13 +2296,13 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           amount: amount,
           splitMethod: GroupSplitMethod.equal,
           date: _date,
-          note: note.isEmpty ? (payee ?? 'Split') : note,
+          note: note.isEmpty ? (payee ?? tr('Split')) : note,
           accountId: _accountId!,
           categoryId: categoryId,
           participantIds: {null, ..._splitWith},
         );
         final mine = await db.myGroupShareTransactionId(expenseId);
-        if (mine == null) throw ArgumentError('Could not split this one.');
+        if (mine == null) throw ArgumentError(tr('Could not split this one.'));
         id = mine;
       } else {
         id = await db.addTransaction(
@@ -2269,13 +2348,13 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           categoryId: envelopeShortfallCategoryId,
           amount: -envelopeShortfall,
           date: _date,
-          note: 'Drawn for a transfer out of this account',
+          note: tr('Drawn for a transfer out of this account'),
         );
       }
     } on ArgumentError catch (e) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text(e.message?.toString() ?? 'Could not save transaction'),
+          content: Text(e.message?.toString() ?? tr('Could not save transaction')),
         ),
       );
       return;
@@ -2283,7 +2362,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
     navigator.pop();
     messenger.showSnackBar(
-      SnackBar(content: Text(_isEditing ? 'Updated' : 'Saved')),
+      SnackBar(content: Text(_isEditing ? tr('Updated') : tr('Saved'))),
     );
   }
 
@@ -2298,19 +2377,19 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete this transaction?'),
-        content: const Text('The amount will be added back to your balance.'),
+        title: const Tr('Delete this transaction?'),
+        content: const Tr('The amount will be added back to your balance.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: const Tr('Cancel'),
           ),
           TextButton(
             style: TextButton.styleFrom(
               foregroundColor: theme.colorScheme.error,
             ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete'),
+            child: const Tr('Delete'),
           ),
         ],
       ),
@@ -2321,7 +2400,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       await ref.read(dbProvider).deleteTransaction(widget.transactionId!);
     } on ArgumentError catch (e) {
       messenger.showSnackBar(
-        SnackBar(content: Text(e.message?.toString() ?? 'Could not delete')),
+        SnackBar(content: Text(e.message?.toString() ?? tr('Could not delete'))),
       );
       return;
     }
@@ -2329,7 +2408,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
     navigator.pop();
     messenger.showSnackBar(
-      const SnackBar(content: Text('Transaction deleted')),
+      const SnackBar(content: Tr('Transaction deleted')),
     );
   }
 
@@ -2386,7 +2465,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             icon: const AppIcon(Icons.close_rounded),
             onPressed: () => Navigator.of(context).maybePop(),
           ),
-          title: Text(_isEditing ? 'Edit' : 'Add'),
+          title: Text(_isEditing ? tr('Edit') : tr('Add')),
           // Tags and receipt live here, not buried at the bottom of the
           // scrollable field list, so they stay reachable in one tap no matter
           // how far the user has scrolled or whether the keypad is covering
@@ -2400,10 +2479,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                   if (_isEditing)
                     IconButton(
                       icon: const AppIcon(Icons.delete_outline),
-                      tooltip: 'Delete',
+                      tooltip: tr('Delete'),
                       onPressed: _confirmDelete,
                     ),
-                  TextButton(onPressed: _save, child: const Text('Save')),
+                  TextButton(onPressed: _save, child: const Tr('Save')),
                 ],
         ),
         body: _loading
@@ -2425,15 +2504,15 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                             segments: const [
                               ButtonSegment(
                                 value: TxType.expense,
-                                label: Text('Money out'),
+                                label: Tr('Money out'),
                               ),
                               ButtonSegment(
                                 value: TxType.income,
-                                label: Text('Money in'),
+                                label: Tr('Money in'),
                               ),
                               ButtonSegment(
                                 value: TxType.transfer,
-                                label: Text('Transfer'),
+                                label: Tr('Transfer'),
                               ),
                             ],
                             selected: {_type},
@@ -2475,7 +2554,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                       if (_desktop)
                         Padding(
                           padding: const EdgeInsets.only(top: 4),
-                          child: Text(
+                          child: Tr(
                             'Type the amount · Enter to save · Esc to close',
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
@@ -2534,8 +2613,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       tiles.add(
         _pickerTile(
           icon: AppIcons.resolve('bank'),
-          label: 'From account',
-          value: accountMap[_accountId]?.name ?? 'Select account',
+          label: tr('From account'),
+          value: accountMap[_accountId]?.name ?? tr('Select account'),
           selected: _accountId != null,
           onTap: () => _pickAccount(isFrom: true),
         ),
@@ -2544,8 +2623,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       tiles.add(
         _pickerTile(
           icon: AppIcons.resolve('transfer'),
-          label: 'To account',
-          value: accountMap[_toAccountId]?.name ?? 'Select account',
+          label: tr('To account'),
+          value: accountMap[_toAccountId]?.name ?? tr('Select account'),
           selected: _toAccountId != null,
           onTap: () => _pickAccount(isFrom: false),
         ),
@@ -2567,8 +2646,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         tiles.add(
           _pickerTile(
             icon: AppIcons.resolve('wallet'),
-            label: _type == TxType.income ? 'Deposit to' : 'Paid via',
-            value: accountMap[_accountId]?.name ?? 'Select account',
+            label: _type == TxType.income ? tr('Deposit to') : tr('Paid via'),
+            value: accountMap[_accountId]?.name ?? tr('Select account'),
             selected: _accountId != null,
             onTap: () => _pickAccount(isFrom: true),
           ),
@@ -2643,9 +2722,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           _pickerTile(
             icon: AppIcons.resolve(cat?.iconKey ?? 'other'),
             iconKey: cat?.iconKey,
-            label: 'Category',
+            label: tr('Category'),
             value: cat == null
-                ? 'Select category'
+                ? tr('Select category')
                 : parent == null
                 ? cat.name
                 : '${parent.name} › ${cat.name}',
@@ -2696,8 +2775,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           children: [
             Text(
               share == null
-                  ? 'Split with'
-                  : 'Split with · ${MoneyFormat.symbol(share)} each, you paid',
+                  ? tr('Split with')
+                  : tr('Split with · {0} each, you paid', [MoneyFormat.symbol(share)]),
               style: theme.textTheme.titleSmall,
             ),
             const SizedBox(height: 8),
@@ -2738,9 +2817,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         value: _inMode,
         onChanged: (v) => setState(() => _inMode = v),
         secondary: _iconCircle(mode.iconKey, mode.colorValue, size: 32),
-        title: Text('Part of ${mode.name}'),
+        title: Text(tr('Part of {0}', [mode.name])),
         subtitle: Text(
-          _inMode ? 'Counted in this mode' : 'Kept out of this mode',
+          _inMode ? tr('Counted in this mode') : tr('Kept out of this mode'),
         ),
       ),
     );
@@ -2758,11 +2837,11 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           _isNct ? Icons.visibility_off_rounded : Icons.visibility_off_outlined,
           color: theme.colorScheme.onSurfaceVariant,
         ),
-        title: const Text('Hide from screenshots'),
+        title: const Tr('Hide from screenshots'),
         subtitle: Text(
           _isNct
-              ? 'NCT · hidden in lists until held, captures blocked when open'
-              : 'NCT · keep it out of screenshots and recordings',
+              ? tr('NCT · hidden in lists until held, captures blocked when open')
+              : tr('NCT · keep it out of screenshots and recordings'),
         ),
       ),
     );
@@ -2783,7 +2862,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           Icons.event_outlined,
           color: theme.colorScheme.onSurfaceVariant,
         ),
-        title: Text(
+        title: Tr(
           'Date',
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
@@ -2796,7 +2875,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           ),
         ),
         trailing: IconButton(
-          tooltip: 'Change time',
+          tooltip: tr('Change time'),
           icon: AppIcon(
             Icons.access_time_rounded,
             color: theme.colorScheme.onSurfaceVariant,
@@ -2856,7 +2935,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           focusNode: _noteFocus,
           textCapitalization: TextCapitalization.sentences,
           decoration: InputDecoration(
-            hintText: 'Note (optional)',
+            hintText: tr('Note (optional)'),
             border: InputBorder.none,
             icon: AppIcon(
               Icons.notes_outlined,
@@ -2903,8 +2982,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                 child: name.isEmpty
                     ? Text(
                         _type == TxType.income
-                            ? 'Payee (optional) — who paid you?'
-                            : 'Payee (optional) — who did you pay?',
+                            ? tr('Payee (optional) — who paid you?')
+                            : tr('Payee (optional) — who did you pay?'),
                         style: theme.textTheme.bodyLarge?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
@@ -2920,7 +2999,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                             style: theme.textTheme.bodyLarge,
                           ),
                           if (person != null)
-                            Text(
+                            Tr(
                               'Person · not counted in owe/due',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
@@ -2932,7 +3011,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               if (name.isNotEmpty)
                 IconButton(
                   icon: const AppIcon(Icons.close_rounded),
-                  tooltip: 'Clear payee',
+                  tooltip: tr('Clear payee'),
                   visualDensity: VisualDensity.compact,
                   onPressed: () => setState(() {
                     _payeeController.clear();
@@ -2986,7 +3065,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         label: Text('$count'),
         child: AppIcon(count > 0 ? Icons.sell_rounded : Icons.sell_outlined),
       ),
-      tooltip: 'Tags',
+      tooltip: tr('Tags'),
       onPressed: _pickTags,
     );
   }
@@ -3177,7 +3256,7 @@ class _AccountPickerSheet extends ConsumerWidget {
                 error: (e, _) => Padding(
                   padding: const EdgeInsets.all(32),
                   child: Text(
-                    'Could not load accounts.\n$e',
+                    tr('Could not load accounts.\n{0}', [e]),
                     style: theme.textTheme.bodyMedium,
                   ),
                 ),
@@ -3197,7 +3276,7 @@ class _AccountPickerSheet extends ConsumerWidget {
                   if (list.isEmpty) {
                     return Padding(
                       padding: const EdgeInsets.all(32),
-                      child: Text(
+                      child: Tr(
                         'No accounts available',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
@@ -3219,7 +3298,7 @@ class _AccountPickerSheet extends ConsumerWidget {
                         leading: _iconCircle(a.iconKey, a.colorValue),
                         title: Text(a.name),
                         subtitle: isDebitCard
-                            ? Text('Draws from ${linkedName ?? 'linked bank'}')
+                            ? Text(tr('Draws from {0}', [linkedName ?? tr('linked bank')]))
                             : null,
                         trailing: isDebitCard
                             ? null
@@ -3297,7 +3376,7 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
           error: (e, _) => Padding(
             padding: const EdgeInsets.all(32),
             child: Text(
-              'Could not load categories.\n$e',
+              tr('Could not load categories.\n{0}', [e]),
               style: theme.textTheme.bodyMedium,
             ),
           ),
@@ -3311,7 +3390,7 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
     if (cats.isEmpty) {
       return Padding(
         padding: const EdgeInsets.all(32),
-        child: Text(
+        child: Tr(
           'No categories yet',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
@@ -3338,7 +3417,7 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
       header = Padding(
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
         child: Text(
-          widget.kind == CategoryKind.income ? 'Money-in category' : 'Category',
+          widget.kind == CategoryKind.income ? tr('Money-in category') : tr('Category'),
           style: theme.textTheme.titleLarge,
         ),
       );
@@ -3367,7 +3446,7 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
           children: [
             IconButton(
               icon: const AppIcon(Icons.arrow_back),
-              tooltip: 'All categories',
+              tooltip: tr('All categories'),
               onPressed: () => setState(() => _drillParentId = null),
             ),
             Expanded(
@@ -3388,7 +3467,7 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
           categoryId: drillParent.id,
           iconKey: drillParent.iconKey,
           colorValue: drillParent.colorValue,
-          label: 'All ${drillParent.name}',
+          label: tr('All {0}', [drillParent.name]),
           onTap: () => Navigator.of(context).pop(drillParent.id),
         ),
         for (final c in childrenByParent[drillParent.id] ?? const [])
@@ -3483,7 +3562,7 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
               builder: (context, ref, _) {
                 final balance = ref.watch(categoryBalanceProvider(categoryId));
                 return Text(
-                  '${MoneyFormat.symbol(balance)} left',
+                  tr('{0} left', [MoneyFormat.symbol(balance)]),
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

@@ -11,6 +11,7 @@ import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../settings/currency_picker_sheet.dart';
 import '../tags/tag_picker_sheet.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Opens the add/edit sheet. Pass [existing] to edit that rule instead of
 /// creating a new one, or [prefillFrom] to seed a new rule's fields from a
@@ -202,8 +203,8 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
       _nameController.text =
           category?.name ??
           (t.type == TxType.income
-              ? 'Recurring money in'
-              : 'Recurring money out');
+              ? tr('Recurring money in')
+              : tr('Recurring money out'));
     }
     final note = t.note?.trim();
     if (note != null && note.isNotEmpty) _noteController.text = note;
@@ -249,26 +250,28 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
   Future<void> _save() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      _showError('Give it a name.');
+      _showError(tr('Give it a name.'));
       return;
     }
     final amount = Money.tryParse(_amountController.text);
     if (amount == null || !amount.isPositive) {
-      _showError('Enter an amount greater than zero.');
+      _showError(tr('Enter an amount greater than zero.'));
       return;
     }
     final isTransfer = _ruleKind == _RuleKind.transfer;
     if (_accountId == null) {
-      _showError(isTransfer ? 'Choose a from account.' : 'Choose an account.');
+      _showError(
+        isTransfer ? tr('Choose a from account.') : tr('Choose an account.'),
+      );
       return;
     }
     if (isTransfer) {
       if (_toAccountId == null) {
-        _showError('Choose where the money goes.');
+        _showError(tr('Choose where the money goes.'));
         return;
       }
     } else if (_categoryId == null) {
-      _showError('Choose a category.');
+      _showError(tr('Choose a category.'));
       return;
     }
     final payeeText = _allowsPayee ? _payeeController.text.trim() : '';
@@ -283,12 +286,12 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
       // Zero is a valid promo price — a free trial period, not just a
       // discount (GitHub #87: e.g. a service free for the first N months).
       if (promoAmount == null || promoAmount.isNegative) {
-        _showError('Enter a valid promo amount.');
+        _showError(tr('Enter a valid promo amount.'));
         return;
       }
       promoOccurrences = int.tryParse(_promoOccurrencesController.text.trim());
       if (promoOccurrences == null || promoOccurrences < 1) {
-        _showError('Enter how many occurrences the promotion covers.');
+        _showError(tr('Enter how many occurrences the promotion covers.'));
         return;
       }
     }
@@ -301,7 +304,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
       if (foreignCurrencyCode == null ||
           foreignAmount == null ||
           !foreignAmount.isPositive) {
-        _showError('Choose a currency and enter its amount.');
+        _showError(tr('Choose a currency and enter its amount.'));
         return;
       }
     }
@@ -359,12 +362,12 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     } on ArgumentError catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      _showError(e.message?.toString() ?? 'Could not save.');
+      _showError(e.message?.toString() ?? tr('Could not save.'));
       return;
     } catch (_) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      _showError('Could not save.');
+      _showError(tr('Could not save.'));
       return;
     }
     // A due date today or earlier would otherwise wait for the next app
@@ -381,7 +384,9 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
         ..showSnackBar(
           SnackBar(
             content: Text(
-              '$posted past ${posted == 1 ? 'payment' : 'payments'} posted',
+              posted == 1
+                  ? tr('1 past payment posted')
+                  : tr('{0} past payments posted', [posted]),
             ),
           ),
         );
@@ -467,7 +472,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              _isEditing ? 'Edit auto rule' : 'New auto rule',
+              _isEditing ? tr('Edit auto rule') : tr('New auto rule'),
               style: theme.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
@@ -475,15 +480,9 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
             const SizedBox(height: 20),
             SegmentedButton<_RuleKind>(
               segments: const [
-                ButtonSegment(
-                  value: _RuleKind.expense,
-                  label: Text('Money out'),
-                ),
-                ButtonSegment(value: _RuleKind.income, label: Text('Money in')),
-                ButtonSegment(
-                  value: _RuleKind.transfer,
-                  label: Text('Transfer'),
-                ),
+                ButtonSegment(value: _RuleKind.expense, label: Tr('Money out')),
+                ButtonSegment(value: _RuleKind.income, label: Tr('Money in')),
+                ButtonSegment(value: _RuleKind.transfer, label: Tr('Transfer')),
               ],
               selected: {_ruleKind},
               showSelectedIcon: false,
@@ -491,7 +490,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
             ),
             if (isTransfer) ...[
               const SizedBox(height: 6),
-              Text(
+              Tr(
                 'Moves money between your own accounts on schedule — to '
                 'cash, onto a credit card, into a goal or towards a loan.',
                 style: theme.textTheme.bodySmall?.copyWith(
@@ -506,12 +505,12 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               autofocus: !_isEditing,
               textCapitalization: TextCapitalization.words,
               decoration: InputDecoration(
-                labelText: 'Name',
+                labelText: tr('Name'),
                 hintText: isTransfer
-                    ? 'e.g. Savings, Card bill, Car Loan EMI'
+                    ? tr('e.g. Savings, Card bill, Car Loan EMI')
                     : (_kind == CategoryKind.expense
-                          ? 'e.g. Netflix, Rent'
-                          : 'e.g. Salary'),
+                          ? tr('e.g. Netflix, Rent')
+                          : tr('e.g. Salary')),
               ),
             ),
             const SizedBox(height: 16),
@@ -519,11 +518,13 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               controller: _amountController,
               group: _amountGroup,
               yieldTo: [_nameFocus],
-              label: (_isEstimate || _hasPromo) ? 'Usual amount' : 'Amount',
+              label: (_isEstimate || _hasPromo)
+                  ? tr('Usual amount')
+                  : tr('Amount'),
             ),
             if (_isEstimate) ...[
               const SizedBox(height: 4),
-              Text(
+              Tr(
                 "You'll be nudged to confirm the exact figure each time it "
                 'posts.',
                 style: theme.textTheme.bodySmall?.copyWith(
@@ -533,8 +534,8 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
             ],
             AppSwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Amount varies each time'),
-              subtitle: const Text(
+              title: const Tr('Amount varies each time'),
+              subtitle: const Tr(
                 'For a salary or bill that changes, e.g. by hours worked.',
               ),
               value: _isEstimate,
@@ -542,8 +543,8 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
             ),
             AppSwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Add a promotion'),
-              subtitle: const Text(
+              title: const Tr('Add a promotion'),
+              subtitle: const Tr(
                 'A discounted price for the next few occurrences, then back '
                 'to the usual amount automatically.',
               ),
@@ -561,7 +562,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
                       controller: _promoAmountController,
                       group: _amountGroup,
                       yieldTo: [_nameFocus],
-                      label: 'Promo amount',
+                      label: tr('Promo amount'),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -570,8 +571,8 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
                     child: TextField(
                       controller: _promoOccurrencesController,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Occurrences',
+                      decoration: InputDecoration(
+                        labelText: tr('Occurrences'),
                         hintText: 'e.g. 3',
                       ),
                     ),
@@ -582,8 +583,8 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
             if (!isTransfer) ...[
               AppSwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Foreign currency'),
-                subtitle: const Text(
+                title: const Tr('Foreign currency'),
+                subtitle: const Tr(
                   'Record what this really costs in another currency.',
                 ),
                 value: _hasForeignCurrency,
@@ -616,7 +617,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
                         controller: _foreignAmountController,
                         group: _amountGroup,
                         yieldTo: [_nameFocus],
-                        label: 'Foreign amount',
+                        label: tr('Foreign amount'),
                         // The currency chip to the left already shows which
                         // currency this is — showing the home currency's
                         // symbol here too would be misleading.
@@ -632,7 +633,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               initialValue: _accountId,
               isExpanded: true,
               decoration: InputDecoration(
-                labelText: isTransfer ? 'From account' : 'Account',
+                labelText: isTransfer ? tr('From account') : tr('Account'),
               ),
               items: [
                 for (final a in fromAccounts)
@@ -650,7 +651,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
                     ? _toAccountId
                     : null,
                 isExpanded: true,
-                decoration: const InputDecoration(labelText: 'To account'),
+                decoration: InputDecoration(labelText: tr('To account')),
                 items: [
                   for (final a in toAccounts)
                     DropdownMenuItem(
@@ -674,11 +675,13 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
                     : null,
                 isExpanded: true,
                 decoration: InputDecoration(
-                  labelText: isTransfer ? 'Category (optional)' : 'Category',
+                  labelText: isTransfer
+                      ? tr('Category (optional)')
+                      : tr('Category'),
                 ),
                 items: [
                   if (isTransfer)
-                    const DropdownMenuItem(value: null, child: Text('None')),
+                    const DropdownMenuItem(value: null, child: Tr('None')),
                   for (final c in categories)
                     DropdownMenuItem(
                       value: c.id,
@@ -698,16 +701,18 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               textCapitalization: TextCapitalization.sentences,
               maxLines: 3,
               maxLength: 500,
-              decoration: const InputDecoration(
-                labelText: 'Notes (optional)',
-                hintText: 'Why this rule exists, or anything else worth noting',
+              decoration: InputDecoration(
+                labelText: tr('Notes (optional)'),
+                hintText: tr(
+                  'Why this rule exists, or anything else worth noting',
+                ),
                 alignLabelWithHint: true,
               ),
             ),
             const SizedBox(height: 16),
             _tagsField(theme),
             const SizedBox(height: 20),
-            // Four segments can outgrow a narrow phone or a larger system
+            // Five segments can outgrow a narrow phone or a larger system
             // font scale — scroll rather than let it overflow (GitHub #14).
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -715,19 +720,26 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
                 segments: const [
                   ButtonSegment(
                     value: RecurringFrequency.daily,
-                    label: Text('Daily'),
+                    label: Tr('Daily'),
                   ),
                   ButtonSegment(
                     value: RecurringFrequency.weekly,
-                    label: Text('Weekly'),
+                    label: Tr('Weekly'),
                   ),
                   ButtonSegment(
                     value: RecurringFrequency.biweekly,
-                    label: Text('2 weeks'),
+                    label: Tr('2 weeks'),
                   ),
                   ButtonSegment(
                     value: RecurringFrequency.monthly,
-                    label: Text('Monthly'),
+                    label: Tr('Monthly'),
+                  ),
+                  // The engine always scheduled yearly rules (anchored to the
+                  // start date's month and day); the picker just never
+                  // offered it (GitHub #197).
+                  ButtonSegment(
+                    value: RecurringFrequency.yearly,
+                    label: Tr('Yearly'),
                   ),
                 ],
                 selected: {_frequency},
@@ -753,7 +765,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _isEditing ? 'Next due date' : 'Starts on',
+                            _isEditing ? tr('Next due date') : tr('Starts on'),
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: cs.onSurfaceVariant,
                             ),
@@ -776,16 +788,38 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
             ),
             if (_frequency == RecurringFrequency.monthly)
               Text(
-                'A shorter month snaps to its last day, then returns to the '
-                '${_dueDate.day}${_ordinalSuffix(_dueDate.day)} once it exists again.',
+                tr(
+                  'A shorter month snaps to its last day, then returns to the '
+                  '{0}{1} once it exists again.',
+                  [_dueDate.day, _ordinalSuffix(_dueDate.day)],
+                ),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+            if (_frequency == RecurringFrequency.yearly)
+              Text(
+                tr(
+                  'Repeats every {0}.'
+                  '{1}',
+                  [
+                    DateFormat('d MMMM').format(_dueDate),
+                    _dueDate.month == 2 && _dueDate.day == 29
+                        ? tr(' In a year without Feb 29 it posts on Feb 28.')
+                        : '',
+                  ],
+                ),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: cs.onSurfaceVariant,
                 ),
               ),
             const SizedBox(height: 16),
             Text(
-              'Notify me ${_notifyDays.round()} '
-              'day${_notifyDays.round() == 1 ? '' : 's'} before',
+              tr(
+                'Notify me {0} '
+                'day{1} before',
+                [_notifyDays.round(), _notifyDays.round() == 1 ? '' : 's'],
+              ),
               style: theme.textTheme.bodyMedium,
             ),
             Slider(
@@ -805,7 +839,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
                       width: 22,
                       child: CircularProgressIndicator(strokeWidth: 2.4),
                     )
-                  : Text(_isEditing ? 'Save changes' : 'Create rule'),
+                  : Text(_isEditing ? tr('Save changes') : tr('Create rule')),
             ),
           ],
         ),
@@ -828,10 +862,10 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
   /// A destination's name, with what kind of account it is when that's not
   /// obvious from the name alone.
   String _destinationLabel(AccountRow a) => switch (a.type) {
-    AccountType.goal => '${a.name} · Goal',
-    AccountType.loan => '${a.name} · Loan',
-    AccountType.card => '${a.name} · Card',
-    AccountType.payLater => '${a.name} · Pay later',
+    AccountType.goal => tr('{0} · Goal', [a.name]),
+    AccountType.loan => tr('{0} · Loan', [a.name]),
+    AccountType.card => tr('{0} · Card', [a.name]),
+    AccountType.payLater => tr('{0} · Pay later', [a.name]),
     _ => a.name,
   };
 
@@ -894,13 +928,15 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
           focusNode: focusNode,
           textCapitalization: TextCapitalization.words,
           decoration: InputDecoration(
-            labelText: 'Payee (optional)',
+            labelText: tr('Payee (optional)'),
             hintText: forLoan
-                ? 'The lender, e.g. your bank'
+                ? tr('The lender, e.g. your bank')
                 : (_kind == CategoryKind.income
-                      ? 'Who pays you?'
-                      : 'Who gets paid?'),
-            helperText: forLoan ? 'Set on the interest part of each EMI' : null,
+                      ? tr('Who pays you?')
+                      : tr('Who gets paid?')),
+            helperText: forLoan
+                ? tr('Set on the interest part of each EMI')
+                : null,
           ),
         );
       },
@@ -931,7 +967,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  Tr(
                     'Tags (optional)',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: cs.onSurfaceVariant,
@@ -939,7 +975,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
                   ),
                   const SizedBox(height: 6),
                   if (selected.isEmpty)
-                    Text(
+                    Tr(
                       'Stamped on every transaction this rule posts',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: cs.onSurfaceVariant,
@@ -992,6 +1028,8 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
   }
 
   static String _ordinalSuffix(int day) {
+    // English only; other languages write the plain number.
+    if (L10n.code != 'en') return '';
     if (day >= 11 && day <= 13) return 'th';
     switch (day % 10) {
       case 1:

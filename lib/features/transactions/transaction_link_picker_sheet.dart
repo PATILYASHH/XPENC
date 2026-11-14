@@ -10,6 +10,7 @@ import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Bottom sheet: search and pick one transaction to link to (see GitHub
 /// #64). Popping returns the chosen transaction's id, or null if dismissed.
@@ -57,7 +58,7 @@ class _TransactionLinkPickerSheetState
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-              child: Text(
+              child: Tr(
                 'Link transaction',
                 style: theme.textTheme.titleLarge,
               ),
@@ -71,7 +72,7 @@ class _TransactionLinkPickerSheetState
                 textInputAction: TextInputAction.search,
                 decoration: InputDecoration(
                   isDense: true,
-                  hintText: 'Search note, payee, category or account',
+                  hintText: tr('Search note, payee, category or account'),
                   prefixIcon: const AppIcon(Icons.search_rounded),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -88,7 +89,7 @@ class _TransactionLinkPickerSheetState
                 error: (e, _) => Padding(
                   padding: const EdgeInsets.all(32),
                   child: Text(
-                    'Could not load transactions.\n$e',
+                    tr('Could not load transactions.\n{0}', [e]),
                     style: theme.textTheme.bodyMedium,
                   ),
                 ),
@@ -99,8 +100,8 @@ class _TransactionLinkPickerSheetState
                       padding: const EdgeInsets.all(32),
                       child: Text(
                         _query.trim().isEmpty
-                            ? 'No other transactions to link to.'
-                            : 'No matches.',
+                            ? tr('No other transactions to link to.')
+                            : tr('No matches.'),
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
@@ -184,7 +185,7 @@ class _TxTile extends StatelessWidget {
         ? Icons.swap_horiz_rounded
         : AppIcons.resolve(category?.iconKey ?? 'other');
 
-    final title = isTransfer ? 'Transfer' : (category?.name ?? 'Uncategorised');
+    final title = isTransfer ? tr('Transfer') : (category?.name ?? tr('Uncategorised'));
     final note = tx.note?.trim();
     final subtitle = [
       DateFormat('d MMM yyyy').format(tx.date),
