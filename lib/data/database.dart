@@ -13,6 +13,7 @@ import '../core/platform/stored_images.dart';
 import '../core/security/passcode.dart';
 import '../core/security/totp.dart';
 import '../core/security/unlock_method.dart';
+import '../core/smart_tags.dart';
 import '../features/message_capture/parser/bank_message.dart';
 import '../features/message_capture/parser/message_parser.dart';
 import 'currency_conversion.dart';
@@ -2346,14 +2347,102 @@ class AppDatabase extends _$AppDatabase {
   /// A person entry's ledger row carries a mirror of the entry's own tags
   /// (see [PersonEntryTags]); tagging it from Transactions updates the
   /// entry too, so the two never disagree.
+  ///
+  /// A smart tag in [tagIds] lands as the plain tag it reads on the
+  /// transaction's date (see [resolveSmartTags]).
   Future<void> setTransactionTags(int transactionId, Set<int> tagIds) {
     return transaction(() async {
-      await _writeTransactionTags(transactionId, tagIds);
+      final row = await transactionById(transactionId);
+      final resolved = row == null
+          ? tagIds
+          : await resolveSmartTags(tagIds, row.date);
+      await _writeTransactionTags(transactionId, resolved);
       final entry = await (select(
         personEntries,
       )..where((e) => e.transactionId.equals(transactionId))).getSingleOrNull();
-      if (entry != null) await _writePersonEntryTags(entry.id, tagIds);
+      if (entry != null) await _writePersonEntryTags(entry.id, resolved);
     });
+  }
+
+  /// [tagIds] with each smart tag (GitHub #189, see [SmartTags]) swapped for
+  /// the plain tag its pattern reads on [date]. An existing tag of that name
+  /// is reused whatever its case, so a hand-made "december" keeps getting
+  /// used; otherwise one is made in the smart tag's colour and mode. Smart
+  /// tags themselves never sit on a transaction or person entry.
+  Future<Set<int>> resolveSmartTags(Set<int> tagIds, DateTime date) async {
+    if (tagIds.isEmpty) return tagIds;
+    final all = [...await select(tags).get()];
+    final byId = {for (final t in all) t.id: t};
+    final out = <int>{};
+    for (final id in tagIds) {
+      final tag = byId[id];
+      if (tag == null || !SmartTags.isSmart(tag.name)) {
+        out.add(id);
+        continue;
+      }
+      final name = SmartTags.resolve(tag.name, date);
+      final lower = name.toLowerCase();
+      final existing = all
+          .where((t) => t.name.toLowerCase() == lower)
+          .firstOrNull;
+      if (existing != null) {
+        out.add(existing.id);
+        continue;
+      }
+      final newId = await into(tags).insert(
+        TagsCompanion.insert(
+          name: name,
+          colorValue: tag.colorValue,
+          modeId: Value(tag.modeId),
+        ),
+      );
+      all.add(
+        TagRow(
+          id: newId,
+          name: name,
+          colorValue: tag.colorValue,
+          modeId: tag.modeId,
+        ),
+      );
+      out.add(newId);
+    }
+    return out;
+  }
+
+  /// The reverse of [resolveSmartTags], for something meant to be reused:
+  /// a plain tag that a smart tag reads as on [date] becomes that smart tag
+  /// again — "December" on a December transaction saved as a template goes
+  /// back to "{month}", so the template keeps following the date. Only
+  /// smart tags offered in [modeId] (everyday ones, or that mode's own)
+  /// are considered.
+  Future<Set<int>> _smartenTagIds(
+    Iterable<int> tagIds,
+    DateTime date, {
+    int? modeId,
+  }) async {
+    final all = await select(tags).get();
+    final byId = {for (final t in all) t.id: t};
+    final smart = [
+      for (final t in all)
+        if (SmartTags.isSmart(t.name) &&
+            (t.modeId == null || t.modeId == modeId))
+          t,
+    ]..sort((a, b) => a.id.compareTo(b.id));
+    return {
+      for (final id in tagIds)
+        if (byId[id] case final tag?)
+          smart
+                  .where(
+                    (s) =>
+                        SmartTags.resolve(s.name, date).toLowerCase() ==
+                        tag.name.toLowerCase(),
+                  )
+                  .firstOrNull
+                  ?.id ??
+              id
+        else
+          id,
+    };
   }
 
   Future<void> _writeTransactionTags(int transactionId, Set<int> tagIds) async {
@@ -2382,14 +2471,21 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// Tags on [entryId], and on its linked ledger row when it moved money.
+  /// Smart tags resolve against the entry's date.
   Future<void> _tagPersonEntry(
     int entryId,
     int? transactionId,
     Set<int> tagIds,
   ) async {
-    await _writePersonEntryTags(entryId, tagIds);
+    final entry = await (select(
+      personEntries,
+    )..where((e) => e.id.equals(entryId))).getSingleOrNull();
+    final resolved = entry == null
+        ? tagIds
+        : await resolveSmartTags(tagIds, entry.date);
+    await _writePersonEntryTags(entryId, resolved);
     if (transactionId != null) {
-      await _writeTransactionTags(transactionId, tagIds);
+      await _writeTransactionTags(transactionId, resolved);
     }
   }
 
@@ -2521,7 +2617,13 @@ class AppDatabase extends _$AppDatabase {
       );
     }
 
-    final tagIds = await tagIdsForTransaction(transactionId);
+    // A date tag a smart tag made goes back to being that smart tag, so the
+    // template keeps following the date (GitHub #189).
+    final tagIds = await _smartenTagIds(
+      await tagIdsForTransaction(transactionId),
+      row.date,
+      modeId: modeId,
+    );
     return transaction(() async {
       final id = await into(transactionTemplates).insert(
         TransactionTemplatesCompanion.insert(

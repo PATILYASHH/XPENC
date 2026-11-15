@@ -30,6 +30,7 @@ import 'package:xpenc/features/reports/account_reports_screen.dart';
 import 'package:xpenc/features/reports/stats_modules.dart';
 import 'package:xpenc/features/reports/stats_screen.dart';
 import 'package:xpenc/features/reports/xpenc_score_screen.dart';
+import 'package:xpenc/features/savings/archived_goals_loans_screen.dart';
 import 'package:xpenc/features/savings/savings_goal_detail_screen.dart';
 import 'package:xpenc/features/savings/savings_goals_screen.dart';
 import 'package:xpenc/features/settings/general_settings_screen.dart';
@@ -385,6 +386,70 @@ void main() {
     await pump(tester, const ArchivedAutoRulesScreen());
     expect(tester.takeException(), isNull);
     expect(find.text('No paused auto rules.'), findsOneWidget);
+    await unmount(tester);
+  });
+
+  testWidgets('Archived goals & loans lists only archived goals and loans, '
+      'and Restore brings one back', (tester) async {
+    late int goalId;
+    await tester.runAsync(() async {
+      goalId = await db.addGoal(
+        name: 'Old Bike',
+        targetAmount: Money.fromRupees(50000),
+        colorValue: 0xFF16A34A,
+        iconKey: 'travel',
+      );
+      final loanId = await db.addLoan(
+        name: 'Car loan',
+        principal: Money.fromRupees(300000),
+        colorValue: 0xFF2563EB,
+        iconKey: 'bank',
+      );
+      await db.addGoal(
+        name: 'Active Trip',
+        targetAmount: Money.fromRupees(20000),
+        colorValue: 0xFF16A34A,
+        iconKey: 'travel',
+      );
+      final cash = (await db.watchAccounts().first)
+          .firstWhere((a) => a.type == AccountType.cash);
+      await db.archiveAccount(goalId);
+      await db.archiveAccount(loanId);
+      // An archived plain account belongs to Archived accounts, not here.
+      await db.archiveAccount(cash.id);
+    });
+    await pump(tester, const ArchivedGoalsLoansScreen());
+    expect(tester.takeException(), isNull);
+    expect(find.text('Old Bike'), findsOneWidget);
+    expect(find.text('Car loan'), findsOneWidget);
+    expect(find.text('Active Trip'), findsNothing);
+    expect(find.text('Cash'), findsNothing);
+    expect(find.text('GOALS'), findsOneWidget);
+    expect(find.text('LOANS'), findsOneWidget);
+
+    await tester.tap(find.text('Restore').first);
+    await tester.pump();
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 200)),
+    );
+
+    late bool archived;
+    await tester.runAsync(() async {
+      archived = (await db.watchArchivedAccounts().first).any(
+        (a) => a.id == goalId,
+      );
+    });
+    expect(archived, isFalse, reason: 'Restore must unarchive the goal');
+
+    await tester.pump();
+    expect(find.text('Old Bike'), findsNothing);
+    await unmount(tester);
+  });
+
+  testWidgets('Archived goals & loans renders empty', (tester) async {
+    await pump(tester, const ArchivedGoalsLoansScreen());
+    expect(tester.takeException(), isNull);
+    expect(find.text('No archived goals or loans.'), findsOneWidget);
     await unmount(tester);
   });
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/smart_tags.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/module_shortcuts.dart';
 import '../../core/widgets/custom_icon_badge.dart';
@@ -153,6 +154,7 @@ class _TagTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final color = Color(tag.colorValue);
+    final smart = SmartTags.isSmart(tag.name);
 
     return AppListTile(
       contentPadding: const EdgeInsets.only(left: 16, right: 4),
@@ -164,7 +166,11 @@ class _TagTile extends ConsumerWidget {
           color: color.withValues(alpha: 0.15),
           shape: BoxShape.circle,
         ),
-        child: IconWell(Icons.sell_outlined, color: color, size: 20),
+        child: IconWell(
+          smart ? Icons.auto_awesome_outlined : Icons.sell_outlined,
+          color: color,
+          size: 20,
+        ),
       ),
       title: Text(
         tag.name,
@@ -172,6 +178,18 @@ class _TagTile extends ConsumerWidget {
         overflow: TextOverflow.ellipsis,
         style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
       ),
+      subtitle: smart
+          ? Text(
+              tr('Smart · today "{0}"', [
+                SmartTags.resolve(tag.name, DateTime.now()),
+              ]),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            )
+          : null,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -262,8 +280,31 @@ class _TagEditorSheetState extends ConsumerState<_TagEditorSheet> {
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.existing?.name ?? '');
+    _nameController = TextEditingController(text: widget.existing?.name ?? '')
+      ..addListener(() => setState(() {}));
     _colorValue = widget.existing?.colorValue ?? _presetColors.first;
+  }
+
+  /// Drops `{part}` in at the cursor (or over the selection), as long as the
+  /// name still fits.
+  void _insertPart(String part) {
+    final token = '{$part}';
+    final value = _nameController.value;
+    final text = value.text;
+    final sel = value.selection.isValid
+        ? value.selection
+        : TextSelection.collapsed(offset: text.length);
+    final before = text.substring(0, sel.start);
+    final after = text.substring(sel.end);
+    final pad = before.isEmpty || before.endsWith(' ') ? '' : ' ';
+    final next = '$before$pad$token$after';
+    if (next.length > SmartTags.maxLength) return;
+    _nameController.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(
+        offset: before.length + pad.length + token.length,
+      ),
+    );
   }
 
   @override
@@ -343,7 +384,9 @@ class _TagEditorSheetState extends ConsumerState<_TagEditorSheet> {
               ),
               onSubmitted: (_) => _save(),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
+            _smartParts(theme),
+            const SizedBox(height: 20),
             Text(
               'COLOUR',
               style: theme.textTheme.labelSmall?.copyWith(
@@ -372,6 +415,67 @@ class _TagEditorSheetState extends ConsumerState<_TagEditorSheet> {
           ],
         ),
       ),
+    );
+  }
+
+  /// Date parts that make this a smart tag (GitHub #189), and what the name
+  /// reads as today once it holds one.
+  Widget _smartParts(ThemeData theme) {
+    final cs = theme.colorScheme;
+    final name = _nameController.text.trim();
+    final smart = SmartTags.isSmart(name);
+    final labels = {
+      'month': tr('Month'),
+      'mon': tr('Short month'),
+      'year': tr('Year'),
+      'quarter': tr('Quarter'),
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final part in SmartTags.parts)
+              ActionChip(
+                avatar: AppIcon(Icons.add_rounded, size: 16, color: cs.primary),
+                label: Text(labels[part]!),
+                onPressed: () => _insertPart(part),
+              ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AppIcon(
+              Icons.auto_awesome_outlined,
+              size: 18,
+              color: smart ? cs.primary : cs.onSurfaceVariant,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                smart
+                    ? tr(
+                        'Smart tag — today it reads "{0}". Each transaction '
+                        'gets the tag for its own date, so templates and '
+                        'Auto rules stay current.',
+                        [SmartTags.resolve(name, DateTime.now())],
+                      )
+                    : tr(
+                        'Add a date part to make a smart tag that fills in '
+                        "from each transaction's date.",
+                      ),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 

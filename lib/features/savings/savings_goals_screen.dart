@@ -73,6 +73,13 @@ class _SavingsGoalsScreenState extends ConsumerState<SavingsGoalsScreen>
     return Scaffold(
       appBar: AppTopBar(
         title: const Tr('Goals & Loans'),
+        actions: [
+          IconButton(
+            tooltip: tr('Archived goals & loans'),
+            icon: const AppIcon(Icons.inventory_2_outlined),
+            onPressed: () => context.push('/more/goals/archived'),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: [

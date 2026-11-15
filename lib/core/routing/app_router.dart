@@ -52,6 +52,7 @@ import '../../features/reports/account_reports_screen.dart';
 import '../../features/reports/stats_modules.dart';
 import '../../features/reports/stats_screen.dart';
 import '../../features/reports/xpenc_score_screen.dart';
+import '../../features/savings/archived_goals_loans_screen.dart';
 import '../../features/savings/loan_detail_screen.dart';
 import '../../features/savings/savings_goal_detail_screen.dart';
 import '../../features/savings/savings_goals_screen.dart';
@@ -505,6 +506,11 @@ final appRouter = GoRouter(
                   parentNavigatorKey: _rootKey,
                   builder: (_, _) => const SavingsGoalsScreen(),
                   routes: [
+                    GoRoute(
+                      path: 'archived',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const ArchivedGoalsLoansScreen(),
+                    ),
                     GoRoute(
                       path: 'goal/:id',
                       parentNavigatorKey: _rootKey,

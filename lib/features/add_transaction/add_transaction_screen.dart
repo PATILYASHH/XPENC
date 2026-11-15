@@ -8,6 +8,7 @@ import '../../core/app_icons.dart';
 import '../../core/layout/desktop.dart';
 import '../../core/platform/stored_images.dart';
 import '../../core/security/nct.dart';
+import '../../core/smart_tags.dart';
 import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/theme/app_colors.dart';
@@ -3083,10 +3084,12 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   /// scrollable field list below.
   Widget _selectedTagsChips() {
     final tagMap = ref.watch(tagMapProvider);
+    // A smart tag (GitHub #189) shows what it will save as on this date.
     final selected = [
       for (final id in _tagIds)
-        if (tagMap[id] != null) tagMap[id]!,
-    ]..sort((a, b) => a.name.compareTo(b.name));
+        if (tagMap[id] != null)
+          (tag: tagMap[id]!, label: SmartTags.label(tagMap[id]!.name, _date)),
+    ]..sort((a, b) => a.label.compareTo(b.label));
     if (selected.isEmpty) return const SizedBox.shrink();
 
     return Padding(
@@ -3096,12 +3099,19 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         spacing: 8,
         runSpacing: 8,
         children: [
-          for (final tag in selected)
+          for (final (:tag, :label) in selected)
             InkWell(
               onTap: _pickTags,
               borderRadius: BorderRadius.circular(20),
               child: Chip(
-                label: Text(tag.name),
+                avatar: SmartTags.isSmart(tag.name)
+                    ? AppIcon(
+                        Icons.auto_awesome_outlined,
+                        size: 14,
+                        color: Color(tag.colorValue),
+                      )
+                    : null,
+                label: Text(label),
                 backgroundColor: Color(tag.colorValue).withValues(alpha: 0.15),
                 labelStyle: TextStyle(color: Color(tag.colorValue)),
                 visualDensity: VisualDensity.compact,

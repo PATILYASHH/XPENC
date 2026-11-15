@@ -3109,5 +3109,22 @@
  "Settled up",
  "Settle up",
  "You pay back what you owe, and the balance goes to zero. Lower the amount to settle part of it.",
- "They pay you back, and the balance goes to zero. Lower the amount to settle part of it."
+ "They pay you back, and the balance goes to zero. Lower the amount to settle part of it.",
+ "Archived goals & loans",
+ "Couldn't load archived goals and loans.",
+ "No archived goals or loans.",
+ "{0} saved",
+ "Smart · today \"{0}\"",
+ "Short month",
+ "Quarter",
+ "Smart tag — today it reads \"{0}\". Each transaction gets the tag for its own date, so templates and Auto rules stay current.",
+ "Add a date part to make a smart tag that fills in from each transaction's date.",
+ "Smart tags",
+ "A tag with a date part, like \"{month} {year}\", fills in from each transaction's date when it's saved — \"December 2026\" now, \"January 2027\" next month. Templates and Auto rules carrying one never need editing.",
+ "In a new tag, tap Month, Short month, Year or Quarter to add a date part. If you already have a tag with that name, like \"december\", it's reused.",
+ "More → Tags → +",
+ "Put {month}, {year} or a quarter in a tag and it fills in from each transaction's date, so templates and Auto rules keep tagging the right month without any editing.",
+ "Bring back an archived goal or loan",
+ "More → Goals & Loans → archive button",
+ "Archived goals and loans now have their own list, with Restore, right from Goals & Loans."
 ]

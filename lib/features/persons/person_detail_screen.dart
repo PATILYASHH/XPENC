@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/money.dart';
 import '../../core/security/nct.dart';
+import '../../core/smart_tags.dart';
 import '../../core/payments/cashapp_launcher.dart';
 import '../../core/payments/paypal_launcher.dart';
 import '../../core/payments/revolut_launcher.dart';
@@ -885,9 +886,13 @@ class _EntryRow extends ConsumerWidget {
 
 /// A person entry's tags as small coloured pills (GitHub #168).
 class _TagChips extends StatelessWidget {
-  const _TagChips(this.tags);
+  const _TagChips(this.tags, {this.date});
 
   final List<TagRow> tags;
+
+  /// The entry's date, while it's being written: a smart tag (GitHub #189)
+  /// shows what it will save as on it.
+  final DateTime? date;
 
   @override
   Widget build(BuildContext context) {
@@ -904,7 +909,7 @@ class _TagChips extends StatelessWidget {
               borderRadius: BorderRadius.circular(999),
             ),
             child: Text(
-              tag.name,
+              date == null ? tag.name : SmartTags.label(tag.name, date!),
               style: theme.textTheme.labelSmall?.copyWith(
                 color: Color(tag.colorValue),
                 fontWeight: FontWeight.w600,
@@ -1340,7 +1345,7 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
           suffixIcon: AppIcon(Icons.sell_outlined),
         ),
         isEmpty: tags.isEmpty,
-        child: tags.isEmpty ? null : _TagChips(tags),
+        child: tags.isEmpty ? null : _TagChips(tags, date: _date),
       ),
     );
   }

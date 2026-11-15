@@ -19,6 +19,7 @@ import 'package:xpenc/features/onboarding/onboarding_screen.dart';
 import 'package:xpenc/features/persons/persons_screen.dart';
 import 'package:xpenc/features/reports/account_reports_screen.dart';
 import 'package:xpenc/features/reports/stats_screen.dart';
+import 'package:xpenc/features/savings/archived_goals_loans_screen.dart';
 import 'package:xpenc/features/savings/savings_goals_screen.dart';
 import 'package:xpenc/features/settings/general_settings_screen.dart';
 import 'package:xpenc/features/settings/security_privacy_settings_screen.dart';
@@ -102,6 +103,7 @@ void main() {
     'Categories': () => const CategoriesScreen(),
     'Auto': () => const AutoScreen(),
     'Goals & loans': () => const SavingsGoalsScreen(),
+    'Archived goals & loans': () => const ArchivedGoalsLoansScreen(),
     'Calendar': () => const CalendarScreen(),
     'Onboarding': () => const OnboardingScreen(),
     'Add transaction': () => const AddTransactionScreen(),

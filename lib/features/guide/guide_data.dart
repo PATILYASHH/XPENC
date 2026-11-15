@@ -400,6 +400,20 @@ const guideSections = <GuideSection>[
       location: 'More → Tags',
     ),
     GuideEntry(
+      icon: Icons.auto_awesome_outlined,
+      title: 'Smart tags',
+      whatItDoes:
+          'A tag with a date part, like "{month} {year}", fills in from '
+          'each transaction\'s date when it\'s saved — "December 2026" '
+          'now, "January 2027" next month. Templates and Auto rules '
+          'carrying one never need editing.',
+      howToUse:
+          'In a new tag, tap Month, Short month, Year or Quarter to add a '
+          'date part. If you already have a tag with that name, like '
+          '"december", it\'s reused.',
+      location: 'More → Tags → +',
+    ),
+    GuideEntry(
       icon: Icons.settings_outlined,
       title: 'Settings',
       whatItDoes:

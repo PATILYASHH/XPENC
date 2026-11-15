@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/smart_tags.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/database.dart';
 import '../../data/mode_providers.dart';
@@ -126,6 +127,15 @@ class _TagPickerSheetState extends ConsumerState<TagPickerSheet> {
                       children: [
                         for (final tag in tags)
                           FilterChip(
+                            // A smart tag (GitHub #189) fills in from the
+                            // date when saved.
+                            avatar: SmartTags.isSmart(tag.name)
+                                ? AppIcon(
+                                    Icons.auto_awesome_outlined,
+                                    size: 16,
+                                    color: Color(tag.colorValue),
+                                  )
+                                : null,
                             label: Text(tag.name),
                             selected: _selected.contains(tag.id),
                             selectedColor: Color(

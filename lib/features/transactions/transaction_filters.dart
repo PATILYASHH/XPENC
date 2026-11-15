@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/iso_week.dart';
+import '../../core/smart_tags.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
@@ -135,7 +136,14 @@ class _TransactionFiltersSheetState
         ref.watch(categoriesProvider(CategoryKind.expense)).valueOrNull ??
         const [];
     final categories = [...expense, ...income];
-    final tags = ref.watch(tagsProvider).valueOrNull ?? const [];
+    // A smart tag (GitHub #189) never sits on a transaction — the plain
+    // tags it makes do — so there's nothing to filter it by.
+    final tags = [
+      ...?ref
+          .watch(tagsProvider)
+          .valueOrNull
+          ?.where((t) => !SmartTags.isSmart(t.name)),
+    ];
 
     return ConstrainedBox(
       constraints: BoxConstraints(
