@@ -170,6 +170,9 @@ void main() {
       expect(find.text('Backups'), findsOneWidget);
       expect(find.text('Find existing'), findsOneWidget);
 
+      // The list sits below the Backup folder row (GitHub #200).
+      await tester.ensureVisible(find.text('010826XPENCEBACKUP.json'));
+      await tester.pump();
       await tester.longPress(find.text('010826XPENCEBACKUP.json'));
       await tester.pump();
 
@@ -222,6 +225,9 @@ void main() {
       });
 
       await pump(tester, const BackupScreen());
+      // The list sits below the Backup folder row (GitHub #200).
+      await tester.ensureVisible(find.text('010826XPENCEBACKUP.json'));
+      await tester.pump();
       await tester.longPress(find.text('010826XPENCEBACKUP.json'));
       await tester.pump();
       await tester.tap(find.text('020826XPENCEBACKUP.json'));

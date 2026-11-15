@@ -411,6 +411,8 @@ class AutoRuleDetailScreen extends ConsumerWidget {
         rule.promoAmount != null && (rule.promoOccurrencesLeft ?? 0) > 0;
     final amount = onPromo ? rule.promoAmount! : rule.amount;
     final accountName = ref.read(accountMapProvider)[rule.accountId]?.name;
+    // The date this dialog asks about (GitHub #203).
+    final confirmedDue = rule.nextDueDate;
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -434,20 +436,8 @@ class AutoRuleDetailScreen extends ConsumerWidget {
       ),
     );
     if (confirmed != true) return;
-    final posted = await ref.read(dbProvider).payRecurringRuleNow(rule.id);
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            posted
-                ? tr('"{0}" posted', [rule.name])
-                // A card bill that's already been paid (#183).
-                : tr('Nothing left to pay on "{0}"', [rule.name]),
-          ),
-        ),
-      );
+    await payNowAndReport(context, ref, rule, confirmedDue: confirmedDue);
   }
 
   Future<void> _confirmDelete(

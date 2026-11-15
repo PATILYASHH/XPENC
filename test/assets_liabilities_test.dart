@@ -59,11 +59,19 @@ void main() {
     expect(p.assets, Money.zero());
   });
 
-  test('an account left out of net worth is left out of both', () async {
+  // #198: Total money is the real total — switching an account off only
+  // takes it out of Available balance.
+  test('an account left out of Available balance stays in what you owe '
+      'and own', () async {
+    final bank = await account('HDFC', AccountType.bank, 3000);
     final card = await account('ICICI Card', AccountType.card, 0);
     await spend(card, 800);
     await db.setAccountIncludeInNetWorth(card, false);
-    expect((await parts()).liabilities, Money.zero());
+    await db.setAccountIncludeInNetWorth(bank, false);
+    expect((await parts()).liabilities, Money.fromRupees(800));
+    expect((await parts()).assets, Money.fromRupees(3000));
+    expect(await db.watchNetWorth().first, Money.fromRupees(2200));
+    expect(await db.watchAvailableBalance().first, Money.zero());
   });
 
   testWidgets('Accounts shows You own and You owe', (tester) async {

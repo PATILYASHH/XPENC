@@ -310,3 +310,12 @@ Standard deduction
 XPENC in your language
 Settings → Language
 English, Hindi, German, Japanese and Russian are built in, and it follows your phone. Import a language pack for more.
+Refunds give back to a budget
+Add → Money in → Refund
+Money back from a purchase goes to its spending category, so the budget shows what you really kept.
+Total money, and Available balance
+Dashboard → Total money
+Total money counts every account. Accounts you switch off leave only Available balance.
+Pick your backup folder
+Backup & Restore → Backup folder
+Any folder inside Download, like Download/backup/xpenc.

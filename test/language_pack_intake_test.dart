@@ -1,8 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:xpenc/core/l10n/language_pack.dart';
+import 'package:xpenc/core/routing/app_router.dart';
 import 'package:xpenc/data/category_template_file.dart';
 import 'package:xpenc/features/settings/language_pack_intake.dart';
 
@@ -121,11 +124,75 @@ void main() {
       expect(p.dropped, 0, reason: '${p.code} has strings that would break');
       // Not the exact size: a Windows checkout may turn its LFs into CRLFs.
       expect(l['bytes'], greaterThan(0));
+      // The app's "the rest stays in English" note reads this.
+      expect(p.coverage, l['coverage']);
       listed.add(file.uri.pathSegments.last);
     }
     final onDisk = Directory(
       'website/languages/packs',
     ).listSync().whereType<File>().map((f) => f.uri.pathSegments.last).toSet();
     expect(onDisk, listed);
+  });
+
+  test("a pack's coverage is optional and must be 0–100", () {
+    expect(LanguagePack.decode(jsonEncode(pack)).coverage, isNull);
+    expect(
+      LanguagePack.decode(jsonEncode({...pack, 'coverage': 3})).coverage,
+      3,
+    );
+    expect(
+      LanguagePack.decode(jsonEncode({...pack, 'coverage': 140})).coverage,
+      isNull,
+    );
+    final round = LanguagePack.decode(
+      LanguagePack.decode(jsonEncode({...pack, 'coverage': 99})).encode(),
+    );
+    expect(round.coverage, 99);
+  });
+
+  // The bug behind "GoException: no routes for location:
+  // content://media/external/downloads/…": Flutter handed the opened file's
+  // URI to go_router as a page. Deep linking is off, and a stray location
+  // never strands the user on a dead-end error page.
+  test('Flutter deep linking is off in the manifest', () {
+    final manifest = File(
+      'android/app/src/main/AndroidManifest.xml',
+    ).readAsStringSync();
+    expect(
+      RegExp(
+        r'android:name="flutter_deeplinking_enabled"\s+android:value="false"',
+      ).hasMatch(manifest),
+      isTrue,
+    );
+  });
+
+  group('an unknown location', () {
+    GoRouter router(String initial) => GoRouter(
+      initialLocation: initial,
+      onException: ignoreUnknownLocation,
+      routes: [
+        GoRoute(path: '/dashboard', builder: (_, _) => const Text('home')),
+        GoRoute(path: '/settings', builder: (_, _) => const Text('settings')),
+      ],
+    );
+
+    testWidgets('while open, leaves the user where they were', (tester) async {
+      final r = router('/settings');
+      addTearDown(r.dispose);
+      await tester.pumpWidget(MaterialApp.router(routerConfig: r));
+      r.go('content://media/external/downloads/1000184373');
+      await tester.pumpAndSettle();
+      expect(find.text('settings'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('on a cold start, opens the Dashboard', (tester) async {
+      final r = router('content://media/external/downloads/1000184373');
+      addTearDown(r.dispose);
+      await tester.pumpWidget(MaterialApp.router(routerConfig: r));
+      await tester.pumpAndSettle();
+      expect(find.text('home'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   });
 }

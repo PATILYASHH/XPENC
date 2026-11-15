@@ -820,6 +820,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final kind = _type == TxType.income
         ? CategoryKind.income
         : CategoryKind.expense;
+    final current = ref.read(categoryMapProvider)[_categoryId];
     final selected = await showAppSheet<int>(
       context: context,
       isScrollControlled: true,
@@ -828,6 +829,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         kind: kind,
         envelopeAccountId: _envelopeAccountId,
         modeId: _pickerModeId,
+        // Money in can be a refund to a spending category (GitHub #201).
+        startAsRefund:
+            kind == CategoryKind.income &&
+            current?.kind == CategoryKind.expense,
       ),
     );
     if (selected == null || !mounted) return;
@@ -2718,11 +2723,14 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         final parent = cat?.parentId == null
             ? null
             : categoryMap[cat!.parentId];
+        // Money in under a spending category is a refund (GitHub #201).
+        final isRefund =
+            _type == TxType.income && cat?.kind == CategoryKind.expense;
         tiles.add(
           _pickerTile(
             icon: AppIcons.resolve(cat?.iconKey ?? 'other'),
             iconKey: cat?.iconKey,
-            label: tr('Category'),
+            label: isRefund ? tr('Refund to') : tr('Category'),
             value: cat == null
                 ? tr('Select category')
                 : parent == null
@@ -3329,9 +3337,13 @@ class _CategoryPickerSheet extends ConsumerStatefulWidget {
     required this.kind,
     this.envelopeAccountId,
     this.modeId,
+    this.startAsRefund = false,
   });
 
   final CategoryKind kind;
+
+  /// Money in only: open on the Refund side, listing spending categories.
+  final bool startAsRefund;
 
   /// Offers what this mode allows, plus its own categories.
   final int? modeId;
@@ -3350,16 +3362,24 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
   /// Non-null while drilled into a parent's subcategories.
   int? _drillParentId;
 
+  /// Money in only: picking a spending category instead — a refund, which
+  /// gives back to that category's budget (GitHub #201).
+  late bool _refund = widget.startAsRefund;
+
+  bool get _canRefund => widget.kind == CategoryKind.income;
+
+  CategoryKind get _kind => _canRefund && _refund
+      ? CategoryKind.expense
+      : widget.kind;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final everyday = ref.watch(categoriesProvider(widget.kind));
+    final everyday = ref.watch(categoriesProvider(_kind));
     final catsAsync = widget.modeId == null
         ? everyday
         : everyday.whenData(
-            (_) => ref.watch(
-              pickerCategoriesProvider((widget.kind, widget.modeId)),
-            ),
+            (_) => ref.watch(pickerCategoriesProvider((_kind, widget.modeId))),
           );
 
     return ConstrainedBox(
@@ -3416,9 +3436,45 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
     if (drillParent == null) {
       header = Padding(
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-        child: Text(
-          widget.kind == CategoryKind.income ? tr('Money-in category') : tr('Category'),
-          style: theme.textTheme.titleLarge,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _canRefund && _refund
+                  ? tr('Refund to which spending category?')
+                  : widget.kind == CategoryKind.income
+                  ? tr('Money-in category')
+                  : tr('Category'),
+              style: theme.textTheme.titleLarge,
+            ),
+            if (_canRefund) ...[
+              const SizedBox(height: 12),
+              SegmentedButton<bool>(
+                key: const Key('category-picker-refund'),
+                segments: const [
+                  ButtonSegment(value: false, label: Tr('Money in')),
+                  ButtonSegment(value: true, label: Tr('Refund')),
+                ],
+                selected: {_refund},
+                showSelectedIcon: false,
+                onSelectionChanged: (s) => setState(() {
+                  _refund = s.first;
+                  _drillParentId = null;
+                }),
+              ),
+              if (_refund) ...[
+                const SizedBox(height: 8),
+                Tr(
+                  'Money back from a purchase. It gives back to that '
+                  "category's budget. Link it to the purchase afterwards "
+                  "to count it in the purchase's month.",
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ],
+          ],
         ),
       );
       cells = [

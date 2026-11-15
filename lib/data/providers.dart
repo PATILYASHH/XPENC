@@ -55,8 +55,16 @@ final balanceAccountsProvider = StreamProvider<List<AccountRow>>(
   (ref) => ref.watch(dbProvider).watchBalanceHoldingAccounts(),
 );
 
+/// Total money — every account (GitHub #198). See
+/// [AppDatabase.watchNetWorth].
 final netWorthProvider = StreamProvider<Money>(
   (ref) => ref.watch(dbProvider).watchNetWorth(),
+);
+
+/// Available balance — the accounts the user counts as spendable (GitHub
+/// #198). See [AppDatabase.watchAvailableBalance].
+final availableBalanceProvider = StreamProvider<Money>(
+  (ref) => ref.watch(dbProvider).watchAvailableBalance(),
 );
 
 /// Net worth as what you own and what you owe (GitHub #183).
@@ -237,8 +245,20 @@ final yearSpendByCategoryProvider = Provider.family<Map<int, Money>, int>((
 ) {
   final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
   final splitsByTx = ref.watch(transactionSplitsByTxProvider);
+  final kinds = ref.watch(_categoryKindsProvider);
+  final refundHome = ref.watch(refundHomeDatesProvider);
   final out = <int, Money>{};
   for (final t in txs) {
+    // A refund gives back to its category (GitHub #201), in the year of the
+    // purchase it's linked to, else its own.
+    if (AppDatabase.isRefund(t, kinds)) {
+      if (t.modeId == null && (refundHome[t.id] ?? t.date).year == year) {
+        out[t.categoryId!] =
+            (out[t.categoryId!] ?? const Money.zero()) -
+            t.amount;
+      }
+      continue;
+    }
     if (t.type != TxType.expense || t.date.year != year) continue;
     // A mode's (trip's) spending is one slice of its own — see
     // `yearModeSpendProvider`.
@@ -335,9 +355,23 @@ final categoryTransactionsProvider = Provider.family<List<CategoryTx>, int>((
 
   final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
   final splitsByTx = ref.watch(transactionSplitsByTxProvider);
+  final kinds = ref.watch(_categoryKindsProvider);
+  final refundHome = ref.watch(refundHomeDatesProvider);
 
   final out = <CategoryTx>[];
   for (final t in txs) {
+    // A refund gives back to its category (GitHub #201) — a minus line, in
+    // the period of the purchase it's linked to, else its own.
+    if (AppDatabase.isRefund(t, kinds)) {
+      final home = refundHome[t.id] ?? t.date;
+      if (t.modeId == null &&
+          categoryIds.contains(t.categoryId) &&
+          !home.isBefore(start) &&
+          !home.isAfter(end)) {
+        out.add((tx: t, amount: -t.amount, isSplit: false));
+      }
+      continue;
+    }
     if (t.date.isBefore(start) || t.date.isAfter(end)) continue;
     // Budgets don't count a mode's (trip's) spending.
     if (t.modeId != null) continue;
@@ -419,12 +453,32 @@ final categoryLinesProvider =
       final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
       final splitsByTx = ref.watch(transactionSplitsByTxProvider);
       final isIncome = self.kind == CategoryKind.income;
+      final kinds = ref.watch(_categoryKindsProvider);
+      final refundHome = ref.watch(refundHomeDatesProvider);
       // An everyday category leaves a mode's (trip's) spending to the mode;
       // a mode's own category is nothing but.
       final everyday = self.modeId == null;
 
       final out = <CategoryLine>[];
       for (final t in txs) {
+        // A refund under this money-out category gives back to it (GitHub
+        // #201): a minus line, dated by the purchase it's linked to.
+        if (!isIncome && AppDatabase.isRefund(t, kinds)) {
+          final home = refundHome[t.id] ?? t.date;
+          if (ids.contains(t.categoryId) &&
+              !(everyday && t.modeId != null) &&
+              (window == null ||
+                  (!home.isBefore(window.start) &&
+                      !home.isAfter(window.end)))) {
+            out.add((
+              tx: t,
+              categoryId: t.categoryId!,
+              amount: -t.amount,
+              isSplit: false,
+            ));
+          }
+          continue;
+        }
         if (window != null &&
             (t.date.isBefore(window.start) || t.date.isAfter(window.end))) {
           continue;
@@ -567,7 +621,9 @@ final budgetProgressProvider = Provider<List<BudgetProgress>>((ref) {
       }
     }
     final effectiveAmount = amounts[b.categoryId] ?? b.amount;
-    final fraction = effectiveAmount.isZero
+    // Refunds can take a period's spend below zero (GitHub #201) — the
+    // bar just reads empty then.
+    final fraction = effectiveAmount.isZero || !spent.isPositive
         ? 0.0
         : spent.paise / effectiveAmount.paise;
     out.add((
@@ -1587,6 +1643,32 @@ final paymentGroupLegsProvider =
 final _transactionLinkRowsProvider = StreamProvider<List<TransactionLinkRow>>(
   (ref) => ref.watch(dbProvider).watchTransactionLinks(),
 );
+
+/// Every category's kind, archived ones too — what makes money in a refund
+/// (GitHub #201): money in under a money-out category.
+final _categoryKindsProvider = Provider<Map<int, CategoryKind>>((ref) {
+  return {
+    for (final c in ref.watch(categoryMapProvider).values) c.id: c.kind,
+    for (final c
+        in ref.watch(archivedCategoriesProvider).valueOrNull ??
+            const <CategoryRow>[])
+      c.id: c.kind,
+  };
+});
+
+/// Refund → the date of the purchase it's linked to (GitHub #201), so it
+/// counts in that purchase's budget period. See
+/// [AppDatabase.refundHomeDates].
+final refundHomeDatesProvider = Provider<Map<int, DateTime>>((ref) {
+  final links = ref.watch(_transactionLinkRowsProvider).valueOrNull;
+  if (links == null || links.isEmpty) return const {};
+  final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
+  return AppDatabase.refundHomeDates(
+    links: links,
+    transactions: {for (final t in txs) t.id: t},
+    kinds: ref.watch(_categoryKindsProvider),
+  );
+});
 
 /// The other transaction(s) manually linked to [id], either direction.
 /// Re-reads whenever a link is added/removed or the ledger changes, so a
@@ -2656,12 +2738,17 @@ final periodEndAccountBalancesProvider = Provider<Map<int, Money>?>((ref) {
 /// the end of each of the last [months] periods, oldest first, the selected
 /// one last. Today's period closes on today's balances.
 ///
-/// Counts exactly what [AppDatabase.watchNetWorth] counts — balance-holding
-/// accounts with [AccountRow.includeInNetWorth] on, foreign ones at today's
-/// rate — so [opening] to [trend]'s last point is the ledger's movement
-/// alone, never an exchange-rate swing. Null until every source has loaded.
+/// Counts exactly what [AppDatabase.watchNetWorth] counts — every
+/// balance-holding account, foreign ones at today's rate — so [opening] to
+/// [trend]'s last point is the ledger's movement alone, never an
+/// exchange-rate swing. [available] is the period's close counting only the
+/// accounts switched on for Available balance (GitHub #198). Null until
+/// every source has loaded.
 final periodNetWorthProvider =
-    Provider.family<({Money opening, List<Money> trend})?, int>((ref, months) {
+    Provider.family<
+      ({Money opening, List<Money> trend, Money available})?,
+      int
+    >((ref, months) {
       final holding = ref.watch(balanceAccountsProvider).valueOrNull;
       final accounts = ref.watch(_ledgerAccountsProvider);
       final txs = ref.watch(allTransactionsProvider).valueOrNull;
@@ -2676,7 +2763,7 @@ final periodNetWorthProvider =
         for (final r in rates) r.currencyCode: r.rateToBaseMicros,
       };
 
-      Money totalAt(DateTime? cutoff) {
+      Money totalAt(DateTime? cutoff, {bool availableOnly = false}) {
         final balances = accountBalancesAt(
           accounts: accounts,
           txs: txs,
@@ -2684,7 +2771,7 @@ final periodNetWorthProvider =
         );
         var total = const Money.zero();
         for (final a in holding) {
-          if (!a.includeInNetWorth) continue;
+          if (availableOnly && !a.includeInNetWorth) continue;
           final balance = balances[a.id] ?? const Money.zero();
           final rate = a.currencyCode == null ? null : rateOf[a.currencyCode];
           total += rate == null ? balance : convertUsingRate(balance, rate);
@@ -2694,6 +2781,10 @@ final periodNetWorthProvider =
 
       final start = budgetPeriodFor(month, startDay).start;
       return (
+        available: totalAt(
+          past ? budgetPeriodFor(month, startDay).end : null,
+          availableOnly: true,
+        ),
         opening: totalAt(start.subtract(const Duration(milliseconds: 1))),
         trend: [
           for (var i = months - 1; i >= 0; i--)

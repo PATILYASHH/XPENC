@@ -3,6 +3,7 @@
  "code": "ta",
  "englishName": "Tamil",
  "nativeName": "தமிழ்",
+ "coverage": 3,
  "strings": {
   " — looks like an OTP.": " — இது OTP போலத் தெரிகிறது.",
   " — looks promotional.": " — இது விளம்பரம் போலத் தெரிகிறது.",

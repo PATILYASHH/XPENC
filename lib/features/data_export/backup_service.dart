@@ -12,6 +12,7 @@ import '../../core/platform/outgoing_file.dart';
 import '../../core/platform/platform_features.dart';
 import '../../data/database.dart';
 import 'app_folder_backups.dart';
+import 'backup_folder.dart';
 import 'report_pdf.dart';
 import 'statement_pdf.dart';
 import '../../core/l10n/l10n.dart';
@@ -77,9 +78,13 @@ class BackupService {
 
   static bool _mediaStoreReady = false;
 
+  /// Points MediaStore at the backup folder — `Download/BACKUP XPENC`, or
+  /// the one picked in Backup & Restore (GitHub #200). Set on every call, so
+  /// a new pick applies to the very next backup.
   static Future<void> _ensureMediaStoreReady() async {
+    await BackupFolder.ensureLoaded();
+    MediaStore.appFolder = BackupFolder.current;
     if (_mediaStoreReady) return;
-    MediaStore.appFolder = backupAppFolder;
     await MediaStore.ensureInitialized();
     _mediaStoreReady = true;
   }
@@ -218,7 +223,7 @@ class BackupService {
 
     if (saved == null) {
       throw StateError(
-        'Could not save the backup to Download/$backupAppFolder.',
+        'Could not save the backup to Download/${BackupFolder.current}.',
       );
     }
 
@@ -296,7 +301,7 @@ class BackupService {
   }
 
   Future<void> deleteBackup(BackupRecordRow record) async {
-    await _deleteFile(record.fileName);
+    await _deleteRecordFile(record);
     await _db.deleteBackupRecordByName(record.fileName);
   }
 
@@ -374,9 +379,23 @@ class BackupService {
     final stale = await _db.staleBackupRecords();
     if (stale.isEmpty) return;
     for (final record in stale) {
-      await _deleteFile(record.fileName);
+      await _deleteRecordFile(record);
       await _db.deleteBackupRecordByName(record.fileName);
     }
+  }
+
+  /// Deletes [record]'s file wherever it was written: by its saved uri
+  /// first — a backup made before the folder was changed (GitHub #200)
+  /// still sits in the old one — else by name in today's folder.
+  Future<void> _deleteRecordFile(BackupRecordRow record) async {
+    if (!_browser && _appFolder == null && record.uri.isNotEmpty) {
+      await _ensureMediaStoreReady();
+      final gone = await MediaStore()
+          .deleteFileUsingUri(uriString: record.uri)
+          .catchError((_) => false);
+      if (gone) return;
+    }
+    await _deleteFile(record.fileName);
   }
 
   Future<void> _deleteFile(String fileName) async {
@@ -426,7 +445,7 @@ class BackupService {
     }
     await _ensureMediaStoreReady();
     final tree = await MediaStore().requestForAccess(
-      initialRelativePath: 'Download/$backupAppFolder',
+      initialRelativePath: 'Download/${BackupFolder.current}',
     );
     if (tree == null) return null;
 

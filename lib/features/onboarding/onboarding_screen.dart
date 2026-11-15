@@ -14,7 +14,8 @@ import '../../core/widgets/custom_icon_badge.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart' show AppMode;
 import '../data_export/backup_service.dart'
-    show BackupService, backupAppFolder;
+    show BackupService;
+import '../data_export/backup_folder.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 import 'country_step.dart';
 import '../../core/l10n/l10n.dart';
@@ -947,7 +948,7 @@ class _RestoreStep extends StatelessWidget {
               ? tr('Pick the backup file your phone made, or one this browser '
                     'downloaded earlier.')
               : PlatformFeatures.durableBackupFolder
-              ? tr('Looks in Download/{0} for a backup you made earlier.', [backupAppFolder])
+              ? tr('Looks in Download/{0} for a backup you made earlier.', [BackupFolder.current])
               : tr('Looks on this iPhone for a backup you made earlier.'),
         ),
         _FeatureRow(

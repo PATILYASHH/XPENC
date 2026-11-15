@@ -398,8 +398,8 @@ class _BalancesBody extends ConsumerWidget {
         var assets = const Money.zero();
         var owed = const Money.zero();
         final byType = <String, Money>{};
+        // Every account (GitHub #198), like Total money.
         for (final a in list) {
-          if (!a.includeInNetWorth) continue;
           if (a.currentBalance.isPositive) {
             assets += a.currentBalance;
           } else {

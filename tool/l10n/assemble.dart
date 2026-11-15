@@ -150,6 +150,8 @@ void main() {
         'code': e.key,
         'englishName': names.$1,
         'nativeName': names.$2,
+        // Lets the app say a partial pack leaves the rest in English.
+        'coverage': coverage(e.key),
         'strings': strings,
       });
       File('$website/$file').writeAsStringSync(text);

@@ -15,6 +15,7 @@ import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_preset.dart';
 import 'core/week_start.dart';
+import 'core/widgets/app_surfaces.dart';
 import 'core/widgets/error_view.dart';
 import 'core/widgets/money_text.dart';
 import 'data/modes_db.dart';
@@ -424,15 +425,47 @@ class _XpencAppState extends ConsumerState<XpencApp>
       await _ensureLanguage(pack.code);
     }
     if (!mounted) return;
-    showAppSnackBar(
-      tr('XPENC is now in {0}.', [pack.nativeName]),
-      action: before == pack.code
-          ? null
-          : SnackBarAction(
-              label: tr('Undo'),
-              onPressed: () => db.setLanguageCode(before),
+    // A dialog, not a SnackBar: this came from outside the app (a file
+    // opened from Downloads), so say plainly that it worked — in the new
+    // language. Under the lock screen it waits there until the user unlocks.
+    final rootContext = appRootContext;
+    if (rootContext == null || !rootContext.mounted) {
+      showAppSnackBar(tr('XPENC is now in {0}.', [pack.nativeName]));
+      return;
+    }
+    final coverage = pack.coverage;
+    final undo = await showAppDialog<bool>(
+      context: rootContext,
+      builder: (dialogContext) => AlertDialog(
+        key: const Key('language-pack-installed'),
+        icon: const Icon(Icons.check_circle_rounded, size: 40),
+        title: Text(tr('XPENC is now in {0}.', [pack.nativeName])),
+        content: Text(
+          [
+            tr('{0} translated strings.', [pack.strings.length]),
+            if (coverage != null && coverage < 95)
+              tr(
+                'This pack translates about {0}% of XPENC so far — the rest '
+                'stays in English.',
+                [coverage],
+              ),
+            tr('To change it, open Settings → General → Language.'),
+          ].join('\n\n'),
+        ),
+        actions: [
+          if (before != pack.code)
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Tr('Undo'),
             ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Tr('OK'),
+          ),
+        ],
+      ),
     );
+    if (undo == true) await db.setLanguageCode(before);
   }
 
   String _rejectReasonHint(RejectReason reason) => switch (reason) {

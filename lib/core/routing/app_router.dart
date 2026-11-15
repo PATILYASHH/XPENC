@@ -87,6 +87,26 @@ import 'app_shell.dart';
 
 final _rootKey = GlobalKey<NavigatorState>();
 
+/// A location no route matches — a stray deep link, an old bookmark on XPENC
+/// web — never strands the user on an error page: they stay where they
+/// were, or land on the Dashboard when there is nowhere yet (a cold start).
+/// go_router's own error page was a dead end here — its Home button goes to
+/// `/`, which XPENC doesn't have either.
+void ignoreUnknownLocation(
+  BuildContext context,
+  GoRouterState state,
+  GoRouter router,
+) {
+  debugPrint('No route for ${state.uri} — ignored');
+  if (router.routerDelegate.currentConfiguration.isEmpty) {
+    router.go('/dashboard');
+  }
+}
+
+/// The root navigator's context, for a dialog raised from outside any screen
+/// (a file opened with XPENC — see `app.dart`). Null until the router is up.
+BuildContext? get appRootContext => _rootKey.currentContext;
+
 /// Shows a SnackBar from outside any screen's own `BuildContext` — e.g. a
 /// share-intake result arriving in `app.dart`, which runs before any route's
 /// `build` has necessarily settled. `_rootKey`'s context always has the
@@ -133,6 +153,7 @@ void showRecognizedTextDialog(String text) {
 final appRouter = GoRouter(
   navigatorKey: _rootKey,
   initialLocation: '/dashboard',
+  onException: ignoreUnknownLocation,
   routes: [
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>

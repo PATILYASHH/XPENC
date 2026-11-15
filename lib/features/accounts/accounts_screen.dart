@@ -104,7 +104,7 @@ class AccountsScreen extends ConsumerWidget {
               ),
               ModuleShortcut(
                 Icons.tune_rounded,
-                tr('Counted in total'),
+                tr('Available balance'),
                 '/more/settings/dashboard',
               ),
             ]),
@@ -250,8 +250,9 @@ class AccountsScreen extends ConsumerWidget {
   }
 }
 
-/// The "Total money" hero card. Reads net worth, which already excludes debit
-/// cards so their bank balance is never counted twice.
+/// The "Total money" hero card — every account (GitHub #198), debit cards
+/// left out so their bank balance is never counted twice — with Available
+/// balance beneath it once some account isn't counted as spendable.
 class _TotalMoneyCard extends ConsumerWidget {
   const _TotalMoneyCard();
 
@@ -260,6 +261,7 @@ class _TotalMoneyCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final netWorth =
         ref.watch(netWorthProvider).valueOrNull ?? const Money.zero();
+    final available = ref.watch(availableBalanceProvider).valueOrNull;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
@@ -291,11 +293,42 @@ class _TotalMoneyCard extends ConsumerWidget {
               ),
               const SizedBox(height: 4),
               Tr(
-                'Cash + Bank + Cards',
+                'Every account, goals and loans included',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
+              if (available != null && available != netWorth) ...[
+                const SizedBox(height: 12),
+                InkWell(
+                  key: const Key('accounts-available-balance'),
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () => context.push('/more/settings/dashboard'),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Tr(
+                          'Available balance',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                      BalanceText(
+                        available,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      AppIcon(
+                        Icons.chevron_right_rounded,
+                        size: 18,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 18),
               const _OwnOweRow(),
               const SizedBox(height: 16),

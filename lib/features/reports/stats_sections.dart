@@ -338,7 +338,8 @@ class CategorySection extends ConsumerWidget {
         // distinguishable; a category with no parent just shows its name.
         rawSpend.forEach((id, amount) {
           final cat = categories[id];
-          if (cat == null) return;
+          // Refunds can leave a category at or below zero (GitHub #201).
+          if (cat == null || !amount.isPositive) return;
           final parent = cat.parentId == null ? null : categories[cat.parentId];
           slices.add((
             label: parent == null ? cat.name : '${parent.name} · ${cat.name}',
@@ -353,7 +354,7 @@ class CategorySection extends ConsumerWidget {
         final spend = rollUpToParents(rawSpend, categories);
         spend.forEach((id, amount) {
           final cat = categories[id];
-          if (cat == null) return;
+          if (cat == null || !amount.isPositive) return;
           slices.add((
             label: cat.name,
             value: amount,

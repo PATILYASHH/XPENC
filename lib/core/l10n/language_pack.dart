@@ -26,6 +26,7 @@ class LanguagePack {
     required this.nativeName,
     required this.strings,
     this.dropped = 0,
+    this.coverage,
   });
 
   static const formatVersion = 1;
@@ -42,6 +43,10 @@ class LanguagePack {
   /// Entries [decode] left out because they'd break the text they replace
   /// (a placeholder the English doesn't have).
   final int dropped;
+
+  /// How much of the app the pack translates, 0–100, when its maker said
+  /// (xpenc.in packs do) — so a partial pack can say the rest stays English.
+  final int? coverage;
 
   AppLanguage get language => AppLanguage(code, englishName, nativeName);
 
@@ -104,12 +109,16 @@ class LanguagePack {
     if (out.isEmpty) {
       throw FormatException(tr('That language pack has no translations.'));
     }
+    final coverage = json['coverage'];
     return LanguagePack(
       code: code,
       englishName: englishName.trim(),
       nativeName: nativeName.trim(),
       strings: out,
       dropped: dropped,
+      coverage: coverage is int && coverage >= 0 && coverage <= 100
+          ? coverage
+          : null,
     );
   }
 
@@ -118,6 +127,7 @@ class LanguagePack {
     'code': code,
     'englishName': englishName,
     'nativeName': nativeName,
+    if (coverage != null) 'coverage': coverage,
     'strings': strings,
   });
 }

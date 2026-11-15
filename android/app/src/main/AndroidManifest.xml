@@ -72,6 +72,16 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+            <!-- Off: Flutter would otherwise hand every launch intent's data
+                 URI to go_router as a page to open — "Open with XPENC" on a
+                 language pack became "no routes for content://media/…".
+                 Opened files and widget taps reach the app through their
+                 plugins (share_intake.dart, home_widget_service.dart), never
+                 as routes. language_pack_intake_test.dart guards this. -->
+            <meta-data
+              android:name="flutter_deeplinking_enabled"
+              android:value="false"
+              />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>

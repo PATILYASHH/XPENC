@@ -3,6 +3,7 @@
  "code": "te",
  "englishName": "Telugu",
  "nativeName": "తెలుగు",
+ "coverage": 3,
  "strings": {
   " — looks like an OTP.": " — ఇది OTP లా ఉంది.",
   " — looks promotional.": " — ఇది ప్రచారంలా ఉంది.",

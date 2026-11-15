@@ -228,7 +228,7 @@ class _DashboardSettingsScreenState
                     ),
                   settingsSectionLabel(context, tr('Accounts widget')),
                   const _AccountsStylePicker(),
-                  settingsSectionLabel(context, tr('Included in Net Worth')),
+                  settingsSectionLabel(context, tr('Available balance')),
                 ],
               ),
             ),
@@ -375,10 +375,10 @@ class _AccountsStylePicker extends ConsumerWidget {
   }
 }
 
-/// Which accounts count toward Net Worth. Turn one off here (a savings goal
-/// you're not counting as spendable, a second bank account you track
-/// separately) and its balance stops adding to that number, while it keeps
-/// showing everywhere else exactly as before.
+/// Which accounts count as Available balance (GitHub #198) — what you can
+/// spend. Turn one off here (a savings goal, a pocket kept for rent, a
+/// second bank tracked separately) and it stops adding to that figure. Total
+/// money always stays the real total of every account.
 class _NetWorthAccounts extends ConsumerWidget {
   const _NetWorthAccounts();
 
@@ -399,17 +399,38 @@ class _NetWorthAccounts extends ConsumerWidget {
                     ),
                   ),
                 )
-              : AppCard(
-                  margin: EdgeInsets.zero,
-                  child: Column(
-                    children: [
-                      for (var i = 0; i < accounts.length; i++) ...[
-                        if (i > 0)
-                          Divider(height: 1, indent: 60, color: cs.outline),
-                        _AccountToggleTile(account: accounts[i]),
-                      ],
-                    ],
-                  ),
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
+                      child: Tr(
+                        'Total money always counts every account. Switch off '
+                        "the ones that aren't for spending — a goal, a pocket "
+                        'for rent — and the Dashboard shows what is left to '
+                        'use as Available balance.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    AppCard(
+                      margin: EdgeInsets.zero,
+                      child: Column(
+                        children: [
+                          for (var i = 0; i < accounts.length; i++) ...[
+                            if (i > 0)
+                              Divider(
+                                height: 1,
+                                indent: 60,
+                                color: cs.outline,
+                              ),
+                            _AccountToggleTile(account: accounts[i]),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
           loading: () => const Padding(
             padding: EdgeInsets.all(24),

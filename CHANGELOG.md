@@ -11,6 +11,22 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 ## [1.6.6] — beta
 
 ### Added
+- **Refunds give back to a budget** (#201). When adding Money in, switch
+  the category picker to **Refund** and pick the spending category it came
+  from. A €30 refund on a €100 purchase leaves that category's budget at
+  €70 spent. The money still lands in the account and counts as Money in.
+  Partial and full refunds both work, and both entries stay in the history.
+  Link the refund to its purchase (Link transaction) and it counts in the
+  purchase's budget period, even when it arrives a month later.
+- **Total money is the real total, plus Available balance** (#198). Total
+  money now counts every account, goals and loans included. The accounts
+  you switch off in Customize dashboard (a goal, a pocket for rent) now
+  only leave the new **Available balance**, shown under Total money on the
+  Dashboard and Accounts when the two differ.
+- **Choose the backup folder** (#200). Backup & Restore → **Backup folder**
+  picks any folder inside Download, a new one included (e.g.
+  `Download/backup/xpenc`), with no extra permission. Backups you already
+  have stay where they are and keep being cleaned up on schedule.
 - **XPENC in your language** (#191). Settings → **Language**: English,
   हिन्दी (Hindi), Deutsch (German), 日本語 (Japanese) and Русский (Russian)
   are built in. XPENC follows the phone's language until you pick one, and
@@ -186,6 +202,16 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   or keep in the cloud.
 
 ### Fixed
+- **An Auto rule could be paid twice** (#203). App start and a quick
+  resume could run the scheduler twice at once, and each run posted the
+  same due payment. A Pay now landing mid-run was also paid again. Each
+  rule is now re-read inside its own save, runs never overlap, and Pay now
+  pays only the date you confirmed. Pay now also reschedules the
+  "coming up" alert straight away.
+- **"Open with XPENC" on a language pack crashed into an error page**
+  ("no routes for location: content://…"). The pack installed, but the app
+  showed a dead-end page. Opening a pack now shows a proper "XPENC is now
+  in …" dialog with Undo.
 - **The Dashboard's Spending chart answers every tap** (#192). After the
   first tap, only a thin strip down the middle of the donut responded, so
   smaller slices couldn't be picked and the label kept flicking back. Any

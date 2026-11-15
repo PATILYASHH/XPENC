@@ -3,6 +3,7 @@
  "code": "es",
  "englishName": "Spanish",
  "nativeName": "Español",
+ "coverage": 3,
  "strings": {
   " — looks like an OTP.": " — parece un código OTP.",
   " — looks promotional.": " — parece publicidad.",

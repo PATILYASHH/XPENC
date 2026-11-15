@@ -67,3 +67,41 @@ Future<void> skipNextOccurrence(WidgetRef ref, RecurringRuleRow rule) async {
 String _day(DateTime d) => DateFormat(
   d.year == DateTime.now().year ? 'd MMM' : 'd MMM yyyy',
 ).format(d);
+
+/// Pays [rule]'s occurrence on [confirmedDue] now (Pay now, GitHub #86) and
+/// says what happened. [confirmedDue] is the date the confirm dialog showed:
+/// if the app posted that occurrence on its own meanwhile, nothing is paid
+/// a second time (GitHub #203). The "coming up" alert is rescheduled right
+/// away, like a skip — otherwise it would still warn about the paid date.
+Future<void> payNowAndReport(
+  BuildContext context,
+  WidgetRef ref,
+  RecurringRuleRow rule, {
+  required DateTime confirmedDue,
+}) async {
+  // The screen's own messenger, taken before the await — the same one the
+  // rule's page always reported through.
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  final db = ref.read(dbProvider);
+  final result = await db.payRecurringRuleNowResult(
+    rule.id,
+    expectedDueDate: confirmedDue,
+  );
+  await ref.read(notificationServiceProvider).syncRecurringNotifications();
+  final message = switch (result) {
+    PayNowResult.posted => tr('"{0}" posted', [rule.name]),
+    // A card bill that's already been paid (#183).
+    PayNowResult.nothingOwed => tr('Nothing left to pay on "{0}"', [rule.name]),
+    PayNowResult.alreadyPosted => tr(
+      '"{0}" for {1} already posted — nothing more was paid.',
+      [rule.name, _day(confirmedDue)],
+    ),
+  };
+  if (messenger == null) {
+    showAppSnackBar(message);
+    return;
+  }
+  messenger
+    ..hideCurrentSnackBar()
+    ..showSnackBar(SnackBar(content: Text(message)));
+}

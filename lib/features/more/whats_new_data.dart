@@ -40,6 +40,27 @@ List<WhatsNewEntry> get whatsNewEntries => [
 
 const _whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.undo_rounded,
+    title: 'Refunds give back to a budget',
+    location: 'Add → Money in → Refund',
+    description:
+        'Money back from a purchase goes to its spending category, so the budget shows what you really kept.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.account_balance_wallet_outlined,
+    title: 'Total money, and Available balance',
+    location: 'Dashboard → Total money',
+    description:
+        'Total money counts every account. Accounts you switch off leave only Available balance.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.folder_outlined,
+    title: 'Pick your backup folder',
+    location: 'Backup & Restore → Backup folder',
+    description:
+        'Any folder inside Download, like Download/backup/xpenc.',
+  ),
+  WhatsNewEntry(
     icon: Icons.translate_rounded,
     title: 'XPENC in your language',
     location: 'Settings → Language',

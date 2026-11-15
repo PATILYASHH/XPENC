@@ -3,6 +3,7 @@
  "code": "mr",
  "englishName": "Marathi",
  "nativeName": "मराठी",
+ "coverage": 3,
  "strings": {
   " — looks like an OTP.": " — हा OTP सारखा दिसतो.",
   " — looks promotional.": " — ही जाहिरात दिसते.",

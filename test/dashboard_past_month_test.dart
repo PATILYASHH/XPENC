@@ -198,7 +198,8 @@ void main() {
     });
 
     test(
-      'an account left out of Total money stays out of every month',
+      'an account left out of Available balance still counts in Total '
+      'money, every month (#198)',
       () async {
         final bank = await seedBank();
         await db.setAccountIncludeInNetWorth(bank, false);
@@ -207,8 +208,8 @@ void main() {
         await settle();
 
         final money = container.read(periodNetWorthProvider(6))!;
-        expect(money.opening, const Money.zero());
-        expect(money.trend.last, const Money.zero());
+        expect(money.trend.last, isNot(const Money.zero()));
+        expect(money.available, const Money.zero());
       },
     );
   });

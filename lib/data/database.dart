@@ -2020,6 +2020,9 @@ class AppDatabase extends _$AppDatabase {
       TransactionLinksCompanion.insert(transactionAId: lo, transactionBId: hi),
       mode: InsertMode.insertOrIgnore,
     );
+    // A refund linked to its purchase moves to the purchase's budget
+    // period (GitHub #201): every spend watcher reads links, so re-run them.
+    markTablesUpdated({transactions});
   }
 
   /// Removes the link between [aId] and [bId], if any.
@@ -2030,7 +2033,66 @@ class AppDatabase extends _$AppDatabase {
           (l) => l.transactionAId.equals(lo) & l.transactionBId.equals(hi),
         ))
         .go();
+    markTablesUpdated({transactions});
   }
+
+  /// Refunds (GitHub #201) — money in under a money-out category, so it
+  /// gives back to that category's budget — each mapped to the date of the
+  /// purchase it is linked to, the earliest if several. A refund linked to
+  /// a purchase counts in that purchase's budget period, wherever the money
+  /// itself landed; one with no link counts on its own date.
+  Future<Map<int, DateTime>> refundPurchaseDates() async {
+    final links = await select(transactionLinks).get();
+    if (links.isEmpty) return const {};
+    final ids = {
+      for (final l in links) ...[l.transactionAId, l.transactionBId],
+    };
+    final rows = {
+      for (final t in await (select(
+        transactions,
+      )..where((t) => t.id.isIn(ids))).get())
+        t.id: t,
+    };
+    final kinds = {
+      for (final c in await select(categories).get()) c.id: c.kind,
+    };
+    return refundHomeDates(links: links, transactions: rows, kinds: kinds);
+  }
+
+  /// [refundPurchaseDates]' rule on rows already in hand — also what the
+  /// in-memory providers use, so every screen agrees.
+  static Map<int, DateTime> refundHomeDates({
+    required Iterable<TransactionLinkRow> links,
+    required Map<int, TransactionRow> transactions,
+    required Map<int, CategoryKind> kinds,
+  }) {
+    final out = <int, DateTime>{};
+    void consider(TransactionRow? refund, TransactionRow? purchase) {
+      if (refund == null || purchase == null) return;
+      if (!isRefund(refund, kinds)) return;
+      if (purchase.type != TxType.expense) return;
+      final had = out[refund.id];
+      if (had == null || purchase.date.isBefore(had)) {
+        out[refund.id] = purchase.date;
+      }
+    }
+
+    for (final l in links) {
+      final a = transactions[l.transactionAId];
+      final b = transactions[l.transactionBId];
+      consider(a, b);
+      consider(b, a);
+    }
+    return out;
+  }
+
+  /// Money in under a money-out category — a refund (GitHub #201). It
+  /// reduces that category's spending in budgets and category totals, but
+  /// stays money in for balances and Money in/out totals.
+  static bool isRefund(TransactionRow t, Map<int, CategoryKind> kinds) =>
+      t.type == TxType.income &&
+      t.categoryId != null &&
+      kinds[t.categoryId] == CategoryKind.expense;
 
   Future<void> deleteTransaction(int id) {
     return transaction(() async {
@@ -3786,10 +3848,11 @@ class AppDatabase extends _$AppDatabase {
             ]))
           .watch();
 
-  /// Total money = Cash + Bank + Credit Card. Instruments never double-count.
-  /// An account with [Accounts.includeInNetWorth] off — opted out from
-  /// Settings > Customize Dashboard — contributes nothing here, though it
-  /// still shows its own balance everywhere else in the app.
+  /// Total money — every account that holds money: cash, bank, cards,
+  /// goals, loans. Instruments (debit cards) never double-count. It is the
+  /// real total (GitHub #198): [Accounts.includeInNetWorth] no longer takes
+  /// an account out of it — that switch picks the accounts in
+  /// [watchAvailableBalance] instead.
   ///
   /// A foreign-currency account's balance is converted using **today's**
   /// rate, not a snapshot — Net Worth is a "right now" figure, unlike a
@@ -3798,6 +3861,19 @@ class AppDatabase extends _$AppDatabase {
   /// unconverted rather than dropping it or throwing, so an incomplete
   /// Currency setup never breaks the dashboard.
   Stream<Money> watchNetWorth() =>
+      watchBalanceHoldingAccounts().asyncMap((rows) async {
+        var total = const Money.zero();
+        for (final a in rows) {
+          total += await _balanceInBase(a);
+        }
+        return total;
+      });
+
+  /// Available balance (GitHub #198): only the accounts the user counts as
+  /// spendable — [Accounts.includeInNetWorth] on, picked in Settings >
+  /// Customize Dashboard. A pocket kept for later (a goal, a second bank)
+  /// switched off still counts in [watchNetWorth], the real total.
+  Stream<Money> watchAvailableBalance() =>
       watchBalanceHoldingAccounts().asyncMap((rows) async {
         var total = const Money.zero();
         for (final a in rows) {
@@ -3811,14 +3887,13 @@ class AppDatabase extends _$AppDatabase {
   /// account in credit — and what you owe — every one in debt, a card's
   /// bill or a loan, as a positive amount. Split by each balance's sign,
   /// not its account type, so an overpaid card counts as owned and an
-  /// overdrawn bank as owed. `assets - liabilities` is always the net worth,
-  /// with the same accounts left out of both.
+  /// overdrawn bank as owed. `assets - liabilities` is always the net worth
+  /// — every account, like [watchNetWorth].
   Stream<({Money assets, Money liabilities})> watchAssetsAndLiabilities() =>
       watchBalanceHoldingAccounts().asyncMap((rows) async {
         var assets = const Money.zero();
         var liabilities = const Money.zero();
         for (final a in rows) {
-          if (!a.includeInNetWorth) continue;
           final balance = await _balanceInBase(a);
           if (balance.isNegative) {
             liabilities -= balance;
@@ -3957,8 +4032,23 @@ class AppDatabase extends _$AppDatabase {
     bool includeModes = false,
   }) => watchTransactionsBetween(start, end).asyncMap((rows) async {
     final out = <int, Money>{};
+    void add(int categoryId, Money amount) =>
+        out[categoryId] = (out[categoryId] ?? const Money.zero()) + amount;
+    final kinds = {
+      for (final c in await select(categories).get()) c.id: c.kind,
+    };
+    final refundHome = await refundPurchaseDates();
+    bool inWindow(DateTime d) => !d.isBefore(start) && !d.isAfter(end);
     for (final t in rows) {
       if (!includeModes && t.modeId != null) continue;
+      // A refund gives back to its category (GitHub #201) — in this period,
+      // unless it's linked to a purchase from another one.
+      if (isRefund(t, kinds)) {
+        final home = refundHome[t.id];
+        if (home != null && !inWindow(home)) continue;
+        add(t.categoryId!, Money.fromPaise(-t.amount.paise));
+        continue;
+      }
       if (t.type == TxType.expense) {
         if (t.categoryId != null) {
           out[t.categoryId!] =
@@ -3977,6 +4067,15 @@ class AppDatabase extends _$AppDatabase {
         out[t.categoryId!] =
             (out[t.categoryId!] ?? const Money.zero()) + t.amount;
       }
+    }
+    // Refunds that landed in another period but are linked to a purchase
+    // in this one.
+    for (final e in refundHome.entries) {
+      if (!inWindow(e.value)) continue;
+      final t = await transactionById(e.key);
+      if (t == null || inWindow(t.date)) continue;
+      if (!includeModes && t.modeId != null) continue;
+      add(t.categoryId!, Money.fromPaise(-t.amount.paise));
     }
     return out;
   });
@@ -5427,7 +5526,7 @@ class AppDatabase extends _$AppDatabase {
     if (category != null && category.kind != kind) {
       throw ArgumentError(
         tr('That is a {0} '
-        'category — pick one that matches.', [category.kind == CategoryKind.income ? 'money-in' : 'money-out']),
+        'category — pick one that matches.', [category.kind == CategoryKind.income ? tr('money-in') : tr('money-out')]),
       );
     }
     if (frequency == RecurringFrequency.monthly) {
@@ -5934,12 +6033,37 @@ class AppDatabase extends _$AppDatabase {
   ///
   /// Returns whether anything posted: a card bill with nothing left to pay
   /// posts nothing and keeps its date.
-  Future<bool> payRecurringRuleNow(int ruleId, {DateTime? now}) async {
+  ///
+  /// [expectedDueDate] is the date the user saw and confirmed paying (GitHub
+  /// #203). If the rule has moved on since — the app posted that occurrence
+  /// on its own while the dialog was open — nothing is paid twice:
+  /// [PayNowResult.alreadyPosted].
+  Future<bool> payRecurringRuleNow(
+    int ruleId, {
+    DateTime? now,
+    DateTime? expectedDueDate,
+  }) async =>
+      (await payRecurringRuleNowResult(
+        ruleId,
+        now: now,
+        expectedDueDate: expectedDueDate,
+      )) ==
+      PayNowResult.posted;
+
+  Future<PayNowResult> payRecurringRuleNowResult(
+    int ruleId, {
+    DateTime? now,
+    DateTime? expectedDueDate,
+  }) async {
     final ruleTagIds = (await tagIdsForRecurringRule(ruleId)).toSet();
     return transaction(() async {
       final rule = await (select(
         recurringRules,
       )..where((r) => r.id.equals(ruleId))).getSingle();
+      if (expectedDueDate != null &&
+          !_sameDay(rule.nextDueDate, expectedDueDate)) {
+        return PayNowResult.alreadyPosted;
+      }
       final result = await _postRecurringOccurrence(
         rule,
         date: now ?? DateTime.now(),
@@ -5948,7 +6072,9 @@ class AppDatabase extends _$AppDatabase {
         tagIds: ruleTagIds,
       );
       // Nothing was owed (a card bill already paid): the next date stands.
-      if (!result.posted && !result.loanCleared) return false;
+      if (!result.posted && !result.loanCleared) {
+        return PayNowResult.nothingOwed;
+      }
       final next = nextOccurrence(
         rule.frequency,
         rule.nextDueDate,
@@ -5966,9 +6092,12 @@ class AppDatabase extends _$AppDatabase {
               : const Value.absent(),
         ),
       );
-      return result.posted;
+      return result.posted ? PayNowResult.posted : PayNowResult.nothingOwed;
     });
   }
+
+  static bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
 
   /// Skips [ruleId]'s next occurrence without stopping the rule (GitHub
   /// #184) — a gym month you're away for, a fee waived once, rent paid some
@@ -6026,7 +6155,21 @@ class AppDatabase extends _$AppDatabase {
   ///
   /// [now] exists so tests can pin "today" instead of racing the wall clock —
   /// real callers never pass it.
-  Future<int> runDueRecurringRules({DateTime? now}) async {
+  Future<int> runDueRecurringRules({DateTime? now}) {
+    // One run at a time (GitHub #203): app start and every resume each call
+    // this, and they overlap easily — back from the notification shade or a
+    // file picker mid-run. A run that starts while one is going waits for it.
+    final run = _recurringRun.then(
+      (_) => _runDueRecurringRules(now: now),
+      onError: (_) => _runDueRecurringRules(now: now),
+    );
+    _recurringRun = run.then<void>((_) {}, onError: (_) {});
+    return run;
+  }
+
+  Future<void> _recurringRun = Future<void>.value();
+
+  Future<int> _runDueRecurringRules({DateTime? now}) async {
     final today = now ?? DateTime.now();
     final endOfToday = DateTime(today.year, today.month, today.day, 23, 59, 59);
     final due =
@@ -6039,10 +6182,22 @@ class AppDatabase extends _$AppDatabase {
     if (due.isEmpty) return 0;
 
     var posted = 0;
-    for (final rule in due) {
+    for (final listed in due) {
       try {
-        final ruleTagIds = (await tagIdsForRecurringRule(rule.id)).toSet();
+        final ruleTagIds = (await tagIdsForRecurringRule(listed.id)).toSet();
         await transaction(() async {
+          // Read again inside the transaction (GitHub #203): the list above
+          // is a snapshot, and a Pay now — or another run — may have posted
+          // this occurrence and moved the date on since. Posting from the
+          // snapshot paid it twice.
+          final rule = await (select(
+            recurringRules,
+          )..where((r) => r.id.equals(listed.id))).getSingleOrNull();
+          if (rule == null ||
+              !rule.isActive ||
+              rule.nextDueDate.isAfter(endOfToday)) {
+            return;
+          }
           var next = rule.nextDueDate;
           // A promo can run out mid-backfill (e.g. two missed months catch up
           // in one run, straddling the last promo occurrence) — tracked
@@ -8754,4 +8909,18 @@ class AppDatabase extends _$AppDatabase {
 class FriendAlreadyLinked implements Exception {
   const FriendAlreadyLinked(this.person);
   final PersonRow person;
+}
+
+/// What [AppDatabase.payRecurringRuleNowResult] did.
+enum PayNowResult {
+  /// One occurrence posted today; the rule moved to the one after.
+  posted,
+
+  /// A card bill with nothing left on the statement — nothing posted, and
+  /// the date stands.
+  nothingOwed,
+
+  /// The occurrence the user confirmed had already posted (the app caught
+  /// it up meanwhile) — nothing more was paid (GitHub #203).
+  alreadyPosted,
 }

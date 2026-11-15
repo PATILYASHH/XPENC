@@ -414,8 +414,8 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
         ? DateTime(month.year, month.month)
         : DateTime(now.year, now.month);
     final deltaSuffix = past
-        ? 'in ${DateFormat('MMM').format(month)}'
-        : 'this month';
+        ? tr('in {0}', [DateFormat('MMM').format(month)])
+        : tr('this month');
 
     final metric = _metric;
     final label = switch (metric) {
@@ -443,6 +443,8 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
     Money? headline;
     // Total money only: what the month opened at, shown beneath the figure.
     Money? opening;
+    // Total money only: the part counted as spendable (GitHub #198).
+    Money? available;
     // Loan tab only: what makes up the headline, shown beneath it.
     String? breakdown;
 
@@ -456,6 +458,9 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
           opening = money.opening;
         }
         headline = past ? money?.trend.last : netWorth!.valueOrNull;
+        available = past
+            ? money?.available
+            : ref.watch(availableBalanceProvider).valueOrNull;
       case _MoneyMetric.income:
       case _MoneyMetric.expense:
         final monthly = ref.watch(
@@ -490,7 +495,7 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
           final last = trend.last;
           breakdown = [
             if (last.loans.isPositive)
-              'Loans ${MoneyFormat.compact(last.loans)}',
+              tr('Loans {0}', [MoneyFormat.compact(last.loans)]),
             if (last.payLater.isPositive)
               tr('Pay later {0}', [MoneyFormat.compact(last.payLater)]),
             if (last.people.isPositive)
@@ -630,6 +635,15 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
                                 ),
                               ),
                             ),
+                          // Only when some account is left out of it — with
+                          // every account counted it would just repeat the
+                          // figure above.
+                          if (available != null &&
+                              headline != null &&
+                              available != headline) ...[
+                            const SizedBox(height: 6),
+                            _AvailableLine(amount: available),
+                          ],
                           if (opening != null) ...[
                             const SizedBox(height: 4),
                             _OpeningLine(amount: opening, on: period.start),
@@ -695,8 +709,8 @@ class _MoneyMetricTabs extends StatelessWidget {
   static List<(_MoneyMetric, String, Color)> get _tabs => [
     (_MoneyMetric.income, tr('Money in'), AppColors.income),
     (_MoneyMetric.expense, tr('Money out'), AppColors.expense),
-    (_MoneyMetric.savings, 'Savings', AppColors.transfer),
-    (_MoneyMetric.loan, 'Loan', AppColors.person),
+    (_MoneyMetric.savings, tr('Savings'), AppColors.transfer),
+    (_MoneyMetric.loan, tr('Loan'), AppColors.person),
   ];
 
   @override
@@ -832,6 +846,44 @@ class _OpeningLine extends StatelessWidget {
               ? AppColors.expense
               : theme.colorScheme.onSurface,
           style: muted?.copyWith(fontWeight: FontWeight.w600),
+        ),
+      ],
+    );
+  }
+}
+
+/// `Available balance  ₹4,200.00` under Total money (GitHub #198): the
+/// accounts switched on as spendable in Customize dashboard. Total money
+/// above stays the real total of every account.
+class _AvailableLine extends StatelessWidget {
+  const _AvailableLine({required this.amount});
+
+  final Money amount;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final style = theme.textTheme.bodyMedium?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    return Row(
+      key: const Key('available-balance'),
+      children: [
+        Flexible(
+          child: Text(
+            tr('Available balance'),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: style,
+          ),
+        ),
+        const SizedBox(width: 8),
+        MoneyText(
+          amount,
+          color: amount.isNegative
+              ? AppColors.expense
+              : theme.colorScheme.onSurface,
+          style: style?.copyWith(fontWeight: FontWeight.w700),
         ),
       ],
     );

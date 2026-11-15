@@ -733,8 +733,8 @@ class _NetWorthBody extends ConsumerWidget {
         var liabilities = const Money.zero();
         final byType = <AccountType, Money>{};
         final counted = <(AccountRow, Money)>[];
+        // Every account (GitHub #198), like Total money.
         for (final a in accounts) {
-          if (!a.includeInNetWorth) continue;
           final b = _baseBalance(a, rates);
           counted.add((a, b));
           byType[a.type] = (byType[a.type] ?? const Money.zero()) + b;

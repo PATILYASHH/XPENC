@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -8,6 +9,7 @@ import '../../core/widgets/error_view.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import 'backup_folder.dart';
 import 'backup_service.dart';
 import 'import_from_file.dart';
 import '../../core/widgets/nav_bar_inset.dart';
@@ -91,7 +93,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
                   ? tr('Cancelled')
                   : found == 0
                   ? PlatformFeatures.durableBackupFolder
-                        ? tr('No backups found in Download/{0}', [backupAppFolder])
+                        ? tr('No backups found in Download/{0}', [BackupFolder.current])
                         : tr('No backups found on this iPhone')
                   : tr('Found {0} backup{1}', [found, found == 1 ? '' : 's']),
             ),
@@ -109,6 +111,113 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
 
   /// Import a backup file the app didn't write — the other half of moving
   /// data between phones. See `importDataFromFile`.
+  /// Picks where backups go (GitHub #200): any folder inside Download, a
+  /// new one made in the picker included. Backups already made stay where
+  /// they are — still listed, restorable and cleaned up on schedule.
+  Future<void> _chooseBackupFolder() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final choice = await showAppSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+        return SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Tr('Backup folder', style: theme.textTheme.titleLarge),
+                    const SizedBox(height: 6),
+                    Tr(
+                      'Pick a folder inside Download — or make a new one '
+                      'there. Android lets XPENC keep backups in Download '
+                      'without any storage permission.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              AppListTile(
+                key: const Key('backup-folder-pick'),
+                leading: const AppIcon(Icons.drive_folder_upload_outlined),
+                title: const Tr('Choose a folder in Download'),
+                subtitle: Text('Download/${BackupFolder.current}'),
+                onTap: () => Navigator.of(sheetContext).pop(true),
+              ),
+              if (!BackupFolder.isDefault)
+                AppListTile(
+                  leading: const AppIcon(Icons.restart_alt_rounded),
+                  title: const Tr('Use the default'),
+                  subtitle: const Text('Download/$backupAppFolder'),
+                  onTap: () => Navigator.of(sheetContext).pop(false),
+                ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
+    if (choice == null || !mounted) return;
+    String? folder;
+    if (choice) {
+      final String? picked;
+      try {
+        picked = await FilePicker.platform.getDirectoryPath(
+          dialogTitle: tr('Backup folder'),
+        );
+      } catch (e) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(tr("Couldn't open a file: {0}", [e]))),
+        );
+        return;
+      }
+      if (picked == null || !mounted) return;
+      folder = BackupFolder.fromPickedPath(picked);
+      if (folder == null) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Tr(
+              'Pick a folder inside Download, not Download itself — that is '
+              'where Android lets XPENC keep backups.',
+            ),
+          ),
+        );
+        return;
+      }
+    }
+    try {
+      await BackupFolder.set(folder);
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(tr("Couldn't save: {0}", [e]))),
+      );
+      return;
+    }
+    if (!mounted) return;
+    setState(() {});
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            tr(
+              'New backups go to {0}. The ones you already have stay where '
+              'they are.',
+              ['Download/${BackupFolder.current}'],
+            ),
+          ),
+        ),
+      );
+  }
+
   Future<void> _importFromFile() async {
     if (_busy) return;
     await importDataFromFile(
@@ -347,7 +456,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
                               'phone — visible in any file manager, and kept '
                               'even if XPENC itself is uninstalled. Moving to a '
                               'new phone? Send that folder across, or export a '
-                              'file here and use Import on the new phone.', [backupAppFolder])
+                              'file here and use Import on the new phone.', [BackupFolder.current])
                         : tr('Backups are kept inside XPENC on this iPhone, so '
                               'deleting the app deletes them too. Keep a copy '
                               'somewhere safe — Share one to Files or iCloud '
@@ -393,6 +502,29 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
                 onTap: () => _openAutoBackupSheet(context, autoBackup),
               ),
             ),
+            // Where backups go, inside Download (GitHub #200).
+            if (PlatformFeatures.durableBackupFolder) ...[
+              const SizedBox(height: 12),
+              AppCard(
+                child: AppListTile(
+                  key: const Key('backup-folder'),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
+                  leading: const AppIcon(Icons.folder_outlined),
+                  title: const Tr('Backup folder'),
+                  subtitle: Text(
+                    'Download/${BackupFolder.current}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  trailing: const AppIcon(Icons.chevron_right_rounded),
+                  onTap: _busy ? null : _chooseBackupFolder,
+                ),
+              ),
+            ],
           ],
           const SizedBox(height: 24),
           Row(
@@ -804,7 +936,7 @@ class _AutoBackupSettingsSheetState
               PlatformFeatures.durableBackupFolder
                   ? tr('Backs up on its own, no need to tap "Back up now" — '
                         'saved to Download/{0} just like a manual '
-                        'backup.', [backupAppFolder])
+                        'backup.', [BackupFolder.current])
                   : tr('Backs up on its own, no need to tap "Back up now" — '
                         'kept on this iPhone just like a manual backup.'),
               style: theme.textTheme.bodySmall?.copyWith(
