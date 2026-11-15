@@ -8,7 +8,7 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
-## [1.6.6] — beta
+## [1.6.6] — 2026-11-15
 
 ### Added
 - **Refunds give back to a budget** (#201). When adding Money in, switch
@@ -1627,7 +1627,8 @@ First public release. 🎉
 - `tool/verify_apk.sh` gates every shipped APK against the missing
   `libsqlite3.so` class of crash.
 
-[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.6.5...HEAD
+[Unreleased]: https://github.com/PATILYASHH/XPENC/compare/v1.6.6...HEAD
+[1.6.6]: https://github.com/PATILYASHH/XPENC/compare/v1.6.5...v1.6.6
 [1.6.5]: https://github.com/PATILYASHH/XPENC/compare/v1.6.4...v1.6.5
 [1.6.4]: https://github.com/PATILYASHH/XPENC/compare/v1.6.3...v1.6.4
 [1.6.3]: https://github.com/PATILYASHH/XPENC/compare/v1.6.2...v1.6.3
