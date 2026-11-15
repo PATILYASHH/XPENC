@@ -412,7 +412,7 @@ class _BalanceHero extends StatelessWidget {
     } else {
       shown = balance;
       color = theme.colorScheme.onSurfaceVariant;
-      label = 'Settled';
+      label = tr('Settled');
     }
 
     return Padding(
@@ -444,10 +444,13 @@ class _BalanceHero extends StatelessWidget {
   }
 }
 
-/// 'They owe' (green) and 'I owe' (red) open the entry sheet in that
-/// direction. "Mark as repaid" — a third, distinct entry point rather than
-/// overloading 'I owe' — only shows when there's a balance to repay and the
-/// setting is on (see [countRepaymentsAsIncomeProvider]).
+/// 'Money out' (you gave them money — they owe you more) and 'Money in'
+/// (you got money from them — they owe you less) open the entry sheet in
+/// that direction. 'Settle up' opens it the other way with the whole
+/// balance filled in, so one tap clears it. "Mark as repaid" — a distinct
+/// entry point that counts the repayment as money in — only shows when
+/// there's a balance to repay and the setting is on (see
+/// [countRepaymentsAsIncomeProvider]).
 class _ActionButtons extends ConsumerWidget {
   const _ActionButtons({required this.person, required this.balance});
 
@@ -487,9 +490,10 @@ class _ActionButtons extends ConsumerWidget {
             children: [
               Expanded(
                 child: FilledButton.tonal(
+                  key: const Key('person-money-out'),
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.income.withValues(alpha: 0.14),
-                    foregroundColor: AppColors.income,
+                    backgroundColor: AppColors.expense.withValues(alpha: 0.14),
+                    foregroundColor: AppColors.expense,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   onPressed: () => _showEntrySheet(
@@ -497,24 +501,66 @@ class _ActionButtons extends ConsumerWidget {
                     personId,
                     PersonDirection.theyOwe,
                   ),
-                  child: const Tr('They owe'),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AppIcon(Icons.arrow_upward_rounded, size: 18),
+                      SizedBox(width: 6),
+                      Flexible(child: Tr('Money out')),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: FilledButton.tonal(
+                  key: const Key('person-money-in'),
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.expense.withValues(alpha: 0.14),
-                    foregroundColor: AppColors.expense,
+                    backgroundColor: AppColors.income.withValues(alpha: 0.14),
+                    foregroundColor: AppColors.income,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   onPressed: () =>
                       _showEntrySheet(context, personId, PersonDirection.iOwe),
-                  child: const Tr('I owe'),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AppIcon(Icons.arrow_downward_rounded, size: 18),
+                      SizedBox(width: 6),
+                      Flexible(child: Tr('Money in')),
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
+          // One tap to clear the balance: the whole amount, the other way.
+          if (!balance.isZero) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                key: const Key('person-settle'),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                onPressed: () => _showEntrySheet(
+                  context,
+                  personId,
+                  // They owe you → their payment comes in; you owe → yours
+                  // goes out.
+                  balance.isPositive
+                      ? PersonDirection.iOwe
+                      : PersonDirection.theyOwe,
+                  settleAmount: balance.abs,
+                ),
+                icon: const AppIcon(Icons.handshake_outlined, size: 18),
+                label: Text(
+                  tr('Settle up · {0}', [MoneyFormat.symbol(balance.abs)]),
+                ),
+              ),
+            ),
+          ],
           if (offerRepayment) ...[
             const SizedBox(height: 10),
             SizedBox(
@@ -876,6 +922,7 @@ void _showEntrySheet(
   PersonDirection direction, {
   bool isRepayment = false,
   PersonEntryRow? existing,
+  Money? settleAmount,
 }) {
   showAppSheet<void>(
     context: context,
@@ -886,6 +933,7 @@ void _showEntrySheet(
       direction: direction,
       isRepayment: isRepayment,
       existing: existing,
+      settleAmount: settleAmount,
     ),
   );
 }
@@ -902,12 +950,16 @@ class _EntrySheet extends ConsumerStatefulWidget {
     required this.direction,
     this.isRepayment = false,
     this.existing,
+    this.settleAmount,
   });
 
   final int personId;
   final PersonDirection direction;
   final bool isRepayment;
   final PersonEntryRow? existing;
+
+  /// Settle up: the whole balance, filled in — lower it to settle part.
+  final Money? settleAmount;
 
   @override
   ConsumerState<_EntrySheet> createState() => _EntrySheetState();
@@ -916,7 +968,9 @@ class _EntrySheet extends ConsumerStatefulWidget {
 class _EntrySheetState extends ConsumerState<_EntrySheet> {
   final _amountController = AmountKeypadController();
   late final _noteController = TextEditingController(
-    text: widget.existing?.note ?? '',
+    text:
+        widget.existing?.note ??
+        (widget.settleAmount != null ? tr('Settled up') : ''),
   );
   final _noteFocus = FocusNode();
   late DateTime _date = widget.existing?.date ?? DateTime.now();
@@ -941,11 +995,16 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
 
   bool get _isEdit => widget.existing != null;
   bool get _theyOwe => widget.direction == PersonDirection.theyOwe;
+  bool get _settling => widget.settleAmount != null && !_isEdit;
 
   @override
   void initState() {
     super.initState();
     final existing = widget.existing;
+    final settle = widget.settleAmount;
+    if (settle != null && existing == null) {
+      _amountController.setAmount(settle);
+    }
     if (existing != null) {
       _amountController.setAmount(existing.amount);
       ref.read(dbProvider).tagIdsForPersonEntry(existing.id).then((tags) {
@@ -1297,7 +1356,8 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
     // already in hand the instant Save is tapped, and a provider nothing
     // else here watches only starts loading on its first read.
     ref.watch(allAllocationsProvider);
-    final accent = _theyOwe ? AppColors.income : AppColors.expense;
+    // The money's direction: out (you gave) red, in (you got) green.
+    final accent = _theyOwe ? AppColors.expense : AppColors.income;
 
     // Editing an old entry can point at an account archived since — the
     // dropdown's live list never includes those, and a value with no
@@ -1352,9 +1412,11 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
                     ? tr('Edit entry')
                     : widget.isRepayment
                     ? tr('Mark as repaid')
+                    : _settling
+                    ? tr('Settle up')
                     : _theyOwe
-                    ? tr('They owe you')
-                    : tr('You owe them'),
+                    ? tr('Money out')
+                    : tr('Money in'),
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: accent,
@@ -1365,6 +1427,14 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
                 widget.isRepayment
                     ? tr('Counts as money in, under the category you '
                           'choose below.')
+                    : _settling
+                    ? (_theyOwe
+                          ? tr('You pay back what you owe, and the balance '
+                                'goes to zero. Lower the amount to settle '
+                                'part of it.')
+                          : tr('They pay you back, and the balance goes to '
+                                'zero. Lower the amount to settle part of '
+                                'it.'))
                     : _theyOwe
                     ? tr('You gave money out. Their balance goes up.')
                     : tr('You received money. Their balance goes down.'),

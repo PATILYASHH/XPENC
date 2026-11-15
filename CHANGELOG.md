@@ -176,6 +176,11 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   notifications, contacts and USSD pay — aren't there.
 
 ### Changed
+- **A person's page says which way the money went.** "They owe" / "I owe"
+  are now **Money out** (you gave them money) and **Money in** (you got
+  money from them). **Settle up** clears the balance in one tap: the whole
+  amount the other way, through the account you pick. Lower the amount to
+  settle part of it.
 - **A foreign amount uses your saved rate** (#195). With a rate saved in
   Settings → Currencies, typing what something cost in that currency now
   fills in the amount in yours. Type over it if the card charged a

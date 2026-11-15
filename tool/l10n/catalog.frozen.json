@@ -3104,5 +3104,10 @@
  "Total money counts every account. Accounts you switch off leave only Available balance.",
  "Pick your backup folder",
  "Backup & Restore → Backup folder",
- "Any folder inside Download, like Download/backup/xpenc."
+ "Any folder inside Download, like Download/backup/xpenc.",
+ "Settle up · {0}",
+ "Settled up",
+ "Settle up",
+ "You pay back what you owe, and the balance goes to zero. Lower the amount to settle part of it.",
+ "They pay you back, and the balance goes to zero. Lower the amount to settle part of it."
 ]
