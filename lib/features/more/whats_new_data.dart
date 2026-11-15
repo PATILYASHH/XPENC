@@ -40,6 +40,23 @@ List<WhatsNewEntry> get whatsNewEntries => [
 
 const _whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.auto_awesome_outlined,
+    title: 'Smart tags',
+    location: 'More → Tags → +',
+    description:
+        'Put {month}, {year} or a quarter in a tag and it fills in from each '
+        "transaction's date, so templates and Auto rules keep tagging the "
+        'right month without any editing.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.inventory_2_outlined,
+    title: 'Bring back an archived goal or loan',
+    location: 'More → Goals & Loans → archive button',
+    description:
+        'Archived goals and loans now have their own list, with Restore, '
+        'right from Goals & Loans.',
+  ),
+  WhatsNewEntry(
     icon: Icons.undo_rounded,
     title: 'Refunds give back to a budget',
     location: 'Add → Money in → Refund',

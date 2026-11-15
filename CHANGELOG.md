@@ -8,6 +8,23 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
+## [1.6.7] — beta
+
+### Added
+- **Smart tags** (#189). A tag can hold a date part: in More → Tags → +,
+  tap **Month**, **Short month**, **Year** or **Quarter** to add
+  `{month}`, `{mon}`, `{year}` or `{quarter}`, mixed with any text (e.g.
+  `{month} {year}` or `Coffee {mon}`). When a transaction is saved it gets
+  the plain tag that reads on its own date, "December 2026" now and
+  "January 2027" next month, so templates and Auto rules carrying a smart
+  tag never need editing. A tag you already have with that name (like
+  "december") is reused. Auto rules tag each posting with its own month,
+  and **Save as template** turns the date tag back into the smart tag.
+  Month names follow the app language.
+- **Archived goals & loans** (Goals & Loans → archive button). Archived
+  goals and loans now have their own list, with **Restore**. They used to
+  be reachable only from Accounts → Archived.
+
 ## [1.6.6] — 2026-11-15
 
 ### Added
