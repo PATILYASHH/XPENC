@@ -10,15 +10,19 @@ import 'package:xpenc/core/ai/ai_engine.dart';
 import 'package:xpenc/core/ai/ai_facts.dart';
 import 'package:xpenc/core/ai/ai_providers.dart';
 import 'package:xpenc/core/ai/ai_store.dart';
-import 'package:xpenc/core/ai/ask_xpenc.dart';
+import 'package:xpenc/core/ai/ask_exo.dart';
 import 'package:xpenc/core/ai/voice_input.dart';
 import 'package:xpenc/core/money.dart';
+import 'package:xpenc/core/platform/distribution.dart';
+import 'package:xpenc/core/platform/platform_features.dart';
+import 'package:xpenc/features/guide/guide_data.dart';
+import 'package:xpenc/features/more/whats_new_data.dart';
 import 'package:xpenc/core/theme/app_theme.dart';
 import 'package:xpenc/data/database.dart';
 import 'package:xpenc/data/providers.dart';
 import 'package:xpenc/data/tables.dart';
 import 'package:xpenc/features/ai/ai_memory_screen.dart';
-import 'package:xpenc/features/ai/ask_xpenc_screen.dart';
+import 'package:xpenc/features/ai/ask_exo_screen.dart';
 import 'package:xpenc/features/ai/local_ai_settings_screen.dart';
 
 /// Stands in for the on-device model: answers with fixed pieces and keeps
@@ -28,6 +32,7 @@ class FakeAiEngine implements AiEngine {
 
   final List<String> pieces;
   final asked = <List<AiTurn>>[];
+  final grammars = <String?>[];
   String? chatPath;
   String? speechPath;
   bool failLoad = false;
@@ -49,8 +54,10 @@ class FakeAiEngine implements AiEngine {
     List<AiTurn> turns, {
     double temperature = 0.3,
     int maxTokens = 320,
+    String? grammar,
   }) {
     asked.add(turns);
+    grammars.add(grammar);
     if (held != null) return held!.stream;
     return Stream.fromIterable(pieces);
   }
@@ -287,9 +294,9 @@ void main() {
     });
   });
 
-  group('AskXpenc prompt', () {
+  group('AskExo prompt', () {
     test('rules, memory, facts and the reply language', () {
-      final prompt = AskXpenc.systemPrompt(
+      final prompt = AskExo.systemPrompt(
         facts: const AiFactSheet([
           AiFactSection('This month', ['Money out ₹2,000']),
         ]),
@@ -297,15 +304,47 @@ void main() {
         languageName: 'Hindi',
         now: DateTime(2026, 11, 20),
       );
-      expect(prompt, contains('cannot add, change or delete'));
-      expect(prompt, contains('Never invent amounts'));
+      expect(prompt, contains('You cannot add, change, delete or send'));
+      expect(prompt, contains('Never invent facts, amounts'));
       expect(prompt, contains('- Salary on the 1st'));
       expect(prompt, contains('## This month\n- Money out ₹2,000'));
       expect(prompt, contains('Reply in Hindi.'));
     });
 
+    test('Exo knows who it is, who makes it and what it runs on', () {
+      Distribution.debugPromotesConectr = true;
+      addTearDown(() => Distribution.debugPromotesConectr = null);
+      final prompt = AskExo.systemPrompt(
+        facts: const AiFactSheet([]),
+        memories: const [],
+        languageName: 'English',
+        modelName: 'qwen2.5-0.5b-instruct-q4_k_m.gguf',
+      );
+      expect(prompt, startsWith('You are Exo, the assistant ExoSynk Labs'));
+      expect(prompt, contains('You are inside XPENC now.'));
+      expect(prompt, contains('designed and built by Yash Patil'));
+      expect(prompt, contains('qwen2.5-0.5b-instruct-q4_k_m.gguf'));
+      expect(prompt, contains('Open source (MIT)'));
+      expect(prompt, contains('feedback.yashpatil@gmail.com'));
+      expect(prompt, contains('CONECTR'));
+      // Never the developer's personal inbox.
+      expect(prompt, isNot(contains('patilyasshh@gmail.com')));
+    });
+
+    test("F-Droid's build never has Exo point at CONECTR", () {
+      Distribution.debugPromotesConectr = false;
+      addTearDown(() => Distribution.debugPromotesConectr = null);
+      final prompt = AskExo.systemPrompt(
+        facts: const AiFactSheet([]),
+        memories: const [],
+        languageName: 'English',
+      );
+      expect(prompt, isNot(contains('CONECTR')));
+      expect(prompt, contains('FITNS'));
+    });
+
     test('only the last two exchanges go back to the model', () {
-      final turns = AskXpenc.turns(
+      final turns = AskExo.turns(
         question: 'And now?',
         facts: const AiFactSheet([]),
         memories: const [],
@@ -327,13 +366,13 @@ void main() {
 
     test('tidy drops a thinking block and stray tags', () {
       expect(
-        AskXpenc.tidy('<think>hmm</think>\n\nYou spent ₹2,000.<|im_end|>'),
+        AskExo.tidy('<think>hmm</think>\n\nYou spent ₹2,000.<|im_end|>'),
         'You spent ₹2,000.',
       );
     });
   });
 
-  group('Ask XPENC conversation', () {
+  group('Ask Exo conversation', () {
     late AppDatabase db;
     late FakeAiEngine engine;
     late ProviderContainer container;
@@ -370,9 +409,9 @@ void main() {
     test('answers from the facts, with AI Memory in the prompt', () async {
       await withModel(chat: true);
       await db.addAiMemory('I get paid on the 1st');
-      await container.read(askXpencProvider.notifier).ask('Top spend?');
+      await container.read(askExoProvider.notifier).ask('Top spend?');
 
-      final m = container.read(askXpencProvider).single;
+      final m = container.read(askExoProvider).single;
       expect(m.status, AskStatus.done);
       expect(m.answer, 'Food is your top spend.');
       expect(m.facts, isNotNull);
@@ -385,8 +424,8 @@ void main() {
 
     test('without a chat model it shows the figures on their own', () async {
       await withModel(chat: false);
-      await container.read(askXpencProvider.notifier).ask('Top spend?');
-      final m = container.read(askXpencProvider).single;
+      await container.read(askExoProvider.notifier).ask('Top spend?');
+      final m = container.read(askExoProvider).single;
       expect(m.status, AskStatus.noModel);
       expect(m.facts, isNotNull);
       expect(engine.asked, isEmpty);
@@ -395,21 +434,21 @@ void main() {
     test('a model that will not start says so', () async {
       engine.failLoad = true;
       await withModel(chat: true);
-      await container.read(askXpencProvider.notifier).ask('Top spend?');
-      expect(container.read(askXpencProvider).single.status, AskStatus.failed);
+      await container.read(askExoProvider.notifier).ask('Top spend?');
+      expect(container.read(askExoProvider).single.status, AskStatus.failed);
     });
 
     test('stop keeps what was written and lets the next question in', () async {
       await withModel(chat: true);
       engine.held = StreamController<String>();
-      final controller = container.read(askXpencProvider.notifier);
+      final controller = container.read(askExoProvider.notifier);
       final asking = controller.ask('Top spend?');
       await pumpEventQueue();
       engine.held!.add('Food');
       await pumpEventQueue();
       await controller.stop();
       await asking;
-      final m = container.read(askXpencProvider).single;
+      final m = container.read(askExoProvider).single;
       expect(m.status, AskStatus.stopped);
       expect(m.answer, 'Food');
       expect(controller.busy, isFalse);
@@ -423,6 +462,24 @@ void main() {
       expect(engine.chatPath, isNull);
       expect(container.read(aiOnProvider), isFalse);
     });
+  });
+
+  test('XPENC web and iPhone never advertise Local AI', () {
+    PlatformFeatures.debugIsWeb = true;
+    addTearDown(() => PlatformFeatures.debugIsWeb = null);
+    expect(PlatformFeatures.localAi, isFalse);
+    expect(whatsNewEntries.where((e) => e.androidOnly), isEmpty);
+    expect(
+      guideSections.expand((s) => s.shown).map((e) => e.title),
+      isNot(contains('Local AI')),
+    );
+
+    PlatformFeatures.debugIsWeb = false;
+    expect(whatsNewEntries.where((e) => e.androidOnly), isNotEmpty);
+    expect(
+      guideSections.expand((s) => s.shown).map((e) => e.title),
+      contains('Local AI'),
+    );
   });
 
   test('voice samples: 16-bit little-endian to -1..1', () {
@@ -512,32 +569,32 @@ void main() {
       await unmount(tester);
     });
 
-    testWidgets('Ask XPENC: off says so; on, a suggestion gets an answer '
+    testWidgets('Ask Exo: off says so; on, a suggestion gets an answer '
         'and the figures it was based on', (tester) async {
-      await pump(tester, const AskXpencScreen());
+      await pump(tester, const AskExoScreen());
       expect(find.textContaining('Local AI is off'), findsOneWidget);
       await unmount(tester);
 
       await pump(
         tester,
-        const AskXpencScreen(),
+        const AskExoScreen(),
         device: const AiDeviceState(
           enabled: true,
           chat: AiModelFile(name: 'q.gguf', bytes: 64),
         ),
       );
-      expect(find.text('Ask about your money'), findsWidgets);
+      expect(find.text("Hi, I'm Exo"), findsOneWidget);
       expect(tester.takeException(), isNull);
 
       expect(find.text('Who owes me money?'), findsOneWidget);
       // The question itself runs on the real clock: drift's streams never
       // fire under the test's fake one.
       final container = ProviderScope.containerOf(
-        tester.element(find.byType(AskXpencScreen)),
+        tester.element(find.byType(AskExoScreen)),
       );
       await tester.runAsync(
         () =>
-            container.read(askXpencProvider.notifier).ask('Who owes me money?'),
+            container.read(askExoProvider.notifier).ask('Who owes me money?'),
       );
       for (var i = 0; i < 3; i++) {
         await tester.runAsync(

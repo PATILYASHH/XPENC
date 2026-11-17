@@ -10,7 +10,7 @@ import '../../features/accounts/account_detail_screen.dart';
 import '../../features/accounts/accounts_screen.dart';
 import '../../features/accounts/archived_accounts_screen.dart';
 import '../../features/ai/ai_memory_screen.dart';
-import '../../features/ai/ask_xpenc_screen.dart';
+import '../../features/ai/ask_exo_screen.dart';
 import '../../features/ai/local_ai_settings_screen.dart';
 import '../../features/add_transaction/add_transaction_screen.dart';
 import '../../features/auto/archived_auto_rules_screen.dart';
@@ -736,12 +736,12 @@ final appRouter = GoRouter(
       builder: (_, _) => const ArchivedPersonsScreen(),
     ),
 
-    // Ask XPENC (Local AI). `?ask=month` asks "Explain my month" on open.
+    // Ask Exo (Local AI). `?ask=month` asks "Explain my month" on open.
     GoRoute(
       path: '/ai',
       parentNavigatorKey: _rootKey,
       builder: (_, state) =>
-          AskXpencScreen(autoAsk: state.uri.queryParameters['ask']),
+          AskExoScreen(autoAsk: state.uri.queryParameters['ask']),
     ),
 
     GoRoute(

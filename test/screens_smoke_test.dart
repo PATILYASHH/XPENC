@@ -23,6 +23,7 @@ import 'package:xpenc/features/guide/guide_data.dart';
 import 'package:xpenc/features/guide/guide_screen.dart';
 import 'package:xpenc/features/message_capture/message_capture_screen.dart';
 import 'package:xpenc/features/message_capture/review_inbox_screen.dart';
+import 'package:xpenc/features/message_capture/share_intake.dart';
 import 'package:xpenc/features/more/more_screen.dart';
 import 'package:xpenc/features/onboarding/onboarding_screen.dart';
 import 'package:xpenc/features/reports/account_report_modules.dart';
@@ -1413,6 +1414,33 @@ void main() {
   testWidgets('Review Inbox renders empty', (tester) async {
     await pump(tester, const ReviewInboxScreen());
     expect(tester.takeException(), isNull);
+    await unmount(tester);
+  });
+
+  testWidgets('Categorise preselects the category remembered for a payee', (
+    tester,
+  ) async {
+    await tester.runAsync(() async {
+      await ShareIntakeService(db: db).ingest(
+        'Rs.500.00 debited from A/c XX1234 at SWIGGY on 09-07-26.',
+      );
+      final food = (await db.watchCategories(CategoryKind.expense).first)
+          .firstWhere((c) => c.name == 'Food');
+      await db.upsertMerchantRule(pattern: 'SWIGGY', categoryId: food.id);
+    });
+    await pump(tester, const ReviewInboxScreen());
+    await tester.tap(find.text('Categorise'));
+    for (var i = 0; i < 4; i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(tester.takeException(), isNull);
+    expect(
+      find.text('Remembered for this payee — tap another to change'),
+      findsOneWidget,
+    );
     await unmount(tester);
   });
 

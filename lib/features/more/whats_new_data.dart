@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/platform/distribution.dart';
+import '../../core/platform/platform_features.dart';
 import '../../core/l10n/l10n.dart';
 
 /// One line item on the What's New screen — what shipped, where to find it,
@@ -15,6 +16,7 @@ class WhatsNewEntry {
     required String location,
     required String description,
     this.aboutConectr = false,
+    this.androidOnly = false,
   }) : _title = title, _location = location, _description = description;
 
   final IconData icon;
@@ -30,18 +32,35 @@ class WhatsNewEntry {
   /// News of a feature that works with the CONECTR app — left out of
   /// builds that mustn't promote it ([Distribution.promotesConectr]).
   final bool aboutConectr;
+
+  /// News of what only the Android app has (Local AI, sharing into
+  /// XPENC) — left out on iPhone and XPENC web.
+  final bool androidOnly;
 }
 
 /// This version's entries, as this build may show them.
 List<WhatsNewEntry> get whatsNewEntries => [
   for (final e in _whatsNewEntries)
-    if (!e.aboutConectr || Distribution.promotesConectr) e,
+    if ((!e.aboutConectr || Distribution.promotesConectr) &&
+        (!e.androidOnly || PlatformFeatures.localAi))
+      e,
 ];
 
 const _whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.auto_awesome_outlined,
+    title: 'Sharing in, made smarter',
+    androidOnly: true,
+    location: 'Share a bank message or screenshot → XPENC',
+    description:
+        'Categorise now starts on the category you used for that payee before. '
+        'With Local AI on, it also reads messages and screenshots XPENC '
+        "couldn't, and suggests a category. You still check and tap Add.",
+  ),
+  WhatsNewEntry(
     icon: Icons.forum_outlined,
     title: 'Ask about your money, offline',
+    androidOnly: true,
     location: 'Settings → Local AI',
     description:
         'Optional Local AI runs on your phone: ask "Where did my money go?" '

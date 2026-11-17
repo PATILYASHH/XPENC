@@ -58,7 +58,7 @@ class LocalAiSettingsScreen extends ConsumerWidget {
             child: AppSwitchListTile(
               title: const Tr('Use Local AI'),
               subtitle: const Tr(
-                'Shows Ask XPENC (✨) on the Dashboard and Stats',
+                'Shows Ask Exo (✨) on the Dashboard and Stats',
               ),
               value: device.enabled,
               onChanged: async.isLoading
@@ -83,7 +83,7 @@ class LocalAiSettingsScreen extends ConsumerWidget {
               title: tr('Voice input (optional)'),
               model: device.speech,
               hint: tr(
-                'Tap 🎤 in Ask XPENC and speak your question. About 30–60 MB.',
+                'Tap 🎤 in Ask Exo and speak your question. About 30–60 MB.',
               ),
             ),
             const SizedBox(height: 16),
@@ -108,7 +108,7 @@ class LocalAiSettingsScreen extends ConsumerWidget {
                   Divider(height: 1, indent: 60, color: cs.outline),
                   AppListTile(
                     leading: const AppIcon(Icons.forum_outlined),
-                    title: const Tr('Ask XPENC'),
+                    title: const Tr('Ask Exo'),
                     subtitle: const Tr('Try it'),
                     trailing: const AppIcon(Icons.chevron_right_rounded),
                     onTap: () => context.push('/ai'),

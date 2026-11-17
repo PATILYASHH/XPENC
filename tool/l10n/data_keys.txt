@@ -335,3 +335,6 @@ Settings → Local AI: turn it on, download a model from xpenc.in/local-ai and i
 Settings → Local AI
 Ask about your money, offline
 Optional Local AI runs on your phone: ask "Where did my money go?" or tap Explain my month in Stats. It only reads, shows the figures behind every answer, and nothing leaves the phone. Get a model from xpenc.in/local-ai; add a voice model to ask with 🎤.
+Sharing in, made smarter
+Share a bank message or screenshot → XPENC
+Categorise now starts on the category you used for that payee before. With Local AI on, it also reads messages and screenshots XPENC couldn't, and suggests a category. You still check and tap Add.

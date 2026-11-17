@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/ai/ai_capture.dart';
 import '../core/budget_cycle.dart';
 import '../core/currency.dart';
 import '../core/home_widget/home_widget_service.dart';
@@ -1562,7 +1563,11 @@ final captureServiceProvider = Provider<CaptureService>(
 );
 
 final shareIntakeServiceProvider = Provider<ShareIntakeService>(
-  (ref) => ShareIntakeService(db: ref.watch(dbProvider)),
+  (ref) => ShareIntakeService(
+    db: ref.watch(dbProvider),
+    // What the parsers can't read, Local AI tries — when it's on.
+    ai: LocalAiPaymentReader(ref),
+  ),
 );
 
 /// Cards awaiting review, plus auto-filled ones shown for information.

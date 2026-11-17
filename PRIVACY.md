@@ -53,7 +53,7 @@ same way.
 | `RECEIVE_BOOT_COMPLETED` | To re-schedule your local reminders after the phone restarts. |
 | `CAMERA` (optional, asked at runtime) | Only if you tap "Take photo" when attaching a receipt to a transaction. The photo is copied straight into the app's own private storage and never leaves the device. If you deny it, or just attach from your gallery instead, the app works normally — nothing about the camera is used anywhere else. |
 | `READ_CONTACTS` (optional, asked at runtime) | Only if you tap "Pick from contacts" when adding a person, to bring in that contact's name, phone number and photo. If you deny it, or turn it off later, XPENC never opens your contacts and hides every "from contacts" button — you type names and numbers by hand instead. Nothing from your address book is read except the one contact you explicitly pick, and it's copied into the app's own private storage, never transmitted anywhere. |
-| `RECORD_AUDIO` (optional, asked at runtime) | Only for Local AI voice input, and only the first time you tap 🎤 in Ask XPENC. While you speak, the sound is held in the phone's memory, turned into text by the speech model on the phone, and then thrown away — it is never saved to storage and never sent anywhere. If you deny it, or never use voice input, nothing else changes. |
+| `RECORD_AUDIO` (optional, asked at runtime) | Only for Local AI voice input, and only the first time you tap 🎤 in Ask Exo. While you speak, the sound is held in the phone's memory, turned into text by the speech model on the phone, and then thrown away — it is never saved to storage and never sent anywhere. If you deny it, or never use voice input, nothing else changes. |
 | `USE_BIOMETRIC` | Only if you turn on fingerprint/face unlock for the app lock. The app never sees your biometric data — Android only tells it whether the check passed. |
 
 You can review each permission, and turn the optional ones on or off, in
@@ -81,7 +81,7 @@ entirely on your phone:
   your data on the phone (totals, budgets, dues, upcoming payments) and gives
   them to the model. The model cannot add, change or delete anything.
 - **Conversations are not kept.** Questions and answers live in the phone's
-  memory only while you use Ask XPENC, and are gone when you start a new chat
+  memory only while you use Ask Exo, and are gone when you start a new chat
   or close the app.
 - **AI Memory is yours.** Notes you save there (for example "my salary comes
   on the 1st") are stored with the rest of your data, included in your

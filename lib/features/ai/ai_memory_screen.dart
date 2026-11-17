@@ -122,7 +122,7 @@ class AiMemoryScreen extends ConsumerWidget {
 }
 
 /// Adds a memory (prefilled with [initial]) or edits [existing]. Also what
-/// Ask XPENC's "Save to memory" opens, so the user always sees and confirms
+/// Ask Exo's "Save to memory" opens, so the user always sees and confirms
 /// what's kept.
 Future<void> editAiMemory(
   BuildContext context,

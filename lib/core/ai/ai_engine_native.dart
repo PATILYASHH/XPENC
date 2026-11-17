@@ -51,10 +51,12 @@ class _NativeAiEngine implements AiEngine {
     List<AiTurn> turns, {
     double temperature = 0.3,
     int maxTokens = 320,
+    String? grammar,
   }) => _ai.chat(
     [for (final t in turns) XaiMessage(t.role, t.content)],
     temperature: temperature,
     maxTokens: maxTokens,
+    grammar: grammar,
   );
 
   @override

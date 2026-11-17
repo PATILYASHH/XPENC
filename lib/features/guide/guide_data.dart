@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/l10n/l10n.dart';
+import '../../core/platform/platform_features.dart';
 
 /// One feature explained: what it does, how to use it, and where to find
 /// it. Hand-maintained alongside the actual features — there's no
@@ -12,9 +13,14 @@ class GuideEntry {
     required String whatItDoes,
     required String howToUse,
     required String location,
+    this.androidOnly = false,
   }) : _title = title, _whatItDoes = whatItDoes, _howToUse = howToUse, _location = location;
 
   final IconData icon;
+
+  /// A feature only the Android app has (Local AI) — left out of the
+  /// guide on iPhone and XPENC web.
+  final bool androidOnly;
   final String _title;
   String get title => tr(_title);
   final String _whatItDoes;
@@ -33,6 +39,12 @@ class GuideSection {
   final String _title;
   String get title => tr(_title);
   final List<GuideEntry> entries;
+
+  /// [entries] this build has.
+  List<GuideEntry> get shown => [
+    for (final e in entries)
+      if (!e.androidOnly || PlatformFeatures.localAi) e,
+  ];
 }
 
 /// Basic/Medium/Pro isn't a per-feature toggle — it's a single tier that
@@ -402,6 +414,7 @@ const guideSections = <GuideSection>[
     GuideEntry(
       icon: Icons.forum_outlined,
       title: 'Local AI',
+      androidOnly: true,
       whatItDoes:
           'Ask about your money in plain words — "Where did my money go this '
           'month?" — and get an answer from a model running on your phone. '

@@ -23,6 +23,7 @@ class _UnsupportedAiEngine implements AiEngine {
     List<AiTurn> turns, {
     double temperature = 0.3,
     int maxTokens = 320,
+    String? grammar,
   }) => Stream.error(
     UnsupportedError('Local AI is not available on this device.'),
   );

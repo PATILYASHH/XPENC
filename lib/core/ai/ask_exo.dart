@@ -1,23 +1,29 @@
+import 'package:exosynk_ai/exosynk_ai.dart';
 import 'package:intl/intl.dart';
 
 import '../l10n/l10n.dart';
+import '../platform/distribution.dart';
 import 'ai_engine.dart';
 import 'ai_facts.dart';
 
-/// One finished exchange in an Ask XPENC conversation.
+/// One finished exchange in an Ask Exo conversation.
 class AiExchange {
   const AiExchange(this.question, this.answer);
   final String question;
   final String answer;
 }
 
-/// Ask XPENC: questions about your money, answered by the on-device model
-/// from an [AiFactSheet] XPENC builds itself.
+/// Ask Exo, inside XPENC: questions about your money, answered by the
+/// on-device model from an [AiFactSheet] XPENC builds itself.
+///
+/// Exo is the one assistant of every ExoSynk Labs app — who it is, what it
+/// knows about ExoSynk Labs, and the rules it keeps everywhere come from
+/// the shared `exosynk_ai` package. This class adds only XPENC's part: the
+/// money rules and the figures.
 ///
 /// Read-only by design. The model sees facts and the user's AI Memory and
-/// returns text; nothing it says is ever written to the ledger, and it is
-/// told it can't change anything.
-abstract final class AskXpenc {
+/// returns text; nothing it says is ever written to the ledger.
+abstract final class AskExo {
   /// The question "Explain this month" asks (Stats, and the chat's chip).
   static String get explainMonthQuestion => tr(
     'Explain my month: what changed against last month, what stands out, '
@@ -28,12 +34,20 @@ abstract final class AskXpenc {
   /// before each answer, and a phone reads slowly.
   static const historyLimit = 2;
 
+  /// Sister apps this build mustn't mention — F-Droid's may not promote
+  /// CONECTR (see [Distribution.promotesConectr]).
+  static Set<String> get hiddenApps =>
+      Distribution.promotesConectr ? const {} : const {'conectr'};
+
   /// The instructions, facts and memory the model answers from.
+  /// [modelName] is the imported model's file name, so Exo can say
+  /// honestly what it runs on.
   static String systemPrompt({
     required AiFactSheet facts,
     required List<String> memories,
     required String languageName,
     DateTime? now,
+    String? modelName,
   }) {
     final today = DateFormat(
       'EEEE d MMMM y',
@@ -41,25 +55,30 @@ abstract final class AskXpenc {
     ).format(now ?? DateTime.now());
     final out = StringBuffer()
       ..writeln(
-        "You are XPENC's money assistant. You run offline on the user's "
-        'phone and can only read; you cannot add, change or delete anything.',
+        ExoKnowledge.about(
+          currentAppId: 'xpenc',
+          hiddenApps: hiddenApps,
+          modelName: modelName,
+        ),
       )
       ..writeln('Today is $today.')
-      ..writeln('Rules:')
+      ..writeln('Rules:');
+    for (final rule in ExoKnowledge.sharedRules) {
+      out.writeln('- $rule');
+    }
+    out
       ..writeln(
-        '- Answer only from the FACTS below. Use their amounts exactly.',
-      )
-      ..writeln('- Never invent amounts, dates, names or categories.')
-      ..writeln(
-        "- If the facts don't answer the question, say you can't see that "
-        'in XPENC.',
+        '- For money questions, answer only from the FACTS below and use '
+        'their amounts exactly.',
       )
       ..writeln(
-        '- If asked to add, edit or delete something, say they can do it '
-        'in XPENC themselves.',
+        "- If the facts don't answer a money question, say you can't see "
+        'that in XPENC.',
       )
-      ..writeln('- Be brief: at most 4 short sentences or 4 bullet points.')
-      ..writeln('- Never give investment, tax or legal advice.')
+      ..writeln(
+        '- Questions about yourself, ${Exo.maker} or its apps: answer from '
+        'what you were told above, nothing more.',
+      )
       ..writeln('- Reply in $languageName.');
     if (memories.isNotEmpty) {
       out.writeln('\nREMEMBER (the user asked you to keep these in mind):');
@@ -82,6 +101,7 @@ abstract final class AskXpenc {
     List<AiExchange> history = const [],
     String? languageName,
     DateTime? now,
+    String? modelName,
   }) => [
     AiTurn.system(
       systemPrompt(
@@ -90,6 +110,7 @@ abstract final class AskXpenc {
         languageName:
             languageName ?? appLanguageFor(L10n.code)?.englishName ?? 'English',
         now: now,
+        modelName: modelName,
       ),
     ),
     for (final e

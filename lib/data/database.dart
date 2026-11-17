@@ -285,7 +285,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 96;
+  int get schemaVersion => 97;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -941,6 +941,10 @@ class AppDatabase extends _$AppDatabase {
       if (from < 96) {
         // Local AI's memory.
         await m.createTable(aiMemories);
+      }
+      if (from < 97) {
+        // A capture card read by Local AI.
+        await _addColumnIfMissing(m, pendingTxns, pendingTxns.aiRead);
       }
     },
     beforeOpen: (details) async {
@@ -6493,6 +6497,8 @@ class AppDatabase extends _$AppDatabase {
     RawMessage msg,
     ParsedMessage parsed, {
     String? sourceImagePath,
+    // Read by Local AI rather than the parser — see [PendingTxns.aiRead].
+    bool aiRead = false,
   }) {
     return transaction(() async {
       final key = dedupeKeyFor(msg);
@@ -6523,6 +6529,7 @@ class AppDatabase extends _$AppDatabase {
           confidence: Value(parsed.confidence),
           matchedAccountId: Value(matched?.id),
           sourceImagePath: Value(sourceImagePath),
+          aiRead: Value(aiRead),
           status: Value(
             duplicate ? PendingStatus.duplicate : PendingStatus.pending,
           ),

@@ -182,9 +182,13 @@ int32_t xai_llm_begin(void * handle, const char ** roles,
     }
     llama_sampler_chain_add(chain, g);
   }
-  llama_sampler_chain_add(
-      chain, llama_sampler_init_penalties(llama_vocab_n_tokens(llm->vocab), 64,
-                                          1.1f, 0.0f, 0.0f));
+  // Free text gets a light repetition penalty; a grammar's output (JSON,
+  // a name from a list) repeats quotes and digits by design, so it doesn't.
+  if (grammar == nullptr || grammar[0] == '\0') {
+    llama_sampler_chain_add(
+        chain, llama_sampler_init_penalties(llama_vocab_n_tokens(llm->vocab),
+                                            64, 1.1f, 0.0f, 0.0f));
+  }
   if (temp <= 0.0f) {
     llama_sampler_chain_add(chain, llama_sampler_init_greedy());
   } else {

@@ -154,6 +154,10 @@ class CaptureService {
     // future wiring change can't silently start auto-posting them.
     if (card?.source == MessageSourceKind.screenshot) return false;
 
+    // Guardrail 4c: Local AI's reading is a suggestion for a human to
+    // check, never a basis for posting on its own.
+    if (card?.aiRead ?? false) return false;
+
     // Guardrail 5: the learned category must match the message direction.
     final category = await db.categoryById(rule.categoryId);
     if (category == null) return false;

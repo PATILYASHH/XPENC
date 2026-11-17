@@ -1615,6 +1615,10 @@ class PendingTxns extends Table {
   /// this path is used directly as the new transaction's `imagePath`.
   TextColumn get sourceImagePath => text().nullable()();
 
+  /// Read by Local AI, because the built-in parser couldn't make it out.
+  /// Shown on the card as something to check, and never auto-posted.
+  BoolColumn get aiRead => boolean().withDefault(const Constant(false))();
+
   @override
   List<Set<Column>> get uniqueKeys => [
     {dedupeKey},

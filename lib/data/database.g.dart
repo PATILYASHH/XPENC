@@ -16538,6 +16538,19 @@ class $PendingTxnsTable extends PendingTxns
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _aiReadMeta = const VerificationMeta('aiRead');
+  @override
+  late final GeneratedColumn<bool> aiRead = GeneratedColumn<bool>(
+    'ai_read',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("ai_read" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -16559,6 +16572,7 @@ class $PendingTxnsTable extends PendingTxns
     dedupeKey,
     createdAt,
     sourceImagePath,
+    aiRead,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -16679,6 +16693,12 @@ class $PendingTxnsTable extends PendingTxns
         ),
       );
     }
+    if (data.containsKey('ai_read')) {
+      context.handle(
+        _aiReadMeta,
+        aiRead.isAcceptableOrUnknown(data['ai_read']!, _aiReadMeta),
+      );
+    }
     return context;
   }
 
@@ -16778,6 +16798,10 @@ class $PendingTxnsTable extends PendingTxns
         DriftSqlType.string,
         data['${effectivePrefix}source_image_path'],
       ),
+      aiRead: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}ai_read'],
+      )!,
     );
   }
 
@@ -16842,6 +16866,7 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
   /// attached receipt lives in, so an approved card needs no second copy:
   /// this path is used directly as the new transaction's `imagePath`.
   final String? sourceImagePath;
+  final bool aiRead;
   const PendingTxnRow({
     required this.id,
     required this.source,
@@ -16862,6 +16887,7 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
     required this.dedupeKey,
     required this.createdAt,
     this.sourceImagePath,
+    required this.aiRead,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -16919,6 +16945,7 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
     if (!nullToAbsent || sourceImagePath != null) {
       map['source_image_path'] = Variable<String>(sourceImagePath);
     }
+    map['ai_read'] = Variable<bool>(aiRead);
     return map;
   }
 
@@ -16963,6 +16990,7 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
       sourceImagePath: sourceImagePath == null && nullToAbsent
           ? const Value.absent()
           : Value(sourceImagePath),
+      aiRead: Value(aiRead),
     );
   }
 
@@ -17001,6 +17029,7 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
       dedupeKey: serializer.fromJson<String>(json['dedupeKey']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       sourceImagePath: serializer.fromJson<String?>(json['sourceImagePath']),
+      aiRead: serializer.fromJson<bool>(json['aiRead']),
     );
   }
   @override
@@ -17032,6 +17061,7 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
       'dedupeKey': serializer.toJson<String>(dedupeKey),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'sourceImagePath': serializer.toJson<String?>(sourceImagePath),
+      'aiRead': serializer.toJson<bool>(aiRead),
     };
   }
 
@@ -17055,6 +17085,7 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
     String? dedupeKey,
     DateTime? createdAt,
     Value<String?> sourceImagePath = const Value.absent(),
+    bool? aiRead,
   }) => PendingTxnRow(
     id: id ?? this.id,
     source: source ?? this.source,
@@ -17091,6 +17122,7 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
     sourceImagePath: sourceImagePath.present
         ? sourceImagePath.value
         : this.sourceImagePath,
+    aiRead: aiRead ?? this.aiRead,
   );
   PendingTxnRow copyWithCompanion(PendingTxnsCompanion data) {
     return PendingTxnRow(
@@ -17135,6 +17167,7 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
       sourceImagePath: data.sourceImagePath.present
           ? data.sourceImagePath.value
           : this.sourceImagePath,
+      aiRead: data.aiRead.present ? data.aiRead.value : this.aiRead,
     );
   }
 
@@ -17159,7 +17192,8 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
           ..write('createdTransactionId: $createdTransactionId, ')
           ..write('dedupeKey: $dedupeKey, ')
           ..write('createdAt: $createdAt, ')
-          ..write('sourceImagePath: $sourceImagePath')
+          ..write('sourceImagePath: $sourceImagePath, ')
+          ..write('aiRead: $aiRead')
           ..write(')'))
         .toString();
   }
@@ -17185,6 +17219,7 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
     dedupeKey,
     createdAt,
     sourceImagePath,
+    aiRead,
   );
   @override
   bool operator ==(Object other) =>
@@ -17208,7 +17243,8 @@ class PendingTxnRow extends DataClass implements Insertable<PendingTxnRow> {
           other.createdTransactionId == this.createdTransactionId &&
           other.dedupeKey == this.dedupeKey &&
           other.createdAt == this.createdAt &&
-          other.sourceImagePath == this.sourceImagePath);
+          other.sourceImagePath == this.sourceImagePath &&
+          other.aiRead == this.aiRead);
 }
 
 class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
@@ -17231,6 +17267,7 @@ class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
   final Value<String> dedupeKey;
   final Value<DateTime> createdAt;
   final Value<String?> sourceImagePath;
+  final Value<bool> aiRead;
   const PendingTxnsCompanion({
     this.id = const Value.absent(),
     this.source = const Value.absent(),
@@ -17251,6 +17288,7 @@ class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
     this.dedupeKey = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.sourceImagePath = const Value.absent(),
+    this.aiRead = const Value.absent(),
   });
   PendingTxnsCompanion.insert({
     this.id = const Value.absent(),
@@ -17272,6 +17310,7 @@ class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
     required String dedupeKey,
     this.createdAt = const Value.absent(),
     this.sourceImagePath = const Value.absent(),
+    this.aiRead = const Value.absent(),
   }) : source = Value(source),
        rawBody = Value(rawBody),
        sender = Value(sender),
@@ -17297,6 +17336,7 @@ class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
     Expression<String>? dedupeKey,
     Expression<DateTime>? createdAt,
     Expression<String>? sourceImagePath,
+    Expression<bool>? aiRead,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -17319,6 +17359,7 @@ class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
       if (dedupeKey != null) 'dedupe_key': dedupeKey,
       if (createdAt != null) 'created_at': createdAt,
       if (sourceImagePath != null) 'source_image_path': sourceImagePath,
+      if (aiRead != null) 'ai_read': aiRead,
     });
   }
 
@@ -17342,6 +17383,7 @@ class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
     Value<String>? dedupeKey,
     Value<DateTime>? createdAt,
     Value<String?>? sourceImagePath,
+    Value<bool>? aiRead,
   }) {
     return PendingTxnsCompanion(
       id: id ?? this.id,
@@ -17363,6 +17405,7 @@ class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
       dedupeKey: dedupeKey ?? this.dedupeKey,
       createdAt: createdAt ?? this.createdAt,
       sourceImagePath: sourceImagePath ?? this.sourceImagePath,
+      aiRead: aiRead ?? this.aiRead,
     );
   }
 
@@ -17438,6 +17481,9 @@ class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
     if (sourceImagePath.present) {
       map['source_image_path'] = Variable<String>(sourceImagePath.value);
     }
+    if (aiRead.present) {
+      map['ai_read'] = Variable<bool>(aiRead.value);
+    }
     return map;
   }
 
@@ -17462,7 +17508,8 @@ class PendingTxnsCompanion extends UpdateCompanion<PendingTxnRow> {
           ..write('createdTransactionId: $createdTransactionId, ')
           ..write('dedupeKey: $dedupeKey, ')
           ..write('createdAt: $createdAt, ')
-          ..write('sourceImagePath: $sourceImagePath')
+          ..write('sourceImagePath: $sourceImagePath, ')
+          ..write('aiRead: $aiRead')
           ..write(')'))
         .toString();
   }

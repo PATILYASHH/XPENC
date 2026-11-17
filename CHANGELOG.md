@@ -11,9 +11,13 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 ## [1.6.7] — beta
 
 ### Added
-- **Local AI** (optional, Android). Settings → **Local AI** turns on Ask
-  XPENC (✨ on the Dashboard, **Explain my month** in Stats): ask about your
-  money in plain words and get an answer from a model running on the phone.
+- **Local AI, meet Exo** (optional, Android). Settings → **Local AI**
+  turns on **Exo**, the one assistant of every ExoSynk Labs app (✨ Ask Exo
+  on the Dashboard, **Explain my month** in Stats): ask about your money in
+  plain words and get an answer from a model running on the phone. Exo
+  knows who it is and who makes it, so "who built you?" or "does my data
+  leave the phone?" get true answers, from one shared dataset every
+  ExoSynk app will use.
   XPENC works out the figures itself (this month against last, the pace,
   budgets, dues, what's coming, balances and goals) and shows them under
   every answer; the model only puts them into words. It only reads and can't
@@ -24,6 +28,13 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   model, tap 🎤 to ask by voice, transcribed on the phone. Built on
   llama.cpp and whisper.cpp, compiled from source (adds about 4.7 MB to the
   arm64 APK). Adds the optional microphone permission, for voice input only.
+- **Smarter sharing in.** Categorise in the Review Inbox now starts on the
+  category you taught XPENC for that payee ("Remember this merchant").
+  With Local AI on, a shared bank message or payment screenshot the
+  built-in reader can't make out is read by the model instead: the card
+  says so, its amount must appear in the text word for word, and it never
+  posts by itself. Local AI also suggests a category from your own list.
+  OTPs, offers and declined payments are still turned away.
 - **Smart tags** (#189). A tag can hold a date part: in More → Tags → +,
   tap **Month**, **Short month**, **Year** or **Quarter** to add
   `{month}`, `{mon}`, `{year}` or `{quarter}`, mixed with any text (e.g.

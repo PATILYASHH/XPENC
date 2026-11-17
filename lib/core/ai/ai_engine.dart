@@ -20,7 +20,7 @@ class AiTurn {
 ///
 /// Nothing here can touch the ledger. The engine only turns text into text
 /// and speech into text; what to ask it, and what it may see, is up to the
-/// caller (see `AskXpenc`).
+/// caller (see `AskExo`).
 abstract interface class AiEngine {
   bool get supported;
 
@@ -31,10 +31,13 @@ abstract interface class AiEngine {
   Future<void> unloadChat();
 
   /// The model's answer, piece by piece. Cancel the subscription to stop.
+  /// [grammar] (GBNF, root rule `root`) forces the shape of the answer —
+  /// JSON with fixed keys, or one name from a list.
   Stream<String> chat(
     List<AiTurn> turns, {
     double temperature = 0.3,
     int maxTokens = 320,
+    String? grammar,
   });
 
   /// Loads the speech model at [path] (a whisper.cpp file), once.

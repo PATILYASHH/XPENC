@@ -96,10 +96,10 @@ class GuideScreen extends StatelessWidget {
               clipBehavior: Clip.antiAlias,
               child: Column(
                 children: [
-                  for (var i = 0; i < section.entries.length; i++) ...[
+                  for (var i = 0; i < section.shown.length; i++) ...[
                     if (i > 0)
                       Divider(height: 1, indent: 20, color: cs.outline),
-                    _GuideTile(entry: section.entries[i]),
+                    _GuideTile(entry: section.shown[i]),
                   ],
                 ],
               ),

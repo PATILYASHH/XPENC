@@ -7,7 +7,7 @@ import '../../core/ai/ai_engine.dart';
 import '../../core/ai/ai_facts.dart';
 import '../../core/ai/ai_providers.dart';
 import '../../core/ai/ai_store.dart';
-import '../../core/ai/ask_xpenc.dart';
+import '../../core/ai/ask_exo.dart';
 import '../../core/ai/voice_input.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/widgets/app_surfaces.dart';
@@ -19,35 +19,35 @@ import 'ai_memory_screen.dart';
 /// sends nothing.
 const _reportEmail = 'feedback.yashpatil@gmail.com';
 
-/// Ask XPENC: a read-only conversation about your money with the on-device
+/// Ask Exo: a read-only conversation about your money with the on-device
 /// model. [autoAsk] `month` asks "Explain my month" on open (Stats' ✨).
-class AskXpencScreen extends ConsumerStatefulWidget {
-  const AskXpencScreen({super.key, this.autoAsk});
+class AskExoScreen extends ConsumerStatefulWidget {
+  const AskExoScreen({super.key, this.autoAsk});
 
   final String? autoAsk;
 
   @override
-  ConsumerState<AskXpencScreen> createState() => _AskXpencScreenState();
+  ConsumerState<AskExoScreen> createState() => _AskExoScreenState();
 }
 
-class _AskXpencScreenState extends ConsumerState<AskXpencScreen> {
+class _AskExoScreenState extends ConsumerState<AskExoScreen> {
   final _input = TextEditingController();
   final _scroll = ScrollController();
   bool _listening = false;
   bool _transcribing = false;
   late final AiEngine _engine;
-  late final AskXpencController _conversation;
+  late final AskExoController _conversation;
 
   @override
   void initState() {
     super.initState();
     _engine = ref.read(aiEngineProvider);
-    _conversation = ref.read(askXpencProvider.notifier);
+    _conversation = ref.read(askExoProvider.notifier);
     if (widget.autoAsk == 'month') {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        final asked = ref.read(askXpencProvider);
-        final q = AskXpenc.explainMonthQuestion;
+        final asked = ref.read(askExoProvider);
+        final q = AskExo.explainMonthQuestion;
         if (asked.isEmpty || asked.last.question != q) _ask(q);
       });
     }
@@ -90,7 +90,7 @@ class _AskXpencScreenState extends ConsumerState<AskXpencScreen> {
     if (q.isEmpty) return;
     _input.clear();
     _toBottom();
-    await ref.read(askXpencProvider.notifier).ask(q);
+    await ref.read(askExoProvider.notifier).ask(q);
     _toBottom();
   }
 
@@ -151,21 +151,21 @@ class _AskXpencScreenState extends ConsumerState<AskXpencScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final messages = ref.watch(askXpencProvider);
+    final messages = ref.watch(askExoProvider);
     final device = ref.watch(aiStateProvider).valueOrNull;
     final on = ref.watch(aiOnProvider);
     final busy = messages.isNotEmpty && messages.last.busy;
-    ref.listen(askXpencProvider, (_, _) => _toBottom());
+    ref.listen(askExoProvider, (_, _) => _toBottom());
 
     return Scaffold(
       appBar: AppTopBar(
-        title: const Tr('Ask XPENC'),
+        title: const Tr('Ask Exo'),
         actions: [
           if (messages.isNotEmpty)
             IconButton(
               tooltip: tr('New chat'),
               icon: const AppIcon(Icons.add_comment_outlined),
-              onPressed: () => ref.read(askXpencProvider.notifier).clear(),
+              onPressed: () => ref.read(askExoProvider.notifier).clear(),
             ),
           IconButton(
             tooltip: tr('Local AI settings'),
@@ -257,7 +257,7 @@ class _AskXpencScreenState extends ConsumerState<AskXpencScreen> {
                                     tooltip: tr('Stop'),
                                     icon: const AppIcon(Icons.stop_rounded),
                                     onPressed: () => ref
-                                        .read(askXpencProvider.notifier)
+                                        .read(askExoProvider.notifier)
                                         .stop(),
                                   )
                                 : IconButton.filled(
@@ -356,7 +356,7 @@ class _Suggestions extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final suggestions = [
-      AskXpenc.explainMonthQuestion,
+      AskExo.explainMonthQuestion,
       tr('Where did my money go this month?'),
       tr('How am I doing on my budgets?'),
       tr('Who owes me money?'),
@@ -369,7 +369,7 @@ class _Suggestions extends StatelessWidget {
         AppIcon(Icons.auto_awesome_outlined, size: 44, color: cs.primary),
         const SizedBox(height: 12),
         Tr(
-          'Ask about your money',
+          "Hi, I'm Exo",
           textAlign: TextAlign.center,
           style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.w700,
@@ -377,7 +377,8 @@ class _Suggestions extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Tr(
-          'Answers come from your XPENC data, worked out on this phone.',
+          'Ask about your money. Answers come from your XPENC data, worked '
+          'out on this phone.',
           textAlign: TextAlign.center,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: cs.onSurfaceVariant,

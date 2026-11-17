@@ -8,7 +8,7 @@ import '../l10n/l10n.dart';
 import 'ai_engine.dart';
 import 'ai_facts.dart';
 import 'ai_store.dart';
-import 'ask_xpenc.dart';
+import 'ask_exo.dart';
 
 /// The on-device engine. Overridden with a fake in tests.
 final aiEngineProvider = Provider<AiEngine>((ref) {
@@ -110,7 +110,7 @@ class AiController extends AsyncNotifier<AiDeviceState> {
   }
 }
 
-// ── Ask XPENC ────────────────────────────────────────────────────────────────
+// ── Ask Exo ────────────────────────────────────────────────────────────────
 
 enum AskStatus {
   /// Working out the facts from the ledger.
@@ -164,13 +164,13 @@ class AskMessage {
   );
 }
 
-/// The Ask XPENC conversation. Kept in memory only — leaving the app (or
+/// The Ask Exo conversation. Kept in memory only — leaving the app (or
 /// "New chat") forgets it; nothing of it is ever stored.
-final askXpencProvider = NotifierProvider<AskXpencController, List<AskMessage>>(
-  AskXpencController.new,
+final askExoProvider = NotifierProvider<AskExoController, List<AskMessage>>(
+  AskExoController.new,
 );
 
-class AskXpencController extends Notifier<List<AskMessage>> {
+class AskExoController extends Notifier<List<AskMessage>> {
   StreamSubscription<String>? _answer;
   Completer<void>? _finished;
 
@@ -237,11 +237,12 @@ class AskXpencController extends Notifier<List<AskMessage>> {
     final memories = [
       for (final r in await db.watchAiMemories().first) r.content,
     ];
-    final turns = AskXpenc.turns(
+    final turns = AskExo.turns(
       question: q,
       facts: facts,
       memories: memories,
       history: history,
+      modelName: device.chat?.name,
     );
     _update((m) => m.copyWith(status: AskStatus.answering));
 
@@ -253,7 +254,7 @@ class AskXpencController extends Notifier<List<AskMessage>> {
           (piece) {
             buffer.write(piece);
             _update(
-              (m) => m.copyWith(answer: AskXpenc.tidy(buffer.toString())),
+              (m) => m.copyWith(answer: AskExo.tidy(buffer.toString())),
             );
           },
           onError: (Object e) {
@@ -265,7 +266,7 @@ class AskXpencController extends Notifier<List<AskMessage>> {
           onDone: () {
             _update(
               (m) => m.copyWith(
-                answer: AskXpenc.tidy(buffer.toString()),
+                answer: AskExo.tidy(buffer.toString()),
                 status: AskStatus.done,
               ),
             );
