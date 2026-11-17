@@ -15,13 +15,15 @@ import io.flutter.plugin.common.MethodChannel
 private const val PERMISSIONS_CHANNEL = "xpenc/permissions"
 
 // Plain strings rather than `Manifest.permission.*` — test/native_channel_test
-// keeps that token out of MainActivity, and these are the only three runtime
+// keeps that token out of MainActivity, and these are the only runtime
 // permissions Settings > Permissions surfaces.
 private const val NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS"
 private val KNOWN = setOf(
     NOTIFICATIONS,
     "android.permission.CAMERA",
     "android.permission.READ_CONTACTS",
+    // Local AI voice input only (VoiceChannel).
+    "android.permission.RECORD_AUDIO",
 )
 
 /**

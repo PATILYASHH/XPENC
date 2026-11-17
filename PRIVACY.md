@@ -1,6 +1,6 @@
 # XPENC Privacy Policy
 
-**Effective date:** 24 October 2026
+**Effective date:** 17 November 2026
 **Applies to:** XPENC for Android (package name `com.yash.xpenc`), version 1.1.0 and later
 **Developer:** Yash Patil (individual developer)
 **Contact:** feedback.yashpatil@gmail.com
@@ -26,6 +26,7 @@ When you use XPENC you create financial records:
 - persons and dues/loans you record against them
 - reminders and calendar entries
 - app settings
+- if you use Local AI: the notes you save in **AI Memory** (see below)
 
 All of this is stored in a private SQLite database inside the app's private
 storage area, which Android sandboxes from other apps. It is **never
@@ -52,17 +53,42 @@ same way.
 | `RECEIVE_BOOT_COMPLETED` | To re-schedule your local reminders after the phone restarts. |
 | `CAMERA` (optional, asked at runtime) | Only if you tap "Take photo" when attaching a receipt to a transaction. The photo is copied straight into the app's own private storage and never leaves the device. If you deny it, or just attach from your gallery instead, the app works normally — nothing about the camera is used anywhere else. |
 | `READ_CONTACTS` (optional, asked at runtime) | Only if you tap "Pick from contacts" when adding a person, to bring in that contact's name, phone number and photo. If you deny it, or turn it off later, XPENC never opens your contacts and hides every "from contacts" button — you type names and numbers by hand instead. Nothing from your address book is read except the one contact you explicitly pick, and it's copied into the app's own private storage, never transmitted anywhere. |
+| `RECORD_AUDIO` (optional, asked at runtime) | Only for Local AI voice input, and only the first time you tap 🎤 in Ask XPENC. While you speak, the sound is held in the phone's memory, turned into text by the speech model on the phone, and then thrown away — it is never saved to storage and never sent anywhere. If you deny it, or never use voice input, nothing else changes. |
 | `USE_BIOMETRIC` | Only if you turn on fingerprint/face unlock for the app lock. The app never sees your biometric data — Android only tells it whether the check passed. |
 
 You can review each permission, and turn the optional ones on or off, in
 **Settings → Permissions** inside the app.
 
-XPENC requests **no** SMS, location, microphone, storage, or
-internet permission. (The final app package also contains `VIBRATE`,
+XPENC requests **no** SMS, location, storage, or internet permission. The
+microphone is used for nothing but the optional voice input above. (The final app package also contains `VIBRATE`,
 `WAKE_LOCK` and `FOREGROUND_SERVICE` — standard, install-time permissions the
 notifications library uses to deliver reminders on time — and an internal
 Android-library permission scoped to the app itself. None of them gives access
 to any of your data.)
+
+## Local AI (optional)
+
+Local AI is off until you turn it on in **Settings → Local AI**. It runs
+entirely on your phone:
+
+- **The models are files you import.** [xpenc.in/local-ai](https://xpenc.in/local-ai)
+  lists open models (made by other developers) with download links to
+  Hugging Face; your browser downloads them, and you import the file into
+  XPENC. XPENC itself downloads nothing — it still has no internet permission.
+  The model files stay in the app's private storage, are never put in a
+  backup, and are deleted when you remove them or uninstall XPENC.
+- **It only reads.** To answer a question, XPENC works out the figures from
+  your data on the phone (totals, budgets, dues, upcoming payments) and gives
+  them to the model. The model cannot add, change or delete anything.
+- **Conversations are not kept.** Questions and answers live in the phone's
+  memory only while you use Ask XPENC, and are gone when you start a new chat
+  or close the app.
+- **AI Memory is yours.** Notes you save there (for example "my salary comes
+  on the 1st") are stored with the rest of your data, included in your
+  backups, and erased by "Clear all data" or "Forget everything". Only you
+  add them; the AI never saves anything by itself.
+- **Reporting an answer** opens your mail app with that one question and
+  answer filled in. Nothing is sent unless you send that email yourself.
 
 ## XPENC web and Connector
 

@@ -9,6 +9,9 @@ import '../../features/more/whats_new_screen.dart';
 import '../../features/accounts/account_detail_screen.dart';
 import '../../features/accounts/accounts_screen.dart';
 import '../../features/accounts/archived_accounts_screen.dart';
+import '../../features/ai/ai_memory_screen.dart';
+import '../../features/ai/ask_xpenc_screen.dart';
+import '../../features/ai/local_ai_settings_screen.dart';
 import '../../features/add_transaction/add_transaction_screen.dart';
 import '../../features/auto/archived_auto_rules_screen.dart';
 import '../../features/auto/auto_rule_detail_screen.dart';
@@ -309,6 +312,18 @@ final appRouter = GoRouter(
                       path: 'language',
                       parentNavigatorKey: _rootKey,
                       builder: (_, _) => const LanguageSettingsScreen(),
+                    ),
+                    GoRoute(
+                      path: 'local-ai',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const LocalAiSettingsScreen(),
+                      routes: [
+                        GoRoute(
+                          path: 'memory',
+                          parentNavigatorKey: _rootKey,
+                          builder: (_, _) => const AiMemoryScreen(),
+                        ),
+                      ],
                     ),
                     GoRoute(
                       path: 'colours',
@@ -719,6 +734,14 @@ final appRouter = GoRouter(
       path: '/persons/archived',
       parentNavigatorKey: _rootKey,
       builder: (_, _) => const ArchivedPersonsScreen(),
+    ),
+
+    // Ask XPENC (Local AI). `?ask=month` asks "Explain my month" on open.
+    GoRoute(
+      path: '/ai',
+      parentNavigatorKey: _rootKey,
+      builder: (_, state) =>
+          AskXpencScreen(autoAsk: state.uri.queryParameters['ask']),
     ),
 
     GoRoute(

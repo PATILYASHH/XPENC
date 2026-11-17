@@ -400,6 +400,21 @@ const guideSections = <GuideSection>[
       location: 'More → Tags',
     ),
     GuideEntry(
+      icon: Icons.forum_outlined,
+      title: 'Local AI',
+      whatItDoes:
+          'Ask about your money in plain words — "Where did my money go this '
+          'month?" — and get an answer from a model running on your phone. '
+          'XPENC works out the figures itself and shows them under the '
+          'answer; the AI only reads and never changes anything.',
+      howToUse:
+          'Settings → Local AI: turn it on, download a model from '
+          'xpenc.in/local-ai and import it. Then tap ✨ on the Dashboard or '
+          'Explain my month in Stats. Add a voice model to ask with 🎤, and '
+          'tell it what matters in AI Memory. Android only for now.',
+      location: 'Settings → Local AI',
+    ),
+    GuideEntry(
       icon: Icons.auto_awesome_outlined,
       title: 'Smart tags',
       whatItDoes:

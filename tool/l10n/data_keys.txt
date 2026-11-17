@@ -327,3 +327,11 @@ Put {month}, {year} or a quarter in a tag and it fills in from each transaction'
 Bring back an archived goal or loan
 More → Goals & Loans → archive button
 Archived goals and loans now have their own list, with Restore, right from Goals & Loans.
+Microphone
+Ask Local AI by voice. The recording is turned into text on this phone and never saved or sent
+Local AI
+Ask about your money in plain words — "Where did my money go this month?" — and get an answer from a model running on your phone. XPENC works out the figures itself and shows them under the answer; the AI only reads and never changes anything.
+Settings → Local AI: turn it on, download a model from xpenc.in/local-ai and import it. Then tap ✨ on the Dashboard or Explain my month in Stats. Add a voice model to ask with 🎤, and tell it what matters in AI Memory. Android only for now.
+Settings → Local AI
+Ask about your money, offline
+Optional Local AI runs on your phone: ask "Where did my money go?" or tap Explain my month in Stats. It only reads, shows the figures behind every answer, and nothing leaves the phone. Get a model from xpenc.in/local-ai; add a voice model to ask with 🎤.

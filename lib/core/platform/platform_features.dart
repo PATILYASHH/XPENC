@@ -36,6 +36,10 @@ abstract final class PlatformFeatures {
   /// On-device text recognition — the Tesseract plugin is Android-only.
   static bool get ocr => _android;
 
+  /// Local AI (Ask XPENC, voice input) — the llama.cpp / whisper.cpp
+  /// library ships for Android only, for now.
+  static bool get localAi => _android;
+
   /// The standing quick-add notification. iOS has no ongoing notifications,
   /// and its reply action would need a notification category plus a
   /// background isolate wired up natively.

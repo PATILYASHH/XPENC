@@ -1817,6 +1817,17 @@ class TransactionTemplateTags extends Table {
   Set<Column> get primaryKey => {templateId, tagId};
 }
 
+/// Local AI's memory: things the user wants the AI to keep in mind ("salary
+/// comes on the 1st", "I'm saving for a bike"). Read into every AI prompt.
+/// Only the user adds, edits or removes them, from AI Memory or by tapping
+/// "Save to memory"; the AI never writes here on its own.
+@DataClassName('AiMemoryRow')
+class AiMemories extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get content => text().withLength(min: 1, max: 300)();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
 /// One named shopping list (e.g. "Weekly groceries", "Diwali"). A user can
 /// keep any number of these side by side — see [ShoppingItems].
 @DataClassName('ShoppingListRow')

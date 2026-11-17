@@ -50,6 +50,11 @@
          picker name-only, exactly as it behaved before this permission
          existed. -->
     <uses-permission android:name="android.permission.READ_CONTACTS"/>
+    <!-- Local AI voice input: asked for the first time 🎤 is held in Ask
+         XPENC, never otherwise. Audio is recorded into memory only, turned
+         into text by the on-device speech model, then dropped — never saved,
+         never sent (VoiceChannel.kt). -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <application
         android:label="@string/app_name"
         android:name="${applicationName}"

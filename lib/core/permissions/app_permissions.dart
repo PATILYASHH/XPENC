@@ -21,6 +21,13 @@ enum AppPermission {
     reason:
         'Pick a person from your contacts, with their phone number and '
         'photo. Without it, XPENC never opens your contacts',
+  ),
+  microphone(
+    androidName: 'android.permission.RECORD_AUDIO',
+    title: 'Microphone',
+    reason:
+        'Ask Local AI by voice. The recording is turned into text on this '
+        'phone and never saved or sent',
   );
 
   const AppPermission({

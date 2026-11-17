@@ -12,6 +12,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../data/providers.dart';
+import '../ai/ai_providers.dart';
 import '../../data/tables.dart' show AppMode;
 import '../widgets/app_surfaces.dart';
 import '../widgets/glass_sheet.dart';
@@ -1447,6 +1448,15 @@ class _TopBar extends ConsumerWidget implements PreferredSizeWidget {
     switch (index) {
       case 0: // Dashboard
         return [
+          // Ask XPENC, while Local AI is on.
+          if (ref.watch(aiOnProvider)) ...[
+            _TonalIconButton(
+              tooltip: tr('Ask XPENC'),
+              icon: const AppIcon(Icons.auto_awesome_outlined),
+              onPressed: () => _pushFromTop(context, '/ai'),
+            ),
+            const SizedBox(width: 4),
+          ],
           const _DashboardMonthButton(),
           const SizedBox(width: 4),
           _TonalIconButton(

@@ -40,6 +40,7 @@ Income, expenses, transfers, budgets and dues — all on-device. Nothing is ever
 - 📩 **Share it in** — bank SMS or a payment screenshot, parsed on-device (no `READ_SMS`, no network)
 - 👥 **Persons** — dues/loans with running balances, group splits, UPI Pay/Request
 - 📊 **Insights** — pie/trend charts, per-account reports, downloadable PDF
+- ✨ **Local AI** (optional) — ask about your money offline; llama.cpp + whisper.cpp built from source, models imported from [xpenc.in/local-ai](https://xpenc.in/local-ai), read-only
 - 💾 **Backup & export** — JSON backup + Tally-ready CSV, with auto-backup and retention
 - 🎨 **Seven themes**, 📱 **home screen widget**, ➕ customizable bottom nav
 

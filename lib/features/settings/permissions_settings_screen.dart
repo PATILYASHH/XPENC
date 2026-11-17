@@ -216,6 +216,7 @@ class _PermissionTile extends StatelessWidget {
     AppPermission.notifications => Icons.notifications_outlined,
     AppPermission.camera => Icons.photo_camera_outlined,
     AppPermission.contacts => Icons.contacts_outlined,
+    AppPermission.microphone => Icons.mic_none_rounded,
   };
 
   @override

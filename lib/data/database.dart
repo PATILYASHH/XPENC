@@ -233,6 +233,7 @@ String? _statementNote(TransactionRow t, String? personName) {
     CategoryTemplateItems,
     TransactionTemplates,
     TransactionTemplateTags,
+    AiMemories,
   ],
 )
 /// The levels a budget alerts at (GitHub #186) — see [Budgets.alertLevels].
@@ -284,7 +285,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 95;
+  int get schemaVersion => 96;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -937,6 +938,10 @@ class AppDatabase extends _$AppDatabase {
         // The interface language (#191); null follows the phone.
         await _addColumnIfMissing(m, settings, settings.languageCode);
       }
+      if (from < 96) {
+        // Local AI's memory.
+        await m.createTable(aiMemories);
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -1429,6 +1434,9 @@ class AppDatabase extends _$AppDatabase {
   /// expenses, so "Clear all data" died on `DELETE FROM categories`.
   @visibleForTesting
   List<TableInfo> get ledgerTablesChildrenFirst => [
+    // What the user told Local AI to remember is about them, so starting
+    // fresh forgets it too. Nothing points at it.
+    aiMemories,
     budgetAlerts,
     pendingTxns,
     merchantRules,
@@ -2653,6 +2661,40 @@ class AppDatabase extends _$AppDatabase {
     )..where((t) => t.templateId.equals(id))).go();
     await (delete(transactionTemplates)..where((t) => t.id.equals(id))).go();
   });
+
+  // ── Local AI memory ──────────────────────────────────────────────────────
+  //
+  // What the user wants Local AI to keep in mind (see [AiMemories]). Written
+  // only by the user — from AI Memory, or by tapping "Save to memory" — and
+  // read into every AI prompt.
+
+  Stream<List<AiMemoryRow>> watchAiMemories() =>
+      (select(aiMemories)..orderBy([
+            (m) => OrderingTerm(expression: m.createdAt),
+            (m) => OrderingTerm(expression: m.id),
+          ]))
+          .watch();
+
+  Future<int> addAiMemory(String content) => into(
+    aiMemories,
+  ).insert(AiMemoriesCompanion.insert(content: _aiMemoryText(content)));
+
+  Future<void> updateAiMemory(int id, String content) =>
+      (update(aiMemories)..where((m) => m.id.equals(id))).write(
+        AiMemoriesCompanion(content: Value(_aiMemoryText(content))),
+      );
+
+  Future<void> deleteAiMemory(int id) =>
+      (delete(aiMemories)..where((m) => m.id.equals(id))).go();
+
+  /// "Forget everything" in AI Memory.
+  Future<void> clearAiMemories() => delete(aiMemories).go();
+
+  static String _aiMemoryText(String content) {
+    final text = content.trim();
+    if (text.isEmpty) throw ArgumentError(tr('Write something to remember.'));
+    return text.length > 300 ? text.substring(0, 300).trimRight() : text;
+  }
 
   // ── Savings goals ────────────────────────────────────────────────────────
   //
@@ -8709,6 +8751,7 @@ class AppDatabase extends _$AppDatabase {
       // and resets the budget-alert dedupe (re-firing alerts already seen).
       'pendingTxns': (await select(pendingTxns).get()).map(m).toList(),
       'budgetAlerts': (await select(budgetAlerts).get()).map(m).toList(),
+      'aiMemories': (await select(aiMemories).get()).map(m).toList(),
       'settings': (await select(
         settings,
       ).get()).map(m).map(_withoutDeviceLock).toList(),
@@ -8913,6 +8956,8 @@ class AppDatabase extends _$AppDatabase {
       // An older backup simply has no rows for them — `rows()` yields nothing.
       await load(pendingTxns, 'pendingTxns');
       await load(budgetAlerts, 'budgetAlerts');
+      // Local AI's memory; nothing to point at. An older backup has none.
+      await load(aiMemories, 'aiMemories');
       // Both reference transactions/categories/tags, so they come after all
       // three are loaded.
       await load(transactionTags, 'transactionTags');

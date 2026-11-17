@@ -11,6 +11,19 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 ## [1.6.7] — beta
 
 ### Added
+- **Local AI** (optional, Android). Settings → **Local AI** turns on Ask
+  XPENC (✨ on the Dashboard, **Explain my month** in Stats): ask about your
+  money in plain words and get an answer from a model running on the phone.
+  XPENC works out the figures itself (this month against last, the pace,
+  budgets, dues, what's coming, balances and goals) and shows them under
+  every answer; the model only puts them into words. It only reads and can't
+  change anything. Models are files you download from
+  [xpenc.in/local-ai](https://xpenc.in/local-ai) and import, so the app stays
+  small and still has no internet permission. **AI Memory** keeps the notes
+  you want it to know (only you add them; they're in backups). With a voice
+  model, tap 🎤 to ask by voice, transcribed on the phone. Built on
+  llama.cpp and whisper.cpp, compiled from source (adds about 4.7 MB to the
+  arm64 APK). Adds the optional microphone permission, for voice input only.
 - **Smart tags** (#189). A tag can hold a date part: in More → Tags → +,
   tap **Month**, **Short month**, **Year** or **Quarter** to add
   `{month}`, `{mon}`, `{year}` or `{quarter}`, mixed with any text (e.g.

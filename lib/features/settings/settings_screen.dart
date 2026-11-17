@@ -90,6 +90,16 @@ class SettingsScreen extends StatelessWidget {
                 onTap: () => context.push('/more/settings/notifications'),
               ),
           ]),
+          // Optional, on-device; Android only for now.
+          if (PlatformFeatures.localAi)
+            _ModuleGroup([
+              _ModuleTile(
+                icon: Icons.auto_awesome_outlined,
+                title: tr('Local AI'),
+                subtitle: tr('Ask about your money, offline · AI Memory'),
+                onTap: () => context.push('/more/settings/local-ai'),
+              ),
+            ]),
           _ModuleGroup([
             _ModuleTile(
               icon: Icons.flash_on_outlined,

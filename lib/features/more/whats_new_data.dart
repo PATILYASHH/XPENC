@@ -40,6 +40,16 @@ List<WhatsNewEntry> get whatsNewEntries => [
 
 const _whatsNewEntries = <WhatsNewEntry>[
   WhatsNewEntry(
+    icon: Icons.forum_outlined,
+    title: 'Ask about your money, offline',
+    location: 'Settings → Local AI',
+    description:
+        'Optional Local AI runs on your phone: ask "Where did my money go?" '
+        'or tap Explain my month in Stats. It only reads, shows the figures '
+        'behind every answer, and nothing leaves the phone. Get a model from '
+        'xpenc.in/local-ai; add a voice model to ask with 🎤.',
+  ),
+  WhatsNewEntry(
     icon: Icons.auto_awesome_outlined,
     title: 'Smart tags',
     location: 'More → Tags → +',
