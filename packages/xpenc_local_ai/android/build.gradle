@@ -1,0 +1,55 @@
+// Builds src/ (llama.cpp + whisper.cpp + the xai_* wrapper) with the NDK,
+// once per ABI the app ships. See src/CMakeLists.txt.
+
+group = "com.yash.xpenc_local_ai"
+version = "1.0"
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath("com.android.tools.build:gradle:8.11.1")
+    }
+}
+
+rootProject.allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+apply plugin: "com.android.library"
+
+android {
+    namespace = "com.yash.xpenc_local_ai"
+    compileSdk = 35
+
+    // The app's own NDK (flutter.ndkVersion), so one NDK builds everything.
+    ndkVersion = android.ndkVersion
+
+    externalNativeBuild {
+        cmake {
+            path = "../src/CMakeLists.txt"
+        }
+    }
+
+    defaultConfig {
+        minSdk = 24
+        externalNativeBuild {
+            cmake {
+                // Release-speed code even in debug builds: an -O0 model
+                // runs too slowly to test anything.
+                arguments "-DCMAKE_BUILD_TYPE=Release"
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+}

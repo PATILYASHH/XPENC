@@ -1,0 +1,6 @@
+# Native build output (CMake / Gradle) and Dart tooling — never committed.
+.cxx/
+android/.cxx/
+build/
+android/build/
+.dart_tool/

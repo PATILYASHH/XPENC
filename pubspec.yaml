@@ -103,6 +103,9 @@ dependencies:
   # android/build.gradle for the full rationale.
   flutter_tesseract_ocr:
     path: packages/flutter_tesseract_ocr_floss
+  # On-device AI: llama.cpp + whisper.cpp built from source (Local AI).
+  xpenc_local_ai:
+    path: packages/xpenc_local_ai
   # RFC 6238 TOTP codes for the authenticator-app unlock method (GitHub
   # #104) — the same algorithm Google Authenticator/Authy/etc. implement.
   # Pinned below 3.1.4: that release starts depending on timezone ^0.9.0/
