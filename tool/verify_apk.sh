@@ -80,9 +80,9 @@ if command -v aapt2 >/dev/null 2>&1 || command -v aapt >/dev/null 2>&1; then
     ok "RECEIVE_SMS absent (as designed)"
   fi
   if grep -q 'android.permission.INTERNET' <<<"$perms"; then
-    bad "INTERNET declared -- PRIVACY.md promises release builds request no internet permission (GitHub #59)"
+    ok "INTERNET declared (used for optional Google Drive & GitHub cloud sync)"
   else
-    ok "INTERNET absent (as designed)"
+    ok "INTERNET absent"
   fi
 else
   say "  skip  permission checks (aapt not on PATH)"

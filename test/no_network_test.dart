@@ -25,10 +25,13 @@ void main() {
       ),
     };
 
-    // XPENC web's built-in Connector — the one reviewed place, reached
-    // only once the user turns Connector on (and absent from phone builds:
-    // it's behind a `dart.library.js_interop` conditional import).
-    final allowed = {'lib/core/connector/web/fetch_transport.dart'};
+    // XPENC web's built-in Connector and multi-device Cloud Sync (Google Drive
+    // and GitHub) — only reached when the user explicitly configures cloud sync.
+    final allowed = {
+      'lib/core/connector/web/fetch_transport.dart',
+      'lib/features/data_export/connector_sync_service.dart',
+      'lib/features/data_export/gdrive_sync_service.dart',
+    };
 
     final offenders = <String>[];
     for (final file in Directory('lib').listSync(recursive: true)) {

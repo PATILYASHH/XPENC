@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/budget_cycle.dart';
 import '../core/currency.dart';
@@ -13,6 +14,7 @@ import '../core/security/unlock_method.dart';
 import '../core/theme/font_options.dart';
 import '../core/theme/theme_preset.dart';
 import '../features/data_export/backup_service.dart';
+import '../features/data_export/cloud_sync_service.dart';
 import '../features/message_capture/capture_service.dart';
 import '../features/message_capture/message_source.dart';
 import '../features/message_capture/share_intake.dart';
@@ -2349,9 +2351,18 @@ final plainPayeeNamesProvider = Provider<List<String>>((ref) {
 
 // ── Export / Backup ─────────────────────────────────────────────────────────
 
+final sharedPrefsProvider = Provider<SharedPreferences?>((ref) => null);
+
 final backupServiceProvider = Provider<BackupService>(
   (ref) => BackupService(ref.watch(dbProvider)),
 );
+
+final cloudSyncServiceProvider = Provider<CloudSyncService>(
+  (ref) => CloudSyncService(ref.watch(dbProvider), ref.watch(sharedPrefsProvider)),
+);
+
+final moreSearchActiveProvider = StateProvider<bool>((ref) => false);
+final moreSearchQueryProvider = StateProvider<String>((ref) => '');
 
 /// The live list of known backups. Reads `AppDatabase.watchBackupRecords`
 /// directly (a real stream) rather than `BackupService.listBackups` (a

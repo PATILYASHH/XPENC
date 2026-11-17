@@ -11,6 +11,7 @@ import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'backup_folder.dart';
 import 'backup_service.dart';
+import 'cloud_sync_screen.dart';
 import 'import_from_file.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 import '../../core/l10n/l10n.dart';
@@ -472,10 +473,38 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
           ),
           if (!web) ...[
             const SizedBox(height: 24),
+            const SizedBox(height: 28),
+            Row(
+              children: [
+                Icon(Icons.cloud_sync_outlined, size: 20, color: cs.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Cloud Sync (Multi-Device)',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                  tooltip: 'Open in standalone screen',
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const CloudSyncScreen()),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const CloudSyncOptions(isEmbedded: true),
+            const SizedBox(height: 28),
             Tr(
               'Automatic backups',
+              'On-Device Automatic Backups',
               style: theme.textTheme.titleSmall?.copyWith(
                 color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 12),

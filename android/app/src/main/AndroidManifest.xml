@@ -13,13 +13,8 @@
          work, so strip it from the merged manifest (GitHub #27). -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"
         tools:node="remove"/>
-    <!-- Some plugin's Android library declares this transitively (nothing in
-         this app's own Dart code calls the network — url_launcher hands URLs
-         off to the browser, it doesn't fetch them). PRIVACY.md promises
-         release builds request no internet permission at all, and 1.4.2
-         shipped with this present (GitHub #59), so strip it explicitly. -->
-    <uses-permission android:name="android.permission.INTERNET"
-        tools:node="remove"/>
+    <!-- Required for multi-device Cloud Sync (Google Drive and GitHub). -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <!-- Backups (see backup_service.dart) only ever touch files this app itself
          wrote into the public Download/BACKUP XPENC folder via MediaStore, which

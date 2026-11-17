@@ -240,6 +240,28 @@ class MoreScreen extends ConsumerWidget {
           ]),
     ].where((g) => g.items.isNotEmpty).toList();
 
+    final searchActive = ref.watch(moreSearchActiveProvider);
+    final searchQuery = ref.watch(moreSearchQueryProvider).trim().toLowerCase();
+
+    final filteredGroups = [
+      for (final g in groups) ...[
+        if (!searchActive || searchQuery.isEmpty)
+          g
+        else ...[
+          _Group(
+            g.title,
+            beta: g.beta,
+            [
+              for (final i in g.items)
+                if (i.label.toLowerCase().contains(searchQuery) ||
+                    i.subtitle.toLowerCase().contains(searchQuery))
+                  i,
+            ],
+          ),
+        ],
+      ],
+    ].where((g) => g.items.isNotEmpty).toList();
+
     final viewMode = ref.watch(moreScreenViewModeProvider);
     final isCards = viewMode == MoreScreenViewMode.cards;
 
@@ -247,8 +269,78 @@ class MoreScreen extends ConsumerWidget {
       body: CustomScrollView(
         slivers: [
           const TopBarInsetSliver(),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 20, 0),
+              child: Row(
+                children: [
+                  Text(
+                    tr('More'),
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: Icon(searchActive ? Icons.close : Icons.search),
+                    onPressed: () {
+                      final active = ref.read(moreSearchActiveProvider);
+                      ref.read(moreSearchActiveProvider.notifier).state = !active;
+                      if (active) {
+                        ref.read(moreSearchQueryProvider.notifier).state = '';
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (searchActive)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                child: TextField(
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: tr('Search settings & tools...'),
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              ref.read(moreSearchQueryProvider.notifier).state = '';
+                            },
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  onChanged: (val) {
+                    ref.read(moreSearchQueryProvider.notifier).state = val;
+                  },
+                ),
+              ),
+            ),
           const SliverToBoxAdapter(child: SizedBox(height: 8)),
-          if (focused != null)
+          if (searchActive && searchQuery.isNotEmpty && filteredGroups.isEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                child: Center(
+                  child: Text(
+                    'No matching options found',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          if (focused != null && (!searchActive || searchQuery.isEmpty))
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
@@ -267,7 +359,7 @@ class MoreScreen extends ConsumerWidget {
                 ),
               ),
             ),
-          for (final group in groups) ...[
+          for (final group in filteredGroups) ...[
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(24, 16, 24, 10),

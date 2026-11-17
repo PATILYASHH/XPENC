@@ -164,6 +164,7 @@ class _XpencAppState extends ConsumerState<XpencApp>
     await _runRecurring();
     await _scanMessages();
     await _runAutoBackup();
+    unawaited(ref.read(cloudSyncServiceProvider).checkAndSyncOnAppOpen());
   }
 
   /// Posts anything due, then reschedules the "coming up" alerts against
@@ -227,6 +228,7 @@ class _XpencAppState extends ConsumerState<XpencApp>
         _runRecurring();
         _scanMessages();
         _runAutoBackup();
+        unawaited(ref.read(cloudSyncServiceProvider).checkAndSyncOnAppOpen());
       });
       // Entries friends shared (and answers to this phone's), through
       // Connector — read again, and Connector asked for a fresh round.
@@ -349,6 +351,7 @@ class _XpencAppState extends ConsumerState<XpencApp>
     final db = ref.read(dbProvider);
     await db.markLedgerChanged();
     await ref.read(backupServiceProvider).runAutoBackupIfDue();
+    ref.read(cloudSyncServiceProvider).onLocalDataChanged();
   }
 
   Future<void> _scanMessages() async {
@@ -486,6 +489,24 @@ class _XpencAppState extends ConsumerState<XpencApp>
         ref.read(notificationServiceProvider).checkBudgets();
         ref.read(notificationServiceProvider).checkModeAlerts();
         _onLedgerChanged();
+      }
+    });
+
+    ref.listen(accountsProvider, (_, next) {
+      if (next.hasValue) {
+        ref.read(cloudSyncServiceProvider).onLocalDataChanged();
+      }
+    });
+
+    ref.listen(budgetsProvider, (_, next) {
+      if (next.hasValue) {
+        ref.read(cloudSyncServiceProvider).onLocalDataChanged();
+      }
+    });
+
+    ref.listen(personsProvider, (_, next) {
+      if (next.hasValue) {
+        ref.read(cloudSyncServiceProvider).onLocalDataChanged();
       }
     });
     // Keeps the home-screen widgets live while the app is open — neither

@@ -30,8 +30,10 @@ import '../../features/categories/category_templates_screen.dart';
 import '../../features/connector/connector_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/data_export/backup_screen.dart';
+import '../../features/data_export/cloud_sync_screen.dart';
 import '../../features/data_export/csv_import_screen.dart';
 import '../../features/data_export/download_data_screen.dart';
+import '../../features/data_export/gdrive_sync_screen.dart';
 import '../../features/message_capture/message_capture_screen.dart';
 import '../../features/message_capture/ocr_feedback/ocr_correction_capture_screen.dart';
 import '../../features/message_capture/ocr_feedback/ocr_correction_screen.dart';
@@ -466,6 +468,18 @@ final appRouter = GoRouter(
                   path: 'backup',
                   parentNavigatorKey: _rootKey,
                   builder: (_, _) => const BackupScreen(),
+                  routes: [
+                    GoRoute(
+                      path: 'cloud-sync',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const CloudSyncScreen(),
+                    ),
+                    GoRoute(
+                      path: 'gdrive',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const GDriveSyncScreen(),
+                    ),
+                  ],
                 ),
                 GoRoute(
                   path: 'auto',
