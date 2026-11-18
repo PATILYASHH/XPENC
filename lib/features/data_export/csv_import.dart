@@ -14,6 +14,7 @@ class CsvColumnMapping {
     this.amountColumn,
     this.debitColumn,
     this.creditColumn,
+    this.decimalSeparator = CsvDecimalSeparator.dot,
   }) : assert(
          amountColumn != null || debitColumn != null || creditColumn != null,
          'Need either a signed amount column, or a debit/credit column.',
@@ -35,7 +36,26 @@ class CsvColumnMapping {
   final int? debitColumn;
   final int? creditColumn;
 
+  /// How the file writes its amounts: `1,234.56` or `1.234,56`. See
+  /// [detectDecimalSeparator] and GitHub #207.
+  final CsvDecimalSeparator decimalSeparator;
+
   bool get isTwoColumn => amountColumn == null;
+
+  /// The amount-bearing columns this mapping reads, in either mode.
+  List<int> get amountColumns => [?amountColumn, ?debitColumn, ?creditColumn];
+}
+
+/// Which character a file uses between whole units and cents. Most of
+/// India, the US and the UK write `1,234.56`; most of Europe writes
+/// `1.234,56`. A statement uses one or the other throughout, so it's
+/// chosen once per file, never guessed per cell (GitHub #207).
+enum CsvDecimalSeparator {
+  /// `1,234.56` — the comma, if any, only groups thousands.
+  dot,
+
+  /// `1.234,56` — the dot, if any, only groups thousands.
+  comma,
 }
 
 /// One row, mapped but not yet validated — `date`/`amount` are null when
@@ -128,6 +148,11 @@ final _dateFormats = [
   DateFormat('dd-MM-yy'),
   DateFormat('yyyy-MM-dd'),
   DateFormat('yyyy/MM/dd'),
+  // Middle-European dot dates (GitHub #206). `dd`/`MM` also take a single
+  // digit, so `1.2.2026` reads too.
+  DateFormat('dd.MM.yyyy'),
+  DateFormat('dd.MM.yy'),
+  DateFormat('yyyy.MM.dd'),
   DateFormat('MM/dd/yyyy'),
   DateFormat('dd MMM yyyy'),
   DateFormat('dd-MMM-yyyy'),
@@ -155,6 +180,71 @@ DateTime? parseCsvDate(String raw) {
   return DateTime.tryParse(text);
 }
 
+/// `1.234,56` → 1234.56 under [CsvDecimalSeparator.comma]; `1,234.56` →
+/// 1234.56 under [CsvDecimalSeparator.dot]. Currency symbols, spaces and
+/// letters (`EUR`, `₹`, `Dr`) are ignored. The *other* separator is only
+/// ever a thousands mark and is dropped — which is exactly what
+/// `Money.tryParse` used to do to the comma in `-2,10`, reading it as
+/// −210 (GitHub #207).
+Money? parseCsvAmount(
+  String raw, {
+  CsvDecimalSeparator decimal = CsvDecimalSeparator.dot,
+}) {
+  var cleaned = raw.replaceAll(RegExp(r'[^0-9.,\-]'), '');
+  cleaned = switch (decimal) {
+    CsvDecimalSeparator.dot => cleaned.replaceAll(',', ''),
+    CsvDecimalSeparator.comma =>
+      cleaned.replaceAll('.', '').replaceAll(',', '.'),
+  };
+  if (cleaned.isEmpty) return null;
+  final value = double.tryParse(cleaned);
+  if (value == null) return null;
+  return Money.fromRupees(value);
+}
+
+final _endsInCents = RegExp(r'^-?\d*[.,]\d{1,2}$');
+
+/// Reads the file's amount cells and picks the separator they agree on.
+/// Each cell casts a vote only when it's unambiguous:
+///
+/// - both marks present (`1.234,56`, `1,25,000.00`): the last one is the
+///   decimal;
+/// - a single mark followed by 1–2 digits (`-2,10`, `500.5`): that mark is
+///   the decimal;
+/// - a comma followed by 3 digits (`1,250`, `1,25,000`) or a repeated dot
+///   (`1.234.567`): only thousands grouping, so the other mark is decimal.
+///
+/// A lone `1.234` votes nothing — it could be either. No votes, or a tie,
+/// keeps [CsvDecimalSeparator.dot], what the importer always assumed.
+CsvDecimalSeparator detectDecimalSeparator(Iterable<String> cells) {
+  var dot = 0;
+  var comma = 0;
+  for (final raw in cells) {
+    final cell = raw.replaceAll(RegExp(r'[^0-9.,\-]'), '');
+    final dots = '.'.allMatches(cell).length;
+    final commas = ','.allMatches(cell).length;
+    if (dots > 0 && commas > 0) {
+      cell.lastIndexOf('.') > cell.lastIndexOf(',') ? dot++ : comma++;
+    } else if (_endsInCents.hasMatch(cell)) {
+      dots > 0 ? dot++ : comma++;
+    } else if (commas > 0) {
+      dot++;
+    } else if (dots > 1) {
+      comma++;
+    }
+  }
+  return comma > dot ? CsvDecimalSeparator.comma : CsvDecimalSeparator.dot;
+}
+
+/// [detectDecimalSeparator] over the amount columns [mapping] reads.
+CsvDecimalSeparator detectDecimalSeparatorForRows(
+  Iterable<List<dynamic>> rows,
+  CsvColumnMapping mapping,
+) => detectDecimalSeparator([
+  for (final row in rows)
+    for (final column in mapping.amountColumns) ?_cell(row, column),
+]);
+
 String? _cell(List<dynamic> row, int? column) {
   if (column == null || column >= row.length) return null;
   final value = row[column]?.toString().trim();
@@ -165,12 +255,15 @@ CsvImportRow parseCsvRow(List<dynamic> row, CsvColumnMapping mapping) {
   final dateText = _cell(row, mapping.dateColumn);
   final date = dateText == null ? null : parseCsvDate(dateText);
 
+  Money? parse(String text) =>
+      parseCsvAmount(text, decimal: mapping.decimalSeparator);
+
   Money? amount;
   if (mapping.isTwoColumn) {
     final debit = _cell(row, mapping.debitColumn);
     final credit = _cell(row, mapping.creditColumn);
-    final debitAmount = debit == null ? null : Money.tryParse(debit)?.abs;
-    final creditAmount = credit == null ? null : Money.tryParse(credit)?.abs;
+    final debitAmount = debit == null ? null : parse(debit)?.abs;
+    final creditAmount = credit == null ? null : parse(credit)?.abs;
     if (creditAmount != null && creditAmount.isPositive) {
       amount = creditAmount;
     } else if (debitAmount != null && debitAmount.isPositive) {
@@ -178,7 +271,7 @@ CsvImportRow parseCsvRow(List<dynamic> row, CsvColumnMapping mapping) {
     }
   } else {
     final text = _cell(row, mapping.amountColumn);
-    final parsed = text == null ? null : Money.tryParse(text);
+    final parsed = text == null ? null : parse(text);
     amount = (parsed == null || parsed.isZero) ? null : parsed;
   }
 

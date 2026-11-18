@@ -1,3 +1,4 @@
+import 'package:csv/csv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:xpenc/core/money.dart';
 import 'package:xpenc/features/data_export/csv_import.dart';
@@ -48,16 +49,24 @@ void main() {
     });
 
     test('finds a Category column', () {
-      final mapping = guessMapping(['Date', 'Description', 'Amount', 'Category']);
+      final mapping = guessMapping([
+        'Date',
+        'Description',
+        'Amount',
+        'Category',
+      ]);
       expect(mapping, isNotNull);
       expect(mapping!.categoryColumn, 3);
     });
 
-    test('leaves categoryColumn null when there is no category-shaped column', () {
-      final mapping = guessMapping(['Date', 'Description', 'Amount']);
-      expect(mapping, isNotNull);
-      expect(mapping!.categoryColumn, isNull);
-    });
+    test(
+      'leaves categoryColumn null when there is no category-shaped column',
+      () {
+        final mapping = guessMapping(['Date', 'Description', 'Amount']);
+        expect(mapping, isNotNull);
+        expect(mapping!.categoryColumn, isNull);
+      },
+    );
   });
 
   group('parseCsvDate', () {
@@ -75,6 +84,23 @@ void main() {
 
     test('parses "09 Jul 2026"', () {
       expect(parseCsvDate('09 Jul 2026'), DateTime(2026, 7, 9));
+    });
+
+    test('parses middle-European dd.MM.yyyy (GitHub #206)', () {
+      expect(parseCsvDate('16.11.2026'), DateTime(2026, 11, 16));
+    });
+
+    test('parses single-digit d.M.yyyy and two-digit dd.MM.yy', () {
+      expect(parseCsvDate('1.2.2026'), DateTime(2026, 2, 1));
+      expect(parseCsvDate('16.11.26'), DateTime(2026, 11, 16));
+    });
+
+    test('still parses dd-MM-yyyy from the #207 file', () {
+      expect(parseCsvDate('16-11-2026'), DateTime(2026, 11, 16));
+    });
+
+    test('rejects an impossible dot date', () {
+      expect(parseCsvDate('32.13.2026'), isNull);
     });
 
     test('returns null for unparseable text', () {
@@ -174,6 +200,115 @@ void main() {
     test('a blank category cell parses as null', () {
       final row = parseCsvRow(['09/07/2026', 'Swiggy', '-500.00', ''], mapping);
       expect(row.category, isNull);
+    });
+  });
+
+  group('parseCsvAmount', () {
+    const comma = CsvDecimalSeparator.comma;
+
+    test('a decimal comma reads as cents, not thousands (GitHub #207)', () {
+      expect(parseCsvAmount('-2,10', decimal: comma), Money.fromRupees(-2.10));
+    });
+
+    test('European thousands dots are dropped', () {
+      expect(
+        parseCsvAmount('1.234.567,89', decimal: comma),
+        Money.fromRupees(1234567.89),
+      );
+      expect(parseCsvAmount('1.234', decimal: comma), Money.fromRupees(1234));
+    });
+
+    test('dot mode keeps the old behaviour, Indian grouping included', () {
+      expect(parseCsvAmount('1,25,000.50'), Money.fromRupees(125000.50));
+      expect(parseCsvAmount('-500.00'), Money.fromRupees(-500));
+    });
+
+    test('ignores currency symbols and codes', () {
+      expect(
+        parseCsvAmount('€ -2,10 EUR', decimal: comma),
+        Money.fromRupees(-2.10),
+      );
+      expect(parseCsvAmount('₹1,250.50'), Money.fromRupees(1250.50));
+    });
+
+    test('returns null for text with no number', () {
+      expect(parseCsvAmount('n/a'), isNull);
+      expect(parseCsvAmount('', decimal: comma), isNull);
+    });
+  });
+
+  group('detectDecimalSeparator', () {
+    test('a decimal comma file is detected (GitHub #207)', () {
+      expect(
+        detectDecimalSeparator(['-2,10', '15,00', '-1.234,56']),
+        CsvDecimalSeparator.comma,
+      );
+    });
+
+    test('repeated dots mean European grouping', () {
+      expect(detectDecimalSeparator(['1.234.567']), CsvDecimalSeparator.comma);
+    });
+
+    test('Indian / US files stay on dot', () {
+      expect(
+        detectDecimalSeparator(['1,25,000.00', '-500.00', '2,000']),
+        CsvDecimalSeparator.dot,
+      );
+    });
+
+    test('whole numbers or ambiguous cells keep the dot default', () {
+      expect(detectDecimalSeparator(['500', '-20']), CsvDecimalSeparator.dot);
+      expect(detectDecimalSeparator(['1.234']), CsvDecimalSeparator.dot);
+      expect(detectDecimalSeparator(const []), CsvDecimalSeparator.dot);
+    });
+
+    test('the majority wins over a stray odd cell', () {
+      expect(
+        detectDecimalSeparator(['-2,10', '3,50', '7.5']),
+        CsvDecimalSeparator.comma,
+      );
+    });
+
+    test('reads only the mapped amount columns', () {
+      const mapping = CsvColumnMapping(dateColumn: 0, debitColumn: 2);
+      expect(
+        detectDecimalSeparatorForRows([
+          ['16.11.2026', '1,000.00 note', '12,50'],
+          ['17.11.2026', '9.99 again', '3,10'],
+        ], mapping),
+        CsvDecimalSeparator.comma,
+      );
+    });
+  });
+
+  group('parseCsvRow — European file (GitHub #206, #207)', () {
+    test('the exact #207 file imports as 2.10, not 210', () {
+      // Verbatim from the issue: semicolon-delimited, decimal comma.
+      final decoded = Csv().decode('date; Amount;\n16-11-2026;-2,10;EUR\n');
+      final headers = decoded.first;
+      final rows = decoded.skip(1).toList();
+      final guess = guessMapping(headers)!;
+      final mapping = CsvColumnMapping(
+        dateColumn: guess.dateColumn,
+        amountColumn: guess.amountColumn,
+        decimalSeparator: detectDecimalSeparatorForRows(rows, guess),
+      );
+      expect(mapping.decimalSeparator, CsvDecimalSeparator.comma);
+      final row = parseCsvRow(rows.single, mapping);
+      expect(row.date, DateTime(2026, 11, 16));
+      expect(row.amount, Money.fromRupees(-2.10));
+    });
+
+    test('dot dates and comma amounts together', () {
+      const mapping = CsvColumnMapping(
+        dateColumn: 0,
+        noteColumn: 1,
+        amountColumn: 2,
+        decimalSeparator: CsvDecimalSeparator.comma,
+      );
+      final row = parseCsvRow(['16.11.2026', 'REWE', '-1.234,56'], mapping);
+      expect(row.date, DateTime(2026, 11, 16));
+      expect(row.amount, Money.fromRupees(-1234.56));
     });
   });
 }

@@ -48,6 +48,16 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 - **Archived goals & loans** (Goals & Loans → archive button). Archived
   goals and loans now have their own list, with **Restore**. They used to
   be reachable only from Accounts → Archived.
+- **CSV import reads European dates** (#206). `16.11.2026`, `1.2.2026`
+  and `16.11.26` now import, alongside the slash and dash dates that
+  already worked.
+
+### Fixed
+- **CSV import reads decimal commas** (#207). A European statement's
+  `-2,10` imported as 210.00. It's 2.10 now. The importer looks at the
+  file's amounts and picks `1,234.56` or `1.234,56` for you. You can switch
+  it under **Amounts are written as** and check the preview before
+  importing.
 
 ## [1.6.6] — 2026-11-15
 

@@ -1357,6 +1357,8 @@
   "Debit / withdrawal",
   "Credit / deposit",
   "Amount (negative = money out, positive = money in)",
+  "Amounts are written as",
+  "Picked from the file. Check the preview below: if an amount looks 100 times too big, switch this.",
   "Preview",
   "Import {0} rows",
   "Unrecognised date",

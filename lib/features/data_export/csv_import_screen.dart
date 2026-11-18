@@ -50,6 +50,7 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
   int? _amountColumn;
   int? _debitColumn;
   int? _creditColumn;
+  CsvDecimalSeparator _decimalSeparator = CsvDecimalSeparator.dot;
 
   int? _accountId;
   bool _busy = false;
@@ -66,6 +67,7 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
         categoryColumn: _categoryColumn,
         debitColumn: _debitColumn,
         creditColumn: _creditColumn,
+        decimalSeparator: _decimalSeparator,
       );
     }
     if (_amountColumn == null) return null;
@@ -74,7 +76,18 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
       noteColumn: _noteColumn,
       categoryColumn: _categoryColumn,
       amountColumn: _amountColumn,
+      decimalSeparator: _decimalSeparator,
     );
+  }
+
+  /// Re-reads the separator from whichever amount columns are now mapped —
+  /// run after any change to them, so pointing at a different column
+  /// re-detects instead of keeping a stale guess. GitHub #207.
+  void _redetectDecimalSeparator() {
+    final mapping = _mapping;
+    final rows = _dataRows;
+    if (mapping == null || rows == null) return;
+    _decimalSeparator = detectDecimalSeparatorForRows(rows, mapping);
   }
 
   Future<void> _pickFile() async {
@@ -142,6 +155,8 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
       _amountColumn = guess?.amountColumn;
       _debitColumn = guess?.debitColumn;
       _creditColumn = guess?.creditColumn;
+      _decimalSeparator = CsvDecimalSeparator.dot;
+      _redetectDecimalSeparator();
     });
   }
 
@@ -260,6 +275,7 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
               amountColumn: _amountColumn,
               debitColumn: _debitColumn,
               creditColumn: _creditColumn,
+              decimalSeparator: _decimalSeparator,
               accountId: _accountId,
               busy: _busy,
               canImport: _mapping != null && _accountId != null,
@@ -275,10 +291,24 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
               onNoteColumnChanged: (v) => setState(() => _noteColumn = v),
               onCategoryColumnChanged: (v) =>
                   setState(() => _categoryColumn = v),
-              onTwoColumnModeChanged: (v) => setState(() => _twoColumnMode = v),
-              onAmountColumnChanged: (v) => setState(() => _amountColumn = v),
-              onDebitColumnChanged: (v) => setState(() => _debitColumn = v),
-              onCreditColumnChanged: (v) => setState(() => _creditColumn = v),
+              onTwoColumnModeChanged: (v) => setState(() {
+                _twoColumnMode = v;
+                _redetectDecimalSeparator();
+              }),
+              onAmountColumnChanged: (v) => setState(() {
+                _amountColumn = v;
+                _redetectDecimalSeparator();
+              }),
+              onDebitColumnChanged: (v) => setState(() {
+                _debitColumn = v;
+                _redetectDecimalSeparator();
+              }),
+              onCreditColumnChanged: (v) => setState(() {
+                _creditColumn = v;
+                _redetectDecimalSeparator();
+              }),
+              onDecimalSeparatorChanged: (v) =>
+                  setState(() => _decimalSeparator = v),
               onAccountChanged: (v) => setState(() => _accountId = v),
               onImport: _import,
               onPickDifferentFile: _pickFile,
@@ -363,6 +393,7 @@ class _MappingForm extends StatelessWidget {
     required this.amountColumn,
     required this.debitColumn,
     required this.creditColumn,
+    required this.decimalSeparator,
     required this.accountId,
     required this.busy,
     required this.canImport,
@@ -374,6 +405,7 @@ class _MappingForm extends StatelessWidget {
     required this.onAmountColumnChanged,
     required this.onDebitColumnChanged,
     required this.onCreditColumnChanged,
+    required this.onDecimalSeparatorChanged,
     required this.onAccountChanged,
     required this.onImport,
     required this.onPickDifferentFile,
@@ -389,6 +421,7 @@ class _MappingForm extends StatelessWidget {
   final int? amountColumn;
   final int? debitColumn;
   final int? creditColumn;
+  final CsvDecimalSeparator decimalSeparator;
   final int? accountId;
   final bool busy;
   final bool canImport;
@@ -400,6 +433,7 @@ class _MappingForm extends StatelessWidget {
   final ValueChanged<int?> onAmountColumnChanged;
   final ValueChanged<int?> onDebitColumnChanged;
   final ValueChanged<int?> onCreditColumnChanged;
+  final ValueChanged<CsvDecimalSeparator> onDecimalSeparatorChanged;
   final ValueChanged<int?> onAccountChanged;
   final VoidCallback onImport;
   final VoidCallback onPickDifferentFile;
@@ -521,6 +555,34 @@ class _MappingForm extends StatelessWidget {
                 allowNone: false,
                 onChanged: busy ? null : onAmountColumnChanged,
               ),
+            const SizedBox(height: 16),
+            Tr('Amounts are written as', style: theme.textTheme.labelLarge),
+            const SizedBox(height: 8),
+            SegmentedButton<CsvDecimalSeparator>(
+              segments: const [
+                ButtonSegment(
+                  value: CsvDecimalSeparator.dot,
+                  label: Text('1,234.56'),
+                ),
+                ButtonSegment(
+                  value: CsvDecimalSeparator.comma,
+                  label: Text('1.234,56'),
+                ),
+              ],
+              selected: {decimalSeparator},
+              showSelectedIcon: false,
+              onSelectionChanged: busy
+                  ? null
+                  : (s) => onDecimalSeparatorChanged(s.first),
+            ),
+            const SizedBox(height: 4),
+            Tr(
+              'Picked from the file. Check the preview below: if an amount '
+              'looks 100 times too big, switch this.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
             if (previewRows.isNotEmpty) ...[
               const SizedBox(height: 20),
               Tr('Preview', style: theme.textTheme.labelLarge),

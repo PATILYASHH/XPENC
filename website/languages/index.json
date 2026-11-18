@@ -2,7 +2,7 @@
  "format": "xpenc-language-index",
  "version": 1,
  "minAppVersion": "1.6.6",
- "strings": 3081,
+ "strings": 3225,
  "languages": [
   {
    "code": "en",
@@ -45,9 +45,9 @@
    "nativeName": "বাংলা",
    "builtIn": false,
    "coverage": 99,
-   "strings": 3055,
+   "strings": 3196,
    "file": "packs/xpenc-language-bn.json",
-   "bytes": 429425
+   "bytes": 452697
   },
   {
    "code": "fr",
