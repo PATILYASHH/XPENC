@@ -79,8 +79,38 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 - **CSV import reads European dates** (#206). `16.11.2026`, `1.2.2026`
   and `16.11.26` now import, alongside the slash and dash dates that
   already worked.
+- **A person's entry opens its own page.** Tapping an entry in someone's
+  history now shows everything about it: the account, due date, group,
+  tags and note, and what the balance was right after it. Share sends a
+  receipt of just that entry as an image or PDF. Edit and Delete are in the
+  top bar. Holding an entry still opens the edit sheet straight away.
+- **Exo icons.** The icon library is now Exo icons, with about 290 icons in
+  14 sections (food, transport, home and bills, faith and more). It also
+  has an iOS-style set and about 70 brand logos for subscriptions, apps,
+  cards and wallets (Spotify, YouTube, Visa, PayPal and more). Search looks
+  through all of them, and a section name finds its whole section, so
+  "food" brings up every food icon. Icons you already picked look the same.
 
 ### Changed
+- **Transactions opens on this month.** The card over the list shows the
+  month's entries, money in and money out instead of all-time totals. Use
+  ‹ › or swipe the card to change month, or tap the month for a picker
+  where a dot marks each month that has entries. It also has **All time**.
+  Filters' date options are now Month, Week, Custom and All. When the list
+  covers more than one month, each month gets a header with its own totals.
+  Searching and the Linked view still look through every month.
+- **Persons: Pay and Request moved to the top bar.** The payment buttons
+  are now one Pay (or Request) button next to Share. It opens a sheet with
+  UPI, PayPal, Venmo, Cash App and Revolut. A method that isn't set up says
+  what's missing, and tapping it takes you where to add it.
+- **Persons: history by month.** A person's entries are grouped under each
+  month's name, newest first.
+- **Bouncier, smoother motion.** Tapping ➕ grows Add Transaction out of
+  the button on a soft spring, in every theme, and Back folds it into the
+  ➕ again. Tab icons dip under your finger and spring back with a small
+  bounce, and the Glass tab highlight lands with a little give. The Glass
+  ➕ pops back in after a sheet closes instead of sliding out from under
+  the bar.
 - **Quicker, smoother opening animations.** A card zooming into its page
   takes 340 ms instead of 500, pages growing out of a bar 460 ms instead of
   720, and sheets drop the still tail at their end. The zoom also stops
