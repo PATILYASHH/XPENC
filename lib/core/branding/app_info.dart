@@ -20,7 +20,7 @@ class AppInfo {
 
   // ── Version ────────────────────────────────────────────────────────────────
   static const version = '1.6.7';
-  static const buildNumber = 29;
+  static const buildNumber = 30;
 
   /// `1.0.0 (build 1)` — the string a bug report should quote.
   static const versionLabel = '$version (build $buildNumber)';
