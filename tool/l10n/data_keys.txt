@@ -338,3 +338,11 @@ Optional Local AI runs on your phone: ask "Where did my money go?" or tap Explai
 Sharing in, made smarter
 Share a bank message or screenshot → XPENC
 Categorise now starts on the category you used for that payee before. With Local AI on, it also reads messages and screenshots XPENC couldn't, and suggests a category. You still check and tap Add.
+That backup was encrypted by a newer XPENC. Update XPENC to restore it.
+That encrypted backup is damaged.
+Where your money is
+Dashboard → tap Total money
+Every account by kind, each with its share, what you own against what you owe, goal and loan progress, and what's between you and people. Tap any account to open it.
+Encrypted backups
+Backup & Restore → Encrypt backups
+Lock every backup with a password, so anyone else with the file sees only scrambled data. This phone opens them without asking; anywhere else asks for the password. Keep it safe: it can't be reset.

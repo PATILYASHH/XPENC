@@ -11,6 +11,25 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 ## [1.6.7] — beta
 
 ### Added
+- **Encrypted backups** (#41, optional). Backup & Restore → **Encrypt
+  backups** locks every backup from then on with a password you pick
+  (AES-256-GCM, key from PBKDF2-HMAC-SHA256 at 600,000 rounds). The file
+  keeps its `DDMMYYXPENCEBACKUP.json` name, so automatic backups, retention,
+  Share and Connector work as before, but anyone else with the file (a file
+  manager, a cloud copy, Connector's GitHub repo) sees only scrambled data.
+  Restoring on the same phone needs no password; anywhere else XPENC asks
+  for it, then remembers it for the next backup from that phone. There's
+  no way to reset the password. Backups made before you turn it on stay
+  readable. Not available on XPENC web, though web can still open an
+  encrypted backup with Import from file.
+- **Total money, taken apart.** Tapping the dashboard's Total money card
+  now zooms into a page of where that money is: every account by kind
+  (cash, bank, prepaid, goals, cards, pay later, loans) with each kind's
+  share and subtotal, what you own against what you owe, goal and loan
+  progress, foreign accounts in your own currency, and what's between you
+  and people (shown apart, since it isn't in the total). It follows the
+  dashboard's month. The card used to open Customize dashboard, which keeps
+  its link at the foot of the dashboard.
 - **Local AI, meet Exo** (optional, Android). Settings → **Local AI**
   turns on **Exo**, the one assistant of every ExoSynk Labs app (✨ Ask Exo
   on the Dashboard, **Explain my month** in Stats): ask about your money in
@@ -60,6 +79,20 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 - **CSV import reads European dates** (#206). `16.11.2026`, `1.2.2026`
   and `16.11.26` now import, alongside the slash and dash dates that
   already worked.
+
+### Changed
+- **Quicker, smoother opening animations.** A card zooming into its page
+  takes 340 ms instead of 500, pages growing out of a bar 460 ms instead of
+  720, and sheets drop the still tail at their end. The zoom also stops
+  drawing its window once the page covers it, and Glass's lens shader on a
+  growing sheet or page stops once it's past bar size, so far fewer frames
+  drop on the way.
+- **Glass: Transactions' filter chips** are now the same glass as every
+  card, without a blur and a glow of their own; the chosen one fills with
+  the accent.
+- **Glass: Dashboard's top bar** no longer runs the title into the buttons
+  when it lands there: the month folds into its calendar icon as you
+  scroll, and the title fades before it can reach the buttons.
 
 ### Fixed
 - **CSV import reads decimal commas** (#207). A European statement's

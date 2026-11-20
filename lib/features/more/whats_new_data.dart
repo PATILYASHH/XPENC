@@ -17,7 +17,9 @@ class WhatsNewEntry {
     required String description,
     this.aboutConectr = false,
     this.androidOnly = false,
-  }) : _title = title, _location = location, _description = description;
+  }) : _title = title,
+       _location = location,
+       _description = description;
 
   final IconData icon;
   final String _title;
@@ -47,6 +49,25 @@ List<WhatsNewEntry> get whatsNewEntries => [
 ];
 
 const _whatsNewEntries = <WhatsNewEntry>[
+  WhatsNewEntry(
+    icon: Icons.account_balance_wallet_outlined,
+    title: 'Where your money is',
+    location: 'Dashboard → tap Total money',
+    description:
+        'Every account by kind, each with its share, what you own against '
+        "what you owe, goal and loan progress, and what's between you and "
+        'people. Tap any account to open it.',
+  ),
+  WhatsNewEntry(
+    icon: Icons.lock_outline_rounded,
+    title: 'Encrypted backups',
+    location: 'Backup & Restore → Encrypt backups',
+    description:
+        'Lock every backup with a password, so anyone else with the file '
+        'sees only scrambled data. This phone opens them without asking; '
+        "anywhere else asks for the password. Keep it safe: it can't be "
+        'reset.',
+  ),
   WhatsNewEntry(
     icon: Icons.auto_awesome_outlined,
     title: 'Sharing in, made smarter',
@@ -103,8 +124,7 @@ const _whatsNewEntries = <WhatsNewEntry>[
     icon: Icons.folder_outlined,
     title: 'Pick your backup folder',
     location: 'Backup & Restore → Backup folder',
-    description:
-        'Any folder inside Download, like Download/backup/xpenc.',
+    description: 'Any folder inside Download, like Download/backup/xpenc.',
   ),
   WhatsNewEntry(
     icon: Icons.translate_rounded,
