@@ -123,6 +123,7 @@ dependencies:
   # Renders the QR code an authenticator app scans to add the TOTP secret.
   qr_flutter: ^4.1.0
   flutter_contacts: 2.1.0
+  font_awesome_flutter: ^11.0.0
 
 dev_dependencies:
   flutter_test:

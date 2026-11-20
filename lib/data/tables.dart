@@ -519,7 +519,7 @@ class Transactions extends Table {
 
   /// A per-transaction visual marker, independent of [categoryId] — picked
   /// from the Add/Edit screen's icon/emoji button next to the tags button.
-  /// Two encodings share this one column: an XPENC icon-library pick is
+  /// Two encodings share this one column: an Exo icons pick is
   /// stored as `"icon:<AppIcons key>"` (see
   /// `CustomIconBadge.encodeIconKey`); anything else is the raw emoji the
   /// user typed via their own keyboard. Null means no custom marker — the

@@ -1157,8 +1157,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           children: [
             AppListTile(
               leading: const AppIcon(Icons.grid_view_rounded),
-              title: const Tr('XPENC icon'),
-              subtitle: const Tr('Pick from the app\'s own icon library'),
+              title: const Tr('Exo icons'),
+              subtitle: const Tr('Hundreds of icons, iOS-style ones and brand logos'),
               onTap: () =>
                   Navigator.of(sheetContext).pop(_CustomIconSource.library),
             ),

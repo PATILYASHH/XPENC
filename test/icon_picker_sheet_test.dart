@@ -118,10 +118,11 @@ void main() {
       await settleSheet(tester);
       expect(tester.takeException(), isNull);
       expect(find.text('Frequently used'), findsOneWidget);
-      // 3, not 2: the "Frequently used" row, the "All icons" row, and the
-      // account sheet's own field preview underneath — still mounted below
-      // this stacked modal sheet.
-      expect(find.byIcon(Icons.coffee_outlined), findsNWidgets(3));
+      // The "Frequently used" row and the account sheet's own field preview
+      // underneath — still mounted below this stacked modal sheet. (Coffee's
+      // own Food & drink section is further down, built only once scrolled
+      // to.)
+      expect(find.byIcon(Icons.coffee_outlined), findsNWidgets(2));
 
       await unmount(tester);
     },
@@ -142,11 +143,40 @@ void main() {
       await settleSheet(tester);
       expect(tester.takeException(), isNull);
       expect(find.text('Search icons'), findsOneWidget);
-      expect(find.text('All icons'), findsOneWidget);
+      expect(find.text('Exo icons'), findsOneWidget);
+      expect(find.text('Money & accounts'), findsOneWidget);
+
+      // The other libraries are one tap away.
+      await tester.tap(find.text('Brands'));
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      expect(find.text('Apps, services & cards'), findsOneWidget);
+      await tester.tap(find.text('iOS'));
+      await tester.pump();
+      expect(find.text('iOS style'), findsOneWidget);
 
       await unmount(tester);
     },
   );
+
+  test('AppIcons: every library resolves, old keys keep their glyphs', () {
+    expect(AppIcons.allKeys.first, 'cash');
+    expect(AppIcons.resolve('coffee'), Icons.coffee_outlined);
+    expect(AppIcons.resolve('store'), Icons.storefront_outlined);
+    for (final library in IconLibrary.values) {
+      final keys = AppIcons.keysOf(library);
+      expect(keys, isNotEmpty);
+      for (final k in keys) {
+        expect(AppIcons.isKnown(k), isTrue, reason: k);
+        expect(AppIcons.resolve(k), isNot(AppIcons.fallback), reason: k);
+        expect(AppIcons.libraryOf(k), library, reason: k);
+        // An icon key also goes into a 40-character column as `icon:<key>`.
+        expect(k.length + 5, lessThanOrEqualTo(40), reason: k);
+      }
+    }
+    expect(AppIcons.isKnown('no_such_icon'), isFalse);
+    expect(AppIcons.labelOf('brand.google_play'), 'Google play');
+  });
 
   test('AppIcons: an emoji key round-trips and never reads as an icon', () {
     final key = AppIcons.encodeEmoji('🍕');

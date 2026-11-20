@@ -8,7 +8,8 @@ import 'custom_icon_badge.dart';
 import 'nav_bar_inset.dart';
 import '../../core/l10n/l10n.dart';
 
-/// Opens the icon picker and resolves to the chosen key, or `null` if the
+/// Opens the Exo icons picker — Exo's own library in sections, an iOS-style
+/// set and brand logos, all searchable — and resolves to the chosen key, or `null` if the
 /// sheet was dismissed without a pick. [accentColor] tints the selected tile
 /// and the "Frequently used" row — pass whatever colour the caller's own
 /// entity (category, account, ...) is using, so the preview matches what
@@ -129,24 +130,28 @@ class _IconPickerSheetState extends ConsumerState<_IconPickerSheet> {
   final _controller = TextEditingController();
   String _query = '';
 
+  /// The library being browsed — the one the current icon is from.
+  late IconLibrary _library = widget.selected == null
+      ? IconLibrary.exo
+      : AppIcons.libraryOf(widget.selected!);
+
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
 
-  /// "car_repair" -> "Car repair" — the keys are already short, descriptive
-  /// slugs, so a plain underscore swap reads fine without a separate label
-  /// table to keep in sync with `AppIcons`.
-  static String _label(String key) {
-    final spaced = key.replaceAll('_', ' ');
-    return spaced[0].toUpperCase() + spaced.substring(1);
-  }
-
+  /// A search matches an icon's name or its Exo section's ("food" brings up
+  /// every food icon), across every library at once.
   List<String> _filter(List<String> keys) {
     final q = _query.trim().toLowerCase();
     if (q.isEmpty) return keys;
-    return keys.where((k) => _label(k).toLowerCase().contains(q)).toList();
+    return keys.where((k) {
+      if (AppIcons.labelOf(k).toLowerCase().contains(q)) return true;
+      final section = AppIcons.sectionOf(k);
+      return section != null &&
+          exoSectionLabel(section).toLowerCase().contains(q);
+    }).toList();
   }
 
   void _pick(String key) {
@@ -186,18 +191,76 @@ class _IconPickerSheetState extends ConsumerState<_IconPickerSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final accent = widget.accentColor ?? theme.colorScheme.secondary;
+    final searching = _query.trim().isNotEmpty;
     // Frequent keys can outlive an icon that's since been removed from
     // AppIcons — drop anything that no longer resolves rather than showing a
     // fallback circle for a key that isn't pickable any more.
     final frequent = _filter(
-      ref
-          .watch(frequentIconKeysProvider)
-          .where(AppIcons.allKeys.contains)
-          .toList(),
+      ref.watch(frequentIconKeysProvider).where(AppIcons.isKnown).toList(),
     );
-    final all = _filter(AppIcons.allKeys);
-    final showEmoji = widget.allowEmoji && _query.trim().isEmpty;
+    final results = searching ? _filter(AppIcons.allKeys) : const <String>[];
+    final showEmoji = widget.allowEmoji && !searching;
     final emoji = showEmoji ? _knownEmojiKeys() : const <String>[];
+
+    final slivers = <Widget>[
+      if (showEmoji) ...[
+        _label(theme, tr('Emoji')),
+        _grid([null, ...emoji], accent, theme),
+      ],
+      if (frequent.isNotEmpty) ...[
+        _label(theme, tr('Frequently used')),
+        _grid(frequent, accent, theme),
+      ],
+      if (searching) ...[
+        _label(theme, tr('Results')),
+        if (results.isEmpty)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Text(
+                tr('No icon matches "{0}".', [_query]),
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          )
+        else
+          _grid(results, accent, theme),
+      ] else
+        ...switch (_library) {
+          IconLibrary.exo => [
+            for (final (section, keys) in AppIcons.exoSections) ...[
+              _label(theme, exoSectionLabel(section)),
+              _grid(keys, accent, theme),
+            ],
+          ],
+          IconLibrary.ios => [
+            _label(theme, tr('iOS style')),
+            _grid(AppIcons.keysOf(IconLibrary.ios), accent, theme),
+          ],
+          IconLibrary.brands => [
+            _label(theme, tr('Apps, services & cards')),
+            _grid(AppIcons.keysOf(IconLibrary.brands), accent, theme),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 14),
+                child: Text(
+                  tr(
+                    'Logos belong to their owners. Brand icons by Font '
+                    'Awesome (CC BY 4.0).',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        },
+    ];
 
     return ConstrainedBox(
       constraints: BoxConstraints(
@@ -211,7 +274,7 @@ class _IconPickerSheetState extends ConsumerState<_IconPickerSheet> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-              child: Tr('Icon', style: theme.textTheme.titleLarge),
+              child: Tr('Exo icons', style: theme.textTheme.titleLarge),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -232,66 +295,55 @@ class _IconPickerSheetState extends ConsumerState<_IconPickerSheet> {
                 onChanged: (v) => setState(() => _query = v),
               ),
             ),
-            const SizedBox(height: 4),
-            Flexible(
-              child: all.isEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Text(
-                        tr('No icon matches "{0}".', [_query]),
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
+            // Search looks through every library, so the switch steps
+            // aside while it's in use.
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              child: searching
+                  ? const SizedBox(width: double.infinity)
+                  : Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: SegmentedButton<IconLibrary>(
+                          segments: const [
+                            ButtonSegment(
+                              value: IconLibrary.exo,
+                              label: Tr('Exo'),
+                            ),
+                            ButtonSegment(
+                              value: IconLibrary.ios,
+                              label: Tr('iOS'),
+                            ),
+                            ButtonSegment(
+                              value: IconLibrary.brands,
+                              label: Tr('Brands'),
+                            ),
+                          ],
+                          selected: {_library},
+                          showSelectedIcon: false,
+                          onSelectionChanged: (s) =>
+                              setState(() => _library = s.first),
                         ),
                       ),
-                    )
-                  : SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 12).plusNavBar(context),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (showEmoji) ...[
-                            _sectionLabel(theme, tr('Emoji')),
-                            const SizedBox(height: 10),
-                            Wrap(
-                              spacing: 12,
-                              runSpacing: 12,
-                              children: [
-                                _addEmojiTile(theme),
-                                for (final k in emoji)
-                                  _iconTile(theme, k, accent),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-                          ],
-                          if (frequent.isNotEmpty) ...[
-                            _sectionLabel(theme, tr('Frequently used')),
-                            const SizedBox(height: 10),
-                            Wrap(
-                              spacing: 12,
-                              runSpacing: 12,
-                              children: [
-                                for (final k in frequent)
-                                  _iconTile(theme, k, accent),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-                          ],
-                          _sectionLabel(
-                            theme,
-                            _query.isEmpty ? tr('All icons') : tr('Results'),
-                          ),
-                          const SizedBox(height: 10),
-                          Wrap(
-                            spacing: 12,
-                            runSpacing: 12,
-                            children: [
-                              for (final k in all) _iconTile(theme, k, accent),
-                            ],
-                          ),
-                        ],
-                      ),
                     ),
+            ),
+            const SizedBox(height: 4),
+            Flexible(
+              child: CustomScrollView(
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(
+                      20,
+                      4,
+                      20,
+                      12,
+                    ).plusNavBar(context),
+                    sliver: SliverMainAxisGroup(slivers: slivers),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -299,35 +351,65 @@ class _IconPickerSheetState extends ConsumerState<_IconPickerSheet> {
     );
   }
 
-  Widget _sectionLabel(ThemeData theme, String text) => Text(
-    text,
-    style: theme.textTheme.labelLarge?.copyWith(
-      color: theme.colorScheme.onSurfaceVariant,
-      fontWeight: FontWeight.w600,
+  Widget _label(ThemeData theme, String text) => SliverToBoxAdapter(
+    child: Padding(
+      padding: const EdgeInsets.only(top: 16, bottom: 10),
+      child: Text(
+        text,
+        style: theme.textTheme.labelLarge?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     ),
   );
 
+  /// Built lazily — the libraries run to hundreds of icons. A null key is
+  /// the "type an emoji" tile.
+  Widget _grid(List<String?> keys, Color accent, ThemeData theme) =>
+      SliverGrid.builder(
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 64,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+        ),
+        itemCount: keys.length,
+        itemBuilder: (context, i) {
+          final key = keys[i];
+          return Center(
+            child: key == null
+                ? _addEmojiTile(theme)
+                : _iconTile(theme, key, accent),
+          );
+        },
+      );
+
   Widget _iconTile(ThemeData theme, String key, Color accent) {
     final isSelected = key == widget.selected;
-    return GestureDetector(
-      onTap: () => _pick(key),
-      child: Container(
-        width: 52,
-        height: 52,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isSelected
-              ? accent.withValues(alpha: 0.15)
-              : theme.colorScheme.surface,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: isSelected ? accent : theme.colorScheme.outline,
-            width: isSelected ? 2.5 : 1,
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: AppIcons.labelOf(key),
+      child: GestureDetector(
+        onTap: () => _pick(key),
+        child: Container(
+          width: 52,
+          height: 52,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: isSelected
+                ? accent.withValues(alpha: 0.15)
+                : theme.colorScheme.surface,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: isSelected ? accent : theme.colorScheme.outline,
+              width: isSelected ? 2.5 : 1,
+            ),
           ),
-        ),
-        child: IconWell.forKey(
-          key,
-          color: isSelected ? accent : theme.colorScheme.onSurfaceVariant,
+          child: IconWell.forKey(
+            key,
+            color: isSelected ? accent : theme.colorScheme.onSurfaceVariant,
+          ),
         ),
       ),
     );
@@ -357,3 +439,21 @@ class _IconPickerSheetState extends ConsumerState<_IconPickerSheet> {
     );
   }
 }
+
+/// An Exo section's name, as the picker heads it.
+String exoSectionLabel(ExoIconSection s) => switch (s) {
+  ExoIconSection.money => tr('Money & accounts'),
+  ExoIconSection.income => tr('Income'),
+  ExoIconSection.food => tr('Food & drink'),
+  ExoIconSection.shopping => tr('Shopping'),
+  ExoIconSection.transport => tr('Transport'),
+  ExoIconSection.home => tr('Home & bills'),
+  ExoIconSection.health => tr('Health & care'),
+  ExoIconSection.leisure => tr('Fun & sport'),
+  ExoIconSection.work => tr('Work & tech'),
+  ExoIconSection.travel => tr('Travel'),
+  ExoIconSection.people => tr('People & faith'),
+  ExoIconSection.finance => tr('Finance'),
+  ExoIconSection.nature => tr('Nature'),
+  ExoIconSection.symbols => tr('Symbols'),
+};
