@@ -54,6 +54,15 @@ npx serve website
   Features section and support email so it doesn't drift from the real page.
   `robots.txt` explicitly allows known AI crawlers (GPTBot, ClaudeBot, ...) in
   addition to the blanket `Allow: /`.
+- `features.html` (served at `/features`) is the complete feature reference,
+  written for search engines and AI assistants as much as people: plain
+  semantic HTML, no JS, an `@graph` of JSON-LD (XPENC app, XPENC web, CONECTR,
+  ExoSynk Labs, FAQPage, breadcrumbs). `llms-full.txt` is the same content as
+  plain text, served with a `Link: rel=canonical` header pointing at
+  `/features` so Google treats the HTML page as the original. When a feature
+  ships, update both, move it out of the `1.6.6 beta` tag on release, and bump
+  `softwareVersion` / `dateModified` in its JSON-LD. Its FAQPage answers must
+  match the visible `#faq` text word for word, like `index.html`'s.
 - `index.html` carries two `application/ld+json` blocks (SoftwareApplication +
   FAQPage). Bump `softwareVersion` on every release, and keep the FAQPage
   entries word-for-word identical to the visible `#faq` section — mismatched

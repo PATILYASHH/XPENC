@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XPENC features — the complete list for Android, iPhone and web</title>
+  <meta name="description" content="Every XPENC feature in detail: accounts, transactions, budgets, Ready to Assign, dues and group splits, goals, loans and EMIs, Auto rules, Modes, multi-currency, stats and XPENC Score, CONECTR backup and sync, platforms, privacy and ExoSynk Labs. Free, open-source, offline-first.">
+  <meta name="keywords" content="XPENC features, XPENC expense tracker, offline expense tracker, budget app, envelope budgeting, Ready to Assign, dues tracker, group expense split, loan EMI tracker, prepayment simulator, recurring transactions, multi-currency expense tracker, trip budget mode, CONECTR, XPENC Connector, ExoSynk Labs, open source finance app, expense tracker Android, expense tracker iPhone, expense tracker web">
+  <meta name="author" content="Yash Patil">
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+  <link rel="canonical" href="https://xpenc.in/features">
+  <link rel="alternate" type="text/plain" title="XPENC — full text for AI assistants" href="https://xpenc.in/llms-full.txt">
+  <meta name="theme-color" content="#050506">
+
+  <link rel="icon" href="assets/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon_32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon_16.png">
+  <link rel="apple-touch-icon" href="assets/apple_touch_icon_180.png">
+
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="XPENC">
+  <meta property="og:title" content="XPENC features — the complete list">
+  <meta property="og:description" content="Every feature of XPENC, the free, open-source, offline-first money app for Android, iPhone and the web — plus CONECTR backup and sync from ExoSynk Labs.">
+  <meta property="og:url" content="https://xpenc.in/features">
+  <meta property="og:image" content="https://xpenc.in/assets/og-cover-2026.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:locale" content="en_IN">
+  <meta property="article:modified_time" content="2026-11-06">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="XPENC features — the complete list">
+  <meta name="twitter:description" content="Every feature of XPENC, the free, offline-first money app for Android, iPhone and the web.">
+  <meta name="twitter:image" content="https://xpenc.in/assets/og-cover-2026.jpg">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #050506;
+      --panel: #0c0c0f;
+      --border: rgba(255,255,255,.08);
+      --ink: #f4f4f6;
+      --muted: #a2a2ac;
+      --faint: #6c6c76;
+      --green: #3ecf8e;
+      --amber: #f2c14e;
+      --font-display: "Space Grotesk", system-ui, sans-serif;
+      --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg); color: var(--ink);
+      font-family: var(--font-body); font-size: 15.5px; line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--faint); text-underline-offset: 3px; }
+    a:hover { text-decoration-color: var(--ink); }
+    ::selection { background: #fff; color: #000; }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 0 28px; }
+
+    nav.top {
+      border-bottom: 1px solid var(--border);
+      background: rgba(5,5,6,.82); backdrop-filter: blur(20px);
+      position: sticky; top: 0; z-index: 10;
+    }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 16px; }
+    .brand {
+      display: flex; align-items: center; gap: 11px; text-decoration: none;
+      font-family: var(--font-display); font-weight: 700; letter-spacing: .18em; font-size: 15px;
+    }
+    .brand img { width: 26px; height: 26px; border-radius: 7px; }
+    .nav-links { display: flex; gap: 18px; font-size: 13.5px; }
+    .nav-links a { color: var(--muted); text-decoration: none; }
+    .nav-links a:hover { color: var(--ink); }
+
+    .crumbs { font-size: 13px; color: var(--faint); padding-top: 26px; }
+    .crumbs ol { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; padding: 0; margin: 0; }
+    .crumbs li + li::before { content: "/"; margin-right: 6px; color: var(--faint); }
+    .crumbs a { color: var(--muted); }
+
+    header.doc { padding: 26px 0 8px; }
+    .kicker {
+      font-family: var(--font-display); font-size: 12px; font-weight: 600;
+      letter-spacing: .22em; text-transform: uppercase; color: var(--green);
+    }
+    h1 { font-family: var(--font-display); font-size: clamp(30px, 5vw, 44px); line-height: 1.15; letter-spacing: -.02em; margin: 10px 0 14px; }
+    .lede { color: var(--muted); font-size: 16.5px; }
+    .meta { color: var(--faint); font-size: 13.5px; margin-top: 10px; }
+
+    main { padding: 18px 0 80px; }
+    h2 {
+      font-family: var(--font-display); font-size: 23px; line-height: 1.3; letter-spacing: -.01em;
+      margin: 48px 0 12px; padding-top: 30px; border-top: 1px solid var(--border);
+      scroll-margin-top: 76px;
+    }
+    h3 { font-family: var(--font-display); font-size: 17px; margin: 26px 0 8px; scroll-margin-top: 76px; }
+    p, ul, ol, dl { margin: 0 0 14px; color: var(--muted); }
+    strong, b, dt { color: var(--ink); }
+    ul, ol { padding-left: 22px; }
+    li { margin-bottom: 6px; }
+    li::marker { color: var(--faint); }
+    code {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: .88em;
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 6px; padding: 1px 6px; color: var(--ink);
+      overflow-wrap: anywhere;
+    }
+    .tag {
+      display: inline-block; font-family: var(--font-display); font-size: 11px; font-weight: 600;
+      letter-spacing: .06em; text-transform: uppercase; line-height: 1;
+      padding: 4px 7px; border-radius: 999px; border: 1px solid var(--border);
+      color: var(--amber); vertical-align: 2px; white-space: nowrap;
+    }
+    .tag.ok { color: var(--green); }
+
+    .facts { display: grid; grid-template-columns: minmax(130px, 200px) 1fr; gap: 0; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: var(--panel); }
+    .facts dt, .facts dd { padding: 11px 16px; border-bottom: 1px solid var(--border); }
+    .facts dt { font-weight: 600; font-size: 14px; }
+    .facts dd { color: var(--muted); }
+    .facts dt:last-of-type, .facts dd:last-of-type { border-bottom: 0; }
+
+    .toc { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 18px 22px; margin: 26px 0 8px; }
+    .toc h2 { margin: 0 0 8px; padding: 0; border: 0; font-size: 15px; letter-spacing: .14em; text-transform: uppercase; color: var(--faint); }
+    .toc ol { columns: 2; column-gap: 28px; margin: 0; }
+    .toc li { break-inside: avoid; margin-bottom: 4px; font-size: 14.5px; }
+    .toc a { color: var(--muted); text-decoration: none; }
+    .toc a:hover { color: var(--ink); }
+
+    .table-wrap { overflow-x: auto; margin: 0 0 18px; border: 1px solid var(--border); border-radius: 14px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14.5px; min-width: 520px; }
+    caption { text-align: left; padding: 12px 16px 0; color: var(--faint); font-size: 13px; }
+    th, td { padding: 9px 14px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { color: var(--ink); font-weight: 600; background: var(--panel); }
+    td { color: var(--muted); }
+    tr:last-child td { border-bottom: 0; }
+    td.y { color: var(--green); }
+    td.n { color: var(--faint); }
+
+    .callout { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 16px 20px; margin: 16px 0 22px; color: var(--muted); }
+    .callout strong { color: var(--green); }
+
+    .faq dt { font-family: var(--font-display); font-size: 16px; margin-top: 18px; }
+    .faq dd { margin: 4px 0 0; }
+
+    footer { border-top: 1px solid var(--border); padding: 34px 0 46px; color: var(--faint); font-size: 13.5px; }
+    .foot-bottom { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+    footer a { color: var(--faint); }
+    footer a:hover { color: var(--ink); }
+
+    @media (max-width: 640px) {
+      .wrap { padding: 0 16px; }
+      .nav-links { display: none; }
+      .toc ol { columns: 1; }
+      .facts { grid-template-columns: 1fr; }
+      .facts dt { border-bottom: 0; padding-bottom: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+
+  <!-- Structured data for search engines and AI assistants. Keep in step with the visible text
+       below (the FAQPage answers must match the #faq section word for word). Bump softwareVersion
+       and dateModified on every release — see website/README.md. -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://exosynk.com/exosynk-labs#org",
+        "name": "ExoSynk Labs",
+        "url": "https://exosynk.com/exosynk-labs",
+        "description": "ExoSynk Labs is the ExoSynk team's family of small, focused, offline-first apps that keep your data on your device: XPENC, CONECTR and FITNS.",
+        "sameAs": ["https://github.com/ExoSynkLabs"],
+        "parentOrganization": {
+          "@type": "Organization",
+          "@id": "https://exosynk.com/#org",
+          "name": "ExoSynk",
+          "url": "https://exosynk.com",
+          "description": "ExoSynk is a virtual electronics lab: design a circuit in the browser, simulate it and watch it work."
+        }
+      },
+      {
+        "@type": "Person",
+        "@id": "https://github.com/PATILYASHH#person",
+        "name": "Yash Patil",
+        "url": "https://github.com/PATILYASHH",
+        "sameAs": ["https://www.linkedin.com/in/patilyasshh/", "https://github.com/PATILYASHH"],
+        "affiliation": { "@id": "https://exosynk.com/exosynk-labs#org" }
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://xpenc.in/#website",
+        "name": "XPENC",
+        "url": "https://xpenc.in/",
+        "publisher": { "@id": "https://exosynk.com/exosynk-labs#org" },
+        "inLanguage": "en"
+      },
+      {
+        "@type": "MobileApplication",
+        "@id": "https://xpenc.in/#app",
+        "name": "XPENC",
+        "alternateName": ["XPENC — Money, tracked honestly.", "XPENC expense tracker"],
+        "url": "https://xpenc.in/",
+        "applicationCategory": "FinanceApplication",
+        "applicationSubCategory": "Personal finance, expense tracker, budget planner",
+        "operatingSystem": "Android 7.0+, iOS 15+",
+        "softwareVersion": "1.6.6",
+        "datePublished": "2026-10-23",
+        "releaseNotes": "https://github.com/PATILYASHH/XPENC/blob/master/CHANGELOG.md",
+        "description": "XPENC is a free, open-source, offline-first personal finance app. It tracks money in, money out and transfers across accounts, with budgets, envelope budgeting, dues and group splits, savings goals, loans with EMI schedules, recurring Auto rules, trip Modes, multi-currency accounts and a 0-100 XPENC Score. All data stays in an on-device SQLite database: no server, no account, no analytics, and Android release builds request no INTERNET permission.",
+        "downloadUrl": [
+          "https://play.google.com/store/apps/details?id=com.yash.xpenc",
+          "https://f-droid.org/packages/com.yash.xpenc/",
+          "https://github.com/PATILYASHH/XPENC/releases/latest",
+          "https://xpenc.in/ios"
+        ],
+        "installUrl": "https://play.google.com/store/apps/details?id=com.yash.xpenc",
+        "permissions": "No INTERNET, SMS, location, microphone or phone permission. Optional: notifications, camera (receipt photos), contacts (people).",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "INR", "availability": "https://schema.org/InStock" },
+        "isAccessibleForFree": true,
+        "license": "https://opensource.org/licenses/MIT",
+        "codeRepository": "https://github.com/PATILYASHH/XPENC",
+        "inLanguage": "en",
+        "author": { "@id": "https://github.com/PATILYASHH#person" },
+        "publisher": { "@id": "https://exosynk.com/exosynk-labs#org" },
+        "image": "https://xpenc.in/assets/og-cover-2026.jpg",
+        "screenshot": [
+          "https://xpenc.in/assets/app/glass-dashboard.webp",
+          "https://xpenc.in/assets/app/dashboard.webp",
+          "https://xpenc.in/assets/app/transactions.webp",
+          "https://xpenc.in/assets/app/budgets.webp",
+          "https://xpenc.in/assets/app/stats.webp",
+          "https://xpenc.in/assets/app/group-split.webp"
+        ],
+        "featureList": [
+          "Money in, money out and transfer tracking with a strict net-worth rule",
+          "Cash, Bank, Card and Prepaid Balance accounts, with debit cards and UPI as linked payment instruments",
+          "Basic, Medium and Pro app levels",
+          "Modes: trip and event sandboxes with budget, limits, allocations, trip wallet, planned costs and an end-of-mode summary",
+          "Per-category budgets with alerts and a custom budget cycle start day",
+          "Ready to Assign envelope (zero-based) budgeting with Rollover and Overflow",
+          "Dues: money lent and borrowed between people, with partial repayments",
+          "Group expense splitting: equal, percentage or manual, with a fewest-payments settle-up plan",
+          "Pay or request via UPI, PayPal, Venmo, Cash App or Revolut, and offline UPI through *99#",
+          "Savings goals, optionally usable as a pocket for money in and out",
+          "Loans with interest rate and tenure: EMI, amortization schedule, interest/principal split and a prepayment simulator",
+          "Recurring Auto rules: daily, weekly, every 2 weeks, monthly or yearly, with promo prices, reminders, Pay now and Skip next",
+          "Credit card statement close day, due day and due-date reminders",
+          "Multi-currency accounts, custom currencies and foreign-currency annotation",
+          "Stats hub with nine modules, Standings and category pages",
+          "XPENC Score: a 0-100 money-management score from seven weighted rules",
+          "Account Reports hub with seven reports",
+          "Customizable dashboard with past-month view",
+          "Share a bank SMS or payment screenshot into the app, parsed on-device (Android)",
+          "CSV bank statement import",
+          "Transaction templates, category templates and a quick actions ring",
+          "Share a transaction, person, group or mode as a PDF or an image card",
+          "Calendar and reminders, shopping lists, payees, tags and tag groups",
+          "Calculators: FD, RD, loan EMI, SIP, lumpsum, PPF, GST and income tax for India, the US, the UK and Germany",
+          "JSON backups with automatic schedules and retention, CSV and PDF export",
+          "PIN, master password and authenticator-app lock with fingerprint or face unlock and a recovery phrase",
+          "Hide amounts, hide single transactions from screenshots, and screenshot blocking (Android)",
+          "Classic, Noir and Liquid Glass themes with light, true-black dark and system modes",
+          "Home screen widgets (Android)",
+          "Backups that restore across Android, iPhone and the web",
+          "Optional backup and sync through the CONECTR companion app"
+        ],
+        "isRelatedTo": [{ "@id": "https://xpenc.in/web#webapp" }, { "@id": "https://xpenc.in/features#conectr-app" }]
+      },
+      {
+        "@type": "WebApplication",
+        "@id": "https://xpenc.in/web#webapp",
+        "name": "XPENC web",
+        "url": "https://xpenc.in/web",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Any",
+        "browserRequirements": "A current version of Chrome, Edge, Firefox or Safari",
+        "description": "The XPENC app in a browser, with a PC layout on computer-sized windows. Works offline after the first visit and keeps its data in that browser. Nothing is sent anywhere unless the built-in Connector is turned on.",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "INR" },
+        "isAccessibleForFree": true,
+        "publisher": { "@id": "https://exosynk.com/exosynk-labs#org" }
+      },
+      {
+        "@type": "MobileApplication",
+        "@id": "https://xpenc.in/features#conectr-app",
+        "name": "CONECTR",
+        "alternateName": ["Connector", "XPENC Connector"],
+        "url": "https://exosynk.com/exosynk-labs#conectr",
+        "downloadUrl": "https://exosynk.com/exosynk-labs#conectr",
+        "applicationCategory": "UtilitiesApplication",
+        "applicationSubCategory": "Backup and sync",
+        "operatingSystem": "Android",
+        "softwareVersion": "1.2.0",
+        "fileSize": "56 MB",
+        "releaseNotes": "https://github.com/PATILYASHH/conectr-releases/releases/tag/v1.2.0",
+        "description": "CONECTR is XPENC's optional backup and sync companion app from ExoSynk Labs. It saves the backup file XPENC makes to a private XPENC-BACKUP repository in the user's own GitHub account and brings it back on their other phone. It never opens XPENC's database; it only moves the backup file.",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "INR" },
+        "isAccessibleForFree": true,
+        "publisher": { "@id": "https://exosynk.com/exosynk-labs#org" },
+        "isRelatedTo": { "@id": "https://xpenc.in/#app" }
+      },
+      {
+        "@type": "WebPage",
+        "@id": "https://xpenc.in/features#webpage",
+        "url": "https://xpenc.in/features",
+        "name": "XPENC features — the complete list for Android, iPhone and web",
+        "isPartOf": { "@id": "https://xpenc.in/#website" },
+        "about": { "@id": "https://xpenc.in/#app" },
+        "mentions": [{ "@id": "https://xpenc.in/features#conectr-app" }, { "@id": "https://xpenc.in/web#webapp" }, { "@id": "https://exosynk.com/exosynk-labs#org" }],
+        "dateModified": "2026-11-06",
+        "inLanguage": "en",
+        "breadcrumb": {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "XPENC", "item": "https://xpenc.in/" },
+            { "@type": "ListItem", "position": 2, "name": "Features", "item": "https://xpenc.in/features" }
+          ]
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://xpenc.in/features#faq",
+        "mainEntity": [
+          { "@type": "Question", "name": "What platforms does XPENC run on?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Android 7.0 and later (Google Play, F-Droid or a direct APK), iPhone on iOS 15 and later (SideStore, AltStore or a sideloaded .ipa, not the App Store), and any current browser at xpenc.in/web. A backup made on one restores on the others." } },
+          { "@type": "Question", "name": "Does XPENC sync between phones?",
+            "acceptedAnswer": { "@type": "Answer", "text": "XPENC itself has no internet access. Sync is done by CONECTR, an optional Android companion app from ExoSynk Labs, which saves XPENC's backup file to a private repo in your own GitHub account and brings it back on your other phone. XPENC web has the same Connector built in." } },
+          { "@type": "Question", "name": "What is the difference between Basic, Medium and Pro in XPENC?",
+            "acceptedAnswer": { "@type": "Answer", "text": "They are app levels, set in Settings → Level & Budgeting. Basic is transactions and people only. Medium, the default, adds accounts, balances, net worth and category budgets. Pro adds Ready to Assign envelope budgeting, budget Rollover and Overflow." } },
+          { "@type": "Question", "name": "What are Modes in XPENC?",
+            "acceptedAnswer": { "@type": "Answer", "text": "A Mode is a trip or an event you switch on. While it is on, everything you add joins it and the whole app shows only that mode: its budget, limits, accounts, people and spends. When it ends you get a summary you can share as a PDF or an image." } },
+          { "@type": "Question", "name": "Does XPENC read my SMS?",
+            "acceptedAnswer": { "@type": "Answer", "text": "No. XPENC does not request the SMS permission. On Android you can share a bank SMS or a payment screenshot into XPENC from the Share sheet, and it is read on the phone." } },
+          { "@type": "Question", "name": "Can XPENC connect to my bank account?",
+            "acceptedAnswer": { "@type": "Answer", "text": "No. XPENC has no bank connection or automatic bank feed. Transactions come from you, from bank messages or screenshots you share in, from a CSV bank statement, or from Auto rules." } },
+          { "@type": "Question", "name": "Is XPENC free?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Yes. XPENC is free, open source under the MIT license, and has no ads, in-app purchases, subscription or paid tier." } },
+          { "@type": "Question", "name": "Who makes XPENC and CONECTR?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Yash Patil, as part of ExoSynk Labs, the ExoSynk team's small, offline-first apps. ExoSynk itself is a browser-based electronics lab at exosynk.com." } }
+        ]
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+
+  <nav class="top" aria-label="Main">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/"><img src="assets/icon_192.png" alt="" width="26" height="26">XPENC</a>
+      <div class="nav-links">
+        <a href="/#download">Download</a>
+        <a href="/web">Web app</a>
+        <a href="/ios">iPhone</a>
+        <a href="#conectr">CONECTR</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <ol>
+        <li><a href="/">XPENC</a></li>
+        <li aria-current="page">Features</li>
+      </ol>
+    </nav>
+
+    <header class="doc">
+      <div class="kicker">Complete feature reference</div>
+      <h1>XPENC features: the complete list</h1>
+      <p class="lede">XPENC is a free, open-source, offline-first personal finance app for Android, iPhone and the web, made by Yash Patil at ExoSynk Labs. This page lists every feature, where it lives in the app, which platforms have it, and what XPENC deliberately does not do. It is written to be read by people, search engines and AI assistants alike.</p>
+      <p class="meta">Last updated <time datetime="2026-11-06">6 November 2026</time> · Stable release <b>1.6.6</b> (15 November 2026) · Features marked <span class="tag">1.6.6</span> are in the beta and not yet in a stable release. A plain-text copy is at <a href="/llms-full.txt">xpenc.in/llms-full.txt</a>.</p>
+    </header>
+
+    <nav class="toc" aria-label="On this page">
+      <h2>On this page</h2>
+      <ol>
+        <li><a href="#summary">XPENC at a glance</a></li>
+        <li><a href="#platforms">Platforms and environments</a></li>
+        <li><a href="#levels">App levels: Basic, Medium, Pro</a></li>
+        <li><a href="#modes">Modes: trips and events</a></li>
+        <li><a href="#accounts">Accounts</a></li>
+        <li><a href="#transactions">Transactions</a></li>
+        <li><a href="#budgets">Budgets and Ready to Assign</a></li>
+        <li><a href="#persons">People, dues and group splits</a></li>
+        <li><a href="#goals-loans">Savings goals and loans</a></li>
+        <li><a href="#auto">Auto rules (recurring)</a></li>
+        <li><a href="#cards">Credit cards</a></li>
+        <li><a href="#currency">Multi-currency</a></li>
+        <li><a href="#stats">Stats, XPENC Score and reports</a></li>
+        <li><a href="#dashboard">Dashboard and customization</a></li>
+        <li><a href="#capture">Faster entry and capture</a></li>
+        <li><a href="#organize">Categories, tags and payees</a></li>
+        <li><a href="#sharing">Sharing, statements and PDFs</a></li>
+        <li><a href="#planning">Calendar, reminders and shopping lists</a></li>
+        <li><a href="#calculators">Calculators</a></li>
+        <li><a href="#backup">Backup, restore and export</a></li>
+        <li><a href="#security">Security and privacy</a></li>
+        <li><a href="#themes">Themes and appearance</a></li>
+        <li><a href="#conectr">CONECTR: backup and sync</a></li>
+        <li><a href="#exosynk-labs">ExoSynk Labs</a></li>
+        <li><a href="#web-tools">Web tools: SheetConv and templates</a></li>
+        <li><a href="#limits">What XPENC does not do</a></li>
+        <li><a href="#releases">Release history</a></li>
+        <li><a href="#faq">FAQ</a></li>
+        <li><a href="#links">Official links</a></li>
+      </ol>
+    </nav>
+
+    <main>
+      <article>
+
+        <section id="summary" aria-labelledby="h-summary">
+          <h2 id="h-summary">XPENC at a glance</h2>
+          <dl class="facts">
+            <dt>Name</dt><dd>XPENC — "Money, tracked honestly." Android package <code>com.yash.xpenc</code>.</dd>
+            <dt>What it is</dt><dd>A personal finance app: expense tracker, budget planner, dues and loan tracker, and net-worth ledger in one.</dd>
+            <dt>Made by</dt><dd>Yash Patil (GitHub <a href="https://github.com/PATILYASHH">PATILYASHH</a>), as part of <a href="#exosynk-labs">ExoSynk Labs</a>.</dd>
+            <dt>Platforms</dt><dd>Android 7.0+, iPhone on iOS 15+, and the web at <a href="/web">xpenc.in/web</a> (Chrome, Edge, Firefox, Safari).</dd>
+            <dt>Price</dt><dd>Free. No ads, no in-app purchases, no subscription, no paid tier.</dd>
+            <dt>License</dt><dd>MIT open source. Code at <a href="https://github.com/PATILYASHH/XPENC">github.com/PATILYASHH/XPENC</a>.</dd>
+            <dt>Versions</dt><dd>Stable 1.6.6 (15 November 2026). New work ships first as a GitHub beta pre-release.</dd>
+            <dt>Where data lives</dt><dd>An on-device SQLite database. Amounts are stored as whole minor units (paise, cents), never as floating point.</dd>
+            <dt>Network access</dt><dd>Android release builds request no INTERNET permission. The iPhone app makes no network requests. XPENC web is offline after the first visit and sends nothing unless its built-in Connector is turned on.</dd>
+            <dt>Sign-up</dt><dd>None. No user account exists.</dd>
+            <dt>Tracking</dt><dd>No analytics, no trackers, no ads, no crash reporting service.</dd>
+            <dt>Language</dt><dd>English.</dd>
+            <dt>Ledger rule</dt><dd>Net worth is the sum of all account balances. A transfer leaves it unchanged, money in raises it, money out lowers it. Lending to a person is not spending, and being repaid is not income.</dd>
+          </dl>
+        </section>
+
+        <section id="platforms" aria-labelledby="h-platforms">
+          <h2 id="h-platforms">Platforms and environments</h2>
+          <p>XPENC is one Flutter codebase that runs in three environments. They share the same data model and the same backup file, so a backup made on Android restores on iPhone or in the browser, and the other way round.</p>
+
+          <h3 id="android">Android</h3>
+          <ul>
+            <li><strong>Requirement:</strong> Android 7.0 (API 24) or later.</li>
+            <li><strong>Where to get it:</strong> <a href="https://play.google.com/store/apps/details?id=com.yash.xpenc">Google Play</a> (automatic updates; first released there with 1.6.2 on 26 September 2026), <a href="https://f-droid.org/packages/com.yash.xpenc/">F-Droid</a> (built from source by F-Droid), or a direct APK per CPU type from <a href="https://github.com/PATILYASHH/XPENC/releases/latest">GitHub Releases</a>, each with <code>SHA256SUMS.txt</code>.</li>
+            <li><strong>Switching store:</strong> each source signs the app with a different key, so Android will not update across them. Back up, uninstall, reinstall from the new source, restore.</li>
+            <li><strong>Android-only extras:</strong> home screen widgets, sharing SMS and screenshots into XPENC, on-device screenshot text recognition, a quick-add notification, screenshot and screen-recording blocking, a Settings → Permissions screen, backups in <code>Download/BACKUP XPENC</code> that survive an uninstall, direct sharing to WhatsApp or Messages, and the CONECTR hand-off.</li>
+          </ul>
+
+          <h3 id="iphone">iPhone</h3>
+          <ul>
+            <li><strong>Requirement:</strong> iOS 15 or later. First iPhone build: 1.6.4, 10 October 2026.</li>
+            <li><strong>Where to get it:</strong> <a href="/ios">SideStore or AltStore</a> by adding the source <code>https://xpenc.in/ios/source.json</code> (new versions arrive there), or the <code>.ipa</code> from GitHub Releases sideloaded with your own Apple ID. XPENC is not on the Apple App Store.</li>
+            <li><strong>Backups:</strong> kept inside the app's own storage, so deleting the app deletes them. Share one to Files or iCloud Drive to keep a copy.</li>
+            <li><strong>Not on iPhone yet:</strong> home screen widgets, sharing into XPENC, reading payment screenshots, screenshot blocking and the quick-add notification.</li>
+          </ul>
+
+          <h3 id="web">XPENC web <span class="tag">preview · 1.6.6</span></h3>
+          <ul>
+            <li><strong>Address:</strong> <a href="/web">xpenc.in/web</a>. Nothing to install. Works in current Chrome, Edge, Firefox and Safari.</li>
+            <li><strong>Offline:</strong> fully offline after the first visit. Data stays in that browser.</li>
+            <li><strong>PC layout:</strong> on a computer-sized window it shows a sidebar with every module, a two-column dashboard, transactions as a table with right-click quick actions, sheets as dialogs, and amounts typed on the keyboard.</li>
+            <li><strong>Backups:</strong> downloaded as the same <code>DDMMYYXPENCEBACKUP.json</code> file the phones make; a phone's backup comes in with Import from file.</li>
+            <li><strong>Sync:</strong> a built-in Connector (Settings → Connector, off until turned on) syncs through the same private GitHub repo as CONECTR on the phones.</li>
+            <li><strong>Not on the web:</strong> everything missing on iPhone, plus notifications, fingerprint or face unlock, phone contacts and USSD payments.</li>
+          </ul>
+
+          <div class="table-wrap">
+            <table>
+              <caption>Feature availability by platform</caption>
+              <thead><tr><th scope="col">Feature</th><th scope="col">Android</th><th scope="col">iPhone</th><th scope="col">Web</th></tr></thead>
+              <tbody>
+                <tr><td>Accounts, transactions, budgets, people, groups, goals, loans, Auto rules, Modes, stats, calculators, themes</td><td class="y">Yes</td><td class="y">Yes</td><td class="y">Yes</td></tr>
+                <tr><td>Backup and restore (same file format everywhere)</td><td class="y">Yes, auto-backup to Downloads</td><td class="y">Yes, in-app; share to Files</td><td class="y">Yes, as downloads</td></tr>
+                <tr><td>Notifications (reminders, budget alerts, due dates)</td><td class="y">Yes</td><td class="y">Yes</td><td class="n">No</td></tr>
+                <tr><td>Fingerprint / face unlock</td><td class="y">Yes</td><td class="y">Yes</td><td class="n">No</td></tr>
+                <tr><td>People from phone contacts</td><td class="y">Yes</td><td class="y">Yes</td><td class="n">No</td></tr>
+                <tr><td>USSD payment (*99#)</td><td class="y">Yes</td><td class="y">Yes</td><td class="n">No</td></tr>
+                <tr><td>Home screen widgets</td><td class="y">Yes (4)</td><td class="n">No</td><td class="n">No</td></tr>
+                <tr><td>Share a bank SMS or screenshot into XPENC</td><td class="y">Yes</td><td class="n">No</td><td class="n">No</td></tr>
+                <tr><td>On-device screenshot text recognition (OCR)</td><td class="y">Yes</td><td class="n">No</td><td class="n">No</td></tr>
+                <tr><td>Block screenshots and screen recording</td><td class="y">Yes</td><td class="n">No</td><td class="n">No</td></tr>
+                <tr><td>Quick-add notification</td><td class="y">Yes</td><td class="n">No</td><td class="n">No</td></tr>
+                <tr><td>Sync via Connector</td><td class="y">Yes, with the CONECTR app</td><td class="n">No</td><td class="y">Yes, built in</td></tr>
+                <tr><td>PC layout (sidebar, table, keyboard entry)</td><td class="n">—</td><td class="n">—</td><td class="y">Yes</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="levels" aria-labelledby="h-levels">
+          <h2 id="h-levels">App levels: Basic, Medium and Pro</h2>
+          <p>An app level is one setting that changes how much of the app shows. It lives in <strong>Settings → Level &amp; Budgeting</strong>. (Before 1.6.5 it was called "App mode"; it was renamed so it is not confused with Modes.)</p>
+          <ul>
+            <li><strong>Basic</strong> — just transactions and people you owe or who owe you. No accounts, balances, budgets or net worth. For tracking spending without setting up a ledger.</li>
+            <li><strong>Medium</strong> (default) — everything in Basic plus accounts (cash, bank, cards, loans, goals), account balances, net worth and category budgets.</li>
+            <li><strong>Pro</strong> — everything in Medium plus <a href="#budgets">Ready to Assign</a> envelope budgeting, budget Rollover (carry unspent budget forward) and Overflow (send one category's overspend to another).</li>
+          </ul>
+        </section>
+
+        <section id="modes" aria-labelledby="h-modes">
+          <h2 id="h-modes">Modes: trips and events as their own environment</h2>
+          <p>A Mode is a trip, a wedding, a festival or any event that you switch <strong>ON</strong>. While it is on, the whole app becomes a sandbox for that event. Location: <strong>More → Modes → New mode</strong>, starting from <em>Trip</em> or <em>Blank</em>. Shipped in 1.6.5.</p>
+          <ul>
+            <li><strong>Setup:</strong> dates (the mode starts on its first day and ends after its last), a budget, the accounts and categories it may use, tags added to every spend, its own categories and tags, which tabs and More modules show, a linked group, and the currency you will spend in.</li>
+            <li><strong>Everything joins it:</strong> spends from Add (a <em>Part of …</em> switch keeps one out), quick add, a detected bank message or a person entry. Auto rules, imports and balance corrections never join.</li>
+            <li><strong>Mode home:</strong> the Dashboard shows <em>Left to spend</em> (budget minus spent minus planned costs still to pay), today's spend, the per-day allowance to stay in budget, limits, accounts, people, planned costs and latest spends.</li>
+            <li><strong>Only the mode's data:</strong> Transactions, Calendar, Stats, Payees and search read only the mode. Budgets shows its limits, Accounts its accounts, ➕ its own templates.</li>
+            <li><strong>People:</strong> pick who is with you. Inside the mode, Persons shows only them and only what happened on the trip, starting from zero. Split an expense equally with mode people from Add; each share becomes a trip due.</li>
+            <li><strong>Account allocations:</strong> give each account an amount for the trip ("₹5,000 of HDFC"). While on it shows what is left of that allocation.</li>
+            <li><strong>Limits:</strong> per day, per spend and per category. Going over asks "save anyway?" and never refuses. Notifications at 80% and 100% of the budget and of each category limit.</li>
+            <li><strong>Trip wallet:</strong> move a set amount into a "&lt;mode&gt; wallet" cash account at the start and move what is left back in one tap at the end.</li>
+            <li><strong>Planned costs:</strong> hotel, tickets and the like, counted against the budget up front. <em>Mark paid</em> opens Add already filled in.</li>
+            <li><strong>Outside the mode:</strong> it is one card in Transactions (for example "Goa trip · 12–18 Oct · −₹18,400") and one slice in Stats. Budgets leave it out; monthly totals include it.</li>
+            <li><strong>Indicator:</strong> a circle in the top-left corner shows the mode that is on, with <em>Full app</em>, its page and <em>End</em>.</li>
+            <li><strong>End-of-mode summary:</strong> total against budget, per day, by category and account, who owes whom, planned costs and the wallet's leftover. Share it as a PDF or an image.</li>
+          </ul>
+        </section>
+
+        <section id="accounts" aria-labelledby="h-accounts">
+          <h2 id="h-accounts">Accounts</h2>
+          <p>Every place money actually lives. Location: <strong>More → Accounts</strong>.</p>
+          <ul>
+            <li><strong>Types:</strong> Cash, Bank, Card (credit cards and pay-later) and Prepaid Balance. Debit cards and UPI are payment instruments linked to a bank account, so the same money is never counted twice. Loans and savings goals also hold balances.</li>
+            <li><strong>Currency per account:</strong> any built-in or custom currency, locked once the first transaction posts.</li>
+            <li><strong>Minimum balance:</strong> an optional floor (for example a bank's minimum-balance rule). XPENC warns before a payment would take the account below it, and never blocks.</li>
+            <li><strong>Correct a balance:</strong> the pencil beside a balance records the gap as one <em>Correction</em> transaction. History is left alone, and a correction is never counted as money in or out.</li>
+            <li><strong>Running balance:</strong> an optional passbook view showing the balance after every entry, matching the statement PDF.</li>
+            <li><strong>Transfer in / Transfer out</strong> on each account's page. Keep "Cash at home (V-ATM)" as its own account and withdraw from it into your wallet like an ATM.</li>
+            <li><strong>Edit</strong> an account's name, colour and icon; leave any account out of the Net worth total.</li>
+            <li><strong>Arrange accounts</strong> by dragging; the Dashboard and Accounts follow the order. <span class="tag">1.6.6</span></li>
+            <li><strong>You own / You owe:</strong> total money split into accounts in credit and accounts in debt (cards, loans). <span class="tag">1.6.6</span></li>
+          </ul>
+        </section>
+
+        <section id="transactions" aria-labelledby="h-transactions">
+          <h2 id="h-transactions">Transactions</h2>
+          <ul>
+            <li><strong>Kinds:</strong> Money in, Money out and Transfer, kept strictly separate, plus lend/borrow movements with people and balance Corrections. (Called Income and Expense before 1.6.5; a refund is not income, so the names changed.)</li>
+            <li><strong>Fields:</strong> amount, account, category and subcategory, payee (or a person as payee), tags and tag groups, note, date and exact time, receipt photo from camera or gallery, a custom icon or emoji, and an optional foreign-currency amount.</li>
+            <li><strong>Split payments:</strong> one purchase paid from more than one account posts as linked transactions. A cash purchase's change can go back to a different account. Related transactions can be linked.</li>
+            <li><strong>Actions:</strong> duplicate, edit, delete, share, create a template from it, or <em>Make recurring</em> to turn it into an Auto rule.</li>
+            <li><strong>Search and filters:</strong> by date, ISO week, account, category, tag and linked status. Each day shows its total.</li>
+            <li><strong>Hide from screenshots:</strong> a per-transaction switch. The row shows as frosted "Hidden · hold to view" everywhere it is listed; hold it to see it.</li>
+            <li>A new transaction starts on the last account used.</li>
+          </ul>
+        </section>
+
+        <section id="budgets" aria-labelledby="h-budgets">
+          <h2 id="h-budgets">Budgets and Ready to Assign</h2>
+          <ul>
+            <li><strong>Category budgets</strong> (Medium and Pro): a limit per category with live progress against the current period. Parent and child budgets are counted without double-counting.</li>
+            <li><strong>Alerts:</strong> an alert level (80% by default) plus an overspend alert. In 1.6.6, <em>Alert me at</em> becomes a set of levels — 50%, 75%, 80%, 90%, 100% or any other — each alerting once a period. <span class="tag">1.6.6</span></li>
+            <li><strong>Budget cycle start day:</strong> start the month on payday (1st to 28th). 1.6.6 extends it to the 31st and adds <em>Last working day</em>. Dashboard, Budgets, Stats and alerts follow the cycle. <span class="tag">1.6.6</span></li>
+            <li><strong>Ready to Assign</strong> (Pro): classic envelope, zero-based budgeting. The money in every on-budget account pools into one figure that you assign to categories before spending it. Turn it on in Settings → Level &amp; Budgeting.</li>
+            <li><strong>Rollover and Overflow</strong> (Pro): carry unspent budget into the next period, or redirect one category's overspend to another.</li>
+            <li>A budget's page links to its category's <em>History</em>.</li>
+          </ul>
+        </section>
+
+        <section id="persons" aria-labelledby="h-persons">
+          <h2 id="h-persons">People, dues and group splits</h2>
+          <p>Who owes you and whom you owe, kept apart from your own spending and out of budget totals. Location: <strong>More → Persons</strong>, with <em>Individual</em> and <em>Group</em> tabs.</p>
+          <ul>
+            <li><strong>Dues:</strong> "They owe you" and "You owe them" entries, partial repayments, tags, and a running balance per person. When money moved through an account, its transaction carries the same tags.</li>
+            <li><strong>People:</strong> add by hand, from phone contacts (stored only on the device, optional) or from your Connector friends. Photos come from contacts or the gallery.</li>
+            <li><strong>People as payees:</strong> a payment to a person shows on their page under "As payee" and never changes what they owe.</li>
+            <li><strong>Groups:</strong> split a shared expense equally, by percentage or by manual amount. Each group shows every member's net share, every pairwise debt and a fewest-payments settle-up plan. Group transactions get a group tag.</li>
+            <li><strong>Pay / Request:</strong> opens UPI (India), PayPal, Venmo, Cash App or Revolut with the amount filled in (non-UPI methods are Beta). Switch each method on in Settings → Payment Support.</li>
+            <li><strong>Pay without internet:</strong> UPI through the <code>*99#</code> USSD menu when there is no data signal (Beta).</li>
+            <li><strong>Settled:</strong> at zero balance XPENC asks Move to Settled, Archive or Keep here. Settled people return on their own once money is owed again.</li>
+            <li><strong>Delete</strong> a person or group with history; the money their entries moved is reversed.</li>
+            <li><strong>Connector friends:</strong> link a person to a CONECTR friend by username ("@username · Connector friend"); the link travels in backups. <span class="tag">1.6.6</span></li>
+          </ul>
+        </section>
+
+        <section id="goals-loans" aria-labelledby="h-goals-loans">
+          <h2 id="h-goals-loans">Savings goals and loans</h2>
+          <p>Location: <strong>More → Goals &amp; Loans</strong>.</p>
+          <h3>Savings goals</h3>
+          <ul>
+            <li>A target amount and optional target date, with contribution history, Add funds and Withdraw.</li>
+            <li>Set up an Auto rule from the goal, pre-filled with the monthly amount that reaches the target on time.</li>
+            <li><strong>Show in Money in / out:</strong> a goal can act as a pocket of your bank account and be picked directly for money in or out, in Auto rules, CSV import and Modes. Off by default.</li>
+          </ul>
+          <h3>Loans and EMIs</h3>
+          <ul>
+            <li>A plain balance-only loan, or a rate-based one with annual interest rate, tenure and start date.</li>
+            <li>For rate-based loans XPENC computes the EMI, total interest, total payable, interest paid so far, the remaining balance month by month and the principal/interest split year by year.</li>
+            <li><strong>Prepayment simulator:</strong> an extra amount per month gives the new debt-free date, interest saved and months saved.</li>
+            <li><strong>Payments:</strong> backdate date and time; every payment is split into interest and principal, and an amount above the scheduled EMI is shown as extra.</li>
+            <li><strong>Auto-pay EMI:</strong> offered when the loan is created. The final EMI is trimmed to what is outstanding and the rule pauses once the loan is paid off.</li>
+          </ul>
+        </section>
+
+        <section id="auto" aria-labelledby="h-auto">
+          <h2 id="h-auto">Auto rules (recurring transactions)</h2>
+          <p>Rules that post themselves on schedule. Location: <strong>More → Auto</strong>.</p>
+          <ul>
+            <li><strong>Types:</strong> Money out, Money in, or Transfer between your own accounts — bank to cash, a credit card bill, into a savings goal, or an EMI into a loan (with the interest split).</li>
+            <li><strong>Frequency:</strong> daily, weekly, every 2 weeks, monthly or yearly. A yearly rule on 29 February posts on 28 February in other years.</li>
+            <li><strong>Promo price</strong> for the first N occurrences, notes, preset tags and a payee.</li>
+            <li><strong>Reminders</strong> before a rule is due, and a "coming up" strip on the Dashboard.</li>
+            <li><strong>Pay now / Pay early</strong> posts it today; <strong>Skip next</strong> skips one occurrence and keeps the rule, with Undo <span class="tag">1.6.6</span>; rules can be paused and archived.</li>
+            <li>A backdated rule posts its missed payments when saved. A cross-currency transfer converts with your exchange rate.</li>
+          </ul>
+        </section>
+
+        <section id="cards" aria-labelledby="h-cards">
+          <h2 id="h-cards">Credit cards</h2>
+          <ul>
+            <li>Statement close day and payment due day, the current billing cycle, days remaining and a due-date reminder.</li>
+            <li><strong>Statement holds at its close:</strong> the card's page shows the last statement, what has been paid since and what is left to pay; new purchases build up on the next statement. <span class="tag">1.6.6</span></li>
+            <li><strong>Pay it automatically:</strong> on each due date, moves what is left of the statement from an account you pick. It is an Auto rule, so it warns first and can be skipped or paused. <span class="tag">1.6.6</span></li>
+          </ul>
+        </section>
+
+        <section id="currency" aria-labelledby="h-currency">
+          <h2 id="h-currency">Multi-currency</h2>
+          <ul>
+            <li>About 100 built-in currencies, plus <strong>custom currencies</strong> (three-letter code, symbol, name, and 0, 2 or 3 decimal places) that work like any other and travel in backups.</li>
+            <li>The home (parent) currency is set on first run by choosing your country.</li>
+            <li>Accounts in their own currency; net worth is converted to the home currency using exchange rates you keep in Settings → Currency. XPENC has no internet, so it never downloads rates.</li>
+            <li>Transfers between accounts in different currencies show a conversion preview and credit the destination in its own currency.</li>
+            <li><strong>Foreign-currency annotation:</strong> record what a home-currency payment cost abroad (for example "$9.99" for a subscription charged as ₹830) without changing balances.</li>
+          </ul>
+        </section>
+
+        <section id="stats" aria-labelledby="h-stats">
+          <h2 id="h-stats">Stats, XPENC Score and reports</h2>
+          <ul>
+            <li><strong>Stats hub:</strong> nine modules — Cash flow, Spending, Income, Net worth, Loans &amp; debt, People, Savings &amp; goals, Budgets and Recurring — each with a live headline.</li>
+            <li><strong>Standings:</strong> top transactions or top categories for the period, with each category's share.</li>
+            <li><strong>Category pages:</strong> how much went to a category this month, this year or all time, split by subcategory, with every transaction behind it.</li>
+            <li><strong>XPENC Score:</strong> a 0–100 money-management score from seven weighted rules — savings rate (25), debt load (20), repayment discipline (15), emergency fund (15), living within means (10), budget discipline (10) and tracking habit (5). Rules with nothing to judge are dropped and the rest rescaled; no score is given below 5 money in/out entries in 90 days. A breakdown shows each rule's points and tips.</li>
+            <li><strong>Account Reports:</strong> total money and its change since last month, money in, out and moved for any month or year, and seven reports — Balances, Activity, Balance history (6 months to 2 years), Transfers, Payment methods, Cards &amp; pay later, and Account health (below zero, under minimum, idle 90+ days).</li>
+            <li><strong>Where you're heading:</strong> money on hand projected 3, 6 or 12 months ahead from Auto rules on their real dates plus your usual spending over the last 3 full months; shows the lowest point and the day you would run short. Stats → Cash flow. <span class="tag">1.6.6</span></li>
+          </ul>
+        </section>
+
+        <section id="dashboard" aria-labelledby="h-dashboard">
+          <h2 id="h-dashboard">Dashboard and customization</h2>
+          <ul>
+            <li><strong>Customize dashboard:</strong> drag to reorder, add or remove widgets, reset to default. Optional widgets include Cash flow, Savings goals, Loans, Shortcuts, Groups and Shopping lists. The Accounts widget is a <em>Slider</em> of cards or <em>One card</em> listing every account.</li>
+            <li><strong>Past months:</strong> pick a past month and the whole Dashboard reports it as it closed — closing and opening balance, account balances and dues as of that month's last day.</li>
+            <li><strong>Bottom navigation:</strong> choose which two tabs sit in it, hide labels for icons only, and adjust bottom spacing. The More screen layout is configurable too.</li>
+            <li><strong>Quick actions ring:</strong> hold ➕ for eight shortcuts — any module, a calculator, Add money in/out or a transaction template. Settings → Quick Actions.</li>
+            <li><strong>Shortcuts</strong> on every module to its related pages.</li>
+            <li><strong>Display:</strong> app-wide text size, boldness and font family; your own colours for money in, money out, transfers and people; week starts on Sunday or Monday.</li>
+            <li><strong>Hide amounts:</strong> one tap hides balances on screen.</li>
+          </ul>
+        </section>
+
+        <section id="capture" aria-labelledby="h-capture">
+          <h2 id="h-capture">Faster entry and capture</h2>
+          <ul>
+            <li><strong>Share a bank SMS in</strong> (Android): share the message to XPENC from the Share sheet; it is parsed on the phone and lands in the Review Inbox. XPENC has no SMS permission and never reads the inbox itself.</li>
+            <li><strong>Share a payment screenshot in</strong> (Android): Paytm, Google Pay and PhonePe screenshots are read with on-device Tesseract text recognition. OCR corrections teach it fixes for your screenshots.</li>
+            <li><strong>CSV bank statement import</strong> with an optional Category column.</li>
+            <li><strong>Templates:</strong> reusable transaction templates; ➕ offers "start from scratch or a template".</li>
+            <li><strong>Home screen widgets</strong> (Android): Total balance with + Money in / + Money out, Budgets (closest to their limit first), Quick add, and This month.</li>
+            <li><strong>Quick-add notification</strong> (Android).</li>
+            <li><strong>Calendar ➕:</strong> Money in, Money out or a Reminder already dated to the picked day. <span class="tag">1.6.6</span></li>
+            <li><strong>From a spreadsheet:</strong> <a href="/sheetconv">SheetConv</a> turns an Excel, Google Sheets or CSV tracker into an XPENC backup.</li>
+          </ul>
+        </section>
+
+        <section id="organize" aria-labelledby="h-organize">
+          <h2 id="h-organize">Categories, tags and payees</h2>
+          <ul>
+            <li><strong>Categories</strong> for money in and out, with subcategories, colours, 76 searchable icons or any emoji as the icon.</li>
+            <li><strong>Archive and restore</strong> categories; delete one that nothing has ever used. A used category cannot be deleted, so past reports never break.</li>
+            <li><strong>Category templates:</strong> save your whole structure and switch between saved templates without touching any transaction. Built-in 50/30/20 (Needs, Wants, Goals), share a template as a file and import one, and more at <a href="/templates">xpenc.in/templates</a>. <span class="tag">1.6.6</span></li>
+            <li><strong>Tags</strong> cut across categories; <strong>tag groups</strong> bundle tags picked together (for example "Work trip" = Travel + Meals).</li>
+            <li><strong>Payees</strong> are collected automatically from what you type, with net paid vs received and full history. A payee can be connected to a person.</li>
+          </ul>
+        </section>
+
+        <section id="sharing" aria-labelledby="h-sharing">
+          <h2 id="h-sharing">Sharing, statements and PDFs</h2>
+          <ul>
+            <li><strong>Share as PDF or image card:</strong> a transaction (a receipt with its receipt photo), a person (a statement with opening balance, running balance and today's balance), a group (each expense and who owes whom) or a mode summary. Image cards are dark or light and 1080 px wide. Everything is generated on the phone.</li>
+            <li>With your name set, a statement reads "Ram owes Yash" instead of "Ram owes you", since it is sent to Ram.</li>
+            <li><strong>Account and combined statement PDFs</strong>, with a Note column when the period has notes.</li>
+            <li><strong>One share screen:</strong> preview, an Image ⇄ PDF slider, the period (all time, this month, last month or custom dates), then WhatsApp or Messages directly (Android) or any other app. <span class="tag">1.6.6</span></li>
+            <li><strong>Scan to pay:</strong> a statement for someone who owes you can carry a QR code of your UPI ID (or PayPal, Venmo, Cash App, Revolut) with the amount filled in. <span class="tag">1.6.6</span></li>
+          </ul>
+        </section>
+
+        <section id="planning" aria-labelledby="h-planning">
+          <h2 id="h-planning">Calendar, reminders and shopping lists</h2>
+          <ul>
+            <li><strong>Calendar:</strong> a day-by-day view of money in and out, transfer dots and upcoming Auto rules, with day totals. A Today button jumps back from any other day. <span class="tag">1.6.6</span></li>
+            <li><strong>Reminders</strong> for anything, with notifications on Android and iPhone.</li>
+            <li><strong>Shopping lists:</strong> named lists with items to tick off, kept separate from transactions until you log them.</li>
+            <li><strong>Guide:</strong> an in-app hub (More → Guide) explaining every module, and <strong>What's New</strong> for the current version.</li>
+          </ul>
+        </section>
+
+        <section id="calculators" aria-labelledby="h-calculators">
+          <h2 id="h-calculators">Calculators <span class="tag">beta</span></h2>
+          <p>Location: <strong>More → Calculators</strong>. Results update as you type and nothing is saved to the ledger.</p>
+          <ul>
+            <li><strong>FD &amp; RD</strong> — fixed deposit with a compounding choice; recurring deposit compounded quarterly.</li>
+            <li><strong>Loan EMI</strong> — year-wise schedule and prepayment savings.</li>
+            <li><strong>SIP &amp; Lumpsum</strong> — with yearly step-up.</li>
+            <li><strong>PPF</strong> — year-end balances with the ₹1.5 lakh yearly cap warning.</li>
+            <li><strong>GST</strong> — add or remove GST, with CGST/SGST/IGST.</li>
+            <li><strong>Income tax</strong> — India (FY 2025-26, new vs old regime, 87A marginal relief, surcharge relief), United States (2025 federal + FICA), United Kingdom (2025/26 income tax + National Insurance) and Germany (2025 §32a tariff + solidarity surcharge).</li>
+          </ul>
+        </section>
+
+        <section id="backup" aria-labelledby="h-backup">
+          <h2 id="h-backup">Backup, restore and export</h2>
+          <ul>
+            <li><strong>Backups</strong> are one JSON file (<code>DDMMYYXPENCEBACKUP.json</code>) with the whole ledger, including loans, groups, templates and recurring rules.</li>
+            <li><strong>Automatic backups</strong> (Android) to <code>Download/BACKUP XPENC</code>, on a schedule or after every change, with retention by "keep the last N" or a time window, and batch delete. This folder survives an uninstall.</li>
+            <li><strong>Restore</strong> on any platform, including from the first-run screen after a reinstall.</li>
+            <li><strong>Export:</strong> CSV for spreadsheets and accounting tools, JSON, and PDF statements.</li>
+            <li><strong>Clear all data</strong> wipes the ledger; if it ever fails it says nothing was deleted.</li>
+            <li>Backups no longer carry the PIN hash, recovery phrase hash or authenticator secret. <span class="tag">1.6.6</span></li>
+          </ul>
+        </section>
+
+        <section id="security" aria-labelledby="h-security">
+          <h2 id="h-security">Security and privacy</h2>
+          <ul>
+            <li><strong>App lock:</strong> PIN, master password and/or an authenticator app (TOTP) — any one you turn on unlocks it — with fingerprint or face unlock, a lock timeout, and Classic, Big or Scrambled numpad styles.</li>
+            <li><strong>Master recovery phrase:</strong> a 10-word phrase that unlocks after too many wrong PIN tries.</li>
+            <li><strong>Screenshot protection</strong> (Android): block screenshots and screen recording app-wide, a lock-screen shortcut for it, and a screenshot reminder.</li>
+            <li><strong>Hide from screenshots</strong> per transaction, and <strong>hide amounts</strong> on screen.</li>
+            <li><strong>Permissions:</strong> XPENC never requests internet, SMS, location, microphone or phone access. Notifications, camera (receipt photos) and contacts are optional and can be turned off in Settings → Permissions.</li>
+            <li><strong>No server, no account, no analytics, no trackers, no ads.</strong> The code is public, so every claim can be checked. Full policy: <a href="/privacy">xpenc.in/privacy</a>.</li>
+          </ul>
+        </section>
+
+        <section id="themes" aria-labelledby="h-themes">
+          <h2 id="h-themes">Themes and appearance</h2>
+          <ul>
+            <li><strong>Classic</strong> (monochrome, default) and <strong>Noir</strong> (bolder text and outlines), each in light, true-black dark or system mode.</li>
+            <li><strong>Glass:</strong> an iOS-style Liquid Glass theme on black — a floating glass tab bar with a sliding droplet, a glass top bar that the large title flies into, sheets and pages that grow out of the tab bar, a quick-actions arc from ➕, frosted amounts when hidden, and refraction on devices with the Impeller renderer.</li>
+            <li>Up to the display's full refresh rate (90/120 Hz where available).</li>
+          </ul>
+        </section>
+
+        <section id="conectr" aria-labelledby="h-conectr">
+          <h2 id="h-conectr">CONECTR: backup and sync for XPENC</h2>
+          <p><strong>CONECTR</strong> (also called the Connector app) is XPENC's separate, optional companion app for backup and sync, made by ExoSynk Labs. XPENC stays offline; CONECTR carries the backup.</p>
+          <dl class="facts">
+            <dt>Version</dt><dd>1.2.0 (25 October 2026), 56 MB</dd>
+            <dt>Platform</dt><dd>Android only, for now</dd>
+            <dt>Price</dt><dd>Free</dd>
+            <dt>Download</dt><dd><a href="https://exosynk.com/exosynk-labs#conectr">exosynk.com/exosynk-labs#conectr</a> · <a href="https://github.com/PATILYASHH/conectr-releases/releases/tag/v1.2.0">release notes</a></dd>
+            <dt>Storage</dt><dd>A private repo named <code>XPENC-BACKUP</code> in the user's own GitHub account</dd>
+            <dt>Sign-in</dt><dd>With GitHub, through Supabase</dd>
+          </dl>
+          <h3>What it does</h3>
+          <ul>
+            <li>Saves the backup file XPENC already makes to the user's private <code>XPENC-BACKUP</code> repo, and brings it back on their other phone. The repo is the user's to open, download or delete.</li>
+            <li>Never opens XPENC's database. It only moves the backup file.</li>
+            <li><strong>Newest first, nothing lost:</strong> each device takes in the newest backup before it sends its own, and a write that races another device is refused, never overwritten.</li>
+            <li><strong>No file picking:</strong> when CONECTR has pulled a newer backup, XPENC takes it in as it opens, automatically when the phone has no changes of its own since the last sync, otherwise after asking. XPENC saves a copy of the phone's data before every import. <span class="tag">needs XPENC 1.6.6</span></li>
+            <li><strong>Tell Connector:</strong> after a manual import, one tap tells CONECTR the import is done; it checks the file's fingerprint.</li>
+            <li><strong>Friends by username:</strong> add friends in CONECTR and link them to people in XPENC.</li>
+            <li><strong>XPENC web</strong> has the Connector built in (Settings → Connector) and syncs through the same repo by the same rules.</li>
+          </ul>
+          <h3>Set up in three steps</h3>
+          <ol>
+            <li>Install CONECTR on your Android phone (Android may ask you to allow installs from your browser).</li>
+            <li>Sign in with GitHub; CONECTR keeps XPENC's backups in a private repo of yours, <code>XPENC-BACKUP</code>.</li>
+            <li>Open XPENC on your other phone — the newest backup comes in by itself. On a computer, turn on Settings → Connector in XPENC web.</li>
+          </ol>
+          <h3>Limits</h3>
+          <ul>
+            <li>XPENC itself still has no internet access. Only CONECTR goes online, and only if installed.</li>
+            <li>The backup in the repo is private but not encrypted.</li>
+            <li>Automatic import needs XPENC 1.6.6 or later (GitHub or F-Droid build). XPENC from Google Play is not recognised yet; with older XPENC, use Import from file.</li>
+            <li>No iPhone version yet. Shared dues between friends are not built yet.</li>
+          </ul>
+        </section>
+
+        <section id="exosynk-labs" aria-labelledby="h-exosynk">
+          <h2 id="h-exosynk">ExoSynk Labs</h2>
+          <p><strong>ExoSynk</strong> (<a href="https://exosynk.com">exosynk.com</a>) is a virtual electronics lab: design a circuit in the browser, simulate it and watch it work. Alongside it, the ExoSynk team builds <strong>ExoSynk Labs</strong> (spelt exactly that way) — small, focused apps that keep your data on your device and are free to use. XPENC carries a "Powered by ExoSynk Labs" mark in About and a "More from us" list in Settings.</p>
+          <div class="table-wrap">
+            <table>
+              <caption>ExoSynk Labs and ExoSynk products</caption>
+              <thead><tr><th scope="col">Product</th><th scope="col">What it is</th><th scope="col">Platform</th><th scope="col">Status</th></tr></thead>
+              <tbody>
+                <tr><td><strong>XPENC</strong></td><td>Offline-first personal finance — money, tracked honestly. MIT open source.</td><td>Android, iPhone, web</td><td>Available, v1.6.5</td></tr>
+                <tr><td><strong>CONECTR</strong></td><td>Backup and sync for XPENC through the user's own private GitHub repo.</td><td>Android</td><td>Available, v1.2.0</td></tr>
+                <tr><td><strong>FITNS</strong></td><td>An offline, open-source fitness tracker for training, food and your body, with no sign-up. MIT. <a href="https://github.com/parthmagdum/FITNS">GitHub</a></td><td>—</td><td>Coming soon</td></tr>
+                <tr><td><strong>ExoSynk 2D Lab</strong></td><td>Design electronics in the browser: build a circuit and simulate it. <a href="https://exosynk.com/lab">exosynk.com/lab</a></td><td>Browser</td><td>Available</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>Links: <a href="https://exosynk.com/exosynk-labs">exosynk.com/exosynk-labs</a> · <a href="https://github.com/ExoSynkLabs">github.com/ExoSynkLabs</a></p>
+        </section>
+
+        <section id="web-tools" aria-labelledby="h-webtools">
+          <h2 id="h-webtools">Web tools: SheetConv and category templates</h2>
+          <ul>
+            <li><strong><a href="/sheetconv">SheetConv</a></strong> converts an Excel, Google Sheets or CSV money tracker into a backup file XPENC imports (More → Backup &amp; Restore → Import from file). It runs entirely in the browser; nothing is uploaded. Basic, Medium and Pro modes match the app levels.</li>
+            <li><strong><a href="/templates">Category templates</a></strong>: ready-made category sets (50/30/20 Budget, Student, Family Household) plus community ones, previewed category by category and downloadable for More → Categories → Templates → Import from file (XPENC 1.6.6+). Structure only, no personal data. Source and contributions: <a href="https://github.com/PATILYASHH/XPENC-Templates">XPENC-Templates</a>.</li>
+          </ul>
+        </section>
+
+        <section id="limits" aria-labelledby="h-limits">
+          <h2 id="h-limits">What XPENC does not do</h2>
+          <p>Stated plainly, so nobody — person or assistant — assumes otherwise:</p>
+          <ul>
+            <li>No bank account linking, automatic bank feeds, Open Banking, Plaid or Account Aggregator connections.</li>
+            <li>No cloud server and no XPENC account. The only sync is the optional CONECTR app, into the user's own GitHub.</li>
+            <li>No reading of the SMS inbox. The SMS permission was dropped in 1.1.0; messages are shared in by hand.</li>
+            <li>No live exchange rates or stock prices, and no investment portfolio tracking (investment maths is in the calculators only).</li>
+            <li>Not on the Apple App Store; iPhone installs go through SideStore, AltStore or a sideloaded .ipa.</li>
+            <li>No ads, no paid tier, no data sale, no analytics.</li>
+            <li>English only for now.</li>
+          </ul>
+        </section>
+
+        <section id="releases" aria-labelledby="h-releases">
+          <h2 id="h-releases">Release history (recent)</h2>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th scope="col">Version</th><th scope="col">Date</th><th scope="col">Highlights</th></tr></thead>
+              <tbody>
+                <tr><td>1.6.6</td><td>15 Nov 2026</td><td>The app in your language (Hindi, German, Japanese, Russian built in; language packs), refunds against a budget, Total money vs Available balance, a backup folder of your own, Settle up with a person, XPENC web with PC layout and built-in Connector, Connector auto-import and friends, card statements that pay themselves, multi-level budget alerts, Skip next, cash-flow projection, new share screen with WhatsApp and payment QR, category templates as files.</td></tr>
+                <tr><td>1.6.5</td><td>23 Oct 2026</td><td>Modes, custom currencies, custom colours, archived categories, category pages, goals as pockets, running balance, auto transfers, "Money in / Money out" naming.</td></tr>
+                <tr><td>1.6.4</td><td>10 Oct 2026</td><td>First iPhone build, Liquid Glass theme, customizable dashboard, past-month view, PDF and image sharing, hide from screenshots, country on first run, emoji category icons.</td></tr>
+                <tr><td>1.6.3</td><td>30 Sep 2026</td><td>Calculators, people as payees, balance corrections, Account Reports, Who owes whom, quick actions ring, Settled.</td></tr>
+                <tr><td>1.6.2</td><td>26 Sep 2026</td><td>First Google Play release, XPENC Score, Stats hub, contacts for people, auto-pay EMI, loan insights.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>Full history: <a href="https://github.com/PATILYASHH/XPENC/blob/master/CHANGELOG.md">CHANGELOG.md</a>.</p>
+        </section>
+
+        <section id="faq" aria-labelledby="h-faq">
+          <h2 id="h-faq">FAQ</h2>
+          <dl class="faq">
+            <dt>What platforms does XPENC run on?</dt>
+            <dd>Android 7.0 and later (Google Play, F-Droid or a direct APK), iPhone on iOS 15 and later (SideStore, AltStore or a sideloaded .ipa, not the App Store), and any current browser at xpenc.in/web. A backup made on one restores on the others.</dd>
+            <dt>Does XPENC sync between phones?</dt>
+            <dd>XPENC itself has no internet access. Sync is done by CONECTR, an optional Android companion app from ExoSynk Labs, which saves XPENC's backup file to a private repo in your own GitHub account and brings it back on your other phone. XPENC web has the same Connector built in.</dd>
+            <dt>What is the difference between Basic, Medium and Pro in XPENC?</dt>
+            <dd>They are app levels, set in Settings → Level &amp; Budgeting. Basic is transactions and people only. Medium, the default, adds accounts, balances, net worth and category budgets. Pro adds Ready to Assign envelope budgeting, budget Rollover and Overflow.</dd>
+            <dt>What are Modes in XPENC?</dt>
+            <dd>A Mode is a trip or an event you switch on. While it is on, everything you add joins it and the whole app shows only that mode: its budget, limits, accounts, people and spends. When it ends you get a summary you can share as a PDF or an image.</dd>
+            <dt>Does XPENC read my SMS?</dt>
+            <dd>No. XPENC does not request the SMS permission. On Android you can share a bank SMS or a payment screenshot into XPENC from the Share sheet, and it is read on the phone.</dd>
+            <dt>Can XPENC connect to my bank account?</dt>
+            <dd>No. XPENC has no bank connection or automatic bank feed. Transactions come from you, from bank messages or screenshots you share in, from a CSV bank statement, or from Auto rules.</dd>
+            <dt>Is XPENC free?</dt>
+            <dd>Yes. XPENC is free, open source under the MIT license, and has no ads, in-app purchases, subscription or paid tier.</dd>
+            <dt>Who makes XPENC and CONECTR?</dt>
+            <dd>Yash Patil, as part of ExoSynk Labs, the ExoSynk team's small, offline-first apps. ExoSynk itself is a browser-based electronics lab at exosynk.com.</dd>
+          </dl>
+        </section>
+
+        <section id="links" aria-labelledby="h-links">
+          <h2 id="h-links">Official links</h2>
+          <ul>
+            <li>Website: <a href="https://xpenc.in/">xpenc.in</a> · Web app: <a href="https://xpenc.in/web">xpenc.in/web</a> · iPhone: <a href="https://xpenc.in/ios">xpenc.in/ios</a> · Privacy: <a href="https://xpenc.in/privacy">xpenc.in/privacy</a></li>
+            <li>Google Play: <a href="https://play.google.com/store/apps/details?id=com.yash.xpenc">com.yash.xpenc</a> · F-Droid: <a href="https://f-droid.org/packages/com.yash.xpenc/">com.yash.xpenc</a> · GitHub Releases: <a href="https://github.com/PATILYASHH/XPENC/releases/latest">latest</a></li>
+            <li>Source: <a href="https://github.com/PATILYASHH/XPENC">github.com/PATILYASHH/XPENC</a> · Issues: <a href="https://github.com/PATILYASHH/XPENC/issues">GitHub Issues</a> · Discussions: <a href="https://github.com/PATILYASHH/XPENC/discussions">GitHub Discussions</a></li>
+            <li>CONECTR: <a href="https://exosynk.com/exosynk-labs#conectr">exosynk.com/exosynk-labs#conectr</a> · ExoSynk Labs: <a href="https://exosynk.com/exosynk-labs">exosynk.com/exosynk-labs</a> · <a href="https://github.com/ExoSynkLabs">github.com/ExoSynkLabs</a></li>
+            <li>Contact: <a href="mailto:feedback.yashpatil@gmail.com">feedback.yashpatil@gmail.com</a> · Reddit <a href="https://www.reddit.com/user/XPENC/">u/XPENC</a> · Instagram <a href="https://www.instagram.com/xpenc.in/">@xpenc.in</a> · <a href="https://discord.gg/cCajrhHez">Discord</a></li>
+            <li>For AI assistants: <a href="/llms.txt">llms.txt</a> (summary) · <a href="/llms-full.txt">llms-full.txt</a> (this page as plain text)</li>
+          </ul>
+        </section>
+
+      </article>
+    </main>
+  </div>
+
+  <footer>
+    <div class="wrap foot-bottom">
+      <span>© 2026 Yash Patil · Powered by <a href="https://exosynk.com/exosynk-labs">ExoSynk Labs</a> · MIT License</span>
+      <span><a href="/">Home</a> · <a href="/#download">Download</a> · <a href="/privacy">Privacy</a> · <a href="https://github.com/PATILYASHH/XPENC">GitHub</a></span>
+    </div>
+  </footer>
+
+</body>
+</html>

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>XPENC for iPhone</title>
-  <meta name="description" content="Install XPENC on iPhone with SideStore or AltStore. Free, open-source, offline-first expense tracker — everything stays on your phone.">
+  <meta name="description" content="Install XPENC on iPhone with SideStore or AltStore, or sideload the .ipa. Free, open-source, offline-first expense tracker — everything stays on your phone.">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://xpenc.in/ios">
   <meta name="theme-color" content="#000000">
@@ -16,7 +16,7 @@
 
   <meta property="og:type" content="website">
   <meta property="og:title" content="XPENC for iPhone">
-  <meta property="og:description" content="Install XPENC on iPhone with SideStore or AltStore. Everything stays on your phone.">
+  <meta property="og:description" content="Install XPENC on iPhone with SideStore or AltStore. Free, offline, open source — everything stays on your phone.">
   <meta property="og:url" content="https://xpenc.in/ios">
   <meta property="og:image" content="https://xpenc.in/assets/xpenc_icon_1024.png">
   <meta name="twitter:card" content="summary">
@@ -116,6 +116,19 @@
     }
     .copy:hover { border-color: var(--faint); }
     .hint { font-size: 13.5px; color: var(--faint); }
+    .shots {
+      display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory;
+      margin: 26px -28px 0; padding: 4px 28px 14px; scroll-padding-inline: 28px;
+      scrollbar-width: thin;
+    }
+    .shots figure { flex: none; width: 190px; scroll-snap-align: start; }
+    .shots a { display: block; text-decoration: none; }
+    .shots img {
+      display: block; width: 100%; height: auto; border-radius: 26px;
+      border: 1px solid var(--border); background: var(--panel);
+    }
+    .shots figcaption { margin-top: 8px; font-size: 13px; color: var(--muted); text-align: center; }
+    .shots-hint { margin-top: 0; }
 
     footer { border-top: 1px solid var(--border); padding: 34px 0 46px; color: var(--faint); font-size: 13.5px; }
     .foot-bottom { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
@@ -124,6 +137,10 @@
 
     @media (max-width: 520px) {
       .wrap { padding: 0 16px; }
+      .shots { margin: 22px -16px 0; padding: 4px 16px 12px; scroll-padding-inline: 16px; }
+      .source code { font-size: 12.5px; overflow-wrap: normal; white-space: nowrap; }
+      .shots figure { width: 160px; }
+      .shots img { border-radius: 22px; }
       .actions .btn { flex: 1 1 100%; }
     }
   </style>
@@ -145,8 +162,8 @@
       <div class="kicker">iPhone</div>
       <h1>XPENC on iPhone.</h1>
       <p class="meta">
-        Free and open source, installed with SideStore or AltStore — not the App Store.
-        Needs iOS 15 or later.
+        Free and open source. Installed with SideStore or AltStore — or any sideloading tool —
+        not the App Store. Needs iOS 15 or later.
       </p>
     </div>
   </header>
@@ -154,45 +171,104 @@
   <main>
     <div class="wrap">
 
-      <div class="callout">
-        <strong>Already have SideStore or AltStore?</strong> Add the XPENC source and install
-        from there. Updates show up in the same place.
+      <div class="shots" role="list" aria-label="XPENC on iPhone">
+        <figure>
+          <a href="assets/ios/06-glass-dashboard.jpg" target="_blank" rel="noopener">
+            <img src="assets/ios/06-glass-dashboard@sm.webp" width="405" height="880" loading="eager" decoding="async" alt="XPENC dashboard on iPhone in the Glass theme: total money ₹2,92,669, this month's income and expense, account cards and a floating glass tab bar.">
+          </a>
+          <figcaption>Dashboard · Glass</figcaption>
+        </figure>
+        <figure>
+          <a href="assets/ios/01-dashboard.jpg" target="_blank" rel="noopener">
+            <img src="assets/ios/01-dashboard@sm.webp" width="405" height="880" loading="eager" decoding="async" alt="XPENC dashboard on iPhone: total money ₹2,92,669 with a balance graph, this month's income ₹1,46,641 and expense ₹56,577, and account cards.">
+          </a>
+          <figcaption>Dashboard</figcaption>
+        </figure>
+        <figure>
+          <a href="assets/ios/02-transactions.jpg" target="_blank" rel="noopener">
+            <img src="assets/ios/02-transactions@sm.webp" width="405" height="880" loading="eager" decoding="async" alt="XPENC transactions on iPhone: filter chips, 172 entries with money in and out, and today's transactions grouped by day.">
+          </a>
+          <figcaption>Transactions</figcaption>
+        </figure>
+        <figure>
+          <a href="assets/ios/03-add-expense.jpg" target="_blank" rel="noopener">
+            <img src="assets/ios/03-add-expense@sm.webp" width="405" height="880" loading="lazy" decoding="async" alt="XPENC add-expense screen on iPhone with the account, category, split options and a large numpad.">
+          </a>
+          <figcaption>Add expense</figcaption>
+        </figure>
+        <figure>
+          <a href="assets/ios/04-persons.jpg" target="_blank" rel="noopener">
+            <img src="assets/ios/04-persons@sm.webp" width="405" height="880" loading="lazy" decoding="async" alt="XPENC persons on iPhone: you'll get ₹12,300 and you'll pay ₹2,000, with each person's balance.">
+          </a>
+          <figcaption>Persons</figcaption>
+        </figure>
+        <figure>
+          <a href="assets/ios/05-budgets.jpg" target="_blank" rel="noopener">
+            <img src="assets/ios/05-budgets@sm.webp" width="405" height="880" loading="lazy" decoding="async" alt="XPENC budgets on iPhone: ₹24,559 spent of ₹48,000 this month, with progress for Fuel, Subscriptions and Coffee.">
+          </a>
+          <figcaption>Budgets</figcaption>
+        </figure>
+        <figure>
+          <a href="assets/ios/07-glass-transactions.jpg" target="_blank" rel="noopener">
+            <img src="assets/ios/07-glass-transactions@sm.webp" width="405" height="880" loading="lazy" decoding="async" alt="XPENC transactions on iPhone in the Glass theme, with glass filter chips and an icons-only floating tab bar.">
+          </a>
+          <figcaption>Transactions · Glass</figcaption>
+        </figure>
       </div>
+      <p class="hint shots-hint">Real screens from the iPhone app, with sample data. Tap one to see it full size.</p>
 
+      <div class="callout">
+        <strong>Have SideStore or AltStore?</strong> Add the XPENC source and install from
+        there. New versions show up in the same place.
+      </div>
       <div class="actions">
         <a class="btn primary" href="sidestore://source?url=https://xpenc.in/ios/source.json">Add to SideStore</a>
-        <a class="btn ghost" href="altstore-classic://source?url=https://xpenc.in/ios/source.json">Add to AltStore</a>
+        <a class="btn ghost" href="altstore://source?url=https://xpenc.in/ios/source.json">Add to AltStore</a>
       </div>
-
       <div class="source">
         <code id="source-url">https://xpenc.in/ios/source.json</code>
         <button class="copy" type="button" data-copy="source-url">Copy</button>
       </div>
       <p class="hint">
-        The buttons only work on an iPhone that already has the store installed. If nothing
-        happens, copy the address and add it under Sources → + in the app.
+        The buttons work on an iPhone that already has SideStore or AltStore. If nothing
+        happens, copy the address and add it in the app under Sources → +.
       </p>
 
       <h2>First time</h2>
       <ol>
         <li>
           Install <a href="https://sidestore.io" target="_blank" rel="noopener">SideStore</a>
-          or <a href="https://altstore.io" target="_blank" rel="noopener">AltStore</a>.
-          Both are free, and need a computer once, for setup.
+          or <a href="https://altstore.io" target="_blank" rel="noopener">AltStore</a>. Both are
+          free, and need a computer once, for setup.
         </li>
         <li>On your iPhone, tap <strong>Add to SideStore</strong> or <strong>Add to AltStore</strong> above.</li>
-        <li>Open the XPENC source and tap <strong>Free</strong> to install.</li>
+        <li>Open the XPENC source and install XPENC.</li>
         <li>
-          Keep it refreshed. With a free Apple ID, sideloaded apps expire after 7 days;
-          SideStore and AltStore renew them when you refresh — XPENC and your data stay put.
+          Keep it refreshed. With a free Apple ID, sideloaded apps stop opening after 7 days;
+          SideStore and AltStore sign them again when you refresh — XPENC and your data stay put.
         </li>
       </ol>
+
+      <h2>Or download the .ipa</h2>
+      <p>
+        Using another sideloading tool? Install the app file directly. It's unsigned on purpose,
+        so the tool signs it with your own Apple ID. To update, install the newer file the same
+        way, with the same Apple ID — XPENC updates in place and your data stays.
+      </p>
+      <div class="actions">
+        <a class="btn ghost" href="https://github.com/PATILYASHH/XPENC/releases/latest/download/xpenc-ios.ipa">Download xpenc-ios.ipa</a>
+        <a class="btn ghost" href="https://github.com/PATILYASHH/XPENC/releases/latest" target="_blank" rel="noopener">See the release on GitHub</a>
+      </div>
+      <p class="hint">
+        The latest release, the same version as on Android. Every release lists the file's
+        SHA-256 in <code>SHA256SUMS.txt</code> so you can check your download.
+      </p>
 
       <h2>Good to know</h2>
       <ul>
         <li>
-          A free Apple ID can keep <strong>3 sideloaded apps</strong> at a time, and SideStore or
-          AltStore itself counts as one.
+          A free Apple ID can keep <strong>3 sideloaded apps</strong> active at a time, and some
+          sideloading tools count as one.
         </li>
         <li>
           <strong>Back up somewhere safe.</strong> On iPhone, backups are kept inside XPENC, so
@@ -204,9 +280,8 @@
           payment screenshots, and blocking screenshots. Everything else is the same app.
         </li>
         <li>
-          Using another sideloading tool? The app itself is
-          <a href="https://github.com/PATILYASHH/XPENC/releases/latest/download/xpenc-ios.ipa">xpenc-ios.ipa</a>
-          on every release — unsigned, for the tool to sign.
+          Still private: XPENC makes no network requests on iPhone either. Your data stays in the
+          app's own storage on your phone.
         </li>
       </ul>
 

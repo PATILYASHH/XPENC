@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Category templates — XPENC</title>
+  <meta name="description" content="Ready-made category sets for XPENC: 50/30/20 Budget, Student, Family Household and templates shared by the community. Preview every category, then import it in one tap.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://xpenc.in/templates">
+  <meta name="theme-color" content="#050606">
+
+  <link rel="icon" href="/assets/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon_32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon_16.png">
+  <link rel="apple-touch-icon" href="/assets/apple_touch_icon_180.png">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="XPENC category templates">
+  <meta property="og:description" content="Ready-made category sets for XPENC. Preview every category, then import it in one tap. Structure only — no personal data.">
+  <meta property="og:url" content="https://xpenc.in/templates">
+  <meta property="og:image" content="https://xpenc.in/assets/og-cover-2026.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <!-- Only the icons XPENC's categories use (AppIcons), plus this page's own. -->
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=account_balance,account_balance_wallet,add,apartment,arrow_back,bakery_dining,bar_chart,beach_access,bolt,breakfast_dining,build,business_center,cake,car_repair,card_giftcard,chair,check,checkroom,chevron_right,child_care,circle,cleaning_services,coffee,computer,credit_card,credit_score,currency_exchange,diamond,dinner_dining,directions_bike,directions_bus,directions_car,download,elderly,family_restroom,fastfood,favorite,festival,fitness_center,flight,headphones,hiking,home,hotel,house,icecream,kitchen,laptop_mac,live_tv,local_bar,local_cafe,local_fire_department,local_gas_station,local_grocery_store,local_laundry_service,local_mall,local_parking,local_pharmacy,local_pizza,local_taxi,loyalty,luggage,lunch_dining,map,medical_services,menu_book,more_horiz,movie,music_note,open_in_new,park,payments,percent,person,pets,phone_iphone,plumbing,pool,print,psychology,ramen_dining,receipt,receipt_long,request_quote,restaurant,savings,school,security,shopping_bag,shopping_cart_checkout,spa,sports_basketball,sports_esports,sports_soccer,storefront,subway,swap_horiz,theater_comedy,train,trending_up,tv,two_wheeler,undo,vaccines,volunteer_activism,water_drop,wifi,work&display=block" rel="stylesheet">
+
+  <style>
+    :root {
+      /* the website */
+      --bg: #ffffff; --bg-soft: #f4f6f5; --line: #e6eae8;
+      --ink: #0b0d0c; --muted: #5d6b66; --faint: #8c9893;
+      --brand: #12a150; --brand-300: #3ecf8e; --brand-100: #ddf5e7; --brand-700: #0b7f3e;
+      --night: #050606; --night-ink: #f3f5f4; --night-muted: #9aa6a1;
+      --shadow-2: 0 2px 6px rgba(11,13,12,.06), 0 24px 60px rgba(11,13,12,.12);
+      /* the app, Classic light (AppPalettes.monoLight) */
+      --app-bg: #F2F2F5; --app-card: #FFFFFF; --app-track: #E5E5EA; --app-border: #DBDBE1;
+      --app-text: #0A0A0B; --app-muted: #6B6B70; --app-primary: #0A0A0B; --app-on-primary: #FFFFFF;
+      --app-select: rgba(10,10,11,.05);
+      --font-display: "Space Grotesk", system-ui, sans-serif;
+      --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+      color-scheme: light;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #070908; --bg-soft: #0e1311; --line: #1d2622;
+        --ink: #eef3f0; --muted: #9aa9a2; --faint: #6c7a74;
+        --brand: #2fc774; --brand-100: #143524; --brand-700: #5ee29a;
+        --shadow-2: 0 18px 42px rgba(0,0,0,.45);
+        /* Classic dark (AppPalettes.monoDark): true black */
+        --app-bg: #000000; --app-card: #17171A; --app-track: #232328; --app-border: #2F2F35;
+        --app-text: #F5F5F6; --app-muted: #9A9AA0; --app-primary: #F5F5F6; --app-on-primary: #0A0A0B;
+        --app-select: rgba(255,255,255,.07);
+        color-scheme: dark;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #070908; --bg-soft: #0e1311; --line: #1d2622;
+      --ink: #eef3f0; --muted: #9aa9a2; --faint: #6c7a74;
+      --brand: #2fc774; --brand-100: #143524; --brand-700: #5ee29a;
+      --shadow-2: 0 18px 42px rgba(0,0,0,.45);
+      --app-bg: #000000; --app-card: #17171A; --app-track: #232328; --app-border: #2F2F35;
+      --app-text: #F5F5F6; --app-muted: #9A9AA0; --app-primary: #F5F5F6; --app-on-primary: #0A0A0B;
+      --app-select: rgba(255,255,255,.07);
+      color-scheme: dark;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html { scroll-behavior: smooth; scroll-padding-top: 84px; }
+    body {
+      background: var(--bg); color: var(--ink);
+      font-family: var(--font-body); font-size: 15px; line-height: 1.6;
+      -webkit-font-smoothing: antialiased; overflow-x: hidden;
+    }
+    a { color: inherit; }
+    button { font: inherit; color: inherit; }
+    ::selection { background: var(--brand-100); color: var(--brand-700); }
+    :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 8px; }
+    .wrap { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+    h1, h2, h3 { font-family: var(--font-display); letter-spacing: -.025em; line-height: 1.12; }
+    .material-symbols-outlined {
+      font-family: "Material Symbols Outlined"; font-weight: normal; font-style: normal;
+      font-size: 22px; line-height: 1; width: 1em; height: 1em; overflow: hidden;
+      display: inline-block; white-space: nowrap; direction: ltr; user-select: none;
+      -webkit-font-feature-settings: "liga"; font-feature-settings: "liga";
+    }
+
+    /* ── nav (same as the other pages) ── */
+    nav.top {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 40; color: #fff;
+      border-bottom: 1px solid transparent; transition: background .25s, border-color .25s, color .25s;
+    }
+    nav.top.solid {
+      background: color-mix(in srgb, var(--bg) 88%, transparent);
+      backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4);
+      border-bottom-color: var(--line); color: var(--ink);
+    }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 68px; gap: 12px; }
+    .brand { display: flex; align-items: center; gap: 11px; text-decoration: none; font-family: var(--font-display); font-weight: 700; letter-spacing: .16em; font-size: 16px; }
+    .brand img { width: 30px; height: 30px; border-radius: 9px; }
+    .brand small { letter-spacing: .02em; font-weight: 600; font-size: 13px; opacity: .6; padding-left: 10px; border-left: 1px solid currentColor; }
+    .nav-links { display: flex; align-items: center; gap: 24px; font-size: 14.5px; font-weight: 500; }
+    .nav-links a { text-decoration: none; opacity: .72; transition: opacity .15s; }
+    .nav-links a:hover { opacity: 1; }
+    .nav-links .nav-cta { opacity: 1; height: 40px; padding: 0 18px; border-radius: 999px; display: inline-flex; align-items: center; background: #fff; color: #0b0d0c; font-weight: 600; }
+    nav.top.solid .nav-cta { background: var(--ink); color: var(--bg); }
+
+    /* ── hero ── */
+    .hero { position: relative; overflow: hidden; background: var(--night); color: var(--night-ink); padding: 128px 0 132px; }
+    .hero::before {
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(50% 70% at 85% 30%, rgba(18,161,80,.30), transparent 70%), radial-gradient(40% 45% at 0% 0%, rgba(37,99,235,.14), transparent 70%);
+    }
+    .hero .wrap { position: relative; }
+    .kicker { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-display); font-size: 12px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--brand-300); margin-bottom: 14px; }
+    .kicker::before { content: ""; width: 18px; height: 2px; border-radius: 2px; background: currentColor; }
+    .hero h1 { font-size: clamp(34px, 4.6vw, 54px); letter-spacing: -.035em; line-height: 1.04; margin-bottom: 16px; max-width: 760px; }
+    .hero .lede { color: var(--night-muted); font-size: 17.5px; max-width: 620px; }
+    .hero-facts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+    .hero-facts span { font-size: 13px; font-weight: 600; padding: 5px 12px; border-radius: 999px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); color: #d5dcd9; }
+
+    /* ── the app window ── */
+    .browser { margin-top: -88px; position: relative; z-index: 2; }
+    .app {
+      display: grid; grid-template-columns: 340px 1fr;
+      height: min(780px, calc(100vh - 100px)); min-height: 560px;
+      background: var(--app-bg); color: var(--app-text);
+      border: 1px solid var(--app-border); border-radius: 24px; overflow: hidden;
+      box-shadow: var(--shadow-2);
+    }
+    .pane { min-width: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+    .list-pane { border-right: 1px solid var(--app-border); padding: 0 16px 24px; }
+    .bar {
+      position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px;
+      min-height: 64px; padding: 12px 0; background: var(--app-bg);
+    }
+    .bar h2 { font-family: var(--font-body); font-size: 20px; font-weight: 600; letter-spacing: -.01em; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bar .count { font-size: 13px; color: var(--app-muted); font-variant-numeric: tabular-nums; }
+    .label { font-size: 12.5px; font-weight: 600; color: var(--app-muted); padding: 14px 4px 8px; }
+
+    .card { background: var(--app-card); border-radius: 12px; overflow: hidden; }
+    .row {
+      position: relative; display: flex; align-items: center; gap: 16px;
+      min-height: 64px; padding: 10px 12px 10px 16px; text-decoration: none; color: inherit;
+      transition: background .15s;
+    }
+    .row + .row::before, .cat + .cat::before {
+      content: ""; position: absolute; top: 0; right: 0; left: 72px; height: 1px; background: var(--app-border);
+    }
+    .row:hover { background: var(--app-select); }
+    .row[aria-current="true"] { background: var(--app-select); }
+    .row[aria-current="true"]::after {
+      content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px; border-radius: 0 3px 3px 0; background: var(--app-primary);
+    }
+    .row-text { flex: 1; min-width: 0; }
+    .row-title { display: block; font-size: 15.5px; font-weight: 500; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .row-sub { display: block; font-size: 13px; color: var(--app-muted); line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .row .chev { color: var(--app-muted); display: none; }
+
+    .badge { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; }
+    .badge .material-symbols-outlined { font-size: 22px; }
+    .badge .emoji { font-size: 19px; line-height: 1; }
+
+    .empty { padding: 18px 16px; font-size: 14px; color: var(--app-muted); line-height: 1.5; }
+    .empty a { color: var(--app-text); font-weight: 600; }
+
+    .detail-pane { padding: 0 28px 28px; }
+    .detail-pane .bar { gap: 12px; }
+    .back {
+      display: none; width: 40px; height: 40px; margin-left: -8px; border: 0; border-radius: 50%;
+      background: transparent; cursor: pointer; place-items: center; flex: none;
+    }
+    .back:hover { background: var(--app-select); }
+    .dl {
+      flex: none; display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 18px 0 14px;
+      border-radius: 999px; background: var(--app-primary); color: var(--app-on-primary);
+      font-weight: 600; font-size: 14.5px; text-decoration: none; transition: opacity .15s;
+    }
+    .dl:hover { opacity: .88; }
+    .dl .material-symbols-outlined { font-size: 20px; }
+    .desc { font-size: 15px; color: var(--app-muted); max-width: 640px; }
+    .meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 18px; }
+    .meta span { font-size: 12.5px; font-weight: 600; padding: 4px 11px; border-radius: 999px; background: var(--app-track); color: var(--app-text); font-variant-numeric: tabular-nums; }
+
+    .tabs { display: flex; border-bottom: 1px solid var(--app-border); margin-bottom: 16px; }
+    .tab {
+      position: relative; flex: 1; height: 46px; border: 0; background: transparent; cursor: pointer;
+      font-size: 14.5px; font-weight: 600; color: var(--app-muted); transition: color .15s;
+    }
+    .tab[aria-selected="true"] { color: var(--app-text); }
+    .tab[aria-selected="true"]::after {
+      content: ""; position: absolute; left: 24%; right: 24%; bottom: -1px; height: 3px; border-radius: 3px 3px 0 0; background: var(--app-text);
+    }
+    .tab:hover { color: var(--app-text); }
+
+    /* one category, as the app's Categories screen draws it */
+    .cat { position: relative; display: flex; align-items: center; gap: 16px; min-height: 56px; padding: 8px 16px; }
+    .cat.child { padding-left: 32px; min-height: 52px; }
+    .cat.child::before { left: 72px; }
+    .cat:not(.child)::before { left: 60px; }
+    .cat.child .badge { width: 30px; height: 30px; }
+    .cat.child .badge .material-symbols-outlined { font-size: 17px; }
+    .cat.child .badge .emoji { font-size: 15px; }
+    .cat-name { flex: 1; min-width: 0; font-size: 16px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .hint { margin-top: 16px; font-size: 13px; color: var(--app-muted); text-align: center; }
+
+    .fade { animation: fade .22s ease both; }
+    @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    @media (prefers-reduced-motion: reduce) { .fade { animation: none; } html { scroll-behavior: auto; } }
+
+    .skel { height: 64px; border-radius: 0; background: linear-gradient(90deg, var(--app-card), var(--app-track), var(--app-card)); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+    .skel + .skel { border-top: 1px solid var(--app-border); }
+    @keyframes shimmer { to { background-position: -200% 0; } }
+
+    /* ── how to ── */
+    section.how { padding: 88px 0 96px; }
+    .sec-head { max-width: 680px; margin-bottom: 36px; }
+    .sec-head .kicker { color: var(--brand); }
+    .sec-head h2 { font-size: clamp(28px, 3.6vw, 40px); margin-bottom: 12px; }
+    .sec-head p { color: var(--muted); font-size: 16.5px; }
+    .steps { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; counter-reset: s; }
+    .steps li { counter-increment: s; background: var(--bg-soft); border: 1px solid var(--line); border-radius: 20px; padding: 24px; }
+    .steps li::before {
+      content: counter(s); width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; margin-bottom: 16px;
+      background: var(--ink); color: var(--bg); font-family: var(--font-display); font-weight: 700; font-size: 14px;
+    }
+    .steps b { display: block; font-size: 16.5px; margin-bottom: 4px; }
+    .steps span { color: var(--muted); font-size: 14.5px; line-height: 1.55; }
+    .steps code, .share code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: .9em; }
+    .note { margin-top: 18px; font-size: 14px; color: var(--muted); }
+    .note b { color: var(--ink); }
+
+    .share {
+      margin-top: 40px; display: grid; grid-template-columns: 1.3fr auto; gap: 28px; align-items: center;
+      background: linear-gradient(135deg, #0e1512, #06231a 60%, #0c3b27); color: #fff; border-radius: 28px; padding: 40px;
+    }
+    .share h3 { font-size: clamp(22px, 2.6vw, 30px); margin-bottom: 10px; }
+    .share p { color: #b9c7c1; font-size: 15.5px; max-width: 600px; }
+    .share-ctas { display: flex; flex-wrap: wrap; gap: 10px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 48px; padding: 0 22px;
+      border-radius: 999px; font-family: var(--font-display); font-weight: 600; font-size: 15px; text-decoration: none;
+      transition: transform .15s, background .15s;
+    }
+    .btn:active { transform: scale(.98); }
+    .btn-light { background: #fff; color: #0b0d0c; }
+    .btn-ghost { border: 1px solid rgba(255,255,255,.22); color: #fff; }
+    .btn-ghost:hover { background: rgba(255,255,255,.08); }
+    .btn .material-symbols-outlined { font-size: 19px; }
+
+    footer { border-top: 1px solid var(--line); padding: 28px 0 40px; color: var(--faint); font-size: 13.5px; }
+    footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+    footer a { color: var(--faint); }
+    footer a:hover { color: var(--ink); }
+
+    /* ── phones: one screen at a time, like the app ── */
+    @media (max-width: 860px) {
+      .hide-sm { display: none; }
+      .hero { padding: 108px 0 104px; }
+      .browser { margin-top: -64px; }
+      .app { grid-template-columns: 1fr; height: auto; min-height: 0; border-radius: 20px; }
+      .pane { overflow: visible; }
+      .list-pane { border-right: 0; }
+      .app[data-view="list"] .detail-pane, .app[data-view="detail"] .list-pane { display: none; }
+      .bar { top: 68px; }
+      .back { display: grid; }
+      .row .chev { display: block; }
+      .row[aria-current="true"]::after { display: none; }
+      .row[aria-current="true"] { background: transparent; }
+      .detail-pane { padding: 0 16px 24px; }
+      .detail-pane .bar { flex-wrap: nowrap; }
+      .dl { padding: 0 14px 0 12px; }
+      .steps { grid-template-columns: 1fr; }
+      .share { grid-template-columns: 1fr; padding: 28px; }
+    }
+    @media (max-width: 520px) {
+      .wrap { padding: 0 16px; }
+      .dl-text { display: none; }
+      .dl { width: 40px; padding: 0; justify-content: center; }
+      .cat { padding: 8px 12px; gap: 14px; }
+      .cat.child { padding-left: 26px; }
+      .cat:not(.child)::before { left: 54px; }
+      .cat.child::before { left: 66px; }
+      .share-ctas .btn { flex: 1 1 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="top" id="topNav" aria-label="Main">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">
+        <img src="/assets/icon_192.png" alt="" width="30" height="30">
+        XPENC <small>Templates</small>
+      </a>
+      <div class="nav-links">
+        <a class="hide-sm" href="/#tour">The app</a>
+        <a class="hide-sm" href="/web">Web</a>
+        <a class="hide-sm" href="https://github.com/PATILYASHH/XPENC-Templates" target="_blank" rel="noopener">GitHub</a>
+        <a class="nav-cta" href="/#download">Get XPENC</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero" id="heroTop">
+    <div class="wrap">
+      <div class="kicker">Quick templates</div>
+      <h1>Categories that fit your life, ready in one tap.</h1>
+      <p class="lede">Pick a ready-made set of categories, see exactly what's in it, and import it into XPENC. A template is structure only: names, icons and colours. It carries no amounts and no personal data.</p>
+      <div class="hero-facts" id="heroFacts">
+        <span>Free</span><span>Open source</span><span>Shared by the community</span>
+      </div>
+    </div>
+  </header>
+
+  <section class="browser" aria-label="Templates">
+    <div class="wrap">
+      <div class="app" id="appWin" data-view="list">
+
+        <aside class="pane list-pane" id="listPane" aria-label="All templates">
+          <div class="bar">
+            <h2>Templates</h2>
+            <span class="count" id="tplCount"></span>
+          </div>
+          <div id="tplSections">
+            <div class="label">Quick setups</div>
+            <div class="card" aria-hidden="true"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
+          </div>
+          <noscript>
+            <div class="card empty">
+              Preview needs JavaScript. You can still download the templates from
+              <a href="https://github.com/PATILYASHH/XPENC-Templates">GitHub</a>:
+              <a href="https://github.com/PATILYASHH/XPENC-Templates/blob/main/quick-setups/50-30-20-budget.json">50/30/20 Budget</a>,
+              <a href="https://github.com/PATILYASHH/XPENC-Templates/blob/main/quick-setups/student.json">Student</a> and
+              <a href="https://github.com/PATILYASHH/XPENC-Templates/blob/main/quick-setups/family-household.json">Family Household</a>.
+            </div>
+          </noscript>
+        </aside>
+
+        <div class="pane detail-pane" id="detailPane">
+          <div class="bar">
+            <button class="back" id="backBtn" type="button" aria-label="All templates">
+              <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+            </button>
+            <h2 id="dName">&nbsp;</h2>
+            <a class="dl" id="dDownload" href="#" download hidden>
+              <span class="material-symbols-outlined" aria-hidden="true">download</span><span class="dl-text">Download</span>
+            </a>
+          </div>
+          <p class="desc" id="dDesc"></p>
+          <div class="meta" id="dMeta"></div>
+          <div class="tabs" role="tablist" aria-label="Kind" id="kindTabs" hidden>
+            <button class="tab" role="tab" type="button" id="tabExpense" data-kind="expense" aria-selected="true" aria-controls="dList">Money out</button>
+            <button class="tab" role="tab" type="button" id="tabIncome" data-kind="income" aria-selected="false" aria-controls="dList" tabindex="-1">Money in</button>
+          </div>
+          <div class="card" id="dList" role="tabpanel" aria-labelledby="tabExpense"></div>
+          <p class="hint" id="dHint" hidden>Subcategories roll their spending up into the category above them.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="how" id="howTo">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="kicker">How to use one</div>
+        <h2>Download, import, switch.</h2>
+        <p>Needs XPENC 1.6.6 or newer (now in beta). Nothing changes in the app until you switch to the template.</p>
+      </div>
+      <ol class="steps">
+        <li><b>Download</b><span>Pick a template above and tap <strong>Download</strong>. You get one small <code>.json</code> file.</span></li>
+        <li><b>Import</b><span>In XPENC, open <strong>More › Categories</strong>, tap <strong>Templates</strong> in the top bar, then <strong>Import from file</strong>.</span></li>
+        <li><b>Switch</b><span>The template is saved next to your own. Switch to it whenever you're ready, and switch back any time.</span></li>
+      </ol>
+      <p class="note"><b>Your history stays put.</b> When you switch, categories with the same name (Rent, Food, Groceries and so on) move into place along with their transactions. Past transactions always keep the category they already have.</p>
+
+      <div class="share">
+        <div>
+          <h3>Made a set that works for you? Share it.</h3>
+          <p>Use <strong>Share as file</strong> on any saved template in XPENC and open a pull request on GitHub. Once it's merged, it shows up here for everyone. The file never contains your amounts or transactions.</p>
+        </div>
+        <div class="share-ctas">
+          <a class="btn btn-light" href="https://github.com/PATILYASHH/XPENC-Templates#share-yours" target="_blank" rel="noopener">How to share
+            <span class="material-symbols-outlined" aria-hidden="true">open_in_new</span>
+          </a>
+          <a class="btn btn-ghost" href="https://github.com/PATILYASHH/XPENC-Templates" target="_blank" rel="noopener">View on GitHub</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <span>© <span id="yearNow">2026</span> Yash Patil · Templates from <a href="https://github.com/PATILYASHH/XPENC-Templates" target="_blank" rel="noopener">XPENC-Templates</a></span>
+      <span><a href="/">xpenc.in</a> · <a href="/privacy">Privacy</a> · <a href="/sheetconv">Import from Excel</a></span>
+    </div>
+  </footer>
+
+  <script>
+  (() => {
+    'use strict';
+
+    // index.json is built from the XPENC-Templates repo on every merge.
+    // xpenc.in proxies it (vercel.json) so a blocked raw.githubusercontent.com
+    // doesn't matter; the direct URL is the fallback.
+    const SOURCES = [
+      { index: '/templates/data/index.json', files: '/templates/data/' },
+      { index: 'https://raw.githubusercontent.com/PATILYASHH/XPENC-Templates/main/index.json',
+        files: 'https://raw.githubusercontent.com/PATILYASHH/XPENC-Templates/main/' },
+    ];
+    const REPO = 'https://github.com/PATILYASHH/XPENC-Templates';
+
+    // XPENC's icon keys (AppIcons) → Material Symbols names.
+    const ICONS = {cash:'payments',bank:'account_balance',card:'credit_card',wallet:'account_balance_wallet',savings:'savings',pay_later:'shopping_cart_checkout',prepaid_balance:'credit_score',salary:'work',profit:'trending_up',gift:'card_giftcard',interest:'percent',refund:'undo',rent:'home',food:'restaurant',groceries:'local_grocery_store',transport:'directions_bus',bills:'receipt',shopping:'shopping_bag',health:'favorite',entertainment:'movie',emi:'account_balance_wallet',education:'school',travel:'flight',coffee:'coffee',cafe:'local_cafe',fastfood:'fastfood',breakfast:'breakfast_dining',lunch:'lunch_dining',dinner:'dinner_dining',bakery:'bakery_dining',icecream:'icecream',pizza:'local_pizza',ramen:'ramen_dining',bar:'local_bar',cake:'cake',kitchen:'kitchen',mall:'local_mall',store:'storefront',clothing:'checkroom',jewelry:'diamond',car:'directions_car',taxi:'local_taxi',fuel:'local_gas_station',train:'train',subway:'subway',bike:'directions_bike',scooter:'two_wheeler',parking:'local_parking',car_repair:'car_repair',house:'house',apartment:'apartment',electricity:'bolt',water:'water_drop',wifi:'wifi',gas:'local_fire_department',plumbing:'plumbing',repair:'build',cleaning:'cleaning_services',laundry:'local_laundry_service',furniture:'chair',doctor:'medical_services',pharmacy:'local_pharmacy',vaccine:'vaccines',fitness:'fitness_center',spa:'spa',therapy:'psychology',gaming:'sports_esports',music:'music_note',theater:'theater_comedy',festival:'festival',park:'park',beach:'beach_access',hiking:'hiking',soccer:'sports_soccer',basketball:'sports_basketball',pool:'pool',streaming:'live_tv',reading:'menu_book',laptop:'laptop_mac',computer:'computer',phone:'phone_iphone',tv:'tv',headphones:'headphones',print:'print',briefcase:'business_center',hotel:'hotel',luggage:'luggage',map:'map',baby:'child_care',family:'family_restroom',pets:'pets',elderly:'elderly',donation:'volunteer_activism',invoice:'receipt_long',loyalty:'loyalty',insurance:'security',tax:'request_quote',transfer:'swap_horiz',person:'person',bar_chart:'bar_chart',currency_exchange:'currency_exchange',other:'more_horiz'};
+
+    const $ = (id) => document.getElementById(id);
+    const app = $('appWin');
+    const narrow = window.matchMedia('(max-width: 860px)');
+    let templates = [];
+    let filesBase = SOURCES[0].files;
+    let current = null;
+    let kind = 'expense';
+    let openedFromList = false;
+
+    function el(tag, cls, text) {
+      const n = document.createElement(tag);
+      if (cls) n.className = cls;
+      if (text != null) n.textContent = text;
+      return n;
+    }
+    function hex(c) { return typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c) ? c : '#64748B'; }
+    function tint(c, a) {
+      const v = parseInt(hex(c).slice(1), 16);
+      return `rgba(${v >> 16},${(v >> 8) & 255},${v & 255},${a})`;
+    }
+    // The app's icon badge: the colour at 15% behind the icon in full colour.
+    function badge(icon, color) {
+      const b = el('span', 'badge');
+      b.style.background = tint(color, 0.15);
+      b.style.color = hex(color);
+      b.setAttribute('aria-hidden', 'true');
+      if (typeof icon === 'string' && icon.startsWith('emoji:') && icon.length > 6) {
+        b.append(el('span', 'emoji', icon.slice(6)));
+      } else {
+        b.append(el('span', 'material-symbols-outlined', ICONS[icon] || 'circle'));
+      }
+      return b;
+    }
+    const total = (list) => list.reduce((n, c) => n + 1 + (c.children ? c.children.length : 0), 0);
+    const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+    // Same file name XPENC gives a shared template.
+    function fileName(name) {
+      const safe = name.replace(/[^\w\- ]+/g, ' ').trim();
+      return `${safe || 'Categories'} - XPENC categories.json`;
+    }
+
+    async function loadIndex() {
+      for (const s of SOURCES) {
+        try {
+          const r = await fetch(s.index);
+          if (!r.ok) continue;
+          const j = await r.json();
+          if (j && j.format === 'xpenc-template-index' && Array.isArray(j.templates)) {
+            filesBase = s.files;
+            return j;
+          }
+        } catch (_) { /* try the next source */ }
+      }
+      throw new Error('unavailable');
+    }
+
+    function renderList(index) {
+      const box = $('tplSections');
+      box.replaceChildren();
+      const sections = Array.isArray(index.sections) && index.sections.length
+        ? index.sections : [{ id: 'quick-setups', label: 'Quick setups' }, { id: 'community', label: 'Community' }];
+      const usedIcons = new Set();
+      for (const s of sections) {
+        const items = templates.filter((t) => t.section === s.id);
+        box.append(el('div', 'label', s.label));
+        const card = el('div', 'card');
+        if (!items.length) {
+          const p = el('p', 'empty', s.id === 'community' ? 'Nothing here yet. ' : 'None yet.');
+          if (s.id === 'community') {
+            const a = el('a', null, 'Be the first to share one');
+            a.href = `${REPO}#share-yours`; a.target = '_blank'; a.rel = 'noopener';
+            p.append(a, '.');
+          }
+          card.append(p);
+        }
+        for (const t of items) {
+          const a = el('a', 'row');
+          a.href = `#${t.id}`;
+          a.dataset.id = t.id;
+          // Its first spending group, or the next one whose icon no row above uses.
+          const groups = [...t.expense, ...t.income];
+          const pick = groups.find((c) => !usedIcons.has(c.icon)) || groups[0];
+          usedIcons.add(pick.icon);
+          a.append(badge(pick.icon, pick.color));
+          const text = el('span', 'row-text');
+          text.append(el('span', 'row-title', t.name));
+          text.append(el('span', 'row-sub',
+            `${plural(t.count, 'category', 'categories')} · ${t.expense.map((c) => c.name).join(', ')}`));
+          a.append(text);
+          a.append(el('span', 'material-symbols-outlined chev', 'chevron_right'));
+          a.addEventListener('click', (e) => {
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+            e.preventDefault();
+            if (location.hash !== `#${t.id}`) history.pushState(null, '', `#${t.id}`);
+            openedFromList = true;
+            route();
+          });
+          card.append(a);
+        }
+        box.append(card);
+      }
+      $('tplCount').textContent = plural(templates.length, 'template', 'templates');
+      const official = templates.filter((t) => t.section === 'quick-setups').length;
+      const community = templates.length - official;
+      const facts = $('heroFacts');
+      facts.replaceChildren(
+        el('span', null, plural(official, 'quick setup', 'quick setups')),
+        el('span', null, `${community} from the community`),
+        el('span', null, 'Free and open source'));
+    }
+
+    function renderCategories() {
+      const list = $('dList');
+      list.replaceChildren();
+      list.classList.remove('fade'); void list.offsetWidth; list.classList.add('fade');
+      const cats = current[kind];
+      let hasChildren = false;
+      for (const c of cats) {
+        const row = el('div', 'cat');
+        row.append(badge(c.icon, c.color), el('span', 'cat-name', c.name));
+        if (c.children && c.children.length) hasChildren = true;
+        list.append(row);
+        for (const ch of c.children || []) {
+          const r = el('div', 'cat child');
+          r.append(badge(ch.icon, ch.color), el('span', 'cat-name', ch.name));
+          list.append(r);
+        }
+      }
+      $('dHint').hidden = !hasChildren;
+      for (const tab of document.querySelectorAll('.tab')) {
+        const on = tab.dataset.kind === kind;
+        tab.setAttribute('aria-selected', String(on));
+        tab.tabIndex = on ? 0 : -1;
+        if (on) list.setAttribute('aria-labelledby', tab.id);
+      }
+    }
+
+    function show(t) {
+      current = t;
+      kind = 'expense';
+      for (const r of document.querySelectorAll('.row')) {
+        r.setAttribute('aria-current', String(r.dataset.id === t.id));
+      }
+      $('dName').textContent = t.name;
+      $('dDesc').textContent = t.description || '';
+      const dl = $('dDownload');
+      dl.hidden = false;
+      dl.href = filesBase + t.path;
+      dl.setAttribute('download', fileName(t.name));
+      dl.setAttribute('aria-label', `Download ${t.name}`);
+      const groups = t.expense.length;
+      $('dMeta').replaceChildren(
+        el('span', null, plural(t.count, 'category', 'categories')),
+        el('span', null, `${total(t.expense)} money out`),
+        el('span', null, `${total(t.income)} money in`),
+        el('span', null, plural(groups, 'spending group', 'spending groups')));
+      $('kindTabs').hidden = false;
+      renderCategories();
+      $('detailPane').scrollTop = 0;
+      document.title = `${t.name} — XPENC category templates`;
+    }
+
+    // #student opens Student; no hash shows the list on a phone and the first
+    // template beside it on a wide screen.
+    function route() {
+      const id = decodeURIComponent(location.hash.slice(1));
+      const t = templates.find((x) => x.id === id);
+      if (t) {
+        show(t);
+        app.dataset.view = 'detail';
+        if (narrow.matches) app.scrollIntoView({ block: 'start' });
+      } else {
+        app.dataset.view = 'list';
+        if (templates.length && (!current || !narrow.matches)) show(current || templates[0]);
+        if (!narrow.matches && current) {
+          for (const r of document.querySelectorAll('.row')) r.setAttribute('aria-current', String(r.dataset.id === current.id));
+        }
+        document.title = 'Category templates — XPENC';
+      }
+    }
+
+    $('backBtn').addEventListener('click', () => {
+      if (openedFromList) { openedFromList = false; history.back(); return; }
+      history.pushState(null, '', location.pathname + location.search);
+      route();
+      if (narrow.matches) app.scrollIntoView({ block: 'start' });
+    });
+
+    $('kindTabs').addEventListener('click', (e) => {
+      const tab = e.target.closest('.tab');
+      if (!tab || !current) return;
+      kind = tab.dataset.kind;
+      renderCategories();
+    });
+    $('kindTabs').addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      kind = kind === 'expense' ? 'income' : 'expense';
+      renderCategories();
+      $(kind === 'expense' ? 'tabExpense' : 'tabIncome').focus();
+    });
+
+    window.addEventListener('hashchange', route);
+    window.addEventListener('popstate', route);
+
+    loadIndex().then((index) => {
+      templates = index.templates.filter((t) =>
+        t && typeof t.id === 'string' && typeof t.name === 'string' && typeof t.path === 'string' &&
+        Array.isArray(t.income) && Array.isArray(t.expense) && (t.income.length || t.expense.length));
+      renderList(index);
+      route();
+    }).catch(() => {
+      const box = $('tplSections');
+      const p = el('p', 'empty', "Couldn't load the templates. Check your connection, or ");
+      const a = el('a', null, 'browse them on GitHub');
+      a.href = REPO;
+      p.append(a, '.');
+      const card = el('div', 'card');
+      card.append(p);
+      box.replaceChildren(card);
+      $('dName').textContent = '';
+    });
+
+    // nav: clear over the dark hero, frosted after it
+    const nav = $('topNav');
+    const hero = $('heroTop');
+    const onScroll = () => nav.classList.toggle('solid', window.scrollY > hero.offsetHeight - 80);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    $('yearNow').textContent = new Date().getFullYear();
+  })();
+  </script>
+</body>
+</html>

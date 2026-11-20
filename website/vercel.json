@@ -7,6 +7,23 @@
       "source": "/ios/source.json",
       "destination": "https://github.com/PATILYASHH/XPENC/releases/latest/download/xpenc-altsource.json",
       "permanent": false
+    },
+    { "source": "/templetes", "destination": "/templates", "permanent": true },
+    { "source": "/template", "destination": "/templates", "permanent": true },
+    { "source": "/language", "destination": "/languages", "permanent": true },
+    { "source": "/lang", "destination": "/languages", "permanent": true },
+    { "source": "/LOCAL-AI", "destination": "/local-ai", "permanent": true },
+    { "source": "/Local-AI", "destination": "/local-ai", "permanent": true },
+    { "source": "/localai", "destination": "/local-ai", "permanent": true }
+  ],
+  "rewrites": [
+    {
+      "source": "/templates/data/index.json",
+      "destination": "https://raw.githubusercontent.com/PATILYASHH/XPENC-Templates/main/index.json"
+    },
+    {
+      "source": "/templates/data/:section(quick-setups|community)/:file([a-z0-9-]+\\.json)",
+      "destination": "https://raw.githubusercontent.com/PATILYASHH/XPENC-Templates/main/:section/:file"
     }
   ],
   "headers": [
@@ -23,6 +40,35 @@
       "source": "/assets/(.*)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/languages/packs/(.*)",
+      "headers": [
+        { "key": "Content-Type", "value": "application/json; charset=utf-8" },
+        { "key": "Content-Disposition", "value": "attachment" },
+        { "key": "Cache-Control", "value": "public, max-age=3600" }
+      ]
+    },
+    {
+      "source": "/languages/index.json",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=300" }
+      ]
+    },
+    {
+      "source": "/llms.txt",
+      "headers": [
+        { "key": "Content-Type", "value": "text/plain; charset=utf-8" },
+        { "key": "Cache-Control", "value": "public, max-age=3600" }
+      ]
+    },
+    {
+      "source": "/llms-full.txt",
+      "headers": [
+        { "key": "Content-Type", "value": "text/plain; charset=utf-8" },
+        { "key": "Cache-Control", "value": "public, max-age=3600" },
+        { "key": "Link", "value": "<https://xpenc.in/features>; rel=\"canonical\"" }
       ]
     },
     {

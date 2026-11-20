@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Privacy Policy — XPENC</title>
-  <meta name="description" content="XPENC privacy policy: everything stays on your phone. No server, no accounts, no analytics, no ads. Release builds don't even request the INTERNET permission.">
+  <meta name="description" content="XPENC privacy policy for Android and iPhone: everything stays on your phone. No server, no accounts, no analytics, no ads. Android release builds don't even request the INTERNET permission.">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://xpenc.in/privacy">
   <meta name="theme-color" content="#000000">
@@ -118,8 +118,8 @@
       <div class="kicker">Privacy Policy</div>
       <h1>Everything stays on your phone.</h1>
       <p class="meta">
-        <b>Effective date:</b> 26 September 2026 &nbsp;·&nbsp;
-        <b>Applies to:</b> XPENC for Android (<code>com.yash.xpenc</code>), v1.1.0+ &nbsp;·&nbsp;
+        <b>Effective date:</b> 17 November 2026 &nbsp;·&nbsp;
+        <b>Applies to:</b> XPENC for Android (<code>com.yash.xpenc</code>), v1.1.0+, and XPENC for iPhone, v1.6.4+ &nbsp;·&nbsp;
         <b>Developer:</b> Yash Patil &nbsp;·&nbsp;
         <b>Contact:</b> <a href="mailto:feedback.yashpatil@gmail.com">feedback.yashpatil@gmail.com</a>
       </p>
@@ -132,9 +132,10 @@
       <div class="callout">
         <strong>The short version:</strong> XPENC stores everything on your phone and
         nothing anywhere else. The app has no server, no user accounts, no analytics, no
-        crash reporting, no ads, and no third-party SDKs that collect data. Release builds
-        do not request the <code>INTERNET</code> permission, so the app is technically
-        incapable of transmitting your data anywhere.
+        crash reporting, no ads, and no third-party SDKs that collect data. On Android,
+        release builds do not request the <code>INTERNET</code> permission, so the app is
+        technically incapable of transmitting your data anywhere. On iPhone, where apps
+        can't give up network access, XPENC's code makes no network requests.
       </div>
 
       <h2>Data the app stores — on your device only</h2>
@@ -146,6 +147,7 @@
         <li>persons and dues/loans you record against them</li>
         <li>reminders and calendar entries</li>
         <li>app settings</li>
+        <li>if you use Local AI: the notes you save in <strong>AI Memory</strong> (see below)</li>
       </ul>
       <p>
         All of this is stored in a private SQLite database inside the app's private storage
@@ -193,6 +195,14 @@
               anywhere.</td>
         </tr>
         <tr>
+          <td><code>RECORD_AUDIO</code><br>(optional, asked at runtime)</td>
+          <td>Only for Local AI voice input, and only the first time you tap 🎤 in Ask Exo.
+              While you speak, the sound is held in the phone's memory, turned into text by
+              the speech model on the phone, and then thrown away — it is never saved to
+              storage and never sent anywhere. If you deny it, or never use voice input,
+              nothing else changes.</td>
+        </tr>
+        <tr>
           <td><code>USE_BIOMETRIC</code></td>
           <td>Only if you turn on fingerprint/face unlock for the app lock. The app never
               sees your biometric data — Android only tells it whether the check passed.</td>
@@ -203,12 +213,77 @@
         <strong>Settings → Permissions</strong> inside the app.
       </p>
       <p>
-        XPENC requests <strong>no</strong> SMS, location, microphone, storage, or internet
-        permission. (The final app package also contains <code>VIBRATE</code>,
+        XPENC requests <strong>no</strong> SMS, location, storage, or internet permission. The
+        microphone is used for nothing but the optional voice input above. (The final app package also contains <code>VIBRATE</code>,
         <code>WAKE_LOCK</code> and <code>FOREGROUND_SERVICE</code> — standard, install-time
         permissions the notifications library uses to deliver reminders on time — and an
         internal Android-library permission scoped to the app itself. None of them gives
         access to any of your data.)
+      </p>
+
+      <h2>On iPhone</h2>
+      <p>
+        XPENC for iPhone is the same app under this same policy: your data lives in the app's
+        own private storage on the iPhone and nowhere else. iOS has no internet permission an
+        app can drop, so the guarantee there is the code itself — XPENC contains no code that
+        makes a network request. Links you choose to open (a UPI, PayPal or Venmo payment, an
+        email to the developer) are handed to another app or your browser.
+      </p>
+      <p>iOS asks for each of these only when you first use the feature, and you can change your answer in the iPhone's Settings:</p>
+      <ul>
+        <li><strong>Camera</strong> — to take a photo of a receipt.</li>
+        <li><strong>Photos</strong> — to attach a receipt photo from your library.</li>
+        <li><strong>Contacts</strong> — to import a phone number and photo for a person you pick.</li>
+        <li><strong>Face ID</strong> — to unlock the app lock. XPENC never sees your face data; iOS only says whether the check passed.</li>
+        <li><strong>Notifications</strong> — for budget alerts and reminders.</li>
+      </ul>
+      <p>
+        On iPhone, backups are kept inside the app, so deleting XPENC deletes them too. A backup
+        leaves the app only when you share it — to Files, iCloud Drive or anywhere you choose.
+        Like most iPhone apps, XPENC's data may be included in your iPhone's own iCloud or
+        computer backup if you have that turned on; that backup is operated by Apple under your
+        device settings and Apple's privacy policy, not by XPENC.
+      </p>
+
+      <h2>Local AI (optional)</h2>
+      <p>
+        Local AI is off until you turn it on in <strong>Settings → Local AI</strong>. It runs
+        entirely on your phone.
+      </p>
+      <ul>
+        <li><strong>The models are files you import.</strong> <a href="/local-ai">xpenc.in/local-ai</a>
+          lists open models (made by other developers) with download links to Hugging Face; your
+          browser downloads them, and you import the file into XPENC. XPENC itself downloads
+          nothing — it still has no internet permission. Model files stay in the app's private
+          storage, are never put in a backup, and are deleted when you remove them or uninstall.</li>
+        <li><strong>It only reads.</strong> To answer, XPENC works out the figures from your data on
+          the phone and gives them to the model. The model cannot add, change or delete anything.</li>
+        <li><strong>Conversations are not kept.</strong> Questions and answers live in the phone's
+          memory only while you use Ask Exo, and are gone when you start a new chat or close the app.</li>
+        <li><strong>AI Memory is yours.</strong> Notes you save there are stored with the rest of your
+          data, included in your backups, and erased by "Clear all data" or "Forget everything". Only
+          you add them; the AI never saves anything by itself.</li>
+        <li><strong>Reporting an answer</strong> opens your mail app with that question and answer
+          filled in. Nothing is sent unless you send that email yourself.</li>
+      </ul>
+
+      <h2>XPENC web and Connector</h2>
+      <p>
+        <strong>XPENC web</strong> (<a href="/web">xpenc.in/web</a>) keeps your data in that
+        browser's own storage and, as it comes, talks to nothing but xpenc.in. It can go online
+        only if you turn on <strong>Connector</strong> yourself, in Settings &rarr; Connector.
+        Then, to keep it in step with XPENC on your phones, it signs you in with GitHub
+        (through the Connector sign-in, run on Supabase) and keeps your backup — the same JSON
+        file XPENC makes — in a private GitHub repository of yours, <code>XPENC-BACKUP</code>. It
+        isn't encrypted there. It also reads your Connector friends' usernames, to link people.
+        Disconnect at any time; your data in the browser and on GitHub stays.
+      </p>
+      <p>
+        <strong>Connector friends.</strong> On Android, if the separate Connector app is
+        installed, XPENC can read the list of your Connector friends from it, on the phone, to
+        link a person to a friend. The link — the friend's Connector id and username — is
+        stored only in XPENC (and in its backups). XPENC still has no internet permission and
+        sends Connector nothing.
       </p>
 
       <h2>Backups and exports</h2>
@@ -263,6 +338,7 @@
         <li>clear the app's data in Android settings (<em>Apps → XPENC → Storage → Clear data</em>), or</li>
         <li>uninstall the app — Android deletes the app's private storage with it.</li>
       </ol>
+      <p>On iPhone, deleting the app removes all of its data, including backups kept inside it.</p>
       <p>There is no server-side copy to delete, and no "account" to close.</p>
 
       <h2>Children</h2>
@@ -279,7 +355,7 @@
         <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener">Vercel's privacy policy</a>.
         The page loads fonts from Google Fonts and the latest release number from the
         GitHub API; those requests are made by your <strong>browser when you visit the
-        website</strong>, never by the Android app.
+        website</strong>, never by the app.
       </p>
 
       <h2>Open source</h2>

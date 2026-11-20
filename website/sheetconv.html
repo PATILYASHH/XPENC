@@ -1,0 +1,1489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SheetConv — Excel to XPENC converter</title>
+  <meta name="description" content="Turn the Excel or Google Sheets file you've been tracking money in into a backup XPENC can import. Runs entirely in your browser — nothing is uploaded.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://xpenc.in/sheetconv">
+  <meta name="theme-color" content="#050606">
+
+  <link rel="icon" href="assets/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon_32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon_16.png">
+  <link rel="apple-touch-icon" href="assets/apple_touch_icon_180.png">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="XPENC">
+  <meta property="og:title" content="SheetConv — Excel to XPENC converter">
+  <meta property="og:description" content="Convert your money spreadsheet into an XPENC backup. Runs in your browser — nothing is uploaded.">
+  <meta property="og:url" content="https://xpenc.in/sheetconv">
+  <meta property="og:image" content="https://xpenc.in/assets/og-cover-2026.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #ffffff;
+      --bg-soft: #f4f6f5;
+      --card: #ffffff;
+      --line: #e6eae8;
+      --line-2: #d5dcd9;
+      --ink: #0b0d0c;
+      --muted: #5d6b66;
+      --faint: #8c9893;
+      --brand: #12a150;
+      --brand-700: #0b7f3e;
+      --brand-300: #3ecf8e;
+      --brand-100: #ddf5e7;
+      --brand-50: #f0fbf5;
+      --rose: #e11d48;  --rose-50: #ffecf0;
+      --amber: #b45309; --amber-50: #fff4e3;
+      --blue: #2563eb;  --blue-50: #ebf2ff;
+      --violet: #7c3aed; --violet-50: #f3edff;
+      --night: #050606; --night-2: #0d100f; --night-line: rgba(255,255,255,.09);
+      --night-ink: #f3f5f4; --night-muted: #9aa6a1;
+      --radius: 24px;
+      --shadow-1: 0 1px 2px rgba(11,13,12,.05), 0 8px 24px rgba(11,13,12,.06);
+      --shadow-2: 0 2px 6px rgba(11,13,12,.06), 0 24px 60px rgba(11,13,12,.12);
+      --font-display: "Space Grotesk", system-ui, sans-serif;
+      --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+      color-scheme: light;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #070908; --bg-soft: #0e1311; --card: #0f1412; --line: #1d2622; --line-2: #2a3530;
+        --ink: #eef3f0; --muted: #9aa9a2; --faint: #6c7a74;
+        --brand: #2fc774; --brand-700: #5ee29a; --brand-100: #143524; --brand-50: #0d2018;
+        --rose: #fb7185; --rose-50: #2a1118; --amber: #fbbf24; --amber-50: #2a1f0a;
+        --blue: #60a5fa; --blue-50: #0f1b30; --violet: #a78bfa; --violet-50: #1c1530;
+        --shadow-1: 0 1px 2px rgba(0,0,0,.4); --shadow-2: 0 18px 42px rgba(0,0,0,.45);
+        color-scheme: dark;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #070908; --bg-soft: #0e1311; --card: #0f1412; --line: #1d2622; --line-2: #2a3530;
+      --ink: #eef3f0; --muted: #9aa9a2; --faint: #6c7a74;
+      --brand: #2fc774; --brand-700: #5ee29a; --brand-100: #143524; --brand-50: #0d2018;
+      --rose: #fb7185; --rose-50: #2a1118; --amber: #fbbf24; --amber-50: #2a1f0a;
+      --blue: #60a5fa; --blue-50: #0f1b30; --violet: #a78bfa; --violet-50: #1c1530;
+      --shadow-1: 0 1px 2px rgba(0,0,0,.4); --shadow-2: 0 18px 42px rgba(0,0,0,.45);
+      color-scheme: dark;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 140px; }
+    body {
+      background: var(--bg); color: var(--ink);
+      font-family: var(--font-body); font-size: 15px; line-height: 1.6;
+      -webkit-font-smoothing: antialiased; overflow-x: hidden;
+    }
+    a { color: inherit; }
+    button, input, select { font: inherit; color: inherit; }
+    ::selection { background: var(--brand-100); color: var(--brand-700); }
+    :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 8px; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+    h1, h2, h3 { font-family: var(--font-display); letter-spacing: -.025em; line-height: 1.12; }
+    .hidden { display: none !important; }
+    .num { font-variant-numeric: tabular-nums; }
+
+    /* ── nav (same as the homepage) ── */
+    nav.top {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 40; color: #fff;
+      border-bottom: 1px solid transparent; transition: background .25s, border-color .25s, color .25s;
+    }
+    nav.top.solid { background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4); border-bottom-color: var(--line); color: var(--ink); }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 68px; gap: 12px; }
+    .brand { display: flex; align-items: center; gap: 11px; text-decoration: none; font-family: var(--font-display); font-weight: 700; letter-spacing: .16em; font-size: 16px; }
+    .brand img { width: 30px; height: 30px; border-radius: 9px; }
+    .brand small { letter-spacing: .02em; font-weight: 600; font-size: 13px; opacity: .6; padding-left: 10px; border-left: 1px solid currentColor; }
+    .nav-links { display: flex; align-items: center; gap: 24px; font-size: 14.5px; font-weight: 500; }
+    .nav-links a { text-decoration: none; opacity: .72; transition: opacity .15s; }
+    .nav-links a:hover { opacity: 1; }
+    .nav-links .nav-cta { opacity: 1; height: 40px; padding: 0 18px; border-radius: 999px; display: inline-flex; align-items: center; background: #fff; color: #0b0d0c; font-weight: 600; }
+    nav.top.solid .nav-cta { background: var(--ink); color: var(--bg); }
+
+    /* ── hero ── */
+    .hero { position: relative; overflow: hidden; background: var(--night); color: var(--night-ink); padding: 132px 0 84px; }
+    .hero::before {
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(55% 60% at 80% 45%, rgba(18,161,80,.32), transparent 70%), radial-gradient(40% 45% at 5% 0%, rgba(37,99,235,.14), transparent 70%);
+    }
+    .hero::after {
+      content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5;
+      background-image: linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
+      background-size: 56px 56px;
+      mask-image: radial-gradient(70% 70% at 50% 30%, #000, transparent 75%); -webkit-mask-image: radial-gradient(70% 70% at 50% 30%, #000, transparent 75%);
+    }
+    .hero-grid { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
+    .kicker { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-display); font-size: 12px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--brand-300); margin-bottom: 16px; }
+    .kicker::before { content: ""; width: 18px; height: 2px; border-radius: 2px; background: currentColor; }
+    .hero h1 { font-size: clamp(36px, 4.4vw, 54px); letter-spacing: -.035em; line-height: 1.02; margin-bottom: 20px; }
+    .grad { background: linear-gradient(95deg, var(--brand-300), #7ee8b4 60%, #b9f3d6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .hero .lede { color: var(--night-muted); font-size: 17.5px; max-width: 500px; }
+    .how { list-style: none; display: grid; gap: 14px; margin-top: 30px; counter-reset: how; }
+    .how li { display: flex; gap: 14px; align-items: flex-start; counter-increment: how; color: #d5dcd9; font-size: 15px; }
+    .how li::before { content: counter(how); flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-display); font-weight: 700; font-size: 13px; color: var(--brand-300); background: rgba(62,207,142,.12); border: 1px solid rgba(62,207,142,.3); }
+    .how b { color: #fff; font-weight: 600; }
+
+    /* dropzone card */
+    .drop-card { position: relative; border-radius: 28px; padding: 10px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12); box-shadow: 0 30px 80px rgba(0,0,0,.45); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+    .drop {
+      display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 6px;
+      min-height: 330px; padding: 36px 24px; border-radius: 20px; cursor: pointer;
+      border: 1.5px dashed rgba(255,255,255,.22); background: rgba(5,6,6,.55);
+      transition: border-color .15s, background .15s, transform .15s;
+    }
+    .drop:hover, .drop.over { border-color: var(--brand-300); background: rgba(18,161,80,.12); }
+    .drop.over { transform: scale(1.01); }
+    .drop-ic { width: 64px; height: 64px; border-radius: 18px; display: grid; place-items: center; background: linear-gradient(145deg, #1a7f4b, #0b3f26); color: #fff; box-shadow: 0 12px 30px rgba(18,161,80,.35); margin-bottom: 12px; }
+    .drop-ic svg { width: 30px; height: 30px; }
+    .drop strong { font-family: var(--font-display); font-size: 21px; color: #fff; letter-spacing: -.01em; }
+    .drop .or { color: var(--night-muted); font-size: 14px; }
+    .drop .pick { margin-top: 14px; display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 20px; border-radius: 999px; background: #fff; color: #0b0d0c; font-weight: 600; font-size: 14.5px; }
+    .formats { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 18px; }
+    .formats span { font-size: 12px; font-weight: 600; letter-spacing: .02em; color: #cfd6d3; padding: 3px 9px; border-radius: 7px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); }
+    .drop-foot { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 10px 4px; color: var(--night-muted); font-size: 13px; }
+    .drop-foot svg { color: var(--brand-300); flex: none; }
+    .hero .error { color: #ffb4c0; text-align: center; padding: 8px 12px 2px; }
+
+    /* ── stepper ── */
+    .stepper { position: sticky; top: 68px; z-index: 30; background: color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-bottom: 1px solid var(--line); }
+    .stepper ol { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 12px 0; }
+    .stepper a { display: flex; align-items: center; gap: 10px; text-decoration: none; padding: 8px 12px; border-radius: 14px; color: var(--muted); font-size: 14px; font-weight: 600; transition: background .15s, color .15s; }
+    .stepper a:hover { background: var(--bg-soft); }
+    .stepper .n { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-display); font-size: 13px; border: 1.5px solid var(--line-2); background: var(--card); }
+    .stepper li.open a { color: var(--ink); }
+    .stepper li.open .n { border-color: var(--brand); color: var(--brand-700); }
+    .stepper li.now a { background: var(--brand-50); color: var(--brand-700); }
+    .stepper li.now .n { background: var(--brand); border-color: var(--brand); color: #fff; }
+    .stepper li.locked a { opacity: .5; }
+    .stepper .t small { display: block; font-weight: 500; font-size: 12px; color: var(--faint); line-height: 1.2; }
+
+    /* ── steps ── */
+    main.wrap { padding-top: 34px; padding-bottom: 96px; }
+    .step { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-1); padding: 30px; margin-top: 20px; scroll-margin-top: 140px; transition: opacity .2s; }
+    .step-head { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 22px; }
+    .step-no { flex: none; width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center; font-family: var(--font-display); font-weight: 700; font-size: 16px; background: var(--ink); color: var(--bg); }
+    .step-head h2 { font-size: 24px; line-height: 1.2; }
+    .step-head p { color: var(--muted); font-size: 14.5px; margin-top: 4px; }
+    .lock-hint { display: none; align-items: center; gap: 7px; margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--faint); }
+    .step.locked { opacity: .62; box-shadow: none; padding-top: 22px; padding-bottom: 22px; }
+    .step.locked > :not(.step-head) { display: none !important; }
+    .step.locked .step-head { margin-bottom: 0; }
+    .step.locked .step-no { background: var(--bg-soft); color: var(--faint); border: 1px solid var(--line); }
+    .step.locked .lock-hint { display: inline-flex; }
+    .step.locked .step-head p { display: none; }
+    #step1.empty { display: none; }
+
+    /* ── form bits ── */
+    .file-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 14px 16px; border-radius: 16px; background: var(--bg-soft); border: 1px solid var(--line); font-size: 14px; }
+    .file-bar .fi { flex: none; width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; background: #107c41; color: #fff; }
+    .file-bar .name { font-weight: 600; word-break: break-all; }
+    .file-bar .swap { margin-left: auto; }
+    .row { display: flex; flex-wrap: wrap; gap: 14px; }
+    .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1 1 200px; }
+    .field > label, .lbl { font-size: 12.5px; font-weight: 600; color: var(--muted); letter-spacing: .01em; }
+    select, input[type="text"], input[type="number"] {
+      width: 100%; min-width: 0; height: 42px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--line-2);
+      background: var(--card); font-size: 14px; transition: border-color .15s, box-shadow .15s;
+    }
+    select:hover, input[type="text"]:hover { border-color: var(--faint); }
+    select:focus, input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-100); }
+    .check { display: flex; align-items: flex-start; gap: 9px; font-size: 14px; cursor: pointer; }
+    .check input { margin-top: 4px; accent-color: var(--brand); }
+    .hint { font-size: 12.5px; color: var(--faint); }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 46px; padding: 0 22px; border-radius: 999px; font-weight: 600; font-size: 14.5px; border: 1px solid transparent; cursor: pointer; text-decoration: none; transition: transform .15s, background .15s, border-color .15s; }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-primary { background: var(--brand); color: #fff; }
+    .btn-primary:hover { background: var(--brand-700); }
+    .btn-ghost { background: transparent; border-color: var(--line-2); color: var(--ink); }
+    .btn-ghost:hover { border-color: var(--ink); }
+    .btn-link { background: none; border: none; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-size: 13.5px; padding: 0; }
+    .btn-link:hover { color: var(--ink); }
+    .btn[disabled] { opacity: .5; cursor: not-allowed; transform: none; }
+    .btn-sm { height: 34px; padding: 0 14px; font-size: 13px; }
+
+    /* ── tables ── */
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; margin-top: 14px; max-width: 100%; background: var(--card); }
+    table { border-collapse: collapse; width: 100%; font-size: 13px; }
+    th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+    th { background: var(--bg-soft); font-weight: 600; color: var(--muted); font-size: 12px; position: sticky; top: 0; z-index: 1; }
+    tr:last-child td { border-bottom: none; }
+    tbody tr:hover td, table tr:hover td { background: color-mix(in srgb, var(--bg-soft) 60%, transparent); }
+    tr.is-header td { background: var(--brand-50) !important; font-weight: 600; color: var(--brand-700); }
+    td.rn { color: var(--faint); font-size: 11.5px; width: 1%; }
+    td.amt { text-align: right; font-variant-numeric: tabular-nums; }
+    .in { color: var(--brand-700); } .out { color: var(--rose); }
+    .scroll-y { max-height: 360px; overflow: auto; }
+
+    /* ── mode cards ── */
+    .modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .mode {
+      position: relative; text-align: left; background: var(--card); border: 1.5px solid var(--line);
+      border-radius: 20px; padding: 22px; cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .15s;
+    }
+    .mode:hover { border-color: var(--line-2); box-shadow: var(--shadow-1); transform: translateY(-2px); }
+    .mode[aria-checked="true"] { border-color: var(--brand); box-shadow: 0 0 0 4px var(--brand-100); }
+    .mode .m-ic { width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; margin-bottom: 14px; }
+    .mode[data-mode="basic"] .m-ic { background: var(--blue-50); color: var(--blue); }
+    .mode[data-mode="medium"] .m-ic { background: var(--brand-50); color: var(--brand-700); }
+    .mode[data-mode="pro"] .m-ic { background: var(--violet-50); color: var(--violet); }
+    .mode h3 { font-size: 20px; margin-bottom: 2px; }
+    .mode .who { color: var(--muted); font-size: 13.5px; margin-bottom: 14px; }
+    .mode ul { list-style: none; font-size: 13.5px; display: grid; gap: 7px; }
+    .mode li { display: flex; gap: 8px; }
+    .mode li::before { content: ""; flex: none; width: 16px; height: 16px; margin-top: 2px; border-radius: 50%; background: var(--brand-50) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2312a150' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12.5l4 4 8-9'/%3E%3C/svg%3E") center / 10px no-repeat; }
+    .mode .tick { position: absolute; top: 20px; right: 20px; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--line-2); display: grid; place-items: center; }
+    .mode[aria-checked="true"] .tick { background: var(--brand); border-color: var(--brand); }
+    .mode[aria-checked="true"] .tick::after { content: ""; width: 10px; height: 6px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: translateY(-1px) rotate(-45deg); }
+    .badge { position: absolute; top: 20px; right: 52px; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 4px 9px; border-radius: 999px; background: var(--ink); color: var(--bg); }
+    .reasons { margin-top: 16px; background: var(--bg-soft); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; font-size: 14px; }
+    .reasons b { font-weight: 600; }
+    .reasons ul { margin: 8px 0 0 18px; color: var(--muted); display: grid; gap: 3px; }
+
+    /* ── mapping ── */
+    .map-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; padding: 18px; border-radius: 18px; background: var(--bg-soft); border: 1px solid var(--line); }
+    .map-grid .field small { color: var(--faint); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .req { color: var(--rose); }
+    .group-title { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-size: 16px; font-weight: 600; margin: 30px 0 12px; }
+    .group-title::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+    .note { font-size: 13.5px; border-radius: 14px; padding: 12px 16px; margin-top: 14px; border: 1px solid; }
+    .note.info { background: var(--blue-50); border-color: color-mix(in srgb, var(--blue) 25%, transparent); color: var(--ink); }
+    .note.warn { background: var(--amber-50); border-color: color-mix(in srgb, var(--amber) 30%, transparent); color: var(--ink); }
+    .note.bad { background: var(--rose-50); border-color: color-mix(in srgb, var(--rose) 30%, transparent); color: var(--ink); }
+    .note b { font-weight: 600; }
+
+    .layout-pick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 8px 0 22px; }
+    .lp { display: flex; gap: 12px; align-items: flex-start; border: 1.5px solid var(--line); border-radius: 18px; padding: 16px 18px; cursor: pointer; background: var(--card); transition: border-color .15s, box-shadow .15s; }
+    .lp:hover { border-color: var(--line-2); }
+    .lp:has(input:checked) { border-color: var(--brand); box-shadow: 0 0 0 4px var(--brand-100); }
+    .lp input { margin-top: 4px; accent-color: var(--brand); }
+    .lp b { display: block; font-size: 15px; }
+    .lp small { display: block; color: var(--muted); font-size: 12.5px; line-height: 1.45; margin-top: 3px; }
+    .lp .mini { display: flex; gap: 3px; margin-top: 10px; }
+    .lp .mini i { display: block; height: 14px; border-radius: 4px; background: var(--line); flex: 1; }
+    .lp .mini i.a { background: var(--brand-100); }
+    .lp .mini i.r { background: var(--rose-50); border: 1px solid color-mix(in srgb, var(--rose) 25%, transparent); }
+
+    .role-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 4px; }
+    .count { font-size: 12.5px; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--muted); cursor: pointer; }
+    .count b { color: var(--ink); font-weight: 600; }
+    .count.on { border-color: var(--ink); color: var(--bg); background: var(--ink); }
+    .count.on b { color: var(--bg); }
+    .bulk { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: var(--bg-soft); border: 1px solid var(--line); font-size: 13.5px; }
+    .bulk select { width: auto; height: 36px; }
+    .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--line-2); vertical-align: -1px; margin-right: 6px; }
+    #roleTable td { white-space: normal; max-width: none; }
+    #roleTable td.hdr { min-width: 180px; }
+    #roleTable td.hdr small { display: block; color: var(--faint); font-size: 11.5px; }
+    #roleTable select { min-width: 190px; height: 36px; }
+    #roleTable tr.r-ignore td:not(:last-child) { opacity: .55; }
+    #roleTable input[type="checkbox"] { accent-color: var(--brand); width: 16px; height: 16px; }
+
+    /* ── summary ── */
+    .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .tile { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 18px; padding: 16px 18px; min-width: 0; }
+    .tile .k { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+    .tile .v { font-family: var(--font-display); font-size: 25px; font-weight: 700; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -.02em; }
+    .tile .s { font-size: 12.5px; color: var(--faint); margin-top: 2px; }
+    details { margin-top: 14px; border: 1px solid var(--line); border-radius: 14px; padding: 12px 16px; background: var(--card); }
+    details summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+    details[open] summary { margin-bottom: 8px; }
+
+    .dl-panel { margin-top: 24px; border-radius: 22px; background: var(--night); color: var(--night-ink); padding: 28px; display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: center; position: relative; overflow: hidden; }
+    .dl-panel::after { content: ""; position: absolute; right: -60px; top: -80px; width: 300px; height: 300px; border-radius: 50%; background: radial-gradient(circle, rgba(62,207,142,.28), transparent 70%); pointer-events: none; }
+    .dl-panel h3 { font-size: 22px; margin-bottom: 6px; }
+    .dl-panel .sub { color: var(--night-muted); font-size: 14px; margin-bottom: 18px; }
+    .dl-panel .btn-primary { background: #fff; color: #0b0d0c; height: 52px; padding: 0 26px; font-size: 15px; }
+    .dl-panel .btn-primary:hover { background: #e9efec; }
+    .dl-panel #dlName { display: block; margin-top: 12px; color: var(--night-muted); font-size: 12.5px; }
+    ol.howto { list-style: none; counter-reset: howto; display: grid; gap: 12px; position: relative; z-index: 1; }
+    ol.howto li { counter-increment: howto; display: flex; gap: 12px; align-items: flex-start; font-size: 14px; color: #cfd6d3; }
+    ol.howto li::before { content: counter(howto); flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-display); font-weight: 700; font-size: 12.5px; color: var(--brand-300); background: rgba(62,207,142,.12); border: 1px solid rgba(62,207,142,.3); }
+    ol.howto b { color: #fff; font-weight: 600; }
+    .howto-title { font-family: var(--font-display); font-weight: 600; font-size: 15px; margin-bottom: 12px; color: #fff; position: relative; z-index: 1; }
+
+    .restore { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+    .error { color: var(--rose); font-size: 13.5px; margin-top: 10px; }
+
+    /* ── faq ── */
+    .mini-faq { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 56px; }
+    .mini-faq div { padding: 22px; border-radius: 20px; background: var(--bg-soft); border: 1px solid var(--line); }
+    .mini-faq h3 { font-size: 16px; margin-bottom: 6px; }
+    .mini-faq p { color: var(--muted); font-size: 14px; }
+
+    footer { background: var(--night); color: var(--night-muted); padding: 36px 0; font-size: 13.5px; }
+    footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+    footer a { color: #d5dcd9; }
+    footer a:hover { color: #fff; }
+    footer .btn-link { color: #d5dcd9; }
+    footer .btn-link:hover { color: #fff; }
+
+    @media (max-width: 900px) {
+      .hero-grid { display: flex; flex-direction: column; align-items: stretch; gap: 0; }
+      .hero-copy { display: contents; }
+      .hero-copy > * { order: 1; }
+      .drop-card { order: 2; margin-top: 28px; }
+      .hero-copy .how { order: 3; }
+      .stepper .t small { display: none; }
+      .dl-panel { grid-template-columns: 1fr; }
+      .mini-faq { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 760px) {
+      .wrap { padding: 0 16px; }
+      .hero { padding: 104px 0 56px; }
+      .drop { min-height: 260px; }
+      .nav-links a.hide-sm { display: none; }
+      .brand small { display: none; }
+      .modes { grid-template-columns: 1fr; }
+      .layout-pick { grid-template-columns: 1fr; }
+      .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .tile .v { font-size: 20px; }
+      .step { padding: 20px 16px; border-radius: 20px; }
+      .step-head h2 { font-size: 20px; }
+      .step-no { width: 34px; height: 34px; font-size: 14px; }
+      .stepper ol { gap: 4px; padding: 8px 0; }
+      .stepper a { flex-direction: column; gap: 4px; padding: 6px 2px; font-size: 11.5px; text-align: center; }
+      .map-grid { padding: 14px; }
+      .dl-panel { padding: 22px 18px; }
+      html { scroll-padding-top: 150px; }
+      .step { scroll-margin-top: 150px; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body>
+  <nav class="top" id="nav" aria-label="Main">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">
+        <img src="assets/icon_192.png" alt="" width="30" height="30">
+        XPENC <small>SheetConv</small>
+      </a>
+      <div class="nav-links">
+        <a class="hide-sm" href="/#tour">The app</a>
+        <a class="hide-sm" href="/web">Web</a>
+        <a class="hide-sm" href="/privacy">Privacy</a>
+        <a class="hide-sm" href="https://github.com/PATILYASHH/XPENC" target="_blank" rel="noopener">GitHub</a>
+        <a class="nav-cta" href="/#download">Get XPENC</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero" id="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <div class="kicker">SheetConv</div>
+        <h1>Your money sheet,<br><span class="grad">now in XPENC.</span></h1>
+        <p class="lede">Been tracking income and expenses in Excel or Google Sheets? Bring every row into XPENC in a couple of minutes — no retyping.</p>
+        <ol class="how">
+          <li><span><b>Drop your sheet.</b> Excel, Google Sheets, LibreOffice or CSV.</span></li>
+          <li><span><b>Match the columns.</b> We guess them for you — even sheets with one column per category.</span></li>
+          <li><span><b>Import in the app.</b> Download one file and open it from Backup &amp; Restore.</span></li>
+        </ol>
+      </div>
+
+      <div class="drop-card">
+        <label class="drop" id="drop" for="file">
+          <span class="drop-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="m9 15 3-3 3 3"/></svg></span>
+          <strong>Drop your file here</strong>
+          <span class="or">or</span>
+          <span class="pick">Choose a file
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </span>
+          <span class="formats"><span>.xlsx</span><span>.xls</span><span>.ods</span><span>.csv</span><span>.tsv</span></span>
+        </label>
+        <input type="file" id="file" class="hidden" accept=".xlsx,.xlsm,.xlsb,.xls,.ods,.csv,.tsv,.txt">
+        <div id="loadError" class="error hidden"></div>
+        <div class="drop-foot">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/></svg>
+          Read on this device. Nothing is uploaded — ever.
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="stepper" id="stepper" aria-label="Progress">
+    <ol class="wrap">
+      <li data-step="step1"><a href="#step1"><span class="n">1</span><span class="t">Your sheet<small>Pick sheet &amp; header</small></span></a></li>
+      <li data-step="step2"><a href="#step2"><span class="n">2</span><span class="t">Mode<small>Basic · Medium · Pro</small></span></a></li>
+      <li data-step="step3"><a href="#step3"><span class="n">3</span><span class="t">Columns<small>Match what's what</small></span></a></li>
+      <li data-step="step4"><a href="#step4"><span class="n">4</span><span class="t">Download<small>Review &amp; import</small></span></a></li>
+    </ol>
+  </div>
+
+  <main class="wrap">
+    <div id="restoreBar" class="note info hidden">
+      <div class="restore">
+        <span>Picked up where you left off with <b id="restoreName"></b>.</span>
+        <button class="btn-link" id="startOver" type="button">Start over and clear saved data</button>
+      </div>
+    </div>
+
+    <!-- 1. Sheet -->
+    <section class="step locked" id="step1">
+      <div class="step-head">
+        <div class="step-no">1</div>
+        <div>
+          <h2>Check your sheet</h2>
+          <p>Pick the sheet that holds your money, and the row with the column names.</p>
+          <span class="lock-hint"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/></svg>Drop a file above to start</span>
+        </div>
+      </div>
+      <div id="sheetPanel" class="hidden">
+        <div class="file-bar">
+          <span class="fi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13l6 6M15 13l-6 6"/></svg></span>
+          <span><span class="name" id="fileName"></span><br><span class="hint" id="fileMeta"></span></span>
+          <label class="btn btn-ghost btn-sm swap" for="file">Use another file</label>
+        </div>
+        <div class="row" style="margin-top:18px">
+          <div class="field">
+            <label for="sheetSel">Sheet</label>
+            <select id="sheetSel"></select>
+          </div>
+          <div class="field">
+            <label for="headerSel">Header row (column names)</label>
+            <select id="headerSel"></select>
+          </div>
+        </div>
+        <div class="table-wrap scroll-y" style="max-height:300px"><table id="rawTable"></table></div>
+        <p class="hint" style="margin-top:8px">The highlighted row is read as column names. Rows above it are ignored.</p>
+      </div>
+    </section>
+
+    <!-- 2. Mode -->
+    <section class="step locked" id="step2">
+      <div class="step-head">
+        <div class="step-no">2</div>
+        <div>
+          <h2>Choose how much to import</h2>
+          <p>We looked at your sheet and suggest a mode. Pick any — it also sets the app's mode, which you can change later in Settings.</p>
+          <span class="lock-hint"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/></svg>Unlocks once your sheet is read</span>
+        </div>
+      </div>
+      <div class="modes" role="radiogroup" aria-label="Import mode">
+        <button type="button" class="mode" role="radio" data-mode="basic" aria-checked="false">
+          <span class="badge hidden">Suggested</span><span class="tick" aria-hidden="true"></span>
+          <span class="m-ic" aria-hidden="true"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17V7M7 7L4 10M7 7l3 3"/><path d="M17 7v10m0 0-3-3m3 3 3-3"/></svg></span>
+          <h3>Basic</h3>
+          <div class="who">You note down income and expenses.</div>
+          <ul>
+            <li>Date, income, expense, amount</li>
+            <li>Category and note</li>
+            <li>Everything in one account</li>
+          </ul>
+        </button>
+        <button type="button" class="mode" role="radio" data-mode="medium" aria-checked="false">
+          <span class="badge hidden">Suggested</span><span class="tick" aria-hidden="true"></span>
+          <span class="m-ic" aria-hidden="true"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-6 9 6"/><path d="M5 10v8M10 10v8M14 10v8M19 10v8"/><path d="M3 21h18"/></svg></span>
+          <h3>Medium</h3>
+          <div class="who">You track which account paid.</div>
+          <ul>
+            <li>Everything in Basic</li>
+            <li>Many accounts with opening balances</li>
+            <li>Transfers, payee and tags</li>
+          </ul>
+        </button>
+        <button type="button" class="mode" role="radio" data-mode="pro" aria-checked="false">
+          <span class="badge hidden">Suggested</span><span class="tick" aria-hidden="true"></span>
+          <span class="m-ic" aria-hidden="true"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8.5" cy="8" r="3.2"/><path d="M2.8 19c.7-3 3-4.6 5.7-4.6s5 1.6 5.7 4.6"/><circle cx="16.8" cy="9" r="2.6"/><path d="M15.5 14.7c2.6-.4 5 1 5.7 3.8"/></svg></span>
+          <h3>Pro</h3>
+          <div class="who">You also track money lent and borrowed.</div>
+          <ul>
+            <li>Everything in Medium</li>
+            <li>Person ledgers: who owes whom</li>
+            <li>Sub-categories like Food › Dining</li>
+          </ul>
+        </button>
+      </div>
+      <div class="reasons" id="reasons"></div>
+    </section>
+
+    <!-- 3. Mapping -->
+    <section class="step locked" id="step3">
+      <div class="step-head">
+        <div class="step-no">3</div>
+        <div>
+          <h2>Match your columns</h2>
+          <p>We guessed from your column names. Check each one, and set to "Not in my sheet" where it doesn't apply.</p>
+          <span class="lock-hint"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/></svg>Unlocks once your sheet is read</span>
+        </div>
+      </div>
+
+      <div class="lbl">How are the amounts laid out in your sheet?</div>
+      <div class="layout-pick" role="radiogroup" aria-label="Sheet layout">
+        <label class="lp">
+          <input type="radio" name="layout" value="rows">
+          <span>
+            <b>One amount per row</b>
+            <small>An Amount column, or separate Income and Expense columns. The category (if any) is written in its own column.</small>
+            <span class="mini" aria-hidden="true"><i></i><i></i><i class="a"></i><i></i></span>
+          </span>
+        </label>
+        <label class="lp">
+          <input type="radio" name="layout" value="columns">
+          <span>
+            <b>One column per category</b>
+            <small>Date · Description · Groceries · Fuel · Eating Out … — the amount sits under the category it belongs to.</small>
+            <span class="mini" aria-hidden="true"><i></i><i></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="r"></i></span>
+          </span>
+        </label>
+      </div>
+
+      <div class="map-grid" id="mapGrid"></div>
+      <div id="layoutNote" class="note info"></div>
+
+      <div id="wideBlock" class="hidden">
+        <div class="group-title">What each column is</div>
+        <p class="hint" style="margin:-4px 0 10px">We guessed from the column names<span id="colorHint"></span>. Change any that are wrong — tick several to set them at once.</p>
+        <div class="role-bar" id="roleCounts"></div>
+        <div class="bulk">
+          <label class="check" style="align-items:center"><input type="checkbox" id="selAll"> <span>Select all shown</span></label>
+          <span id="selCount" class="hint">0 selected</span>
+          <span>→ import as</span>
+          <select id="bulkRole" aria-label="Import selected columns as"></select>
+          <button class="btn btn-ghost btn-sm" id="bulkApply" type="button">Apply</button>
+          <button class="btn-link" id="roleReset" type="button" style="margin-left:auto">Reset to our guess</button>
+        </div>
+        <div class="table-wrap scroll-y" style="max-height:460px"><table id="roleTable"></table></div>
+        <p class="hint" style="margin-top:8px">A negative amount under an expense column is treated as a refund (money in). Columns set to Ignore — like totals or a second-currency amount — are not imported.</p>
+      </div>
+
+      <div id="typeBlock" class="hidden">
+        <div class="group-title">What each Type value means</div>
+        <div class="table-wrap"><table id="typeTable"></table></div>
+      </div>
+
+      <div class="group-title">Format</div>
+      <div class="row">
+        <div class="field">
+          <label for="dateOrder">Dates like 03/04/2026 mean</label>
+          <select id="dateOrder">
+            <option value="dmy">3 April 2026 (DD/MM/YYYY)</option>
+            <option value="mdy">March 4, 2026 (MM/DD/YYYY)</option>
+          </select>
+          <span class="hint" id="dateHint"></span>
+        </div>
+        <div class="field">
+          <label for="currency">Currency</label>
+          <select id="currency"></select>
+        </div>
+      </div>
+
+      <div class="group-title">Accounts</div>
+      <div class="row" id="basicAccount">
+        <div class="field">
+          <label for="defName">Account name</label>
+          <input type="text" id="defName" maxlength="60" value="Cash">
+        </div>
+        <div class="field">
+          <label for="defType">Account type</label>
+          <select id="defType"></select>
+        </div>
+        <div class="field">
+          <label for="defOpening">Opening balance (before the first row)</label>
+          <input type="text" id="defOpening" inputmode="decimal" placeholder="0">
+        </div>
+      </div>
+      <div id="multiAccount" class="hidden">
+        <div class="row">
+          <div class="field">
+            <label for="defName2">Rows with no account go to</label>
+            <input type="text" id="defName2" maxlength="60" value="Cash">
+          </div>
+        </div>
+        <div class="table-wrap"><table id="accTable"></table></div>
+        <p class="hint" style="margin-top:8px">Opening balance is what the account held before your sheet's first row. For a credit card, enter what you owed as a negative number.</p>
+      </div>
+
+      <div id="proOptions" class="hidden">
+        <div class="group-title">Pro options</div>
+        <label class="check"><input type="checkbox" id="subcats"> <span>Split categories like <b>Food &gt; Dining</b> or <b>Food: Dining</b> into a parent and a sub-category</span></label>
+      </div>
+      <div id="mapError" class="error hidden"></div>
+    </section>
+
+    <!-- 4. Review & download -->
+    <section class="step locked" id="step4">
+      <div class="step-head">
+        <div class="step-no">4</div>
+        <div>
+          <h2>Review and download</h2>
+          <p>This is what XPENC will contain after the import.</p>
+          <span class="lock-hint"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/></svg>Unlocks once at least one row converts</span>
+        </div>
+      </div>
+      <div class="tiles" id="tiles"></div>
+      <div id="skipNote"></div>
+
+      <div class="group-title">Accounts after import</div>
+      <div class="table-wrap"><table id="balTable"></table></div>
+
+      <div id="personBlock" class="hidden">
+        <div class="group-title">People</div>
+        <div class="table-wrap"><table id="personTable"></table></div>
+      </div>
+
+      <details>
+        <summary>Preview the first 50 transactions</summary>
+        <div class="table-wrap scroll-y"><table id="txTable"></table></div>
+      </details>
+
+      <div class="note warn">
+        <b>Importing replaces everything in the app.</b> Every account, transaction, category and person already in XPENC is swapped for this file's contents. XPENC saves a safety copy of your current data first, so you can undo it from Backup &amp; Restore. Your theme and lock stay as they are.
+      </div>
+
+      <div class="dl-panel">
+        <div style="position:relative;z-index:1">
+          <h3>Your XPENC file is ready</h3>
+          <p class="sub">One file with everything above. It's made here in your browser.</p>
+          <button class="btn btn-primary" id="download" type="button">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download XPENC file
+          </button>
+          <span id="dlName"></span>
+        </div>
+        <div>
+          <div class="howto-title">Then, on your phone</div>
+          <ol class="howto">
+            <li><span>Copy the downloaded <b>.json</b> file to your phone (or download it there directly).</span></li>
+            <li><span>Open XPENC → <b>More</b> → <b>Backup &amp; Restore</b>.</span></li>
+            <li><span>Tap <b>Import from file</b>, pick the file, and confirm.</span></li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <div class="mini-faq">
+      <div>
+        <h3>Is my sheet uploaded?</h3>
+        <p>No. It's read by a script running in this tab. Your progress is kept only in this browser — clear it any time from the footer.</p>
+      </div>
+      <div>
+        <h3>What if my columns are unusual?</h3>
+        <p>Every guess can be changed: pick the header row, re-map any column, and choose what each Type value or category column means.</p>
+      </div>
+      <div>
+        <h3>Don't have XPENC yet?</h3>
+        <p>It's free and works offline. <a href="/#download" style="text-decoration:underline;text-underline-offset:3px">Get it on Google Play or F-Droid</a>, then import your file.</p>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>SheetConv reads your file with <a href="https://sheetjs.com" target="_blank" rel="noopener">SheetJS</a>, served from xpenc.in. No data is sent anywhere.</span>
+      <span><button class="btn-link" id="clearAll" type="button">Clear data saved in this browser</button> · <a href="/">xpenc.in</a></span>
+    </div>
+  </footer>
+
+  <script src="js/xlsx.full.min.js" defer></script>
+  <script src="js/sheetconv-core.js" defer></script>
+  <script defer>
+  document.addEventListener('DOMContentLoaded', function () {
+    'use strict';
+    var SC = window.SheetConv;
+    var STORE_KEY = 'xpenc.sheetconv.v1';
+    var MAX_STORE_CHARS = 3500000; // stay well under a typical 5 MB localStorage quota
+
+    var CURRENCIES = [
+      ['INR', 'Indian Rupee (₹)'], ['USD', 'US Dollar ($)'], ['EUR', 'Euro (€)'], ['GBP', 'British Pound (£)'],
+      ['AED', 'UAE Dirham'], ['SAR', 'Saudi Riyal'], ['QAR', 'Qatari Riyal'], ['SGD', 'Singapore Dollar'],
+      ['AUD', 'Australian Dollar'], ['CAD', 'Canadian Dollar'], ['NZD', 'New Zealand Dollar'], ['JPY', 'Japanese Yen'],
+      ['CHF', 'Swiss Franc'], ['NPR', 'Nepalese Rupee'], ['LKR', 'Sri Lankan Rupee'], ['BDT', 'Bangladeshi Taka'],
+      ['PKR', 'Pakistani Rupee'], ['MYR', 'Malaysian Ringgit'], ['IDR', 'Indonesian Rupiah'], ['PHP', 'Philippine Peso'],
+      ['ZAR', 'South African Rand'], ['NGN', 'Nigerian Naira'], ['KES', 'Kenyan Shilling'],
+    ];
+
+    // All state for the current session. Persisted (minus the workbook) to
+    // localStorage so a refresh doesn't lose the mapping work.
+    var S = {
+      fileName: '', sheets: {}, sheetNames: [], sheet: '', headerRow: 0,
+      mode: 'basic', suggestion: 'basic', reasons: [], mapping: {}, typeMap: {},
+      dateOrder: 'dmy', dateOrderSure: true, currency: 'INR',
+      defaultAccountName: 'Cash', defaultAccountType: 'cash', defaultOpening: '',
+      accountSettings: {}, subcategories: true,
+    };
+    var result = null;
+
+    var $ = function (id) { return document.getElementById(id); };
+    function el(tag, attrs, text) {
+      var e = document.createElement(tag);
+      if (attrs) Object.keys(attrs).forEach(function (k) {
+        if (k === 'class') e.className = attrs[k];
+        else if (k in e && k !== 'list') e[k] = attrs[k];
+        else e.setAttribute(k, attrs[k]);
+      });
+      if (text != null) e.textContent = text;
+      return e;
+    }
+    function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+    function show(node, on) { node.classList.toggle('hidden', !on); }
+    function unlock(id, on) { $(id).classList.toggle('locked', !on); }
+
+    var moneyFmt;
+    function money(paise, signed) {
+      try {
+        if (!moneyFmt || moneyFmt.cur !== S.currency) {
+          moneyFmt = new Intl.NumberFormat(S.currency === 'INR' ? 'en-IN' : undefined, { style: 'currency', currency: S.currency, maximumFractionDigits: 2 });
+          moneyFmt.cur = S.currency;
+        }
+        var s = moneyFmt.format(Math.abs(paise) / 100);
+        return (paise < 0 ? '−' : signed && paise > 0 ? '+' : '') + s;
+      } catch (e) {
+        return (paise < 0 ? '−' : '') + (Math.abs(paise) / 100).toFixed(2);
+      }
+    }
+
+    // ── Persistence ────────────────────────────────────────────────────────
+    function save() {
+      try {
+        var data = {
+          v: 1, savedAt: Date.now(), fileName: S.fileName, sheet: S.sheet, headerRow: S.headerRow,
+          mode: S.mode, mapping: S.mapping, typeMap: S.typeMap, dateOrder: S.dateOrder, currency: S.currency,
+          defaultAccountName: S.defaultAccountName, defaultAccountType: S.defaultAccountType,
+          defaultOpening: S.defaultOpening, accountSettings: S.accountSettings, subcategories: S.subcategories,
+          wide: !!S.wide, columnRoles: S.columnRoles || {}, guessRoles: S.guessRoles || {}, savedColors: headerColors(),
+        };
+        // Keep the sheet itself too when it fits, so a refresh restores fully.
+        var aoa = S.sheets[S.sheet];
+        if (aoa) {
+          var packed = JSON.stringify(aoa);
+          if (packed.length < MAX_STORE_CHARS) data.aoa = packed;
+        }
+        localStorage.setItem(STORE_KEY, JSON.stringify(data));
+      } catch (e) { /* storage full, blocked or private mode — the page works without it */ }
+    }
+    function load() {
+      try { var raw = localStorage.getItem(STORE_KEY); return raw ? JSON.parse(raw) : null; }
+      catch (e) { return null; }
+    }
+    function wipe() {
+      try { localStorage.removeItem(STORE_KEY); } catch (e) { /* nothing to clear */ }
+    }
+
+    // ── Step 1: reading the file ───────────────────────────────────────────
+    var drop = $('drop');
+    ['dragenter', 'dragover'].forEach(function (t) {
+      drop.addEventListener(t, function (e) { e.preventDefault(); drop.classList.add('over'); });
+    });
+    ['dragleave', 'drop'].forEach(function (t) {
+      drop.addEventListener(t, function (e) { e.preventDefault(); drop.classList.remove('over'); });
+    });
+    drop.addEventListener('drop', function (e) {
+      var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) readFile(f);
+    });
+    $('file').addEventListener('change', function (e) {
+      var f = e.target.files && e.target.files[0];
+      if (f) readFile(f);
+      e.target.value = '';
+    });
+
+    function readFile(file) {
+      show($('loadError'), false);
+      if (!window.XLSX) { fail('The spreadsheet reader did not load. Refresh the page and try again.'); return; }
+      if (file.size > 40 * 1024 * 1024) { fail('That file is over 40 MB — too big to read in a browser tab.'); return; }
+      var reader = new FileReader();
+      reader.onerror = function () { fail("Couldn't read that file."); };
+      reader.onload = function (ev) {
+        try {
+          var wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array', cellDates: false, cellStyles: true });
+          var sheets = {}, names = [], fills = {};
+          wb.SheetNames.forEach(function (n) {
+            var ws = wb.Sheets[n];
+            var aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '', blankrows: true });
+            // Trim trailing empty rows so the row count means something.
+            while (aoa.length && SC.isEmptyRow(aoa[aoa.length - 1])) aoa.pop();
+            if (aoa.length) { sheets[n] = aoa; names.push(n); fills[n] = readFills(ws, aoa); }
+          });
+          S.fills = fills;
+          if (!names.length) { fail('That file has no data in it.'); return; }
+          S.fileName = file.name;
+          S.sheets = sheets;
+          S.sheetNames = names;
+          S.accountSettings = {};
+          S.typeMap = {};
+          // The sheet with the most rows is almost always the ledger.
+          S.sheet = names.slice().sort(function (a, b) { return sheets[b].length - sheets[a].length; })[0];
+          selectSheet(true);
+        } catch (err) {
+          fail("That doesn't look like a spreadsheet XPENC can read (" + (err && err.message ? err.message : 'unknown error') + ').');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+    // Header cell fill colours for the first rows — income headers are often
+    // coloured differently, which SC.guessColumnRoles uses as a hint.
+    function readFills(ws, aoa) {
+      var out = [];
+      var ref = ws['!ref'] ? XLSX.utils.decode_range(ws['!ref']) : null;
+      if (!ref) return out;
+      for (var r = 0; r < Math.min(aoa.length, 25); r++) {
+        var row = [];
+        for (var c = 0; c <= Math.min(ref.e.c, 300); c++) {
+          var cell = ws[XLSX.utils.encode_cell({ r: r, c: c })];
+          var st = cell && cell.s;
+          var f = st && st.patternType && st.patternType !== 'none' ? st.fgColor : null;
+          row.push(!f ? '' : f.rgb ? '#' + String(f.rgb).slice(-6).toUpperCase() : 'theme' + f.theme + '/' + (f.tint || 0));
+        }
+        out.push(row);
+      }
+      return out;
+    }
+    function headerColors() {
+      var f = S.fills && S.fills[S.sheet];
+      if (f && f[S.headerRow]) return f[S.headerRow];
+      return S.savedColors || null;
+    }
+
+    function fail(msg) { $('loadError').textContent = msg; show($('loadError'), true); }
+
+    function selectSheet(fresh) {
+      var aoa = S.sheets[S.sheet];
+      if (fresh) S.headerRow = SC.detectHeaderRow(aoa);
+      $('fileName').textContent = S.fileName;
+      $('fileMeta').textContent = S.sheetNames.length + ' sheet' + (S.sheetNames.length === 1 ? '' : 's') + ' · ' + (aoa.length - S.headerRow - 1) + ' data rows';
+
+      var sel = $('sheetSel'); clear(sel);
+      S.sheetNames.forEach(function (n) { sel.appendChild(el('option', { value: n }, n + ' (' + S.sheets[n].length + ' rows)')); });
+      sel.value = S.sheet;
+      var hs = $('headerSel'); clear(hs);
+      for (var r = 0; r < Math.min(aoa.length, 25); r++) {
+        var preview = (aoa[r] || []).map(SC.cellText).filter(Boolean).slice(0, 4).join(' · ');
+        hs.appendChild(el('option', { value: String(r) }, 'Row ' + (r + 1) + (preview ? ' — ' + preview.slice(0, 60) : ' — (empty)')));
+      }
+      hs.value = String(S.headerRow);
+      renderRaw();
+      show($('sheetPanel'), true);
+      if (fresh) reanalyze(); else renderAll();
+    }
+    $('sheetSel').addEventListener('change', function (e) { S.sheet = e.target.value; S.accountSettings = {}; S.typeMap = {}; selectSheet(true); });
+    $('headerSel').addEventListener('change', function (e) { S.headerRow = +e.target.value; S.typeMap = {}; renderRaw(); reanalyze(); });
+
+    function renderRaw() {
+      var aoa = S.sheets[S.sheet], t = $('rawTable'); clear(t);
+      var width = 0;
+      for (var r = 0; r < Math.min(aoa.length, 40); r++) width = Math.max(width, (aoa[r] || []).length);
+      width = Math.min(width, 30);
+      var head = el('tr');
+      head.appendChild(el('th', null, ''));
+      for (var c = 0; c < width; c++) head.appendChild(el('th', null, colName(c)));
+      t.appendChild(head);
+      var end = Math.min(aoa.length, S.headerRow + 9);
+      for (var i = 0; i < end; i++) {
+        var tr = el('tr', i === S.headerRow ? { class: 'is-header' } : null);
+        tr.appendChild(el('td', { class: 'rn' }, String(i + 1)));
+        for (var j = 0; j < width; j++) tr.appendChild(el('td', null, displayCell((aoa[i] || [])[j])));
+        t.appendChild(tr);
+      }
+    }
+    function colName(i) { var s = ''; i++; while (i > 0) { var m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; }
+    function displayCell(v) {
+      if (typeof v === 'number' && v > 20000 && v < 80000 && Math.floor(v) === v) {
+        // Probably an Excel date serial — show it both ways.
+        var d = SC.parseDate(v, 'dmy');
+        if (d) return v + ' (' + d.d + '/' + d.m + '/' + d.y + ')';
+      }
+      return SC.cellText(v);
+    }
+
+    function headers() {
+      var aoa = S.sheets[S.sheet];
+      var h = (aoa[S.headerRow] || []).map(SC.headerText);
+      var width = 0;
+      dataRows().slice(0, 200).forEach(function (r) { width = Math.max(width, r.length); });
+      for (var i = h.length; i < width; i++) h.push('');
+      return h.map(function (x, i) { return x || 'Column ' + colName(i); });
+    }
+    function dataRows() { return S.sheets[S.sheet].slice(S.headerRow + 1); }
+
+    // ── Step 2: analysis & suggestion ──────────────────────────────────────
+    function reanalyze() {
+      var a = SC.analyze(headers(), dataRows(), headerColors());
+      S.mapping = a.mapping;
+      S.wide = a.layout === 'columns';
+      S.columnRoles = a.columnRoles;
+      S.guessRoles = Object.assign({}, a.columnRoles);
+      S.roleFilter = '';
+      sel = {};
+      S.suggestion = a.suggestion;
+      S.reasons = a.reasons;
+      S.mode = a.suggestion;
+      S.dateOrder = a.dateOrder;
+      S.dateOrderSure = a.dateOrderSure;
+      if (a.mapping.account >= 0) S.defaultAccountName = 'Cash';
+      renderAll();
+    }
+
+    document.querySelectorAll('.mode').forEach(function (b) {
+      b.addEventListener('click', function () { S.mode = b.getAttribute('data-mode'); renderAll(); });
+    });
+
+    function renderModes() {
+      document.querySelectorAll('.mode').forEach(function (b) {
+        var m = b.getAttribute('data-mode');
+        b.setAttribute('aria-checked', String(m === S.mode));
+        show(b.querySelector('.badge'), m === S.suggestion);
+      });
+      var box = $('reasons'); clear(box);
+      var title = el('div');
+      title.appendChild(el('b', null, 'Why ' + cap(S.suggestion) + '? '));
+      title.appendChild(document.createTextNode(S.mode === S.suggestion
+        ? 'Based on what\'s in your sheet:'
+        : 'You picked ' + cap(S.mode) + '. We suggested ' + cap(S.suggestion) + ' because:'));
+      box.appendChild(title);
+      var ul = el('ul');
+      S.reasons.forEach(function (r) { ul.appendChild(el('li', null, r.text)); });
+      box.appendChild(ul);
+      if (SC.modeRank(S.mode) < SC.modeRank(S.suggestion)) {
+        box.appendChild(el('div', { class: 'hint', style: 'margin-top:6px' },
+          'With ' + cap(S.mode) + ', columns and rows that need ' + cap(S.suggestion) + ' are left out — you\'ll see exactly which rows in step 4.'));
+      }
+    }
+    function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+    // ── Step 3: mapping ────────────────────────────────────────────────────
+    function renderMapping() {
+      var hs = headers(), rows = dataRows();
+      var grid = $('mapGrid'); clear(grid);
+      document.querySelectorAll('input[name="layout"]').forEach(function (r) { r.checked = r.value === (S.wide ? 'columns' : 'rows'); });
+      SC.fieldsForMode(S.mode).forEach(function (f) {
+        if (S.wide && WIDE_HIDDEN[f.key]) return;
+        var box = el('div', { class: 'field' });
+        var lab = el('label', { htmlFor: 'map_' + f.key }, f.label);
+        if (f.required) lab.appendChild(el('span', { class: 'req' }, ' *'));
+        box.appendChild(lab);
+        var sel = el('select', { id: 'map_' + f.key });
+        sel.appendChild(el('option', { value: '-1' }, 'Not in my sheet'));
+        hs.forEach(function (h, i) { sel.appendChild(el('option', { value: String(i) }, colName(i) + ' · ' + h)); });
+        sel.value = String(S.mapping[f.key] == null ? -1 : S.mapping[f.key]);
+        sel.addEventListener('change', function () {
+          var v = +sel.value;
+          // One column feeds one field: take it away from wherever else it was.
+          if (v >= 0) Object.keys(S.mapping).forEach(function (k) { if (k !== f.key && S.mapping[k] === v) S.mapping[k] = -1; });
+          S.mapping[f.key] = v;
+          // A column that feeds a field (say Account) isn't a category column.
+          if (v >= 0 && S.columnRoles) S.columnRoles[v] = 'ignore';
+          if (f.key === 'type') S.typeMap = {};
+          renderAll();
+        });
+        box.appendChild(sel);
+        var col = S.mapping[f.key];
+        var sample = col >= 0 ? rows.map(function (r) { return SC.cellText(r[col]); }).filter(Boolean).slice(0, 3).map(function (v) { return v.slice(0, 18); }).join(', ') : '';
+        box.appendChild(el('small', null, sample ? 'e.g. ' + sample : ' '));
+        grid.appendChild(box);
+      });
+
+      var m = effectiveMapping();
+      var layout = SC.amountLayout(m, S.wide ? S.columnRoles : null);
+      var note = $('layoutNote');
+      var wideEmpty = S.wide && layout !== 'columns';
+      note.className = 'note ' + (layout === 'none' || m.date < 0 || wideEmpty ? 'bad' : 'info');
+      note.textContent = m.date < 0 ? 'Pick the column that holds the date.'
+        : wideEmpty ? 'Set at least one column below to Expense, Income or Trip.'
+        : layout === 'columns' ? 'Every filled cell under a category column becomes its own transaction in that category, dated from its row' + (m.note >= 0 ? ', with the row\'s description as the note.' : '.')
+        : layout === 'split' ? 'Amounts: a value under Income is money in, under Expense is money out. The sign doesn\'t matter.' + (m.type >= 0 ? ' The Type column can still mark rows as transfers or skip them.' : '')
+        : layout === 'typed' ? 'Amounts: one Amount column, and the Type column says what each row is. Map its values below.'
+        : layout === 'signed' ? 'Amounts: one Amount column — positive is income, negative is expense. If your expenses aren\'t negative, map a Type column or use separate Income / Expense columns.'
+        : 'Pick an Income and/or Expense column, or a single Amount column.';
+
+      renderTypeTable(m);
+      show($('wideBlock'), !!S.wide);
+      if (S.wide) renderRoles(m);
+
+      // Date hint
+      $('dateOrder').value = S.dateOrder;
+      $('dateHint').textContent = S.dateOrderSure ? '' : 'Your dates could be read either way — we assumed DD/MM. Check the preview in step 4.';
+
+      // Accounts
+      var multi = SC.modeRank(S.mode) >= 1;
+      show($('basicAccount'), !multi);
+      show($('multiAccount'), multi);
+      $('defName').value = S.defaultAccountName;
+      $('defName2').value = S.defaultAccountName;
+      $('defType').value = S.defaultAccountType;
+      $('defOpening').value = S.defaultOpening;
+      if (multi) renderAccountTable(m);
+
+      show($('proOptions'), S.mode === 'pro');
+      $('subcats').checked = S.subcategories;
+    }
+
+    function effectiveMapping() {
+      var allowed = {}, m = {};
+      SC.fieldsForMode(S.mode).forEach(function (f) { allowed[f.key] = true; });
+      SC.FIELDS.forEach(function (f) {
+        m[f.key] = allowed[f.key] && !(S.wide && WIDE_HIDDEN[f.key]) && S.mapping[f.key] >= 0 ? S.mapping[f.key] : -1;
+      });
+      return m;
+    }
+
+    // In the one-column-per-category layout the category comes from the
+    // column itself, so these fields don't apply.
+    var WIDE_HIDDEN = { income: true, expense: true, amount: true, type: true, category: true };
+    var sel = {}; // columns ticked in the role table (not persisted)
+
+    function roleLabel(key) {
+      if (key === 'trip' && SC.modeRank(S.mode) < 1) return 'Trip / event → its own category (tags need Medium)';
+      return SC.ROLES.filter(function (r) { return r.key === key; })[0].label;
+    }
+
+    /** Columns the role table lists: everything not already feeding a field. */
+    function roleColumns(m) {
+      var used = {};
+      Object.keys(m).forEach(function (k) { if (m[k] >= 0) used[m[k]] = true; });
+      return headers().map(function (_, i) { return i; }).filter(function (c) { return !used[c]; });
+    }
+
+    function renderRoles(m) {
+      var hs = headers(), rows = dataRows(), colors = headerColors();
+      var cols = roleColumns(m);
+      cols.forEach(function (c) { if (!S.columnRoles[c]) S.columnRoles[c] = 'ignore'; });
+
+      // Counts double as filters.
+      var counts = { expense: 0, income: 0, trip: 0, ignore: 0 };
+      cols.forEach(function (c) { counts[S.columnRoles[c]]++; });
+      var bar = $('roleCounts'); clear(bar);
+      [['', 'All', cols.length]].concat(SC.ROLES.map(function (r) {
+        return [r.key, { expense: 'Expense', income: 'Income', trip: 'Trip / event', ignore: 'Ignored' }[r.key], counts[r.key]];
+      })).forEach(function (x) {
+        var b = el('button', { type: 'button', class: 'count' + (S.roleFilter === x[0] ? ' on' : '') });
+        b.appendChild(document.createTextNode(x[1] + ' '));
+        b.appendChild(el('b', null, String(x[2])));
+        b.addEventListener('click', function () { S.roleFilter = x[0]; sel = {}; renderRoles(effectiveMapping()); });
+        bar.appendChild(b);
+      });
+      $('colorHint').textContent = colors && colors.some(Boolean) ? ' and your header colours' : '';
+
+      var shown = cols.filter(function (c) { return !S.roleFilter || S.columnRoles[c] === S.roleFilter; });
+      var t = $('roleTable'); clear(t);
+      var hr = el('tr');
+      ['', 'Column', 'Filled cells', 'Total', 'Import as'].forEach(function (h) { hr.appendChild(el('th', null, h)); });
+      t.appendChild(hr);
+      shown.forEach(function (c) {
+        var filled = 0, total = 0;
+        rows.forEach(function (r) {
+          var v = SC.parseAmount(r[c]);
+          if (v) { filled++; total += Math.round(v * 100); }
+        });
+        var role = S.columnRoles[c];
+        var tr = el('tr', { class: 'r-' + role });
+        var td0 = el('td'), cb = el('input', { type: 'checkbox', checked: !!sel[c], 'aria-label': 'Select ' + hs[c] });
+        cb.addEventListener('change', function () { if (cb.checked) sel[c] = true; else delete sel[c]; updateSel(shown); });
+        td0.appendChild(cb); tr.appendChild(td0);
+        var td1 = el('td', { class: 'hdr' });
+        var col = colors && colors[c];
+        if (col && col.charAt(0) === '#') {
+          var sw = el('span', { class: 'swatch', title: 'Header colour ' + col });
+          sw.style.background = col;
+          td1.appendChild(sw);
+        }
+        td1.appendChild(document.createTextNode(hs[c]));
+        var sample = rows.map(function (r) { return SC.cellText(r[c]); }).filter(Boolean).slice(0, 3).join(', ');
+        td1.appendChild(el('small', null, 'Column ' + colName(c) + (sample ? ' · e.g. ' + sample.slice(0, 40) : ' · empty')));
+        tr.appendChild(td1);
+        tr.appendChild(el('td', { class: 'num' }, String(filled)));
+        tr.appendChild(el('td', { class: 'amt' }, filled ? money(total) : '—'));
+        var td4 = el('td'), rs = el('select', { 'aria-label': 'Import ' + hs[c] + ' as' });
+        SC.ROLES.forEach(function (r) { rs.appendChild(el('option', { value: r.key }, roleLabel(r.key))); });
+        rs.value = role;
+        rs.addEventListener('change', function () { S.columnRoles[c] = rs.value; renderRoles(effectiveMapping()); renderSummary(); });
+        td4.appendChild(rs); tr.appendChild(td4);
+        t.appendChild(tr);
+      });
+      if (!shown.length) {
+        var none = el('tr'); none.appendChild(el('td', { colSpan: 5, class: 'hint' }, 'No columns here.'));
+        t.appendChild(none);
+      }
+      var br = $('bulkRole');
+      if (!br.options.length) SC.ROLES.forEach(function (r) { br.appendChild(el('option', { value: r.key }, r.label)); });
+      updateSel(shown);
+    }
+
+    function updateSel(shown) {
+      var n = shown.filter(function (c) { return sel[c]; }).length;
+      $('selCount').textContent = n + ' selected';
+      $('selAll').checked = n > 0 && n === shown.length;
+      $('selAll').indeterminate = n > 0 && n < shown.length;
+      $('bulkApply').disabled = n === 0;
+    }
+
+    $('selAll').addEventListener('change', function (e) {
+      var m = effectiveMapping();
+      sel = {};
+      if (e.target.checked) roleColumns(m).forEach(function (c) { if (!S.roleFilter || S.columnRoles[c] === S.roleFilter) sel[c] = true; });
+      renderRoles(m);
+    });
+    $('bulkApply').addEventListener('click', function () {
+      var role = $('bulkRole').value;
+      Object.keys(sel).forEach(function (c) { S.columnRoles[c] = role; });
+      sel = {};
+      renderRoles(effectiveMapping());
+      renderSummary();
+    });
+    $('roleReset').addEventListener('click', function () {
+      S.columnRoles = Object.assign({}, S.guessRoles || {});
+      sel = {};
+      renderAll();
+    });
+
+    document.querySelectorAll('input[name="layout"]').forEach(function (r) {
+      r.addEventListener('change', function () {
+        if (!r.checked) return;
+        var hs = headers(), rows = dataRows();
+        if (r.value === 'columns') {
+          S.wide = true;
+          if (!SC.hasRoles(S.columnRoles)) {
+            // Guess roles for every amount-only column not feeding a field.
+            var m = effectiveMapping(), exclude = {};
+            Object.keys(m).forEach(function (k) { if (m[k] >= 0) exclude[m[k]] = true; });
+            var numeric = SC.numericColumns(rows, hs.length, exclude).map(function (x) { return x.col; });
+            S.columnRoles = SC.guessColumnRoles(hs, numeric, headerColors());
+            S.guessRoles = Object.assign({}, S.columnRoles);
+          }
+        } else {
+          S.wide = false;
+          // Fill the amount fields back in from the column names.
+          var auto = SC.autoMap(hs), taken = {};
+          Object.keys(S.mapping).forEach(function (k) { if (S.mapping[k] >= 0) taken[S.mapping[k]] = true; });
+          Object.keys(WIDE_HIDDEN).forEach(function (k) {
+            if (S.mapping[k] < 0 && auto[k] >= 0 && !taken[auto[k]]) { S.mapping[k] = auto[k]; taken[auto[k]] = true; }
+          });
+        }
+        sel = {};
+        S.roleFilter = '';
+        renderAll();
+      });
+    });
+
+    function renderTypeTable(m) {
+      var vals = SC.typeValues(dataRows(), m.type);
+      show($('typeBlock'), m.type >= 0 && vals.length > 0);
+      if (m.type < 0) return;
+      var t = $('typeTable'); clear(t);
+      var hr = el('tr');
+      ['Value in your sheet', 'Rows', 'Import as'].forEach(function (h) { hr.appendChild(el('th', null, h)); });
+      t.appendChild(hr);
+      var kinds = SC.kindsForMode(S.mode);
+      vals.slice(0, 60).forEach(function (v) {
+        var key = v.value.toLowerCase();
+        if (!S.typeMap[key]) S.typeMap[key] = SC.guessKind(v.value);
+        var tr = el('tr');
+        tr.appendChild(el('td', null, v.value));
+        tr.appendChild(el('td', { class: 'num' }, String(v.count)));
+        var td = el('td');
+        var sel = el('select', { 'aria-label': 'Import "' + v.value + '" as' });
+        var current = S.typeMap[key];
+        var allowed = kinds.some(function (k) { return k.key === current; });
+        kinds.forEach(function (k) { sel.appendChild(el('option', { value: k.key }, k.label)); });
+        if (!allowed) sel.appendChild(el('option', { value: current }, labelOf(current) + ' — needs ' + (current === 'transfer' ? 'Medium' : 'Pro')));
+        sel.value = current;
+        sel.addEventListener('change', function () { S.typeMap[key] = sel.value; renderSummary(); save(); });
+        td.appendChild(sel);
+        tr.appendChild(td);
+        t.appendChild(tr);
+      });
+      if (vals.length > 60) {
+        var more = el('tr'); more.appendChild(el('td', { colSpan: 3, class: 'hint' }, (vals.length - 60) + ' more values are guessed automatically.'));
+        t.appendChild(more);
+      }
+    }
+    function labelOf(k) { var f = SC.KINDS.filter(function (x) { return x.key === k; })[0]; return f ? f.label : k; }
+
+    function renderAccountTable(m) {
+      var names = SC.collectAccounts(dataRows(), m, S.mode, S.defaultAccountName);
+      var t = $('accTable'); clear(t);
+      var hr = el('tr');
+      ['Account', 'Type', 'Opening balance'].forEach(function (h) { hr.appendChild(el('th', null, h)); });
+      t.appendChild(hr);
+      names.slice(0, 100).forEach(function (name) {
+        var key = name.toLowerCase();
+        var s = S.accountSettings[key] || (S.accountSettings[key] = { type: SC.guessAccountType(name), opening: '' });
+        var tr = el('tr');
+        tr.appendChild(el('td', null, name));
+        var td1 = el('td'), sel = el('select', { 'aria-label': 'Type of ' + name });
+        SC.ACCOUNT_TYPES.forEach(function (a) { sel.appendChild(el('option', { value: a.key }, a.label)); });
+        sel.value = s.type;
+        sel.addEventListener('change', function () { s.type = sel.value; renderSummary(); save(); });
+        td1.appendChild(sel); tr.appendChild(td1);
+        var td2 = el('td'), inp = el('input', { type: 'text', inputMode: 'decimal', placeholder: '0', value: s.opening, 'aria-label': 'Opening balance of ' + name });
+        inp.addEventListener('input', debounce(function () { s.opening = inp.value; renderSummary(); save(); }, 250));
+        td2.appendChild(inp); tr.appendChild(td2);
+        t.appendChild(tr);
+      });
+    }
+
+    function debounce(fn, ms) { var h; return function () { clearTimeout(h); h = setTimeout(fn, ms); }; }
+
+    $('dateOrder').addEventListener('change', function (e) { S.dateOrder = e.target.value; S.dateOrderSure = true; renderAll(); });
+    $('currency').addEventListener('change', function (e) { S.currency = e.target.value; renderSummary(); save(); });
+    $('defName').addEventListener('input', debounce(function () { S.defaultAccountName = $('defName').value.trim() || 'Cash'; renderSummary(); save(); }, 250));
+    $('defName2').addEventListener('change', function () { S.defaultAccountName = $('defName2').value.trim() || 'Cash'; renderAll(); });
+    $('defType').addEventListener('change', function (e) { S.defaultAccountType = e.target.value; renderSummary(); save(); });
+    $('defOpening').addEventListener('input', debounce(function () { S.defaultOpening = $('defOpening').value; renderSummary(); save(); }, 250));
+    $('subcats').addEventListener('change', function (e) { S.subcategories = e.target.checked; renderSummary(); save(); });
+
+    // ── Step 4: build & summary ────────────────────────────────────────────
+    function buildNow() {
+      var settings = {};
+      if (SC.modeRank(S.mode) >= 1) {
+        Object.keys(S.accountSettings).forEach(function (k) { settings[k] = S.accountSettings[k]; });
+      } else {
+        settings[S.defaultAccountName.toLowerCase()] = { type: S.defaultAccountType, opening: S.defaultOpening };
+      }
+      return SC.build({
+        headers: headers(), rows: dataRows(), firstRowNumber: S.headerRow + 2,
+        mode: S.mode, mapping: S.mapping, typeMap: S.typeMap, dateOrder: S.dateOrder,
+        currency: S.currency, defaultAccountName: S.defaultAccountName,
+        defaultAccountType: SC.modeRank(S.mode) >= 1 ? null : S.defaultAccountType,
+        accountSettings: settings, subcategories: S.subcategories,
+        columnRoles: S.wide ? S.columnRoles : {},
+      });
+    }
+
+    function tile(k, v, s, cls) {
+      var d = el('div', { class: 'tile' });
+      d.appendChild(el('div', { class: 'k' }, k));
+      d.appendChild(el('div', { class: 'v num' + (cls ? ' ' + cls : '') }, v));
+      if (s) d.appendChild(el('div', { class: 's' }, s));
+      return d;
+    }
+
+    function renderSummary() {
+      result = null;
+      show($('mapError'), false);
+      try { result = buildNow(); }
+      catch (err) {
+        $('mapError').textContent = err.message;
+        show($('mapError'), true);
+        unlock('step4', false);
+        return;
+      }
+      var s = result.summary;
+      unlock('step4', s.transactions > 0);
+
+      var tiles = $('tiles'); clear(tiles);
+      tiles.appendChild(tile('Transactions', s.transactions.toLocaleString(), s.firstDate ? fmtDay(s.firstDate) + ' → ' + fmtDay(s.lastDate) : 'none yet'));
+      tiles.appendChild(tile('Income', money(s.totals.income), plural(s.counts.income, 'row'), 'in'));
+      tiles.appendChild(tile('Expense', money(s.totals.expense), plural(s.counts.expense, 'row'), 'out'));
+      var extra = [];
+      if (s.counts.transfer) extra.push(s.counts.transfer + ' transfers');
+      if (s.counts.personOut + s.counts.personIn) extra.push((s.counts.personOut + s.counts.personIn) + ' lent/borrowed');
+      if (s.tags) extra.push(s.tags + ' tags');
+      tiles.appendChild(tile('Net', money(s.totals.income - s.totals.expense, true), extra.join(' · ') || (s.categories + ' new categories')));
+
+      var sk = $('skipNote'); clear(sk);
+      if (s.transactions === 0) {
+        sk.appendChild(el('div', { class: 'note bad' }, 'No rows could be converted yet. Check the date and amount columns in step 3.'));
+      }
+      if (s.skipped.length) {
+        var d = el('details');
+        d.appendChild(el('summary', null, s.skipped.length + ' row' + (s.skipped.length === 1 ? '' : 's') + ' will be left out — see why'));
+        var groups = {};
+        s.skipped.forEach(function (x) { (groups[x.reason] = groups[x.reason] || []).push(x.row); });
+        var ul = el('ul', { style: 'margin-left:18px;font-size:13.5px;color:var(--muted)' });
+        Object.keys(groups).forEach(function (r) {
+          var rs = groups[r];
+          ul.appendChild(el('li', null, r + ' — row' + (rs.length === 1 ? ' ' : 's ') + rs.slice(0, 12).join(', ') + (rs.length > 12 ? ' and ' + (rs.length - 12) + ' more' : '')));
+        });
+        d.appendChild(ul);
+        d.appendChild(el('p', { class: 'hint', style: 'margin-top:6px' }, 'Totals and blank lines are usually skipped for having no date — that\'s expected.'));
+        sk.appendChild(d);
+      }
+
+      var bt = $('balTable'); clear(bt);
+      var hr = el('tr');
+      ['Account', 'Type', 'Opening', 'Balance after import'].forEach(function (h) { hr.appendChild(el('th', null, h)); });
+      bt.appendChild(hr);
+      var typeLabel = {}; SC.ACCOUNT_TYPES.forEach(function (a) { typeLabel[a.key] = a.label; });
+      s.accounts.forEach(function (a) {
+        var tr = el('tr');
+        tr.appendChild(el('td', null, a.name));
+        tr.appendChild(el('td', null, typeLabel[a.type] || a.type));
+        tr.appendChild(el('td', { class: 'amt' }, money(a.opening)));
+        tr.appendChild(el('td', { class: 'amt ' + (a.balance < 0 ? 'out' : '') }, money(a.balance)));
+        bt.appendChild(tr);
+      });
+
+      show($('personBlock'), s.persons.length > 0);
+      var pt = $('personTable'); clear(pt);
+      if (s.persons.length) {
+        var ph = el('tr');
+        ['Person', 'Status'].forEach(function (h) { ph.appendChild(el('th', null, h)); });
+        pt.appendChild(ph);
+        s.persons.forEach(function (p) {
+          var tr = el('tr');
+          tr.appendChild(el('td', null, p.name));
+          tr.appendChild(el('td', { class: p.net > 0 ? 'in' : p.net < 0 ? 'out' : '' },
+            p.net > 0 ? 'Owes you ' + money(p.net) : p.net < 0 ? 'You owe ' + money(-p.net) : 'Settled'));
+          pt.appendChild(tr);
+        });
+      }
+
+      renderTxPreview();
+      $('dlName').textContent = SC.backupFileName() + ' · ' + s.transactions.toLocaleString() + ' transactions';
+      save();
+    }
+
+    function plural(n, w) { return n.toLocaleString() + ' ' + w + (n === 1 ? '' : 's'); }
+
+    function fmtDay(key) {
+      var p = key.split('-');
+      try { return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }); }
+      catch (e) { return key; }
+    }
+
+    function renderTxPreview() {
+      var b = result.backup, t = $('txTable'); clear(t);
+      var acc = {}, cat = {}, per = {};
+      b.accounts.forEach(function (a) { acc[a.id] = a.name; });
+      b.categories.forEach(function (c) { cat[c.id] = c; });
+      b.persons.forEach(function (p) { per[p.id] = p.name; });
+      var tagName = {}, txTags = {};
+      b.tags.forEach(function (tg) { tagName[tg.id] = tg.name; });
+      b.transactionTags.forEach(function (x) { (txTags[x.transaction_id] = txTags[x.transaction_id] || []).push('#' + tagName[x.tag_id]); });
+      var hr = el('tr');
+      ['Date', 'Type', 'Account', 'Category / Person', 'Note', 'Amount'].forEach(function (h) { hr.appendChild(el('th', null, h)); });
+      t.appendChild(hr);
+      var typeName = { income: 'Income', expense: 'Expense', transfer: 'Transfer', personOut: 'Gave', personIn: 'Got' };
+      b.transactions.slice(0, 50).forEach(function (x) {
+        var tr = el('tr');
+        tr.appendChild(el('td', null, fmtDay(x.date.slice(0, 10))));
+        tr.appendChild(el('td', null, typeName[x.type]));
+        tr.appendChild(el('td', null, acc[x.account_id] + (x.to_account_id ? ' → ' + acc[x.to_account_id] : '')));
+        var c = x.category_id ? cat[x.category_id] : null;
+        var cname = c ? (c.parent_id ? cat[c.parent_id].name + ' › ' : '') + c.name : x.person_id ? per[x.person_id] : '—';
+        tr.appendChild(el('td', null, cname));
+        tr.appendChild(el('td', null, [x.note || x.payee || ''].concat(txTags[x.id] || []).filter(Boolean).join(' ')));
+        var out = x.type === 'expense' || x.type === 'personOut';
+        tr.appendChild(el('td', { class: 'amt ' + (x.type === 'transfer' ? '' : out ? 'out' : 'in') }, (x.type === 'transfer' ? '' : out ? '−' : '+') + money(x.amount).replace('−', '')));
+        t.appendChild(tr);
+      });
+    }
+
+    $('download').addEventListener('click', function () {
+      if (!result || !result.summary.transactions) return;
+      var blob = new Blob([JSON.stringify(result.backup, null, 2)], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = el('a', { href: url, download: SC.backupFileName() });
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+    });
+
+    function renderAll() {
+      unlock('step2', true);
+      unlock('step3', true);
+      renderModes();
+      renderMapping();
+      renderSummary();
+    }
+
+    // ── Start over / restore ───────────────────────────────────────────────
+    function startOver() {
+      wipe();
+      location.reload();
+    }
+    $('startOver').addEventListener('click', startOver);
+    $('clearAll').addEventListener('click', function () {
+      if (confirm('Clear the sheet and settings saved in this browser?')) startOver();
+    });
+
+    var cs = $('currency');
+    CURRENCIES.forEach(function (c) { cs.appendChild(el('option', { value: c[0] }, c[0] + ' — ' + c[1])); });
+    var dt = $('defType');
+    SC.ACCOUNT_TYPES.forEach(function (a) { dt.appendChild(el('option', { value: a.key }, a.label)); });
+
+    var saved = load();
+    if (saved) {
+      ['mode', 'mapping', 'typeMap', 'dateOrder', 'currency', 'defaultAccountName', 'defaultAccountType',
+        'defaultOpening', 'accountSettings', 'subcategories', 'headerRow', 'sheet', 'fileName',
+        'wide', 'columnRoles', 'guessRoles', 'savedColors'].forEach(function (k) {
+        if (saved[k] != null) S[k] = saved[k];
+      });
+    }
+    cs.value = S.currency;
+    if (saved && saved.aoa) {
+      try {
+        S.sheets = {}; S.sheets[S.sheet] = JSON.parse(saved.aoa);
+        S.sheetNames = [S.sheet];
+        var a = SC.analyze(headers(), dataRows(), headerColors());
+        S.suggestion = a.suggestion; S.reasons = a.reasons; S.dateOrderSure = true;
+        $('restoreName').textContent = S.fileName + ' · ' + S.sheet;
+        show($('restoreBar'), true);
+        selectSheet(false);
+      } catch (e) { wipe(); }
+    }
+  });
+  </script>
+  <script>
+  // Page chrome only — the converter above never needs to know about any of this.
+  document.addEventListener('DOMContentLoaded', function () {
+    'use strict';
+    var nav = document.getElementById('nav');
+    var hero = document.getElementById('hero');
+    function navState() { nav.classList.toggle('solid', window.scrollY > hero.offsetHeight - 80); }
+    navState();
+    addEventListener('scroll', navState, { passive: true });
+    addEventListener('resize', navState);
+
+    // Step 1 has no lock of its own in the converter: it's open once a sheet is showing.
+    var step1 = document.getElementById('step1');
+    var panel = document.getElementById('sheetPanel');
+    var steps = ['step1', 'step2', 'step3', 'step4'].map(function (id) { return document.getElementById(id); });
+    var items = [].slice.call(document.querySelectorAll('#stepper li'));
+    var current = 'step1';
+    var userPicked = false;
+
+    function sync() {
+      step1.classList.toggle('locked', panel.classList.contains('hidden'));
+      items.forEach(function (li) {
+        var s = document.getElementById(li.getAttribute('data-step'));
+        var locked = s.classList.contains('locked');
+        li.classList.toggle('locked', locked);
+        li.classList.toggle('open', !locked);
+        li.classList.toggle('now', !locked && li.getAttribute('data-step') === current);
+      });
+    }
+
+    var mo = new MutationObserver(function () {
+      var wasLocked = step1.classList.contains('locked');
+      sync();
+      // Just read a file the visitor picked: take them straight to it.
+      if (userPicked && wasLocked && !step1.classList.contains('locked')) {
+        userPicked = false;
+        step1.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+      }
+    });
+    steps.concat([panel]).forEach(function (el) { mo.observe(el, { attributes: true, attributeFilter: ['class'] }); });
+
+    document.getElementById('file').addEventListener('change', function () { userPicked = true; });
+    document.getElementById('drop').addEventListener('drop', function () { userPicked = true; });
+
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) { if (e.isIntersecting) { current = e.target.id; sync(); } });
+      }, { rootMargin: '-45% 0px -50% 0px' });
+      steps.forEach(function (s) { io.observe(s); });
+    }
+    items.forEach(function (li) {
+      li.querySelector('a').addEventListener('click', function (e) {
+        if (li.classList.contains('locked')) { e.preventDefault(); document.getElementById('drop').focus(); hero.scrollIntoView({ behavior: 'smooth' }); }
+      });
+    });
+    document.getElementById('drop').setAttribute('tabindex', '0');
+    document.getElementById('drop').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); document.getElementById('file').click(); }
+    });
+    sync();
+  });
+  </script>
+</body>
+</html>
