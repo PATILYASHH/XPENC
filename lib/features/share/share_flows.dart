@@ -58,13 +58,43 @@ Future<void> sharePerson(BuildContext context, PersonRow person) async {
       periods: _ledgerPeriods(),
       payments: payments,
       paymentsHint: payments.isEmpty && data.balance.isPositive && anyMethodOn
-          ? tr('Add your UPI ID in Settings → Persons to put a scan-to-pay QR '
-                'on this.')
+          ? tr(
+              'Add your UPI ID in Settings → Persons to put a scan-to-pay QR '
+              'on this.',
+            )
           : null,
       recipientPhone: person.phone,
       image: (tone, period, qr) =>
           PersonShareCard(data: data, period: period, tone: tone, qr: qr),
       pdf: (period, qr) => buildPersonStatementPdf(data, period, qr: qr),
+    ),
+  );
+}
+
+/// Share one person entry as a receipt — what changed hands, and where the
+/// two of you stood after it.
+Future<void> sharePersonEntry(
+  BuildContext context,
+  PersonRow person,
+  PersonEntryRow entry,
+) async {
+  final data = await PersonEntryShare.load(
+    ProviderScope.containerOf(context, listen: false),
+    person,
+    entry,
+  );
+  if (!context.mounted) return;
+  await _open(
+    context,
+    ShareScreen(
+      title: tr('Share entry'),
+      fileStem: shareFileStem('${person.name} ${data.headline}'),
+      subject:
+          '${data.typeLabel} · ${MoneyFormat.forCurrency(entry.amount, MoneyFormat.currency)}',
+      message: (_) => data.message(),
+      recipientPhone: person.phone,
+      image: (tone, _, _) => PersonEntryShareCard(data: data, tone: tone),
+      pdf: (_, _) => buildPersonEntryPdf(data),
     ),
   );
 }

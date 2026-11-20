@@ -48,7 +48,9 @@ class ShareOwner {
   String balanceLine(Money balance, String other) {
     if (balance.isPositive) return tr('{0} owes {1}', [other, object]);
     if (balance.isNegative) {
-      return name == null ? tr('You owe {0}', [other]) : tr('{0} owes {1}', [name, other]);
+      return name == null
+          ? tr('You owe {0}', [other])
+          : tr('{0} owes {1}', [name, other]);
     }
     return tr('All settled');
   }
@@ -297,7 +299,9 @@ class TransactionShare {
       TxType.personOut || TxType.personIn => typeLabel,
       TxType.correctionIn || TxType.correctionOut => tr('Balance correction'),
       _ when payee != null && payee.isNotEmpty => payee,
-      _ when splits.isNotEmpty => tr('Split across {0} categories', [splits.length]),
+      _ when splits.isNotEmpty => tr('Split across {0} categories', [
+        splits.length,
+      ]),
       _ => category?.name ?? typeLabel,
     };
 
@@ -402,9 +406,12 @@ class SharePeriod {
   static SharePeriod custom(DateTimeRange r, [DateTime? now]) {
     final year = (now ?? DateTime.now()).year;
     final startYear = r.start.year != r.end.year || r.start.year != year;
-    final start = DateFormat(startYear ? 'd MMM yyyy' : 'd MMM').format(r.start);
-    final end = DateFormat(r.end.year != year ? 'd MMM yyyy' : 'd MMM')
-        .format(r.end);
+    final start = DateFormat(
+      startYear ? 'd MMM yyyy' : 'd MMM',
+    ).format(r.start);
+    final end = DateFormat(
+      r.end.year != year ? 'd MMM yyyy' : 'd MMM',
+    ).format(r.end);
     return SharePeriod('$start – $end', r);
   }
 
@@ -470,8 +477,14 @@ class PersonShare {
         : balance.isNegative
         ? tr('I owe you {0}.', [amount])
         : tr("we're all settled.");
-    final pay = qr == null ? '' : tr(' Scan the QR to pay by {0}.', [qr.method]);
-    return tr("Hi {0}, here's where we stand: {1}{2}", [person.name, where, pay]);
+    final pay = qr == null
+        ? ''
+        : tr(' Scan the QR to pay by {0}.', [qr.method]);
+    return tr("Hi {0}, here's where we stand: {1}{2}", [
+      person.name,
+      where,
+      pay,
+    ]);
   }
 
   /// `+` = this entry adds to what they owe me.
@@ -691,4 +704,114 @@ class ModeShare {
   /// Every transaction, newest first; [amount] signed from your side.
   final List<({DateTime date, String title, String detail, Money amount})>
   lines;
+}
+
+/// One person entry — a single lend, borrow or repayment — ready to send,
+/// with where the two of you stood right after it.
+class PersonEntryShare {
+  const PersonEntryShare({
+    required this.person,
+    required this.owner,
+    required this.entry,
+    required this.balanceAfter,
+    this.account,
+    this.category,
+    this.group,
+    this.tags = const [],
+  });
+
+  final PersonRow person;
+  final ShareOwner owner;
+  final PersonEntryRow entry;
+
+  /// The running balance with them once this entry counted (`+` they owe me).
+  final Money balanceAfter;
+  final String? account;
+
+  /// The income category a repayment was counted in.
+  final String? category;
+  final String? group;
+  final List<TagRow> tags;
+
+  /// Money went from me to them.
+  bool get gave => entry.direction == PersonDirection.theyOwe;
+  bool get isRepayment => entry.categoryId != null;
+
+  /// "You gave Ram" / "Ram gave you" / "Ram repaid".
+  String get typeLabel => isRepayment
+      ? tr('{0} repaid', [person.name])
+      : gave
+      ? tr('{0} gave {1}', [owner.subject, person.name])
+      : tr('{0} gave {1}', [person.name, owner.object]);
+
+  String? get note {
+    final n = entry.note?.trim();
+    return n == null || n.isEmpty ? null : n;
+  }
+
+  /// The line under the amount: the note, else what happened.
+  String get headline => note ?? typeLabel;
+
+  /// What goes with the file into their chat.
+  String message() {
+    final amount = MoneyFormat.forCurrency(entry.amount, MoneyFormat.currency);
+    final when = DateFormat('d MMM yyyy').format(entry.date);
+    final where = owner.balanceLine(balanceAfter, person.name);
+    final left = balanceAfter.isZero
+        ? where
+        : '$where ${MoneyFormat.forCurrency(balanceAfter.abs, MoneyFormat.currency)}';
+    return tr("Hi {0}, here's the record: {1} · {2} on {3}. After it: {4}.", [
+      person.name,
+      typeLabel,
+      amount,
+      when,
+      left,
+    ]);
+  }
+
+  static Future<PersonEntryShare> load(
+    ProviderContainer ref,
+    PersonRow person,
+    PersonEntryRow entry,
+  ) async {
+    final entries = await ref.read(personEntriesProvider(person.id).future);
+    final groupIds = await ref.read(personEntryGroupIdsProvider.future);
+    final groups = ref.read(allGroupsMapProvider);
+    final accounts = {
+      for (final a in ref.read(archivedAccountsProvider).valueOrNull ?? [])
+        a.id: a,
+      ...ref.read(accountMapProvider),
+    };
+    return PersonEntryShare(
+      person: person,
+      owner: ShareOwner.of(ref),
+      entry: entry,
+      balanceAfter: runningAfter(entries, entry),
+      account: entry.accountId == null ? null : accounts[entry.accountId]?.name,
+      category: entry.categoryId == null
+          ? null
+          : ref.read(categoryMapProvider)[entry.categoryId]?.name,
+      group: groups[groupIds[entry.id]]?.name,
+      tags: ref.read(personEntryTagsByEntryProvider)[entry.id] ?? const [],
+    );
+  }
+
+  /// The balance with this person once [entry] counted — every entry up to
+  /// and including it, in ledger order (date, then when it was made).
+  static Money runningAfter(
+    List<PersonEntryRow> entries,
+    PersonEntryRow entry,
+  ) {
+    final sorted = [...entries]
+      ..sort((a, b) {
+        final byDate = a.date.compareTo(b.date);
+        return byDate != 0 ? byDate : a.createdAt.compareTo(b.createdAt);
+      });
+    var running = const Money.zero();
+    for (final e in sorted) {
+      running += PersonShare.signed(e);
+      if (e.id == entry.id) break;
+    }
+    return running;
+  }
 }

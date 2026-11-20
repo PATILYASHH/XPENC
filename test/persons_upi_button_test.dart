@@ -9,9 +9,11 @@ import 'package:xpenc/data/providers.dart';
 import 'package:xpenc/data/tables.dart';
 import 'package:xpenc/features/persons/person_detail_screen.dart';
 
-/// The Pay/Request row on a person's detail page — same three rules as
-/// `smoke_test.dart` (DB work inside `runAsync`, never `pumpAndSettle`,
-/// unmount before the test ends) since it pumps against a real database.
+/// Pay / Request on a person's page: one button in the top bar (Request
+/// when they owe you, Pay when you owe them) opening a sheet of payment
+/// methods — same three rules as `smoke_test.dart` (DB work inside
+/// `runAsync`, never `pumpAndSettle`, unmount before the test ends) since
+/// it pumps against a real database.
 void main() {
   late AppDatabase db;
 
@@ -37,6 +39,12 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
   }
 
+  Future<void> openPaySheet(WidgetTester tester) async {
+    await tester.tap(find.byKey(const Key('person-pay')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+  }
+
   Future<void> unmount(WidgetTester tester) async {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(Duration.zero);
@@ -46,15 +54,20 @@ void main() {
       .firstWhere((a) => a.type == AccountType.cash)
       .id;
 
-  ButtonStyleButton? findButton(String label) {
-    final finder = find.widgetWithText(OutlinedButton, label);
-    if (finder.evaluate().isEmpty) return null;
-    return finder.evaluate().first.widget as ButtonStyleButton;
+  /// The method's row in the sheet, and whether it reads "set up".
+  String subtitleOf(WidgetTester tester, String method) {
+    final tile = find.byKey(Key('pay-method-$method'));
+    expect(tile, findsOneWidget, reason: method);
+    final texts = tester
+        .widgetList<Text>(find.descendant(of: tile, matching: find.byType(Text)))
+        .map((t) => t.data ?? '')
+        .toList();
+    return texts.last;
   }
 
   testWidgets(
-    'balance positive shows Request, not Pay; app buttons disabled with no '
-    'my-UPI-ID set',
+    'balance positive: the bar offers Request; with no IDs of mine every '
+    'method says where to add it',
     (tester) async {
       final ram = await tester.runAsync(() async {
         final id = await db.addPerson('Ram');
@@ -70,68 +83,50 @@ void main() {
 
       await pump(tester, PersonDetailScreen(personId: ram!));
       expect(tester.takeException(), isNull);
+      expect(find.byTooltip('Request'), findsOneWidget);
+      expect(find.byTooltip('Pay'), findsNothing);
 
-      expect(find.text('Request'), findsOneWidget);
-      expect(find.text('Pay'), findsNothing);
-      expect(findButton('UPI')!.onPressed, isNull);
-      expect(findButton('PayPal')!.onPressed, isNull);
-      expect(findButton('Venmo')!.onPressed, isNull);
-      expect(findButton('Cash App')!.onPressed, isNull);
-      expect(findButton('Revolut')!.onPressed, isNull);
-      expect(
-        find.text(
-          'Add your UPI ID, PayPal.me ID, Venmo username, Cashtag and '
-          'Revolut username in Settings to request money',
-        ),
-        findsOneWidget,
-      );
-      await unmount(tester);
-    },
-  );
-
-  testWidgets(
-    'setting my UPI ID enables only the UPI Request button, others stay '
-    'disabled',
-    (tester) async {
-      final ram = await tester.runAsync(() async {
-        final id = await db.addPerson('Ram');
-        await db.addPersonEntry(
-          personId: id,
-          direction: PersonDirection.theyOwe,
-          amount: Money.fromRupees(500),
-          date: DateTime.now(),
-          accountId: await cashId(),
-        );
-        await db.setMyUpiId('me@okhdfcbank');
-        return id;
-      });
-
-      await pump(tester, PersonDetailScreen(personId: ram!));
+      await openPaySheet(tester);
       expect(tester.takeException(), isNull);
-
-      expect(findButton('UPI')!.onPressed, isNotNull);
-      expect(findButton('PayPal')!.onPressed, isNull);
+      expect(find.text('Request from Ram'), findsOneWidget);
+      expect(subtitleOf(tester, 'UPI'), 'Add your UPI ID in Settings');
+      expect(subtitleOf(tester, 'PayPal'), 'Add your PayPal.me ID in Settings');
+      expect(subtitleOf(tester, 'Venmo'), 'Add your Venmo username in Settings');
+      expect(subtitleOf(tester, 'Cash App'), 'Add your Cashtag in Settings');
       expect(
-        find.text(
-          'Add your UPI ID, PayPal.me ID, Venmo username, Cashtag and '
-          'Revolut username in Settings to request money',
-        ),
-        findsNothing,
-      );
-      expect(
-        find.text(
-          'Add your PayPal.me ID, Venmo username, Cashtag and Revolut '
-          'username in Settings to request money',
-        ),
-        findsOneWidget,
+        subtitleOf(tester, 'Revolut'),
+        'Add your Revolut username in Settings',
       );
       await unmount(tester);
     },
   );
 
+  testWidgets('setting my UPI ID readies only UPI in the Request sheet', (
+    tester,
+  ) async {
+    final ram = await tester.runAsync(() async {
+      final id = await db.addPerson('Ram');
+      await db.addPersonEntry(
+        personId: id,
+        direction: PersonDirection.theyOwe,
+        amount: Money.fromRupees(500),
+        date: DateTime.now(),
+        accountId: await cashId(),
+      );
+      await db.setMyUpiId('me@okhdfcbank');
+      return id;
+    });
+
+    await pump(tester, PersonDetailScreen(personId: ram!));
+    await openPaySheet(tester);
+    expect(tester.takeException(), isNull);
+    expect(subtitleOf(tester, 'UPI'), 'me@okhdfcbank');
+    expect(subtitleOf(tester, 'PayPal'), 'Add your PayPal.me ID in Settings');
+    await unmount(tester);
+  });
+
   testWidgets(
-    'balance negative shows Pay, not Request; app buttons disabled with no '
-    "person UPI ID, enabled after editing the person",
+    "balance negative: the bar offers Pay, and their UPI ID readies it",
     (tester) async {
       final ram = await tester.runAsync(() async {
         final id = await db.addPerson('Ram');
@@ -147,27 +142,19 @@ void main() {
 
       await pump(tester, PersonDetailScreen(personId: ram!));
       expect(tester.takeException(), isNull);
-
-      expect(find.text('Pay'), findsOneWidget);
-      expect(find.text('Request'), findsNothing);
-      expect(findButton('UPI')!.onPressed, isNull);
-      expect(
-        find.text(
-          "Add Ram's UPI ID, PayPal.me ID, Venmo username, Cashtag and "
-          'Revolut username to pay them directly',
-        ),
-        findsOneWidget,
-      );
+      expect(find.byTooltip('Pay'), findsOneWidget);
+      expect(find.byTooltip('Request'), findsNothing);
+      await openPaySheet(tester);
+      expect(find.text('Pay Ram'), findsOneWidget);
+      expect(subtitleOf(tester, 'UPI'), "Add Ram's UPI ID");
+      await unmount(tester);
 
       await tester.runAsync(
-        () => db.updatePerson(
-          id: ram,
-          name: 'Ram',
-          upiId: 'ram@okaxis',
-        ),
+        () => db.updatePerson(id: ram, name: 'Ram', upiId: 'ram@okaxis'),
       );
       await pump(tester, PersonDetailScreen(personId: ram));
-      expect(findButton('UPI')!.onPressed, isNotNull);
+      await openPaySheet(tester);
+      expect(subtitleOf(tester, 'UPI'), 'ram@okaxis');
       await unmount(tester);
     },
   );
@@ -180,8 +167,7 @@ void main() {
     await pump(tester, PersonDetailScreen(personId: ram!));
     expect(tester.takeException(), isNull);
 
-    expect(find.text('Pay'), findsNothing);
-    expect(find.text('Request'), findsNothing);
+    expect(find.byKey(const Key('person-pay')), findsNothing);
     await unmount(tester);
   });
 }

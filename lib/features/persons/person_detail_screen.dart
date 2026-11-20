@@ -3,16 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:intl/intl.dart';
 
-import 'package:go_router/go_router.dart';
-
 import '../../core/money.dart';
 import '../../core/security/nct.dart';
 import '../../core/smart_tags.dart';
-import '../../core/payments/cashapp_launcher.dart';
-import '../../core/payments/paypal_launcher.dart';
-import '../../core/payments/revolut_launcher.dart';
-import '../../core/payments/upi_launcher.dart';
-import '../../core/payments/venmo_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/bar_page_transition.dart';
 import '../../core/widgets/amount_keypad_field.dart';
@@ -29,7 +22,7 @@ import '../../core/connector/shared/shared_snapshot.dart';
 import 'connector_friends.dart';
 import 'delete_person_or_group.dart';
 import 'edit_person_sheet.dart';
-import 'payment_action_row.dart';
+import 'person_pay_sheet.dart';
 import 'person_avatar.dart';
 import 'shared_entries.dart';
 import '../share/share_flows.dart';
@@ -120,28 +113,33 @@ class PersonDetailScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            actions: [GlassActionGroup(children: [
-              IconButton(
-                tooltip: tr('Share'),
-                icon: const AppIcon(Icons.ios_share_rounded),
-                onPressed: () => sharePerson(context, person),
+            actions: [
+              GlassActionGroup(
+                children: [
+                  PersonPayButton(person: person, balance: balance),
+                  IconButton(
+                    tooltip: tr('Share'),
+                    icon: const AppIcon(Icons.ios_share_rounded),
+                    onPressed: () => sharePerson(context, person),
+                  ),
+                  IconButton(
+                    tooltip: tr('Edit person'),
+                    icon: const AppIcon(Icons.edit_outlined),
+                    onPressed: () => showEditPersonSheet(context, ref, person),
+                  ),
+                  IconButton(
+                    tooltip: tr('Delete person'),
+                    icon: const AppIcon(Icons.delete_outline_rounded),
+                    onPressed: () async {
+                      if (await confirmDeletePerson(context, ref, person) &&
+                          context.mounted) {
+                        Navigator.of(context).pop();
+                      }
+                    },
+                  ),
+                ],
               ),
-              IconButton(
-                tooltip: tr('Edit person'),
-                icon: const AppIcon(Icons.edit_outlined),
-                onPressed: () => showEditPersonSheet(context, ref, person),
-              ),
-              IconButton(
-                tooltip: tr('Delete person'),
-                icon: const AppIcon(Icons.delete_outline_rounded),
-                onPressed: () async {
-                  if (await confirmDeletePerson(context, ref, person) &&
-                      context.mounted) {
-                    Navigator.of(context).pop();
-                  }
-                },
-              ),
-            ])],
+            ],
           ),
           SliverToBoxAdapter(child: _BalanceHero(balance: balance)),
           SliverToBoxAdapter(child: ConnectorFriendBadge(person: person)),
@@ -204,12 +202,36 @@ class PersonDetailScreen extends ConsumerWidget {
                       ? byDate
                       : b.createdAt.compareTo(a.createdAt);
                 });
+              // Month by month, newest first — each month under its name.
+              final items = <Object>[];
+              DateTime? month;
+              for (final e in sorted) {
+                final m = DateTime(e.date.year, e.date.month);
+                if (m != month) {
+                  month = m;
+                  items.add(m);
+                }
+                items.add(e);
+              }
+              final perMonth = <DateTime, int>{};
+              for (final e in sorted) {
+                final m = DateTime(e.date.year, e.date.month);
+                perMonth[m] = (perMonth[m] ?? 0) + 1;
+              }
               return SliverPadding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
                 sliver: SliverList.builder(
-                  itemCount: sorted.length,
+                  itemCount: items.length,
                   itemBuilder: (context, i) {
-                    final entry = sorted[i];
+                    final item = items[i];
+                    if (item is DateTime) {
+                      return _MonthLabel(
+                        month: item,
+                        count: perMonth[item] ?? 0,
+                        first: i == 0,
+                      );
+                    }
+                    final entry = item as PersonEntryRow;
                     final accountName = entry.accountId == null
                         ? null
                         : accountMap[entry.accountId]?.name;
@@ -451,7 +473,9 @@ class _BalanceHero extends StatelessWidget {
 /// balance filled in, so one tap clears it. "Mark as repaid" — a distinct
 /// entry point that counts the repayment as money in — only shows when
 /// there's a balance to repay and the setting is on (see
-/// [countRepaymentsAsIncomeProvider]).
+/// [countRepaymentsAsIncomeProvider]). Paying or requesting it through UPI
+/// and the rest is the Pay / Request button in the top bar
+/// ([PersonPayButton]).
 class _ActionButtons extends ConsumerWidget {
   const _ActionButtons({required this.person, required this.balance});
 
@@ -464,24 +488,6 @@ class _ActionButtons extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final offerRepayment =
         ref.watch(countRepaymentsAsIncomeProvider) && balance.isPositive;
-    final myUpiId = ref.watch(myUpiIdProvider);
-    final myUpiName = ref.watch(myUpiNameProvider);
-    final myPaypal = ref.watch(myPaypalProvider);
-    final myVenmo = ref.watch(myVenmoProvider);
-    final myCashapp = ref.watch(myCashappProvider);
-    final myRevolut = ref.watch(myRevolutProvider);
-    final currencyCode = ref.watch(currencyProvider).code;
-    final upiEnabled = ref.watch(upiEnabledProvider);
-    final paypalEnabled = ref.watch(paypalEnabledProvider);
-    final venmoEnabled = ref.watch(venmoEnabledProvider);
-    final cashappEnabled = ref.watch(cashappEnabledProvider);
-    final revolutEnabled = ref.watch(revolutEnabledProvider);
-    final anyPaymentMethodEnabled =
-        upiEnabled ||
-        paypalEnabled ||
-        venmoEnabled ||
-        cashappEnabled ||
-        revolutEnabled;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
@@ -497,7 +503,7 @@ class _ActionButtons extends ConsumerWidget {
                     foregroundColor: AppColors.expense,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
-                  onPressed: () => _showEntrySheet(
+                  onPressed: () => showPersonEntrySheet(
                     context,
                     personId,
                     PersonDirection.theyOwe,
@@ -521,8 +527,11 @@ class _ActionButtons extends ConsumerWidget {
                     foregroundColor: AppColors.income,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
-                  onPressed: () =>
-                      _showEntrySheet(context, personId, PersonDirection.iOwe),
+                  onPressed: () => showPersonEntrySheet(
+                    context,
+                    personId,
+                    PersonDirection.iOwe,
+                  ),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -545,7 +554,7 @@ class _ActionButtons extends ConsumerWidget {
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-                onPressed: () => _showEntrySheet(
+                onPressed: () => showPersonEntrySheet(
                   context,
                   personId,
                   // They owe you → their payment comes in; you owe → yours
@@ -567,7 +576,7 @@ class _ActionButtons extends ConsumerWidget {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: () => _showEntrySheet(
+                onPressed: () => showPersonEntrySheet(
                   context,
                   personId,
                   PersonDirection.iOwe,
@@ -578,152 +587,10 @@ class _ActionButtons extends ConsumerWidget {
               ),
             ),
           ],
-          if (balance.isPositive && anyPaymentMethodEnabled) ...[
-            const SizedBox(height: 16),
-            PersonPaymentRow(
-              label: tr('Request'),
-              methods: [
-                if (upiEnabled)
-                  PaymentMethodSpec(
-                    buttonLabel: 'UPI',
-                    missingLabel: tr('UPI ID'),
-                    id: myUpiId,
-                    attempt: () => UpiLauncher.launch(
-                      action: UpiAction.collect,
-                      payeeUpiId: myUpiId!,
-                      payeeName: (myUpiName?.trim().isNotEmpty ?? false)
-                          ? myUpiName!.trim()
-                          : tr('XPENC user'),
-                      amount: balance,
-                      note: 'Requested via XPENC',
-                    ),
-                  ),
-                if (paypalEnabled)
-                  PaymentMethodSpec(
-                    buttonLabel: tr('PayPal'),
-                    missingLabel: tr('PayPal.me ID'),
-                    id: myPaypal,
-                    attempt: () => PaypalLauncher.launch(
-                      paypalId: myPaypal!,
-                      amount: balance,
-                      currencyCode: currencyCode,
-                    ),
-                  ),
-                if (venmoEnabled)
-                  PaymentMethodSpec(
-                    buttonLabel: tr('Venmo'),
-                    missingLabel: tr('Venmo username'),
-                    id: myVenmo,
-                    attempt: () => VenmoLauncher.launch(
-                      username: myVenmo!,
-                      amount: balance,
-                      note: 'Requested via XPENC',
-                    ),
-                  ),
-                if (cashappEnabled)
-                  PaymentMethodSpec(
-                    buttonLabel: tr('Cash App'),
-                    missingLabel: tr('Cashtag'),
-                    id: myCashapp,
-                    attempt: () => CashAppLauncher.launch(
-                      cashtag: myCashapp!,
-                      amount: balance,
-                    ),
-                  ),
-                if (revolutEnabled)
-                  PaymentMethodSpec(
-                    buttonLabel: tr('Revolut'),
-                    missingLabel: tr('Revolut username'),
-                    id: myRevolut,
-                    attempt: () => RevolutLauncher.launch(
-                      username: myRevolut!,
-                      amount: balance,
-                    ),
-                  ),
-              ],
-              missingHint: (missing) =>
-                  tr('Add your {0} in Settings to request '
-                  'money', [_joinWithAnd(missing)]),
-              onMissingTap: () => context.push('/more/settings'),
-            ),
-          ] else if (balance.isNegative && anyPaymentMethodEnabled) ...[
-            const SizedBox(height: 16),
-            PersonPaymentRow(
-              label: tr('Pay'),
-              methods: [
-                if (upiEnabled)
-                  PaymentMethodSpec(
-                    buttonLabel: 'UPI',
-                    missingLabel: tr('UPI ID'),
-                    id: person.upiId,
-                    attempt: () => UpiLauncher.launch(
-                      action: UpiAction.pay,
-                      payeeUpiId: person.upiId!,
-                      payeeName: person.name,
-                      amount: balance.abs,
-                      note: 'Settlement via XPENC',
-                    ),
-                  ),
-                if (paypalEnabled)
-                  PaymentMethodSpec(
-                    buttonLabel: tr('PayPal'),
-                    missingLabel: tr('PayPal.me ID'),
-                    id: person.paypal,
-                    attempt: () => PaypalLauncher.launch(
-                      paypalId: person.paypal!,
-                      amount: balance.abs,
-                      currencyCode: currencyCode,
-                    ),
-                  ),
-                if (venmoEnabled)
-                  PaymentMethodSpec(
-                    buttonLabel: tr('Venmo'),
-                    missingLabel: tr('Venmo username'),
-                    id: person.venmo,
-                    attempt: () => VenmoLauncher.launch(
-                      username: person.venmo!,
-                      amount: balance.abs,
-                      note: 'Settlement via XPENC',
-                    ),
-                  ),
-                if (cashappEnabled)
-                  PaymentMethodSpec(
-                    buttonLabel: tr('Cash App'),
-                    missingLabel: tr('Cashtag'),
-                    id: person.cashapp,
-                    attempt: () => CashAppLauncher.launch(
-                      cashtag: person.cashapp!,
-                      amount: balance.abs,
-                    ),
-                  ),
-                if (revolutEnabled)
-                  PaymentMethodSpec(
-                    buttonLabel: tr('Revolut'),
-                    missingLabel: tr('Revolut username'),
-                    id: person.revolut,
-                    attempt: () => RevolutLauncher.launch(
-                      username: person.revolut!,
-                      amount: balance.abs,
-                    ),
-                  ),
-              ],
-              missingHint: (missing) =>
-                  tr("Add {0}'s {1} to pay them "
-                  'directly', [person.name, _joinWithAnd(missing)]),
-              onMissingTap: () => showEditPersonSheet(context, ref, person),
-            ),
-          ],
         ],
       ),
     );
   }
-}
-
-/// Joins method names for a [PersonPaymentRow] nudge, e.g. `['UPI ID']` →
-/// `"UPI ID"`, `['UPI ID', 'PayPal.me ID']` → `"UPI ID and PayPal.me ID"`.
-String _joinWithAnd(List<String> parts) {
-  if (parts.length <= 1) return parts.join();
-  return tr('{0} and {1}', [parts.sublist(0, parts.length - 1).join(', '), parts.last]);
 }
 
 /// One ledger row. The leading icon shows which way *cash* moved:
@@ -786,7 +653,8 @@ class _EntryRow extends ConsumerWidget {
         extentRatio: 0.28,
         children: [
           SlidableAction(
-            onPressed: (_) => _delete(context, ref),
+            onPressed: (_) =>
+                deletePersonEntry(context, ref, entry, friendUsername),
             backgroundColor: AppColors.expense,
             foregroundColor: Colors.white,
             icon: Icons.delete_outline,
@@ -796,7 +664,11 @@ class _EntryRow extends ConsumerWidget {
       ),
       child: AppListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        onTap: () => _showEntrySheet(
+        // Its own page — every detail, Share, Edit and Delete — the way a
+        // transaction opens. Holding it still edits it straight away.
+        onTap: () =>
+            pushZoom(context, '/person/${entry.personId}/entry/${entry.id}'),
+        onLongPress: () => showPersonEntrySheet(
           context,
           entry.personId,
           entry.direction,
@@ -832,7 +704,7 @@ class _EntryRow extends ConsumerWidget {
             ],
             if (tags.isNotEmpty) ...[
               const SizedBox(height: 4),
-              _TagChips(tags),
+              PersonTagChips(tags),
             ],
           ],
         ),
@@ -846,47 +718,106 @@ class _EntryRow extends ConsumerWidget {
       ),
     );
   }
+}
 
-  Future<void> _delete(BuildContext context, WidgetRef ref) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final status = SharedStatus.of(entry.sharedStatus);
-    // Agreed by both sides: deleting it here would leave the two ledgers
-    // different, with no way for the friend to know.
-    if (status != null && status.locked) {
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(
-              tr('Agreed with @{0} — add a '
-              'correcting entry instead.', [friendUsername ?? tr('your friend')]),
-            ),
-          ),
-        );
-      return;
-    }
-    await ref.read(dbProvider).deletePersonEntry(entry.id);
-    if (status != null) {
-      await ref.read(sharedEntriesProvider.notifier).shareDelete(entry);
-    }
+/// Deletes [entry] — unless it's agreed with a Connector friend, where
+/// deleting it here would leave the two ledgers different: then it says to
+/// add a correcting entry instead. Resolves to whether it was deleted.
+Future<bool> deletePersonEntry(
+  BuildContext context,
+  WidgetRef ref,
+  PersonEntryRow entry,
+  String? friendUsername,
+) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final status = SharedStatus.of(entry.sharedStatus);
+  if (status != null && status.locked) {
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
           content: Text(
-            status == null
-                ? tr('Entry deleted')
-                : tr('Entry deleted — and taken back from '
-                      '@{0}', [friendUsername ?? tr('your friend')]),
+            tr(
+              'Agreed with @{0} — add a '
+              'correcting entry instead.',
+              [friendUsername ?? tr('your friend')],
+            ),
           ),
         ),
       );
+    return false;
+  }
+  await ref.read(dbProvider).deletePersonEntry(entry.id);
+  if (status != null) {
+    await ref.read(sharedEntriesProvider.notifier).shareDelete(entry);
+  }
+  messenger
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      SnackBar(
+        content: Text(
+          status == null
+              ? tr('Entry deleted')
+              : tr(
+                  'Entry deleted — and taken back from '
+                  '@{0}',
+                  [friendUsername ?? tr('your friend')],
+                ),
+        ),
+      ),
+    );
+  return true;
+}
+
+/// A month's name over its entries in a person's history.
+class _MonthLabel extends StatelessWidget {
+  const _MonthLabel({
+    required this.month,
+    required this.count,
+    required this.first,
+  });
+
+  final DateTime month;
+  final int count;
+  final bool first;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final label = DateFormat(
+      month.year == DateTime.now().year ? 'MMMM' : 'MMMM yyyy',
+    ).format(month);
+    return Padding(
+      padding: EdgeInsets.fromLTRB(8, first ? 4 : 18, 8, 4),
+      child: Row(
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: cs.primary,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.1,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(child: Divider(color: cs.outline, height: 1)),
+          const SizedBox(width: 8),
+          Text(
+            count == 1 ? tr('1 entry') : tr('{0} entries', [count]),
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
 /// A person entry's tags as small coloured pills (GitHub #168).
-class _TagChips extends StatelessWidget {
-  const _TagChips(this.tags, {this.date});
+class PersonTagChips extends StatelessWidget {
+  const PersonTagChips(this.tags, {this.date, super.key});
 
   final List<TagRow> tags;
 
@@ -921,7 +852,9 @@ class _TagChips extends StatelessWidget {
   }
 }
 
-void _showEntrySheet(
+/// The entry sheet: a new lend / borrow (or repayment) for [personId] in
+/// [direction], or — with [existing] — that entry, to edit.
+void showPersonEntrySheet(
   BuildContext context,
   int personId,
   PersonDirection direction, {
@@ -1249,7 +1182,9 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
       if (mounted) setState(() => _saving = false);
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(tr('Could not save: {0}', [error]))));
+        ..showSnackBar(
+          SnackBar(content: Text(tr('Could not save: {0}', [error]))),
+        );
     }
   }
 
@@ -1289,8 +1224,10 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
         title: Text(tr('Share with {0}', [who])),
         subtitle: Text(
           _share
-              ? tr('They accept it in their XPENC, and it counts the same on '
-                    'both sides. Sent through Connector.')
+              ? tr(
+                  'They accept it in their XPENC, and it counts the same on '
+                  'both sides. Sent through Connector.',
+                )
               : tr('Only on this phone.'),
         ),
       );
@@ -1300,21 +1237,24 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          switch (status) {
-            SharedStatus.accepted || SharedStatus.received =>
-              tr('Agreed with {0}. Amount, date and note can\'t change — only '
-                  'the account and tags, which are yours alone.', [who]),
-            SharedStatus.rejected =>
-              tr('{0} rejected this. Fix it and save to send it again — or '
-                  'keep it on this phone only.', [who]),
-            SharedStatus.failed =>
-              tr("Couldn't share this with {0}. Save to try again.", [who]),
-            SharedStatus.sending => tr('On its way to {0}.', [who]),
-            SharedStatus.pending => tr('Waiting for {0} to accept it.', [who]),
-          },
-          style: muted,
-        ),
+        Text(switch (status) {
+          SharedStatus.accepted || SharedStatus.received => tr(
+            'Agreed with {0}. Amount, date and note can\'t change — only '
+            'the account and tags, which are yours alone.',
+            [who],
+          ),
+          SharedStatus.rejected => tr(
+            '{0} rejected this. Fix it and save to send it again — or '
+            'keep it on this phone only.',
+            [who],
+          ),
+          SharedStatus.failed => tr(
+            "Couldn't share this with {0}. Save to try again.",
+            [who],
+          ),
+          SharedStatus.sending => tr('On its way to {0}.', [who]),
+          SharedStatus.pending => tr('Waiting for {0} to accept it.', [who]),
+        }, style: muted),
         if (status == SharedStatus.rejected || status == SharedStatus.failed)
           TextButton(
             onPressed: () async {
@@ -1345,7 +1285,7 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
           suffixIcon: AppIcon(Icons.sell_outlined),
         ),
         isEmpty: tags.isEmpty,
-        child: tags.isEmpty ? null : _TagChips(tags, date: _date),
+        child: tags.isEmpty ? null : PersonTagChips(tags, date: _date),
       ),
     );
   }
@@ -1430,16 +1370,22 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
               const SizedBox(height: 4),
               Text(
                 widget.isRepayment
-                    ? tr('Counts as money in, under the category you '
-                          'choose below.')
+                    ? tr(
+                        'Counts as money in, under the category you '
+                        'choose below.',
+                      )
                     : _settling
                     ? (_theyOwe
-                          ? tr('You pay back what you owe, and the balance '
-                                'goes to zero. Lower the amount to settle '
-                                'part of it.')
-                          : tr('They pay you back, and the balance goes to '
-                                'zero. Lower the amount to settle part of '
-                                'it.'))
+                          ? tr(
+                              'You pay back what you owe, and the balance '
+                              'goes to zero. Lower the amount to settle '
+                              'part of it.',
+                            )
+                          : tr(
+                              'They pay you back, and the balance goes to '
+                              'zero. Lower the amount to settle part of '
+                              'it.',
+                            ))
                     : _theyOwe
                     ? tr('You gave money out. Their balance goes up.')
                     : tr('You received money. Their balance goes down.'),
@@ -1546,12 +1492,16 @@ class _EntrySheetState extends ConsumerState<_EntrySheet> {
                 _accountId == null
                     ? tr('No money will move. This only records who owes whom.')
                     : widget.isRepayment
-                    ? tr('This amount enters that account and posts as '
-                          'money in under the category below.')
-                    : tr('This amount will leave or enter that account and '
-                          "appear in Transactions. Lending still isn't "
-                          'spending — it\'s your money, just held by '
-                          'someone else.'),
+                    ? tr(
+                        'This amount enters that account and posts as '
+                        'money in under the category below.',
+                      )
+                    : tr(
+                        'This amount will leave or enter that account and '
+                        "appear in Transactions. Lending still isn't "
+                        'spending — it\'s your money, just held by '
+                        'someone else.',
+                      ),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),

@@ -207,8 +207,14 @@ class _Frame extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    tr('Tracked with {0} · '
-                    '{1}', [AppInfo.name, AppInfo.websiteUrl.replaceFirst('https://', '')]),
+                    tr(
+                      'Tracked with {0} · '
+                      '{1}',
+                      [
+                        AppInfo.name,
+                        AppInfo.websiteUrl.replaceFirst('https://', ''),
+                      ],
+                    ),
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 11, color: p.faint),
                   ),
@@ -642,7 +648,9 @@ class _PayStub extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  payTo == null ? qr.method : tr('{0} · to {1}', [qr.method, payTo]),
+                  payTo == null
+                      ? qr.method
+                      : tr('{0} · to {1}', [qr.method, payTo]),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -657,10 +665,7 @@ class _PayStub extends StatelessWidget {
                   style: TextStyle(fontSize: 12, color: p.muted),
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  qr.hint,
-                  style: TextStyle(fontSize: 10.5, color: p.faint),
-                ),
+                Text(qr.hint, style: TextStyle(fontSize: 10.5, color: p.faint)),
               ],
             ),
           ),
@@ -999,7 +1004,9 @@ class PersonShareCard extends StatelessWidget {
                 _Hero(_money(balance.abs, currency), accent),
                 const SizedBox(height: 4),
                 Text(
-                  tr('Balance as of {0}', [DateFormat('d MMM yyyy').format(DateTime.now())]),
+                  tr('Balance as of {0}', [
+                    DateFormat('d MMM yyyy').format(DateTime.now()),
+                  ]),
                   style: TextStyle(fontSize: 11.5, color: p.faint),
                 ),
                 const SizedBox(height: 18),
@@ -1202,11 +1209,7 @@ class GroupShareCard extends StatelessWidget {
                 _Hero(_money(slice.total, currency), p.text),
                 const SizedBox(height: 4),
                 Text(
-                  plural(
-                    slice.expenses.length,
-                    '1 expense',
-                    '{0} expenses',
-                  ),
+                  plural(slice.expenses.length, '1 expense', '{0} expenses'),
                   style: TextStyle(fontSize: 11.5, color: p.faint),
                 ),
                 const SizedBox(height: 18),
@@ -1423,7 +1426,11 @@ class ModeShareCard extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: _Stat(p, tr('Per day'), _money(data.perDay, currency)),
+                      child: _Stat(
+                        p,
+                        tr('Per day'),
+                        _money(data.perDay, currency),
+                      ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -1467,7 +1474,9 @@ class ModeShareCard extends StatelessWidget {
                       title: c.name,
                       subtitle: data.spent.isZero
                           ? ''
-                          : tr('{0}% of it', [(c.amount.paise / data.spent.paise * 100).round()]),
+                          : tr('{0}% of it', [
+                              (c.amount.paise / data.spent.paise * 100).round(),
+                            ]),
                       amount: _money(c.amount, currency),
                     ),
                 _MoreLine(
@@ -1485,7 +1494,9 @@ class ModeShareCard extends StatelessWidget {
                       icon: Icons.person_rounded,
                       color: AppColors.person,
                       title: x.name,
-                      subtitle: x.balance.isPositive ? tr('Owes you') : tr('You owe'),
+                      subtitle: x.balance.isPositive
+                          ? tr('Owes you')
+                          : tr('You owe'),
                       amount: _money(x.balance.abs, currency),
                       amountColor: x.balance.isPositive
                           ? AppColors.income
@@ -1496,6 +1507,146 @@ class ModeShareCard extends StatelessWidget {
                     owing.length - people.length,
                     '+ 1 more person',
                     '+ {0} more people',
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Person entry ─────────────────────────────────────────────────────────────
+
+/// One person entry as a receipt — what changed hands, and where the two of
+/// you stood after it.
+class PersonEntryShareCard extends StatelessWidget {
+  const PersonEntryShareCard({
+    required this.data,
+    required this.tone,
+    super.key,
+  });
+
+  final PersonEntryShare data;
+  final ShareCardTone tone;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = _Palette.of(tone);
+    final e = data.entry;
+    final currency = MoneyFormat.currency;
+    final accent = data.gave ? AppColors.expense : AppColors.income;
+    final after = data.balanceAfter;
+    final afterLine = data.owner.balanceLine(after, data.person.name);
+
+    return _Frame(
+      tone: tone,
+      accent: accent,
+      kind: 'Receipt',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 26, 20, 18),
+            child: Column(
+              children: [
+                _Disc(
+                  color: accent,
+                  size: 56,
+                  icon: data.isRepayment
+                      ? Icons.paid_outlined
+                      : data.gave
+                      ? Icons.arrow_upward_rounded
+                      : Icons.arrow_downward_rounded,
+                ),
+                const SizedBox(height: 14),
+                _Hero(_money(e.amount, currency), accent, size: 38),
+                const SizedBox(height: 8),
+                Text(
+                  data.headline,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 16.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  DateFormat('EEE, d MMM yyyy').format(e.date),
+                  style: TextStyle(fontSize: 12.5, color: p.muted),
+                ),
+                const SizedBox(height: 12),
+                _Pill(data.typeLabel, accent),
+              ],
+            ),
+          ),
+          _Perforation(p),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 6, 20, 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _DetailRow(p, tr('Person'), text: data.person.name),
+                if (data.account != null)
+                  _DetailRow(p, tr('Account'), text: data.account),
+                if (e.dueDate != null)
+                  _DetailRow(
+                    p,
+                    tr('Due'),
+                    text: DateFormat('d MMM yyyy').format(e.dueDate!),
+                  ),
+                if (data.category != null)
+                  _DetailRow(p, tr('Counted as'), text: data.category),
+                if (data.group != null)
+                  _DetailRow(p, tr('Group'), text: data.group),
+                if (data.tags.isNotEmpty)
+                  _DetailRow(
+                    p,
+                    tr('Tags'),
+                    value: Wrap(
+                      alignment: WrapAlignment.end,
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        for (final tag in data.tags)
+                          _Pill(tag.name, Color(tag.colorValue)),
+                      ],
+                    ),
+                  ),
+                _DetailRow(
+                  p,
+                  tr('After this'),
+                  text: after.isZero
+                      ? afterLine
+                      : '$afterLine · ${_money(after.abs, currency)}',
+                ),
+                if (data.note != null) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(12, 11, 12, 12),
+                    decoration: BoxDecoration(
+                      color: p.panel,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.notes_rounded, size: 16, color: p.muted),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            data.note!,
+                            maxLines: 6,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 13, height: 1.4),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ],

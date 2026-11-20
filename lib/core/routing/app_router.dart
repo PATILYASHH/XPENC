@@ -51,6 +51,7 @@ import '../../features/persons/archived_persons_screen.dart';
 import '../../features/persons/group_balances_screen.dart';
 import '../../features/persons/group_detail_screen.dart';
 import '../../features/persons/person_detail_screen.dart';
+import '../../features/persons/person_entry_detail_screen.dart';
 import '../../features/persons/persons_screen.dart';
 import '../../features/reports/account_report_modules.dart';
 import '../../features/reports/account_reports_screen.dart';
@@ -749,6 +750,16 @@ final appRouter = GoRouter(
       parentNavigatorKey: _rootKey,
       builder: (_, state) =>
           PersonDetailScreen(personId: int.parse(state.pathParameters['id']!)),
+    ),
+
+    // One entry in a person's history, opened from their page.
+    GoRoute(
+      path: '/person/:id/entry/:entryId',
+      parentNavigatorKey: _rootKey,
+      builder: (_, state) => PersonEntryDetailScreen(
+        personId: int.parse(state.pathParameters['id']!),
+        entryId: int.parse(state.pathParameters['entryId']!),
+      ),
     ),
 
     GoRoute(

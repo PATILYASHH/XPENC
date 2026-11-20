@@ -638,3 +638,95 @@ Future<Uint8List> buildModeSummaryPdf(ModeShare s) async {
   );
   return doc.save();
 }
+
+// ── Person entry receipt ─────────────────────────────────────────────────────
+
+/// One person entry as a receipt: the amount up top, the details, and the
+/// balance with them right after it.
+Future<Uint8List> buildPersonEntryPdf(PersonEntryShare s) async {
+  final kit = await PdfKit.load();
+  final e = s.entry;
+  final currency = MoneyFormat.currency;
+  final color = s.gave ? PdfKit.expense : PdfKit.income;
+  final doc = pw.Document(
+    title: '${s.typeLabel} · ${PdfKit.date(e.date)}',
+    author: 'XPENC',
+  );
+  final when = DateFormat('EEEE, d MMMM yyyy').format(e.date);
+  final after = s.balanceAfter;
+  final afterLine = s.owner.balanceLine(after, s.person.name);
+  final rows = <(String, String)>[
+    ('What', s.typeLabel),
+    ('Date', when),
+    ('Person', s.person.name),
+    if (s.account != null) ('Account', s.account!),
+    if (e.dueDate != null) ('Due', PdfKit.date(e.dueDate!)),
+    if (s.category != null) ('Counted as', s.category!),
+    if (s.group != null) ('Group', s.group!),
+    if (s.tags.isNotEmpty) ('Tags', s.tags.map((t) => t.name).join(', ')),
+    (
+      'After this',
+      after.isZero
+          ? afterLine
+          : '$afterLine · ${kit.money(after.abs, currency)}',
+    ),
+  ];
+
+  doc.addPage(
+    pw.MultiPage(
+      pageTheme: kit.pageTheme(),
+      header: (context) => kit.header(context, kind: 'Entry receipt'),
+      footer: kit.footer,
+      build: (context) => [
+        pw.Container(
+          alignment: pw.Alignment.center,
+          padding: const pw.EdgeInsets.symmetric(vertical: 22, horizontal: 20),
+          decoration: pw.BoxDecoration(
+            color: PdfKit.tint(color, 0.07),
+            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(12)),
+          ),
+          child: pw.Column(
+            children: [
+              pw.Text(
+                s.typeLabel.toUpperCase(),
+                style: kit.style(
+                  size: 7.5,
+                  font: kit.semiBold,
+                  color: color,
+                  letterSpacing: 1.1,
+                ),
+              ),
+              pw.SizedBox(height: 10),
+              pw.Text(
+                kit.money(e.amount, currency),
+                style: kit.style(size: 30, font: kit.bold, color: color),
+              ),
+              pw.SizedBox(height: 6),
+              pw.Text(
+                s.headline,
+                textAlign: pw.TextAlign.center,
+                style: kit.style(size: 13, font: kit.semiBold),
+              ),
+              pw.SizedBox(height: 3),
+              pw.Text(when, style: kit.style(size: 9, color: PdfKit.muted)),
+            ],
+          ),
+        ),
+        kit.section('Details'),
+        kit.details(rows),
+        if (s.note != null) ...[
+          kit.section('Note'),
+          pw.Container(
+            padding: const pw.EdgeInsets.all(12),
+            decoration: const pw.BoxDecoration(
+              color: PdfKit.panel,
+              borderRadius: pw.BorderRadius.all(pw.Radius.circular(8)),
+            ),
+            child: pw.Text(s.note!, style: kit.style(size: 10, lineSpacing: 2)),
+          ),
+        ],
+      ],
+    ),
+  );
+  return doc.save();
+}
