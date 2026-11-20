@@ -1924,8 +1924,9 @@ class LoanDetails extends Table {
   IntColumn get tenureMonths => integer().nullable()();
 
   /// When repayment began — needed to know how many installments have
-  /// already elapsed for the prepayment-savings projection. Defaults to the
-  /// loan's creation date when a rate is set; otherwise unused.
+  /// already elapsed for the prepayment-savings projection (rate-based
+  /// loans) and for the XPENC Score. Saved with or without a rate; null only
+  /// on loans saved before that, which fall back to their creation date.
   DateTimeColumn get startDate => dateTime().nullable()();
 
   @override

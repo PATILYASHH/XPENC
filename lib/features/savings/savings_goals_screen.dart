@@ -1012,7 +1012,12 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
     _tenureController = TextEditingController(
       text: existing?.detail.tenureMonths?.toString() ?? '',
     );
-    _startDate = existing?.detail.startDate ?? DateTime.now();
+    // A loan saved without a rate before 1.6.7 never kept its date; when it
+    // was added is closer to the truth than today.
+    _startDate =
+        existing?.detail.startDate ??
+        existing?.account.createdAt ??
+        DateTime.now();
     _colorValue = existing?.account.colorValue ?? _presetColors.first;
     _iconKey = existing?.account.iconKey ?? _iconKeys.first;
     _categoryId = existing?.detail.categoryId;
@@ -1214,7 +1219,9 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
           emiAmount: emi,
           interestRatePct: rate,
           tenureMonths: tenure,
-          startDate: rate == null ? null : _startDate,
+          // Kept with or without a rate: the editor always shows the date,
+          // and dropping it reopened the loan on today's date.
+          startDate: _startDate,
         );
       } else {
         await db.addLoan(
@@ -1226,7 +1233,9 @@ class _LoanEditorSheetState extends ConsumerState<_LoanEditorSheet> {
           emiAmount: emi,
           interestRatePct: rate,
           tenureMonths: tenure,
-          startDate: rate == null ? null : _startDate,
+          // Kept with or without a rate: the editor always shows the date,
+          // and dropping it reopened the loan on today's date.
+          startDate: _startDate,
           autoPayFromAccountId: wantsAutoPay ? _autoPayFromId : null,
           autoPayStartsOn: wantsAutoPay ? autoPayStart : null,
         );

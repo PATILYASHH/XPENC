@@ -17,6 +17,7 @@
  " — the payment was declined.": " — die Zahlung wurde abgelehnt.",
  "\"{0}\" and its subcategories restored": "„{0}“ und seine Unterkategorien wiederhergestellt",
  "\"{0}\" auto-posts from this account. Delete that rule first.": "„{0}“ bucht automatisch von diesem Konto. Lösche zuerst diese Regel.",
+ "\"{0}\" auto-posts into this account. Delete that rule first.": "„{0}“ bucht automatisch auf dieses Konto. Lösche zuerst diese Regel.",
  "\"{0}\" draws from its bank — send the money to the bank.": "„{0}“ bucht von seiner Bank ab — überweise das Geld an die Bank.",
  "\"{0}\" draws from this account. Remove that card first.": "„{0}“ bucht von diesem Konto ab. Entferne zuerst diese Karte.",
  "\"{0}\" for {1} already posted — nothing more was paid.": "„{0}“ für {1} ist schon gebucht — es wurde nichts doppelt gezahlt.",

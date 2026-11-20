@@ -17,6 +17,7 @@
  " — the payment was declined.": " — 支払いが拒否されました。",
  "\"{0}\" and its subcategories restored": "「{0}」とそのサブカテゴリを復元しました",
  "\"{0}\" auto-posts from this account. Delete that rule first.": "「{0}」はこの口座から自動で記録されます。先にそのルールを削除してください。",
+ "\"{0}\" auto-posts into this account. Delete that rule first.": "「{0}」はこの口座へ自動で記録されます。先にそのルールを削除してください。",
  "\"{0}\" draws from its bank — send the money to the bank.": "「{0}」は銀行から引き落とします — お金は銀行へ送ってください。",
  "\"{0}\" draws from this account. Remove that card first.": "「{0}」はこの口座から引き落とします。先にそのカードを削除してください。",
  "\"{0}\" for {1} already posted — nothing more was paid.": "{1} の「{0}」はすでに記録済みです — 二重には支払っていません。",

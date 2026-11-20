@@ -709,6 +709,17 @@ class _AccountTile extends ConsumerWidget {
           ),
         );
       return;
+    } catch (e) {
+      // Anything else (a database error) must still say so — a delete that
+      // silently does nothing reads as a dead button.
+      debugPrint('delete account failed: $e');
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text(tr("Can't remove this account"))),
+        );
+      return;
     }
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)

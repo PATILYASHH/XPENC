@@ -3263,5 +3263,6 @@
  "Search everything",
  "Pages",
  "Show less",
- "Search transactions, accounts, categories, people, payees, tags and every page and setting."
+ "Search transactions, accounts, categories, people, payees, tags and every page and setting.",
+ "\"{0}\" auto-posts into this account. Delete that rule first."
 ]

@@ -471,6 +471,14 @@ class LoanDetailScreen extends ConsumerWidget {
           SnackBar(content: Text(e.message?.toString() ?? tr('Could not delete.'))),
         );
       return;
+    } catch (e) {
+      // Anything else (a database error) must still say so — a delete that
+      // silently does nothing reads as a dead button.
+      debugPrint('delete loan failed: $e');
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(tr('Could not delete.'))));
+      return;
     }
     if (!navigator.mounted) return;
     navigator.pop();

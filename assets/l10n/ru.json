@@ -17,6 +17,7 @@
  " — the payment was declined.": " — платёж отклонён.",
  "\"{0}\" and its subcategories restored": "«{0}» и её подкатегории восстановлены",
  "\"{0}\" auto-posts from this account. Delete that rule first.": "«{0}» автоматически проводится с этого счёта. Сначала удалите это правило.",
+ "\"{0}\" auto-posts into this account. Delete that rule first.": "«{0}» автоматически зачисляется на этот счёт. Сначала удалите это правило.",
  "\"{0}\" draws from its bank — send the money to the bank.": "«{0}» списывает со своего банка — переводите деньги в банк.",
  "\"{0}\" draws from this account. Remove that card first.": "«{0}» списывает с этого счёта. Сначала удалите эту карту.",
  "\"{0}\" for {1} already posted — nothing more was paid.": "«{0}» за {1} уже проведено — повторно ничего не списано.",

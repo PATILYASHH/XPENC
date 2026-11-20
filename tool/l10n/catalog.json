@@ -292,6 +292,7 @@
   "A reminder still points at this account.",
   "A merchant rule still points at this account.",
   "\"{0}\" auto-posts from this account. Delete that rule first.",
+  "\"{0}\" auto-posts into this account. Delete that rule first.",
   "The quick-add notification still posts to this account. Change that in Settings first.",
   "\"{0}\" template still points at this account. Delete that template first.",
   "That category no longer exists.",

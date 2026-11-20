@@ -17,6 +17,7 @@
  " — the payment was declined.": " — भुगतान अस्वीकार हुआ।",
  "\"{0}\" and its subcategories restored": "\"{0}\" और उसकी उप-श्रेणियाँ वापस लाई गईं",
  "\"{0}\" auto-posts from this account. Delete that rule first.": "\"{0}\" इस खाते से अपने-आप दर्ज होता है। पहले वह नियम हटाएँ।",
+ "\"{0}\" auto-posts into this account. Delete that rule first.": "\"{0}\" इस खाते में अपने-आप दर्ज होता है। पहले वह नियम हटाएँ।",
  "\"{0}\" draws from its bank — send the money to the bank.": "\"{0}\" अपने बैंक से पैसे लेता है — पैसे बैंक में भेजें।",
  "\"{0}\" draws from this account. Remove that card first.": "\"{0}\" इस खाते से पैसे लेता है। पहले वह कार्ड हटाएँ।",
  "\"{0}\" for {1} already posted — nothing more was paid.": "{1} का \"{0}\" पहले ही दर्ज हो चुका है — दोबारा कुछ नहीं चुकाया गया।",

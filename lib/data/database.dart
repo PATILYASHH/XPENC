@@ -4612,10 +4612,25 @@ class AppDatabase extends _$AppDatabase {
   /// no reminder or merchant rule naming it. Returns whether deleting it
   /// also auto-disabled Ready to Assign (it was the last pool account) — see
   /// [_maybeAutoDisableRta].
+  ///
+  /// A goal or loan takes the Auto rules that pay into it along with it —
+  /// the loan editor's "Auto-pay EMI" is made in the same transaction as the
+  /// loan, and a rule with nowhere to pay has no use. With no history, none
+  /// of them has ever posted.
+  ///
+  /// Each check reads at most one row: two reminders (or rules, or
+  /// templates) on one account must still refuse with a message, not throw
+  /// `getSingleOrNull`'s "too many elements" past the screen's catch.
   Future<bool> deleteAccount(int id) async {
-    final linkedCard = await (select(
+    final account = await (select(
       accounts,
-    )..where((a) => a.linkedAccountId.equals(id))).getSingleOrNull();
+    )..where((a) => a.id.equals(id))).getSingleOrNull();
+    final takesIncomingRules =
+        account?.type == AccountType.goal || account?.type == AccountType.loan;
+    final linkedCard = await (select(accounts)
+          ..where((a) => a.linkedAccountId.equals(id))
+          ..limit(1))
+        .getSingleOrNull();
     if (linkedCard != null) {
       throw ArgumentError(
         tr('"{0}" draws from this account. Remove that card '
@@ -4627,26 +4642,41 @@ class AppDatabase extends _$AppDatabase {
         tr('This account has transaction history — archive it instead.'),
       );
     }
-    final reminder = await (select(
-      reminders,
-    )..where((r) => r.accountId.equals(id))).getSingleOrNull();
+    final reminder = await (select(reminders)
+          ..where((r) => r.accountId.equals(id))
+          ..limit(1))
+        .getSingleOrNull();
     if (reminder != null) {
       throw ArgumentError(tr('A reminder still points at this account.'));
     }
-    final rule = await (select(
-      merchantRules,
-    )..where((r) => r.accountId.equals(id))).getSingleOrNull();
+    final rule = await (select(merchantRules)
+          ..where((r) => r.accountId.equals(id))
+          ..limit(1))
+        .getSingleOrNull();
     if (rule != null) {
       throw ArgumentError(tr('A merchant rule still points at this account.'));
     }
-    final recurring = await (select(
-      recurringRules,
-    )..where((r) => r.accountId.equals(id))).getSingleOrNull();
+    final recurring = await (select(recurringRules)
+          ..where((r) => r.accountId.equals(id))
+          ..limit(1))
+        .getSingleOrNull();
     if (recurring != null) {
       throw ArgumentError(
         tr('"{0}" auto-posts from this account. Delete that rule '
         'first.', [recurring.name]),
       );
+    }
+    if (!takesIncomingRules) {
+      final incoming = await (select(recurringRules)
+            ..where((r) => r.toAccountId.equals(id))
+            ..limit(1))
+          .getSingleOrNull();
+      if (incoming != null) {
+        throw ArgumentError(
+          tr('"{0}" auto-posts into this account. Delete that rule '
+          'first.', [incoming.name]),
+        );
+      }
     }
     final settingsRow = await getSettings();
     if (settingsRow.quickAddAccountId == id) {
@@ -4655,10 +4685,10 @@ class AppDatabase extends _$AppDatabase {
         'that in Settings first.'),
       );
     }
-    final template =
-        await (select(transactionTemplates)
-              ..where((t) => t.accountId.equals(id) | t.toAccountId.equals(id)))
-            .getSingleOrNull();
+    final template = await (select(transactionTemplates)
+          ..where((t) => t.accountId.equals(id) | t.toAccountId.equals(id))
+          ..limit(1))
+        .getSingleOrNull();
     if (template != null) {
       throw ArgumentError(
         tr('"{0}" template still points at this account. Delete '
@@ -4666,10 +4696,20 @@ class AppDatabase extends _$AppDatabase {
       );
     }
     return transaction(() async {
+      if (takesIncomingRules) {
+        final incoming = await (select(
+          recurringRules,
+        )..where((r) => r.toAccountId.equals(id))).get();
+        for (final r in incoming) {
+          await deleteRecurringRule(r.id);
+        }
+      }
       // A goal account's own target/deadline row has no reason to outlive
-      // it — nothing else ever references GoalDetails. Same for a credit
-      // card's statement-tracking row.
+      // it — nothing else ever references GoalDetails. Same for a loan's
+      // rate/EMI row and a credit card's statement-tracking row. Foreign
+      // keys are on: leaving any of them behind fails the delete itself.
       await (delete(goalDetails)..where((g) => g.accountId.equals(id))).go();
+      await (delete(loanDetails)..where((l) => l.accountId.equals(id))).go();
       await (delete(
         creditCardDetails,
       )..where((c) => c.accountId.equals(id))).go();
