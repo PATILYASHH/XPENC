@@ -135,6 +135,12 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   A loan with payments still asks to be archived instead.
 - **A loan keeps its repayment start date.** A loan saved without an
   interest rate came back with today's date. The date you pick is kept now.
+- **Restored loans are back on the Loans tab.** Backups made before 1.6.5
+  didn't save the loan details, so after a restore or a Connector import a
+  loan showed on the Dashboard and in Accounts but not under Loans. The app
+  now puts those loans back on the tab, with the EMI taken from their
+  Auto-pay rule. The interest rate and tenure weren't in the backup, so
+  re-enter them with **Edit loan** to get the interest split back.
 - **Quick add from the notification stops spinning.** After you send an
   amount, the reply box clears instead of spinning until the app is closed.
   `12,50` is now read as 12.50, not 1,250.

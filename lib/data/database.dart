@@ -968,6 +968,8 @@ class AppDatabase extends _$AppDatabase {
       // `listId` to import (see `importAll`), which reintroduces the
       // exact orphaned shape the v17 migration repairs.
       await backfillShoppingListIds();
+      // And loans: a pre-1.6.5 backup has no `loanDetails` to import.
+      await repairLoansWithoutDetails();
     },
   );
 
@@ -1192,6 +1194,49 @@ class AppDatabase extends _$AppDatabase {
     // one ledger that now holds every movement.
     await recalculateBalances();
     return entries.length;
+  }
+
+  /// Gives a loan account that has lost its [LoanDetails] row a basic one
+  /// back (no rate, so EMIs post without an interest split until the loan
+  /// is edited). The Loans tab lists loans by that row, so without it a
+  /// loan still counts on the Dashboard and in Accounts but is missing from
+  /// Loans. Backups exported before 1.6.5 left `loanDetails` out, so
+  /// restoring one, by hand or through Connector, brought every loan's
+  /// account back without its row.
+  ///
+  /// The EMI and category come from an Auto rule paying into the loan, if
+  /// there is one. The start date is left empty, which falls back to the
+  /// account's creation date, as for any loan saved without a date.
+  ///
+  /// **Idempotent**, and run on every open (see `beforeOpen`) and after
+  /// every import, for the same reason as [backfillShoppingListIds].
+  Future<int> repairLoansWithoutDetails() async {
+    final loans = await (select(
+      accounts,
+    )..where((a) => a.type.equalsValue(AccountType.loan))).get();
+    if (loans.isEmpty) return 0;
+    final tracked = {
+      for (final d in await select(loanDetails).get()) d.accountId,
+    };
+    var repaired = 0;
+    for (final loan in loans) {
+      if (tracked.contains(loan.id)) continue;
+      final rule =
+          await (select(recurringRules)
+                ..where((r) => r.toAccountId.equals(loan.id))
+                ..orderBy([(r) => OrderingTerm(expression: r.id)])
+                ..limit(1))
+              .getSingleOrNull();
+      await into(loanDetails).insert(
+        LoanDetailsCompanion.insert(
+          accountId: Value(loan.id),
+          categoryId: Value(rule?.categoryId),
+          emiAmount: Value(rule?.amount),
+        ),
+      );
+      repaired++;
+    }
+    return repaired;
   }
 
   /// v16 -> v17: a shopping item made before named lists existed has no
@@ -9111,6 +9156,8 @@ class AppDatabase extends _$AppDatabase {
 
     // The cache is only as good as the ledger it was built from.
     await recalculateBalances();
+    // A backup from before 1.6.5 carries loan accounts but no loan rows.
+    await repairLoansWithoutDetails();
 
     if ((await select(settings).get()).isEmpty) {
       await into(settings).insert(const SettingsCompanion());
