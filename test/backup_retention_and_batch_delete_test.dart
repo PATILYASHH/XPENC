@@ -167,12 +167,16 @@ void main() {
 
       await pump(tester, const BackupScreen());
       expect(tester.takeException(), isNull);
+
+      // The list sits below the Backup folder (GitHub #200) and Encrypt
+      // backups (#41) rows — past what the list builds before scrolling.
+      await tester.scrollUntilVisible(
+        find.text('010826XPENCEBACKUP.json'),
+        200,
+      );
+      await tester.pump();
       expect(find.text('Backups'), findsOneWidget);
       expect(find.text('Find existing'), findsOneWidget);
-
-      // The list sits below the Backup folder row (GitHub #200).
-      await tester.ensureVisible(find.text('010826XPENCEBACKUP.json'));
-      await tester.pump();
       await tester.longPress(find.text('010826XPENCEBACKUP.json'));
       await tester.pump();
 
@@ -225,8 +229,12 @@ void main() {
       });
 
       await pump(tester, const BackupScreen());
-      // The list sits below the Backup folder row (GitHub #200).
-      await tester.ensureVisible(find.text('010826XPENCEBACKUP.json'));
+      // The list sits below the Backup folder (GitHub #200) and Encrypt
+      // backups (#41) rows — past what the list builds before scrolling.
+      await tester.scrollUntilVisible(
+        find.text('010826XPENCEBACKUP.json'),
+        200,
+      );
       await tester.pump();
       await tester.longPress(find.text('010826XPENCEBACKUP.json'));
       await tester.pump();

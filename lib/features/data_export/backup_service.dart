@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show compute, visibleForTesting;
 import 'package:media_store_plus/media_store_plus.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -12,7 +13,9 @@ import '../../core/platform/outgoing_file.dart';
 import '../../core/platform/platform_features.dart';
 import '../../data/database.dart';
 import 'app_folder_backups.dart';
+import 'backup_crypto.dart';
 import 'backup_folder.dart';
+import 'backup_keys.dart';
 import 'report_pdf.dart';
 import 'statement_pdf.dart';
 import '../../core/l10n/l10n.dart';
@@ -29,6 +32,14 @@ const backupAppFolder = 'BACKUP XPENC';
 final _backupFileNamePattern = RegExp(
   r'^(\d{2})(\d{2})(\d{2})XPENCEBACKUP\.json$',
 );
+
+/// Tries a typed password on an encrypted backup: true when it opened it.
+typedef BackupPasswordAttempt = Future<bool> Function(String password);
+
+/// Asks for an encrypted backup's password, trying each one typed with
+/// [attempt] until one opens it — true then, false when the user gives up.
+typedef BackupPasswordPrompt =
+    Future<bool> Function(BackupPasswordAttempt attempt);
 
 /// Export, share, back up and restore.
 ///
@@ -54,15 +65,29 @@ final _backupFileNamePattern = RegExp(
 /// file", since a page can't open what it downloaded. Nothing is ever
 /// downloaded unasked, so automatic backups don't run there.
 class BackupService {
-  BackupService(this._db, {AppFolderBackups? appFolder})
-    : _browser = appFolder == null && PlatformFeatures.isWeb,
-      _appFolder =
-          appFolder ??
-          (PlatformFeatures.durableBackupFolder || PlatformFeatures.isWeb
-              ? null
-              : AppFolderBackups());
+  BackupService(
+    this._db, {
+    AppFolderBackups? appFolder,
+    BackupKeys? keys,
+    BackupPasswordPrompt? askPassword,
+  }) : _browser = appFolder == null && PlatformFeatures.isWeb,
+       _appFolder =
+           appFolder ??
+           (PlatformFeatures.durableBackupFolder || PlatformFeatures.isWeb
+               ? null
+               : AppFolderBackups()),
+       _keys = keys ?? BackupKeys.device,
+       _askPassword = askPassword;
 
   final AppDatabase _db;
+
+  /// Encrypted backups (GitHub #41): this phone's key, if encryption is on,
+  /// and the keys of encrypted backups it has opened before.
+  final BackupKeys _keys;
+
+  /// How an encrypted backup no remembered key opens gets its password.
+  /// Null (tests, mostly): such a backup can't be restored.
+  final BackupPasswordPrompt? _askPassword;
 
   /// Where backups live when there's no `Download/BACKUP XPENC` — null on
   /// Android, where every backup goes through `MediaStore`, and on the web.
@@ -177,7 +202,7 @@ class BackupService {
     final folder = _appFolder;
     if (folder == null && !_browser) await _ensureMediaStoreReady();
     final dump = await _db.exportAll();
-    final json = const JsonEncoder.withIndent('  ').convert(dump);
+    final json = await _fileContent(dump);
     final now = DateTime.now();
     final fileName = backupFileName(now);
 
@@ -239,6 +264,88 @@ class BackupService {
     await _rememberForConnector(utf8.encode(json), dump);
     return (await _db.backupRecordByName(saved.name))!;
   }
+
+  /// A backup file's text for [dump]: the JSON itself, or — while
+  /// encryption is on — that JSON sealed with this phone's key, off the UI
+  /// thread (a big ledger takes a moment to encrypt).
+  Future<String> _fileContent(Map<String, dynamic> dump) async {
+    final key = await _keys.active();
+    if (key == null) return const JsonEncoder.withIndent('  ').convert(dump);
+    return compute(_seal, (jsonEncode(dump), key));
+  }
+
+  static String _seal((String, BackupKey) args) =>
+      BackupCrypto.seal(args.$1, args.$2);
+
+  // ── Encryption (GitHub #41) ───────────────────────────────────────────────
+
+  /// Whether new backups are encrypted. Never on XPENC web, where a backup
+  /// is a download and there's nowhere to keep a key.
+  Future<bool> encryptsBackups() async =>
+      !_browser && await _keys.active() != null;
+
+  /// Encrypts every backup from now on with a key from [password] — also
+  /// how the password is changed. Backups already made stay as they are.
+  /// [iterations] is for tests, which can't wait out the real count.
+  Future<void> encryptBackups(
+    String password, {
+    @visibleForTesting int iterations = BackupCrypto.defaultIterations,
+  }) async {
+    if (_browser) throw UnsupportedError('No backup encryption on the web');
+    if (password.length < BackupCrypto.minPasswordLength) {
+      throw ArgumentError(
+        tr('Use at least {0} characters.', [BackupCrypto.minPasswordLength]),
+      );
+    }
+    await _keys.turnOn(
+      await BackupCrypto.newKey(password, iterations: iterations),
+    );
+  }
+
+  /// Plain backups again. Encrypted ones already made still restore here
+  /// without the password; anywhere else they need it.
+  Future<void> stopEncryptingBackups() => _keys.turnOff();
+
+  /// [sealed]'s JSON: opened with a key this phone remembers, else with the
+  /// password [_askPassword] gets. Throws [ArgumentError] when there's no
+  /// way to ask, or the user gives up.
+  Future<String> _open(EncryptedBackup sealed) async {
+    final known = await _keys.keyFor(sealed);
+    if (known != null) {
+      try {
+        return await compute(_openWith, (sealed, known));
+      } on BackupDecryptError {
+        // A remembered key that doesn't fit after all — ask, as if unknown.
+      }
+    }
+    final ask = _askPassword;
+    String? opened;
+    final unlocked =
+        ask != null &&
+        await ask((password) async {
+          try {
+            final (json, key) = await sealed.openWithPassword(password);
+            opened = json;
+            try {
+              await _keys.remember(key);
+            } catch (_) {
+              // Not remembered: next time it simply asks again.
+            }
+            return true;
+          } on BackupDecryptError {
+            return false;
+          }
+        });
+    if (!unlocked || opened == null) {
+      throw ArgumentError(
+        tr('That backup is encrypted, and restoring it needs its password.'),
+      );
+    }
+    return opened!;
+  }
+
+  static String _openWith((EncryptedBackup, BackupKey) args) =>
+      args.$1.open(args.$2);
 
   /// Connector may upload this file and build this phone on it; XPENC
   /// remembers what data it held, to know later whether taking in another
@@ -325,13 +432,22 @@ class BackupService {
   /// The same validation and all-or-nothing transaction apply, so a wrong or
   /// corrupt file changes nothing. Throws [ArgumentError] with a
   /// user-facing message on bad input.
+  ///
+  /// An encrypted backup (GitHub #41) is opened first — see [_open].
   Future<void> restoreFromContent(String content) async {
-    final Object? decoded;
+    Object? decoded;
     try {
       decoded = jsonDecode(content);
     } on FormatException {
       throw ArgumentError(tr('That file is not valid JSON.'));
     }
+    final EncryptedBackup? sealed;
+    try {
+      sealed = EncryptedBackup.tryParse(decoded);
+    } on FormatException catch (e) {
+      throw ArgumentError(tr(e.message));
+    }
+    if (sealed != null) decoded = jsonDecode(await _open(sealed));
     if (decoded is! Map<String, dynamic>) {
       throw ArgumentError(tr('That file is not an XPENC backup.'));
     }

@@ -66,6 +66,10 @@ dependencies:
   pdf: ^3.11.3
   # Biometric unlock for the passcode lock screen (Settings > Security).
   local_auth: ^3.0.2
+  # Encrypted backups (GitHub #41): AES-256-GCM, key from the backup
+  # password via PBKDF2-HMAC-SHA256. Pure Dart (MIT) - no native blob for
+  # F-Droid to object to, and the same code runs on XPENC web.
+  pointycastle: ^4.0.0
   # Hashes the passcode before it ever touches disk — never stored in plain
   # text (see core/security/passcode.dart).
   crypto: ^3.0.7

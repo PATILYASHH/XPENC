@@ -13,6 +13,7 @@ import '../core/routing/quick_actions.dart';
 import '../core/security/unlock_method.dart';
 import '../core/theme/font_options.dart';
 import '../core/theme/theme_preset.dart';
+import '../features/data_export/backup_password.dart';
 import '../features/data_export/backup_service.dart';
 import '../features/message_capture/capture_service.dart';
 import '../features/message_capture/message_source.dart';
@@ -2355,7 +2356,11 @@ final plainPayeeNamesProvider = Provider<List<String>>((ref) {
 // ── Export / Backup ─────────────────────────────────────────────────────────
 
 final backupServiceProvider = Provider<BackupService>(
-  (ref) => BackupService(ref.watch(dbProvider)),
+  (ref) => BackupService(
+    ref.watch(dbProvider),
+    // An encrypted backup this phone has no key for (GitHub #41).
+    askPassword: askBackupPassword,
+  ),
 );
 
 /// The live list of known backups. Reads `AppDatabase.watchBackupRecords`

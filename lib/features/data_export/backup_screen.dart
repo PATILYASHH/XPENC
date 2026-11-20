@@ -10,6 +10,7 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'backup_folder.dart';
+import 'backup_password.dart';
 import 'backup_service.dart';
 import 'import_from_file.dart';
 import '../../core/widgets/nav_bar_inset.dart';
@@ -37,6 +38,103 @@ class BackupScreen extends ConsumerStatefulWidget {
 
 class _BackupScreenState extends ConsumerState<BackupScreen> {
   bool _busy = false;
+
+  /// Whether new backups are encrypted (GitHub #41); null until read.
+  bool? _encrypted;
+
+  @override
+  void initState() {
+    super.initState();
+    _readEncryption();
+  }
+
+  Future<void> _readEncryption() async {
+    final on = await ref.read(backupServiceProvider).encryptsBackups();
+    if (mounted) setState(() => _encrypted = on);
+  }
+
+  /// Sets the backup password: turning encryption on, or [changing] it.
+  Future<void> _setBackupPassword({required bool changing}) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final service = ref.read(backupServiceProvider);
+    final saved = await showAppSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (_) => BackupPasswordSheet(
+        changing: changing,
+        onSave: service.encryptBackups,
+      ),
+    );
+    if (saved != true || !mounted) return;
+    setState(() => _encrypted = true);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            changing
+                ? tr('Backup password changed')
+                : tr('New backups are encrypted. The ones already here '
+                      "aren't."),
+          ),
+          action: SnackBarAction(
+            label: tr('Back up now'),
+            onPressed: _backupNow,
+          ),
+        ),
+      );
+  }
+
+  Future<void> _turnOffEncryption() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final service = ref.read(backupServiceProvider);
+    final confirmed = await showAppDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Tr('Turn off encryption?'),
+        content: const Tr(
+          'New backups are saved as plain files again — anyone with one '
+          'can read it. Encrypted backups you already have stay encrypted: '
+          'XPENC on this phone still opens them, anywhere else they need '
+          'the password.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Tr('Cancel'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(dialogContext).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Tr('Turn off'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await service.stopEncryptingBackups();
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(tr("Couldn't save: {0}", [e]))),
+      );
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _encrypted = false);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(content: Tr('Backup encryption off')),
+      );
+  }
 
   /// File names of the backups checked in batch-select mode (GitHub #131 —
   /// "a way to delete several backups at once"). Non-empty means the list
@@ -525,6 +623,59 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
                 ),
               ),
             ],
+            // Encrypted backups (GitHub #41).
+            const SizedBox(height: 12),
+            AppCard(
+              child: Column(
+                children: [
+                  AppSwitchListTile(
+                    key: const Key('backup-encrypt'),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 4,
+                    ),
+                    secondary: AppIcon(
+                      _encrypted == true
+                          ? Icons.lock_outline_rounded
+                          : Icons.lock_open_rounded,
+                      color: _encrypted == true
+                          ? cs.primary
+                          : cs.onSurfaceVariant,
+                    ),
+                    title: const Tr('Encrypt backups'),
+                    subtitle: Text(
+                      _encrypted == true
+                          ? tr('On — backups need your password to restore '
+                                'anywhere but this phone.')
+                          : tr('Off — anyone with a backup file can read it.'),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    value: _encrypted == true,
+                    onChanged: _busy || _encrypted == null
+                        ? null
+                        : (on) => on
+                              ? _setBackupPassword(changing: false)
+                              : _turnOffEncryption(),
+                  ),
+                  if (_encrypted == true)
+                    AppListTile(
+                      key: const Key('backup-encrypt-change'),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 0,
+                      ),
+                      leading: const AppIcon(Icons.password_rounded),
+                      title: const Tr('Change backup password'),
+                      trailing: const AppIcon(Icons.chevron_right_rounded),
+                      onTap: _busy
+                          ? null
+                          : () => _setBackupPassword(changing: true),
+                    ),
+                ],
+              ),
+            ),
           ],
           const SizedBox(height: 24),
           Row(
