@@ -100,6 +100,14 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
   file's amounts and picks `1,234.56` or `1.234,56` for you. You can switch
   it under **Amounts are written as** and check the preview before
   importing.
+- **A loan can be deleted again.** Deleting a loan with no payments did
+  nothing. Now it goes, along with an Auto-pay EMI rule that never posted.
+  A loan with payments still asks to be archived instead.
+- **A loan keeps its repayment start date.** A loan saved without an
+  interest rate came back with today's date. The date you pick is kept now.
+- **Quick add from the notification stops spinning.** After you send an
+  amount, the reply box clears instead of spinning until the app is closed.
+  `12,50` is now read as 12.50, not 1,250.
 
 ## [1.6.6] — 2026-11-15
 
