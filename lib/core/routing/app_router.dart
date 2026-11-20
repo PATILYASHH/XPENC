@@ -33,6 +33,7 @@ import '../../features/modes/modes_screen.dart';
 import '../../features/categories/category_templates_screen.dart';
 import '../../features/connector/connector_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
+import '../../features/dashboard/total_money_screen.dart';
 import '../../features/data_export/backup_screen.dart';
 import '../../features/data_export/csv_import_screen.dart';
 import '../../features/data_export/download_data_screen.dart';
@@ -726,6 +727,13 @@ final appRouter = GoRouter(
       builder: (_, state) => TransactionDetailScreen(
         transactionId: int.parse(state.pathParameters['id']!),
       ),
+    ),
+
+    // Where Total money is — the dashboard card zooms into it.
+    GoRoute(
+      path: '/total-money',
+      parentNavigatorKey: _rootKey,
+      builder: (_, _) => const TotalMoneyScreen(),
     ),
 
     GoRoute(

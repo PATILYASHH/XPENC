@@ -572,12 +572,13 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // The figure and its graph open Customize dashboard — which
-              // accounts count toward this number. The metric tabs below
-              // keep their own taps.
+              // The figure and its graph open where that money is — every
+              // account, goal, loan and due — zooming out of this card.
+              // (Customizing the dashboard has its own link at its foot.)
+              // The metric tabs below keep their own taps.
               InkWell(
-                onTap: () =>
-                    pushFromBar<void>(context, '/more/settings/dashboard'),
+                key: const Key('total-money-card'),
+                onTap: () => pushZoom(context, '/total-money'),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

@@ -15,6 +15,7 @@ import 'package:xpenc/core/widgets/morph_dialog.dart';
 import 'package:xpenc/data/database.dart';
 import 'package:xpenc/data/providers.dart';
 import 'package:xpenc/features/categories/categories_screen.dart';
+import 'package:xpenc/features/dashboard/total_money_screen.dart';
 import 'package:xpenc/features/persons/person_avatar.dart';
 import 'package:xpenc/features/persons/persons_screen.dart';
 import 'package:xpenc/features/settings/currency_settings_screen.dart';
@@ -199,7 +200,9 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('tapping the Net worth card opens Customize dashboard', (
+  // The card used to open Customize dashboard; it now opens where the
+  // money is, and Customize keeps its link at the dashboard's foot.
+  testWidgets('tapping the Total money card opens the Total money page', (
     tester,
   ) async {
     await pumpApp(tester, AppTheme.light, '/dashboard');
@@ -207,7 +210,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 800));
     await settle(tester);
-    expect(find.byType(DashboardSettingsScreen), findsOneWidget);
+    expect(find.byType(TotalMoneyScreen), findsOneWidget);
+    expect(find.byType(DashboardSettingsScreen), findsNothing);
     await unmount(tester);
   });
 
