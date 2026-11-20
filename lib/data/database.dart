@@ -2659,6 +2659,78 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
+  /// Rewrites a saved template in place (GitHub #205) — name, type, amount,
+  /// accounts, category, payee, note and tags — so changing one no longer
+  /// means deleting it and saving a new one from a transaction. Its mode
+  /// and creation date stay as they were. Refuses what [AddTransactionScreen]
+  /// would refuse for a real transaction: a transfer without two different
+  /// accounts, or a negative amount.
+  Future<void> updateTransactionTemplate({
+    required int id,
+    required String name,
+    required TxType type,
+    required Money amount,
+    required int accountId,
+    int? toAccountId,
+    int? categoryId,
+    String? note,
+    String? payee,
+    Iterable<int> tagIds = const [],
+  }) async {
+    final cleanName = name.trim();
+    if (cleanName.isEmpty) {
+      throw ArgumentError(tr('Give the template a name.'));
+    }
+    if (type != TxType.expense &&
+        type != TxType.income &&
+        type != TxType.transfer) {
+      throw ArgumentError(tr("This can't be turned into a template."));
+    }
+    final isTransfer = type == TxType.transfer;
+    if (isTransfer ? !amount.isPositive : amount.isNegative) {
+      throw ArgumentError(tr('Enter a valid amount'));
+    }
+    if (isTransfer && (toAccountId == null || toAccountId == accountId)) {
+      throw ArgumentError(
+        tr('Transfer must be between two different accounts'),
+      );
+    }
+    String? clean(String? s, [int? max]) {
+      final t = s?.trim();
+      if (t == null || t.isEmpty) return null;
+      return max != null && t.length > max ? t.substring(0, max) : t;
+    }
+
+    await transaction(() async {
+      final updated =
+          await (update(
+            transactionTemplates,
+          )..where((t) => t.id.equals(id))).write(
+            TransactionTemplatesCompanion(
+              name: Value(
+                cleanName.length > 60 ? cleanName.substring(0, 60) : cleanName,
+              ),
+              type: Value(type),
+              amount: Value(amount),
+              accountId: Value(accountId),
+              toAccountId: Value(isTransfer ? toAccountId : null),
+              categoryId: Value(isTransfer ? null : categoryId),
+              note: Value(clean(note)),
+              payee: Value(isTransfer ? null : clean(payee, 80)),
+            ),
+          );
+      if (updated == 0) throw ArgumentError(tr('Template not found'));
+      await (delete(
+        transactionTemplateTags,
+      )..where((t) => t.templateId.equals(id))).go();
+      for (final tagId in tagIds.toSet()) {
+        await into(transactionTemplateTags).insert(
+          TransactionTemplateTagsCompanion.insert(templateId: id, tagId: tagId),
+        );
+      }
+    });
+  }
+
   Future<void> deleteTransactionTemplate(int id) => transaction(() async {
     await (delete(
       transactionTemplateTags,

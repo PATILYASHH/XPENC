@@ -48,6 +48,15 @@ Release process: see [docs/RELEASING.md](docs/RELEASING.md).
 - **Archived goals & loans** (Goals & Loans → archive button). Archived
   goals and loans now have their own list, with **Restore**. They used to
   be reachable only from Accounts → Archived.
+- **Edit a saved template** (#205). In the ➕ sheet, tap ✏️ next to a
+  template to change its name, amount, type, accounts, category, payee,
+  note or tags. You no longer have to delete it and save it again from a
+  transaction. Transactions already made from it stay as they are.
+- **Search everything** (#209). Hold ➕ to search the whole app: pages
+  and settings, transactions (by note, payee, category, account or exact
+  amount), accounts, categories, people, payees, tags, trips and shopping
+  lists. Type several words to narrow it down. With the radial hold menu
+  on, add **Search** to one of its slots in Settings → Quick Actions.
 - **CSV import reads European dates** (#206). `16.11.2026`, `1.2.2026`
   and `16.11.26` now import, alongside the slash and dash dates that
   already worked.

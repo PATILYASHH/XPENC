@@ -31,15 +31,22 @@ Future<void> openAddTransactionChoiceSheet(BuildContext context) async {
     builder: (_) => const _AddChoiceSheet(),
   );
   if (result == null) return;
-  router.push(
-    result.templateId == null ? '/add' : '/add?template=${result.templateId}',
-  );
+  router.push(switch (result) {
+    _AddChoiceResult(templateId: null) => '/add',
+    _AddChoiceResult(:final templateId, edit: true) =>
+      '/add?editTemplate=$templateId',
+    _AddChoiceResult(:final templateId) => '/add?template=$templateId',
+  });
 }
 
 class _AddChoiceResult {
-  const _AddChoiceResult.blank() : templateId = null;
-  const _AddChoiceResult.template(int id) : templateId = id;
+  const _AddChoiceResult.blank() : templateId = null, edit = false;
+  const _AddChoiceResult.template(int id) : templateId = id, edit = false;
+
+  /// Opens the template itself for editing (GitHub #205).
+  const _AddChoiceResult.editTemplate(int id) : templateId = id, edit = true;
   final int? templateId;
+  final bool edit;
 }
 
 class _AddChoiceSheet extends ConsumerWidget {
@@ -110,10 +117,22 @@ class _AddChoiceSheet extends ConsumerWidget {
                   ),
                   title: Text(t.name),
                   subtitle: Text(_subtitle(t, categoryMap)),
-                  trailing: IconButton(
-                    icon: const AppIcon(Icons.delete_outline_rounded),
-                    tooltip: tr('Delete template'),
-                    onPressed: () => _confirmDelete(context, ref, t),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const AppIcon(Icons.edit_outlined),
+                        tooltip: tr('Edit template'),
+                        onPressed: () => Navigator.of(
+                          context,
+                        ).pop(_AddChoiceResult.editTemplate(t.id)),
+                      ),
+                      IconButton(
+                        icon: const AppIcon(Icons.delete_outline_rounded),
+                        tooltip: tr('Delete template'),
+                        onPressed: () => _confirmDelete(context, ref, t),
+                      ),
+                    ],
                   ),
                   onTap: () => Navigator.of(
                     context,

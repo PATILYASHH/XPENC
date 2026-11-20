@@ -88,11 +88,17 @@ class _PaymentLegEntry {
 /// transaction — reached by picking a template from the ➕ button's choice
 /// sheet. Same as duplicating: the date is always today, and there is no
 /// receipt to carry over.
+///
+/// With an [editTemplateId], the same prefill edits the template itself
+/// (GitHub #205): its name joins the form, everything a template doesn't
+/// store (date, receipt, splits, foreign currency…) is hidden, and Save
+/// rewrites the template instead of creating a transaction.
 class AddTransactionScreen extends ConsumerStatefulWidget {
   const AddTransactionScreen({
     this.transactionId,
     this.duplicateFromId,
     this.templateId,
+    this.editTemplateId,
     this.initialType,
     this.initialPayee,
     this.initialNote,
@@ -111,6 +117,7 @@ class AddTransactionScreen extends ConsumerStatefulWidget {
   final int? plannedCostId;
   final int? duplicateFromId;
   final int? templateId;
+  final int? editTemplateId;
 
   /// Preselects Expense or Income — used by the home-screen widget's "+
   /// Expense" / "+ Income" shortcuts to skip the type-picker step. Ignored
@@ -261,6 +268,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
   bool get _isEditing => widget.transactionId != null;
 
+  /// Editing a saved template rather than any transaction (GitHub #205).
+  bool get _isEditingTemplate => widget.editTemplateId != null;
+  final _templateNameController = TextEditingController();
+
   /// Split only ever applies to an expense — [_isSplit] can be stale after a
   /// type switch (kept around so toggling back doesn't lose entered rows).
   bool get _isSplitting => _type == TxType.expense && _isSplit;
@@ -362,10 +373,16 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         await _loadForDuplicate();
         await _seedMode();
       });
+    } else if (_isEditingTemplate) {
+      // The template keeps its own mode; nothing here joins one.
+      _loading = true;
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _loadForTemplate(widget.editTemplateId!),
+      );
     } else if (widget.templateId != null) {
       _loading = true;
       WidgetsBinding.instance.addPostFrameCallback((_) async {
-        await _loadForTemplate();
+        await _loadForTemplate(widget.templateId!);
         await _seedMode();
       });
     } else {
@@ -534,6 +551,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_onHardwareKey);
     _noteController.dispose();
+    _templateNameController.dispose();
     _noteFocus.dispose();
     _payeeController.dispose();
     for (final row in _splitRows) {
@@ -686,12 +704,12 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   /// no [TransactionTemplateRow] stores (see its own doc comment).
   /// [widget.transactionId] stays null throughout, so `_save` inserts a new
   /// row rather than touching anything.
-  Future<void> _loadForTemplate() async {
+  Future<void> _loadForTemplate(int templateId) async {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
 
     final db = ref.read(dbProvider);
-    final row = await db.transactionTemplateById(widget.templateId!);
+    final row = await db.transactionTemplateById(templateId);
     if (!mounted) return;
 
     if (row == null) {
@@ -702,7 +720,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       return;
     }
 
-    final tagIds = await db.tagIdsForTemplate(widget.templateId!);
+    final tagIds = await db.tagIdsForTemplate(templateId);
     if (!mounted) return;
 
     setState(() {
@@ -714,8 +732,118 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       _noteController.text = row.note ?? '';
       _payeeController.text = row.payee ?? '';
       _tagIds = tagIds.toSet();
+      if (_isEditingTemplate) _templateNameController.text = row.name;
       _loading = false;
     });
+  }
+
+  /// Save for [_isEditingTemplate]: rewrites the template, no transaction.
+  Future<void> _saveTemplate() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final accountId = _accountId;
+    if (accountId == null) {
+      messenger.showSnackBar(const SnackBar(content: Tr('Select an account')));
+      return;
+    }
+    try {
+      await ref
+          .read(dbProvider)
+          .updateTransactionTemplate(
+            id: widget.editTemplateId!,
+            name: _templateNameController.text,
+            type: _type,
+            amount: _amount,
+            accountId: accountId,
+            toAccountId: _toAccountId,
+            categoryId: _categoryId,
+            note: _noteController.text,
+            payee: _payeeController.text,
+            tagIds: _tagIds,
+          );
+    } on ArgumentError catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(e.message?.toString() ?? tr("Couldn't save template")),
+        ),
+      );
+      return;
+    }
+    if (!mounted) return;
+    navigator.pop();
+    messenger.showSnackBar(const SnackBar(content: Tr('Template updated')));
+  }
+
+  /// [_buildPickers] for [_isEditingTemplate]: only what a template stores.
+  List<Widget> _templatePickers(
+    Map<int, AccountRow> accountMap,
+    Map<int, CategoryRow> categoryMap,
+  ) {
+    final theme = Theme.of(context);
+    final cat = categoryMap[_categoryId];
+    final parent = cat?.parentId == null ? null : categoryMap[cat!.parentId];
+    return [
+      AppCard(
+        margin: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: TextField(
+            key: const Key('templateNameField'),
+            controller: _templateNameController,
+            maxLength: 60,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: InputDecoration(
+              labelText: tr('Template name'),
+              border: InputBorder.none,
+              counterText: '',
+              icon: AppIcon(
+                Icons.bookmark_outline_rounded,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(height: 12),
+      _pickerTile(
+        icon: AppIcons.resolve(_type == TxType.transfer ? 'bank' : 'wallet'),
+        label: switch (_type) {
+          TxType.transfer => tr('From account'),
+          TxType.income => tr('Deposit to'),
+          _ => tr('Paid via'),
+        },
+        value: accountMap[_accountId]?.name ?? tr('Select account'),
+        selected: _accountId != null,
+        onTap: () => _pickAccount(isFrom: true),
+      ),
+      const SizedBox(height: 12),
+      if (_type == TxType.transfer)
+        _pickerTile(
+          icon: AppIcons.resolve('transfer'),
+          label: tr('To account'),
+          value: accountMap[_toAccountId]?.name ?? tr('Select account'),
+          selected: _toAccountId != null,
+          onTap: () => _pickAccount(isFrom: false),
+        )
+      else ...[
+        _pickerTile(
+          icon: AppIcons.resolve(cat?.iconKey ?? 'other'),
+          iconKey: cat?.iconKey,
+          label: tr('Category'),
+          value: cat == null
+              ? tr('Select category')
+              : parent == null
+              ? cat.name
+              : '${parent.name} › ${cat.name}',
+          selected: _categoryId != null,
+          onTap: _pickCategory,
+        ),
+        const SizedBox(height: 12),
+        _payeeCard(),
+      ],
+      const SizedBox(height: 12),
+      _noteCard(),
+    ];
   }
 
   /// The live main amount. Tolerates a trailing dot while the user is
@@ -2022,6 +2150,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   // ── Save ──────────────────────────────────────────────────────────────────
 
   Future<void> _save() async {
+    if (_isEditingTemplate) return _saveTemplate();
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     final amount = _amount;
@@ -2471,13 +2600,22 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             icon: const AppIcon(Icons.close_rounded),
             onPressed: () => Navigator.of(context).maybePop(),
           ),
-          title: Text(_isEditing ? tr('Edit') : tr('Add')),
+          title: Text(
+            _isEditingTemplate
+                ? tr('Edit template')
+                : (_isEditing ? tr('Edit') : tr('Add')),
+          ),
           // Tags and receipt live here, not buried at the bottom of the
           // scrollable field list, so they stay reachable in one tap no matter
           // how far the user has scrolled or whether the keypad is covering
           // the rest of the screen.
           actions: _loading
               ? null
+              : _isEditingTemplate
+              ? [
+                  _tagsAction(theme),
+                  TextButton(onPressed: _save, child: const Tr('Save')),
+                ]
               : [
                   _customIconAction(theme),
                   _tagsAction(theme),
@@ -2603,6 +2741,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     Map<int, AccountRow> accountMap,
     Map<int, CategoryRow> categoryMap,
   ) {
+    if (_isEditingTemplate) return _templatePickers(accountMap, categoryMap);
     final tiles = <Widget>[];
 
     if (_mode != null) {

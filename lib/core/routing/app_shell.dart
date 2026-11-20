@@ -400,7 +400,9 @@ class _ProfileButton extends ConsumerWidget {
   }
 }
 
-/// The ➕ button — a plain tap always pushes Add Transaction, unchanged. When
+/// The ➕ button — a plain tap always pushes Add Transaction, unchanged.
+/// Holding it opens Search everything (GitHub #209) — unless the radial
+/// menu below is on and has something in it. When
 /// [holdEnabled] (`Settings.holdMenuEnabled`) is on, holding it opens a
 /// radial menu in the middle of the screen: ✕ (cancel) in the centre, up
 /// to 8 quick actions ([actions], configured in Settings ▸ Quick Actions)
@@ -452,8 +454,18 @@ class _AddButtonState extends State<_AddButton> {
   List<Offset> _fanCentres = const [];
   final _fanKey = GlobalKey<_GlassQuickActionsState>();
 
+  /// Holding ➕ with no radial menu to show — it's off, or every slot is
+  /// empty — opens Search everything instead (GitHub #209).
+  bool get _holdOpensSearch =>
+      !widget.holdEnabled || widget.actions.every((a) => a == null);
+
+  void _openSearch() {
+    HapticFeedback.mediumImpact();
+    context.push('/search');
+  }
+
   void _onLongPressStart(LongPressStartDetails details) {
-    if (widget.actions.every((a) => a == null)) return;
+    if (_holdOpensSearch) return;
     _origin = details.globalPosition;
     _hoveredIndex.value = -1;
     HapticFeedback.mediumImpact();
@@ -568,15 +580,17 @@ class _AddButtonState extends State<_AddButton> {
       ? openAddTransactionChoiceSheet(context)
       : context.push('/add');
 
-  Widget _withHold(Widget button) => widget.holdEnabled
-      ? GestureDetector(
+  /// With no radial menu, the button takes the long press itself (see
+  /// [_holdOpensSearch]) — no wrapper to get between it and the finger.
+  Widget _withHold(Widget button) => _holdOpensSearch
+      ? button
+      : GestureDetector(
           onLongPressStart: _onLongPressStart,
           onLongPressMoveUpdate: _onLongPressMoveUpdate,
           onLongPressEnd: (_) => _endGesture(commit: true),
           onLongPressCancel: () => _endGesture(commit: false),
           child: button,
-        )
-      : button;
+        );
 
   @override
   Widget build(BuildContext context) {
@@ -587,10 +601,11 @@ class _AddButtonState extends State<_AddButton> {
           // Tinted near-opaque: a backdrop pass would show almost nothing.
           backdrop: false,
           tint: Theme.of(context).colorScheme.secondary,
-          // A tooltip would claim the long press the hold menu needs.
-          tooltip: widget.holdEnabled ? null : tr('Add'),
+          // A tooltip would claim the long press (radial menu or search).
+          tooltip: null,
           semanticLabel: tr('Add'),
           onPressed: _open,
+          onLongPress: _holdOpensSearch ? _openSearch : null,
           child: const AppIcon(
             CupertinoIcons.add,
             color: Colors.white,
@@ -605,6 +620,7 @@ class _AddButtonState extends State<_AddButton> {
       child: InkWell(
         customBorder: const CircleBorder(),
         onTap: _open,
+        onLongPress: _holdOpensSearch ? _openSearch : null,
         child: const SizedBox(
           width: 52,
           height: 52,

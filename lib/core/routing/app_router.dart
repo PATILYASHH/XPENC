@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../data/tables.dart';
 import '../money.dart';
 import '../../features/about/about_screen.dart';
+import '../../features/search/global_search_screen.dart';
 import '../../features/guide/guide_screen.dart';
 import '../../features/more/whats_new_screen.dart';
 import '../../features/accounts/account_detail_screen.dart';
@@ -642,7 +643,8 @@ final appRouter = GoRouter(
     // `duplicate` id instead, it prefills from that transaction but still
     // creates a new one on save — see GitHub #92. With a `template` id, it
     // prefills the same way from a saved TransactionTemplateRow instead of a
-    // live transaction — see GitHub #125.
+    // live transaction — see GitHub #125. With `editTemplate`, it edits that
+    // template itself — GitHub #205.
     GoRoute(
       path: '/add',
       parentNavigatorKey: _rootKey,
@@ -650,6 +652,7 @@ final appRouter = GoRouter(
         final id = state.uri.queryParameters['id'];
         final duplicateId = state.uri.queryParameters['duplicate'];
         final templateId = state.uri.queryParameters['template'];
+        final editTemplateId = state.uri.queryParameters['editTemplate'];
         final type = switch (state.uri.queryParameters['type']) {
           'expense' => TxType.expense,
           'income' => TxType.income,
@@ -672,6 +675,9 @@ final appRouter = GoRouter(
               ? null
               : int.tryParse(duplicateId),
           templateId: templateId == null ? null : int.tryParse(templateId),
+          editTemplateId: editTemplateId == null
+              ? null
+              : int.tryParse(editTemplateId),
           initialType: type,
           initialPayee: payee,
           initialNote: note,
@@ -699,6 +705,13 @@ final appRouter = GoRouter(
       path: '/inbox',
       parentNavigatorKey: _rootKey,
       builder: (_, _) => const ReviewInboxScreen(),
+    ),
+
+    // Search everything — held ➕ or a quick action (GitHub #209).
+    GoRoute(
+      path: '/search',
+      parentNavigatorKey: _rootKey,
+      builder: (_, _) => const GlobalSearchScreen(),
     ),
 
     GoRoute(
