@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show DartPluginRegistrant;
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -731,44 +732,54 @@ class NotificationService {
     }
 
     try {
-      await _plugin.show(
-        id: _quickAddId,
-        title: tr('Quick add'),
-        body: tr('Reply with an amount to log money out or in.'),
-        notificationDetails: NotificationDetails(
-          android: AndroidNotificationDetails(
-            _quickAddChannel.id,
-            _quickAddChannel.name,
-            channelDescription: _quickAddChannel.description,
-            importance: _quickAddChannel.importance,
-            priority: Priority.low,
-            playSound: false,
-            enableVibration: false,
-            // A shortcut, not an alert — stays until the setting is turned
-            // back off, and a swipe shouldn't quietly disable the feature.
-            ongoing: true,
-            autoCancel: false,
-            actions: [
-              AndroidNotificationAction(
-                _quickAddExpenseAction,
-                tr('Add money out'),
-                cancelNotification: false,
-                inputs: [AndroidNotificationActionInput(label: tr('Amount'))],
-              ),
-              AndroidNotificationAction(
-                _quickAddIncomeAction,
-                tr('Add money in'),
-                cancelNotification: false,
-                inputs: [AndroidNotificationActionInput(label: tr('Amount'))],
-              ),
-            ],
-          ),
-        ),
-      );
+      await _showQuickAddShortcut(_plugin);
     } catch (e) {
       debugPrint('quick add notification failed: $e');
     }
   }
+
+  /// Posts the standing shortcut. Also re-posted, unchanged, after every
+  /// reply: Android keeps the reply field spinning until the notification
+  /// it was typed into is posted again — a result shown under another id
+  /// never stops it.
+  static Future<void> _showQuickAddShortcut(
+    FlutterLocalNotificationsPlugin plugin,
+  ) => plugin.show(
+    id: _quickAddId,
+    title: tr('Quick add'),
+    body: tr('Reply with an amount to log money out or in.'),
+    notificationDetails: NotificationDetails(
+      android: AndroidNotificationDetails(
+        _quickAddChannel.id,
+        _quickAddChannel.name,
+        channelDescription: _quickAddChannel.description,
+        importance: _quickAddChannel.importance,
+        priority: Priority.low,
+        playSound: false,
+        enableVibration: false,
+        // Re-posting after a reply must not buzz or flash again.
+        onlyAlertOnce: true,
+        // A shortcut, not an alert — stays until the setting is turned
+        // back off, and a swipe shouldn't quietly disable the feature.
+        ongoing: true,
+        autoCancel: false,
+        actions: [
+          AndroidNotificationAction(
+            _quickAddExpenseAction,
+            tr('Add money out'),
+            cancelNotification: false,
+            inputs: [AndroidNotificationActionInput(label: tr('Amount'))],
+          ),
+          AndroidNotificationAction(
+            _quickAddIncomeAction,
+            tr('Add money in'),
+            cancelNotification: false,
+            inputs: [AndroidNotificationActionInput(label: tr('Amount'))],
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 /// The other half of quick add: the user typed an amount into the reply
@@ -801,13 +812,36 @@ Future<void> _handleQuickAddReply(NotificationResponse response) async {
   if (type == null) return;
 
   WidgetsFlutterBinding.ensureInitialized();
+  // This engine never ran main(): a plugin with a Dart side (path_provider,
+  // which opening the database needs) isn't registered until this runs.
+  DartPluginRegistrant.ensureInitialized();
   final plugin = FlutterLocalNotificationsPlugin();
-  await plugin.initialize(
-    settings: const InitializationSettings(
-      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-    ),
-  );
+  try {
+    await plugin.initialize(
+      settings: const InitializationSettings(
+        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      ),
+    );
+    await _postQuickAddReply(plugin, type, response.input);
+  } catch (e) {
+    debugPrint('quick add reply failed: $e');
+  } finally {
+    // Stops the reply field's spinner, whatever happened above. Before
+    // this, it spun until the app was closed (reported on 1.6.4).
+    try {
+      await NotificationService._showQuickAddShortcut(plugin);
+    } catch (e) {
+      debugPrint('quick add shortcut re-post failed: $e');
+    }
+  }
+}
 
+/// Saves the reply and says how it went, in a notification of its own.
+Future<void> _postQuickAddReply(
+  FlutterLocalNotificationsPlugin plugin,
+  TxType type,
+  String? input,
+) async {
   Future<void> result(String body) => plugin.show(
     id: NotificationService._quickAddResultId,
     title: tr('Quick add'),
@@ -829,7 +863,8 @@ Future<void> _handleQuickAddReply(NotificationResponse response) async {
   // A background isolate starts in English; answer in the app's language.
   await _loadLanguage(db);
 
-  final amount = Money.tryParse(response.input ?? '');
+  // The phone's own keyboard: `12,50` is twelve and a half, not 1,250.
+  final amount = Money.tryParseTyped(input ?? '');
   if (amount == null || !amount.isPositive) {
     await db.close();
     await result(tr("Couldn't read that as an amount — nothing was added."));

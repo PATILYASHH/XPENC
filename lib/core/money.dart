@@ -30,6 +30,37 @@ class Money implements Comparable<Money> {
     return Money.fromRupees(rupees);
   }
 
+  /// Text typed on the phone's own keyboard (a notification reply), where
+  /// either mark can be the decimal one: `12,50` is 12.50 in most of Europe
+  /// and must not become 1250, which is what [tryParse] makes of it. Per
+  /// value, the same rule the CSV importer's detection uses (GitHub #207):
+  ///
+  /// - both marks: the last one is the decimal (`1.234,56`, `1,25,000.50`);
+  /// - one mark followed by one or two digits: the decimal (`12,5`,
+  ///   `12,50`, `12.50`);
+  /// - otherwise a comma groups thousands (`1,250`, `1,25,000`), and so do
+  ///   repeated dots (`1.234.567`). A lone `1.234` stays 1.234, as
+  ///   [tryParse] always read it.
+  static Money? tryParseTyped(String input) {
+    final s = input.replaceAll(RegExp(r'[^0-9.,\-]'), '');
+    final lastDot = s.lastIndexOf('.');
+    final lastComma = s.lastIndexOf(',');
+    final String decimal;
+    if (lastDot >= 0 && lastComma >= 0) {
+      decimal = lastDot > lastComma ? '.' : ',';
+    } else if (lastComma >= 0) {
+      decimal = ','.allMatches(s).length == 1 && _endsInCents.hasMatch(s)
+          ? ','
+          : '.';
+    } else {
+      decimal = '.'.allMatches(s).length > 1 ? ',' : '.';
+    }
+    final grouping = decimal == '.' ? ',' : '.';
+    return tryParse(s.replaceAll(grouping, '').replaceAll(',', '.'));
+  }
+
+  static final _endsInCents = RegExp(r'[.,]\d{1,2}$');
+
   final int paise;
 
   double get rupees => paise / 100;

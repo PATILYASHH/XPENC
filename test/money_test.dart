@@ -33,6 +33,26 @@ void main() {
       expect(Money.tryParse(''), isNull);
     });
 
+    test('tryParseTyped reads a decimal comma as a decimal (quick-add reply)',
+        () {
+      // Reported on a quick-add reply: 12,50 had posted ₹1,250.
+      expect(Money.tryParseTyped('12,50')?.paise, 1250);
+      expect(Money.tryParseTyped('12,5')?.paise, 1250);
+      expect(Money.tryParseTyped('€ 7,99')?.paise, 799);
+      expect(Money.tryParseTyped('1.234,56')?.paise, 123456);
+      expect(Money.tryParseTyped('1.234.567')?.paise, 123456700);
+      // Everything tryParse already read stays the same.
+      expect(Money.tryParseTyped('12.50')?.paise, 1250);
+      expect(Money.tryParseTyped('1,250')?.paise, 125000);
+      expect(Money.tryParseTyped('1,25,000')?.paise, 12500000);
+      expect(Money.tryParseTyped('1,25,000.50')?.paise, 12500050);
+      expect(Money.tryParseTyped('1,250.50')?.paise, 125050);
+      expect(Money.tryParseTyped('₹1250')?.paise, 125000);
+      expect(Money.tryParseTyped('1.234')?.paise, Money.tryParse('1.234')?.paise);
+      expect(Money.tryParseTyped('abc'), isNull);
+      expect(Money.tryParseTyped(''), isNull);
+    });
+
     test('comparison, negation and abs', () {
       expect(const Money(100) > const Money(50), isTrue);
       expect(-const Money(100), const Money(-100));
