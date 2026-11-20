@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 
@@ -1394,6 +1395,14 @@ class GlassReveal {
 
   static GlassRevealSpec? _pending;
   static final _specs = Expando<GlassRevealSpec>('GlassReveal');
+
+  /// [GlassRevealSpring]'s time to rest; the fold back into the ➕ is a
+  /// touch quicker.
+  static const duration = Duration(milliseconds: 520);
+  static const reverseDuration = Duration(milliseconds: 360);
+
+  /// Whether the next pushed page will grow out of a disc.
+  static bool get pending => _pending != null;
   static final _animations = Expando<bool>('GlassRevealAnimation');
 
   static void from(
@@ -1487,11 +1496,15 @@ class GlassRevealTransition extends AnimatedWidget {
     final animation = listenable as Animation<double>;
     final value = animation.value;
     final forward = animation.status != AnimationStatus.reverse;
-    // Opening swells out of the disc and settles; closing draws in evenly
-    // and lands softly on the ➕.
-    final t =
-        (forward ? const Cubic(0.3, 0.0, 0.1, 1.0) : Curves.easeInOutCubic)
-            .transform(value.clamp(0.0, 1.0));
+    // Opening swells out of the disc on a soft spring — the page runs a
+    // hair past full size and settles; closing draws in evenly and lands
+    // softly on the ➕.
+    final v = value.clamp(0.0, 1.0);
+    final springT = const GlassRevealSpring().transform(v);
+    final t = forward
+        ? springT.clamp(0.0, 1.0)
+        : Curves.easeInOutCubic.transform(v);
+    final settle = forward ? springT : t;
     final size = MediaQuery.sizeOf(context);
     final origin = spec.centre;
     final farthest = [
@@ -1510,7 +1523,7 @@ class GlassRevealTransition extends AnimatedWidget {
         : 1 - Curves.easeOut.transform(grown.clamp(0.0, 1.0));
     final glyph = 1 - Curves.easeOut.transform((grown * 2.2).clamp(0.0, 1.0));
     final page = Transform.scale(
-      scale: 0.94 + 0.06 * t,
+      scale: 0.9 + 0.1 * settle,
       origin: origin - size.center(Offset.zero),
       child: child,
     );
@@ -1549,6 +1562,28 @@ class GlassRevealTransition extends AnimatedWidget {
       ),
     );
   }
+}
+
+/// The spring a page grows out of the ➕ on: it starts at once (a little
+/// push, like the tap's), runs about 2% past and is at rest by 0.5 s.
+class GlassRevealSpring extends Curve {
+  const GlassRevealSpring();
+
+  static final _spring = SpringSimulation(
+    SpringDescription.withDampingRatio(mass: 1, stiffness: 240, ratio: 0.7),
+    0,
+    1,
+    2.4,
+  );
+
+  static const double seconds = 0.52;
+
+  @override
+  double transformInternal(double t) => _spring.x(t * seconds);
+
+  // Exactly 1 at the end, whatever the spring's tail.
+  @override
+  double transform(double t) => t >= 1 ? 1 : transformInternal(t);
 }
 
 class _CircleClipper extends CustomClipper<Path> {

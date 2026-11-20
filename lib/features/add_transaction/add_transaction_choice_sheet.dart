@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/money.dart';
+import '../../core/theme/glass.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
@@ -15,7 +16,13 @@ import '../../core/l10n/l10n.dart';
 /// saved template to prefill from. Only ever called when
 /// [hasTransactionTemplatesProvider] is true — a user with no templates yet
 /// still gets the old one-tap-straight-to-`/add` behaviour, unchanged.
-Future<void> openAddTransactionChoiceSheet(BuildContext context) async {
+///
+/// [revealFrom] is the ➕ the sheet was opened from: the page picked grows
+/// out of it, as a plain tap's does.
+Future<void> openAddTransactionChoiceSheet(
+  BuildContext context, {
+  GlassRevealSpec? revealFrom,
+}) async {
   // Taken before the sheet opens: under Glass the sheet grows out of the tab
   // bar and the ➕ that opened it leaves the tree, so [context] is gone by
   // the time a choice comes back — and checking it dropped every choice.
@@ -31,6 +38,14 @@ Future<void> openAddTransactionChoiceSheet(BuildContext context) async {
     builder: (_) => const _AddChoiceSheet(),
   );
   if (result == null) return;
+  if (revealFrom != null) {
+    GlassReveal.from(
+      revealFrom.centre,
+      radius: revealFrom.radius,
+      color: revealFrom.color,
+      icon: revealFrom.icon,
+    );
+  }
   router.push(switch (result) {
     _AddChoiceResult(templateId: null) => '/add',
     _AddChoiceResult(:final templateId, edit: true) =>
@@ -145,9 +160,14 @@ class _AddChoiceSheet extends ConsumerWidget {
     );
   }
 
-  String _subtitle(TransactionTemplateRow t, Map<int, CategoryRow> categoryMap) {
+  String _subtitle(
+    TransactionTemplateRow t,
+    Map<int, CategoryRow> categoryMap,
+  ) {
     final amount = MoneyFormat.symbol(t.amount);
-    final category = t.categoryId == null ? null : categoryMap[t.categoryId]?.name;
+    final category = t.categoryId == null
+        ? null
+        : categoryMap[t.categoryId]?.name;
     final label = category ?? labelForTxType(t.type);
     return '$amount · $label';
   }

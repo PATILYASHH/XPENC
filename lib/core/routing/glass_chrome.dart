@@ -479,18 +479,18 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
                       key: ValueKey(index),
                       constraints: BoxConstraints(maxWidth: titleRoom),
                       child: Text(
-                      title,
-                      maxLines: 1,
-                      softWrap: false,
-                      overflow: TextOverflow.fade,
-                      style: theme.textTheme.headlineLarge?.copyWith(
-                        fontSize: _GlassTopBar._largeSize,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -1.2 + 0.8 * c,
-                        height: _GlassTopBar._lineHeight,
-                        color: cs.onSurface,
+                        title,
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.fade,
+                        style: theme.textTheme.headlineLarge?.copyWith(
+                          fontSize: _GlassTopBar._largeSize,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -1.2 + 0.8 * c,
+                          height: _GlassTopBar._lineHeight,
+                          color: cs.onSurface,
+                        ),
                       ),
-                    ),
                     ),
                   ),
                 ),
@@ -778,13 +778,27 @@ class _LiquidTabBarState extends State<_LiquidTabBar>
                                   alignment: Alignment.centerRight,
                                   minWidth: addExtent,
                                   maxWidth: addExtent,
-                                  child: Opacity(
-                                    opacity: 1 - away,
-                                    child: Padding(
-                                      padding: const EdgeInsets.only(
-                                        left: kGlassAddGap,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(
+                                      left: kGlassAddGap,
+                                    ),
+                                    // Coming back, it swells up out of a
+                                    // smaller disc and runs a touch past its
+                                    // size before settling — a pop, not a
+                                    // slide out from under the capsule.
+                                    child: Opacity(
+                                      opacity: Curves.easeOut.transform(
+                                        ((1 - away) * 1.6).clamp(0.0, 1.0),
                                       ),
-                                      child: widget.add,
+                                      child: Transform.scale(
+                                        scale:
+                                            0.5 +
+                                            0.5 *
+                                                Curves.easeOutBack.transform(
+                                                  (1 - away).clamp(0.0, 1.0),
+                                                ),
+                                        child: widget.add,
+                                      ),
                                     ),
                                   ),
                                 ),

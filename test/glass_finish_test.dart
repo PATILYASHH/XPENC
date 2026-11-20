@@ -10,6 +10,7 @@ import 'package:xpenc/core/theme/glass.dart';
 import 'package:xpenc/core/theme/theme_preset.dart';
 import 'package:xpenc/core/widgets/app_surfaces.dart';
 import 'package:xpenc/core/widgets/glass_sheet.dart';
+import 'package:xpenc/core/widgets/motion.dart';
 import 'package:xpenc/data/database.dart';
 import 'package:xpenc/data/providers.dart';
 import 'package:xpenc/data/tables.dart';
@@ -102,22 +103,39 @@ void main() {
       )
       .scale;
 
+  /// A tab icon's scale as drawn — it rides a spring ([SpringBounce]), not
+  /// an implicit animation with a target to read.
+  double bounceOf(WidgetTester tester, Finder of) => tester
+      .widget<ScaleTransition>(
+        find
+            .descendant(
+              of: find
+                  .ancestor(of: of, matching: find.byType(SpringBounce))
+                  .first,
+              matching: find.byType(ScaleTransition),
+            )
+            .first,
+      )
+      .scale
+      .value;
+
   testWidgets('a tab dips under the finger before the tap lands', (
     tester,
   ) async {
     await pumpShell(tester, '/transactions');
     final persons = find.byIcon(CupertinoIcons.person_2);
-    expect(scaleOf(tester, persons), 1);
+    expect(bounceOf(tester, persons), 1);
 
     final gesture = await tester.startGesture(tester.getCenter(persons));
     await tester.pump();
-    expect(scaleOf(tester, persons), lessThan(1));
+    await tester.pump(const Duration(milliseconds: 60));
+    expect(bounceOf(tester, persons), lessThan(1));
 
     await gesture.up();
     await settle(tester);
     // It's the selected tab now, back at (or a touch over) full size.
     expect(
-      scaleOf(tester, find.byIcon(CupertinoIcons.person_2_fill)),
+      bounceOf(tester, find.byIcon(CupertinoIcons.person_2_fill)),
       greaterThanOrEqualTo(1),
     );
     await unmount(tester);

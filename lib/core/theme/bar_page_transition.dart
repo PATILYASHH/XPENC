@@ -209,14 +209,18 @@ class BarMorphTransitionsBuilder extends PageTransitionsBuilder {
 
   // Read when the route is created — just after the morph was recorded.
   @override
-  Duration get transitionDuration => PageFromBar.pendingZoom
+  Duration get transitionDuration => GlassReveal.pending
+      ? GlassReveal.duration
+      : PageFromBar.pendingZoom
       ? PageFromBar.zoomDuration
       : PageFromBar.pending
       ? PageFromBar.duration
       : inner.transitionDuration;
 
   @override
-  Duration get reverseTransitionDuration => PageFromBar.pendingZoom
+  Duration get reverseTransitionDuration => GlassReveal.pending
+      ? GlassReveal.reverseDuration
+      : PageFromBar.pendingZoom
       ? PageFromBar.zoomReverseDuration
       : PageFromBar.pending
       ? PageFromBar.reverseDuration
@@ -230,18 +234,31 @@ class BarMorphTransitionsBuilder extends PageTransitionsBuilder {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
+    // A page opened from the ➕ grows out of it, in every theme (Glass
+    // claims it a level up, for its page backdrop).
+    final reveal = GlassReveal.specFor(route, animation);
+    if (reveal != null) {
+      return GlassRevealTransition(
+        animation: animation,
+        spec: reveal,
+        child: child,
+      );
+    }
     final spec = PageFromBar.specFor(route, animation);
     if (spec != null) {
       return BarPageTransition(animation: animation, spec: spec, child: child);
     }
     final morphing = PageFromBar.isMorphing(secondaryAnimation);
+    // Under a page growing out of the ➕ this one stays put, undimmed, as
+    // under Glass.
+    final inPlace = morphing || GlassReveal.isRevealing(secondaryAnimation);
     return _Dim(
       animation: morphing ? secondaryAnimation : kAlwaysDismissedAnimation,
       child: inner.buildTransitions(
         route,
         context,
         animation,
-        morphing ? kAlwaysDismissedAnimation : secondaryAnimation,
+        inPlace ? kAlwaysDismissedAnimation : secondaryAnimation,
         child,
       ),
     );

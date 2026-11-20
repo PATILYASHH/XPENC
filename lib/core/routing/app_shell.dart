@@ -16,6 +16,7 @@ import '../ai/ai_providers.dart';
 import '../../data/tables.dart' show AppMode;
 import '../widgets/app_surfaces.dart';
 import '../widgets/glass_sheet.dart';
+import '../widgets/motion.dart';
 import 'hold_menu_geometry.dart';
 import 'quick_actions.dart';
 import '../../features/add_transaction/add_transaction_choice_sheet.dart';
@@ -296,29 +297,35 @@ class AppShell extends ConsumerWidget {
 
     return Expanded(
       child: InkWell(
-        onTap: () => _goBranch(ref, tab.branch),
+        onTap: () {
+          HapticFeedback.selectionClick();
+          _goBranch(ref, tab.branch);
+        },
         borderRadius: BorderRadius.circular(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            AppIcon(
-              selected ? tab.activeIcon : tab.icon,
-              size: 24,
-              color: color,
-            ),
-            if (showLabels) ...[
-              const SizedBox(height: 4),
-              Text(
-                tab.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: color,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                ),
+        child: SpringBounce(
+          active: selected,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AppIcon(
+                selected ? tab.activeIcon : tab.icon,
+                size: 24,
+                color: color,
               ),
+              if (showLabels) ...[
+                const SizedBox(height: 4),
+                Text(
+                  tab.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: color,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -576,9 +583,44 @@ class _AddButtonState extends State<_AddButton> {
     super.dispose();
   }
 
-  void _open() => widget.hasTemplates
-      ? openAddTransactionChoiceSheet(context)
-      : context.push('/add');
+  /// The ➕'s centre on screen — where Add Transaction grows out of.
+  Offset? _centre() {
+    if (MediaQuery.disableAnimationsOf(context)) return null;
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return null;
+    return box.localToGlobal(box.size.center(Offset.zero));
+  }
+
+  /// Add Transaction swells out of the ➕ on a soft spring, and folds back
+  /// into it on Back.
+  void _open() {
+    final centre = _centre();
+    final color = Theme.of(context).colorScheme.secondary;
+    final radius = widget.glass ? _LiquidTabBar.height / 2 : 26.0;
+    if (widget.hasTemplates) {
+      openAddTransactionChoiceSheet(
+        context,
+        revealFrom: centre == null
+            ? null
+            : GlassRevealSpec(
+                centre,
+                radius: radius,
+                color: color,
+                icon: Icons.add_rounded,
+              ),
+      );
+      return;
+    }
+    if (centre != null) {
+      GlassReveal.from(
+        centre,
+        radius: radius,
+        color: color,
+        icon: Icons.add_rounded,
+      );
+    }
+    context.push('/add');
+  }
 
   /// With no radial menu, the button takes the long press itself (see
   /// [_holdOpensSearch]) — no wrapper to get between it and the finger.
@@ -614,17 +656,20 @@ class _AddButtonState extends State<_AddButton> {
         ),
       );
     }
-    final button = Material(
-      color: Theme.of(context).colorScheme.secondary,
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: _open,
-        onLongPress: _holdOpensSearch ? _openSearch : null,
-        child: const SizedBox(
-          width: 52,
-          height: 52,
-          child: AppIcon(Icons.add_rounded, color: Colors.white, size: 28),
+    final button = SpringBounce(
+      pressedScale: 0.88,
+      child: Material(
+        color: Theme.of(context).colorScheme.secondary,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: _open,
+          onLongPress: _holdOpensSearch ? _openSearch : null,
+          child: const SizedBox(
+            width: 52,
+            height: 52,
+            child: AppIcon(Icons.add_rounded, color: Colors.white, size: 28),
+          ),
         ),
       ),
     );
@@ -1158,9 +1203,10 @@ const _glassIcons = <int, (IconData, IconData)>{
   8: (CupertinoIcons.bag, CupertinoIcons.bag_fill),
 };
 
-/// The selected-tab droplet. It glides to the new tab on a smooth ease —
-/// no overshoot to chase with the eye — and stretches a little in flight,
-/// the way a drop of liquid elongates as it moves, then settles round.
+/// The selected-tab droplet. It glides to the new tab on a spring that runs
+/// a hair past it and settles back — a little bounce, like the icons' — and
+/// stretches in flight, the way a drop of liquid elongates as it moves, then
+/// settles round.
 class _LiquidDroplet extends StatefulWidget {
   const _LiquidDroplet({
     required this.index,
@@ -1180,7 +1226,7 @@ class _LiquidDropletState extends State<_LiquidDroplet>
     with SingleTickerProviderStateMixin {
   late final _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 380),
+    duration: const Duration(milliseconds: 420),
     value: 1,
   );
   late double _from = widget.index.toDouble();
@@ -1197,7 +1243,7 @@ class _LiquidDropletState extends State<_LiquidDroplet>
     }
   }
 
-  double get _t => Curves.easeInOutCubic.transform(_controller.value);
+  double get _t => const _DropletSpring().transform(_controller.value);
   double get _position => _from + (_to - _from) * _t;
 
   @override
@@ -1234,6 +1280,27 @@ class _LiquidDropletState extends State<_LiquidDroplet>
       ),
     );
   }
+}
+
+/// The droplet's glide: about 5% past the new tab, at rest by 0.42 s.
+class _DropletSpring extends Curve {
+  const _DropletSpring();
+
+  static final _spring = SpringSimulation(
+    SpringDescription.withDampingRatio(mass: 1, stiffness: 300, ratio: 0.68),
+    0,
+    1,
+    0,
+  );
+
+  static const double seconds = 0.42;
+
+  @override
+  double transformInternal(double t) => _spring.x(t * seconds);
+
+  // Lands exactly on the tab at the end, whatever the spring's tail.
+  @override
+  double transform(double t) => t >= 1 ? 1 : transformInternal(t);
 }
 
 class _LiquidTab extends StatefulWidget {
@@ -1293,10 +1360,10 @@ class _LiquidTabState extends State<_LiquidTab> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              AnimatedScale(
-                scale: _down ? 0.86 : (selected ? 1.06 : 1),
-                duration: Duration(milliseconds: _down ? 90 : 300),
-                curve: Curves.easeOutCubic,
+              SpringBounce(
+                active: selected,
+                activeScale: 1.06,
+                pressed: _down,
                 child: AppIcon(icon, size: 24, color: color),
               ),
               if (widget.showLabel) ...[
@@ -1327,7 +1394,8 @@ class _LiquidTabState extends State<_LiquidTab> {
 }
 
 class _TabSpec {
-  const _TabSpec(this.branch, this.icon, this.activeIcon, String label) : _label = label;
+  const _TabSpec(this.branch, this.icon, this.activeIcon, String label)
+    : _label = label;
   final int branch;
   final IconData icon;
   final IconData activeIcon;

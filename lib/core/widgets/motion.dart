@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart' show kTouchSlop;
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart';
 
 /// Shared motion. Every animation here is one-shot and cheap: no controllers to
 /// leak, and each one respects the platform "reduce motion" setting.
@@ -92,6 +93,115 @@ class _PressScaleState extends State<PressScale> {
         curve: Curves.easeOut,
         child: widget.child,
       ),
+    );
+  }
+}
+
+/// A spring under its child's scale — the bounce of the tab bar's icons and
+/// the ➕. It dips while a finger is down and springs back a little past
+/// rest when it lifts; each time [active] turns on (the tab just picked) it
+/// gives a small pop, then settles at [activeScale].
+///
+/// The press comes from [pressed] when the caller tracks the finger over a
+/// larger area (a whole tab); otherwise the child's own pointer events
+/// drive it — through a [Listener], so an [InkWell] beneath still gets its
+/// tap and ripple. Off entirely under the system's "reduce motion".
+class SpringBounce extends StatefulWidget {
+  const SpringBounce({
+    required this.child,
+    this.active = false,
+    this.activeScale = 1,
+    this.pressedScale = 0.84,
+    this.pressed,
+    super.key,
+  });
+
+  final Widget child;
+  final bool active;
+  final double activeScale;
+  final double pressedScale;
+  final bool? pressed;
+
+  @override
+  State<SpringBounce> createState() => _SpringBounceState();
+}
+
+class _SpringBounceState extends State<SpringBounce>
+    with SingleTickerProviderStateMixin {
+  // Underdamped: back from a press it runs ~4% past rest and settles within
+  // half a second — a bounce you feel more than see.
+  static final _spring = SpringDescription.withDampingRatio(
+    mass: 1,
+    stiffness: 420,
+    ratio: 0.42,
+  );
+
+  late final _scale = AnimationController.unbounded(vsync: this, value: _rest);
+  bool _down = false;
+  Offset _origin = Offset.zero;
+
+  double get _rest => widget.active ? widget.activeScale : 1;
+
+  void _springTo(double target, {double kick = 0}) {
+    _scale.animateWith(
+      SpringSimulation(_spring, _scale.value, target, _scale.velocity + kick),
+    );
+  }
+
+  void _setDown(bool down) {
+    if (_down == down) return;
+    _down = down;
+    if (down) {
+      _scale.animateTo(
+        widget.pressedScale,
+        duration: const Duration(milliseconds: 90),
+        curve: Curves.easeOut,
+      );
+    } else {
+      _springTo(_rest);
+    }
+  }
+
+  @override
+  void didUpdateWidget(SpringBounce old) {
+    super.didUpdateWidget(old);
+    if (widget.pressed != null && widget.pressed != old.pressed) {
+      _setDown(widget.pressed!);
+    }
+    if (widget.active != old.active || widget.activeScale != old.activeScale) {
+      // Picked: a pop up past rest. Let go of: straight home.
+      _springTo(_rest, kick: widget.active && !old.active ? 3.2 : 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _scale.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.disableAnimationsOf(context)) {
+      return Transform.scale(scale: _rest, child: widget.child);
+    }
+    final scaled = ScaleTransition(scale: _scale, child: widget.child);
+    if (widget.pressed != null) return scaled;
+    return Listener(
+      onPointerDown: (event) {
+        _origin = event.position;
+        _setDown(true);
+      },
+      // A drag that leaves the touch slop belongs to whatever scrolls —
+      // let go rather than holding the dip for the whole drag.
+      onPointerMove: (event) {
+        if (_down && (event.position - _origin).distance > kTouchSlop) {
+          _setDown(false);
+        }
+      },
+      onPointerUp: (_) => _setDown(false),
+      onPointerCancel: (_) => _setDown(false),
+      child: scaled,
     );
   }
 }
