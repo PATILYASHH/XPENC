@@ -9,12 +9,20 @@ import '../../core/l10n/l10n.dart';
 /// Opens the month picker and returns the chosen period anchor (day 1 of its
 /// month, same shape `selectedMonthProvider` stores), or null if dismissed.
 /// [current] is the anchor of the period containing today — months after it
-/// can't be picked, since there's nothing recorded there yet to look back at.
+/// can't be picked, since there's nothing recorded there yet to look back at
+/// (unless [latest] says a later month has entries).
+///
+/// [marked] puts a dot under each month that has something in it, so a
+/// month worth opening is visible before it's tapped. With [allowAllTime]
+/// the sheet also offers "All time", returned as [MonthPickerSheet.allTime].
 Future<DateTime?> showMonthPickerSheet(
   BuildContext context, {
   required DateTime selected,
   required DateTime current,
   required int startDay,
+  Set<DateTime> marked = const {},
+  DateTime? latest,
+  bool allowAllTime = false,
 }) {
   return showAppSheet<DateTime>(
     context: context,
@@ -30,39 +38,62 @@ Future<DateTime?> showMonthPickerSheet(
       selected: selected,
       current: current,
       startDay: startDay,
+      marked: marked,
+      latest: latest,
+      allowAllTime: allowAllTime,
     ),
   );
 }
 
 /// A year header with ‹ › and a 4×3 grid of months, coloured from the
 /// active theme — the Dashboard's one way to move between months (it
-/// replaced the ‹ › arrows that used to sit on the This Month card).
+/// replaced the ‹ › arrows that used to sit on the This Month card), and
+/// Transactions' month picker.
 class MonthPickerSheet extends StatefulWidget {
   const MonthPickerSheet({
     required this.selected,
     required this.current,
     required this.startDay,
+    this.marked = const {},
+    this.latest,
+    this.allowAllTime = false,
     super.key,
   });
+
+  /// What the sheet resolves to when "All time" is picked — never a real
+  /// month anyone could have picked.
+  static final allTime = DateTime(1);
 
   final DateTime selected;
   final DateTime current;
   final int startDay;
+  final Set<DateTime> marked;
+  final DateTime? latest;
+  final bool allowAllTime;
 
   @override
   State<MonthPickerSheet> createState() => _MonthPickerSheetState();
 }
 
 class _MonthPickerSheetState extends State<MonthPickerSheet> {
-  late int _year = widget.selected.year;
+  late int _year = widget.selected == MonthPickerSheet.allTime
+      ? widget.current.year
+      : widget.selected.year;
 
-  bool _isFuture(DateTime month) => month.isAfter(widget.current);
+  DateTime get _last {
+    final latest = widget.latest;
+    return latest != null && latest.isAfter(widget.current)
+        ? latest
+        : widget.current;
+  }
+
+  bool _isFuture(DateTime month) => month.isAfter(_last);
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final canGoForward = _year < widget.current.year;
+    final canGoForward = _year < _last.year;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20).plusNavBar(context),
@@ -78,11 +109,15 @@ class _MonthPickerSheetState extends State<MonthPickerSheet> {
                 onPressed: () => setState(() => _year--),
               ),
               Expanded(
-                child: Text(
-                  '$_year',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 180),
+                  child: Text(
+                    '$_year',
+                    key: ValueKey(_year),
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
@@ -109,8 +144,21 @@ class _MonthPickerSheetState extends State<MonthPickerSheet> {
           if (widget.startDay != 1) ...[
             const SizedBox(height: 12),
             Text(
-              tr('Each month runs from '
-              '{0} (your budget cycle).', [budgetCycleStartPhrase(widget.startDay)]),
+              tr(
+                'Each month runs from '
+                '{0} (your budget cycle).',
+                [budgetCycleStartPhrase(widget.startDay)],
+              ),
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: cs.onSurfaceVariant,
+              ),
+            ),
+          ],
+          if (widget.marked.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              tr('A dot marks a month with entries.'),
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: cs.onSurfaceVariant,
@@ -118,12 +166,33 @@ class _MonthPickerSheetState extends State<MonthPickerSheet> {
             ),
           ],
           const SizedBox(height: 16),
-          OutlinedButton.icon(
-            onPressed: widget.selected == widget.current
-                ? null
-                : () => Navigator.of(context).pop(widget.current),
-            icon: const AppIcon(Icons.today_rounded),
-            label: const Tr('This month'),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: widget.selected == widget.current
+                      ? null
+                      : () => Navigator.of(context).pop(widget.current),
+                  icon: const AppIcon(Icons.today_rounded),
+                  label: const Tr('This month'),
+                ),
+              ),
+              if (widget.allowAllTime) ...[
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    key: const Key('monthPickerAllTime'),
+                    onPressed: widget.selected == MonthPickerSheet.allTime
+                        ? null
+                        : () => Navigator.of(
+                            context,
+                          ).pop(MonthPickerSheet.allTime),
+                    icon: const AppIcon(Icons.all_inclusive_rounded),
+                    label: const Tr('All time'),
+                  ),
+                ),
+              ],
+            ],
           ),
         ],
       ),
@@ -135,6 +204,12 @@ class _MonthPickerSheetState extends State<MonthPickerSheet> {
     final isSelected = month == widget.selected;
     final isCurrent = month == widget.current;
     final disabled = _isFuture(month);
+    final marked = widget.marked.contains(month);
+    final ink = isSelected
+        ? cs.onPrimary
+        : disabled
+        ? cs.onSurface.withValues(alpha: 0.35)
+        : cs.onSurface;
 
     return Material(
       color: isSelected ? cs.primary : cs.surfaceContainerHighest,
@@ -147,18 +222,30 @@ class _MonthPickerSheetState extends State<MonthPickerSheet> {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: disabled ? null : () => Navigator.of(context).pop(month),
-        child: Center(
-          child: Text(
-            DateFormat('MMM').format(month),
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-              color: isSelected
-                  ? cs.onPrimary
-                  : disabled
-                  ? cs.onSurface.withValues(alpha: 0.35)
-                  : cs.onSurface,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              DateFormat('MMM').format(month),
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: ink,
+              ),
             ),
-          ),
+            if (widget.marked.isNotEmpty) ...[
+              const SizedBox(height: 3),
+              Container(
+                width: 5,
+                height: 5,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: marked
+                      ? (isSelected ? cs.onPrimary : cs.primary)
+                      : Colors.transparent,
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );

@@ -6,38 +6,94 @@ import '../../core/iso_week.dart';
 import '../../core/smart_tags.dart';
 import '../../core/widgets/app_surfaces.dart';
 import '../../data/providers.dart';
+import '../../data/database.dart';
 import '../../data/tables.dart';
+import '../dashboard/month_picker_sheet.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 import '../../core/l10n/l10n.dart';
 
-/// Which widget the "Date range" section shows — a plain range picker, or a
-/// week-at-a-time stepper (GitHub #121). Local to the sheet: neither
-/// [TransactionFilters] nor the rest of the app needs to know how a range
-/// was chosen, only what it resolved to.
-enum _DateFilterMode { custom, week }
+/// Which widget the "Date range" section shows — a month at a time (the
+/// default), a week-at-a-time stepper (GitHub #121), a plain range picker,
+/// or everything. Local to the sheet: neither [TransactionFilters] nor the
+/// rest of the app needs to know how a range was chosen, only what it
+/// resolved to.
+enum _DateFilterMode { month, week, custom, all }
 
-/// Snapshot of every advanced filter the tune sheet can set — date range,
-/// account, category, tag. Shared between the top bar (which owns the button
-/// and the badge count) and [TransactionsScreen] (which applies it) via
-/// `txAdvancedFiltersProvider`.
+/// Day 1 of [d]'s calendar month.
+DateTime monthOf(DateTime d) => DateTime(d.year, d.month);
+
+/// [month]'s first to last day (plain dates, like every other range here).
+DateTimeRange monthRange(DateTime month) => DateTimeRange(
+  start: DateTime(month.year, month.month),
+  end: DateTime(month.year, month.month + 1, 0),
+);
+
+/// Every month (day 1) that has at least one of [txns] — the dots on the
+/// month picker.
+Set<DateTime> transactionMonths(List<TransactionRow> txns) => {
+  for (final t in txns) monthOf(t.date),
+};
+
+/// Snapshot of every advanced filter the tune sheet can set — the period
+/// (a month, or a week/custom range), account, category, tag. Shared
+/// between the top bar (which owns the button and the badge count) and
+/// [TransactionsScreen] (which applies it) via `txAdvancedFiltersProvider`.
+///
+/// The list opens on this month ([TransactionFilters.thisMonth]): what a
+/// month's money did is what people come here to see. `const
+/// TransactionFilters()` is every transaction — what a jump from Search to a
+/// tag wants.
 class TransactionFilters {
   const TransactionFilters({
+    this.month,
     this.dateRange,
     this.accountIds = const {},
     this.categoryIds = const {},
     this.tagIds = const {},
   });
 
+  /// The default view: the calendar month containing [now] (today).
+  factory TransactionFilters.thisMonth([DateTime? now]) =>
+      TransactionFilters(month: monthOf(now ?? DateTime.now()));
+
+  /// Day 1 of the calendar month the list shows. Ignored while [dateRange]
+  /// is set; both null is all time.
+  final DateTime? month;
+
+  /// A week or custom range picked in the sheet — wins over [month].
   final DateTimeRange? dateRange;
   final Set<int> accountIds;
   final Set<int> categoryIds;
   final Set<int> tagIds;
 
+  /// Neither a month nor a range: every transaction.
+  bool get isAllTime => month == null && dateRange == null;
+
+  /// The month being shown, when the period is one whole month.
+  DateTime? get shownMonth => dateRange == null ? month : null;
+
+  /// The dates the list is limited to, or null for all time.
+  DateTimeRange? get range =>
+      dateRange ?? (month == null ? null : monthRange(month!));
+
+  /// What narrows the list besides its period — the badge on the Filters
+  /// button. The period isn't counted: the card over the list always names
+  /// it, and the default month would otherwise light the badge for nothing.
   int get count =>
-      (dateRange != null ? 1 : 0) +
       (accountIds.isNotEmpty ? 1 : 0) +
       (categoryIds.isNotEmpty ? 1 : 0) +
       (tagIds.isNotEmpty ? 1 : 0);
+
+  /// The same filters over another period: a [month], a [range], or —
+  /// neither — all time.
+  TransactionFilters withPeriod({DateTime? month, DateTimeRange? range}) =>
+      TransactionFilters(
+        month: range == null && month != null ? monthOf(month) : null,
+        dateRange: range,
+        accountIds: accountIds,
+        categoryIds: categoryIds,
+        tagIds: tagIds,
+      );
 }
 
 /// Bottom sheet: date range plus multi-select chips for account, category and
@@ -59,7 +115,11 @@ class _TransactionFiltersSheetState
   final Set<int> _categoryIds = {};
   final Set<int> _tagIds = {};
 
-  _DateFilterMode _dateMode = _DateFilterMode.custom;
+  late _DateFilterMode _dateMode;
+
+  /// The month the Month stepper shows — kept apart from [_dateRange] so
+  /// switching modes back and forth doesn't lose it.
+  late DateTime _month;
 
   /// Which week the stepper is showing — independent of [_dateRange], since
   /// that may be null or a custom multi-week range. Stepping (or first
@@ -70,10 +130,17 @@ class _TransactionFiltersSheetState
   @override
   void initState() {
     super.initState();
-    _dateRange = widget.initial.dateRange;
-    _accountIds.addAll(widget.initial.accountIds);
-    _categoryIds.addAll(widget.initial.categoryIds);
-    _tagIds.addAll(widget.initial.tagIds);
+    final initial = widget.initial;
+    _dateRange = initial.dateRange;
+    _month = initial.month ?? monthOf(DateTime.now());
+    _dateMode = initial.dateRange != null
+        ? _DateFilterMode.custom
+        : initial.month != null
+        ? _DateFilterMode.month
+        : _DateFilterMode.all;
+    _accountIds.addAll(initial.accountIds);
+    _categoryIds.addAll(initial.categoryIds);
+    _tagIds.addAll(initial.tagIds);
   }
 
   Future<void> _pickDateRange() async {
@@ -88,11 +155,29 @@ class _TransactionFiltersSheetState
     setState(() => _dateRange = picked);
   }
 
+  Future<void> _pickMonth() async {
+    final picked = await showMonthPickerSheet(
+      context,
+      selected: _month,
+      current: monthOf(DateTime.now()),
+      startDay: 1,
+      marked: transactionMonths(
+        ref.read(allTransactionsProvider).valueOrNull ?? const [],
+      ),
+    );
+    if (picked == null || picked == MonthPickerSheet.allTime || !mounted) {
+      return;
+    }
+    setState(() => _month = picked);
+  }
+
   void _setDateMode(_DateFilterMode mode) {
     setState(() {
       _dateMode = mode;
       if (mode == _DateFilterMode.week) {
         _dateRange = weekRangeContaining(_weekAnchor);
+      } else if (mode != _DateFilterMode.custom) {
+        _dateRange = null;
       }
     });
   }
@@ -104,10 +189,16 @@ class _TransactionFiltersSheetState
     });
   }
 
+  void _stepMonth(int months) {
+    setState(() => _month = DateTime(_month.year, _month.month + months));
+  }
+
+  /// Back to how the list opens: this month, nothing else narrowing it.
   void _clearAll() {
     setState(() {
       _dateRange = null;
-      _dateMode = _DateFilterMode.custom;
+      _month = monthOf(DateTime.now());
+      _dateMode = _DateFilterMode.month;
       _accountIds.clear();
       _categoryIds.clear();
       _tagIds.clear();
@@ -115,13 +206,61 @@ class _TransactionFiltersSheetState
   }
 
   void _apply() {
+    final range = switch (_dateMode) {
+      _DateFilterMode.week || _DateFilterMode.custom => _dateRange,
+      _ => null,
+    };
     Navigator.of(context).pop(
       TransactionFilters(
-        dateRange: _dateRange,
+        month: _dateMode == _DateFilterMode.month ? _month : null,
+        dateRange: range,
         accountIds: _accountIds,
         categoryIds: _categoryIds,
         tagIds: _tagIds,
       ),
+    );
+  }
+
+  /// "‹ label ›" — the Month and Week modes' stepper. [onLabel] makes the
+  /// label itself a button (the month grid).
+  Widget _stepper(
+    ThemeData theme, {
+    required String label,
+    required String previous,
+    required String next,
+    required VoidCallback onPrevious,
+    required VoidCallback onNext,
+    VoidCallback? onLabel,
+  }) {
+    final text = Text(
+      label,
+      textAlign: TextAlign.center,
+      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+    );
+    return Row(
+      children: [
+        IconButton(
+          visualDensity: VisualDensity.compact,
+          onPressed: onPrevious,
+          icon: const AppIcon(Icons.chevron_left_rounded),
+          tooltip: previous,
+        ),
+        Expanded(
+          child: onLabel == null
+              ? text
+              : TextButton.icon(
+                  onPressed: onLabel,
+                  icon: const AppIcon(Icons.calendar_month_rounded, size: 18),
+                  label: text,
+                ),
+        ),
+        IconButton(
+          visualDensity: VisualDensity.compact,
+          onPressed: onNext,
+          icon: const AppIcon(Icons.chevron_right_rounded),
+          tooltip: next,
+        ),
+      ],
     );
   }
 
@@ -171,7 +310,12 @@ class _TransactionFiltersSheetState
             ),
             Flexible(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 8).plusNavBar(context),
+                padding: const EdgeInsets.fromLTRB(
+                  20,
+                  8,
+                  20,
+                  8,
+                ).plusNavBar(context),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -182,12 +326,20 @@ class _TransactionFiltersSheetState
                       child: SegmentedButton<_DateFilterMode>(
                         segments: const [
                           ButtonSegment(
-                            value: _DateFilterMode.custom,
-                            label: Tr('Custom range'),
+                            value: _DateFilterMode.month,
+                            label: Tr('Month'),
                           ),
                           ButtonSegment(
                             value: _DateFilterMode.week,
                             label: Tr('Week'),
+                          ),
+                          ButtonSegment(
+                            value: _DateFilterMode.custom,
+                            label: Tr('Custom'),
+                          ),
+                          ButtonSegment(
+                            value: _DateFilterMode.all,
+                            label: Tr('All'),
                           ),
                         ],
                         selected: {_dateMode},
@@ -196,54 +348,45 @@ class _TransactionFiltersSheetState
                       ),
                     ),
                     const SizedBox(height: 10),
-                    if (_dateMode == _DateFilterMode.custom) ...[
-                      OutlinedButton.icon(
+                    switch (_dateMode) {
+                      _DateFilterMode.month => _stepper(
+                        theme,
+                        label: DateFormat('MMMM yyyy').format(_month),
+                        previous: tr('Previous month'),
+                        next: tr('Next month'),
+                        onPrevious: () => _stepMonth(-1),
+                        onNext: () => _stepMonth(1),
+                        onLabel: _pickMonth,
+                      ),
+                      _DateFilterMode.week => _stepper(
+                        theme,
+                        label: weekLabel(_weekAnchor),
+                        previous: tr('Previous week'),
+                        next: tr('Next week'),
+                        onPrevious: () => _stepWeek(-1),
+                        onNext: () => _stepWeek(1),
+                      ),
+                      _DateFilterMode.custom => OutlinedButton.icon(
                         onPressed: _pickDateRange,
                         icon: const AppIcon(Icons.event_outlined, size: 18),
                         label: Text(
                           _dateRange == null
-                              ? tr('Any time')
+                              ? tr('Pick dates')
                               : '${DateFormat('d MMM yyyy').format(_dateRange!.start)} '
                                     '– ${DateFormat('d MMM yyyy').format(_dateRange!.end)}',
                         ),
                       ),
-                    ] else
-                      Row(
-                        children: [
-                          IconButton(
-                            visualDensity: VisualDensity.compact,
-                            onPressed: () => _stepWeek(-1),
-                            icon: const AppIcon(Icons.chevron_left_rounded),
-                            tooltip: tr('Previous week'),
+                      _DateFilterMode.all => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Text(
+                          tr('Every transaction, from the very first.'),
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
-                          Expanded(
-                            child: Text(
-                              weekLabel(_weekAnchor),
-                              textAlign: TextAlign.center,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            visualDensity: VisualDensity.compact,
-                            onPressed: () => _stepWeek(1),
-                            icon: const AppIcon(Icons.chevron_right_rounded),
-                            tooltip: tr('Next week'),
-                          ),
-                        ],
-                      ),
-                    if (_dateRange != null)
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton(
-                          onPressed: () => setState(() {
-                            _dateRange = null;
-                            _dateMode = _DateFilterMode.custom;
-                          }),
-                          child: const Tr('Clear date range'),
                         ),
                       ),
+                    },
                     if (accounts.isNotEmpty) ...[
                       const SizedBox(height: 16),
                       _sectionLabel(theme, tr('Account')),
@@ -324,10 +467,7 @@ class _TransactionFiltersSheetState
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-              child: FilledButton(
-                onPressed: _apply,
-                child: const Tr('Apply'),
-              ),
+              child: FilledButton(onPressed: _apply, child: const Tr('Apply')),
             ),
           ],
         ),

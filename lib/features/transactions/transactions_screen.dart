@@ -1,12 +1,14 @@
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/app_icons.dart';
+import '../../core/iso_week.dart';
 import '../../core/currency.dart';
 import '../../core/layout/desktop.dart';
 import '../../core/money.dart';
@@ -28,6 +30,7 @@ import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../modes/mode_detail_screen.dart' show modeSpentLabel;
 import '../modes/mode_widgets.dart';
+import '../dashboard/month_picker_sheet.dart';
 import 'transaction_filters.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 import '../persons/person_avatar.dart';
@@ -75,8 +78,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         icon: const AppIcon(Icons.delete_outline_rounded),
         title: const Tr('Delete this transaction?'),
         content: Text(
-          tr('{0} · {1}\n\n'
-          'The account balance will be corrected. This cannot be undone.', [title, MoneyFormat.symbol(tx.amount)]),
+          tr(
+            '{0} · {1}\n\n'
+            'The account balance will be corrected. This cannot be undone.',
+            [title, MoneyFormat.symbol(tx.amount)],
+          ),
         ),
         actions: [
           TextButton(
@@ -187,7 +193,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     } on ArgumentError catch (e) {
       // e.g. a person movement, which must be deleted from the person's page.
       messenger.showSnackBar(
-        SnackBar(content: Text(e.message?.toString() ?? tr('Could not delete'))),
+        SnackBar(
+          content: Text(e.message?.toString() ?? tr('Could not delete')),
+        ),
       );
     } catch (_) {
       messenger.showSnackBar(
@@ -221,7 +229,20 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         query.trim().isNotEmpty ||
         quickFilter != null ||
         linkedOnly ||
-        advanced.count > 0;
+        advanced.count > 0 ||
+        advanced.dateRange != null;
+    // A search, or the Linked view, looks past the month: what you're after
+    // is rarely in the month you happen to be on, and a link often joins a
+    // charge in one month to its refund in the next. A week or a range
+    // picked on purpose still holds.
+    final String? lifted = advanced.shownMonth == null
+        ? null
+        : query.trim().isNotEmpty
+        ? tr('Searching every month')
+        : linkedOnly
+        ? tr('Linked entries from every month')
+        : null;
+    final period = lifted != null ? null : advanced.range;
     // While a mode (a trip) is the focus, this is that mode's list. Outside
     // it, each mode's transactions fold into one card — unless searching or
     // filtering, which looks at every row.
@@ -269,6 +290,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             query: query,
             filter: quickFilter,
             advanced: advanced,
+            period: period,
             linkedOnly: linkedOnly,
             clusters: clusters,
           ).where((t) => focused == null || t.modeId == focused.id).toList()
@@ -295,15 +317,34 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 ? _EmptyState(
                     icon: Icons.link_off_rounded,
                     title: tr('No linked transactions'),
-                    message:
-                        tr("Open a transaction and tap the link icon to connect "
-                        'it to another — they\'ll show up here.'),
+                    message: tr(
+                      "Open a transaction and tap the link icon to connect "
+                      'it to another — they\'ll show up here.',
+                    ),
                   )
                 : searchOrFilterActive
                 ? _EmptyState(
                     icon: Icons.search_off_rounded,
                     title: tr('Nothing matches'),
                     message: tr('Try a different search or filter.'),
+                  )
+                // Nothing this month, though there is elsewhere. (A brand new
+                // ledger gets the first-run message below instead.)
+                : advanced.shownMonth != null && txAsync.value!.isNotEmpty
+                ? _EmptyState(
+                    icon: Icons.event_busy_outlined,
+                    title: tr('Nothing in {0}', [
+                      DateFormat('MMMM yyyy').format(advanced.shownMonth!),
+                    ]),
+                    message: advanced.shownMonth == monthOf(DateTime.now())
+                        ? tr(
+                            "Tap ➕ to record this month's first one — or "
+                            'use ‹ › above to look at another month.',
+                          )
+                        : tr(
+                            'Use ‹ › above, or tap the month to pick '
+                            'another one.',
+                          ),
                   )
                 : _EmptyState(
                     icon: Icons.receipt_long_outlined,
@@ -321,6 +362,18 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           itemBuilder: (context, i) {
             final entry = entries[i];
             return switch (entry) {
+              _MonthHeaderEntry(
+                :final month,
+                :final count,
+                :final income,
+                :final expense,
+              ) =>
+                _MonthHeader(
+                  month: month,
+                  count: count,
+                  income: income,
+                  expense: expense,
+                ),
               _HeaderEntry(:final day, :final net, :final count) => _DayHeader(
                 day: day,
                 net: net,
@@ -473,7 +526,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               },
             ),
           ),
-          SliverToBoxAdapter(child: _SummaryStrip(txns: matched)),
+          if (txAsync.hasValue)
+            SliverToBoxAdapter(
+              child: _PeriodCard(
+                txns: matched,
+                all: txAsync.value!,
+                lifted: lifted,
+              ),
+            ),
           const SliverToBoxAdapter(child: ModuleShortcuts(_shortcuts)),
           body,
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
@@ -495,11 +555,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     required String query,
     required TxType? filter,
     required TransactionFilters advanced,
+    required DateTimeRange? period,
     required bool linkedOnly,
     required Map<int, int> clusters,
   }) {
     final q = query.trim().toLowerCase();
-    final dateRange = advanced.dateRange;
+    final dateRange = period;
     // Inclusive of the whole end day, not just its midnight instant.
     final rangeEnd = dateRange == null
         ? null
@@ -577,9 +638,37 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
     final days = groups.keys.toList()..sort((a, b) => b.compareTo(a));
 
+    // More than one month on screen (all time, a range, a search): each
+    // month opens with its own header — its entries, money in and out —
+    // since a month is what people reckon their money by.
+    final months = <DateTime, ({int count, Money income, Money expense})>{};
+    for (final tx in filtered) {
+      final m = DateTime(tx.date.year, tx.date.month);
+      final s =
+          months[m] ??
+          (count: 0, income: const Money.zero(), expense: const Money.zero());
+      months[m] = (
+        count: s.count + 1,
+        income: tx.type == TxType.income ? s.income + tx.baseAmount : s.income,
+        expense: tx.type == TxType.expense
+            ? s.expense + tx.baseAmount
+            : s.expense,
+      );
+    }
+    final monthHeaders = months.length > 1;
+
     final entries = <_Entry>[];
+    DateTime? lastMonth;
     for (final day in days) {
       final rows = groups[day]!;
+      final month = DateTime(day.year, day.month);
+      if (monthHeaders && month != lastMonth) {
+        lastMonth = month;
+        final s = months[month];
+        if (s != null) {
+          entries.add(_MonthHeaderEntry(month, s.count, s.income, s.expense));
+        }
+      }
       // Same reasoning as _SummaryStrip: fold baseAmount, since a day's
       // rows can span accounts in different currencies.
       var net = const Money.zero();
@@ -660,6 +749,14 @@ sealed class _Entry {
   const _Entry();
 }
 
+class _MonthHeaderEntry extends _Entry {
+  const _MonthHeaderEntry(this.month, this.count, this.income, this.expense);
+  final DateTime month;
+  final int count;
+  final Money income;
+  final Money expense;
+}
+
 class _HeaderEntry extends _Entry {
   const _HeaderEntry(this.day, this.net, this.count);
   final DateTime day;
@@ -708,7 +805,9 @@ class _ModeCard extends ConsumerWidget {
     final range = modeDateRange(mode);
     final subtitle = [
       ?range,
-      summary.count == 1 ? tr('1 transaction') : tr('{0} transactions', [summary.count]),
+      summary.count == 1
+          ? tr('1 transaction')
+          : tr('{0} transactions', [summary.count]),
     ].join(' · ');
 
     return Padding(
@@ -777,19 +876,108 @@ class _ModeCard extends ConsumerWidget {
 
 // ── Summary of whatever is currently on screen ───────────────────────────────
 
-/// Totals for the *filtered* set, so it answers "what am I looking at?" rather
-/// than repeating the dashboard.
-class _SummaryStrip extends StatelessWidget {
-  const _SummaryStrip({required this.txns});
+/// What the list is showing — a month (the default), a week, a range or all
+/// time — with that period's entries, money in and money out, and the ways
+/// to move between periods: ‹ › step a month (or a week), the month itself
+/// opens the month grid, and a swipe across the card steps too.
+class _PeriodCard extends ConsumerWidget {
+  const _PeriodCard({required this.txns, required this.all, this.lifted});
 
+  /// The transactions on screen — what the figures add up.
   final List<TransactionRow> txns;
 
+  /// Every transaction: the month grid's dots, and how far ahead it goes.
+  final List<TransactionRow> all;
+
+  /// Why the month doesn't apply right now (a search, the Linked view).
+  final String? lifted;
+
+  static bool _isWeek(DateTimeRange r) =>
+      r.start.weekday == DateTime.monday &&
+      r.end.difference(r.start).inDays == 6;
+
   @override
-  Widget build(BuildContext context) {
-    if (txns.isEmpty) return const SizedBox.shrink();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final filters = ref.watch(txAdvancedFiltersProvider);
+    final thisMonth = monthOf(DateTime.now());
+    final month = filters.shownMonth;
+    final range = filters.dateRange;
+    final week = range != null && _isWeek(range);
+    // A future-dated entry (a planned payment) makes a later month worth
+    // stepping to.
+    var latest = thisMonth;
+    for (final t in all) {
+      final m = monthOf(t.date);
+      if (m.isAfter(latest)) latest = m;
+    }
+
+    void set(TransactionFilters f) {
+      HapticFeedback.selectionClick();
+      ref.read(txAdvancedFiltersProvider.notifier).state = f;
+    }
+
+    Future<void> pick() async {
+      final picked = await showMonthPickerSheet(
+        context,
+        selected:
+            month ?? (filters.isAllTime ? MonthPickerSheet.allTime : thisMonth),
+        current: thisMonth,
+        startDay: 1,
+        marked: transactionMonths(all),
+        latest: latest,
+        allowAllTime: true,
+      );
+      if (picked == null) return;
+      set(
+        picked == MonthPickerSheet.allTime
+            ? filters.withPeriod()
+            : filters.withPeriod(month: picked),
+      );
+    }
+
+    DateTimeRange weekFrom(DateTime d, int weeks) =>
+        weekRangeContaining(DateTime(d.year, d.month, d.day + 7 * weeks));
+
+    final String title;
+    VoidCallback? previous;
+    VoidCallback? next;
+    var stepper = false;
+    String? caption = lifted;
+    if (lifted != null) {
+      title = tr('Every month');
+    } else if (month != null) {
+      stepper = true;
+      title = DateFormat('MMMM yyyy').format(month);
+      previous = () =>
+          set(filters.withPeriod(month: DateTime(month.year, month.month - 1)));
+      if (month.isBefore(latest)) {
+        next = () => set(
+          filters.withPeriod(month: DateTime(month.year, month.month + 1)),
+        );
+      }
+      if (month == thisMonth) caption = tr('This month');
+    } else if (range != null && week) {
+      stepper = true;
+      title = weekLabel(range.start);
+      previous = () =>
+          set(filters.withPeriod(range: weekFrom(range.start, -1)));
+      next = () => set(filters.withPeriod(range: weekFrom(range.start, 1)));
+    } else if (range != null) {
+      title =
+          '${DateFormat('d MMM yyyy').format(range.start)} – '
+          '${DateFormat('d MMM yyyy').format(range.end)}';
+      caption = tr('Custom range');
+    } else {
+      title = tr('All time');
+      caption = tr('Every transaction');
+    }
+    // Anywhere but this month, one tap brings the list back to it.
+    final showBack = lifted == null && month != thisMonth;
 
     // Folds each transaction's parent-currency baseAmount, not its raw
-    // native amount — this strip mixes transactions from every account, so
+    // native amount — this card mixes transactions from every account, so
     // a foreign-currency one must be converted first or it silently
     // corrupts the total (see TransactionBaseValue).
     var income = const Money.zero();
@@ -798,6 +986,10 @@ class _SummaryStrip extends StatelessWidget {
       if (tx.type == TxType.income) income += tx.baseAmount;
       if (tx.type == TxType.expense) expense += tx.baseAmount;
     }
+
+    Widget arrow(IconData icon, String tooltip, VoidCallback? onTap) => stepper
+        ? IconButton(tooltip: tooltip, onPressed: onTap, icon: AppIcon(icon))
+        : const SizedBox(width: 48);
 
     return Padding(
       // Under Glass the chips' frost band runs a lip past them, which would
@@ -808,38 +1000,163 @@ class _SummaryStrip extends StatelessWidget {
         20,
         4,
       ),
-      child: AppCard(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              Expanded(
-                child: _SummaryCell(
-                  icon: Icons.receipt_long_rounded,
-                  label: '${txns.length}',
-                  sublabel: txns.length == 1 ? 'entry' : 'entries',
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+      child: GestureDetector(
+        // A swipe across the card turns the period like a page.
+        onHorizontalDragEnd: (d) {
+          final v = d.primaryVelocity ?? 0;
+          if (v > 300) previous?.call();
+          if (v < -300) next?.call();
+        },
+        child: AppCard(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(4, 6, 4, 12),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    arrow(
+                      Icons.chevron_left_rounded,
+                      week ? tr('Previous week') : tr('Previous month'),
+                      previous,
+                    ),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Material(
+                            type: MaterialType.transparency,
+                            child: InkWell(
+                              key: const Key('txPeriodPicker'),
+                              borderRadius: BorderRadius.circular(999),
+                              onTap: pick,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    AppIcon(
+                                      Icons.calendar_month_rounded,
+                                      size: 18,
+                                      color: cs.primary,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Flexible(
+                                      child: AnimatedSwitcher(
+                                        duration: const Duration(
+                                          milliseconds: 220,
+                                        ),
+                                        switchInCurve: Curves.easeOutBack,
+                                        transitionBuilder: (child, a) =>
+                                            FadeTransition(
+                                              opacity: a,
+                                              child: ScaleTransition(
+                                                scale: Tween(
+                                                  begin: 0.9,
+                                                  end: 1.0,
+                                                ).animate(a),
+                                                child: child,
+                                              ),
+                                            ),
+                                        child: Text(
+                                          title,
+                                          key: ValueKey(title),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: theme.textTheme.titleMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 2),
+                                    AppIcon(
+                                      Icons.expand_more_rounded,
+                                      size: 18,
+                                      color: cs.onSurfaceVariant,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          if (showBack)
+                            TextButton(
+                              style: TextButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                                minimumSize: const Size(0, 28),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                ),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              onPressed: () =>
+                                  set(filters.withPeriod(month: thisMonth)),
+                              child: const Tr('Back to this month'),
+                            )
+                          else if (caption != null)
+                            Text(
+                              caption,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    arrow(
+                      Icons.chevron_right_rounded,
+                      week ? tr('Next week') : tr('Next month'),
+                      next,
+                    ),
+                  ],
                 ),
-              ),
-              _cellDivider(context),
-              Expanded(
-                child: _SummaryCell(
-                  icon: Icons.south_west_rounded,
-                  label: MoneyFormat.compact(income),
-                  sublabel: 'in',
-                  color: AppColors.income,
+                Divider(
+                  height: 18,
+                  indent: 16,
+                  endIndent: 16,
+                  color: cs.outline,
                 ),
-              ),
-              _cellDivider(context),
-              Expanded(
-                child: _SummaryCell(
-                  icon: Icons.north_east_rounded,
-                  label: MoneyFormat.compact(expense),
-                  sublabel: 'out',
-                  color: AppColors.expense,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _SummaryCell(
+                          icon: Icons.receipt_long_rounded,
+                          label: '${txns.length}',
+                          sublabel: txns.length == 1
+                              ? tr('entry')
+                              : tr('entries'),
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                      _cellDivider(context),
+                      Expanded(
+                        child: _SummaryCell(
+                          icon: Icons.south_west_rounded,
+                          label: MoneyFormat.compact(income),
+                          sublabel: tr('in'),
+                          color: AppColors.income,
+                        ),
+                      ),
+                      _cellDivider(context),
+                      Expanded(
+                        child: _SummaryCell(
+                          icon: Icons.north_east_rounded,
+                          label: MoneyFormat.compact(expense),
+                          sublabel: tr('out'),
+                          color: AppColors.expense,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -892,6 +1209,92 @@ class _SummaryCell extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ── Month header ─────────────────────────────────────────────────────────────
+
+/// Opens each month when more than one is on screen (all time, a range, a
+/// search): its name, how many entries, and its money in and out.
+class _MonthHeader extends StatelessWidget {
+  const _MonthHeader({
+    required this.month,
+    required this.count,
+    required this.income,
+    required this.expense,
+  });
+
+  final DateTime month;
+  final int count;
+  final Money income;
+  final Money expense;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final desktop = DesktopLayout.of(context);
+    final label = DateFormat(
+      month.year == DateTime.now().year ? 'MMMM' : 'MMMM yyyy',
+    ).format(month);
+
+    Widget figure(IconData icon, Money m, Color color) => Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AppIcon(icon, size: 13, color: color),
+        const SizedBox(width: 2),
+        Text(
+          MoneyFormat.compact(m),
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: color,
+            fontWeight: FontWeight.w700,
+            fontFeatures: kTabularFigures,
+          ),
+        ),
+      ],
+    );
+
+    return Padding(
+      padding: desktop
+          ? const EdgeInsets.fromLTRB(32, 30, 32, 0)
+          : const EdgeInsets.fromLTRB(24, 28, 24, 0),
+      child: Container(
+        padding: const EdgeInsets.only(bottom: 8),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: cs.outline)),
+        ),
+        child: Row(
+          children: [
+            Flexible(
+              child: Text(
+                label.toUpperCase(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: cs.primary,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.1,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              count == 1 ? tr('1 entry') : tr('{0} entries', [count]),
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: cs.onSurfaceVariant,
+              ),
+            ),
+            const Spacer(),
+            if (!income.isZero) ...[
+              figure(Icons.south_west_rounded, income, AppColors.income),
+              const SizedBox(width: 10),
+            ],
+            if (!expense.isZero)
+              figure(Icons.north_east_rounded, expense, AppColors.expense),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1132,10 +1535,7 @@ Future<void> _openQuickActions(
           Icons.delete_outline_rounded,
           color: theme.colorScheme.error,
         ),
-        title: Tr(
-          'Delete',
-          style: TextStyle(color: theme.colorScheme.error),
-        ),
+        title: Tr('Delete', style: TextStyle(color: theme.colorScheme.error)),
         onTap: () {
           Navigator.of(sheetContext).pop();
           onDelete(tx, title);
@@ -1342,9 +1742,10 @@ class _TxCard extends StatelessWidget {
                                 ],
                                 if (tx.needsAmountReview) ...[
                                   Tooltip(
-                                    message:
-                                        tr('Posted from an estimate — tap to '
-                                        'confirm the exact amount.'),
+                                    message: tr(
+                                      'Posted from an estimate — tap to '
+                                      'confirm the exact amount.',
+                                    ),
                                     child: AppIcon(
                                       Icons.error_outline_rounded,
                                       size: 13,
@@ -1519,9 +1920,10 @@ extension on _TxCard {
                             ],
                             if (tx.needsAmountReview) ...[
                               Tooltip(
-                                message:
-                                    tr('Posted from an estimate — open it to '
-                                    'confirm the exact amount.'),
+                                message: tr(
+                                  'Posted from an estimate — open it to '
+                                  'confirm the exact amount.',
+                                ),
                                 child: AppIcon(
                                   Icons.error_outline_rounded,
                                   size: 13,

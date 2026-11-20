@@ -212,8 +212,9 @@ final txQuickFilterProvider = StateProvider<TxType?>((ref) => null);
 /// `_FilterChips` in `transactions_screen.dart`), not enforced here.
 final txLinkedOnlyProvider = StateProvider<bool>((ref) => false);
 
+/// Opens on this month — see [TransactionFilters.thisMonth].
 final txAdvancedFiltersProvider = StateProvider<TransactionFilters>(
-  (ref) => const TransactionFilters(),
+  (ref) => TransactionFilters.thisMonth(),
 );
 
 /// Bumped by `AppShell` whenever the Transactions tab is tapped while it's

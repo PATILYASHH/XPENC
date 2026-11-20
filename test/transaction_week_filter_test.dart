@@ -2,6 +2,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/intl.dart';
 import 'package:xpenc/core/theme/app_theme.dart';
 import 'package:xpenc/data/database.dart';
 import 'package:xpenc/data/providers.dart';
@@ -63,33 +64,103 @@ void main() {
     await tester.pump(Duration.zero);
   }
 
-  testWidgets('defaults to Custom range, showing "Any time"', (
+  testWidgets('an all-time filter opens on All', (tester) async {
+    await pumpAndOpen(tester);
+    expect(tester.takeException(), isNull);
+
+    expect(
+      find.text('Every transaction, from the very first.'),
+      findsOneWidget,
+    );
+    expect(find.byTooltip('Previous week'), findsNothing);
+    await unmount(tester);
+  });
+
+  testWidgets('the default (this month) opens on Month, with a stepper', (
+    tester,
+  ) async {
+    final now = DateTime.now();
+    await pumpAndOpen(tester, initial: TransactionFilters.thisMonth(now));
+    expect(tester.takeException(), isNull);
+
+    expect(
+      find.text(DateFormat('MMMM yyyy').format(DateTime(now.year, now.month))),
+      findsOneWidget,
+    );
+    expect(find.byTooltip('Previous month'), findsOneWidget);
+    await unmount(tester);
+  });
+
+  testWidgets('stepping a month back and applying carries that month', (
+    tester,
+  ) async {
+    TransactionFilters? applied;
+    final now = DateTime.now();
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [dbProvider.overrideWithValue(db)],
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: FilledButton(
+                  onPressed: () async {
+                    applied = await showModalBottomSheet<TransactionFilters>(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (_) => TransactionFiltersSheet(
+                        initial: TransactionFilters.thisMonth(now),
+                      ),
+                    );
+                  },
+                  child: const Text('Open'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 150)),
+    );
+    await tester.pump();
+    await tester.tap(find.text('Open'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.tap(find.byTooltip('Previous month'));
+    await tester.pump();
+    await tester.tap(find.text('Apply'));
+    await tester.pump();
+
+    expect(applied, isNotNull);
+    expect(applied!.dateRange, isNull);
+    expect(applied!.month, DateTime(now.year, now.month - 1));
+    await unmount(tester);
+  });
+
+  testWidgets('switching to Week mode immediately shows the current week', (
     tester,
   ) async {
     await pumpAndOpen(tester);
     expect(tester.takeException(), isNull);
 
-    expect(find.text('Any time'), findsOneWidget);
-    expect(find.text('Previous week'), findsNothing);
+    await tester.tap(find.text('Week'));
+    await tester.pump();
+
+    expect(find.text('Any time'), findsNothing);
+    expect(find.byTooltip('Previous week'), findsOneWidget);
+    // Some "Week N, YYYY · ..." label is now showing.
+    expect(find.textContaining('Week '), findsOneWidget);
     await unmount(tester);
   });
-
-  testWidgets(
-    'switching to Week mode immediately shows the current week',
-    (tester) async {
-      await pumpAndOpen(tester);
-      expect(tester.takeException(), isNull);
-
-      await tester.tap(find.text('Week'));
-      await tester.pump();
-
-      expect(find.text('Any time'), findsNothing);
-      expect(find.byTooltip('Previous week'), findsOneWidget);
-      // Some "Week N, YYYY · ..." label is now showing.
-      expect(find.textContaining('Week '), findsOneWidget);
-      await unmount(tester);
-    },
-  );
 
   testWidgets(
     'stepping back a week changes the shown label, and Apply carries a '
@@ -111,14 +182,13 @@ void main() {
                 body: Center(
                   child: FilledButton(
                     onPressed: () async {
-                      applied =
-                          await showModalBottomSheet<TransactionFilters>(
-                            context: context,
-                            isScrollControlled: true,
-                            builder: (_) => const TransactionFiltersSheet(
-                              initial: TransactionFilters(),
-                            ),
-                          );
+                      applied = await showModalBottomSheet<TransactionFilters>(
+                        context: context,
+                        isScrollControlled: true,
+                        builder: (_) => const TransactionFiltersSheet(
+                          initial: TransactionFilters(),
+                        ),
+                      );
                     },
                     child: const Text('Open'),
                   ),

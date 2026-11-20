@@ -70,10 +70,10 @@ void main() {
     (tester) async {
       late int a, b, c, d;
       await tester.runAsync(() async {
-        a = await addExpense(note: 'Charge', date: DateTime(2026, 7, 5));
-        b = await addExpense(note: 'Refund', date: DateTime(2026, 7, 9));
-        d = await addExpense(note: 'Extra refund', date: DateTime(2026, 7, 9));
-        c = await addExpense(note: 'Unrelated', date: DateTime(2026, 7, 1));
+        a = await addExpense(note: 'Charge', date: _thisMonth(5));
+        b = await addExpense(note: 'Refund', date: _thisMonth(9));
+        d = await addExpense(note: 'Extra refund', date: _thisMonth(9));
+        c = await addExpense(note: 'Unrelated', date: _thisMonth(1));
         // A-B and B-D: a transitive cluster of 3, even though A and D were
         // never directly linked to each other.
         await db.addTransactionLink(a, b);
@@ -118,9 +118,7 @@ void main() {
   testWidgets('the Linked chip shows an empty state when nothing is linked', (
     tester,
   ) async {
-    await tester.runAsync(
-      () => addExpense(note: 'Solo', date: DateTime(2026, 7, 1)),
-    );
+    await tester.runAsync(() => addExpense(note: 'Solo', date: _thisMonth(1)));
 
     await pump(tester, const TransactionsScreen());
     await tester.drag(find.byType(ListView), const Offset(-1000, 0));
@@ -135,4 +133,11 @@ void main() {
 
     await unmount(tester);
   });
+}
+
+/// A day of the current month — the list opens on this month, so seeded
+/// rows have to land in it to show before any chip is picked.
+DateTime _thisMonth(int day) {
+  final now = DateTime.now();
+  return DateTime(now.year, now.month, day);
 }
