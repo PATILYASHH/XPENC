@@ -110,6 +110,26 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
   static double _targetFor(double offset) =>
       (offset / glassLargeTitleExtent).clamp(0.0, 1.0);
 
+  /// How far the title has flown into the capsule at scroll [offset], eased
+  /// the way the title itself moves — for what makes room for it.
+  static double titleFlight(double offset) =>
+      Curves.easeInOutCubic.transform(_targetFor(offset));
+
+  /// The capsule's buttons, measured after each layout: the landed title
+  /// fades out before it can run under them.
+  final _actionsKey = GlobalKey(debugLabel: 'glassTopActions');
+  double? _actionsWidth;
+
+  void _measureActions() {
+    if (!mounted) return;
+    final box = _actionsKey.currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return;
+    final width = box.size.width;
+    final old = _actionsWidth;
+    if (old != null && (old - width).abs() < 0.5) return;
+    setState(() => _actionsWidth = width);
+  }
+
   /// Whether the capsule is the search field (Transactions, searching).
   bool _searching = false;
 
@@ -206,7 +226,7 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
     // spring, the old buttons dissolving inside it as it goes and the new
     // ones swelling in — rather than the capsule jumping to its new width.
     Widget swap(Widget child) => AnimatedSize(
-      duration: const Duration(milliseconds: 560),
+      duration: const Duration(milliseconds: 500),
       curve: const GlassBarSpring(),
       alignment: Alignment.centerRight,
       clipBehavior: Clip.none,
@@ -254,7 +274,9 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
             icon: const AppIcon(Icons.inbox_outlined),
             onPressed: () => _pushFromTop(context, '/inbox'),
           );
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measureActions());
     final actions = Row(
+      key: _actionsKey,
       mainAxisSize: MainAxisSize.min,
       children: [
         swap(
@@ -302,6 +324,16 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
     final titleLeft = 20 + (12 + orbInset + 5 + 12 - 20) * c;
     final titleScale =
         (1 + (shrink - 1) * c) * (1 + (pull / 600).clamp(0.0, 0.08));
+    // Room for the title: the screen at rest; once landed, the capsule left
+    // of its buttons (in the title's own, unscaled units).
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final restRoom = screenWidth - titleLeft - 20;
+    final buttons = _actionsWidth;
+    final landedRoom = buttons == null
+        ? restRoom
+        : screenWidth - 12 - 5 - buttons - 8 - titleLeft;
+    final titleRoom =
+        math.max(0.0, restRoom + (landedRoom - restRoom) * c) / titleScale;
 
     final veil = tone.isDark
         ? const Color(0xFF000000)
@@ -443,11 +475,14 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
                       clipBehavior: Clip.none,
                       children: [...previous, ?current],
                     ),
-                    child: Text(
-                      title,
+                    child: ConstrainedBox(
                       key: ValueKey(index),
+                      constraints: BoxConstraints(maxWidth: titleRoom),
+                      child: Text(
+                      title,
                       maxLines: 1,
                       softWrap: false,
+                      overflow: TextOverflow.fade,
                       style: theme.textTheme.headlineLarge?.copyWith(
                         fontSize: _GlassTopBar._largeSize,
                         fontWeight: FontWeight.w800,
@@ -455,6 +490,7 @@ class _GlassTopBarState extends ConsumerState<_GlassTopBar>
                         height: _GlassTopBar._lineHeight,
                         color: cs.onSurface,
                       ),
+                    ),
                     ),
                   ),
                 ),

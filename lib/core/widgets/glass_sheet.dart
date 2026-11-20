@@ -134,18 +134,20 @@ class GlassBarScope extends InheritedWidget {
 class GlassBarSpring extends Curve {
   const GlassBarSpring();
 
-  static final _spring = SpringDescription.withDampingRatio(
-    mass: 1,
-    stiffness: 240,
-    ratio: 0.86,
+  static final _spring = SpringSimulation(
+    SpringDescription.withDampingRatio(mass: 1, stiffness: 240, ratio: 0.86),
+    0,
+    1,
+    0,
   );
 
-  /// Long enough for the spring to come to rest (it's within 0.3% by then).
-  static const double seconds = 0.56;
+  /// Just long enough for the spring to come to rest (within 0.3% at
+  /// 0.48 s) — any longer and the route sits "animating", still and
+  /// unresponsive, for the tail.
+  static const double seconds = 0.5;
 
   @override
-  double transformInternal(double t) =>
-      SpringSimulation(_spring, 0, 1, 0).x(t * seconds);
+  double transformInternal(double t) => _spring.x(t * seconds);
 }
 
 /// The spring a whole *page* grows out of a bar on ([pushFromBar],
@@ -156,18 +158,20 @@ class GlassBarSpring extends Curve {
 class GlassPageSpring extends Curve {
   const GlassPageSpring();
 
-  static final _spring = SpringDescription.withDampingRatio(
-    mass: 1,
-    stiffness: 110,
-    ratio: 0.9,
+  // Stiffer than it was (110): at 0.72 s it read as sluggish, and frames
+  // dropped on the way were stretched over longer still.
+  static final _spring = SpringSimulation(
+    SpringDescription.withDampingRatio(mass: 1, stiffness: 200, ratio: 0.92),
+    0,
+    1,
+    0,
   );
 
-  /// Long enough for the spring to come to rest (it's within 0.2% by then).
-  static const double seconds = 0.72;
+  /// Long enough for the spring to come to rest (within 0.3% at 0.43 s).
+  static const double seconds = 0.46;
 
   @override
-  double transformInternal(double t) =>
-      SpringSimulation(_spring, 0, 1, 0).x(t * seconds);
+  double transformInternal(double t) => _spring.x(t * seconds);
 }
 
 /// The spring a page zooms out of a card or row on (`pushZoom`). Opened tens
@@ -176,18 +180,21 @@ class GlassPageSpring extends Curve {
 class GlassZoomSpring extends Curve {
   const GlassZoomSpring();
 
-  static final _spring = SpringDescription.withDampingRatio(
-    mass: 1,
-    stiffness: 300,
-    ratio: 0.92,
+  // 90% of the way in 0.17 s, at rest by 0.3 s: the page is there by the
+  // time the finger has left the glass. (Was 300 over 0.5 s — the last
+  // 150 ms moved less than a pixel, and read as lag.)
+  static final _spring = SpringSimulation(
+    SpringDescription.withDampingRatio(mass: 1, stiffness: 480, ratio: 0.94),
+    0,
+    1,
+    0,
   );
 
-  /// Long enough for the spring to come to rest (it's within 0.3% by then).
-  static const double seconds = 0.5;
+  /// Long enough for the spring to come to rest (within 0.3% at 0.30 s).
+  static const double seconds = 0.34;
 
   @override
-  double transformInternal(double t) =>
-      SpringSimulation(_spring, 0, 1, 0).x(t * seconds);
+  double transformInternal(double t) => _spring.x(t * seconds);
 }
 
 /// Pushes [builder]'s content as a Glass sheet — see [showAppSheet], which
@@ -261,10 +268,10 @@ class GlassSheetRoute<T> extends PopupRoute<T> {
   bool get barrierDismissible => true;
 
   @override
-  Duration get transitionDuration => const Duration(milliseconds: 560);
+  Duration get transitionDuration => const Duration(milliseconds: 500);
 
   @override
-  Duration get reverseTransitionDuration => const Duration(milliseconds: 440);
+  Duration get reverseTransitionDuration => const Duration(milliseconds: 400);
 
   /// The morph's own progress: the spring on the way up and, mirrored, on
   /// the way back down into the bar.
@@ -524,7 +531,10 @@ class _GlassSheetFrameState extends State<_GlassSheetFrame>
   /// the bar's tabs blur into the sheet instead of all at once.
   Widget _glass(GlassTone tone, double t) {
     final open = t.clamp(0.0, 1.0);
-    final lens = 18 * (1 - open);
+    // The bar's lens (and the light it takes) eases off while the glass is
+    // still bar-sized, then its shader pass stops: on a pane this large it
+    // was paid every frame, full screen, for a bend nobody could see.
+    final lens = 18 * (1 - open / _lensUntil).clamp(0.0, 1.0);
     final appear = Curves.easeOut.transform((open / 0.25).clamp(0.0, 1.0));
     final glass = LiquidGlass(
       borderRadius: BorderRadius.circular(32 + 2 * open),
@@ -533,11 +543,14 @@ class _GlassSheetFrameState extends State<_GlassSheetFrame>
       // The lens and the light it takes are the bar's; on a pane this large
       // their pass would be paid on every frame for little to see.
       refraction: lens < 1 ? 0 : lens,
-      light: (1 - open / 0.85).clamp(0.0, 1.0),
+      light: (1 - open / _lensUntil).clamp(0.0, 1.0),
       child: const SizedBox.expand(),
     );
     return appear >= 1 ? glass : Opacity(opacity: appear, child: glass);
   }
+
+  /// How far into the morph the bar's lens lasts (see [_glass]).
+  static const _lensUntil = 0.35;
 }
 
 /// Lays the sheet's content out at its full size and the glass as the morph

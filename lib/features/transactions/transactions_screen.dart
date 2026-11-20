@@ -2175,84 +2175,96 @@ class _FilterChips extends StatelessWidget {
     );
   }
 
-  /// Glass chips: each its own floating pane of blurred glass over the
-  /// frosted band — one shared backdrop read for the row ([BackdropGroup]) —
-  /// the chosen one tinted with the accent. Each is lit from beneath: the
-  /// chosen one casts its accent onto the band around it, the rest a faint
-  /// ambient glow.
+  /// Glass chips: panes of the same glass as every card ([GlassPane]) — the
+  /// frost, the lit rim, the continuous corners — not blurred glass of
+  /// their own with a glow under each, which read louder than the list
+  /// they filter. The chosen one fills with the accent.
   Widget _glass(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final tone = AppSurface.of(context).tone;
-    return BackdropGroup(
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        // The glow spills past the row's own box onto the band.
-        clipBehavior: Clip.none,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-        children: [
-          for (final (label, icon, value) in _options)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => onChanged(value),
-                child: AnimatedScale(
-                  scale: selected == value ? 1 : 0.96,
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeOutCubic,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 260),
-                    curve: Curves.easeOutCubic,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(999),
-                      boxShadow: [
-                        BoxShadow(
-                          color: selected == value
-                              ? cs.secondary.withValues(alpha: 0.55)
-                              : (tone.isDark ? Colors.white : cs.secondary)
-                                    .withValues(alpha: 0.08),
-                          blurRadius: selected == value ? 20 : 12,
-                          spreadRadius: -2,
-                        ),
-                      ],
-                    ),
-                    child: LiquidGlass(
-                      grouped: true,
-                      blur: 12,
-                      refraction: 0,
-                      tint: selected == value ? cs.secondary : null,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            AppIcon(
-                              icon,
-                              size: 16,
-                              color: selected == value
-                                  ? Colors.white
-                                  : cs.onSurface,
-                            ),
-                            const SizedBox(width: 6),
-                            Tr(
-                              label,
-                              style: theme.textTheme.labelLarge?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: selected == value
-                                    ? Colors.white
-                                    : cs.onSurface,
-                              ),
-                            ),
-                          ],
-                        ),
+    return ListView(
+      scrollDirection: Axis.horizontal,
+      // A card's ambient light spills a little past its own box.
+      clipBehavior: Clip.none,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+      children: [
+        for (final (label, icon, value) in _options)
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: _GlassFilterChip(
+              key: ValueKey(value),
+              label: label,
+              icon: icon,
+              selected: selected == value,
+              accent: cs.secondary,
+              onTap: () => onChanged(value),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// One Glass filter chip: a [GlassPane] capsule, easing into the accent
+/// when chosen and out of it when not.
+class _GlassFilterChip extends StatelessWidget {
+  const _GlassFilterChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.accent,
+    required this.onTap,
+    super.key,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final Color accent;
+  final VoidCallback onTap;
+
+  static const _radius = BorderRadius.all(Radius.circular(21));
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(end: selected ? 1 : 0),
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          builder: (context, t, _) {
+            final ink = Color.lerp(cs.onSurface, Colors.white, t)!;
+            return GlassPane(
+              borderRadius: _radius,
+              // Flat accent once chosen; the cards' own frost otherwise.
+              frost: t == 0 ? null : accent.withValues(alpha: 0.9 * t),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AppIcon(icon, size: 16, color: ink),
+                    const SizedBox(width: 6),
+                    Tr(
+                      label,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: ink,
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
-            ),
-        ],
+            );
+          },
+        ),
       ),
     );
   }

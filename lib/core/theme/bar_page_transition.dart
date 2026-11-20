@@ -29,12 +29,12 @@ class PageFromBar {
   static final _animations = Expando<bool>('PageFromBarAnimation');
 
   /// [GlassPageSpring]'s time to rest; the fold back is a touch quicker.
-  static const duration = Duration(milliseconds: 720);
-  static const reverseDuration = Duration(milliseconds: 560);
+  static const duration = Duration(milliseconds: 460);
+  static const reverseDuration = Duration(milliseconds: 380);
 
   /// [GlassZoomSpring]'s time to rest, and a quicker way back into the card.
-  static const zoomDuration = Duration(milliseconds: 500);
-  static const zoomReverseDuration = Duration(milliseconds: 380);
+  static const zoomDuration = Duration(milliseconds: 340);
+  static const zoomReverseDuration = Duration(milliseconds: 280);
 
   /// Whether the next pushed page will grow out of the bar.
   static bool get pending => _pending != null;
@@ -414,16 +414,21 @@ class _BarPageTransitionState extends State<BarPageTransition> {
     final rect = Rect.lerp(from.rect, Offset.zero & size, t)!;
     final corner = from.radius * (1 - open);
     final scale = rect.width / size.width;
-    // The card's face hands over to the page's early, so the window never
-    // reads as an empty card stretching.
-    final reveal = Curves.easeOut.transform(((open - 0.05) / 0.45).clamp(0, 1));
-    final window = Curves.easeOut.transform((1 - open / 0.9).clamp(0.0, 1.0));
+    // The card's face hands over to the page early, so the window never
+    // reads as an empty card stretching — and so the page stops needing an
+    // opacity layer (a full-screen offscreen pass every frame) a third of
+    // the way in instead of halfway.
+    final reveal = Curves.easeOut.transform(((open - 0.02) / 0.3).clamp(0, 1));
+    final window = Curves.easeOut.transform((1 - open / 0.32).clamp(0.0, 1.0));
+    // Once the page is opaque it covers the window exactly (same rect, same
+    // corners): drawing the window under it any longer is pure cost.
+    final covered = settled || reveal >= 1;
 
     return Stack(
       children: [
         Positioned.fromRect(
           rect: rect,
-          child: settled
+          child: covered
               ? const SizedBox.shrink()
               : _zoomWindow(context, corner, window),
         ),
@@ -451,39 +456,56 @@ class _BarPageTransitionState extends State<BarPageTransition> {
   /// see-through and the list behind would show through it — wearing the
   /// card's material at first, which fades as the window becomes the page
   /// ([card] 1 → 0).
+  ///
+  /// Every fade here is a colour's alpha, not an [Opacity]: two nested
+  /// opacity layers over a growing rect were two offscreen passes a frame.
+  /// And plain rounded rects, not [GlassPane]'s squircle clip and rim — at
+  /// this speed the two shapes can't be told apart, and the clip path was
+  /// rebuilt at every new size.
   Widget _zoomWindow(BuildContext context, double corner, double card) {
     final radius = BorderRadius.circular(corner);
     final theme = Theme.of(context);
     final surface = AppSurface.of(context);
+    // Clear on the very first frames, so the tap lands on the real card
+    // (content and all) rather than a blank one; solid within ~40 ms. Run
+    // backwards, the page lands *on* the card and hands back to it.
+    final solid = Curves.easeOut.transform(
+      (_morph.value.clamp(0.0, 1.0) / 0.1).clamp(0.0, 1.0),
+    );
     final ground = widget.spec.glass
         ? surface.backdrop?.base ?? theme.scaffoldBackgroundColor
         : theme.scaffoldBackgroundColor;
-    final face = widget.spec.glass
-        ? GlassPane(
-            borderRadius: radius,
-            shadow: false,
-            child: const SizedBox.expand(),
-          )
-        : DecoratedBox(
-            decoration: BoxDecoration(
-              color:
-                  theme.cardTheme.color ??
-                  theme.colorScheme.surfaceContainerLow,
-              borderRadius: radius,
-            ),
-          );
-    // Clear on the very first frames, so the tap lands on the real card
-    // (content and all) rather than a blank one; solid within ~60 ms. Run
-    // backwards, the page lands *on* the card and hands back to it.
-    final solid = Curves.easeOut.transform(
-      (_morph.value.clamp(0.0, 1.0) / 0.12).clamp(0.0, 1.0),
-    );
-    return Opacity(
-      opacity: solid,
-      child: DecoratedBox(
-        decoration: BoxDecoration(color: ground, borderRadius: radius),
-        child: Opacity(opacity: card, child: face),
+    Color fade(Color c, double by) => c.withValues(alpha: c.a * by);
+    final BoxDecoration face;
+    if (widget.spec.glass) {
+      final tone = surface.tone;
+      face = BoxDecoration(
+        borderRadius: radius,
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            fade(tone.frostHigh, card * solid),
+            fade(tone.frostLow, card * solid),
+          ],
+        ),
+      );
+    } else {
+      face = BoxDecoration(
+        borderRadius: radius,
+        color: fade(
+          theme.cardTheme.color ?? theme.colorScheme.surfaceContainerLow,
+          card * solid,
+        ),
+      );
+    }
+    return DecoratedBox(
+      key: const ValueKey('zoom-window'),
+      decoration: BoxDecoration(
+        color: fade(ground, solid),
+        borderRadius: radius,
       ),
+      child: DecoratedBox(decoration: face),
     );
   }
 
@@ -501,13 +523,16 @@ class _BarPageTransitionState extends State<BarPageTransition> {
       );
     }
     final tone = AppSurface.of(context).tone;
-    final lens = 18 * (1 - open);
+    // The bar's lens and light ease off while the window is still bar-sized
+    // and their shader pass then stops — full screen, it cost every frame
+    // for a bend nobody could see (the same as a Glass sheet's).
+    final lens = 18 * (1 - open / 0.35).clamp(0.0, 1.0);
     return LiquidGlass(
       borderRadius: BorderRadius.circular(corner),
       frost: Color.lerp(tone.controlFrost, tone.sheetFrost, open),
       blur: GlassStyle.controlBlur + (24 - GlassStyle.controlBlur) * open,
       refraction: lens < 1 ? 0 : lens,
-      light: (1 - open / 0.85).clamp(0.0, 1.0),
+      light: (1 - open / 0.35).clamp(0.0, 1.0),
       child: const SizedBox.expand(),
     );
   }

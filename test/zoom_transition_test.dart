@@ -6,7 +6,6 @@ import 'package:xpenc/core/money.dart';
 import 'package:xpenc/core/routing/app_router.dart';
 import 'package:xpenc/core/theme/app_theme.dart';
 import 'package:xpenc/core/theme/bar_page_transition.dart';
-import 'package:xpenc/core/theme/glass.dart';
 import 'package:xpenc/core/theme/theme_preset.dart';
 import 'package:xpenc/core/theme/zoom_origin.dart';
 import 'package:xpenc/core/widgets/app_surfaces.dart';
@@ -109,15 +108,21 @@ void main() {
     }
     expect(transition, findsOneWidget);
     // The window starts as the card itself.
-    final window = find
-        .descendant(of: transition, matching: find.byType(GlassPane))
-        .first;
+    final window = find.descendant(
+      of: transition,
+      matching: find.byKey(const ValueKey('zoom-window')),
+    );
     expect(tester.getRect(window).top, closeTo(card.top, 2));
     expect(tester.getRect(window).height, closeTo(card.height, 2));
 
-    await tester.pump(const Duration(milliseconds: 120));
+    await tester.pump(const Duration(milliseconds: 24));
     final growing = tester.getRect(window);
     expect(growing.height, greaterThan(card.height + 40));
+
+    // A third of the way in the page is opaque and covers it exactly; the
+    // window stops being drawn (it was an offscreen pass every frame).
+    await tester.pump(const Duration(milliseconds: 120));
+    expect(window, findsNothing);
 
     await tester.pump(const Duration(milliseconds: 600));
     await settle(tester);

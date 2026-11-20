@@ -169,10 +169,10 @@ class _MorphDialogRoute<T> extends PopupRoute<T> {
   bool get barrierDismissible => true;
 
   @override
-  Duration get transitionDuration => const Duration(milliseconds: 560);
+  Duration get transitionDuration => const Duration(milliseconds: 500);
 
   @override
-  Duration get reverseTransitionDuration => const Duration(milliseconds: 380);
+  Duration get reverseTransitionDuration => const Duration(milliseconds: 360);
 
   /// Out on the bar's spring; back into the button on an even ease.
   late final CurvedAnimation morph = CurvedAnimation(

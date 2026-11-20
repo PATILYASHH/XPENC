@@ -1609,26 +1609,49 @@ class _DashboardMonthButton extends ConsumerWidget {
       }
     }
 
-    final label = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AppIcon(
-            glass ? CupertinoIcons.calendar : Icons.calendar_month_rounded,
-            size: 18,
-            color: glass ? cs.secondary : cs.primary,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            DateFormat('MMM yyyy').format(month),
-            style: theme.textTheme.labelLarge?.copyWith(
-              fontWeight: FontWeight.w600,
+    /// [fold] 0: icon and month. 1: the icon alone — a round button like
+    /// its neighbours, once the title has flown into the capsule and needs
+    /// the room (the two overlapped).
+    Widget labelFor(double fold) {
+      final style = theme.textTheme.labelLarge?.copyWith(
+        fontWeight: FontWeight.w600,
+      );
+      final ink = style?.color ?? cs.onSurface;
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppIcon(
+              glass ? CupertinoIcons.calendar : Icons.calendar_month_rounded,
+              size: 18,
+              color: glass ? cs.secondary : cs.primary,
             ),
-          ),
-        ],
-      ),
-    );
+            if (fold < 1) ...[
+              SizedBox(width: 6 * (1 - fold)),
+              ClipRect(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: 1 - fold,
+                  child: Text(
+                    DateFormat('MMM yyyy').format(month),
+                    maxLines: 1,
+                    softWrap: false,
+                    // Gone before it's half folded, so it never reads as
+                    // text being cut.
+                    style: style?.copyWith(
+                      color: ink.withValues(
+                        alpha: ink.a * (1 - fold * 2).clamp(0.0, 1.0),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
 
     if (_GlassCapsuleScope.of(context)) {
       return Material(
@@ -1640,10 +1663,20 @@ class _DashboardMonthButton extends ConsumerWidget {
             HapticFeedback.selectionClick();
             _glassMonthPicker.value = !_glassMonthPicker.value;
           },
-          child: Tooltip(message: tr('Change month'), child: label),
+          child: Tooltip(
+            message: tr('Change month'),
+            // Folds with the title's flight into the bar — the same
+            // progress, frame for frame (see `_GlassTopBar`).
+            child: ValueListenableBuilder<double>(
+              valueListenable: _glassScroll,
+              builder: (context, offset, _) =>
+                  labelFor(_GlassTopBarState.titleFlight(offset)),
+            ),
+          ),
         ),
       );
     }
+    final label = labelFor(0);
     if (glass) {
       return SizedBox(
         height: 42,
