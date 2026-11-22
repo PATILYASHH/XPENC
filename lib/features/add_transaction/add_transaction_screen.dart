@@ -28,6 +28,7 @@ import '../payees/payee_picker_sheet.dart';
 import '../persons/person_avatar.dart';
 import '../settings/currency_picker_sheet.dart';
 import '../tags/tag_picker_sheet.dart';
+import 'account_strip.dart';
 import 'date_time_combine.dart';
 import 'receipt_storage.dart';
 import '../../core/widgets/nav_bar_inset.dart';
@@ -942,12 +943,18 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       ),
     );
     if (selected == null || !mounted) return;
+    _selectAccount(selected, forTo: forTo);
+  }
+
+  /// What picking an account does, from the strip or the sheet: a transfer
+  /// can't land where it leaves from.
+  void _selectAccount(int id, {required bool forTo}) {
     setState(() {
       if (forTo) {
-        _toAccountId = selected;
+        _toAccountId = id;
       } else {
-        _accountId = selected;
-        if (_toAccountId == selected) _toAccountId = null;
+        _accountId = id;
+        if (_toAccountId == id) _toAccountId = null;
       }
     });
   }
@@ -2795,22 +2802,24 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
     if (_type == TxType.transfer) {
       tiles.add(
-        _pickerTile(
-          icon: AppIcons.resolve('bank'),
+        AccountStrip(
+          key: const Key('fromAccountStrip'),
           label: tr('From account'),
-          value: accountMap[_accountId]?.name ?? tr('Select account'),
-          selected: _accountId != null,
-          onTap: () => _pickAccount(isFrom: true),
+          selectedId: _accountId,
+          onSelected: (id) => _selectAccount(id, forTo: false),
+          onMore: () => _pickAccount(isFrom: true),
+          modeId: _pickerModeId,
         ),
       );
       tiles.add(const SizedBox(height: 12));
       tiles.add(
-        _pickerTile(
-          icon: AppIcons.resolve('transfer'),
+        AccountStrip(
+          key: const Key('toAccountStrip'),
           label: tr('To account'),
-          value: accountMap[_toAccountId]?.name ?? tr('Select account'),
-          selected: _toAccountId != null,
-          onTap: () => _pickAccount(isFrom: false),
+          selectedId: _toAccountId,
+          onSelected: (id) => _selectAccount(id, forTo: true),
+          onMore: () => _pickAccount(isFrom: false),
+          excludeId: _accountId,
         ),
       );
       final preview = _crossCurrencyTransferPreview(accountMap);
@@ -2828,12 +2837,15 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       // editor below picks each leg's account instead.
       if (!_isHybrid) {
         tiles.add(
-          _pickerTile(
-            icon: AppIcons.resolve('wallet'),
+          AccountStrip(
+            key: const Key('accountStrip:main'),
             label: _type == TxType.income ? tr('Deposit to') : tr('Paid via'),
-            value: accountMap[_accountId]?.name ?? tr('Select account'),
-            selected: _accountId != null,
-            onTap: () => _pickAccount(isFrom: true),
+            selectedId: _accountId,
+            onSelected: (id) => _selectAccount(id, forTo: false),
+            onMore: () => _pickAccount(isFrom: true),
+            modeId: _pickerModeId,
+            excludeGoals: true,
+            moneyInOut: true,
           ),
         );
         tiles.add(const SizedBox(height: 12));
@@ -3467,18 +3479,15 @@ class _AccountPickerSheet extends ConsumerWidget {
                   ),
                 ),
                 data: (accounts) {
-                  final list = accounts
-                      .where((a) => a.id != excludeId)
-                      .where((a) => !excludeIds.contains(a.id))
-                      .where(
-                        (a) =>
-                            !excludeGoals ||
-                            a.type != AccountType.goal ||
-                            moneyInOutGoals.contains(a.id),
-                      )
-                      .where((a) => onlyTypes?.contains(a.type) ?? true)
-                      .where((a) => allowed.isEmpty || allowed.contains(a.id))
-                      .toList();
+                  final list = eligibleAccounts(
+                    accounts,
+                    excludeId: excludeId,
+                    excludeIds: excludeIds,
+                    excludeGoals: excludeGoals,
+                    moneyInOutGoals: moneyInOutGoals,
+                    onlyTypes: onlyTypes,
+                    allowed: allowed,
+                  );
                   if (list.isEmpty) {
                     return Padding(
                       padding: const EdgeInsets.all(32),

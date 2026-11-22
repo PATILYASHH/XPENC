@@ -43,12 +43,15 @@ void main() {
     await tester.pump(Duration.zero);
   }
 
-  /// Opens the "Paid via"/account picker and taps the account named [name].
+  /// Taps the account named [name] on the "Paid via" strip.
   Future<void> pickAccount(WidgetTester tester, String name) async {
-    await tester.tap(find.text('Select account').first);
+    final card = find.descendant(
+      of: find.byKey(const Key('accountStrip:main')),
+      matching: find.text(name),
+    );
+    await tester.ensureVisible(card);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.tap(find.text(name));
+    await tester.tap(card);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
   }

@@ -207,6 +207,9 @@ class $AccountsTable extends Accounts
   static const VerificationMeta _showTransferOutMeta = const VerificationMeta(
     'showTransferOut',
   );
+  static const VerificationMeta _showOnAddPageMeta = const VerificationMeta(
+    'showOnAddPage',
+  );
   @override
   late final GeneratedColumn<bool> showTransferOut = GeneratedColumn<bool>(
     'show_transfer_out',
@@ -216,6 +219,18 @@ class $AccountsTable extends Accounts
     requiredDuringInsert: false,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
       'CHECK ("show_transfer_out" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  @override
+  late final GeneratedColumn<bool> showOnAddPage = GeneratedColumn<bool>(
+    'show_on_add_page',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("show_on_add_page" IN (0, 1))',
     ),
     defaultValue: const Constant(true),
   );
@@ -277,6 +292,7 @@ class $AccountsTable extends Accounts
     envelopeMode,
     showTransferIn,
     showTransferOut,
+    showOnAddPage,
     includeInNetWorth,
     currencyCode,
     minimumBalance,
@@ -386,6 +402,15 @@ class $AccountsTable extends Accounts
         ),
       );
     }
+    if (data.containsKey('show_on_add_page')) {
+      context.handle(
+        _showOnAddPageMeta,
+        showOnAddPage.isAcceptableOrUnknown(
+          data['show_on_add_page']!,
+          _showOnAddPageMeta,
+        ),
+      );
+    }
     if (data.containsKey('include_in_net_worth')) {
       context.handle(
         _includeInNetWorthMeta,
@@ -489,6 +514,10 @@ class $AccountsTable extends Accounts
         DriftSqlType.bool,
         data['${effectivePrefix}show_transfer_out'],
       )!,
+      showOnAddPage: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}show_on_add_page'],
+      )!,
       includeInNetWorth: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}include_in_net_worth'],
@@ -573,6 +602,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   /// money that can't leave, like a vending machine's prepaid balance
   /// (GitHub #199). On by default.
   final bool showTransferOut;
+  final bool showOnAddPage;
 
   /// Whether this account's balance counts toward Net Worth (dashboard,
   /// Accounts screen total, More screen subtitle — see
@@ -615,6 +645,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     required this.envelopeMode,
     required this.showTransferIn,
     required this.showTransferOut,
+    required this.showOnAddPage,
     required this.includeInNetWorth,
     this.currencyCode,
     this.minimumBalance,
@@ -659,6 +690,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     map['envelope_mode'] = Variable<bool>(envelopeMode);
     map['show_transfer_in'] = Variable<bool>(showTransferIn);
     map['show_transfer_out'] = Variable<bool>(showTransferOut);
+    map['show_on_add_page'] = Variable<bool>(showOnAddPage);
     map['include_in_net_worth'] = Variable<bool>(includeInNetWorth);
     if (!nullToAbsent || currencyCode != null) {
       map['currency_code'] = Variable<String>(currencyCode);
@@ -698,6 +730,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       envelopeMode: Value(envelopeMode),
       showTransferIn: Value(showTransferIn),
       showTransferOut: Value(showTransferOut),
+      showOnAddPage: Value(showOnAddPage),
       includeInNetWorth: Value(includeInNetWorth),
       currencyCode: currencyCode == null && nullToAbsent
           ? const Value.absent()
@@ -735,6 +768,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       envelopeMode: serializer.fromJson<bool>(json['envelopeMode']),
       showTransferIn: serializer.fromJson<bool>(json['showTransferIn']),
       showTransferOut: serializer.fromJson<bool>(json['showTransferOut']),
+      showOnAddPage: serializer.fromJson<bool>(json['showOnAddPage']),
       includeInNetWorth: serializer.fromJson<bool>(json['includeInNetWorth']),
       currencyCode: serializer.fromJson<String?>(json['currencyCode']),
       minimumBalance: serializer.fromJson<Money?>(json['minimumBalance']),
@@ -765,6 +799,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       'envelopeMode': serializer.toJson<bool>(envelopeMode),
       'showTransferIn': serializer.toJson<bool>(showTransferIn),
       'showTransferOut': serializer.toJson<bool>(showTransferOut),
+      'showOnAddPage': serializer.toJson<bool>(showOnAddPage),
       'includeInNetWorth': serializer.toJson<bool>(includeInNetWorth),
       'currencyCode': serializer.toJson<String?>(currencyCode),
       'minimumBalance': serializer.toJson<Money?>(minimumBalance),
@@ -789,6 +824,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     bool? envelopeMode,
     bool? showTransferIn,
     bool? showTransferOut,
+    bool? showOnAddPage,
     bool? includeInNetWorth,
     Value<String?> currencyCode = const Value.absent(),
     Value<Money?> minimumBalance = const Value.absent(),
@@ -812,6 +848,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     envelopeMode: envelopeMode ?? this.envelopeMode,
     showTransferIn: showTransferIn ?? this.showTransferIn,
     showTransferOut: showTransferOut ?? this.showTransferOut,
+    showOnAddPage: showOnAddPage ?? this.showOnAddPage,
     includeInNetWorth: includeInNetWorth ?? this.includeInNetWorth,
     currencyCode: currencyCode.present ? currencyCode.value : this.currencyCode,
     minimumBalance: minimumBalance.present
@@ -853,6 +890,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       showTransferOut: data.showTransferOut.present
           ? data.showTransferOut.value
           : this.showTransferOut,
+      showOnAddPage: data.showOnAddPage.present
+          ? data.showOnAddPage.value
+          : this.showOnAddPage,
       includeInNetWorth: data.includeInNetWorth.present
           ? data.includeInNetWorth.value
           : this.includeInNetWorth,
@@ -885,6 +925,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           ..write('envelopeMode: $envelopeMode, ')
           ..write('showTransferIn: $showTransferIn, ')
           ..write('showTransferOut: $showTransferOut, ')
+          ..write('showOnAddPage: $showOnAddPage, ')
           ..write('includeInNetWorth: $includeInNetWorth, ')
           ..write('currencyCode: $currencyCode, ')
           ..write('minimumBalance: $minimumBalance')
@@ -893,7 +934,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     name,
     type,
@@ -911,10 +952,11 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     envelopeMode,
     showTransferIn,
     showTransferOut,
+    showOnAddPage,
     includeInNetWorth,
     currencyCode,
     minimumBalance,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -936,6 +978,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           other.envelopeMode == this.envelopeMode &&
           other.showTransferIn == this.showTransferIn &&
           other.showTransferOut == this.showTransferOut &&
+          other.showOnAddPage == this.showOnAddPage &&
           other.includeInNetWorth == this.includeInNetWorth &&
           other.currencyCode == this.currencyCode &&
           other.minimumBalance == this.minimumBalance);
@@ -959,6 +1002,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
   final Value<bool> envelopeMode;
   final Value<bool> showTransferIn;
   final Value<bool> showTransferOut;
+  final Value<bool> showOnAddPage;
   final Value<bool> includeInNetWorth;
   final Value<String?> currencyCode;
   final Value<Money?> minimumBalance;
@@ -980,6 +1024,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.envelopeMode = const Value.absent(),
     this.showTransferIn = const Value.absent(),
     this.showTransferOut = const Value.absent(),
+    this.showOnAddPage = const Value.absent(),
     this.includeInNetWorth = const Value.absent(),
     this.currencyCode = const Value.absent(),
     this.minimumBalance = const Value.absent(),
@@ -1002,6 +1047,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.envelopeMode = const Value.absent(),
     this.showTransferIn = const Value.absent(),
     this.showTransferOut = const Value.absent(),
+    this.showOnAddPage = const Value.absent(),
     this.includeInNetWorth = const Value.absent(),
     this.currencyCode = const Value.absent(),
     this.minimumBalance = const Value.absent(),
@@ -1029,6 +1075,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Expression<bool>? envelopeMode,
     Expression<bool>? showTransferIn,
     Expression<bool>? showTransferOut,
+    Expression<bool>? showOnAddPage,
     Expression<bool>? includeInNetWorth,
     Expression<String>? currencyCode,
     Expression<int>? minimumBalance,
@@ -1051,6 +1098,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       if (envelopeMode != null) 'envelope_mode': envelopeMode,
       if (showTransferIn != null) 'show_transfer_in': showTransferIn,
       if (showTransferOut != null) 'show_transfer_out': showTransferOut,
+      if (showOnAddPage != null) 'show_on_add_page': showOnAddPage,
       if (includeInNetWorth != null) 'include_in_net_worth': includeInNetWorth,
       if (currencyCode != null) 'currency_code': currencyCode,
       if (minimumBalance != null) 'minimum_balance': minimumBalance,
@@ -1075,6 +1123,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Value<bool>? envelopeMode,
     Value<bool>? showTransferIn,
     Value<bool>? showTransferOut,
+    Value<bool>? showOnAddPage,
     Value<bool>? includeInNetWorth,
     Value<String?>? currencyCode,
     Value<Money?>? minimumBalance,
@@ -1097,6 +1146,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       envelopeMode: envelopeMode ?? this.envelopeMode,
       showTransferIn: showTransferIn ?? this.showTransferIn,
       showTransferOut: showTransferOut ?? this.showTransferOut,
+      showOnAddPage: showOnAddPage ?? this.showOnAddPage,
       includeInNetWorth: includeInNetWorth ?? this.includeInNetWorth,
       currencyCode: currencyCode ?? this.currencyCode,
       minimumBalance: minimumBalance ?? this.minimumBalance,
@@ -1165,6 +1215,9 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     if (showTransferOut.present) {
       map['show_transfer_out'] = Variable<bool>(showTransferOut.value);
     }
+    if (showOnAddPage.present) {
+      map['show_on_add_page'] = Variable<bool>(showOnAddPage.value);
+    }
     if (includeInNetWorth.present) {
       map['include_in_net_worth'] = Variable<bool>(includeInNetWorth.value);
     }
@@ -1199,6 +1252,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
           ..write('envelopeMode: $envelopeMode, ')
           ..write('showTransferIn: $showTransferIn, ')
           ..write('showTransferOut: $showTransferOut, ')
+          ..write('showOnAddPage: $showOnAddPage, ')
           ..write('includeInNetWorth: $includeInNetWorth, ')
           ..write('currencyCode: $currencyCode, ')
           ..write('minimumBalance: $minimumBalance')
@@ -28678,6 +28732,7 @@ typedef $$AccountsTableCreateCompanionBuilder =
       Value<bool> envelopeMode,
       Value<bool> showTransferIn,
       Value<bool> showTransferOut,
+      Value<bool> showOnAddPage,
       Value<bool> includeInNetWorth,
       Value<String?> currencyCode,
       Value<Money?> minimumBalance,
@@ -28701,6 +28756,7 @@ typedef $$AccountsTableUpdateCompanionBuilder =
       Value<bool> envelopeMode,
       Value<bool> showTransferIn,
       Value<bool> showTransferOut,
+      Value<bool> showOnAddPage,
       Value<bool> includeInNetWorth,
       Value<String?> currencyCode,
       Value<Money?> minimumBalance,
@@ -29028,6 +29084,10 @@ class $$AccountsTableFilterComposer
   );
   ColumnFilters<bool> get showTransferOut => $composableBuilder(
     column: $table.showTransferOut,
+    builder: (column) => ColumnFilters(column),
+  );
+  ColumnFilters<bool> get showOnAddPage => $composableBuilder(
+    column: $table.showOnAddPage,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -29432,6 +29492,10 @@ class $$AccountsTableOrderingComposer
     column: $table.showTransferOut,
     builder: (column) => ColumnOrderings(column),
   );
+  ColumnOrderings<bool> get showOnAddPage => $composableBuilder(
+    column: $table.showOnAddPage,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<bool> get includeInNetWorth => $composableBuilder(
     column: $table.includeInNetWorth,
@@ -29540,6 +29604,10 @@ class $$AccountsTableAnnotationComposer
   );
   GeneratedColumn<bool> get showTransferOut => $composableBuilder(
     column: $table.showTransferOut,
+    builder: (column) => column,
+  );
+  GeneratedColumn<bool> get showOnAddPage => $composableBuilder(
+    column: $table.showOnAddPage,
     builder: (column) => column,
   );
 
@@ -29917,6 +29985,7 @@ class $$AccountsTableTableManager
                 Value<bool> envelopeMode = const Value.absent(),
                 Value<bool> showTransferIn = const Value.absent(),
                 Value<bool> showTransferOut = const Value.absent(),
+                Value<bool> showOnAddPage = const Value.absent(),
                 Value<bool> includeInNetWorth = const Value.absent(),
                 Value<String?> currencyCode = const Value.absent(),
                 Value<Money?> minimumBalance = const Value.absent(),
@@ -29938,6 +30007,7 @@ class $$AccountsTableTableManager
                 envelopeMode: envelopeMode,
                 showTransferIn: showTransferIn,
                 showTransferOut: showTransferOut,
+                showOnAddPage: showOnAddPage,
                 includeInNetWorth: includeInNetWorth,
                 currencyCode: currencyCode,
                 minimumBalance: minimumBalance,
@@ -29961,6 +30031,7 @@ class $$AccountsTableTableManager
                 Value<bool> envelopeMode = const Value.absent(),
                 Value<bool> showTransferIn = const Value.absent(),
                 Value<bool> showTransferOut = const Value.absent(),
+                Value<bool> showOnAddPage = const Value.absent(),
                 Value<bool> includeInNetWorth = const Value.absent(),
                 Value<String?> currencyCode = const Value.absent(),
                 Value<Money?> minimumBalance = const Value.absent(),
@@ -29982,6 +30053,7 @@ class $$AccountsTableTableManager
                 envelopeMode: envelopeMode,
                 showTransferIn: showTransferIn,
                 showTransferOut: showTransferOut,
+                showOnAddPage: showOnAddPage,
                 includeInNetWorth: includeInNetWorth,
                 currencyCode: currencyCode,
                 minimumBalance: minimumBalance,

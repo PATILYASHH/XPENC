@@ -301,6 +301,13 @@ class Accounts extends Table {
   BoolColumn get showTransferOut =>
       boolean().withDefault(const Constant(true))();
 
+  /// Whether this account has a card in Add Transaction's account strip.
+  /// Off = taken off the strip by holding it ("Remove from here") — still
+  /// pickable from the strip's "More" card, and put back from the strip's
+  /// edit mode. On by default.
+  BoolColumn get showOnAddPage =>
+      boolean().withDefault(const Constant(true))();
+
   /// Whether this account's balance counts toward Net Worth (dashboard,
   /// Accounts screen total, More screen subtitle — see
   /// `AppDatabase.watchNetWorth`). On by default; a user turns a specific

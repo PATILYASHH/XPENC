@@ -286,7 +286,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 97;
+  int get schemaVersion => 98;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -946,6 +946,10 @@ class AppDatabase extends _$AppDatabase {
       if (from < 97) {
         // A capture card read by Local AI.
         await _addColumnIfMissing(m, pendingTxns, pendingTxns.aiRead);
+      }
+      if (from < 98) {
+        // An account can be taken off Add Transaction's account strip.
+        await _addColumnIfMissing(m, accounts, accounts.showOnAddPage);
       }
     },
     beforeOpen: (details) async {
@@ -4193,6 +4197,13 @@ class AppDatabase extends _$AppDatabase {
           showTransferIn: Value(transferIn),
           showTransferOut: Value(transferOut),
         ),
+      );
+
+  /// Puts [id] on Add Transaction's account strip, or takes it off — see
+  /// [Accounts.showOnAddPage].
+  Future<void> setAccountShownOnAddPage(int id, bool shown) =>
+      (update(accounts)..where((a) => a.id.equals(id))).write(
+        AccountsCompanion(showOnAddPage: Value(shown)),
       );
 
   /// Flips whether [id]'s balance counts toward [watchNetWorth] — the toggle
