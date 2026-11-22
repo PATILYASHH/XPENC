@@ -313,6 +313,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   /// while it has focus.
   bool get _textFieldFocused => _noteFocus.hasFocus;
 
+  /// The user tucked the keypad away with its Done button to see more of the
+  /// form. Tapping any amount (see [_activateAmountCtrl]) brings it back.
+  bool _keypadHidden = false;
+
   /// Laid out for a PC (see [DesktopLayout]) as of the last build: the
   /// keyboard types the amount, and the on-screen keypad stays hidden.
   bool _desktop = false;
@@ -857,7 +861,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   /// this on tap.
   void _activateAmountCtrl(AmountKeypadController ctrl) {
     FocusScope.of(context).unfocus();
-    setState(() => _activeAmountCtrl = ctrl);
+    setState(() {
+      _activeAmountCtrl = ctrl;
+      _keypadHidden = false;
+    });
   }
 
   void _onKey(String k) => setState(() {
@@ -2617,6 +2624,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                   TextButton(onPressed: _save, child: const Tr('Save')),
                 ]
               : [
+                  _nctAction(theme),
                   _customIconAction(theme),
                   _tagsAction(theme),
                   _receiptAction(theme),
@@ -2722,12 +2730,43 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                         ),
                       ),
                       if (!_textFieldFocused && !_desktop)
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-                          child: AmountKeypadGrid(
-                            onDigit: _onKey,
-                            onBackspace: _onBackspace,
-                          ),
+                        AnimatedSize(
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeOutCubic,
+                          alignment: Alignment.topCenter,
+                          child: _keypadHidden
+                              ? const SizedBox(width: double.infinity)
+                              : Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    12,
+                                    0,
+                                    12,
+                                    8,
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      TextButton.icon(
+                                        key: const Key('keypadDone'),
+                                        style: TextButton.styleFrom(
+                                          visualDensity: VisualDensity.compact,
+                                        ),
+                                        onPressed: () => setState(
+                                          () => _keypadHidden = true,
+                                        ),
+                                        icon: const AppIcon(
+                                          Icons.keyboard_arrow_down_rounded,
+                                        ),
+                                        label: const Tr('Done'),
+                                      ),
+                                      AmountKeypadGrid(
+                                        onDigit: _onKey,
+                                        onBackspace: _onBackspace,
+                                      ),
+                                    ],
+                                  ),
+                                ),
                         ),
                     ],
                   ),
@@ -2891,8 +2930,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     }
     tiles.add(const SizedBox(height: 12));
     tiles.add(_noteCard());
-    tiles.add(const SizedBox(height: 12));
-    tiles.add(_nctToggleTile());
     return tiles;
   }
 
@@ -2973,25 +3010,37 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     );
   }
 
-  Widget _nctToggleTile() {
-    final theme = Theme.of(context);
-    return AppCard(
-      margin: EdgeInsets.zero,
-      clipBehavior: Clip.antiAlias,
-      child: AppSwitchListTile(
-        value: _isNct,
-        onChanged: (v) => setState(() => _isNct = v),
-        secondary: AppIcon(
-          _isNct ? Icons.visibility_off_rounded : Icons.visibility_off_outlined,
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-        title: const Tr('Hide from screenshots'),
-        subtitle: Text(
-          _isNct
-              ? tr('NCT · hidden in lists until held, captures blocked when open')
-              : tr('NCT · keep it out of screenshots and recordings'),
-        ),
+  /// AppBar toggle, next to the icon/emoji button — "Hide from screenshots"
+  /// (NCT). An open eye while the transaction is visible, a crossed-out,
+  /// highlighted one once it's hidden; a snackbar says what the tap did.
+  Widget _nctAction(ThemeData theme) {
+    return IconButton(
+      key: const Key('nctToggle'),
+      isSelected: _isNct,
+      icon: AppIcon(
+        _isNct ? Icons.visibility_off_rounded : Icons.visibility_outlined,
+        color: _isNct
+            ? theme.colorScheme.primary
+            : theme.colorScheme.onSurfaceVariant,
       ),
+      tooltip: tr('Hide from screenshots'),
+      onPressed: () {
+        setState(() => _isNct = !_isNct);
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              duration: const Duration(seconds: 2),
+              content: Text(
+                _isNct
+                    ? tr(
+                        'NCT · hidden in lists until held, captures blocked when open',
+                      )
+                    : tr('NCT · keep it out of screenshots and recordings'),
+              ),
+            ),
+          );
+      },
     );
   }
 
