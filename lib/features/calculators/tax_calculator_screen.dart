@@ -11,7 +11,7 @@ import '../../core/l10n/l10n.dart';
 
 /// Income tax by country. India compares its two regimes; every other
 /// country renders a [TaxSummaryView]. Opens on the country matching the
-/// app's currency.
+/// app's currency; India is only on the list for someone in rupees.
 class TaxCalculatorScreen extends StatefulWidget {
   const TaxCalculatorScreen({super.key});
 
@@ -20,6 +20,7 @@ class TaxCalculatorScreen extends StatefulWidget {
 }
 
 class _TaxCalculatorScreenState extends State<TaxCalculatorScreen> {
+  late final _countries = TaxCountry.offeredFor(MoneyFormat.currency.code);
   late var _country = TaxCountry.forCurrency(MoneyFormat.currency.code);
 
   @override
@@ -38,7 +39,7 @@ class _TaxCalculatorScreenState extends State<TaxCalculatorScreen> {
             border: OutlineInputBorder(),
           ),
           items: [
-            for (final c in TaxCountry.values)
+            for (final c in _countries)
               DropdownMenuItem(value: c, child: Text('${c.flag}  ${c.label}')),
           ],
           onChanged: (c) {

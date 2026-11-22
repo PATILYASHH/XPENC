@@ -217,4 +217,32 @@ void main() {
       );
     });
   });
+
+  group('the edit gear', () {
+    test('sits in the top corner on the ➕ side, under the status bar', () {
+      expect(
+        holdMenuGearCentre(400, 30, rightSide: true),
+        const Offset(356, 74),
+      );
+      expect(
+        holdMenuGearCentre(400, 30, rightSide: false),
+        const Offset(44, 74),
+      );
+    });
+
+    test('is hovered anywhere near it, and nowhere else', () {
+      const gear = Offset(356, 74);
+      expect(holdMenuGearHovered(gear, gear), isTrue);
+      expect(holdMenuGearHovered(gear + const Offset(-40, 40), gear), isTrue);
+      expect(holdMenuGearHovered(gear + const Offset(0, 90), gear), isFalse);
+    });
+
+    test('is clear of a full Glass fan', () {
+      const anchor = Offset(356, 740);
+      final gear = holdMenuGearCentre(400, 30, rightSide: true);
+      for (final c in glassFanCenters(anchor, 8)) {
+        expect(holdMenuGearHovered(c, gear), isFalse);
+      }
+    });
+  });
 }

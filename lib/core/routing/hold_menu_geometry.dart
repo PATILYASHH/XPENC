@@ -115,3 +115,20 @@ int glassFanHoveredIndex({
   }
   return best;
 }
+
+// ── The ⚙ in the corner: edit the menu in place ──────────────────────────
+
+/// Where the hold menu's ⚙ (edit) sits: the top corner on the ➕'s side,
+/// just under the status bar — clear of every bubble, and one straight
+/// slide up from the ➕.
+Offset holdMenuGearCentre(
+  double screenWidth,
+  double topInset, {
+  required bool rightSide,
+  double inset = 44,
+}) => Offset(rightSide ? screenWidth - inset : inset, topInset + inset);
+
+/// Whether the thumb is on the ⚙ — generous, since it's reached by a long
+/// slide and is never in the way of anything else.
+bool holdMenuGearHovered(Offset pointer, Offset gear, {double radius = 64}) =>
+    (pointer - gear).distance < radius;

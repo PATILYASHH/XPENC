@@ -29,7 +29,7 @@ class ModeModule {
     ),
     ModeModule('stats', 'Stats', Icons.insights_outlined),
     ModeModule('reports', 'Account Reports', Icons.account_balance_outlined),
-    ModeModule('calculators', 'Calculators', Icons.calculate_outlined),
+    ModeModule('calculators', 'Calculations', Icons.calculate_outlined),
     ModeModule('data', 'Download & Backup', Icons.backup_outlined),
     ModeModule('setup', 'Categories & Tags', Icons.category_outlined),
   ];

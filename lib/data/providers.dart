@@ -13,6 +13,7 @@ import '../core/routing/quick_actions.dart';
 import '../core/security/unlock_method.dart';
 import '../core/theme/font_options.dart';
 import '../core/theme/theme_preset.dart';
+import '../features/calculators/calculator_kind.dart' show indiaToolsFor;
 import '../features/data_export/backup_password.dart';
 import '../features/data_export/backup_service.dart';
 import '../features/message_capture/capture_service.dart';
@@ -1194,6 +1195,12 @@ final currencyProvider = Provider<Currency>((ref) {
   return currencyForCode(code);
 });
 
+/// Whether India-only tools (India's income tax, GST, PPF) are offered —
+/// the parent currency is ₹. See `indiaToolsFor`.
+final indiaToolsProvider = Provider<bool>((ref) {
+  return indiaToolsFor(ref.watch(currencyProvider).code);
+});
+
 /// Whether to draw the currency symbol. Defaults to shown while settings load.
 final showCurrencySymbolProvider = Provider<bool>((ref) {
   return ref.watch(settingsProvider).valueOrNull?.showCurrencySymbol ?? true;
@@ -1445,9 +1452,15 @@ final holdMenuActionsProvider = Provider<List<QuickActionSpec?>>((ref) {
   final templates =
       ref.watch(transactionTemplatesProvider).valueOrNull ?? const [];
   final mode = ref.watch(appModeProvider);
+  final india = ref.watch(indiaToolsProvider);
   return [
     for (final id in ref.watch(holdMenuSlotsProvider))
-      resolveQuickAction(id, templates: templates, mode: mode),
+      resolveQuickAction(
+        id,
+        templates: templates,
+        mode: mode,
+        indiaTools: india,
+      ),
   ];
 });
 

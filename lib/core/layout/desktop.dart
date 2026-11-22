@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../data/mode_providers.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart' show AppMode;
-import '../../features/calculators/calculator_kind.dart';
 import '../../features/modes/mode_modules.dart';
 import '../branding/app_info.dart';
 import '../branding/brand_mark.dart';
@@ -318,10 +317,14 @@ List<_Section> _sections(WidgetRef ref) {
         '/more/account-reports',
         module: 'reports',
       ),
-    ]),
-    _Section(tr('Calculators'), [
-      for (final kind in CalculatorKind.values)
-        _Destination(kind.icon, kind.label, kind.route, module: 'calculators'),
+      _Destination(
+        Icons.calculate_outlined,
+        tr('Calculations'),
+        '/more/calculations',
+        // A calculator open on top still lights its hub.
+        also: ['/more/calculators'],
+        module: 'calculators',
+      ),
     ]),
     _Section(tr('Data'), [
       _Destination(
@@ -428,7 +431,7 @@ final _sectionsRoutes = <String>{
   '/more/tags',
   '/more/whats-new',
   '/more/guide',
-  for (final kind in CalculatorKind.values) kind.route,
+  '/more/calculations',
 };
 
 class _Sidebar extends ConsumerWidget {

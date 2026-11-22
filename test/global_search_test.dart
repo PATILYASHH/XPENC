@@ -52,6 +52,20 @@ void main() {
       expect(find('search'), isNot(contains('/search')));
     });
 
+    test('calculators find as "calculator"; India-only ones only in ₹', () {
+      List<String> find(String q, {required bool india}) => [
+        for (final p in searchPages(indiaTools: india))
+          if (p.matches(searchTerms(q))) p.route,
+      ];
+      expect(
+        find('calculator', india: true),
+        containsAll(['/more/calculations', '/more/calculators/gst']),
+      );
+      expect(find('gst', india: false), isEmpty);
+      expect(find('ppf', india: false), isEmpty);
+      expect(find('loan emi', india: false), ['/more/calculators/loan']);
+    });
+
     test('Search is a pickable quick action', () {
       final spec = resolveQuickAction(
         searchQuickActionId,

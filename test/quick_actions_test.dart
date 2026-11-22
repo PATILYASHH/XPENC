@@ -131,4 +131,100 @@ void main() {
       );
     });
   });
+
+  group('India-only calculators', () {
+    QuickActionSpec? resolve(String id, {required bool india}) =>
+        resolveQuickAction(
+          id,
+          templates: const [],
+          mode: AppMode.pro,
+          indiaTools: india,
+        );
+
+    test('GST and PPF are empty slots outside ₹, the rest stay', () {
+      expect(resolve('calc-gst', india: false), isNull);
+      expect(resolve('calc-ppf', india: false), isNull);
+      expect(resolve('calc-gst', india: true)?.route, '/more/calculators/gst');
+      expect(resolve('calc-loan', india: false), isNotNull);
+      expect(resolve('calc-incomeTax', india: false), isNotNull);
+    });
+
+    test('the Calculations hub is a quick action', () {
+      expect(
+        resolve('calculations', india: false)?.route,
+        '/more/calculations',
+      );
+    });
+  });
+
+  group('editing in place', () {
+    test('placing an action in a spot it already holds changes nothing', () {
+      final slots = ['stats', '', 'calendar', '', '', '', '', ''];
+      expect(placeQuickAction(slots, 0, 'stats'), slots);
+    });
+
+    test('placing an action that sits elsewhere swaps the two', () {
+      final slots = ['stats', '', 'calendar', '', '', '', '', ''];
+      expect(placeQuickAction(slots, 0, 'calendar'), [
+        'calendar',
+        '',
+        'stats',
+        '',
+        '',
+        '',
+        '',
+        '',
+      ]);
+      // Into a free spot it's a move: the old spot is left free.
+      expect(placeQuickAction(slots, 5, 'stats'), [
+        '',
+        '',
+        'calendar',
+        '',
+        '',
+        'stats',
+        '',
+        '',
+      ]);
+      // The input is never changed.
+      expect(slots, ['stats', '', 'calendar', '', '', '', '', '']);
+    });
+
+    test('a new action just fills the spot', () {
+      expect(placeQuickAction(List.filled(8, ''), 3, 'payees'), [
+        '',
+        '',
+        '',
+        'payees',
+        '',
+        '',
+        '',
+        '',
+      ]);
+    });
+
+    test('Glass shows every filled spot and the first free one', () {
+      final f = false, t = true;
+      expect(glassEditableSlots([t, f, t, f, f, f, f, f]), [0, 1, 2]);
+      expect(glassEditableSlots([f, f, f, f, f, f, f, f]), [0]);
+      expect(glassEditableSlots(List.filled(8, true)), [
+        0, 1, 2, 3, 4, 5, 6, 7, //
+      ]);
+    });
+
+    test('Reset goes back to the column default', () {
+      expect(parseHoldMenuSlots(defaultHoldMenuSlotsRaw), [
+        'budgets', 'stats', '', '', '', '', '', 'calendar', //
+      ]);
+    });
+  });
+
+  test('every catalog action can be saved into the menu', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    // Calculator ids carry the enum name, e.g. `calc-incomeTax`.
+    for (final spec in quickActionCatalog) {
+      await db.setHoldMenuSlots([spec.id, '', '', '', '', '', '', '']);
+    }
+  });
 }

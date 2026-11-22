@@ -77,7 +77,9 @@ class _GlobalSearchScreenState extends ConsumerState<GlobalSearchScreen> {
     final accountMap = ref.watch(accountMapProvider);
     final txns = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
 
-    final pages = searchPages().where((p) => p.matches(terms)).toList();
+    final pages = searchPages(
+      indiaTools: ref.watch(indiaToolsProvider),
+    ).where((p) => p.matches(terms)).toList();
     final transactions = searchTransactions(
       _query,
       txns,

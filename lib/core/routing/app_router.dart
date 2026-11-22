@@ -23,6 +23,7 @@ import '../../features/budgets/ready_to_assign_screen.dart';
 import '../../features/calendar/calendar_screen.dart';
 import '../../features/calculators/calculator_kind.dart';
 import '../../features/calculators/calculator_screen.dart';
+import '../../features/calculators/calculations_screen.dart';
 import '../../features/categories/archived_categories_screen.dart';
 import '../../features/categories/categories_screen.dart';
 import '../../features/categories/category_detail_screen.dart';
@@ -474,6 +475,13 @@ final appRouter = GoRouter(
                             AccountReportModuleScreen(module: module),
                       ),
                   ],
+                ),
+                // The Calculations hub; each calculator keeps its own
+                // route (goal shortcuts and saved quick actions open them).
+                GoRoute(
+                  path: 'calculations',
+                  parentNavigatorKey: _rootKey,
+                  builder: (_, _) => const CalculationsScreen(),
                 ),
                 for (final kind in CalculatorKind.values)
                   GoRoute(

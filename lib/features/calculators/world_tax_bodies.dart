@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../core/world_tax.dart';
+import 'calculator_kind.dart' show indiaToolsFor;
 import 'calculator_widgets.dart';
 import '../../core/l10n/l10n.dart';
 
@@ -27,11 +28,19 @@ enum TaxCountry {
 
   String get inputPrefix => '${currency.symbol} ';
 
-  /// The country matching the app's currency, India otherwise.
+  /// The country matching the app's currency; any other currency isn't ₹,
+  /// so India isn't offered (see [offeredFor]) and the US is the start.
   static TaxCountry forCurrency(String code) => values.firstWhere(
     (c) => c.currencyCode == code,
-    orElse: () => TaxCountry.india,
+    orElse: () => TaxCountry.us,
   );
+
+  /// The countries to offer for the app's currency: India's regimes only
+  /// to someone in rupees (see `indiaToolsFor`).
+  static List<TaxCountry> offeredFor(String currencyCode) => [
+    for (final c in values)
+      if (c != india || indiaToolsFor(currencyCode)) c,
+  ];
 
   String get footnote => switch (this) {
     TaxCountry.india =>

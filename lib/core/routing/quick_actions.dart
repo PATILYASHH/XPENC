@@ -51,6 +51,7 @@ class QuickActionSpec {
     required this.route,
     String group = 'Modules',
     this.hiddenInBasic = false,
+    this.indiaOnly = false,
   }) : _label = label, _group = group;
 
   final String id;
@@ -71,6 +72,11 @@ class QuickActionSpec {
   /// while Basic is active (the stored id is kept, so switching back
   /// restores it), mirroring `basicModeHiddenCatalogIds`.
   final bool hiddenInBasic;
+
+  /// India-only (GST, PPF): a slot pointing there resolves to empty where
+  /// India's tools aren't offered — see `indiaToolsFor`. The stored id is
+  /// kept, as with [hiddenInBasic].
+  final bool indiaOnly;
 }
 
 /// The global search (GitHub #209) as a quick action — it is also what a
@@ -164,6 +170,12 @@ final List<QuickActionSpec> quickActionCatalog = [
     route: '/more/stats',
   ),
   const QuickActionSpec(
+    id: 'calculations',
+    label: 'Calculations',
+    icon: Icons.calculate_rounded,
+    route: '/more/calculations',
+  ),
+  const QuickActionSpec(
     id: 'account-reports',
     label: 'Account Reports',
     icon: Icons.account_balance_rounded,
@@ -205,7 +217,8 @@ final List<QuickActionSpec> quickActionCatalog = [
       label: kind.label,
       icon: kind.icon,
       route: kind.route,
-      group: 'Calculators',
+      group: 'Calculations',
+      indiaOnly: kind.indiaOnly,
     ),
 ];
 
@@ -216,11 +229,12 @@ final Map<String, QuickActionSpec> _catalogById = {
 /// Resolves one stored slot id to what the menu should show, or `null` for
 /// an empty slot — including one whose id no longer resolves (a deleted
 /// template, an unknown id from a future/older build) or is hidden in the
-/// current [mode].
+/// current [mode], or is India-only and [indiaTools] is off.
 QuickActionSpec? resolveQuickAction(
   String id, {
   required List<TransactionTemplateRow> templates,
   required AppMode mode,
+  bool indiaTools = true,
 }) {
   if (id.isEmpty) return null;
   if (id.startsWith(quickActionTemplatePrefix)) {
@@ -243,6 +257,7 @@ QuickActionSpec? resolveQuickAction(
   final spec = _catalogById[id];
   if (spec == null) return null;
   if (spec.hiddenInBasic && mode == AppMode.basic) return null;
+  if (spec.indiaOnly && !indiaTools) return null;
   return spec;
 }
 
@@ -262,4 +277,30 @@ List<String> parseHoldMenuSlots(String raw) {
     return slots;
   }
   return List.filled(holdMenuSlotCount, '');
+}
+
+/// What Reset puts back — the value `Settings.holdMenuSlots` defaults to.
+const defaultHoldMenuSlotsRaw = 'calendar,budgets,stats';
+
+/// Puts [id] in slot [index]. If it already sits in another slot, the two
+/// trade places, so an action is never in the menu twice — the bottom-bar
+/// editor's rule.
+List<String> placeQuickAction(List<String> slots, int index, String id) {
+  final next = List.of(slots);
+  final from = next.indexOf(id);
+  if (from == index) return next;
+  if (from != -1) next[from] = next[index];
+  next[index] = id;
+  return next;
+}
+
+/// The slots Glass's corner fan shows while it's being edited, in fan
+/// order: every filled one ([filled] is index-aligned with the 8 slots) and
+/// the first free one, as the "+" to add with — none once all are taken.
+List<int> glassEditableSlots(List<bool> filled) {
+  final firstFree = filled.indexOf(false);
+  return [
+    for (var i = 0; i < filled.length; i++)
+      if (filled[i] || i == firstFree) i,
+  ];
 }

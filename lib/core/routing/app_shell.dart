@@ -39,6 +39,7 @@ import '../../core/l10n/l10n.dart';
 
 part 'glass_chrome.dart';
 part 'nav_editor.dart';
+part 'quick_actions_editor.dart';
 
 /// `Dashboard · slotLeft · ➕ · slotRight · More`
 ///
@@ -522,6 +523,10 @@ class _AddButtonState extends State<_AddButton> {
   List<Offset> _fanCentres = const [];
   final _fanKey = GlobalKey<_GlassQuickActionsState>();
 
+  /// The ⚙ in the top corner — let go on it to edit the menu in place (see
+  /// `quick_actions_editor.dart`).
+  Offset _gear = Offset.zero;
+
   /// Holding ➕ with no radial menu to show — it's off, or every slot is
   /// empty — opens Search everything instead (GitHub #209).
   bool get _holdOpensSearch =>
@@ -537,6 +542,13 @@ class _AddButtonState extends State<_AddButton> {
     _origin = details.globalPosition;
     _hoveredIndex.value = -1;
     HapticFeedback.mediumImpact();
+    // The whole screen's metrics: the bar's own MediaQuery has no top inset.
+    final screen = MediaQueryData.fromView(View.of(context));
+    _gear = holdMenuGearCentre(
+      screen.size.width,
+      screen.padding.top,
+      rightSide: _origin.dx >= screen.size.width / 2,
+    );
     if (widget.glass) {
       final box = context.findRenderObject() as RenderBox;
       final anchor = box.localToGlobal(box.size.center(Offset.zero));
@@ -551,6 +563,7 @@ class _AddButtonState extends State<_AddButton> {
             centres: _fanCentres,
             actions: _fanActions,
             hovered: _hoveredIndex,
+            gear: _gear,
           ),
         ),
       );
@@ -562,6 +575,7 @@ class _AddButtonState extends State<_AddButton> {
         child: _HoldMenuOverlay(
           actions: widget.actions,
           hoveredIndex: _hoveredIndex,
+          gear: _gear,
         ),
       ),
     );
@@ -570,6 +584,13 @@ class _AddButtonState extends State<_AddButton> {
 
   void _onLongPressMoveUpdate(LongPressMoveUpdateDetails details) {
     if (_overlayEntry == null) return;
+    if (holdMenuGearHovered(details.globalPosition, _gear)) {
+      if (_hoveredIndex.value != _holdMenuGearIndex) {
+        _hoveredIndex.value = _holdMenuGearIndex;
+        HapticFeedback.selectionClick();
+      }
+      return;
+    }
     if (widget.glass) {
       final nearest = glassFanHoveredIndex(
         anchor: _origin,
@@ -607,6 +628,10 @@ class _AddButtonState extends State<_AddButton> {
     _overlayEntry?.remove();
     _overlayEntry = null;
     _hoveredIndex.value = -1;
+    if (commit && index == _holdMenuGearIndex) {
+      _openEditor();
+      return;
+    }
     if (!commit || index < 0 || index >= widget.actions.length) return;
     final action = widget.actions[index];
     if (action == null) return;
@@ -621,6 +646,14 @@ class _AddButtonState extends State<_AddButton> {
     if (entry == null) return;
     _overlayEntry = null;
     final index = _hoveredIndex.value;
+    if (commit && index == _holdMenuGearIndex) {
+      // No fold-away: the editor opens on the fan exactly as it stands,
+      // pushed in the same frame the fan goes, so nothing flickers.
+      _openEditor();
+      entry.remove();
+      _hoveredIndex.value = -1;
+      return;
+    }
     final chosen = commit && index >= 0 && index < _fanActions.length;
     if (chosen) HapticFeedback.mediumImpact();
     await _fanKey.currentState?.close(selected: chosen ? index : null);
@@ -635,6 +668,11 @@ class _AddButtonState extends State<_AddButton> {
       icon: action.icon,
     );
     context.push(action.route);
+  }
+
+  void _openEditor() {
+    HapticFeedback.mediumImpact();
+    _openQuickActionsEditor(context, glass: widget.glass, anchor: _origin);
   }
 
   @override
@@ -751,6 +789,7 @@ class _GlassQuickActions extends StatefulWidget {
     required this.centres,
     required this.actions,
     required this.hovered,
+    required this.gear,
     super.key,
   });
 
@@ -758,6 +797,9 @@ class _GlassQuickActions extends StatefulWidget {
   final List<Offset> centres;
   final List<QuickActionSpec> actions;
   final ValueListenable<int> hovered;
+
+  /// Where the ⚙ (edit in place) sits.
+  final Offset gear;
 
   @override
   State<_GlassQuickActions> createState() => _GlassQuickActionsState();
@@ -865,6 +907,12 @@ class _GlassQuickActionsState extends State<_GlassQuickActions>
               ),
               for (var i = 0; i < widget.centres.length; i++)
                 _bubbleAt(context, i, hovered == i),
+              _HoldMenuGear(
+                centre: widget.gear,
+                open: open,
+                hovered: hovered == _holdMenuGearIndex,
+                glass: true,
+              ),
               _labelFor(context, hovered),
               _cancelDisc(context, open, hovered == -1),
             ],
@@ -940,10 +988,16 @@ class _GlassQuickActionsState extends State<_GlassQuickActions>
     final theme = Theme.of(context);
     final size = MediaQuery.sizeOf(context);
     final open = _open.value.clamp(0.0, 1.0);
-    final text = hovered >= 0
+    final onGear = hovered == _holdMenuGearIndex;
+    final text = onGear
+        ? tr('Let go to edit these')
+        : hovered >= 0
         ? widget.actions[hovered].label
         : tr('Slide to an action · release on × to cancel');
-    final at = hovered >= 0
+    final at = onGear
+        // Under the ⚙, clear of the finger on it.
+        ? widget.gear + const Offset(0, _HoldMenuGear.size / 2 + 34)
+        : hovered >= 0
         ? widget.centres[hovered] - const Offset(0, _bubble * 0.95)
         : widget.anchor - const Offset(140, 270);
     const width = 220.0;
@@ -977,7 +1031,7 @@ class _GlassQuickActionsState extends State<_GlassQuickActions>
                   textAlign: TextAlign.center,
                   style: theme.textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.w700,
-                    fontSize: hovered >= 0 ? 15 : 12.5,
+                    fontSize: hovered >= 0 || onGear ? 15 : 12.5,
                   ),
                 ),
               ),
@@ -1028,10 +1082,17 @@ class _GlassQuickActionsState extends State<_GlassQuickActions>
 /// itself (Flutter keeps routing a captured pointer's moves to whichever
 /// recognizer won it, regardless of what's drawn on top).
 class _HoldMenuOverlay extends StatelessWidget {
-  const _HoldMenuOverlay({required this.actions, required this.hoveredIndex});
+  const _HoldMenuOverlay({
+    required this.actions,
+    required this.hoveredIndex,
+    required this.gear,
+  });
 
   final List<QuickActionSpec?> actions;
   final ValueListenable<int> hoveredIndex;
+
+  /// Where the ⚙ (edit in place) sits.
+  final Offset gear;
 
   static const _ballSize = 56.0;
   static const _hoveredSize = 66.0;
@@ -1056,6 +1117,12 @@ class _HoldMenuOverlay extends StatelessWidget {
                 builder: (context, hovered, _) => Stack(
                   clipBehavior: Clip.none,
                   children: [
+                    _HoldMenuGear(
+                      centre: gear,
+                      open: 1,
+                      hovered: hovered == _holdMenuGearIndex,
+                      glass: false,
+                    ),
                     _label(context, center, radius, hovered),
                     _cancelBall(context, center, hovered == -1),
                     for (var i = 0; i < actions.length; i++)
@@ -1085,7 +1152,11 @@ class _HoldMenuOverlay extends StatelessWidget {
   Widget _label(BuildContext context, Offset center, double radius, int i) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final text = i == -1 ? tr('Release to cancel') : actions[i]!.label;
+    final text = i == _holdMenuGearIndex
+        ? tr('Let go to edit these')
+        : i < 0
+        ? tr('Release to cancel')
+        : actions[i]!.label;
     return Positioned(
       left: 16,
       right: 16,

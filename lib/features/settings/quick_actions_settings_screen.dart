@@ -72,7 +72,9 @@ class QuickActionsSettingsScreen extends ConsumerWidget {
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     child: Tr(
                       'Tap a circle to choose what it opens. The ✕ in the '
-                      'middle is always Cancel.',
+                      'middle is always Cancel. Or hold ➕, slide up to ⚙ Edit '
+                      'in the top corner and let go to change them right '
+                      'there.',
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
@@ -286,6 +288,7 @@ class _QuickActionPickerSheet extends ConsumerWidget {
     final templates =
         ref.watch(transactionTemplatesProvider).valueOrNull ?? const [];
     final basic = ref.watch(appModeProvider) == AppMode.basic;
+    final india = ref.watch(indiaToolsProvider);
     final current = slots[index];
 
     String? usedBy(String id) {
@@ -325,6 +328,7 @@ class _QuickActionPickerSheet extends ConsumerWidget {
     final groups = <String, List<QuickActionSpec>>{};
     for (final spec in quickActionCatalog) {
       if (basic && spec.hiddenInBasic) continue;
+      if (spec.indiaOnly && !india) continue;
       (groups[spec.group] ??= []).add(spec);
     }
 

@@ -310,15 +310,16 @@ const guideSections = <GuideSection>[
     ),
     GuideEntry(
       icon: Icons.calculate_outlined,
-      title: 'Calculators (Beta)',
+      title: 'Calculations (Beta)',
       whatItDoes:
-          'FD & RD, Loan EMI (year-wise schedule, prepayment savings), SIP '
-          '& Lumpsum with yearly step-up, PPF, GST, and Income Tax for '
-          'India (new vs old regime), the US, the UK and Germany.',
+          'Every calculator on one page: FD & RD, Loan EMI (year-wise '
+          'schedule, prepayment savings), SIP & Lumpsum with yearly '
+          'step-up, and Income Tax for the US, the UK and Germany. In ₹, '
+          'also PPF, GST and India’s income tax (new vs old regime).',
       howToUse:
           'Pick a calculator and type — results update live. For Income '
           'Tax, choose the country first. Nothing is saved to your ledger.',
-      location: 'More → Calculators',
+      location: 'More → Calculations',
     ),
   ]),
   GuideSection('Insights', [

@@ -10,7 +10,6 @@ import '../../core/widgets/beta_badge.dart';
 import '../../data/mode_providers.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart' show AppMode, MoreScreenViewMode;
-import '../calculators/calculator_kind.dart';
 import '../modes/mode_modules.dart';
 import '../modes/mode_widgets.dart';
 import '../../core/widgets/nav_bar_inset.dart';
@@ -161,16 +160,15 @@ class MoreScreen extends ConsumerWidget {
           subtitle: tr('Per-account breakdown'),
           module: 'reports',
         ),
-      ]),
-      _Group(tr('Calculators'), beta: true, [
-        for (final kind in CalculatorKind.values)
-          _Item(
-            kind.icon,
-            kind.label,
-            route: kind.route,
-            subtitle: kind.subtitle,
-            module: 'calculators',
-          ),
+        _Item(
+          Icons.calculate_outlined,
+          tr('Calculations'),
+          route: '/more/calculations',
+          subtitle: ref.watch(indiaToolsProvider)
+              ? tr('Loan EMI, FD & RD, SIP, PPF, GST, income tax')
+              : tr('Loan EMI, FD & RD, SIP, income tax'),
+          module: 'calculators',
+        ),
       ]),
       _Group(tr('Data'), [
         _Item(

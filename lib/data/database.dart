@@ -7642,7 +7642,8 @@ class AppDatabase extends _$AppDatabase {
     if (filled.toSet().length != filled.length) {
       throw ArgumentError(tr('The same quick action is in two slots.'));
     }
-    final valid = RegExp(r'^([a-z0-9-]+|template:\d+)$');
+    // Mixed case: calculator ids carry the enum name (`calc-incomeTax`).
+    final valid = RegExp(r'^([a-zA-Z0-9-]+|template:\d+)$');
     if (filled.any((id) => !valid.hasMatch(id))) {
       throw ArgumentError(tr('Unknown hold-menu item.'));
     }

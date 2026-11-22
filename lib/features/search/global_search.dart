@@ -111,15 +111,20 @@ class SearchPage {
 /// Every page the search knows: the quick-action catalogue (modules and
 /// calculators — one list, so a new module shows up in both) plus the
 /// settings pages, each with what it holds as keywords. Pages a platform
-/// doesn't have are left out, as in Settings.
-List<SearchPage> searchPages() => [
+/// doesn't have are left out, as in Settings — and India-only calculators
+/// unless [indiaTools].
+List<SearchPage> searchPages({bool indiaTools = true}) => [
   for (final spec in quickActionCatalog)
-    if (spec.id != searchQuickActionId)
+    if (spec.id != searchQuickActionId && (indiaTools || !spec.indiaOnly))
       SearchPage(
         label: spec.englishLabel,
         icon: spec.icon,
         route: spec.route,
-        keywords: [spec.englishGroup],
+        keywords: [
+          spec.englishGroup,
+          if (spec.englishGroup == 'Calculations' || spec.id == 'calculations')
+            'Calculator',
+        ],
       ),
   const SearchPage(
     label: 'Language',
