@@ -67,6 +67,9 @@ class _PressScaleState extends State<PressScale> {
   Offset _origin = Offset.zero;
 
   void _set(bool down) {
+    // The press can end after the card is gone — holding one can swap the
+    // whole page out (the Dashboard's editor) before the finger lifts.
+    if (!mounted) return;
     if (_down != down) setState(() => _down = down);
   }
 

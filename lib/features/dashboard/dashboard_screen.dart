@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -21,7 +22,6 @@ import '../../data/database.dart';
 import '../../data/mode_providers.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
-import '../accounts/arrange_accounts_sheet.dart';
 import '../budgets/ready_to_assign_screen.dart';
 import '../categories/category_detail_screen.dart';
 import '../message_capture/review_inbox_screen.dart';
@@ -29,6 +29,7 @@ import '../persons/person_avatar.dart';
 import '../../core/routing/quick_actions.dart';
 import '../reports/chart_widgets.dart';
 import '../reports/stats_modules.dart';
+import 'dashboard_editor.dart';
 import 'dashboard_layout.dart';
 import 'sparkline.dart';
 import '../../core/widgets/nav_bar_inset.dart';
@@ -38,9 +39,13 @@ import '../../core/l10n/l10n.dart';
 
 /// The graphical glance view: net worth, this-month income vs expense,
 /// account balances, budgets, spend breakdown and recent activity — whichever
-/// widgets the user has on it, in their order (Settings ▸ Customize
-/// dashboard; see [dashboardLayoutProvider]).
-class DashboardScreen extends ConsumerWidget {
+/// widgets the user has on it, in their order, each with its own options
+/// (see [dashboardLayoutProvider], [dashboardOptionsProvider]).
+///
+/// Holding any widget for a second turns the Dashboard editable in place
+/// ([DashboardEditView]): drag to reorder, add, remove, and pick each
+/// widget's options. Settings ▸ Customize dashboard edits the same.
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   static Widget _section(DashboardWidget widget) => switch (widget) {
@@ -63,10 +68,52 @@ class DashboardScreen extends ConsumerWidget {
   };
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  bool _editing = false;
+  bool _openAdd = false;
+
+  void _startEditing({bool openAdd = false}) {
+    if (_editing) return;
+    HapticFeedback.heavyImpact();
+    setState(() {
+      _editing = true;
+      _openAdd = openAdd;
+    });
+  }
+
+  void _stopEditing() {
+    HapticFeedback.selectionClick();
+    setState(() => _editing = false);
+  }
+
+  /// A widget as the Dashboard shows it, holdable to start editing.
+  Widget _holdable(DashboardWidget w, int i) => Reveal(
+    key: ValueKey(w),
+    index: i,
+    child: DashboardHold(
+      onHold: _startEditing,
+      child: DashboardScreen._section(w),
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
     // A mode (a trip) that's the focus has a home of its own.
     final focused = ref.watch(focusedModeProvider);
     if (focused != null) return ModeHome(mode: focused);
+
+    if (_editing) {
+      return Scaffold(
+        body: DashboardEditView(
+          sectionBuilder: DashboardScreen._section,
+          onDone: _stopEditing,
+          openAddOnStart: _openAdd,
+        ),
+      );
+    }
 
     // Until settings land there's no telling which layout is theirs; drawing
     // the built-in one meanwhile would flash it at anyone who changed it.
@@ -76,8 +123,15 @@ class DashboardScreen extends ConsumerWidget {
         for (final s in ref.watch(dashboardLayoutProvider))
           if (s.visible) s.widget,
     ];
+    final footer = [
+      if (ready && shown.isEmpty)
+        _EmptyDashboard(onAdd: () => _startEditing(openAdd: true))
+      else if (ready)
+        _CustomizeLink(onTap: _startEditing),
+      const SizedBox(height: 32),
+    ];
     if (DesktopLayout.of(context)) {
-      return _DesktopDashboard(shown: shown, ready: ready);
+      return _DesktopDashboard(shown: shown, item: _holdable, footer: footer);
     }
 
     return Scaffold(
@@ -88,17 +142,8 @@ class DashboardScreen extends ConsumerWidget {
           SliverList.list(
             children: [
               // Keyed by widget, so a reordered section keeps its state.
-              for (var i = 0; i < shown.length; i++)
-                Reveal(
-                  key: ValueKey(shown[i]),
-                  index: i,
-                  child: _section(shown[i]),
-                ),
-              if (ready && shown.isEmpty)
-                const _EmptyDashboard()
-              else if (ready)
-                const _CustomizeLink(),
-              const SizedBox(height: 32),
+              for (var i = 0; i < shown.length; i++) _holdable(shown[i], i),
+              ...footer,
             ],
           ),
           const NavBarInsetSliver(),
@@ -112,10 +157,15 @@ class DashboardScreen extends ConsumerWidget {
 /// every other widget in two even columns ([Masonry]) — still in the user's
 /// own order, each taking whichever side is shorter.
 class _DesktopDashboard extends StatelessWidget {
-  const _DesktopDashboard({required this.shown, required this.ready});
+  const _DesktopDashboard({
+    required this.shown,
+    required this.item,
+    required this.footer,
+  });
 
   final List<DashboardWidget> shown;
-  final bool ready;
+  final Widget Function(DashboardWidget widget, int index) item;
+  final List<Widget> footer;
 
   @override
   Widget build(BuildContext context) {
@@ -128,8 +178,7 @@ class _DesktopDashboard extends StatelessWidget {
       for (final w in shown)
         if (!hero.contains(w)) w,
     ];
-    Widget reveal(DashboardWidget w, int i) =>
-        Reveal(key: ValueKey(w), index: i, child: DashboardScreen._section(w));
+    final reveal = item;
 
     return Scaffold(
       body: CustomScrollView(
@@ -156,11 +205,7 @@ class _DesktopDashboard extends StatelessWidget {
                       reveal(rest[i], hero.length + i),
                   ],
                 ),
-                if (ready && shown.isEmpty)
-                  const _EmptyDashboard()
-                else if (ready)
-                  const _CustomizeLink(),
-                const SizedBox(height: 32),
+                ...footer,
               ],
             ),
           ),
@@ -293,7 +338,9 @@ class _ReviewCardsSection extends ConsumerWidget {
     final cards = ref.watch(pendingCardsProvider).valueOrNull;
     if (cards == null || cards.isEmpty) return const SizedBox.shrink();
 
-    final shown = cards.take(3).toList();
+    final shown = cards
+        .take(ref.dashCount(DashboardWidget.detected) ?? 3)
+        .toList();
     final extra = cards.length - shown.length;
 
     return Padding(
@@ -418,7 +465,12 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
         ? tr('in {0}', [DateFormat('MMM').format(month)])
         : tr('this month');
 
-    final metric = _metric;
+    const me = DashboardWidget.totalMoney;
+    final showChart = ref.dashShown(me, 'chart');
+    final showTabs = ref.dashShown(me, 'tabs');
+    final showDetails = ref.dashShown(me, 'details');
+    // With the tabs off there's no way back from a picked metric.
+    final metric = showTabs ? _metric : null;
     final label = switch (metric) {
       null when past => tr('Total money on {0}', [
         DateFormat('d MMM').format(period.end),
@@ -641,13 +693,14 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
                           // Only when some account is left out of it — with
                           // every account counted it would just repeat the
                           // figure above.
-                          if (available != null &&
+                          if (showDetails &&
+                              available != null &&
                               headline != null &&
                               available != headline) ...[
                             const SizedBox(height: 6),
                             _AvailableLine(amount: available),
                           ],
-                          if (opening != null) ...[
+                          if (showDetails && opening != null) ...[
                             const SizedBox(height: 4),
                             _OpeningLine(amount: opening, on: period.start),
                           ],
@@ -673,7 +726,7 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
                         ],
                       ),
                     ),
-                    if (trendReady && trendValues.length >= 2)
+                    if (showChart && trendReady && trendValues.length >= 2)
                       Sparkline(
                         values: trendValues,
                         color: tint,
@@ -685,11 +738,14 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
                   ],
                 ),
               ),
-              _MoneyMetricTabs(
-                selected: _metric,
-                onSelect: (m) =>
-                    setState(() => _metric = _metric == m ? null : m),
-              ),
+              if (showTabs)
+                _MoneyMetricTabs(
+                  selected: _metric,
+                  onSelect: (m) =>
+                      setState(() => _metric = _metric == m ? null : m),
+                )
+              else if (!showChart)
+                const SizedBox(height: 2),
             ],
           ),
         ),
@@ -962,12 +1018,21 @@ class _ThisMonthCard extends ConsumerWidget {
     final month = ref.watch(selectedMonthProvider);
     final totals = ref.watch(monthTotalsProvider);
     final startDay = ref.watch(budgetStartDayProvider);
+    const me = DashboardWidget.thisMonth;
+    final compact = ref.dashOption(me, 'style') == 'compact';
+    final showBar = ref.dashShown(me, 'bar');
+    final showNet = ref.dashShown(me, 'net');
 
     return Padding(
       padding: _sectionPad,
       child: AppCard(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 18, 10, 18),
+          padding: EdgeInsets.fromLTRB(
+            18,
+            compact ? 14 : 18,
+            10,
+            compact ? 14 : 18,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -996,6 +1061,7 @@ class _ThisMonthCard extends ConsumerWidget {
                               amount: t.income,
                               color: AppColors.income,
                               icon: Icons.south_west_rounded,
+                              compact: compact,
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -1005,14 +1071,19 @@ class _ThisMonthCard extends ConsumerWidget {
                               amount: t.expense,
                               color: AppColors.expense,
                               icon: Icons.north_east_rounded,
+                              compact: compact,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      _ProportionBar(income: t.income, expense: t.expense),
-                      const SizedBox(height: 14),
-                      _NetLine(net: t.income - t.expense),
+                      if (showBar) ...[
+                        SizedBox(height: compact ? 12 : 16),
+                        _ProportionBar(income: t.income, expense: t.expense),
+                      ],
+                      if (showNet) ...[
+                        SizedBox(height: compact ? 10 : 14),
+                        _NetLine(net: t.income - t.expense),
+                      ],
                     ],
                   ),
                   loading: () => const _InlineLoader(),
@@ -1027,23 +1098,61 @@ class _ThisMonthCard extends ConsumerWidget {
   }
 }
 
-/// Income or expense, boxed in its own tinted, bordered tile.
+/// Income or expense, boxed in its own tinted, bordered tile — or, when
+/// [compact], just its label over its figure, with no box.
 class _MetricTile extends StatelessWidget {
   const _MetricTile({
     required this.label,
     required this.amount,
     required this.color,
     required this.icon,
+    this.compact = false,
   });
 
   final String label;
   final Money amount;
   final Color color;
   final IconData icon;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    if (compact) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              AppIcon(icon, size: 14, color: color),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: MoneyText(
+              amount,
+              color: color,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
       // Glass: a tinted well with no stroke (see [_MoneyMetricChip]).
@@ -1190,15 +1299,36 @@ class _AccountsStrip extends ConsumerWidget {
         DesktopLayout.of(context) ||
         ref.watch(dashboardAccountsStyleProvider) ==
             DashboardAccountsStyle.oneCard;
-    final title = asOf == null ? 'Accounts' : tr('Accounts on {0}', [asOf]);
-    final seeAll = TextButton(
-      onPressed: () => context.push('/more/accounts'),
-      child: const Tr('See all'),
-    );
+    final title = asOf == null ? tr('Accounts') : tr('Accounts on {0}', [asOf]);
+    const me = DashboardWidget.accounts;
+    final hideZero = !ref.dashShown(me, 'zero');
+    final showTotal = ref.dashOption(me, 'total') == 'show';
 
     return accounts.when(
-      data: (list) {
+      data: (all) {
+        Money balanceOf(AccountRow a) => closing?[a.id] ?? a.currentBalance;
+        final list = [
+          for (final a in all)
+            if (!hideZero || !balanceOf(a).isZero) a,
+        ];
         if (list.isEmpty) return const SizedBox.shrink();
+        final theme = Theme.of(context);
+        final seeAll = Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (showTotal)
+              BalanceText(
+                list.fold(const Money.zero(), (sum, a) => sum + balanceOf(a)),
+                style: theme.textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            TextButton(
+              onPressed: () => context.push('/more/accounts'),
+              child: const Tr('See all'),
+            ),
+          ],
+        );
         if (oneCard) {
           return _CardSection(
             title: title,
@@ -1266,7 +1396,6 @@ class _AccountRow extends StatelessWidget {
 
     return AppListTile(
       onTap: () => pushZoom(context, '/account/${account.id}'),
-      onLongPress: () => showArrangeAccountsSheet(context),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       leading: Container(
         width: 34,
@@ -1331,7 +1460,6 @@ class _AccountCard extends StatelessWidget {
           child: InkWell(
             borderRadius: BorderRadius.circular(_cardRadius),
             onTap: () => pushZoom(context, '/account/${account.id}'),
-            onLongPress: () => showArrangeAccountsSheet(context),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -1416,7 +1544,8 @@ class _ReadyToAssignSection extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SectionHeader(tr('Ready to Assign')),
+          if (ref.dashShown(DashboardWidget.readyToAssign, 'title'))
+            _SectionHeader(tr('Ready to Assign')),
           InkWell(
             borderRadius: BorderRadius.circular(_cardRadius),
             onTap: () => context.push('/more/ready-to-assign'),
@@ -1454,15 +1583,23 @@ class _PersonsSection extends ConsumerWidget {
 
     // Only people with something outstanding, biggest balance first. A settled
     // person is off the books; the dashboard is for what still needs settling.
+    const me = DashboardWidget.people;
+    final filter = ref.dashOption(me, 'filter');
+    final showSummary = ref.dashShown(me, 'summary');
     Money balanceOf(PersonRow p) => balances[p.id] ?? const Money.zero();
-    final outstanding = persons.where((p) => !balanceOf(p).isZero).toList()
+    bool wanted(Money b) => switch (filter) {
+      'owesYou' => b.isPositive,
+      'youOwe' => b.isNegative,
+      _ => !b.isZero,
+    };
+    final outstanding = persons.where((p) => wanted(balanceOf(p))).toList()
       ..sort(
         (a, b) => balanceOf(b).paise.abs().compareTo(balanceOf(a).paise.abs()),
       );
 
     if (outstanding.isEmpty) return const SizedBox.shrink();
 
-    final top = outstanding.take(4).toList();
+    final top = outstanding.take(ref.dashCount(me) ?? 4).toList();
     final extra = outstanding.length - top.length;
 
     return Padding(
@@ -1484,12 +1621,14 @@ class _PersonsSection extends ConsumerWidget {
               clipBehavior: Clip.antiAlias,
               child: Column(
                 children: [
-                  _DuesOwesRow(
-                    youGet: totals.youGet,
-                    youPay: totals.youPay,
-                    past: past,
-                  ),
-                  Divider(height: 1, color: theme.colorScheme.outline),
+                  if (showSummary) ...[
+                    _DuesOwesRow(
+                      youGet: totals.youGet,
+                      youPay: totals.youPay,
+                      past: past,
+                    ),
+                    Divider(height: 1, color: theme.colorScheme.outline),
+                  ],
                   for (var i = 0; i < top.length; i++) ...[
                     if (i > 0)
                       const Divider(height: 1, indent: 64, endIndent: 16),
@@ -1690,16 +1829,16 @@ class _PersonDuesTile extends StatelessWidget {
 class _UpcomingSection extends ConsumerWidget {
   const _UpcomingSection();
 
-  static const _windowDays = 14;
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Due dates run forward from today; a past month has none to show.
     if (ref.watch(viewingPastPeriodProvider)) return const SizedBox.shrink();
-    final items = ref.watch(upcomingPaymentsProvider(_windowDays));
+    const me = DashboardWidget.upcoming;
+    final days = ref.dashCount(me, 'days') ?? 14;
+    final items = ref.watch(upcomingPaymentsProvider(days));
     if (items.isEmpty) return const SizedBox.shrink();
 
-    final top = items.take(5).toList();
+    final top = items.take(ref.dashCount(me) ?? 5).toList();
     final extra = items.length - top.length;
 
     return Padding(
@@ -1829,6 +1968,37 @@ class _BudgetsSection extends ConsumerWidget {
     }
 
     final rtaOn = ref.watch(rtaEnabledProvider);
+    const me = DashboardWidget.budgets;
+    final bars = ref.dashOption(me, 'style') == 'bars';
+    final ordered = ref.dashOption(me, 'order') == 'fullest'
+        ? ([...progress]..sort((a, b) => b.fraction.compareTo(a.fraction)))
+        : progress;
+    final manage = TextButton(
+      onPressed: () => context.push('/more/budgets'),
+      child: const Tr('Manage'),
+    );
+
+    if (bars) {
+      return _CardSection(
+        title: tr('Budgets'),
+        trailing: manage,
+        children: [
+          for (final p in ordered)
+            _ProgressTile(
+              icon: AppIcons.resolve(p.category.iconKey),
+              color: p.overspent
+                  ? AppColors.expense
+                  : Color(p.category.colorValue),
+              title: p.category.name,
+              amount: p.spent,
+              fraction: p.fraction.clamp(0.0, 1.0),
+              footnote: '${_percent(p.fraction)} of',
+              of: p.effectiveAmount,
+              onTap: () => context.push('/more/budgets'),
+            ),
+        ],
+      );
+    }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
@@ -1850,7 +2020,7 @@ class _BudgetsSection extends ConsumerWidget {
                 padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
                 child: BudgetRadialChart(
                   slices: [
-                    for (final p in progress)
+                    for (final p in ordered)
                       (
                         label: p.category.name,
                         budget: p.effectiveAmount,
@@ -2046,6 +2216,10 @@ class _SpendByCategorySection extends ConsumerWidget {
           const Money.zero(),
           (sum, e) => sum + e.value,
         );
+        const me = DashboardWidget.spending;
+        final show = ref.dashOption(me, 'show');
+        final listed = rows.take(ref.dashCount(me) ?? rows.length).toList();
+        final more = rows.length - listed.length;
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 24),
@@ -2070,23 +2244,27 @@ class _SpendByCategorySection extends ConsumerWidget {
                   clipBehavior: Clip.antiAlias,
                   child: Column(
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(18, 20, 18, 12),
-                        child: CategoryPieChart(
-                          showLegend: false,
-                          foldTail: false,
-                          slices: slices,
+                      if (show != 'list')
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(18, 20, 18, 12),
+                          child: CategoryPieChart(
+                            showLegend: false,
+                            foldTail: false,
+                            slices: slices,
+                          ),
                         ),
-                      ),
                       // Every category's exact total for the month, not just
                       // wedges to hover — tap one for its transactions.
-                      for (final r in rows) ...[
-                        Divider(
-                          height: 1,
-                          indent: 64,
-                          endIndent: 16,
-                          color: theme.colorScheme.outlineVariant,
-                        ),
+                      for (final (i, r)
+                          in (show == 'chart' ? const <_SpendRow>[] : listed)
+                              .indexed) ...[
+                        if (i > 0 || show != 'list')
+                          Divider(
+                            height: 1,
+                            indent: 64,
+                            endIndent: 16,
+                            color: theme.colorScheme.outlineVariant,
+                          ),
                         _SpendCategoryTile(
                           row: r,
                           total: total,
@@ -2100,6 +2278,18 @@ class _SpendByCategorySection extends ConsumerWidget {
                           ),
                         ),
                       ],
+                      if (show != 'chart' && more > 0)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton(
+                              onPressed: () =>
+                                  context.push(StatsModule.spending.route),
+                              child: Text(tr('{0} more', [more])),
+                            ),
+                          ),
+                        ),
                       const SizedBox(height: 6),
                     ],
                   ),
@@ -2209,6 +2399,16 @@ class _RecentSection extends ConsumerWidget {
     final past = ref.watch(viewingPastPeriodProvider);
     final month = ref.watch(selectedMonthProvider);
     final period = budgetPeriodFor(month, ref.watch(budgetStartDayProvider));
+    const me = DashboardWidget.recent;
+    final count = ref.dashCount(me) ?? 5;
+    final type = switch (ref.dashOption(me, 'type')) {
+      'expense' => TxType.expense,
+      'income' => TxType.income,
+      _ => null,
+    };
+    // The short "recent" stream holds 8; more, or one kind only, needs the
+    // whole ledger.
+    final needAll = count > 8 || type != null;
     final recent = past
         ? ref
               .watch(allTransactionsProvider)
@@ -2220,6 +2420,8 @@ class _RecentSection extends ConsumerWidget {
                       t,
                 ],
               )
+        : needAll
+        ? ref.watch(allTransactionsProvider)
         : ref.watch(recentTransactionsProvider);
     final cats = ref.watch(categoryMapProvider);
     final accounts = ref.watch(accountMapProvider);
@@ -2233,7 +2435,22 @@ class _RecentSection extends ConsumerWidget {
         if (list.isEmpty) {
           return past ? const SizedBox.shrink() : const _EmptyState();
         }
-        final top = list.take(5).toList();
+        final top = [
+          for (final t in list)
+            if (type == null || t.type == type) t,
+        ].take(count).toList();
+        if (top.isEmpty) {
+          return _CardSection(
+            title: tr('Recent'),
+            children: [
+              _QuietLine(
+                type == TxType.income
+                    ? tr('No money in yet.')
+                    : tr('No money out yet.'),
+              ),
+            ],
+          );
+        }
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 24),
@@ -2690,7 +2907,10 @@ class _CashFlowSection extends ConsumerWidget {
         ? DateTime(month.year, month.month)
         : DateTime(now.year, now.month);
     final months = ref.watch(
-      monthlyTotalsEndingProvider((months: 6, end: end)),
+      monthlyTotalsEndingProvider((
+        months: ref.dashCount(DashboardWidget.cashFlow, 'months') ?? 6,
+        end: end,
+      )),
     );
 
     return Padding(
@@ -2735,8 +2955,8 @@ class _GoalsSection extends ConsumerWidget {
     if (!ref.watch(goalDetailsProvider).hasValue) {
       return const SizedBox.shrink();
     }
-    final goals = ref.watch(goalProgressListProvider);
-    if (goals.isEmpty) {
+    final allGoals = ref.watch(goalProgressListProvider);
+    if (allGoals.isEmpty) {
       return _NudgeCard(
         icon: Icons.savings_outlined,
         title: tr('Start a savings goal'),
@@ -2749,6 +2969,16 @@ class _GoalsSection extends ConsumerWidget {
     if (past && closing == null) {
       return const Padding(padding: _sectionPad, child: _InlineLoader());
     }
+    const me = DashboardWidget.goals;
+    final hideDone = !ref.dashShown(me, 'done');
+    final goals = [
+      for (final g in allGoals)
+        if (!hideDone ||
+            g.detail.targetAmount.isZero ||
+            (closing?[g.account.id] ?? g.saved) < g.detail.targetAmount)
+          g,
+    ];
+    final cap = ref.dashCount(me) ?? goals.length;
 
     return _CardSection(
       title: past
@@ -2759,7 +2989,8 @@ class _GoalsSection extends ConsumerWidget {
         child: const Tr('See all'),
       ),
       children: [
-        for (final g in goals.take(4))
+        if (goals.isEmpty) _QuietLine(tr('Every goal reached')),
+        for (final g in goals.take(cap))
           () {
             final saved = closing?[g.account.id] ?? g.saved;
             final target = g.detail.targetAmount;
@@ -2807,6 +3038,39 @@ class _LoansSection extends ConsumerWidget {
       return const Padding(padding: _sectionPad, child: _InlineLoader());
     }
 
+    const me = DashboardWidget.loans;
+    final hidePaid = !ref.dashShown(me, 'paid');
+    final tiles = <Widget>[
+      for (final l in loans)
+        ?() {
+          // A loan account's balance runs negative while money is owed.
+          final balance = closing?[l.account.id];
+          final outstanding = balance == null
+              ? l.outstanding
+              : balance.isNegative
+              ? -balance
+              : const Money.zero();
+          if (hidePaid && outstanding.isZero) return null;
+          final principal = l.principal;
+          final repaid = principal.isZero
+              ? 0.0
+              : ((principal - outstanding).paise / principal.paise).clamp(
+                  0.0,
+                  1.0,
+                );
+          return _ProgressTile(
+            icon: AppIcons.resolve(l.account.iconKey),
+            color: Color(l.account.colorValue),
+            title: l.account.name,
+            amount: outstanding,
+            fraction: repaid,
+            footnote: tr('{0} repaid of', [_percent(repaid)]),
+            of: principal,
+            onTap: () => context.push('/more/goals/loan/${l.account.id}'),
+          );
+        }(),
+    ];
+
     return _CardSection(
       title: past ? tr('Loans on {0}', [_periodEndLabel(ref)]) : tr('Loans'),
       trailing: TextButton(
@@ -2814,33 +3078,8 @@ class _LoansSection extends ConsumerWidget {
         child: const Tr('See all'),
       ),
       children: [
-        for (final l in loans.take(4))
-          () {
-            // A loan account's balance runs negative while money is owed.
-            final balance = closing?[l.account.id];
-            final outstanding = balance == null
-                ? l.outstanding
-                : balance.isNegative
-                ? -balance
-                : const Money.zero();
-            final principal = l.principal;
-            final repaid = principal.isZero
-                ? 0.0
-                : ((principal - outstanding).paise / principal.paise).clamp(
-                    0.0,
-                    1.0,
-                  );
-            return _ProgressTile(
-              icon: AppIcons.resolve(l.account.iconKey),
-              color: Color(l.account.colorValue),
-              title: l.account.name,
-              amount: outstanding,
-              fraction: repaid,
-              footnote: tr('{0} repaid of', [_percent(repaid)]),
-              of: principal,
-              onTap: () => context.push('/more/goals/loan/${l.account.id}'),
-            );
-          }(),
+        if (tiles.isEmpty) _QuietLine(tr('Every loan paid off')),
+        ...tiles.take(ref.dashCount(me) ?? tiles.length),
       ],
     );
   }
@@ -2866,6 +3105,9 @@ class _ShortcutsSection extends ConsumerWidget {
         route: _editRoute,
       );
     }
+    const me = DashboardWidget.shortcuts;
+    final perRow = ref.dashCount(me, 'columns') ?? 4;
+    final labels = ref.dashShown(me, 'labels');
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
       child: Column(
@@ -2892,8 +3134,8 @@ class _ShortcutsSection extends ConsumerWidget {
                       children: [
                         for (final a in actions)
                           SizedBox(
-                            width: constraints.maxWidth / 4,
-                            child: _ShortcutButton(action: a),
+                            width: constraints.maxWidth / perRow,
+                            child: _ShortcutButton(action: a, label: labels),
                           ),
                       ],
                     ),
@@ -2909,9 +3151,10 @@ class _ShortcutsSection extends ConsumerWidget {
 }
 
 class _ShortcutButton extends StatelessWidget {
-  const _ShortcutButton({required this.action});
+  const _ShortcutButton({required this.action, this.label = true});
 
   final QuickActionSpec action;
+  final bool label;
 
   @override
   Widget build(BuildContext context) {
@@ -2924,6 +3167,7 @@ class _ShortcutButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
         child: Column(
           children: [
+            // With labels off the name still reaches a screen reader.
             Container(
               width: 44,
               height: 44,
@@ -2934,14 +3178,17 @@ class _ShortcutButton extends StatelessWidget {
               ),
               child: AppIcon(action.icon, size: 20, color: accent),
             ),
-            const SizedBox(height: 6),
-            Text(
-              action.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.labelSmall,
-            ),
+            if (label) ...[
+              const SizedBox(height: 6),
+              Text(
+                action.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.labelSmall,
+              ),
+            ] else
+              Semantics(label: action.label, child: const SizedBox.shrink()),
           ],
         ),
       ),
@@ -2969,7 +3216,14 @@ class _GroupsSection extends ConsumerWidget {
     }
     final balances = ref.watch(allGroupBalancesProvider);
     Money balanceOf(GroupRow g) => balances[g.id] ?? const Money.zero();
-    final open = groups.where((g) => !balanceOf(g).isZero).toList()
+    const me = DashboardWidget.groups;
+    final filter = ref.dashOption(me, 'filter');
+    bool wanted(Money b) => switch (filter) {
+      'get' => b.isPositive,
+      'owe' => b.isNegative,
+      _ => !b.isZero,
+    };
+    final open = groups.where((g) => wanted(balanceOf(g))).toList()
       ..sort(
         (a, b) => balanceOf(b).paise.abs().compareTo(balanceOf(a).paise.abs()),
       );
@@ -2983,7 +3237,7 @@ class _GroupsSection extends ConsumerWidget {
       ),
       children: [
         if (open.isEmpty) _QuietLine(tr('All settled up')),
-        for (final g in open.take(4))
+        for (final g in open.take(ref.dashCount(me) ?? open.length))
           () {
             final balance = balanceOf(g);
             final color = balance.isPositive
@@ -3061,7 +3315,9 @@ class _ShoppingSection extends ConsumerWidget {
       ),
       children: [
         if (open.isEmpty) _QuietLine(tr('Nothing left to buy')),
-        for (final l in open.take(4))
+        for (final l in open.take(
+          ref.dashCount(DashboardWidget.shopping) ?? open.length,
+        ))
           () {
             final color = Color(l.colorValue);
             final total = summary[l.id]!.total;
@@ -3100,15 +3356,18 @@ class _ShoppingSection extends ConsumerWidget {
 
 // ── 9. Customizing ────────────────────────────────────────────────────────
 
-/// Where to change what's here, at the foot of the dashboard.
+/// Where to change what's here, at the foot of the dashboard: the same
+/// edit mode holding a widget opens.
 class _CustomizeLink extends StatelessWidget {
-  const _CustomizeLink();
+  const _CustomizeLink({required this.onTap});
+
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Center(
       child: TextButton.icon(
-        onPressed: () => pushFromBar<void>(context, '/more/settings/dashboard'),
+        onPressed: onTap,
         icon: const AppIcon(Icons.tune_rounded, size: 18),
         label: const Tr('Customize dashboard'),
       ),
@@ -3118,7 +3377,9 @@ class _CustomizeLink extends StatelessWidget {
 
 /// Every widget taken off: say so, and offer the way back.
 class _EmptyDashboard extends StatelessWidget {
-  const _EmptyDashboard();
+  const _EmptyDashboard({required this.onAdd});
+
+  final VoidCallback onAdd;
 
   @override
   Widget build(BuildContext context) {
@@ -3161,8 +3422,7 @@ class _EmptyDashboard extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               FilledButton.icon(
-                onPressed: () =>
-                    pushFromBar<void>(context, '/more/settings/dashboard'),
+                onPressed: onAdd,
                 icon: const AppIcon(Icons.add_rounded),
                 label: const Tr('Add widgets'),
               ),

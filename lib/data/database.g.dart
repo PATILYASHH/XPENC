@@ -12190,6 +12190,8 @@ class $SettingsTable extends Settings
   static const VerificationMeta _dashboardLayoutMeta = const VerificationMeta(
     'dashboardLayout',
   );
+  static const VerificationMeta _dashboardWidgetOptionsMeta =
+      const VerificationMeta('dashboardWidgetOptions');
   @override
   late final GeneratedColumn<String> dashboardLayout = GeneratedColumn<String>(
     'dashboard_layout',
@@ -12199,6 +12201,16 @@ class $SettingsTable extends Settings
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
   );
+  @override
+  late final GeneratedColumn<String> dashboardWidgetOptions =
+      GeneratedColumn<String>(
+        'dashboard_widget_options',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(''),
+      );
   @override
   late final GeneratedColumnWithTypeConverter<DashboardAccountsStyle, String>
   dashboardAccountsStyle =
@@ -12412,6 +12424,7 @@ class $SettingsTable extends Settings
     extraBottomInset,
     frequentIconKeys,
     dashboardLayout,
+    dashboardWidgetOptions,
     dashboardAccountsStyle,
     incomeColor,
     expenseColor,
@@ -12986,6 +12999,15 @@ class $SettingsTable extends Settings
         ),
       );
     }
+    if (data.containsKey('dashboard_widget_options')) {
+      context.handle(
+        _dashboardWidgetOptionsMeta,
+        dashboardWidgetOptions.isAcceptableOrUnknown(
+          data['dashboard_widget_options']!,
+          _dashboardWidgetOptionsMeta,
+        ),
+      );
+    }
     if (data.containsKey('income_color')) {
       context.handle(
         _incomeColorMeta,
@@ -13372,6 +13394,10 @@ class $SettingsTable extends Settings
       dashboardLayout: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}dashboard_layout'],
+      )!,
+      dashboardWidgetOptions: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}dashboard_widget_options'],
       )!,
       dashboardAccountsStyle: $SettingsTable.$converterdashboardAccountsStyle
           .fromSql(
@@ -13838,6 +13864,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
   /// later version is told apart from one the user removed.
   final String dashboardLayout;
 
+  /// Each Dashboard widget's own options — see `dashboard_layout.dart`.
+  final String dashboardWidgetOptions;
+
   /// How the Dashboard's Accounts widget lays out — see
   /// [DashboardAccountsStyle]. Defaults to `slider`, the original layout, so
   /// nobody's dashboard changes until they pick the other one.
@@ -13951,6 +13980,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     required this.extraBottomInset,
     required this.frequentIconKeys,
     required this.dashboardLayout,
+    required this.dashboardWidgetOptions,
     required this.dashboardAccountsStyle,
     this.incomeColor,
     this.expenseColor,
@@ -14114,6 +14144,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     map['extra_bottom_inset'] = Variable<int>(extraBottomInset);
     map['frequent_icon_keys'] = Variable<String>(frequentIconKeys);
     map['dashboard_layout'] = Variable<String>(dashboardLayout);
+    map['dashboard_widget_options'] = Variable<String>(dashboardWidgetOptions);
     {
       map['dashboard_accounts_style'] = Variable<String>(
         $SettingsTable.$converterdashboardAccountsStyle.toSql(
@@ -14268,6 +14299,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       extraBottomInset: Value(extraBottomInset),
       frequentIconKeys: Value(frequentIconKeys),
       dashboardLayout: Value(dashboardLayout),
+      dashboardWidgetOptions: Value(dashboardWidgetOptions),
       dashboardAccountsStyle: Value(dashboardAccountsStyle),
       incomeColor: incomeColor == null && nullToAbsent
           ? const Value.absent()
@@ -14428,6 +14460,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       extraBottomInset: serializer.fromJson<int>(json['extraBottomInset']),
       frequentIconKeys: serializer.fromJson<String>(json['frequentIconKeys']),
       dashboardLayout: serializer.fromJson<String>(json['dashboardLayout']),
+      dashboardWidgetOptions: serializer.fromJson<String>(
+        json['dashboardWidgetOptions'],
+      ),
       dashboardAccountsStyle: $SettingsTable.$converterdashboardAccountsStyle
           .fromJson(
             serializer.fromJson<String>(json['dashboardAccountsStyle']),
@@ -14562,6 +14597,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       'extraBottomInset': serializer.toJson<int>(extraBottomInset),
       'frequentIconKeys': serializer.toJson<String>(frequentIconKeys),
       'dashboardLayout': serializer.toJson<String>(dashboardLayout),
+      'dashboardWidgetOptions': serializer.toJson<String>(
+        dashboardWidgetOptions,
+      ),
       'dashboardAccountsStyle': serializer.toJson<String>(
         $SettingsTable.$converterdashboardAccountsStyle.toJson(
           dashboardAccountsStyle,
@@ -14663,6 +14701,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     int? extraBottomInset,
     String? frequentIconKeys,
     String? dashboardLayout,
+    String? dashboardWidgetOptions,
     DashboardAccountsStyle? dashboardAccountsStyle,
     Value<int?> incomeColor = const Value.absent(),
     Value<int?> expenseColor = const Value.absent(),
@@ -14770,6 +14809,8 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     extraBottomInset: extraBottomInset ?? this.extraBottomInset,
     frequentIconKeys: frequentIconKeys ?? this.frequentIconKeys,
     dashboardLayout: dashboardLayout ?? this.dashboardLayout,
+    dashboardWidgetOptions:
+        dashboardWidgetOptions ?? this.dashboardWidgetOptions,
     dashboardAccountsStyle:
         dashboardAccountsStyle ?? this.dashboardAccountsStyle,
     incomeColor: incomeColor.present ? incomeColor.value : this.incomeColor,
@@ -14988,6 +15029,9 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
       dashboardLayout: data.dashboardLayout.present
           ? data.dashboardLayout.value
           : this.dashboardLayout,
+      dashboardWidgetOptions: data.dashboardWidgetOptions.present
+          ? data.dashboardWidgetOptions.value
+          : this.dashboardWidgetOptions,
       dashboardAccountsStyle: data.dashboardAccountsStyle.present
           ? data.dashboardAccountsStyle.value
           : this.dashboardAccountsStyle,
@@ -15105,6 +15149,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           ..write('extraBottomInset: $extraBottomInset, ')
           ..write('frequentIconKeys: $frequentIconKeys, ')
           ..write('dashboardLayout: $dashboardLayout, ')
+          ..write('dashboardWidgetOptions: $dashboardWidgetOptions, ')
           ..write('dashboardAccountsStyle: $dashboardAccountsStyle, ')
           ..write('incomeColor: $incomeColor, ')
           ..write('expenseColor: $expenseColor, ')
@@ -15196,6 +15241,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
     extraBottomInset,
     frequentIconKeys,
     dashboardLayout,
+    dashboardWidgetOptions,
     dashboardAccountsStyle,
     incomeColor,
     expenseColor,
@@ -15289,6 +15335,7 @@ class SettingRow extends DataClass implements Insertable<SettingRow> {
           other.extraBottomInset == this.extraBottomInset &&
           other.frequentIconKeys == this.frequentIconKeys &&
           other.dashboardLayout == this.dashboardLayout &&
+          other.dashboardWidgetOptions == this.dashboardWidgetOptions &&
           other.dashboardAccountsStyle == this.dashboardAccountsStyle &&
           other.incomeColor == this.incomeColor &&
           other.expenseColor == this.expenseColor &&
@@ -15381,6 +15428,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
   final Value<int> extraBottomInset;
   final Value<String> frequentIconKeys;
   final Value<String> dashboardLayout;
+  final Value<String> dashboardWidgetOptions;
   final Value<DashboardAccountsStyle> dashboardAccountsStyle;
   final Value<int?> incomeColor;
   final Value<int?> expenseColor;
@@ -15467,6 +15515,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.extraBottomInset = const Value.absent(),
     this.frequentIconKeys = const Value.absent(),
     this.dashboardLayout = const Value.absent(),
+    this.dashboardWidgetOptions = const Value.absent(),
     this.dashboardAccountsStyle = const Value.absent(),
     this.incomeColor = const Value.absent(),
     this.expenseColor = const Value.absent(),
@@ -15554,6 +15603,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     this.extraBottomInset = const Value.absent(),
     this.frequentIconKeys = const Value.absent(),
     this.dashboardLayout = const Value.absent(),
+    this.dashboardWidgetOptions = const Value.absent(),
     this.dashboardAccountsStyle = const Value.absent(),
     this.incomeColor = const Value.absent(),
     this.expenseColor = const Value.absent(),
@@ -15641,6 +15691,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Expression<int>? extraBottomInset,
     Expression<String>? frequentIconKeys,
     Expression<String>? dashboardLayout,
+    Expression<String>? dashboardWidgetOptions,
     Expression<String>? dashboardAccountsStyle,
     Expression<int>? incomeColor,
     Expression<int>? expenseColor,
@@ -15751,6 +15802,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       if (extraBottomInset != null) 'extra_bottom_inset': extraBottomInset,
       if (frequentIconKeys != null) 'frequent_icon_keys': frequentIconKeys,
       if (dashboardLayout != null) 'dashboard_layout': dashboardLayout,
+      if (dashboardWidgetOptions != null)
+        'dashboard_widget_options': dashboardWidgetOptions,
       if (dashboardAccountsStyle != null)
         'dashboard_accounts_style': dashboardAccountsStyle,
       if (incomeColor != null) 'income_color': incomeColor,
@@ -15843,6 +15896,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     Value<int>? extraBottomInset,
     Value<String>? frequentIconKeys,
     Value<String>? dashboardLayout,
+    Value<String>? dashboardWidgetOptions,
     Value<DashboardAccountsStyle>? dashboardAccountsStyle,
     Value<int?>? incomeColor,
     Value<int?>? expenseColor,
@@ -15943,6 +15997,8 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
       extraBottomInset: extraBottomInset ?? this.extraBottomInset,
       frequentIconKeys: frequentIconKeys ?? this.frequentIconKeys,
       dashboardLayout: dashboardLayout ?? this.dashboardLayout,
+      dashboardWidgetOptions:
+          dashboardWidgetOptions ?? this.dashboardWidgetOptions,
       dashboardAccountsStyle:
           dashboardAccountsStyle ?? this.dashboardAccountsStyle,
       incomeColor: incomeColor ?? this.incomeColor,
@@ -16230,6 +16286,11 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
     if (dashboardLayout.present) {
       map['dashboard_layout'] = Variable<String>(dashboardLayout.value);
     }
+    if (dashboardWidgetOptions.present) {
+      map['dashboard_widget_options'] = Variable<String>(
+        dashboardWidgetOptions.value,
+      );
+    }
     if (dashboardAccountsStyle.present) {
       map['dashboard_accounts_style'] = Variable<String>(
         $SettingsTable.$converterdashboardAccountsStyle.toSql(
@@ -16361,6 +16422,7 @@ class SettingsCompanion extends UpdateCompanion<SettingRow> {
           ..write('extraBottomInset: $extraBottomInset, ')
           ..write('frequentIconKeys: $frequentIconKeys, ')
           ..write('dashboardLayout: $dashboardLayout, ')
+          ..write('dashboardWidgetOptions: $dashboardWidgetOptions, ')
           ..write('dashboardAccountsStyle: $dashboardAccountsStyle, ')
           ..write('incomeColor: $incomeColor, ')
           ..write('expenseColor: $expenseColor, ')
@@ -42860,6 +42922,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<int> extraBottomInset,
       Value<String> frequentIconKeys,
       Value<String> dashboardLayout,
+      Value<String> dashboardWidgetOptions,
       Value<DashboardAccountsStyle> dashboardAccountsStyle,
       Value<int?> incomeColor,
       Value<int?> expenseColor,
@@ -42948,6 +43011,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<int> extraBottomInset,
       Value<String> frequentIconKeys,
       Value<String> dashboardLayout,
+      Value<String> dashboardWidgetOptions,
       Value<DashboardAccountsStyle> dashboardAccountsStyle,
       Value<int?> incomeColor,
       Value<int?> expenseColor,
@@ -43366,6 +43430,11 @@ class $$SettingsTableFilterComposer
 
   ColumnFilters<String> get dashboardLayout => $composableBuilder(
     column: $table.dashboardLayout,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dashboardWidgetOptions => $composableBuilder(
+    column: $table.dashboardWidgetOptions,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -43829,6 +43898,11 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get dashboardWidgetOptions => $composableBuilder(
+    column: $table.dashboardWidgetOptions,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get dashboardAccountsStyle => $composableBuilder(
     column: $table.dashboardAccountsStyle,
     builder: (column) => ColumnOrderings(column),
@@ -44267,6 +44341,11 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get dashboardWidgetOptions => $composableBuilder(
+    column: $table.dashboardWidgetOptions,
+    builder: (column) => column,
+  );
+
   GeneratedColumnWithTypeConverter<DashboardAccountsStyle, String>
   get dashboardAccountsStyle => $composableBuilder(
     column: $table.dashboardAccountsStyle,
@@ -44456,6 +44535,7 @@ class $$SettingsTableTableManager
                 Value<int> extraBottomInset = const Value.absent(),
                 Value<String> frequentIconKeys = const Value.absent(),
                 Value<String> dashboardLayout = const Value.absent(),
+                Value<String> dashboardWidgetOptions = const Value.absent(),
                 Value<DashboardAccountsStyle> dashboardAccountsStyle =
                     const Value.absent(),
                 Value<int?> incomeColor = const Value.absent(),
@@ -44543,6 +44623,7 @@ class $$SettingsTableTableManager
                 extraBottomInset: extraBottomInset,
                 frequentIconKeys: frequentIconKeys,
                 dashboardLayout: dashboardLayout,
+                dashboardWidgetOptions: dashboardWidgetOptions,
                 dashboardAccountsStyle: dashboardAccountsStyle,
                 incomeColor: incomeColor,
                 expenseColor: expenseColor,
@@ -44634,6 +44715,7 @@ class $$SettingsTableTableManager
                 Value<int> extraBottomInset = const Value.absent(),
                 Value<String> frequentIconKeys = const Value.absent(),
                 Value<String> dashboardLayout = const Value.absent(),
+                Value<String> dashboardWidgetOptions = const Value.absent(),
                 Value<DashboardAccountsStyle> dashboardAccountsStyle =
                     const Value.absent(),
                 Value<int?> incomeColor = const Value.absent(),
@@ -44721,6 +44803,7 @@ class $$SettingsTableTableManager
                 extraBottomInset: extraBottomInset,
                 frequentIconKeys: frequentIconKeys,
                 dashboardLayout: dashboardLayout,
+                dashboardWidgetOptions: dashboardWidgetOptions,
                 dashboardAccountsStyle: dashboardAccountsStyle,
                 incomeColor: incomeColor,
                 expenseColor: expenseColor,

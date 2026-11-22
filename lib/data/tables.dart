@@ -1531,6 +1531,13 @@ class Settings extends Table {
   TextColumn get dashboardAccountsStyle => textEnum<DashboardAccountsStyle>()
       .withDefault(const Constant('slider'))();
 
+  /// Each Dashboard widget's own options, comma-joined `widget.key=value`
+  /// (e.g. `recent.count=10,people.filter=owesYou`) — see
+  /// `DashboardWidgetX.options` in `dashboard_layout.dart`. Only choices
+  /// that differ from the default are kept; `''` is every widget as built.
+  TextColumn get dashboardWidgetOptions =>
+      text().withDefault(const Constant(''))();
+
   /// Settings → Colours (GitHub #156): the person's pick for each money
   /// direction, as ARGB. Null keeps the built-in colour (`AppColors`'
   /// defaults), so nothing changes until someone picks one.

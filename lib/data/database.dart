@@ -286,7 +286,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 98;
+  int get schemaVersion => 99;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -950,6 +950,14 @@ class AppDatabase extends _$AppDatabase {
       if (from < 98) {
         // An account can be taken off Add Transaction's account strip.
         await _addColumnIfMissing(m, accounts, accounts.showOnAddPage);
+      }
+      if (from < 99) {
+        // Each Dashboard widget's own options (hold a widget to edit).
+        await _addColumnIfMissing(
+          m,
+          settings,
+          settings.dashboardWidgetOptions,
+        );
       }
     },
     beforeOpen: (details) async {
@@ -7603,6 +7611,20 @@ class AppDatabase extends _$AppDatabase {
     await update(
       settings,
     ).write(SettingsCompanion(dashboardLayout: Value(encoded)));
+  }
+
+  /// Every Dashboard widget's options, already encoded — see
+  /// [Settings.dashboardWidgetOptions]. Only the shape is checked here; a
+  /// widget, key or value this version doesn't know is ignored when read.
+  Future<void> setDashboardWidgetOptions(String encoded) async {
+    final valid = RegExp(r'^[a-zA-Z]+\.[a-zA-Z]+=[a-zA-Z0-9]+$');
+    final items = encoded.isEmpty ? const <String>[] : encoded.split(',');
+    if (items.any((item) => !valid.hasMatch(item))) {
+      throw ArgumentError(tr('Unknown dashboard widget option.'));
+    }
+    await update(
+      settings,
+    ).write(SettingsCompanion(dashboardWidgetOptions: Value(encoded)));
   }
 
   Future<void> setDashboardAccountsStyle(DashboardAccountsStyle style) =>

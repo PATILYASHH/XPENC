@@ -71,9 +71,7 @@ void main() {
     expect(await names(), ['SBI', 'HDFC', 'HDFC Debit', 'Cash']);
   });
 
-  testWidgets('hold an account on the Dashboard to arrange them', (
-    tester,
-  ) async {
+  testWidgets('Arrange accounts from the Dashboard editor', (tester) async {
     await tester.runAsync(() async {
       await bank('HDFC');
       await bank('SBI');
@@ -104,7 +102,25 @@ void main() {
       300,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.longPress(find.text('HDFC').hitTestable().first);
+    // Holding an account opens the Dashboard editor; Arrange accounts is
+    // in the Accounts widget's options.
+    final hold = await tester.startGesture(
+      tester.getCenter(find.text('HDFC').hitTestable().first),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump(const Duration(milliseconds: 600));
+    await hold.up();
+    await settle();
+    expect(find.text('Edit dashboard'), findsOneWidget);
+    final options = find.byKey(const ValueKey('dashboard-options-accounts'));
+    await tester.scrollUntilVisible(
+      options,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(options);
+    await settle();
+    await tester.tap(find.text('Arrange accounts'));
     await settle();
     expect(find.text('Arrange accounts'), findsOneWidget);
 

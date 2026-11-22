@@ -12,6 +12,7 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../accounts/arrange_accounts_sheet.dart';
+import '../dashboard/dashboard_editor.dart';
 import '../dashboard/dashboard_layout.dart';
 import 'settings_common.dart';
 import '../../core/l10n/l10n.dart';
@@ -91,8 +92,10 @@ class _DashboardSettingsScreenState
                     Padding(
                       padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
                       child: Tr(
-                        'Hold a widget, or drag its handle, to move it. The '
-                        'top of this list is the top of your dashboard.',
+                        'Hold a widget, or drag its handle, to move it; tap '
+                        'one for its options. The top of this list is the '
+                        'top of your dashboard. You can also hold any widget '
+                        'on the Dashboard to edit it there.',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: cs.onSurfaceVariant,
                         ),
@@ -134,7 +137,19 @@ class _DashboardSettingsScreenState
                     index: i,
                     child: AppCard(
                       margin: EdgeInsets.zero,
+                      clipBehavior: Clip.antiAlias,
                       child: _WidgetRow(
+                        onTap: () => showDashboardWidgetOptions(
+                          context,
+                          w,
+                          onRemove: () => _apply(
+                            setDashboardWidgetVisible(
+                              _slots,
+                              w,
+                              visible: false,
+                            ),
+                          ),
+                        ),
                         widget: w,
                         note: noteFor(w),
                         leading: ReorderableDragStartListener(
@@ -257,9 +272,11 @@ class _WidgetRow extends StatelessWidget {
     required this.action,
     this.note,
     this.leading,
+    this.onTap,
   });
 
   final DashboardWidget widget;
+  final VoidCallback? onTap;
   final Widget action;
   final String? note;
   final Widget? leading;
@@ -268,7 +285,7 @@ class _WidgetRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    return Padding(
+    final row = Padding(
       padding: EdgeInsets.fromLTRB(leading == null ? 16 : 4, 8, 4, 8),
       child: Row(
         children: [
@@ -316,6 +333,7 @@ class _WidgetRow extends StatelessWidget {
         ],
       ),
     );
+    return onTap == null ? row : InkWell(onTap: onTap, child: row);
   }
 }
 

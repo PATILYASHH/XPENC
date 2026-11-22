@@ -102,6 +102,7 @@ void main() {
       moreScreenViewMode: MoreScreenViewMode.list,
       frequentIconKeys: '',
       dashboardLayout: '',
+      dashboardWidgetOptions: '',
       dashboardAccountsStyle: DashboardAccountsStyle.slider,
       txIconBackground: TxIconBackground.category,
       contactsPermissionAsked: false,
