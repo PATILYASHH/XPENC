@@ -52,8 +52,14 @@ class CategoryPieChart extends StatefulWidget {
     required this.slices,
     this.showLegend = true,
     this.onSliceTap,
+    this.foldTail = true,
     super.key,
   });
+
+  /// Fold everything past the top five into one grey "Other" wedge. Off
+  /// where a full per-category list sits beside the chart (the Dashboard's
+  /// Spending card), so every wedge there matches a row.
+  final bool foldTail;
 
   /// [id] is whatever the caller wants back via [onSliceTap] — e.g. a
   /// category id to drill into. Null for a slice nothing should navigate to
@@ -153,13 +159,13 @@ class _CategoryPieChartState extends State<CategoryPieChart> {
     if (positive.isEmpty) return const _NoData(height: 220);
 
     final data = <({String label, Money value, Color color, int? id})>[];
-    if (positive.length > 6) {
+    if (widget.foldTail && positive.length > 6) {
       data.addAll(positive.take(5));
       var rest = const Money.zero();
       for (final s in positive.skip(5)) {
         rest += s.value;
       }
-      data.add((label: 'Other', value: rest, color: Colors.grey, id: null));
+      data.add((label: tr('Other'), value: rest, color: Colors.grey, id: null));
     } else {
       data.addAll(positive);
     }

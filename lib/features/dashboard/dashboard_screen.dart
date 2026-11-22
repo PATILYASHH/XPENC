@@ -23,6 +23,7 @@ import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../accounts/arrange_accounts_sheet.dart';
 import '../budgets/ready_to_assign_screen.dart';
+import '../categories/category_detail_screen.dart';
 import '../message_capture/review_inbox_screen.dart';
 import '../persons/person_avatar.dart';
 import '../../core/routing/quick_actions.dart';
@@ -419,8 +420,9 @@ class _NetWorthCardState extends ConsumerState<_NetWorthCard> {
 
     final metric = _metric;
     final label = switch (metric) {
-      null when past =>
-        tr('Total money on {0}', [DateFormat('d MMM').format(period.end)]),
+      null when past => tr('Total money on {0}', [
+        DateFormat('d MMM').format(period.end),
+      ]),
       null => tr('Total money'),
       _MoneyMetric.income => tr('Money in'),
       _MoneyMetric.expense => tr('Money out'),
@@ -1136,12 +1138,18 @@ class _NetLine extends StatelessWidget {
 
     return Row(
       children: [
-        Text(
-          net.isNegative ? tr('Overspent by') : tr('Saved'),
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+        // Flexible, so a long translation ellipsizes instead of overflowing.
+        Flexible(
+          child: Text(
+            net.isNegative ? tr('Overspent by') : tr('Saved'),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
+        const SizedBox(width: 12),
         const Spacer(),
         MoneyText(
           net.abs,
@@ -1973,7 +1981,7 @@ class _SpendByCategorySection extends ConsumerWidget {
         // by top-level category — the level a glance wants. A mode's (trip's)
         // spending is one slice of its own.
         final map = rollUpToParents(rawMap, cats);
-        final slices = <({String label, Money value, Color color, int? id})>[
+        final rows = <_SpendRow>[
           for (final e in map.entries)
             if (e.value.isPositive)
               (
@@ -1983,6 +1991,7 @@ class _SpendByCategorySection extends ConsumerWidget {
                     ? Color(cats[e.key]!.colorValue)
                     : theme.colorScheme.secondary,
                 id: e.key,
+                iconKey: cats[e.key]?.iconKey,
               ),
           for (final e in modeSpend.entries)
             if (e.value.isPositive && modes[e.key] != null)
@@ -1991,8 +2000,13 @@ class _SpendByCategorySection extends ConsumerWidget {
                 value: e.value,
                 color: Color(modes[e.key]!.colorValue),
                 id: -e.key,
+                iconKey: modes[e.key]!.iconKey,
               ),
         ]..sort((a, b) => b.value.compareTo(a.value));
+        final slices = [
+          for (final r in rows)
+            (label: r.label, value: r.value, color: r.color, id: r.id),
+        ];
         // Turned on in Customize dashboard, so it stays put even with nothing
         // spent — vanishing read as "won't add" (GitHub #180).
         if (slices.isEmpty) {
@@ -2012,8 +2026,10 @@ class _SpendByCategorySection extends ConsumerWidget {
                       child: Text(
                         past
                             ? tr('Nothing was spent this month.')
-                            : tr('Nothing spent yet this month. It fills in as '
-                                  'you add expenses.'),
+                            : tr(
+                                'Nothing spent yet this month. It fills in as '
+                                'you add expenses.',
+                              ),
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
@@ -2051,9 +2067,41 @@ class _SpendByCategorySection extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: AppCard(
                   margin: EdgeInsets.zero,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
-                    child: CategoryPieChart(showLegend: false, slices: slices),
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 20, 18, 12),
+                        child: CategoryPieChart(
+                          showLegend: false,
+                          foldTail: false,
+                          slices: slices,
+                        ),
+                      ),
+                      // Every category's exact total for the month, not just
+                      // wedges to hover — tap one for its transactions.
+                      for (final r in rows) ...[
+                        Divider(
+                          height: 1,
+                          indent: 64,
+                          endIndent: 16,
+                          color: theme.colorScheme.outlineVariant,
+                        ),
+                        _SpendCategoryTile(
+                          row: r,
+                          total: total,
+                          onTap: () => context.push(
+                            r.id < 0
+                                ? '/mode/${-r.id}'
+                                : categoryRoute(
+                                    r.id,
+                                    month: ref.read(selectedMonthProvider),
+                                  ),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 6),
+                    ],
                   ),
                 ),
               ),
@@ -2065,6 +2113,86 @@ class _SpendByCategorySection extends ConsumerWidget {
           const Padding(padding: _sectionPad, child: _InlineLoader()),
       error: (_, _) =>
           const Padding(padding: _sectionPad, child: _InlineError()),
+    );
+  }
+}
+
+/// One row of the Spending list — a top-level category, or a mode (trip)
+/// with a negative [id], same as the donut's slices.
+typedef _SpendRow = ({
+  String label,
+  Money value,
+  Color color,
+  int id,
+  String? iconKey,
+});
+
+class _SpendCategoryTile extends StatelessWidget {
+  const _SpendCategoryTile({
+    required this.row,
+    required this.total,
+    required this.onTap,
+  });
+
+  final _SpendRow row;
+  final Money total;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final share = total.paise == 0 ? 0.0 : row.value.paise / total.paise;
+    final iconKey = row.iconKey;
+    return AppListTile(
+      key: ValueKey('spendRow${row.id}'),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      onTap: onTap,
+      leading: Container(
+        width: 36,
+        height: 36,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: row.color.withValues(alpha: 0.15),
+          shape: BoxShape.circle,
+        ),
+        child: iconKey == null
+            ? Icon(Icons.category_outlined, color: row.color, size: 18)
+            : IconWell.forKey(iconKey, color: row.color, size: 18),
+      ),
+      title: Text(row.label, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Row(
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  value: share.clamp(0.0, 1.0),
+                  minHeight: 4,
+                  color: row.color,
+                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '${(share * 100).round()}%',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontFeatures: kTabularFigures,
+              ),
+            ),
+          ],
+        ),
+      ),
+      trailing: MoneyText(
+        row.value,
+        color: AppColors.expense,
+        style: theme.textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 }
@@ -2113,7 +2241,9 @@ class _RecentSection extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _SectionHeader(
-                past ? tr('Last in {0}', [DateFormat('MMMM').format(month)]) : tr('Recent'),
+                past
+                    ? tr('Last in {0}', [DateFormat('MMMM').format(month)])
+                    : tr('Recent'),
                 trailing: TextButton(
                   onPressed: () => context.push('/transactions'),
                   child: const Tr('See all'),

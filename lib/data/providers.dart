@@ -257,8 +257,7 @@ final yearSpendByCategoryProvider = Provider.family<Map<int, Money>, int>((
     if (AppDatabase.isRefund(t, kinds)) {
       if (t.modeId == null && (refundHome[t.id] ?? t.date).year == year) {
         out[t.categoryId!] =
-            (out[t.categoryId!] ?? const Money.zero()) -
-            t.amount;
+            (out[t.categoryId!] ?? const Money.zero()) - t.amount;
       }
       continue;
     }
@@ -423,107 +422,101 @@ typedef CategoryLine = ({
 /// and categorized goal/loan transfers (same as [categoryTransactionsProvider]);
 /// an income category counts money in.
 final categoryLinesProvider =
-    Provider.family<List<CategoryLine>, (int, CategoryRange)>((ref, args) {
-      final (categoryId, range) = args;
-      final all = [
-        ...ref.watch(categoryMapProvider).values,
-        ...?ref.watch(archivedCategoriesProvider).valueOrNull,
-      ];
-      final self = all.where((c) => c.id == categoryId).firstOrNull;
-      if (self == null) return const [];
-      final ids = {
-        categoryId,
-        for (final c in all)
-          if (c.parentId == categoryId) c.id,
-      };
+    Provider.family<List<CategoryLine>, (int, CategoryRange)>(
+      (ref, args) => _categoryLines(ref, args.$1, args.$2, null),
+    );
 
-      final now = DateTime.now();
-      final ({DateTime start, DateTime end})? window = switch (range) {
-        CategoryRange.allTime => null,
-        CategoryRange.thisYear => (
-          start: DateTime(now.year),
-          end: DateTime(now.year + 1).subtract(const Duration(milliseconds: 1)),
-        ),
-        CategoryRange.thisMonth => () {
-          final startDay = ref.watch(budgetStartDayProvider);
-          return budgetPeriodFor(
-            budgetPeriodAnchorFor(now, startDay),
-            startDay,
-          );
-        }(),
-      };
+/// [categoryLinesProvider] for one budget period, anchored at [month] (a
+/// [selectedMonthProvider] value) instead of the current one — the
+/// Dashboard's Spending list drills in at the month it's showing, past
+/// months included.
+final categoryMonthLinesProvider =
+    Provider.family<List<CategoryLine>, (int, DateTime)>(
+      (ref, args) =>
+          _categoryLines(ref, args.$1, CategoryRange.thisMonth, args.$2),
+    );
 
-      final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
-      final splitsByTx = ref.watch(transactionSplitsByTxProvider);
-      final isIncome = self.kind == CategoryKind.income;
-      final kinds = ref.watch(_categoryKindsProvider);
-      final refundHome = ref.watch(refundHomeDatesProvider);
-      // An everyday category leaves a mode's (trip's) spending to the mode;
-      // a mode's own category is nothing but.
-      final everyday = self.modeId == null;
+List<CategoryLine> _categoryLines(
+  Ref ref,
+  int categoryId,
+  CategoryRange range,
+  DateTime? month,
+) {
+  final all = [
+    ...ref.watch(categoryMapProvider).values,
+    ...?ref.watch(archivedCategoriesProvider).valueOrNull,
+  ];
+  final self = all.where((c) => c.id == categoryId).firstOrNull;
+  if (self == null) return const [];
+  final ids = {
+    categoryId,
+    for (final c in all)
+      if (c.parentId == categoryId) c.id,
+  };
 
-      final out = <CategoryLine>[];
-      for (final t in txs) {
-        // A refund under this money-out category gives back to it (GitHub
-        // #201): a minus line, dated by the purchase it's linked to.
-        if (!isIncome && AppDatabase.isRefund(t, kinds)) {
-          final home = refundHome[t.id] ?? t.date;
-          if (ids.contains(t.categoryId) &&
-              !(everyday && t.modeId != null) &&
-              (window == null ||
-                  (!home.isBefore(window.start) &&
-                      !home.isAfter(window.end)))) {
-            out.add((
-              tx: t,
-              categoryId: t.categoryId!,
-              amount: -t.amount,
-              isSplit: false,
-            ));
-          }
-          continue;
-        }
-        if (window != null &&
-            (t.date.isBefore(window.start) || t.date.isAfter(window.end))) {
-          continue;
-        }
-        if (everyday && t.modeId != null) continue;
-        if (isIncome) {
-          if (t.type == TxType.income && ids.contains(t.categoryId)) {
-            out.add((
-              tx: t,
-              categoryId: t.categoryId!,
-              amount: t.amount,
-              isSplit: false,
-            ));
-          }
-          continue;
-        }
-        if (t.type == TxType.expense) {
-          if (t.categoryId != null) {
-            if (ids.contains(t.categoryId)) {
-              out.add((
-                tx: t,
-                categoryId: t.categoryId!,
-                amount: t.amount,
-                isSplit: false,
-              ));
-            }
-            continue;
-          }
-          for (final split
-              in splitsByTx[t.id] ?? const <TransactionSplitRow>[]) {
-            if (ids.contains(split.categoryId)) {
-              out.add((
-                tx: t,
-                categoryId: split.categoryId,
-                amount: split.amount,
-                isSplit: true,
-              ));
-            }
-          }
-          continue;
-        }
-        if (t.type == TxType.transfer && ids.contains(t.categoryId)) {
+  final now = DateTime.now();
+  final ({DateTime start, DateTime end})? window = switch (range) {
+    CategoryRange.allTime => null,
+    CategoryRange.thisYear => (
+      start: DateTime(now.year),
+      end: DateTime(now.year + 1).subtract(const Duration(milliseconds: 1)),
+    ),
+    CategoryRange.thisMonth => () {
+      final startDay = ref.watch(budgetStartDayProvider);
+      return budgetPeriodFor(
+        month ?? budgetPeriodAnchorFor(now, startDay),
+        startDay,
+      );
+    }(),
+  };
+
+  final txs = ref.watch(allTransactionsProvider).valueOrNull ?? const [];
+  final splitsByTx = ref.watch(transactionSplitsByTxProvider);
+  final isIncome = self.kind == CategoryKind.income;
+  final kinds = ref.watch(_categoryKindsProvider);
+  final refundHome = ref.watch(refundHomeDatesProvider);
+  // An everyday category leaves a mode's (trip's) spending to the mode;
+  // a mode's own category is nothing but.
+  final everyday = self.modeId == null;
+
+  final out = <CategoryLine>[];
+  for (final t in txs) {
+    // A refund under this money-out category gives back to it (GitHub
+    // #201): a minus line, dated by the purchase it's linked to.
+    if (!isIncome && AppDatabase.isRefund(t, kinds)) {
+      final home = refundHome[t.id] ?? t.date;
+      if (ids.contains(t.categoryId) &&
+          !(everyday && t.modeId != null) &&
+          (window == null ||
+              (!home.isBefore(window.start) && !home.isAfter(window.end)))) {
+        out.add((
+          tx: t,
+          categoryId: t.categoryId!,
+          amount: -t.amount,
+          isSplit: false,
+        ));
+      }
+      continue;
+    }
+    if (window != null &&
+        (t.date.isBefore(window.start) || t.date.isAfter(window.end))) {
+      continue;
+    }
+    if (everyday && t.modeId != null) continue;
+    if (isIncome) {
+      if (t.type == TxType.income && ids.contains(t.categoryId)) {
+        out.add((
+          tx: t,
+          categoryId: t.categoryId!,
+          amount: t.amount,
+          isSplit: false,
+        ));
+      }
+      continue;
+    }
+    if (t.type == TxType.expense) {
+      if (t.categoryId != null) {
+        if (ids.contains(t.categoryId)) {
           out.add((
             tx: t,
             categoryId: t.categoryId!,
@@ -531,13 +524,35 @@ final categoryLinesProvider =
             isSplit: false,
           ));
         }
+        continue;
       }
-      out.sort((a, b) {
-        final byDate = b.tx.date.compareTo(a.tx.date);
-        return byDate != 0 ? byDate : b.tx.id.compareTo(a.tx.id);
-      });
-      return out;
-    });
+      for (final split in splitsByTx[t.id] ?? const <TransactionSplitRow>[]) {
+        if (ids.contains(split.categoryId)) {
+          out.add((
+            tx: t,
+            categoryId: split.categoryId,
+            amount: split.amount,
+            isSplit: true,
+          ));
+        }
+      }
+      continue;
+    }
+    if (t.type == TxType.transfer && ids.contains(t.categoryId)) {
+      out.add((
+        tx: t,
+        categoryId: t.categoryId!,
+        amount: t.amount,
+        isSplit: false,
+      ));
+    }
+  }
+  out.sort((a, b) {
+    final byDate = b.tx.date.compareTo(a.tx.date);
+    return byDate != 0 ? byDate : b.tx.id.compareTo(a.tx.id);
+  });
+  return out;
+}
 
 /// Live "previous period unspent" per rollover-enabled budgeted category —
 /// max(0, previous period's [Budgets.amount] minus previous period's actual

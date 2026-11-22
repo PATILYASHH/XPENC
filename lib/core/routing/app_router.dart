@@ -407,6 +407,11 @@ final appRouter = GoRouter(
                         categoryId: int.parse(
                           state.pathParameters['categoryId']!,
                         ),
+                        // `?month=2026-10` — the Dashboard's Spending list
+                        // drilling in at the month it's showing.
+                        month: parseMonthParam(
+                          state.uri.queryParameters['month'],
+                        ),
                       ),
                     ),
                   ],

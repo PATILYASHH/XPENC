@@ -56,6 +56,22 @@ void main() {
     return container.read(categoryLinesProvider((id, range)));
   }
 
+  /// [categoryMonthLinesProvider] for the period anchored at [month].
+  Future<List<CategoryLine>> monthLinesFor(int id, DateTime month) async {
+    final container = ProviderContainer(
+      overrides: [dbProvider.overrideWithValue(db)],
+    );
+    addTearDown(container.dispose);
+    await container.read(allTransactionsProvider.future);
+    await container.read(categoriesProvider(CategoryKind.expense).future);
+    await container.read(categoriesProvider(CategoryKind.income).future);
+    await container.read(archivedCategoriesProvider.future);
+    await container.read(settingsProvider.future);
+    container.read(transactionSplitsByTxProvider);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    return container.read(categoryMonthLinesProvider((id, month)));
+  }
+
   final now = DateTime.now();
   final thisMonth = DateTime(now.year, now.month, 1, 12);
   final longAgo = DateTime(now.year - 2, 3, 10);
@@ -103,6 +119,27 @@ void main() {
 
     expect(await linesFor(food, CategoryRange.thisMonth), hasLength(1));
     expect(await linesFor(food, CategoryRange.allTime), hasLength(2));
+  });
+
+  test('drilling in from a past month shows that month, newest first', () async {
+    final food = await addCategory('Food', CategoryKind.expense);
+    final lastMonth = DateTime(now.year, now.month - 1);
+    await spend(food, 100, thisMonth);
+    final early = await spend(food, 300, DateTime(now.year, now.month - 1, 3));
+    final late = await spend(food, 200, DateTime(now.year, now.month - 1, 20));
+
+    final lines = await monthLinesFor(food, lastMonth);
+    expect(lines.map((l) => l.tx.id), [late, early]);
+  });
+
+  test('the month query parameter round-trips', () {
+    final oct = DateTime(2026, 10);
+    expect(categoryRoute(7, month: oct), '/more/categories/7?month=2026-10');
+    expect(categoryRoute(7), '/more/categories/7');
+    expect(parseMonthParam('2026-10'), oct);
+    expect(parseMonthParam('2026-13'), isNull);
+    expect(parseMonthParam('junk'), isNull);
+    expect(parseMonthParam(null), isNull);
   });
 
   test('an income category counts money in', () async {

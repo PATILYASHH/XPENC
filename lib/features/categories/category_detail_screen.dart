@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/app_icons.dart';
+import '../../core/budget_cycle.dart';
 import '../../core/money.dart';
 import '../../core/security/nct.dart';
 import '../../core/theme/app_colors.dart';
@@ -20,10 +21,32 @@ import '../../core/l10n/l10n.dart';
 /// One category's own page (GitHub #169): how much went to it — this month,
 /// this year or all time — split by subcategory for a parent, and every
 /// transaction behind the figure. Open it by tapping a category.
+/// A category page's route, opened at the budget period anchored at [month]
+/// (a [selectedMonthProvider] value) when given — `?month=2026-10`.
+String categoryRoute(int categoryId, {DateTime? month}) => month == null
+    ? '/more/categories/$categoryId'
+    : '/more/categories/$categoryId?month='
+          '${month.year}-${month.month.toString().padLeft(2, '0')}';
+
+/// The `month` query parameter [categoryRoute] writes, back to the period
+/// anchor; null when missing or malformed.
+DateTime? parseMonthParam(String? value) {
+  final m = RegExp(r'^(\d{4})-(\d{2})$').firstMatch(value ?? '');
+  if (m == null) return null;
+  final month = int.parse(m.group(2)!);
+  if (month < 1 || month > 12) return null;
+  return DateTime(int.parse(m.group(1)!), month);
+}
+
 class CategoryDetailScreen extends ConsumerStatefulWidget {
-  const CategoryDetailScreen({required this.categoryId, super.key});
+  const CategoryDetailScreen({required this.categoryId, this.month, super.key});
 
   final int categoryId;
+
+  /// The budget period the first tab shows, as a [selectedMonthProvider]
+  /// value — set when the Dashboard's Spending list drills in at a past
+  /// month. Null means the current one ("This month").
+  final DateTime? month;
 
   @override
   ConsumerState<CategoryDetailScreen> createState() =>
@@ -50,7 +73,14 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
       );
     }
 
-    final lines = ref.watch(categoryLinesProvider((widget.categoryId, _range)));
+    final month = widget.month;
+    final startDay = ref.watch(budgetStartDayProvider);
+    final pastMonth =
+        month != null &&
+        month != budgetPeriodAnchorFor(DateTime.now(), startDay);
+    final lines = (_range == CategoryRange.thisMonth && month != null)
+        ? ref.watch(categoryMonthLinesProvider((widget.categoryId, month)))
+        : ref.watch(categoryLinesProvider((widget.categoryId, _range)));
     final accounts = ref.watch(accountMapProvider);
     final isIncome = category.kind == CategoryKind.income;
     var total = const Money.zero();
@@ -84,16 +114,18 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
             width: double.infinity,
             child: SegmentedButton<CategoryRange>(
               showSelectedIcon: false,
-              segments: const [
+              segments: [
                 ButtonSegment(
                   value: CategoryRange.thisMonth,
-                  label: Tr('This month'),
+                  label: pastMonth
+                      ? Text(DateFormat('MMM yyyy').format(month))
+                      : const Tr('This month'),
                 ),
-                ButtonSegment(
+                const ButtonSegment(
                   value: CategoryRange.thisYear,
                   label: Tr('This year'),
                 ),
-                ButtonSegment(
+                const ButtonSegment(
                   value: CategoryRange.allTime,
                   label: Tr('All time'),
                 ),
