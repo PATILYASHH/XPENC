@@ -96,10 +96,10 @@ class _AccountStripState extends ConsumerState<AccountStrip>
   List<int>? _order;
   final Map<int, bool> _shown = {};
 
-  late final _wiggle = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 900),
-  );
+  // Made in initState, never lazily: a `late` controller first touched in
+  // dispose() would create its ticker on a deactivated element, which
+  // Flutter 3.38 (CI's) asserts on.
+  late final AnimationController _wiggle;
 
   @override
   void didUpdateWidget(AccountStrip old) {
@@ -110,6 +110,10 @@ class _AccountStripState extends ConsumerState<AccountStrip>
   @override
   void initState() {
     super.initState();
+    _wiggle = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
     _revealSelectedLater(animate: false);
   }
 
@@ -489,10 +493,18 @@ class _AccountCard extends StatefulWidget {
 
 class _AccountCardState extends State<_AccountCard>
     with SingleTickerProviderStateMixin {
-  late final _charge = AnimationController(
-    vsync: this,
-    duration: kAccountStripHoldToEdit,
-  );
+  // In initState, not lazily — see `_AccountStripState._wiggle`. A card
+  // shown only in edit mode never builds the hold that would touch it.
+  late final AnimationController _charge;
+
+  @override
+  void initState() {
+    super.initState();
+    _charge = AnimationController(
+      vsync: this,
+      duration: kAccountStripHoldToEdit,
+    );
+  }
 
   @override
   void dispose() {
